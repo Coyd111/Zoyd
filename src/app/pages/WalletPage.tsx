@@ -10,6 +10,9 @@ import { useWalletStore } from '../stores/walletStore';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { verifyFedaPayTransaction } from '../lib/walletApi';
+
+declare const FedaPay: any;
 
 const WalletPage: React.FC = () => {
   const {
@@ -66,13 +69,46 @@ const WalletPage: React.FC = () => {
   }, [filter, transactions]);
 
   const handleDeposit = async () => {
-    if (!selectedOperator || !amount) return;
+    if (!amount) return;
     const depositAmount = parseFloat(amount);
-    await deposit(depositAmount, selectedOperator);
-    toast.success(`${formatZC(depositAmount)} ajoutes dans ton wallet.`);
-    setShowDepositModal(false);
-    setAmount('');
-    setSelectedOperator('');
+    const amountFCFA = depositAmount; // 1 ZC = 1 FCFA (ou taux de conversion specifique)
+
+    // Using FedaPay Widget
+    FedaPay.init({
+      public_key: import.meta.env.VITE_FEDAPAY_PUBLIC_KEY,
+      transaction: {
+        amount: amountFCFA,
+        description: `Recharge de ${depositAmount} ZC`,
+      },
+      customer: {
+        email: 'joueur@zoyd.app',
+        lastname: 'Joueur ZOYD'
+      },
+      onComplete: async (resp: any) => {
+        if (resp.reason === 'CHECKOUT COMPLETE') {
+          toast.loading('Verification de la transaction...');
+          try {
+            const result = await verifyFedaPayTransaction(resp.transaction.id);
+            toast.dismiss();
+            if (result.ok) {
+              toast.success(`${formatZC(result.amount)} ajoutes dans ton wallet.`);
+              // Update local state using hydrateFromServer
+              useWalletStore.getState().hydrateFromServer(result.wallet);
+            } else {
+              toast.error('Erreur lors de la verification.');
+            }
+          } catch (error: any) {
+            toast.dismiss();
+            toast.error(error.message || 'Erreur lors de la verification de la transaction FedaPay.');
+          }
+        } else {
+          toast.error('Transaction annulee ou echouee.');
+        }
+        setShowDepositModal(false);
+        setAmount('');
+        setSelectedOperator('');
+      }
+    });
   };
 
   const handleWithdraw = async () => {

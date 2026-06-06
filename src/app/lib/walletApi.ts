@@ -70,3 +70,15 @@ export const withdrawWalletBalance = async (amount: number, method: string, phon
       body: JSON.stringify({ amount, method, phone }),
     })
   );
+
+export const verifyFedaPayTransaction = async (transactionId: number | string) =>
+  readJson<{ ok: boolean; amount: number; wallet: WalletSnapshot; user: any }>(
+    await fetch(getApiUrl('/api/wallet/verify-fedapay'), {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transactionId }),
+    })
+  );

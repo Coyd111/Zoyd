@@ -6,3 +6,5 @@ dist-proof-check
 .DS_Store
 build.log
 public/assets/codm/
+*.db
+*.db-journal

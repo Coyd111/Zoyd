@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { supabase } from './supabase.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -385,6 +386,19 @@ const insertUser = ({ password, role = 'player', ...input }) => {
     updatedAt
   );
 
+  supabase.from('app_users').upsert({
+    id,
+    pseudo_key: normalizePseudoKey(payload.pseudo),
+    email_key: normalizeEmailKey(payload.email),
+    phone_key: normalizePhoneKey(payload.phone),
+    game_id_key: normalizeGameIdKey(payload.gameId),
+    role,
+    password_hash: passwordHash,
+    payload,
+    created_at: createdAt,
+    updated_at: updatedAt
+  }).then(({ error }) => { if (error) console.error('Supabase app_users sync error:', error); });
+
   return sanitizeUserPayload(payload);
 };
 
@@ -405,6 +419,11 @@ export const updateUserAccount = (userId, updater) => {
       WHERE id = ?
     `
   ).run(JSON.stringify(nextPayload), getNow(), userId);
+
+  supabase.from('app_users').update({
+    payload: nextPayload,
+    updated_at: getNow()
+  }).eq('id', userId).then(({ error }) => { if (error) console.error('Supabase app_users update error:', error); });
 
   return nextPayload;
 };
@@ -790,13 +809,32 @@ export const replaceStateCollection = (kind, items) => {
     }
 
     const existingIds = db.prepare('SELECT entity_id FROM state_snapshots WHERE kind = ?').all(kind);
+    const deletedIds = [];
     for (const row of existingIds) {
       if (!itemIds.has(row.entity_id)) {
         db.prepare('DELETE FROM state_snapshots WHERE kind = ? AND entity_id = ?').run(kind, row.entity_id);
+        deletedIds.push(row.entity_id);
       }
     }
 
     db.exec('COMMIT');
+
+    // Supabase background sync
+    if (items.length > 0) {
+      supabase.from('state_snapshots').upsert(
+        items.map(item => ({
+          kind,
+          entity_id: item.id,
+          payload: item,
+          updated_at: getItemTimestamp(item)
+        }))
+      ).then(({ error }) => { if (error) console.error('Supabase state_snapshots sync error:', error); });
+    }
+    if (deletedIds.length > 0) {
+      supabase.from('state_snapshots').delete().eq('kind', kind).in('entity_id', deletedIds)
+        .then(({ error }) => { if (error) console.error('Supabase state_snapshots delete error:', error); });
+    }
+
   } catch (error) {
     db.exec('ROLLBACK');
     throw error;

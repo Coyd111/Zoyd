@@ -45,6 +45,7 @@ import {
   submitMatchResultOnServer,
   toggleReadyOnServer,
 } from './match-engine.mjs';
+import { verifyFedaPayTransactionAndCredit } from './payment-engine.mjs';
 import {
   assignTournamentArbiterOnServer,
   createTournamentOnServer,
@@ -768,6 +769,36 @@ const server = http.createServer(async (req, res) => {
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+
+    try {
+      const body = await parseRequestBody(req);
+      if (!body.transactionId) {
+        respondJson(res, 400, { ok: false, error: 'transactionId manquant.' });
+        return;
+      }
+
+      const outcome = await verifyFedaPayTransactionAndCredit(body.transactionId, session.user);
+      // Synchronize the updated wallet state
+      const { depositToWallet, getServerWallet } = await import('./wallet-engine.mjs');
+      // The payment-engine already modifies the wallet in memory. We just return it.
+      respondJson(res, 200, { 
+        ok: true, 
+        amount: outcome.amountZC, 
+        wallet: getServerWallet(session.user.id),
+        user: outcome.user
+      });
+    } catch (error) {
+      respondJson(res, 400, { ok: false, error: error.message });
     }
     return;
   }

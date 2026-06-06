@@ -58,7 +58,7 @@ import {
   submitTournamentMatchResultOnServer,
 } from './tournament-engine.mjs';
 
-const PORT = Number(process.env.ZOYD_REALTIME_PORT || 4001);
+const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
 const allowedOrigins = (process.env.ZOYD_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
   .split(',')
   .map((origin) => origin.trim())

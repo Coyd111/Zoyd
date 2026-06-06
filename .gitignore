@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-proof-check
+.env
+.env.*
+.DS_Store
+build.log
+public/assets/codm/

@@ -1,0 +1,528 @@
+import React from 'react';
+import { Link } from 'react-router';
+import { motion, useReducedMotion } from 'motion/react';
+import {
+  ArrowRight,
+  ChevronDown,
+  Gamepad2,
+  ShieldCheck,
+  Smartphone,
+  Swords,
+  Users,
+  Wallet,
+} from 'lucide-react';
+import { LANDING_TICKER_ITEMS } from '../../lib/competition';
+import ZoydLogo from '../components/branding/ZoydLogo';
+
+const platformCards = [
+  {
+    title: 'Un profil unique',
+    description:
+      'Ton identite joueur, ta progression et ton historique restent centralises au meme endroit.',
+    icon: Users,
+  },
+  {
+    title: 'Des parties mieux cadrees',
+    description:
+      'Defis, matchs, tournois et futurs modes de jeu avancent dans un cadre plus clair pour les joueurs.',
+    icon: ShieldCheck,
+  },
+  {
+    title: 'Un wallet integre',
+    description:
+      'Tes gains, tes depots et tes retraits vivent dans le meme espace que ton activite competitive.',
+    icon: Wallet,
+  },
+];
+
+const modeCards = [
+  {
+    title: 'Multijoueur',
+    status: 'Ouvert',
+    description:
+      'Entre dans les matchs, tournois et salons competitifs CODM depuis ton espace joueur.',
+    accent: 'blue' as const,
+  },
+  {
+    title: 'Battle Royale',
+    status: 'Bientot',
+    description:
+      'Le meme compte, le meme wallet et la meme identite te suivront quand le mode BR sera ouvert.',
+    accent: 'yellow' as const,
+  },
+];
+
+const playerJourney = [
+  {
+    title: 'Creer ton compte',
+    body: 'Tu renseignes ton profil CODM, ton appareil principal et ton identite joueur une seule fois.',
+  },
+  {
+    title: 'Choisir ton terrain',
+    body: 'Apres connexion, tu entres dans le mode que tu veux suivre en premier sur ZOYD.',
+  },
+  {
+    title: 'Jouer et progresser',
+    body: 'Tes parties, tes resultats et ton wallet restent relies dans la meme plateforme.',
+  },
+];
+
+const experienceSignals = [
+  { label: 'Compte', value: 'Unique', icon: Users },
+  { label: 'Modes', value: 'MJ + BR', icon: Gamepad2 },
+  { label: 'Wallet', value: 'Integre', icon: Wallet },
+  { label: 'Mobile', value: 'CODM Focus', icon: Smartphone },
+];
+
+const trustRows = [
+  { label: 'Profil joueur', value: 'Pseudo, UID, progression' },
+  { label: 'Espace competition', value: 'Matchs, tournois, classements' },
+  { label: 'Wallet ZC', value: 'Depot, gains, retraits' },
+  { label: 'Navigation', value: 'Un seul compte pour tout ZOYD' },
+];
+
+export default function LandingPage() {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <div className="min-h-screen bg-zoyd-black text-white font-ui selection:bg-zoyd-yellow selection:text-black overflow-x-hidden">
+      <LandingNav />
+
+      <main className="relative">
+        <section id="hero" className="relative min-h-screen overflow-hidden border-b border-white/5">
+          <div className="absolute inset-0">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/codm/codm_app_icon.png"
+              className="h-full w-full object-cover opacity-24"
+            >
+              <source src="/assets/codm/videos/StartVideo.mp4" type="video/mp4" />
+            </video>
+          </div>
+
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,227,81,0.14),transparent_32%),radial-gradient(circle_at_82%_18%,rgba(0,122,255,0.12),transparent_28%),linear-gradient(180deg,rgba(10,10,10,0.24),rgba(10,10,10,0.86)_68%,#0A0A0A)]" />
+          <div className="absolute inset-0 tactical-grid opacity-10" />
+          <div className="absolute inset-0 scanline opacity-20" />
+
+          <div className="absolute left-[-10rem] top-24 h-[24rem] w-[24rem] rounded-full bg-zoyd-yellow/10 blur-[120px]" />
+          <div className="absolute right-[-7rem] top-40 h-[22rem] w-[22rem] rounded-full bg-zoyd-blue/10 blur-[110px]" />
+
+          <div className="relative z-10 max-w-[1600px] mx-auto px-6 md:px-8 pt-28 md:pt-32 pb-16 min-h-screen flex items-center">
+            <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 xl:gap-20 items-center w-full">
+              <motion.div
+                initial={{ opacity: 0, y: reduceMotion ? 0 : 22 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="max-w-3xl"
+              >
+                <ZoydLogo className="mb-8" markClassName="h-12 w-12" />
+
+                <h1 className="text-[3.2rem] md:text-[5.5rem] xl:text-[6.8rem] leading-[0.84] font-display font-black uppercase italic tracking-[-0.05em] mb-7">
+                  Une seule
+                  <br />
+                  plateforme pour
+                  <br />
+                  <span className="text-zoyd-yellow">jouer, grimper, gagner.</span>
+                </h1>
+
+                <p className="text-lg md:text-xl text-white/56 leading-relaxed max-w-2xl mb-10">
+                  ZOYD rassemble ton profil joueur, tes parties, ton wallet et tes futurs modes de jeu dans une
+                  experience plus claire pour la scene CODM. Tu t&apos;inscris une fois, puis tu choisis ton terrain.
+                </p>
+
+                <div className="flex flex-wrap gap-4 mb-8">
+                  <Link
+                    to="/auth/register"
+                    className="inline-flex items-center gap-3 bg-white text-black px-7 md:px-9 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic hover:bg-zoyd-yellow transition-colors"
+                  >
+                    Creer mon compte
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    to="/auth/login"
+                    className="inline-flex items-center gap-3 border border-white/12 px-7 md:px-9 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/72 hover:text-white hover:border-white/28 transition-colors"
+                  >
+                    Me connecter
+                  </Link>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3 max-w-2xl">
+                  <SignalStrip label="Experience" value="Profil + wallet + competition" />
+                  <SignalStrip label="Modes" value="Multijoueur puis Battle Royale" />
+                  <SignalStrip label="Scene" value="CODM focus Afrique" />
+                  <SignalStrip label="Onboarding" value="Inscription puis choix du mode" />
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: reduceMotion ? 0 : 26 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, duration: 0.6 }}
+                className="relative"
+              >
+                <div className="absolute inset-0 rounded-[32px] bg-[linear-gradient(135deg,rgba(255,227,81,0.08),rgba(0,122,255,0.04)_55%,transparent)] blur-2xl" />
+
+                <div className="relative rounded-[30px] border border-white/10 bg-black/52 backdrop-blur-xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+                  <div className="absolute inset-0 opacity-28 pointer-events-none">
+                    <img
+                      src="/codm/codm_policy_bg2.png"
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  <div className="relative z-10 p-6 md:p-8">
+                    <div className="flex items-center justify-between gap-4 mb-6">
+                      <div>
+                        <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-blue mb-2">
+                          Espace joueur
+                        </div>
+                        <div className="text-2xl md:text-3xl font-display font-black uppercase italic tracking-tight">
+                          ZOYD Profile
+                        </div>
+                      </div>
+                      <img
+                        src="/codm/codm_app_icon.png"
+                        alt="CODM"
+                        className="h-16 w-16 rounded-2xl border border-white/10 shadow-[0_0_25px_rgba(255,227,81,0.14)]"
+                        loading="eager"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                      {experienceSignals.map((signal) => (
+                        <SignalTile key={signal.label} {...signal} />
+                      ))}
+                    </div>
+
+                    <div className="rounded-[24px] border border-white/8 bg-zoyd-surface/30 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/32 mb-1">
+                            Tableau de bord
+                          </div>
+                          <div className="font-display font-black uppercase italic tracking-tight text-lg">
+                            Un compte, plusieurs arènes
+                          </div>
+                        </div>
+                        <div className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.22em] text-green-400">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          Pret
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4">
+                        {trustRows.map((row) => (
+                          <MatchRoomLine key={row.label} label={row.label} value={row.value} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/24">
+            <span className="text-[10px] font-mono uppercase tracking-[0.26em]">Scroll</span>
+            <ChevronDown className="w-5 h-5 animate-bounce" />
+          </div>
+        </section>
+
+        <section className="border-y border-white/5 bg-zoyd-yellow py-4 overflow-hidden whitespace-nowrap">
+          <div className="flex gap-16 animate-marquee items-center text-black font-display font-black text-lg md:text-2xl uppercase tracking-wider italic">
+            {[...LANDING_TICKER_ITEMS, ...LANDING_TICKER_ITEMS].map((item, index) => (
+              <React.Fragment key={`${item}-${index}`}>
+                <span>{item}</span>
+                <span>///</span>
+              </React.Fragment>
+            ))}
+          </div>
+        </section>
+
+        <section id="platform" className="py-24 md:py-32">
+          <div className="max-w-[1600px] mx-auto px-6 md:px-8">
+            <div className="max-w-4xl mb-14 md:mb-16">
+              <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
+                ZOYD doit d&apos;abord etre clair pour le joueur.
+              </h2>
+              <p className="text-white/48 text-lg md:text-xl leading-relaxed max-w-3xl">
+                La landing n&apos;explique plus la strategie interne du produit. Elle montre ce que le joueur gagne
+                vraiment: un compte central, une scene competitive mieux rangee et une economie lisible.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {platformCards.map((card, index) => (
+                <motion.div
+                  key={card.title}
+                  initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.25 }}
+                  transition={{ delay: index * 0.08, duration: 0.45 }}
+                  className="rounded-[28px] border border-white/8 bg-zoyd-surface/18 p-7 md:p-8 hover:border-zoyd-blue/30 transition-colors"
+                >
+                  <div className="w-14 h-14 border border-white/10 bg-black/35 flex items-center justify-center text-zoyd-yellow mb-8">
+                    <card.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-display font-black uppercase italic tracking-tight mb-4">
+                    {card.title}
+                  </h3>
+                  <p className="text-white/42 leading-relaxed text-base">{card.description}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="modes"
+          className="py-24 md:py-32 border-t border-white/5 bg-[radial-gradient(circle_at_top_right,rgba(0,122,255,0.08),transparent_30%)]"
+        >
+          <div className="max-w-[1600px] mx-auto px-6 md:px-8 grid lg:grid-cols-[0.92fr_1.08fr] gap-12 lg:gap-16 items-start">
+            <div className="max-w-xl">
+              <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.92] mb-6">
+                Deux modes,
+                <br />
+                une seule identite.
+              </h2>
+              <p className="text-white/48 text-lg leading-relaxed mb-8">
+                Apres inscription, ZOYD te laisse entrer dans le terrain qui t&apos;interesse. Le profil, le wallet et
+                l&apos;historique restent centralises pour que la plateforme te suive sans repartir de zero.
+              </p>
+              <div className="space-y-3">
+                {[
+                  'Un seul compte pour tes experiences CODM',
+                  'Multijoueur accessible des maintenant',
+                  'Battle Royale ajoute sans changer de profil',
+                  'Progression et gains relies au meme espace',
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3 text-sm md:text-base text-white/58">
+                    <div className="w-2 h-2 bg-zoyd-blue" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {modeCards.map((mode) => (
+                <div
+                  key={mode.title}
+                  className={`rounded-[28px] border p-8 md:p-10 min-h-[310px] flex flex-col justify-between ${
+                    mode.accent === 'blue'
+                      ? 'border-zoyd-blue/20 bg-[linear-gradient(135deg,rgba(0,122,255,0.14),rgba(0,122,255,0.03))]'
+                      : 'border-zoyd-yellow/20 bg-[linear-gradient(135deg,rgba(255,227,81,0.08),rgba(255,255,255,0.02))]'
+                  }`}
+                >
+                  <div>
+                    <div
+                      className={`text-[10px] font-mono uppercase tracking-[0.28em] mb-5 ${
+                        mode.accent === 'blue' ? 'text-zoyd-blue' : 'text-zoyd-yellow'
+                      }`}
+                    >
+                      {mode.status}
+                    </div>
+                    <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
+                      {mode.title}
+                    </h3>
+                    <p className="text-white/46 leading-relaxed max-w-xl">{mode.description}</p>
+                  </div>
+                  <div className="flex items-center justify-between pt-8 border-t border-white/8 mt-8">
+                    <div className="flex items-center gap-3 text-sm text-white/56">
+                      {mode.accent === 'blue' ? (
+                        <Swords className="w-4 h-4 text-zoyd-blue" />
+                      ) : (
+                        <Gamepad2 className="w-4 h-4 text-zoyd-yellow" />
+                      )}
+                      {mode.accent === 'blue' ? 'Entre des maintenant' : 'Bientot dans ton espace joueur'}
+                    </div>
+                    {mode.accent === 'blue' ? (
+                      <Link
+                        to="/auth/register"
+                        className="inline-flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-blue hover:text-white transition-colors"
+                      >
+                        Commencer
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    ) : (
+                      <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">
+                        En preparation
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="account" className="py-24 md:py-28 border-t border-white/5">
+          <div className="max-w-[1600px] mx-auto px-6 md:px-8">
+            <div className="rounded-[32px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,227,81,0.03),rgba(0,122,255,0.04))] p-8 md:p-10">
+              <div className="max-w-3xl mb-10">
+                <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
+                  En trois etapes,
+                  <br />
+                  tu entres sur ZOYD.
+                </h2>
+                <p className="text-white/46 text-lg leading-relaxed">
+                  Le parcours d&apos;entree doit etre simple: creer ton compte, choisir ton mode, retrouver ton activite
+                  au meme endroit a chaque connexion.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-4">
+                {playerJourney.map((step, index) => (
+                  <motion.div
+                    key={step.title}
+                    initial={{ opacity: 0, y: reduceMotion ? 0 : 18 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.25 }}
+                    transition={{ delay: index * 0.08, duration: 0.45 }}
+                    className="rounded-[24px] border border-white/8 bg-black/35 p-6"
+                  >
+                    <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-blue mb-5">
+                      Etape 0{index + 1}
+                    </div>
+                    <h3 className="text-2xl font-display font-black uppercase italic tracking-tight mb-3">
+                      {step.title}
+                    </h3>
+                    <p className="text-white/42 leading-relaxed">{step.body}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-24 md:py-28 border-t border-white/5 bg-zoyd-surface/6">
+          <div className="max-w-[1600px] mx-auto px-6 md:px-8 text-center">
+            <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
+              Entre sur ZOYD
+              <br />
+              et choisis ton <span className="text-zoyd-yellow">terrain</span>.
+            </h2>
+            <p className="text-white/46 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
+              Cree ton compte, configure ton profil CODM et retrouve une plateforme pensee pour la competition, la
+              progression et tes gains.
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link
+                to="/auth/register"
+                className="inline-flex items-center gap-3 bg-white text-black px-8 md:px-10 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic hover:bg-zoyd-yellow transition-colors"
+              >
+                Creer mon compte
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/auth/login"
+                className="inline-flex items-center gap-3 border border-white/12 px-8 md:px-10 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/72 hover:text-white hover:border-white/28 transition-colors"
+              >
+                Me connecter
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-white/5 bg-black">
+        <div className="max-w-[1600px] mx-auto px-6 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <ZoydLogo compact />
+          <div className="flex flex-wrap gap-8 text-[10px] font-mono uppercase tracking-[0.28em] text-white/28">
+            <span>CODM Platform</span>
+            <span>Player Profile</span>
+            <span>Wallet ZC</span>
+            <span>MJ + BR</span>
+          </div>
+          <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/16">
+            © 2026 ZOYD Platform
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function LandingNav() {
+  return (
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/6 bg-zoyd-black/72 backdrop-blur-xl">
+      <div className="max-w-[1600px] mx-auto px-6 md:px-8 h-20 flex items-center justify-between gap-6">
+        <Link to="/" className="shrink-0">
+          <ZoydLogo compact />
+        </Link>
+
+        <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/36">
+          <a href="#platform" className="hover:text-white transition-colors">
+            Plateforme
+          </a>
+          <a href="#modes" className="hover:text-white transition-colors">
+            Modes
+          </a>
+          <a href="#account" className="hover:text-white transition-colors">
+            Compte
+          </a>
+        </div>
+
+        <div className="flex items-center gap-3 md:gap-4">
+          <Link
+            to="/auth/login"
+            className="text-[10px] md:text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/58 hover:text-white transition-colors italic"
+          >
+            Connexion
+          </Link>
+          <Link
+            to="/auth/register"
+            className="inline-flex items-center gap-2 bg-white text-black px-4 md:px-6 py-3 text-[10px] md:text-[11px] font-display font-black uppercase tracking-[0.22em] italic hover:bg-zoyd-yellow transition-colors"
+          >
+            Commencer
+          </Link>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function SignalStrip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-white/8 bg-black/26 px-4 py-3">
+      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24 mb-1">{label}</div>
+      <div className="font-display font-black uppercase italic tracking-tight text-white">{value}</div>
+    </div>
+  );
+}
+
+function SignalTile({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="border border-white/8 bg-black/28 px-4 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">{label}</span>
+        <Icon className="w-4 h-4 text-zoyd-yellow" />
+      </div>
+      <div className="font-display font-black uppercase italic tracking-tight text-white">{value}</div>
+    </div>
+  );
+}
+
+function MatchRoomLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-white/6 pb-3 last:border-b-0 last:pb-0">
+      <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">{label}</span>
+      <span className="font-display font-black uppercase italic tracking-tight text-white">{value}</span>
+    </div>
+  );
+}

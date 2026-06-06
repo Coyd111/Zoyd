@@ -14,7 +14,7 @@ import {
 } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
 
-type RankingTab = 'earnings' | 'winrate' | 'activity' | 'teams' | 'country' | 'controller';
+type RankingTab = 'elo' | 'earnings' | 'winrate' | 'activity' | 'teams' | 'country' | 'controller';
 
 interface RankingRow {
   key: string;
@@ -31,6 +31,7 @@ interface RankingRow {
 }
 
 const tabs: { id: RankingTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'elo', label: 'TOP ELO', icon: Trophy },
   { id: 'earnings', label: 'TOP GAINS', icon: Trophy },
   { id: 'winrate', label: 'VICTOIRES', icon: Target },
   { id: 'activity', label: 'ACTIVITE', icon: TrendingUp },
@@ -43,6 +44,7 @@ const tabColumns: Record<
   RankingTab,
   { primary: string; detail: string; value: string; rate: string; trust: string }
 > = {
+  elo: { primary: 'JOUEUR', detail: 'RANG', value: 'ELO', rate: 'WR%', trust: 'FIAB.' },
   earnings: { primary: 'JOUEUR', detail: 'SETUP', value: 'V', rate: 'WR%', trust: 'FIAB.' },
   winrate: { primary: 'JOUEUR', detail: 'SETUP', value: 'V', rate: 'WR%', trust: 'FIAB.' },
   activity: { primary: 'JOUEUR', detail: 'ACTIVITE', value: 'MATCHS', rate: 'WR%', trust: 'FIAB.' },
@@ -66,7 +68,7 @@ const ClassementsPage: React.FC = () => {
   const { friends, reports } = useFriendsStore();
   const { matches } = useMatchStore();
   const { tournaments } = useTournamentStore();
-  const [activeTab, setActiveTab] = useState<RankingTab>('earnings');
+  const [activeTab, setActiveTab] = useState<RankingTab>('elo');
 
   const players = useMemo(
     () =>
@@ -88,6 +90,26 @@ const ClassementsPage: React.FC = () => {
     const indexedPlayers = players.filter(
       (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0 || player.isMe
     );
+
+    const elo = sortWithRank(
+      indexedPlayers,
+      (left, right) =>
+        right.elo - left.elo ||
+        right.winRate - left.winRate ||
+        right.totalMatches - left.totalMatches
+    ).map(({ item, rank }) => ({
+      key: `${item.key}-elo`,
+      rank,
+      label: item.pseudo,
+      href: item.hasPublicProfile && item.primaryUserId ? `/profil/${item.primaryUserId}` : undefined,
+      countryCode: item.countryCode,
+      detail: item.rankMJ || 'Bronze',
+      value: item.elo,
+      rate: item.winRate,
+      earnings: item.totalEarnings,
+      trust: item.trustScore,
+      isMe: item.isMe,
+    } satisfies RankingRow));
 
     const earnings = sortWithRank(
       indexedPlayers,
@@ -191,6 +213,7 @@ const ClassementsPage: React.FC = () => {
     } satisfies RankingRow));
 
     return {
+      elo,
       earnings,
       winrate,
       activity,

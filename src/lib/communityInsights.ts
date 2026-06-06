@@ -125,6 +125,7 @@ type MutablePlayer = {
   totalEarnings: number;
   tournamentsWon: number;
   tournamentsPlayed: number;
+  elo: number;
   matchActivity: Set<string>;
   tournamentActivity: Set<string>;
   disputedMatches: Set<string>;
@@ -148,6 +149,7 @@ const ensurePlayer = (
     dateJoined?: string;
     isOnline?: boolean;
     priority?: number;
+    elo?: number;
   }
 ) => {
   const key = normalizePseudo(pseudo || 'unknown-player');
@@ -169,6 +171,7 @@ const ensurePlayer = (
       current.trustScore = details?.trustScore ?? current.trustScore;
       current.dateJoined = details?.dateJoined ?? current.dateJoined;
       current.isOnline = details?.isOnline ?? current.isOnline;
+      current.elo = details?.elo ?? current.elo;
       current.metadataPriority = details?.priority || current.metadataPriority;
     }
 
@@ -195,6 +198,7 @@ const ensurePlayer = (
     totalEarnings: 0,
     tournamentsWon: 0,
     tournamentsPlayed: 0,
+    elo: details?.elo ?? 1200,
     matchActivity: new Set<string>(),
     tournamentActivity: new Set<string>(),
     disputedMatches: new Set<string>(),
@@ -234,6 +238,7 @@ export interface CommunityPlayer {
   forfeits: number;
   reportsCount: number;
   trustTier: 'unknown' | 'elite' | 'stable' | 'watch' | 'critical';
+  elo: number;
 }
 
 export interface TeamRanking {
@@ -334,6 +339,7 @@ export const buildCommunityPlayers = ({
       trustScore: currentUser.trustScore,
       dateJoined: currentUser.dateJoined,
       isOnline: currentUser.isOnline,
+      elo: currentUser.stats?.elo ?? 1200,
       priority: 5,
     });
 
@@ -353,6 +359,7 @@ export const buildCommunityPlayers = ({
       controllerType: friend.controllerType as User['controllerType'],
       trustScore: friend.trustScore,
       isOnline: friend.status === 'online' || friend.status === 'in_match' || friend.status === 'in_lobby',
+      elo: friend.stats?.elo ?? 1200,
       priority: 4,
     });
   }
@@ -462,6 +469,7 @@ export const buildCommunityPlayers = ({
         forfeits: player.forfeitedMatches.size,
         reportsCount: player.reportsCount,
         trustTier: getTrustTier(player.trustScore),
+        elo: player.elo,
       } satisfies CommunityPlayer;
     })
     .sort((left, right) => compareNumbers(left.totalEarnings, right.totalEarnings) || compareNumbers(left.wins, right.wins));

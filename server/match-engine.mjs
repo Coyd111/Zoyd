@@ -127,11 +127,50 @@ const patchUserForMatchOutcome = (userId, updater) =>
     return next;
   });
 
+const getRankFromElo = (elo) => {
+  if (elo < 1200) return 'Bronze';
+  if (elo < 1400) return 'Silver';
+  if (elo < 1600) return 'Gold';
+  if (elo < 1800) return 'Platinum';
+  if (elo < 2000) return 'Diamond';
+  return 'Master';
+};
+
 const applyResultSettlement = (match, result) => {
   const payout = getWinnerPayout(match);
 
+  // Elo Calculation
+  const K = 32;
+  const teamElos = { 0: [], 1: [] };
+  
+  for (const player of match.players) {
+    const user = getUserById(player.userId);
+    const elo = user?.stats?.elo || 1200;
+    teamElos[player.team].push({ userId: player.userId, elo });
+  }
+
+  const avgElo = (team) => {
+    const players = teamElos[team];
+    if (players.length === 0) return 1200;
+    return players.reduce((sum, p) => sum + p.elo, 0) / players.length;
+  };
+
+  const eloA = avgElo(0);
+  const eloB = avgElo(1);
+  const expectedA = 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+  const expectedB = 1 / (1 + Math.pow(10, (eloA - eloB) / 400));
+
+  const scoreA = result.winnerTeam === 0 ? 1 : (result.winnerTeam === null ? 0.5 : 0);
+  const scoreB = result.winnerTeam === 1 ? 1 : (result.winnerTeam === null ? 0.5 : 0);
+
+  const deltaA = K * (scoreA - expectedA);
+  const deltaB = K * (scoreB - expectedB);
+
+  const eloDeltaByTeam = { 0: deltaA, 1: deltaB };
+
   for (const player of match.players) {
     const isWinner = player.team === result.winnerTeam;
+    const deltaElo = eloDeltaByTeam[player.team] || 0;
 
     if (isWinner) {
       releaseWalletWinnings(
@@ -147,11 +186,13 @@ const applyResultSettlement = (match, result) => {
           ...user.stats,
           wins: Number(user.stats?.wins || 0) + 1,
           totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout),
+          elo: Math.round(Number(user.stats?.elo || 1200) + deltaElo),
         };
         const total = nextStats.wins + Number(nextStats.losses || 0) + Number(nextStats.draws || 0);
         nextStats.totalMatches = total;
         nextStats.winRate = total > 0 ? Math.round((nextStats.wins / total) * 1000) / 10 : 0;
         user.stats = nextStats;
+        user.rankMJ = getRankFromElo(nextStats.elo);
         user.progression = addXpToProgression(user.progression, 120);
         if (result.resolutionType === 'forfeit') {
           user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) + 2));
@@ -166,11 +207,13 @@ const applyResultSettlement = (match, result) => {
       const nextStats = {
         ...user.stats,
         losses: Number(user.stats?.losses || 0) + 1,
+        elo: Math.max(0, Math.round(Number(user.stats?.elo || 1200) + deltaElo)),
       };
       const total = Number(nextStats.wins || 0) + nextStats.losses + Number(nextStats.draws || 0);
       nextStats.totalMatches = total;
       nextStats.winRate = total > 0 ? Math.round((Number(nextStats.wins || 0) / total) * 1000) / 10 : 0;
       user.stats = nextStats;
+      user.rankMJ = getRankFromElo(nextStats.elo);
       user.progression = addXpToProgression(user.progression, 35);
       if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
         user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));

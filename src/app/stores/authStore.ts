@@ -14,6 +14,7 @@ export interface UserStats {
   winRate: number;
   tournamentsWon: number;
   tournamentsPlayed: number;
+  elo: number;
 }
 
 export interface User {
@@ -71,6 +72,7 @@ const defaultStats: UserStats = {
   winRate: 0,
   tournamentsWon: 0,
   tournamentsPlayed: 0,
+  elo: 1200,
 };
 
 const normalizeUser = (user: PersistedUser | User | null | undefined): User | null => {

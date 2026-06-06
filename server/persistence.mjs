@@ -92,6 +92,7 @@ const defaultStats = {
   winRate: 0,
   tournamentsWon: 0,
   tournamentsPlayed: 0,
+  elo: 1200,
 };
 
 const defaultProgression = {
@@ -322,8 +323,8 @@ const buildUserPayload = (input, role = 'player') => {
     controllerType: input.controllerType || 'touch',
     device: input.device || 'phone',
     levelCODM: Number(input.levelCODM || 1),
-    rankMJ: input.rankMJ || 'Rookie',
-    rankBR: input.rankBR || 'Rookie',
+    rankMJ: input.rankMJ || 'Bronze',
+    rankBR: input.rankBR || 'Bronze',
     country: input.country || 'Benin',
     streamerPseudo: streamerMode ? input.streamerPseudo?.trim() || '' : '',
     streamerMode,

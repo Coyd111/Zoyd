@@ -10,7 +10,6 @@ interface ZoydLogoProps {
   compact?: boolean;
 }
 
-const sparkPath = 'M0 0h7M3.5-3.5v7M1 1l5-5M1-1l5 5';
 
 export const ZoydLogo: React.FC<ZoydLogoProps> = ({
   className,
@@ -20,8 +19,6 @@ export const ZoydLogo: React.FC<ZoydLogoProps> = ({
   theme = 'dark',
   compact = false,
 }) => {
-  const gradientId = useId();
-  const glowId = useId();
   const wordmarkColor = theme === 'dark' ? 'text-white' : 'text-black';
   const accentColor = theme === 'dark' ? 'text-zoyd-yellow' : 'text-zoyd-blue';
 

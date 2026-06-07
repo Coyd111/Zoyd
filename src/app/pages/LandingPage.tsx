@@ -67,20 +67,6 @@ const playerJourney = [
   },
 ];
 
-const experienceSignals = [
-  { label: 'Compte', value: 'Unique', icon: Users },
-  { label: 'Modes', value: 'MJ + BR', icon: Gamepad2 },
-  { label: 'Wallet', value: 'Integre', icon: Wallet },
-  { label: 'Mobile', value: 'CODM Focus', icon: Smartphone },
-];
-
-const trustRows = [
-  { label: 'Profil joueur', value: 'Pseudo, UID, progression' },
-  { label: 'Espace competition', value: 'Matchs, tournois, classements' },
-  { label: 'Wallet ZC', value: 'Depot, gains, retraits' },
-  { label: 'Navigation', value: 'Un seul compte pour tout ZOYD' },
-];
-
 export default function LandingPage() {
   const reduceMotion = useReducedMotion();
 
@@ -176,49 +162,55 @@ export default function LandingPage() {
                   </div>
 
                   <div className="relative z-10 p-6 md:p-8">
-                    <div className="flex items-center justify-between gap-4 mb-6">
-                      <div>
-                        <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-blue mb-2">
-                          Espace joueur
+                    <div className="flex flex-col gap-4">
+                      {/* En-tête Match */}
+                      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-xs font-mono uppercase tracking-widest text-white/50">Match Live</span>
                         </div>
-                        <div className="text-2xl md:text-3xl font-display font-black uppercase italic tracking-tight">
-                          ZOYD Profile
-                        </div>
-                      </div>
-                      <img
-                        src="/codm/codm_app_icon.png"
-                        alt="CODM"
-                        className="h-16 w-16 rounded-2xl border border-white/10 shadow-[0_0_25px_rgba(255,227,81,0.14)]"
-                        loading="eager"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                      {experienceSignals.map((signal) => (
-                        <SignalTile key={signal.label} {...signal} />
-                      ))}
-                    </div>
-
-                    <div className="rounded-[24px] border border-white/8 bg-zoyd-surface/30 overflow-hidden">
-                      <div className="px-5 py-4 border-b border-white/6 flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/32 mb-1">
-                            Tableau de bord
-                          </div>
-                          <div className="font-display font-black uppercase italic tracking-tight text-lg">
-                            Un compte, plusieurs arènes
-                          </div>
-                        </div>
-                        <div className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.22em] text-green-400">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          Pret
+                        <div className="px-3 py-1 rounded bg-zoyd-yellow/20 text-zoyd-yellow text-[10px] font-mono uppercase tracking-widest border border-zoyd-yellow/30">
+                          Wager 1v1
                         </div>
                       </div>
 
-                      <div className="p-5 space-y-4">
-                        {trustRows.map((row) => (
-                          <MatchRoomLine key={row.label} label={row.label} value={row.value} />
-                        ))}
+                      {/* VS Section */}
+                      <div className="flex items-center justify-between py-2">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-14 h-14 rounded-full bg-zoyd-blue/20 border-2 border-zoyd-blue/50 flex items-center justify-center">
+                            <span className="text-xl">🥷</span>
+                          </div>
+                          <span className="font-display font-black text-sm tracking-wide">GHOST_229</span>
+                        </div>
+                        <div className="text-3xl font-display font-black text-white/20 italic">VS</div>
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-14 h-14 rounded-full bg-red-500/20 border-2 border-red-500/50 flex items-center justify-center">
+                            <span className="text-xl">🦅</span>
+                          </div>
+                          <span className="font-display font-black text-sm tracking-wide">SNIPER_DK</span>
+                        </div>
+                      </div>
+
+                      {/* Cash Prize */}
+                      <div className="rounded-xl bg-black/40 border border-white/5 p-4 flex flex-col items-center justify-center gap-1 my-2 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,227,81,0.1),transparent_50%)]" />
+                        <span className="text-[10px] font-mono uppercase text-white/40 tracking-widest relative z-10">Cash Prize</span>
+                        <span className="text-3xl font-display font-black text-zoyd-yellow relative z-10">2,000 FCFA</span>
+                      </div>
+
+                      {/* Arbitre Info */}
+                      <div className="flex items-center justify-between bg-zoyd-blue/10 border border-zoyd-blue/20 rounded-lg p-3">
+                        <div className="flex items-center gap-3">
+                          <ShieldCheck className="w-5 h-5 text-zoyd-blue" />
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-mono text-white/50 uppercase">Arbitre Officiel</span>
+                            <span className="text-sm font-bold text-white/90">Mod_Alpha</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-green-400 font-mono flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                          Spectating
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -279,25 +271,23 @@ export default function LandingPage() {
         </section>
 
         <section
-          id="modes"
+          id="dual-economy"
           className="py-24 md:py-32 border-t border-white/5 bg-[radial-gradient(circle_at_top_right,rgba(0,122,255,0.08),transparent_30%)]"
         >
           <div className="max-w-[1600px] mx-auto px-6 md:px-8 grid lg:grid-cols-[0.92fr_1.08fr] gap-12 lg:gap-16 items-start">
             <div className="max-w-xl">
               <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.92] mb-6">
-                Le terrain
-                <br />
-                qui te correspond.
+                Choisis ta voie.<br />Construis ton empire.
               </h2>
               <p className="text-white/48 text-lg leading-relaxed mb-8">
-                Que tu sois un puriste du snipe en 1v1 ou un stratège en escouade, ZOYD t'offre les arènes idéales pour monétiser tes compétences et construire ta légende.
+                ZOYD repose sur deux piliers : ceux qui font le spectacle, et ceux qui assurent l'équité. Les deux méritent d'être payés.
               </p>
               <div className="space-y-3">
                 {[
                   'Des wagers instantanés pour le cash rapide',
-                  'Des tournois officiels pour la gloire',
-                  'Un classement ELO intraitable',
-                  'Des opportunités pour les arbitres',
+                  'Des commissions réelles pour l\'arbitrage',
+                  'Un écosystème sain et sans triche',
+                  'Des opportunités de revenus pour tous',
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3 text-sm md:text-base text-white/58">
                     <div className="w-2 h-2 bg-zoyd-blue" />
@@ -308,53 +298,65 @@ export default function LandingPage() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-              {modeCards.map((mode) => (
-                <div
-                  key={mode.title}
-                  className={`rounded-[28px] border p-8 md:p-10 min-h-[310px] flex flex-col justify-between ${
-                    mode.accent === 'blue'
-                      ? 'border-zoyd-blue/20 bg-[linear-gradient(135deg,rgba(0,122,255,0.14),rgba(0,122,255,0.03))]'
-                      : 'border-zoyd-yellow/20 bg-[linear-gradient(135deg,rgba(255,227,81,0.08),rgba(255,255,255,0.02))]'
-                  }`}
-                >
-                  <div>
-                    <div
-                      className={`text-[10px] font-mono uppercase tracking-[0.28em] mb-5 ${
-                        mode.accent === 'blue' ? 'text-zoyd-blue' : 'text-zoyd-yellow'
-                      }`}
-                    >
-                      {mode.status}
-                    </div>
-                    <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
-                      {mode.title}
-                    </h3>
-                    <p className="text-white/46 leading-relaxed max-w-xl">{mode.description}</p>
+              {/* Joueur Card */}
+              <div
+                className="rounded-[28px] border p-8 md:p-10 min-h-[310px] flex flex-col justify-between border-zoyd-blue/20 bg-[linear-gradient(135deg,rgba(0,122,255,0.14),rgba(0,122,255,0.03))]"
+              >
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.28em] mb-5 text-zoyd-blue">
+                    PLAY & COMPETE
                   </div>
-                  <div className="flex items-center justify-between pt-8 border-t border-white/8 mt-8">
-                    <div className="flex items-center gap-3 text-sm text-white/56">
-                      {mode.accent === 'blue' ? (
-                        <Swords className="w-4 h-4 text-zoyd-blue" />
-                      ) : (
-                        <Gamepad2 className="w-4 h-4 text-zoyd-yellow" />
-                      )}
-                      {mode.accent === 'blue' ? 'Entre des maintenant' : 'Bientot dans ton espace joueur'}
-                    </div>
-                    {mode.accent === 'blue' ? (
-                      <Link
-                        to="/auth/register"
-                        className="inline-flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-blue hover:text-white transition-colors"
-                      >
-                        Commencer
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    ) : (
-                      <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">
-                        En preparation
-                      </span>
-                    )}
-                  </div>
+                  <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
+                    Le Joueur
+                  </h3>
+                  <p className="text-white/46 leading-relaxed max-w-xl">
+                    Mise sur ton propre talent dans des salons 1v1 ou 2v2. Monte dans le classement MMR africain et prouve que tu es une légende. ZOYD sécurise ton argent et gère tes gains.
+                  </p>
                 </div>
-              ))}
+                <div className="flex items-center justify-between pt-8 border-t border-white/8 mt-8">
+                  <div className="flex items-center gap-3 text-sm text-white/56">
+                    <Swords className="w-4 h-4 text-zoyd-blue" />
+                    Entre dans l'arène
+                  </div>
+                  <Link
+                    to="/auth/register"
+                    className="inline-flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-blue hover:text-white transition-colors"
+                  >
+                    Défier
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Arbitre Card */}
+              <div
+                className="rounded-[28px] border p-8 md:p-10 min-h-[310px] flex flex-col justify-between border-zoyd-yellow/20 bg-[linear-gradient(135deg,rgba(255,227,81,0.08),rgba(255,255,255,0.02))]"
+              >
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.28em] mb-5 text-zoyd-yellow">
+                    WATCH & EARN
+                  </div>
+                  <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
+                    L'Arbitre
+                  </h3>
+                  <p className="text-white/46 leading-relaxed max-w-xl">
+                    Ton shoot n'est pas incroyable mais tu connais le jeu ? Rejoins les matchs en tant que spectateur, veille au bon déroulement et touche une commission sur chaque match arbitré.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between pt-8 border-t border-white/8 mt-8">
+                  <div className="flex items-center gap-3 text-sm text-white/56">
+                    <Users className="w-4 h-4 text-zoyd-yellow" />
+                    Rejoins le staff
+                  </div>
+                  <Link
+                    to="/auth/register"
+                    className="inline-flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-yellow hover:text-white transition-colors"
+                  >
+                    Postuler
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </section>

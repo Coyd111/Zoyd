@@ -16,21 +16,21 @@ import ZoydLogo from '../components/branding/ZoydLogo';
 
 const platformCards = [
   {
-    title: 'Un profil unique',
+    title: 'Wagers Sécurisés',
     description:
-      'Ton identite joueur, ta progression et ton historique restent centralises au meme endroit.',
-    icon: Users,
-  },
-  {
-    title: 'Des parties mieux cadrees',
-    description:
-      'Defis, matchs, tournois et futurs modes de jeu avancent dans un cadre plus clair pour les joueurs.',
+      'Mise sur ton talent en 1v1 ou 2v2. Un arbitre ZOYD est toujours présent en jeu pour garantir l\'équité. Zéro screenshot requis.',
     icon: ShieldCheck,
   },
   {
-    title: 'Un wallet integre',
+    title: 'Arbitrage Rémunéré',
     description:
-      'Tes gains, tes depots et tes retraits vivent dans le meme espace que ton activite competitive.',
+      'Pas le niveau pour jouer ? Rejoins les matchs en tant que spectateur, veille au respect des règles et encaisse des commissions réelles.',
+    icon: Users,
+  },
+  {
+    title: 'Mobile Money Intégré',
+    description:
+      'Gère tes dépôts et retire tes gains instantanément via MTN, Moov ou Celtiis directement depuis ton téléphone.',
     icon: Wallet,
   },
 ];
@@ -40,14 +40,14 @@ const modeCards = [
     title: 'Multijoueur',
     status: 'Ouvert',
     description:
-      'Entre dans les matchs, tournois et salons competitifs CODM depuis ton espace joueur.',
+      'Entre dans les matchs 1v1, 2v2 ou 3v3 ultra-compétitifs. Mise sur ta victoire et encaisse tes gains immédiatement.',
     accent: 'blue' as const,
   },
   {
     title: 'Battle Royale',
     status: 'Bientot',
     description:
-      'Le meme compte, le meme wallet et la meme identite te suivront quand le mode BR sera ouvert.',
+      'Prépare ton escouade pour les plus grands tournois BR d\'Afrique. Le même compte, le même wallet.',
     accent: 'yellow' as const,
   },
 ];
@@ -55,15 +55,15 @@ const modeCards = [
 const playerJourney = [
   {
     title: 'Creer ton compte',
-    body: 'Tu renseignes ton profil CODM, ton appareil principal et ton identite joueur une seule fois.',
+    body: 'Inscris-toi, associe ton UID CODM et choisis ton rôle (Joueur ou Arbitre).',
   },
   {
-    title: 'Choisir ton terrain',
-    body: 'Apres connexion, tu entres dans le mode que tu veux suivre en premier sur ZOYD.',
+    title: 'Le Choix de l\'Arène',
+    body: 'Crée un pari pour prouver ta force, ou rejoins un match en attente d\'arbitre pour travailler.',
   },
   {
-    title: 'Jouer et progresser',
-    body: 'Tes parties, tes resultats et ton wallet restent relies dans la meme plateforme.',
+    title: 'Le Match et les Gains',
+    body: 'Joue ta partie ou spectate-la. À la fin, le gagnant et l\'arbitre sont payés instantanément.',
   },
 ];
 
@@ -122,16 +122,15 @@ export default function LandingPage() {
                 <ZoydLogo className="mb-8" markClassName="h-12 w-12" />
 
                 <h1 className="text-[3.2rem] md:text-[5.5rem] xl:text-[6.8rem] leading-[0.84] font-display font-black uppercase italic tracking-[-0.05em] mb-7">
-                  Une seule
+                  L'Arène Ultime
                   <br />
-                  plateforme pour
+                  de CODM en
                   <br />
-                  <span className="text-zoyd-yellow">jouer, grimper, gagner.</span>
+                  <span className="text-zoyd-yellow">Afrique.</span>
                 </h1>
 
                 <p className="text-lg md:text-xl text-white/56 leading-relaxed max-w-2xl mb-10">
-                  ZOYD rassemble ton profil joueur, tes parties, ton wallet et tes futurs modes de jeu dans une
-                  experience plus claire pour la scene CODM. Tu t&apos;inscris une fois, puis tu choisis ton terrain.
+                  ZOYD est l'infrastructure compétitive n°1. Révèle ton talent avec des wagers sécurisés, ou monétise ta passion en devenant arbitre officiel. L'écosystème qui récompense enfin la scène mobile africaine.
                 </p>
 
                 <div className="flex flex-wrap gap-4 mb-8">
@@ -139,22 +138,22 @@ export default function LandingPage() {
                     to="/auth/register"
                     className="inline-flex items-center gap-3 bg-white text-black px-7 md:px-9 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic hover:bg-zoyd-yellow transition-colors"
                   >
-                    Creer mon compte
+                    Commencer à jouer
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link
-                    to="/auth/login"
+                    to="/auth/register"
                     className="inline-flex items-center gap-3 border border-white/12 px-7 md:px-9 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/72 hover:text-white hover:border-white/28 transition-colors"
                   >
-                    Me connecter
+                    Devenir Arbitre
                   </Link>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3 max-w-2xl">
-                  <SignalStrip label="Experience" value="Profil + wallet + competition" />
-                  <SignalStrip label="Modes" value="Multijoueur puis Battle Royale" />
-                  <SignalStrip label="Scene" value="CODM focus Afrique" />
-                  <SignalStrip label="Onboarding" value="Inscription puis choix du mode" />
+                  <SignalStrip label="Gains" value="Paiements Mobile Money" />
+                  <SignalStrip label="Sécurité" value="Arbitrage en direct" />
+                  <SignalStrip label="Prestige" value="Classement Elo strict" />
+                  <SignalStrip label="Formats" value="1v1, 2v2, Tournois" />
                 </div>
               </motion.div>
 
@@ -249,11 +248,10 @@ export default function LandingPage() {
           <div className="max-w-[1600px] mx-auto px-6 md:px-8">
             <div className="max-w-4xl mb-14 md:mb-16">
               <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
-                ZOYD doit d&apos;abord etre clair pour le joueur.
+                Deux façons de<br />rentabiliser ta passion.
               </h2>
               <p className="text-white/48 text-lg md:text-xl leading-relaxed max-w-3xl">
-                La landing n&apos;explique plus la strategie interne du produit. Elle montre ce que le joueur gagne
-                vraiment: un compte central, une scene competitive mieux rangee et une economie lisible.
+                ZOYD n'est pas qu'un simple leaderboard. C'est la première Gig-Economy pour le gaming mobile en Afrique. Que tu aies un shoot de légende ou un œil de lynx pour l'arbitrage, tu peux générer des revenus réels.
               </p>
             </div>
 
@@ -287,20 +285,19 @@ export default function LandingPage() {
           <div className="max-w-[1600px] mx-auto px-6 md:px-8 grid lg:grid-cols-[0.92fr_1.08fr] gap-12 lg:gap-16 items-start">
             <div className="max-w-xl">
               <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.92] mb-6">
-                Deux modes,
+                Le terrain
                 <br />
-                une seule identite.
+                qui te correspond.
               </h2>
               <p className="text-white/48 text-lg leading-relaxed mb-8">
-                Apres inscription, ZOYD te laisse entrer dans le terrain qui t&apos;interesse. Le profil, le wallet et
-                l&apos;historique restent centralises pour que la plateforme te suive sans repartir de zero.
+                Que tu sois un puriste du snipe en 1v1 ou un stratège en escouade, ZOYD t'offre les arènes idéales pour monétiser tes compétences et construire ta légende.
               </p>
               <div className="space-y-3">
                 {[
-                  'Un seul compte pour tes experiences CODM',
-                  'Multijoueur accessible des maintenant',
-                  'Battle Royale ajoute sans changer de profil',
-                  'Progression et gains relies au meme espace',
+                  'Des wagers instantanés pour le cash rapide',
+                  'Des tournois officiels pour la gloire',
+                  'Un classement ELO intraitable',
+                  'Des opportunités pour les arbitres',
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3 text-sm md:text-base text-white/58">
                     <div className="w-2 h-2 bg-zoyd-blue" />

@@ -17,9 +17,14 @@ const STATUS_FILTERS = [
 const HubMJPage: React.FC = () => {
   const { filters, setFilters, getFilteredMatches } = useMatchStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [needsArbiter, setNeedsArbiter] = useState(false);
 
   const filteredMatches = useMemo(() => {
-    return getFilteredMatches().filter((match) => {
+    let baseMatches = getFilteredMatches();
+    if (needsArbiter) {
+      baseMatches = baseMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited');
+    }
+    return baseMatches.filter((match) => {
       const query = searchQuery.trim().toLowerCase();
       if (!query) return true;
       return (
@@ -28,15 +33,15 @@ const HubMJPage: React.FC = () => {
         match.creatorPseudo.toLowerCase().includes(query)
       );
     });
-  }, [getFilteredMatches, searchQuery]);
+  }, [getFilteredMatches, searchQuery, needsArbiter]);
 
   const metrics = useMemo(() => {
     const livePool = filteredMatches.reduce((sum, match) => sum + match.prizePool, 0);
-    const openSlots = filteredMatches.reduce((sum, match) => sum + match.teamSize * 2 - match.players.length, 0);
+    const arbitersNeeded = filteredMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited').length;
     return {
       active: filteredMatches.length,
       livePool,
-      openSlots,
+      arbitersNeeded,
     };
   }, [filteredMatches]);
 
@@ -59,18 +64,17 @@ const HubMJPage: React.FC = () => {
               <span className="text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-blue uppercase">Mode multijoueur</span>
             </div>
             <h1 className="text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
-              Matchs <br /><span className="text-white/20 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
+              L'Arène <br /><span className="text-white/20 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
             </h1>
             <p className="text-white/40 text-lg md:text-xl font-light max-w-xl">
-              Trouve des parties adaptees a ton profil, rejoins une equipe en quelques secondes et suis tes gains
-              depuis le meme compte.
+              Crée un wager, défie des adversaires de ton niveau, ou postule pour arbitrer les matchs en attente.
             </p>
           </div>
 
           <div className="hidden md:flex gap-10 border-l border-white/10 pl-10 py-4">
-            <Metric label="Matchs visibles" value={metrics.active.toString()} accent="text-white" />
-            <Metric label="Mises en jeu" value={`${metrics.livePool.toFixed(1)} ZC`} accent="text-zoyd-yellow" />
-            <Metric label="Places ouvertes" value={metrics.openSlots.toString()} accent="text-zoyd-blue" />
+            <Metric label="Matchs Actifs" value={metrics.active.toString()} accent="text-white" />
+            <Metric label="Prize Pool Global" value={`${metrics.livePool.toLocaleString()} FCFA`} accent="text-zoyd-yellow" />
+            <Metric label="Arbitres Demandés" value={metrics.arbitersNeeded.toString()} accent="text-zoyd-blue" />
           </div>
         </div>
       </header>
@@ -107,15 +111,26 @@ const HubMJPage: React.FC = () => {
                   {status.label}
                 </button>
               ))}
+              <div className="w-px h-10 bg-white/5 mx-2" />
               <button
-                onClick={() => setFilters({ minTrustScore: filters.minTrustScore ? undefined : 50 })}
+                onClick={() => setNeedsArbiter(!needsArbiter)}
                 className={`px-4 py-4 text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
-                  filters.minTrustScore
+                  needsArbiter
                     ? 'bg-zoyd-yellow text-black border-zoyd-yellow'
                     : 'bg-black text-white/40 border-white/5 hover:border-white/20'
                 }`}
               >
                 <ShieldCheck className="w-3 h-3" />
+                SANS ARBITRE
+              </button>
+              <button
+                onClick={() => setFilters({ minTrustScore: filters.minTrustScore ? undefined : 50 })}
+                className={`px-4 py-4 text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
+                  filters.minTrustScore
+                    ? 'bg-zoyd-blue text-black border-zoyd-blue'
+                    : 'bg-black text-white/40 border-white/5 hover:border-white/20'
+                }`}
+              >
                 FIABILITE 50+
               </button>
             </div>
@@ -131,8 +146,8 @@ const HubMJPage: React.FC = () => {
                   className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:outline-none focus:border-zoyd-blue transition-colors"
                 />
               </div>
-              <Link to="/mj/creer" className="bg-zoyd-yellow text-black px-8 py-4 flex items-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic">
-                <Activity className="w-4 h-4" /> Creer
+              <Link to="/mj/creer" className="bg-zoyd-yellow text-black px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap">
+                <Activity className="w-4 h-4" /> CRÉER UN WAGER
               </Link>
             </div>
           </div>
@@ -186,17 +201,16 @@ const HubMJPage: React.FC = () => {
               <div className="w-16 h-16 border border-white/10 flex items-center justify-center mb-8 text-white/10 group-hover:border-zoyd-yellow transition-colors">
                 <Crosshair className="w-8 h-8" />
               </div>
-              <h3 className="text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">Aucun match visible</h3>
+              <h3 className="text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">L'arène est calme.</h3>
               <p className="text-white/40 max-w-md font-light mb-12">
-                Aucun match ne correspond a tes filtres pour le moment. Cree une partie ou recharge ton solde pour
-                rejoindre le prochain duel.
+                Sois le premier à imposer le respect. Lance un Wager et attends que tes adversaires relèvent le défi.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/mj/creer" className="hud-panel px-12 py-5 text-sm font-display font-black tracking-widest uppercase hover:bg-white hover:text-black transition-colors">
-                  Creer un match
+                  Lancer un Wager
                 </Link>
                 <Link to="/wallet" className="border border-white/10 px-10 py-5 text-sm font-display font-black tracking-widest uppercase hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors">
-                  Ajouter des ZC
+                  Recharger Wallet
                 </Link>
               </div>
             </div>

@@ -71,11 +71,11 @@ const EarningsDashboard: React.FC = () => {
   const walletInsights = useMemo(() => buildWalletInsights(wallet.transactions, 30), [wallet.transactions]);
 
   const matchResultsData = useMemo(() => {
-    const wins = summary?.stats.wins || 0;
-    const losses = summary?.stats.losses || 0;
+    const totalPlayed = summary?.stats.totalMatches || 0;
+    const arbitrated = summary?.arbiterStats.arbitratedMatches || 0;
     return [
-      { name: 'Victoires', value: wins, color: '#FFCC00' },
-      { name: 'Defaites', value: losses, color: '#FF4D4F' },
+      { name: 'Matchs Joués', value: totalPlayed, color: '#FFCC00' },
+      { name: 'Matchs Arbitrés', value: arbitrated, color: '#009EE2' },
     ];
   }, [summary]);
 
@@ -92,32 +92,32 @@ const EarningsDashboard: React.FC = () => {
 
   const stats = [
     {
-      label: 'Total gagne',
-      value: formatZC(summary.stats.totalEarnings),
-      subValue: `env. ${formatFCFA(summary.stats.totalEarnings)}`,
+      label: 'Total Généré',
+      value: formatZC(summary.stats.totalEarnings + summary.arbiterStats.totalCommissions),
+      subValue: `env. ${formatFCFA(summary.stats.totalEarnings + summary.arbiterStats.totalCommissions)}`,
       icon: DollarSign,
       color: 'text-zoyd-yellow',
     },
     {
-      label: 'Ce mois-ci',
-      value: formatZC(walletInsights.currentPeriodEarnings),
-      subValue: getDeltaLabel(walletInsights.currentPeriodEarnings, walletInsights.previousPeriodEarnings, 'Pas encore de gain'),
-      icon: TrendingUp,
+      label: 'Cash Prize (Joueur)',
+      value: formatZC(summary.stats.totalEarnings),
+      subValue: `env. ${formatFCFA(summary.stats.totalEarnings)}`,
+      icon: Trophy,
+      color: 'text-white',
+    },
+    {
+      label: 'Commissions (Arbitre)',
+      value: formatZC(summary.arbiterStats.totalCommissions),
+      subValue: `env. ${formatFCFA(summary.arbiterStats.totalCommissions)}`,
+      icon: ShieldCheck,
       color: 'text-green-400',
     },
     {
-      label: 'Bilan de jeu',
+      label: 'Bilan de jeu (30j)',
       value: formatZC(walletInsights.currentPeriodNet),
-      subValue: getDeltaLabel(walletInsights.currentPeriodNet, walletInsights.previousPeriodNet, 'Pas encore de mouvements'),
+      subValue: getDeltaLabel(walletInsights.currentPeriodNet, walletInsights.previousPeriodNet, 'Pas de mouvements'),
       icon: Activity,
       color: walletInsights.currentPeriodNet >= 0 ? 'text-zoyd-blue' : 'text-red-400',
-    },
-    {
-      label: 'Victoires',
-      value: summary.stats.wins,
-      subValue: `Win Rate ${summary.stats.winRate}%`,
-      icon: Trophy,
-      color: 'text-white',
     },
   ];
 
@@ -133,10 +133,10 @@ const EarningsDashboard: React.FC = () => {
             </div>
             <div>
               <h1 className="text-4xl font-display font-black text-white italic uppercase tracking-tighter">
-                Vue de tes gains
+                TABLEAU DE BORD FINANCIER
               </h1>
               <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest">
-                Ce que tes matchs et tournois t'ont deja rapporte
+                Suivi de tes Cash Prizes et de tes Commissions d'arbitrage
               </p>
             </div>
           </div>
@@ -247,11 +247,11 @@ const EarningsDashboard: React.FC = () => {
             <Card className="bg-zoyd-surface/20 border-white/5">
               <CardHeader>
                 <CardTitle className="text-sm font-mono font-black uppercase tracking-widest text-white/60">
-                  Victoires et defaites
+                  Répartition de l'activité
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {summary.stats.wins + summary.stats.losses === 0 ? (
+                {summary.stats.totalMatches + summary.arbiterStats.arbitratedMatches === 0 ? (
                   <div className="py-10 text-center text-[10px] font-mono uppercase tracking-widest text-white/20">
                     Pas assez de parties pour afficher cette vue
                   </div>
@@ -285,29 +285,21 @@ const EarningsDashboard: React.FC = () => {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-between mt-4">
+                    <div className="flex justify-around mt-4">
                       <div className="text-center">
                         <div className="text-2xl font-display font-black text-zoyd-yellow italic">
-                          {summary.stats.wins}
+                          {summary.stats.totalMatches}
                         </div>
                         <div className="text-[9px] font-mono text-white/20 uppercase tracking-widest">
-                          Victoires
+                          Matchs Joués
                         </div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-display font-black text-red-500 italic">
-                          {summary.stats.losses}
+                        <div className="text-2xl font-display font-black text-zoyd-blue italic">
+                          {summary.arbiterStats.arbitratedMatches}
                         </div>
                         <div className="text-[9px] font-mono text-white/20 uppercase tracking-widest">
-                          Defaites
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-display font-black text-white italic">
-                          {summary.stats.winRate}%
-                        </div>
-                        <div className="text-[9px] font-mono text-white/20 uppercase tracking-widest">
-                          Win Rate
+                          Matchs Arbitrés
                         </div>
                       </div>
                     </div>

@@ -442,21 +442,21 @@ const MatchDetailPage: React.FC = () => {
             <div className="w-12 h-12 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
               <Swords className="w-5 h-5" />
             </div>
-            <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">Match CODM ZOYD</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">LOBBY DU WAGER</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
             {match.rules.map} <span className="text-white/20">/</span> {match.rules.mode}
           </h1>
           <p className="text-white/40 mt-3 max-w-3xl">
-            {match.format} / Pass {formatZC(match.entryFee)} / A gagner {formatZC(match.prizePool)} / Cree par {match.creatorPseudo}
+            {match.format} / Wager: {formatZC(match.entryFee)} / Cash Prize: {formatZC(match.prizePool)} / Créé par {match.creatorPseudo}
           </p>
         </header>
 
         <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-8">
           <div className="space-y-8">
             <div className="grid md:grid-cols-4 gap-4">
-              <InfoCard icon={<CreditCard className="w-5 h-5 text-zoyd-yellow" />} label="Pass" value={formatZC(match.entryFee)} />
-              <InfoCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Prize pool" value={formatZC(match.prizePool)} />
+              <InfoCard icon={<CreditCard className="w-5 h-5 text-zoyd-yellow" />} label="Mise" value={formatZC(match.entryFee)} />
+              <InfoCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Cash Prize" value={formatZC(match.prizePool)} />
               <InfoCard icon={<ShieldCheck className="w-5 h-5 text-zoyd-blue" />} label="Arbitre" value={match.arbiter ? match.arbiter.pseudo : 'Libre'} />
               <InfoCard icon={<Clock3 className="w-5 h-5 text-white/50" />} label="Horaire" value={match.scheduledAt ? countdown || '00:00:00' : 'A fixer'} />
             </div>
@@ -587,21 +587,21 @@ const MatchDetailPage: React.FC = () => {
                   ) : null}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <button onClick={() => handleJoin(0)} className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors">
-                      Rejoindre Alpha
+                      REJOINDRE ALPHA
                     </button>
                     <button onClick={() => handleJoin(1)} className="border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-white transition-colors">
-                      Rejoindre Bravo
+                      REJOINDRE BRAVO
                     </button>
                     <button onClick={() => handleJoin()} className="border border-zoyd-blue/30 text-zoyd-blue py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors">
-                      Placement auto
+                      PLACEMENT AUTO
                     </button>
                   </div>
                 </div>
               )}
 
               {user && canJoinArbiterSlot && (
-                <button onClick={handleJoinAsArbiter} className="mt-4 w-full border border-zoyd-blue/30 text-zoyd-blue py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors">
-                  Prendre la place d'arbitre
+                <button onClick={handleJoinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
+                  POSTULER COMME ARBITRE (COMMISSION: {formatZC(match.arbiterFee)})
                 </button>
               )}
 
@@ -676,8 +676,8 @@ const MatchDetailPage: React.FC = () => {
                     <button onClick={handleRoomSave} disabled={!roomPublishWindow.canPublish} className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors disabled:opacity-30">
                       Partager la salle
                     </button>
-                    <button onClick={handleLaunch} disabled={!canLaunch} className="bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30">
-                      Lancer la partie
+                    <button onClick={handleLaunch} disabled={!canLaunch} className="bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30 hover:bg-white transition-colors">
+                      DÉMARRER LE MATCH
                     </button>
                   </div>
 

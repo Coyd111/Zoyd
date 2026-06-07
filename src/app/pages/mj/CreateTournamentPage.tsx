@@ -21,7 +21,7 @@ import type { MatchFormat } from '../../stores/matchStore';
 import { createServerTournament } from '../../lib/tournamentApi';
 import { applyServerAccountState } from '../../lib/serverSync';
 
-const ENTRY_OPTIONS = [0.5, 1, 2, 3, 5, 10];
+const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const MAX_ENTRY_OPTIONS = [4, 8, 16, 32];
 const WEAPON_OPTIONS = [
   'Toutes armes selon reglement',
@@ -82,7 +82,7 @@ const CreateTournamentPage: React.FC = () => {
       name: '',
       format: '1VS1',
       mode: 'S&D',
-      entryFee: 1,
+      entryFee: 50,
       maxEntries: 8,
       scoreTarget: 7,
       bestOf: 1,

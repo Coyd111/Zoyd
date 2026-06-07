@@ -12,7 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useMatchStore, type MatchFormat } from '../../stores/matchStore';
 import { useWalletStore } from '../../stores/walletStore';
 
-const ENTRY_OPTIONS = [0.5, 1, 2, 3, 5, 10];
+const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const WEAPON_OPTIONS = ['Toutes permises', 'Sniper uniquement', 'Assaut / SMG', 'Corps a corps uniquement'];
 const TEAM_OPTIONS = [
   { label: 'Squad Alpha', value: 0 },
@@ -32,7 +32,7 @@ const CreateMatchPage: React.FC = () => {
 
   const { register, handleSubmit, watch, setValue, getValues } = useForm({
     defaultValues: {
-      passAmount: 1,
+      passAmount: 50,
       trustScoreMin: '0',
       score: 15,
       bestOf: 3,
@@ -150,11 +150,11 @@ const CreateMatchPage: React.FC = () => {
               <span className="font-display font-black">VS</span>
             </div>
             <span className="text-[10px] font-mono font-black text-zoyd-blue uppercase tracking-[0.3em]">
-              Ta prochaine partie
+              Configure ton Wager
             </span>
           </div>
           <h1 className="text-4xl md:text-6xl font-display font-black uppercase tracking-tighter italic">
-            Creer une <span className="text-zoyd-yellow">partie</span>
+            CRÉER UN <span className="text-zoyd-yellow">WAGER</span>
           </h1>
         </header>
 
@@ -310,7 +310,7 @@ const CreateMatchPage: React.FC = () => {
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </button>
                     <button type="submit" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
-                      Mise et joueurs <ChevronRight className="w-6 h-6" />
+                      La Mise (Wager) <ChevronRight className="w-6 h-6" />
                     </button>
                   </div>
                 </div>
@@ -322,7 +322,7 @@ const CreateMatchPage: React.FC = () => {
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <form onSubmit={handleSubmit(onStep3Submit)}>
                 <div className="hud-panel p-10 bg-zoyd-surface/40">
-                  <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">Mise et joueurs</h2>
+                  <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">La Mise (Prize Pool)</h2>
 
                   <div className="space-y-12 mb-12">
                     <div>
@@ -345,20 +345,21 @@ const CreateMatchPage: React.FC = () => {
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8 items-start">
-                      <div className="p-6 border border-white/5 bg-black/60">
-                        <h3 className="text-[10px] font-mono font-black text-zoyd-muted uppercase tracking-[0.2em] mb-4">Ce que ce match met en jeu</h3>
-                        <div className="space-y-4">
-                          <div className="flex justify-between border-b border-white/5 pb-2">
-                            <span className="text-xs font-display font-black text-white/40 italic">Pot total</span>
-                            <span className="font-display font-black text-xl text-zoyd-yellow">{livePot.toFixed(1)} ZC</span>
+                      <div className="p-6 border border-white/5 bg-black/60 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,227,81,0.08),transparent_70%)] pointer-events-none" />
+                        <h3 className="text-[10px] font-mono font-black text-zoyd-muted uppercase tracking-[0.2em] mb-4 relative z-10">Répartition du Prize Pool</h3>
+                        <div className="space-y-4 relative z-10">
+                          <div className="flex justify-between border-b border-white/10 pb-4">
+                            <span className="text-xs font-display font-black text-white/40 italic">Pot Total (Cash Prize)</span>
+                            <span className="font-display font-black text-2xl text-zoyd-yellow">{livePot.toLocaleString()} ZC</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-xs font-display font-black text-white/40 italic">Pour le gagnant</span>
-                            <span className="font-display font-black text-lg text-white">{winnerShare.toFixed(1)} ZC</span>
+                            <span className="font-display font-black text-xl text-white">{winnerShare.toLocaleString()} ZC</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-xs font-display font-black text-white/40 italic">Pour l'arbitre</span>
-                            <span className="font-display font-black text-lg text-white/70">{arbiterShare.toFixed(1)} ZC</span>
+                          <div className="flex justify-between pt-2">
+                            <span className="text-xs font-display font-black text-white/40 italic">Commission de l'arbitre</span>
+                            <span className="font-display font-black text-lg text-white/70">{arbiterShare.toLocaleString()} ZC</span>
                           </div>
                         </div>
                       </div>
@@ -429,7 +430,7 @@ const CreateMatchPage: React.FC = () => {
                     <ShieldCheck className="w-4 h-4" /> Pret a publier
                   </div>
                   <h2 className="text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter">
-                    Avant de lancer
+                    Récapitulatif du Wager
                   </h2>
                 </div>
 
@@ -454,8 +455,8 @@ const CreateMatchPage: React.FC = () => {
                   <button onClick={() => setCurrentStep(3)} className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={onFinalSubmit} className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-[0.2em] uppercase hover:bg-zoyd-blue transition-all flex items-center justify-center gap-4">
-                    Publier la partie <Target className="w-6 h-6" />
+                  <button onClick={onFinalSubmit} className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
+                    VERROUILLER LA MISE & PUBLIER <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>
               </div>

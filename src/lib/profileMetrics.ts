@@ -22,6 +22,10 @@ export interface TrustSummary {
 
 export interface CompetitiveSummary {
   stats: UserStats;
+  arbiterStats: {
+    arbitratedMatches: number;
+    totalCommissions: number;
+  };
   recentMatches: Match[];
   tournamentPlacements: TournamentPlacement[];
   trust: TrustSummary;
@@ -96,6 +100,16 @@ export const buildCompetitiveSummary = ({
     return !!participant && match.result?.resolutionType === 'forfeit' && match.result.forfeitTeam === participant.team;
   }).length;
 
+  let arbitratedMatches = 0;
+  let totalCommissions = 0;
+
+  for (const match of matches) {
+    if (match.arbiter?.userId === userId && (match.status === 'finished' || match.status === 'disputed') && match.result) {
+      arbitratedMatches += 1;
+      totalCommissions += match.arbiterFee;
+    }
+  }
+
   let wins = 0;
   let losses = 0;
   let draws = 0;
@@ -141,6 +155,10 @@ export const buildCompetitiveSummary = ({
 
   return {
     stats,
+    arbiterStats: {
+      arbitratedMatches,
+      totalCommissions: roundAmount(totalCommissions),
+    },
     recentMatches: [...playerMatches]
       .sort(
         (a, b) =>

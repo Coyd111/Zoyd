@@ -160,17 +160,30 @@ const ProfilPage: React.FC = () => {
 
       <div className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10">
         <div className="space-y-6">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Gains totaux" value={formatZC(summary.stats.totalEarnings)} />
-            <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" />} label="Matchs joues" value={summary.stats.totalMatches.toString()} />
-            <StatCard icon={<Target className="w-5 h-5 text-green-400" />} label="Win rate" value={`${summary.stats.winRate}%`} />
-            <StatCard icon={<Award className="w-5 h-5 text-purple-400" />} label="Tournois" value={`${summary.stats.tournamentsWon} / ${summary.stats.tournamentsPlayed}`} />
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-blue mb-3">Carrière Joueur</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Cash Prize Gagne" value={formatZC(summary.stats.totalEarnings)} />
+                <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" />} label="Matchs joues" value={summary.stats.totalMatches.toString()} />
+                <StatCard icon={<Target className="w-5 h-5 text-green-400" />} label="Win rate" value={`${summary.stats.winRate}%`} />
+                <StatCard icon={<Award className="w-5 h-5 text-purple-400" />} label="Tournois" value={`${summary.stats.tournamentsWon} / ${summary.stats.tournamentsPlayed}`} />
+              </div>
+            </div>
+
+            <div className="pt-4 mt-2 border-t border-white/5">
+              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-yellow mb-3">Carrière Arbitre</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <StatCard icon={<ShieldCheck className="w-5 h-5 text-zoyd-yellow" />} label="Matchs arbitres" value={summary.arbiterStats.arbitratedMatches.toString()} />
+                <StatCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Commissions generees" value={formatZC(summary.arbiterStats.totalCommissions)} />
+              </div>
+            </div>
           </div>
 
           <div className="hud-panel p-6 bg-zoyd-surface/20">
             <div className="flex items-center gap-3 mb-5">
               <ShieldCheck className="w-5 h-5 text-zoyd-yellow" />
-              <h2 className="text-lg font-display font-black uppercase italic">Ta fiabilite de jeu</h2>
+              <h2 className="text-lg font-display font-black uppercase italic">Score de Fiabilité (Trust Score)</h2>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <TrustCell label="Score global" value={`${summary.trust.overall}/100`} accent="text-zoyd-yellow" />
@@ -179,7 +192,7 @@ const ProfilPage: React.FC = () => {
               <TrustCell label="Forfaits connus" value={summary.trust.forfeits.toString()} accent={summary.trust.forfeits > 0 ? 'text-red-300' : 'text-green-400'} />
             </div>
             <p className="text-xs text-white/35 mt-4">
-              Cette vue resume la confiance que tu inspires dans les parties et tournois deja joues sur ZOYD.
+              Un bon Trust Score te permet d'acceder aux wagers High Rollers et de postuler comme Arbitre remunere sur ZOYD.
             </p>
           </div>
 

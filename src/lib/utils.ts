@@ -10,7 +10,7 @@ export function formatZC(amount: number): string {
 }
 
 export function formatFCFA(amount: number): string {
-  return `${(amount * 100).toLocaleString()} FCFA`;
+  return `${(amount * 10).toLocaleString()} FCFA`;
 }
 
 export function getRelativeTime(date: Date | string): string {

@@ -226,11 +226,24 @@ const PublicProfilPage: React.FC = () => {
 
       <div className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10">
         <div className="space-y-6">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Gains observes" value={formatZC(summary.stats.totalEarnings)} />
-            <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" />} label="Matchs observes" value={summary.stats.totalMatches.toString()} />
-            <StatCard icon={<Target className="w-5 h-5 text-green-400" />} label="Win rate" value={`${summary.stats.winRate}%`} />
-            <StatCard icon={<ShieldCheck className="w-5 h-5 text-white" />} label="Tournois joues" value={`${summary.stats.tournamentsWon} / ${summary.stats.tournamentsPlayed}`} />
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-blue mb-3">Carrière Joueur</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Cash Prize Observé" value={formatZC(summary.stats.totalEarnings)} />
+                <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" />} label="Matchs observés" value={summary.stats.totalMatches.toString()} />
+                <StatCard icon={<Target className="w-5 h-5 text-green-400" />} label="Win rate" value={`${summary.stats.winRate}%`} />
+                <StatCard icon={<ShieldCheck className="w-5 h-5 text-white" />} label="Tournois joués" value={`${summary.stats.tournamentsWon} / ${summary.stats.tournamentsPlayed}`} />
+              </div>
+            </div>
+
+            <div className="pt-4 mt-2 border-t border-white/5">
+              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-yellow mb-3">Carrière Arbitre</h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <StatCard icon={<ShieldCheck className="w-5 h-5 text-zoyd-yellow" />} label="Matchs arbitrés" value={summary.arbiterStats?.arbitratedMatches.toString() || '0'} />
+                <StatCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Commissions générées" value={formatZC(summary.arbiterStats?.totalCommissions || 0)} />
+              </div>
+            </div>
           </div>
 
           <div className="hud-panel p-6 bg-zoyd-surface/20">

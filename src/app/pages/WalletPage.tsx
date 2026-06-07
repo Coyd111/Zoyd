@@ -40,7 +40,7 @@ const WalletPage: React.FC = () => {
     { id: 'Orange Money', name: 'Orange Money', color: '#FF7900' },
   ];
 
-  const presetAmounts = [15, 30, 50, 100];
+  const presetAmounts = [50, 100, 200, 500];
   const spendableBalance = getAvailableToSpend();
   const fundingPrompt = useMemo(() => parseFundingPrompt(searchParams), [searchParams]);
   const fundingCopy = fundingPrompt ? getFundingPromptCopy(fundingPrompt.context) : null;
@@ -71,14 +71,14 @@ const WalletPage: React.FC = () => {
   const handleDeposit = async () => {
     if (!amount) return;
     const depositAmount = parseFloat(amount);
-    const amountFCFA = depositAmount; // 1 ZC = 1 FCFA (ou taux de conversion specifique)
+    const amountFCFA = depositAmount * 10; // 1 ZC = 10 FCFA
 
     // Using FedaPay Widget
     FedaPay.init({
       public_key: import.meta.env.VITE_FEDAPAY_PUBLIC_KEY,
       transaction: {
         amount: amountFCFA,
-        description: `Recharge de ${depositAmount} ZC`,
+        description: `Recharge de ${depositAmount} ZC (~ ${amountFCFA} FCFA)`,
       },
       customer: {
         email: 'joueur@zoyd.app',
@@ -135,9 +135,9 @@ const WalletPage: React.FC = () => {
           </div>
           <div className="relative z-10">
             <h1 className="text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter mb-2">
-              MES <span className="text-zoyd-yellow">ZC</span>
+              LE COFFRE-FORT <span className="text-zoyd-yellow">(WALLET)</span>
             </h1>
-            <p className="text-white/60 max-w-xl">Recharge ton compte, suis tes gains et garde un oeil sur ce qui est deja engage dans tes parties.</p>
+            <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouille tes wagers et retire tes gains de maniere securisee.</p>
           </div>
         </div>
 
@@ -196,7 +196,7 @@ const WalletPage: React.FC = () => {
         <div className="grid md:grid-cols-2 gap-4 mb-8">
           <Button variant="primary" size="lg" fullWidth onClick={() => setShowDepositModal(true)}>
             <ArrowDownToLine className="w-5 h-5" />
-            AJOUTER DES ZC
+            DÉPÔT MOBILE MONEY (AJOUTER DES ZC)
           </Button>
           <Button variant="secondary" size="lg" fullWidth onClick={() => setShowWithdrawModal(true)}>
             <ArrowUpFromLine className="w-5 h-5" />
@@ -220,7 +220,7 @@ const WalletPage: React.FC = () => {
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Retrait minimum</div>
-                <div className="text-2xl font-display font-black text-white">15 ZC</div>
+                <div className="text-2xl font-display font-black text-white">50 ZC</div>
               </div>
             </div>
           </CardContent>
@@ -306,7 +306,7 @@ const WalletPage: React.FC = () => {
                 type="number"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
-                placeholder="15 ZC minimum"
+                placeholder="50 ZC minimum"
                 max={cashBalance}
               />
               <p className="text-xs text-zoyd-white-60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
@@ -316,7 +316,7 @@ const WalletPage: React.FC = () => {
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={!amount || parseFloat(amount) < 15 || parseFloat(amount) > cashBalance}
+              disabled={!amount || parseFloat(amount) < 50 || parseFloat(amount) > cashBalance}
             >
               Retirer mes gains
             </Button>

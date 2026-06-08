@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
 import { useChatStore } from './chatStore';
@@ -342,9 +341,7 @@ const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match
   );
 };
 
-export const useMatchStore = create<MatchState>()(
-  persist(
-    (set, get) => {
+export const useMatchStore = create<MatchState>()((set, get) => {
       const syncChannel = (match: Match) => {
         const participants = [
           ...match.players.map((player) => player.userId),
@@ -1214,18 +1211,4 @@ export const useMatchStore = create<MatchState>()(
           get().processMatchAutomation();
         },
       };
-    },
-    {
-      name: 'zoyd-match',
-      version: 3,
-      migrate: (persistedState: any) => ({
-        matches: Array.isArray(persistedState?.matches)
-          ? persistedState.matches.map((match: any) => normalizeStoredMatch(match))
-          : [],
-        myMatches: Array.isArray(persistedState?.myMatches) ? persistedState.myMatches : [],
-        myArbitrations: Array.isArray(persistedState?.myArbitrations) ? persistedState.myArbitrations : [],
-        filters: persistedState?.filters || { format: 'all', status: 'all' },
-      }),
-    }
-  )
-);
+});

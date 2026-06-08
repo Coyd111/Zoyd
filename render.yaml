@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: zoyd-backend
+    env: node
+    plan: free
+    buildCommand: pnpm install
+    startCommand: node server/realtime-server.mjs
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:Hilmes11@Zoyd@db.kqxkijbuafuphjlgfram.supabase.co:5432/postgres
+      - key: FEDAPAY_SECRET_KEY
+        value: sk_sandbox_EscwCTtrmpHs_CqYJFXwoHW3
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_UOPfnslytYUQber2GSBZ8g_iJqUpgyk
+      - key: SUPABASE_URL
+        value: https://kqxkijbuafuphjlgfram.supabase.co
+      - key: ZOYD_ALLOWED_ORIGINS
+        value: https://zoyd-9c4ttzm2i-coyd-s-projects.vercel.app/
+      - key: ZOYD_ADMIN_PASSWORD
+        value: Admin@ZOYD2026
+      - key: PORT
+        value: 4001

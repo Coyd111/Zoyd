@@ -1,3 +1,4 @@
+import { supabase } from '../../lib/supabase';
 import type { User } from '../stores/authStore';
 
 interface AuthResponse {
@@ -23,66 +24,176 @@ export interface RegisterPayload {
   streamerPseudo?: string;
 }
 
-const getBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_REALTIME_URL;
-  if (typeof envUrl === 'string' && envUrl.length > 0) {
-    return envUrl;
+export const registerWithBackend = async (payload: RegisterPayload): Promise<AuthResponse> => {
+  // 1. Inscription via Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: payload.email,
+    password: payload.password,
+    phone: payload.phone, // Si configuré sur Supabase, sinon optionnel
+  });
+
+  if (authError) throw new Error(`Erreur Auth: ${authError.message}`);
+  if (!authData.user) throw new Error('Création du compte échouée.');
+
+  // 2. Création du profil public
+  const profile = {
+    id: authData.user.id,
+    role: 'player',
+    pseudo: payload.pseudo,
+    email: payload.email,
+    phone: payload.phone,
+    game_id: payload.gameId,
+    controller_type: payload.controllerType,
+    device: payload.device,
+    level_codm: payload.levelCODM,
+    rank_mj: payload.rankMJ,
+    rank_br: payload.rankBR,
+    country: payload.country,
+    streamer_mode: payload.streamerMode,
+    trust_score: 100,
+    date_joined: new Date().toISOString(),
+    is_online: true,
+  };
+
+  const { error: profileError } = await supabase.from('profiles').insert(profile);
+  
+  if (profileError) {
+    // Si échec du profil, on nettoie potentiellement l'utilisateur (simplifié ici)
+    throw new Error(`Erreur Profil: ${profileError.message}`);
   }
 
-  return window.location.origin;
+  // On crée un portefeuille vide
+  await supabase.from('wallets').insert({
+    user_id: authData.user.id,
+    cash_balance: 0,
+    locked_balance: 0,
+  });
+
+  const appUser: User = {
+    id: authData.user.id,
+    role: 'player',
+    pseudo: payload.pseudo,
+    email: payload.email,
+    phone: payload.phone,
+    gameId: payload.gameId,
+    controllerType: payload.controllerType,
+    device: payload.device,
+    levelCODM: payload.levelCODM,
+    rankMJ: payload.rankMJ,
+    rankBR: payload.rankBR,
+    country: payload.country,
+    streamerMode: payload.streamerMode,
+    walletBalance: 0,
+    trustScore: 100,
+    stats: { wins: 0, losses: 0, draws: 0, totalMatches: 0, totalEarnings: 0, winRate: 0, tournamentsWon: 0, tournamentsPlayed: 0, elo: 1200 },
+    progression: { level: 'BEGINNER', xp: 0, nextLevelXp: 1000 },
+    achievements: [],
+    dateJoined: profile.date_joined,
+    isOnline: true,
+  };
+
+  return {
+    ok: true,
+    token: authData.session?.access_token || '',
+    user: appUser,
+    expiresAt: authData.session?.expires_at ? new Date(authData.session.expires_at * 1000).toISOString() : new Date().toISOString(),
+  };
 };
 
-const getApiUrl = (path: string) => `${getBaseUrl()}${path}`;
+export const loginWithBackend = async (identifier: string, password: string): Promise<AuthResponse> => {
+  // Supabase Auth ne prend que l'email en natif sans trigger, on suppose que c'est un email pour l'instant.
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email: identifier,
+    password: password,
+  });
 
-const readJson = async <T>(response: Response): Promise<T> => {
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || 'Une erreur reseau est survenue.');
-  }
+  if (authError) throw new Error('Email ou mot de passe incorrect.');
+  if (!authData.user) throw new Error('Utilisateur non trouvé.');
 
-  return payload as T;
+  // Récupération du profil
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authData.user.id)
+    .single();
+
+  if (profileError || !profile) throw new Error('Profil introuvable.');
+
+  const appUser: User = {
+    id: profile.id,
+    role: profile.role,
+    pseudo: profile.pseudo,
+    email: profile.email,
+    phone: profile.phone,
+    gameId: profile.game_id,
+    controllerType: profile.controller_type,
+    device: profile.device,
+    levelCODM: profile.level_codm,
+    rankMJ: profile.rank_mj,
+    rankBR: profile.rank_br,
+    country: profile.country,
+    streamerMode: profile.streamer_mode,
+    walletBalance: 0, // Sera hydraté par walletStore
+    trustScore: profile.trust_score,
+    stats: profile.stats,
+    progression: { level: 'BEGINNER', xp: 0, nextLevelXp: 1000 }, // Simplifié pour la migration
+    achievements: [],
+    dateJoined: profile.date_joined,
+    isOnline: profile.is_online,
+  };
+
+  return {
+    ok: true,
+    token: authData.session?.access_token || '',
+    user: appUser,
+    expiresAt: authData.session?.expires_at ? new Date(authData.session.expires_at * 1000).toISOString() : new Date().toISOString(),
+  };
 };
 
-export const registerWithBackend = async (payload: RegisterPayload) =>
-  readJson<AuthResponse>(
-    await fetch(getApiUrl('/api/auth/register'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-  );
+export const fetchCurrentUser = async (token: string) => {
+  const { data: authData, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authData.user) throw new Error('Session invalide');
 
-export const loginWithBackend = async (identifier: string, password: string) =>
-  readJson<AuthResponse>(
-    await fetch(getApiUrl('/api/auth/login'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        identifier,
-        password,
-      }),
-    })
-  );
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authData.user.id)
+    .single();
 
-export const fetchCurrentUser = async (token: string) =>
-  readJson<{ ok: boolean; user: User; expiresAt: string }>(
-    await fetch(getApiUrl('/api/auth/me'), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-  );
+  if (profileError || !profile) throw new Error('Profil introuvable');
 
-export const logoutFromBackend = async (token: string) =>
-  readJson<{ ok: boolean }>(
-    await fetch(getApiUrl('/api/auth/logout'), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-  );
+  const appUser: User = {
+    id: profile.id,
+    role: profile.role,
+    pseudo: profile.pseudo,
+    email: profile.email,
+    phone: profile.phone,
+    gameId: profile.game_id,
+    controllerType: profile.controller_type,
+    device: profile.device,
+    levelCODM: profile.level_codm,
+    rankMJ: profile.rank_mj,
+    rankBR: profile.rank_br,
+    country: profile.country,
+    streamerMode: profile.streamer_mode,
+    walletBalance: 0,
+    trustScore: profile.trust_score,
+    stats: profile.stats,
+    progression: { level: 'BEGINNER', xp: 0, nextLevelXp: 1000 },
+    achievements: [],
+    dateJoined: profile.date_joined,
+    isOnline: profile.is_online,
+  };
+
+  return {
+    ok: true,
+    user: appUser,
+    expiresAt: new Date().toISOString(),
+  };
+};
+
+export const logoutFromBackend = async (token: string) => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+  return { ok: true };
+};

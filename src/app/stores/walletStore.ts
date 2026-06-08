@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { depositWalletBalance, fetchWalletSnapshot, type WalletSnapshot, withdrawWalletBalance } from '../lib/walletApi';
 import { useAuthStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
@@ -70,9 +69,7 @@ const WITHDRAWAL_FEE_RATE = 0.02;
 
 const roundAmount = (amount: number) => Math.round(amount * 100) / 100;
 
-export const useWalletStore = create<WalletState>()(
-  persist(
-    (set, get) => {
+export const useWalletStore = create<WalletState>()((set, get) => {
       const syncAuthBalance = () => {
         const { user, updateUser } = useAuthStore.getState();
         if (!user) return;
@@ -329,18 +326,4 @@ export const useWalletStore = create<WalletState>()(
 
         getAvailableToSpend: () => roundAmount(get().cashBalance + get().bonusBalance),
       };
-    },
-    {
-      name: 'zoyd-wallet',
-      version: 2,
-      migrate: (persistedState: any) => ({
-        cashBalance: roundAmount((persistedState?.cashBalance ?? 0) + (persistedState?.lockedBalance ?? 0)),
-        bonusBalance: roundAmount(persistedState?.bonusBalance ?? 0),
-        lockedBalance: 0,
-        pendingWinnings: roundAmount(persistedState?.pendingWinnings ?? 0),
-        transactions: Array.isArray(persistedState?.transactions) ? persistedState.transactions : [],
-        lockedEntries: {},
-      }),
-    }
-  )
-);
+});

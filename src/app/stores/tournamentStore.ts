@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
@@ -930,9 +929,7 @@ const buildSeedTournaments = (): Tournament[] => {
   return [upcoming, live, history];
 };
 
-export const useTournamentStore = create<TournamentState>()(
-  persist(
-    (set, get) => {
+export const useTournamentStore = create<TournamentState>()((set, get) => {
       const notify = (
         type: 'system' | 'tournament_reminder' | 'result_ready',
         title: string,
@@ -1321,19 +1318,4 @@ export const useTournamentStore = create<TournamentState>()(
           }
         },
       };
-    },
-    {
-      name: 'zoyd-tournament',
-      version: 3,
-      migrate: (persistedState: any) => {
-        return {
-          tournaments: [],
-          filters: persistedState?.filters || {
-            format: 'all',
-            status: 'all',
-          },
-        };
-      },
-    }
-  )
-);
+});

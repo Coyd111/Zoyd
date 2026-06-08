@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { supabase } from './supabase.mjs';
+import { db, supabase } from './supabase.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,9 +11,9 @@ const dataDir = path.join(__dirname, 'data');
 mkdirSync(dataDir, { recursive: true });
 
 const dbPath = path.join(dataDir, 'realtime.db');
-const db = new DatabaseSync(dbPath);
+const localDb = new DatabaseSync(dbPath);
 
-db.exec(`
+localDb.exec(`
   CREATE TABLE IF NOT EXISTS app_users (
     id TEXT PRIMARY KEY,
     pseudo_key TEXT NOT NULL UNIQUE,
@@ -121,11 +121,11 @@ const normalizeChatParticipants = (participants) =>
 const makeError = (code, message) => Object.assign(new Error(message), { code });
 
 const cleanupExpiredAuthSessions = () => {
-  db.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(getNow());
+  localDb.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(getNow());
 };
 
 const cleanupExpiredRealtimeSessions = () => {
-  db.prepare('DELETE FROM realtime_sessions WHERE expires_at <= ?').run(getNow());
+  localDb.prepare('DELETE FROM realtime_sessions WHERE expires_at <= ?').run(getNow());
 };
 
 const normalizeChatChannelPayload = (channel) => {
@@ -226,7 +226,7 @@ const sanitizeUserPayload = (payload) => {
 };
 
 const getUserRowById = (userId) =>
-  db
+  localDb
     .prepare(
       `
         SELECT payload
@@ -250,7 +250,7 @@ const findUserRowByIdentifier = (identifier) => {
   const emailKey = normalizeEmailKey(trimmed);
   const phoneKey = normalizePhoneKey(trimmed);
 
-  return db
+  return localDb
     .prepare(
       `
         SELECT id, password_hash AS passwordHash, payload
@@ -358,7 +358,7 @@ const insertUser = ({ password, role = 'player', ...input }) => {
   const passwordHash = hashPassword(password);
   const updatedAt = getNow();
 
-  db.prepare(
+  localDb.prepare(
     `
       INSERT INTO app_users (
         id,
@@ -413,7 +413,7 @@ export const updateUserAccount = (userId, updater) => {
   const nextRawPayload = updater(structuredClone(currentPayload));
   const nextPayload = sanitizeUserPayload(nextRawPayload);
 
-  db.prepare(
+  localDb.prepare(
     `
       UPDATE app_users
       SET payload = ?, updated_at = ?
@@ -444,19 +444,37 @@ const createTokenRecord = (tableName, userId, extra = {}) => {
   const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
 
   if (tableName === 'auth_sessions') {
-    db.prepare(
+    localDb.prepare(
       `
         INSERT INTO auth_sessions (token, user_id, issued_at, expires_at)
         VALUES (?, ?, ?, ?)
       `
     ).run(token, userId, issuedAt, expiresAt);
+    
+    // Sync to Supabase
+    supabase.from('auth_sessions').upsert({
+      token,
+      user_id: userId,
+      issued_at: issuedAt,
+      expires_at: expiresAt
+    }).then(({ error }) => { if (error) console.error('Supabase auth_sessions sync error:', error); });
   } else {
-    db.prepare(
+    localDb.prepare(
       `
         INSERT INTO realtime_sessions (token, user_id, pseudo, role, issued_at, expires_at)
         VALUES (?, ?, ?, ?, ?, ?)
       `
     ).run(token, userId, extra.pseudo, extra.role, issuedAt, expiresAt);
+    
+    // Sync to Supabase
+    supabase.from('realtime_sessions').upsert({
+      token,
+      user_id: userId,
+      pseudo: extra.pseudo,
+      role: extra.role,
+      issued_at: issuedAt,
+      expires_at: expiresAt
+    }).then(({ error }) => { if (error) console.error('Supabase realtime_sessions sync error:', error); });
   }
 
   return {
@@ -552,7 +570,7 @@ export const upsertChatChannel = (channel) => {
     isMuted: existing?.isMuted || channel.isMuted,
   });
 
-  db.prepare(
+  localDb.prepare(
     `
       INSERT INTO chat_channels (id, type, payload, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?)
@@ -562,6 +580,15 @@ export const upsertChatChannel = (channel) => {
         updated_at = excluded.updated_at
     `
   ).run(next.id, next.type, JSON.stringify(next), next.createdAt, next.updatedAt);
+
+  // Sync to Supabase
+  supabase.from('chat_channels').upsert({
+    id: next.id,
+    type: next.type,
+    payload: next,
+    created_at: next.createdAt,
+    updated_at: next.updatedAt
+  }).then(({ error }) => { if (error) console.error('Supabase chat_channels sync error:', error); });
 
   return next;
 };
@@ -578,7 +605,7 @@ export const appendChatMessage = (message) => {
     timestamp: message.timestamp || getNow(),
   });
 
-  db.prepare(
+  localDb.prepare(
     `
       INSERT INTO chat_messages (id, channel_id, payload, created_at)
       VALUES (?, ?, ?, ?)
@@ -586,6 +613,14 @@ export const appendChatMessage = (message) => {
         payload = excluded.payload
     `
   ).run(nextMessage.id, nextMessage.channelId, JSON.stringify(nextMessage), nextMessage.timestamp);
+
+  // Sync to Supabase
+  supabase.from('chat_messages').upsert({
+    id: nextMessage.id,
+    channel_id: nextMessage.channelId,
+    payload: nextMessage,
+    created_at: nextMessage.timestamp
+  }).then(({ error }) => { if (error) console.error('Supabase chat_messages sync error:', error); });
 
   upsertChatChannel({
     ...channel,
@@ -629,7 +664,7 @@ export const getChatReadMapForUser = (userId) =>
   );
 
 export const markChatChannelRead = (channelId, userId, readAt = getNow()) => {
-  db.prepare(
+  localDb.prepare(
     `
       INSERT INTO chat_reads (channel_id, user_id, read_at)
       VALUES (?, ?, ?)
@@ -637,6 +672,13 @@ export const markChatChannelRead = (channelId, userId, readAt = getNow()) => {
         read_at = excluded.read_at
     `
   ).run(channelId, userId, readAt);
+
+  // Sync to Supabase
+  supabase.from('chat_reads').upsert({
+    channel_id: channelId,
+    user_id: userId,
+    read_at: readAt
+  }).then(({ error }) => { if (error) console.error('Supabase chat_reads sync error:', error); });
 
   return {
     channelId,
@@ -716,7 +758,7 @@ export const getAuthSession = (token) => {
 
   const user = getUserById(row.userId);
   if (!user) {
-    db.prepare('DELETE FROM auth_sessions WHERE token = ?').run(token);
+    localDb.prepare('DELETE FROM auth_sessions WHERE token = ?').run(token);
     return null;
   }
 
@@ -727,7 +769,11 @@ export const getAuthSession = (token) => {
 };
 
 export const deleteAuthSession = (token) => {
-  db.prepare('DELETE FROM auth_sessions WHERE token = ?').run(token);
+  localDb.prepare('DELETE FROM auth_sessions WHERE token = ?').run(token);
+  
+  // Sync to Supabase
+  supabase.from('auth_sessions').delete().eq('token', token)
+    .then(({ error }) => { if (error) console.error('Supabase auth_sessions delete error:', error); });
 };
 
 export const createRealtimeSession = ({ userId, pseudo, role }) => {
@@ -753,15 +799,23 @@ export const getRealtimeSession = (token) => {
 };
 
 export const deleteRealtimeSession = (token) => {
-  db.prepare('DELETE FROM realtime_sessions WHERE token = ?').run(token);
+  localDb.prepare('DELETE FROM realtime_sessions WHERE token = ?').run(token);
+  
+  // Sync to Supabase
+  supabase.from('realtime_sessions').delete().eq('token', token)
+    .then(({ error }) => { if (error) console.error('Supabase realtime_sessions delete error:', error); });
 };
 
 export const deleteRealtimeSessionsForUser = (userId) => {
-  db.prepare('DELETE FROM realtime_sessions WHERE user_id = ?').run(userId);
+  localDb.prepare('DELETE FROM realtime_sessions WHERE user_id = ?').run(userId);
+  
+  // Sync to Supabase
+  supabase.from('realtime_sessions').delete().eq('user_id', userId)
+    .then(({ error }) => { if (error) console.error('Supabase realtime_sessions delete user error:', error); });
 };
 
 export const upsertPushSubscription = (userId, subscription) => {
-  db.prepare(
+  localDb.prepare(
     `
       INSERT INTO push_subscriptions (user_id, endpoint, payload, updated_at)
       VALUES (?, ?, ?, ?)
@@ -771,20 +825,32 @@ export const upsertPushSubscription = (userId, subscription) => {
         updated_at = excluded.updated_at
     `
   ).run(userId, subscription.endpoint, JSON.stringify(subscription), getNow());
+  
+  // Sync to Supabase
+  supabase.from('push_subscriptions').upsert({
+    user_id: userId,
+    endpoint: subscription.endpoint,
+    payload: subscription,
+    updated_at: getNow()
+  }).then(({ error }) => { if (error) console.error('Supabase push_subscriptions sync error:', error); });
 };
 
 export const removePushSubscription = (endpoint) => {
-  db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(endpoint);
+  localDb.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(endpoint);
+  
+  // Sync to Supabase
+  supabase.from('push_subscriptions').delete().eq('endpoint', endpoint)
+    .then(({ error }) => { if (error) console.error('Supabase push_subscriptions delete error:', error); });
 };
 
 export const getPushSubscriptionsForUser = (userId) =>
-  db
+  localDb
     .prepare('SELECT payload FROM push_subscriptions WHERE user_id = ?')
     .all(userId)
     .map((row) => JSON.parse(row.payload));
 
 export const countPushSubscriptions = () =>
-  db.prepare('SELECT COUNT(*) AS total FROM push_subscriptions').get().total;
+  localDb.prepare('SELECT COUNT(*) AS total FROM push_subscriptions').get().total;
 
 const getItemTimestamp = (item) => {
   if (typeof item?.updatedAt === 'string') return item.updatedAt;
@@ -793,12 +859,12 @@ const getItemTimestamp = (item) => {
 };
 
 export const replaceStateCollection = (kind, items) => {
-  db.exec('BEGIN');
+  localDb.exec('BEGIN');
   try {
     const itemIds = new Set(items.map((item) => item.id));
 
     for (const item of items) {
-      db.prepare(
+      localDb.prepare(
         `
           INSERT INTO state_snapshots (kind, entity_id, payload, updated_at)
           VALUES (?, ?, ?, ?)
@@ -809,16 +875,16 @@ export const replaceStateCollection = (kind, items) => {
       ).run(kind, item.id, JSON.stringify(item), getItemTimestamp(item));
     }
 
-    const existingIds = db.prepare('SELECT entity_id FROM state_snapshots WHERE kind = ?').all(kind);
+    const existingIds = localDb.prepare('SELECT entity_id FROM state_snapshots WHERE kind = ?').all(kind);
     const deletedIds = [];
     for (const row of existingIds) {
       if (!itemIds.has(row.entity_id)) {
-        db.prepare('DELETE FROM state_snapshots WHERE kind = ? AND entity_id = ?').run(kind, row.entity_id);
+        localDb.prepare('DELETE FROM state_snapshots WHERE kind = ? AND entity_id = ?').run(kind, row.entity_id);
         deletedIds.push(row.entity_id);
       }
     }
 
-    db.exec('COMMIT');
+    localDb.exec('COMMIT');
 
     // Supabase background sync
     if (items.length > 0) {
@@ -837,13 +903,13 @@ export const replaceStateCollection = (kind, items) => {
     }
 
   } catch (error) {
-    db.exec('ROLLBACK');
+    localDb.exec('ROLLBACK');
     throw error;
   }
 };
 
 export const getStateCollection = (kind) =>
-  db
+  localDb
     .prepare(
       `
         SELECT payload

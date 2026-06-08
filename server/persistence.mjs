@@ -487,7 +487,7 @@ const createTokenRecord = (tableName, userId, extra = {}) => {
 };
 
 const ensureSeedAdmin = () => {
-  const existingAdmin = db
+  const existingAdmin = localDb
     .prepare(
       `
         SELECT id

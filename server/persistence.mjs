@@ -162,7 +162,7 @@ const normalizeChatMessagePayload = (message) => ({
 });
 
 const getChatChannelRowById = (channelId) =>
-  db
+  localDb
     .prepare(
       `
         SELECT payload
@@ -173,7 +173,7 @@ const getChatChannelRowById = (channelId) =>
     .get(channelId);
 
 const getChatReadAt = (channelId, userId) =>
-  db
+  localDb
     .prepare(
       `
         SELECT read_at AS readAt
@@ -264,7 +264,7 @@ const findUserRowByIdentifier = (identifier) => {
 };
 
 const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
-  const duplicate = db
+  const duplicate = localDb
     .prepare(
       `
         SELECT
@@ -546,7 +546,7 @@ export const getChatChannelById = (channelId) => {
 };
 
 export const getChatChannels = () =>
-  db
+  localDb
     .prepare(
       `
         SELECT payload
@@ -632,7 +632,7 @@ export const appendChatMessage = (message) => {
 };
 
 export const getChatMessagesForChannel = (channelId, limit = 200) =>
-  db
+  localDb
     .prepare(
       `
         SELECT payload
@@ -651,7 +651,7 @@ export const getChatMessagesForChannel = (channelId, limit = 200) =>
 
 export const getChatReadMapForUser = (userId) =>
   Object.fromEntries(
-    db
+    localDb
       .prepare(
         `
           SELECT channel_id AS channelId, read_at AS readAt
@@ -689,7 +689,7 @@ export const markChatChannelRead = (channelId, userId, readAt = getNow()) => {
 
 export const getUnreadCountForUser = (channelId, userId) => {
   const readAt = getChatReadAt(channelId, userId) || '1970-01-01T00:00:00.000Z';
-  const row = db
+  const row = localDb
     .prepare(
       `
         SELECT COUNT(*) AS total
@@ -744,7 +744,7 @@ export const getAuthSession = (token) => {
   cleanupExpiredAuthSessions();
   if (!token) return null;
 
-  const row = db
+  const row = localDb
     .prepare(
       `
         SELECT token, user_id AS userId, issued_at AS issuedAt, expires_at AS expiresAt
@@ -785,7 +785,7 @@ export const getRealtimeSession = (token) => {
   cleanupExpiredRealtimeSessions();
   if (!token) return null;
 
-  const row = db
+  const row = localDb
     .prepare(
       `
         SELECT token, user_id AS userId, pseudo, role, issued_at AS issuedAt, expires_at AS expiresAt

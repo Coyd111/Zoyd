@@ -37,6 +37,14 @@ export const registerWithBackend = async (payload: RegisterPayload): Promise<Aut
   });
 
   if (authError) {
+    // LOG COMPLET pour diagnostic (sera retiré en production)
+    console.error('[ZOYD AUTH] Erreur signup complète:', {
+      message: authError.message,
+      status: authError.status,
+      code: (authError as any).code,
+      details: JSON.stringify(authError),
+    });
+
     // Messages d'erreur Supabase traduits en français
     const msg = authError.message.toLowerCase();
     if (msg.includes('already registered') || msg.includes('already exists')) {
@@ -46,9 +54,15 @@ export const registerWithBackend = async (payload: RegisterPayload): Promise<Aut
       throw new Error('Le mot de passe doit contenir au moins 6 caractères.');
     }
     if (msg.includes('email')) {
-      throw new Error('L\'adresse email est invalide.');
+      throw new Error("L'adresse email est invalide.");
     }
-    throw new Error(`Erreur d'inscription: ${authError.message}`);
+    if (msg.includes('signup') || msg.includes('disabled')) {
+      throw new Error("Les inscriptions sont désactivées. Contactez l'administrateur.");
+    }
+    if (msg.includes('rate limit')) {
+      throw new Error("Trop de tentatives. Attendez quelques minutes avant de réessayer.");
+    }
+    throw new Error(`Erreur d'inscription (${authError.status}): ${authError.message}`);
   }
   if (!authData.user) throw new Error('Création du compte échouée.');
 

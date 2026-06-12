@@ -29,7 +29,11 @@ export const registerWithBackend = async (payload: RegisterPayload): Promise<Aut
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: payload.email,
     password: payload.password,
-    phone: payload.phone, // Si configuré sur Supabase, sinon optionnel
+    options: {
+      data: {
+        pseudo: payload.pseudo,
+      }
+    }
   });
 
   if (authError) throw new Error(`Erreur Auth: ${authError.message}`);

@@ -36,7 +36,20 @@ export const registerWithBackend = async (payload: RegisterPayload): Promise<Aut
     }
   });
 
-  if (authError) throw new Error(`Erreur Auth: ${authError.message}`);
+  if (authError) {
+    // Messages d'erreur Supabase traduits en français
+    const msg = authError.message.toLowerCase();
+    if (msg.includes('already registered') || msg.includes('already exists')) {
+      throw new Error('Cette adresse email est déjà utilisée. Essayez de vous connecter.');
+    }
+    if (msg.includes('password')) {
+      throw new Error('Le mot de passe doit contenir au moins 6 caractères.');
+    }
+    if (msg.includes('email')) {
+      throw new Error('L\'adresse email est invalide.');
+    }
+    throw new Error(`Erreur d'inscription: ${authError.message}`);
+  }
   if (!authData.user) throw new Error('Création du compte échouée.');
 
   // 2. Création du profil public

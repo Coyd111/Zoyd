@@ -8,3 +8,14 @@ build.log
 public/assets/codm/
 *.db
 *.db-journal
+
+# Fichiers sensibles serveur
+server/vapid-keys.mjs
+server/data/
+
+# Scripts one-shot
+download-*.mjs
+
+# Documentation interne
+guidelines/
+src/imports/

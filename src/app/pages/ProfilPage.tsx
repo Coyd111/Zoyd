@@ -150,9 +150,20 @@ const ProfilPage: React.FC = () => {
                         : 'bg-zoyd-yellow'
                 }
               />
-              <Link to="/parametres" className="mt-4 inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-white">
-                Modifier le profil <ChevronRight className="w-3 h-3" />
-              </Link>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-4">
+                <Link to="/parametres" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-white">
+                  Modifier le profil <ChevronRight className="w-3 h-3" />
+                </Link>
+                <button
+                  onClick={() => {
+                    useAuthStore.getState().logout();
+                  }}
+                  className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-red-400/50 hover:text-red-400"
+                >
+                  <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                  Se deconnecter
+                </button>
+              </div>
             </div>
           </div>
         </div>

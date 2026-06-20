@@ -4,6 +4,8 @@ import { cn } from '../../../lib/utils';
 interface ZoydLogoProps {
   className?: string;
   wordmarkClassName?: string;
+  /** Alias kept for backward compat — ignored visually */
+  markClassName?: string;
   theme?: 'dark' | 'light';
   compact?: boolean;
 }
@@ -15,28 +17,21 @@ export const ZoydLogo: React.FC<ZoydLogoProps> = ({
   compact = false,
 }) => {
   const wordmarkColor = theme === 'dark' ? 'text-white' : 'text-black';
-  const accentColor = theme === 'dark' ? 'text-zoyd-yellow' : 'text-zoyd-blue';
+  const separatorColor = theme === 'dark' ? 'bg-white/15' : 'bg-black/20';
+  const taglineColor = 'text-zoyd-yellow';
 
   return (
-    <div className={cn('inline-flex flex-col leading-none items-center justify-center', className)}>
+    <div className={cn('inline-flex flex-col items-center justify-center leading-none', className)}>
+      {/* Wordmark */}
       <span
         className={cn(
-          'font-display font-black uppercase tracking-tight italic',
-          compact ? 'text-2xl' : 'text-3xl',
+          'font-display font-black uppercase italic tracking-tighter block',
+          compact ? 'text-[22px]' : 'text-[28px]',
           wordmarkColor,
           wordmarkClassName
         )}
       >
         ZOYD
-      </span>
-      <span
-        className={cn(
-          'font-mono uppercase tracking-[0.28em] mt-1 text-center',
-          compact ? 'text-[8px]' : 'text-[10px]',
-          accentColor
-        )}
-      >
-        PLAY • COMPETE • EARN
       </span>
     </div>
   );

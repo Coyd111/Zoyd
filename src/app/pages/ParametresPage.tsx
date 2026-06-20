@@ -96,8 +96,8 @@ const ParametresPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">
-        <div className="max-w-[1240px] mx-auto px-8 pb-12">
-          <h1 className="text-5xl md:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
+        <div className="max-w-[1240px] mx-auto px-4 md:px-8 pb-12">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
             Parametres
           </h1>
           <p className="text-white/40 mt-4 max-w-2xl">
@@ -106,7 +106,7 @@ const ParametresPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-[1240px] mx-auto px-8 py-12 grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
+      <div className="max-w-[1240px] mx-auto px-4 md:px-8 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
         <div className="lg:col-span-1 space-y-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;

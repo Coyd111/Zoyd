@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck } from 'lucide-react';
+import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import {
@@ -100,19 +100,29 @@ const ChatPage: React.FC = () => {
   const onlineFriends = friends.filter((friend) => friend.status === 'online');
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline flex flex-col">
+    <div className="flex flex-col bg-zoyd-black text-white scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
       <div className="fixed inset-0 tactical-grid opacity-5 pointer-events-none" />
 
-      <header className="relative border-b border-white/5 bg-zoyd-surface/40 z-10">
-        <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <MessageSquare className="w-5 h-5 text-zoyd-yellow" />
-            <h1 className="text-lg font-display font-black uppercase tracking-tighter italic">
-              Messages <span className="text-white/20">///</span>{' '}
+      <header className="relative border-b border-white/5 bg-zoyd-surface/40 z-10 shrink-0">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Back button on mobile when channel is active */}
+            {activeChannelId && (
+              <button
+                onClick={() => setActiveChannel(null as any)}
+                className="sm:hidden text-white/40 hover:text-white transition-colors mr-1"
+                aria-label="Retour aux canaux"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <MessageSquare className="w-4 h-4 text-zoyd-yellow" />
+            <h1 className="text-base font-display font-black uppercase tracking-tighter italic">
+              Messages{' '}
               {unreadTotal > 0 && <span className="text-zoyd-yellow text-sm">({unreadTotal})</span>}
             </h1>
           </div>
-          <div className="flex items-center gap-4 text-[10px] font-mono font-black uppercase tracking-widest text-white/30">
+          <div className="hidden sm:flex items-center gap-4 text-[10px] font-mono font-black uppercase tracking-widest text-white/30">
             <span className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               En ligne: {onlineFriends.length + 1}
@@ -121,8 +131,12 @@ const ChatPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex-1 max-w-[1400px] w-full mx-auto flex relative z-10 h-[calc(100vh-64px)]">
-        <div className="w-64 border-r border-white/5 bg-zoyd-black/80 flex flex-col">
+      <div className="flex-1 max-w-[1400px] w-full mx-auto flex relative z-10 min-h-0 overflow-hidden">
+        {/* Channel sidebar — full width on mobile when no channel active, hidden when channel active */}
+        <div className={cn(
+          'border-r border-white/5 bg-zoyd-black/80 flex flex-col shrink-0',
+          activeChannelId ? 'hidden sm:flex sm:w-64' : 'w-full sm:w-64'
+        )}>
           <div className="p-4 border-b border-white/5">
             <button
               onClick={() => {
@@ -198,7 +212,7 @@ const ChatPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col bg-zoyd-black/40">
+        <div className={cn('flex-1 flex flex-col bg-zoyd-black/40 min-w-0', !activeChannelId && 'hidden sm:flex')}>
           {activeChannel ? (
             <>
               <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-zoyd-surface/20">

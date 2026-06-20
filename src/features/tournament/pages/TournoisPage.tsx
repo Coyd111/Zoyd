@@ -76,7 +76,7 @@ const TournoisPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
-        <div className="max-w-[1650px] mx-auto px-8 py-24 relative z-10">
+        <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-5 text-sm text-white/60">
             Chargement du circuit tournoi...
           </div>
@@ -90,28 +90,28 @@ const TournoisPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">
-        <div className="max-w-[1650px] mx-auto px-8 pb-20 flex flex-col lg:flex-row justify-between items-end gap-12">
+        <div className="max-w-[1650px] mx-auto px-4 md:px-8 pb-10 md:pb-20 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 md:gap-12">
           <div className="max-w-3xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
-                <Trophy className="w-5 h-5" />
+            <div className="flex items-center gap-3 mb-4 md:mb-6">
+              <div className="w-8 h-8 md:w-10 md:h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
+                <Trophy className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <span className="text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
+              <span className="text-[9px] md:text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
                 Tournois competitifs
               </span>
             </div>
-            <h1 className="text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
-              Tournois <br />
-              <span className="text-white/20 underline decoration-zoyd-yellow/50 underline-offset-8">ZOYD</span>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
+              Tournois <br className="hidden sm:block" />
+              <span className="text-white/20 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
             </h1>
-            <p className="text-white/40 text-lg md:text-xl font-light max-w-2xl">
+            <p className="text-white/40 text-base md:text-xl font-light max-w-2xl mb-6">
               Retrouve les tournois ouverts, ceux qui se jouent deja et ceux qui viennent de se terminer.
               Ce que tu vois ici correspond deja a ton profil de jeu.
             </p>
-            <div className="mt-6">
+            <div className="mt-4 md:mt-6">
               <Link
                 to="/mj/tournois/creer"
-                className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
+                className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Creer un tournoi
@@ -119,7 +119,7 @@ const TournoisPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="hidden md:flex gap-10 border-l border-white/10 pl-10 py-4">
+          <div className="flex flex-wrap lg:flex-nowrap gap-6 md:gap-10 border-t lg:border-t-0 lg:border-l border-white/10 pt-6 lg:pt-0 lg:pl-10 py-2 md:py-4 w-full lg:w-auto mt-4 lg:mt-0">
             <Metric label="Tournois visibles" value={metrics.visible.toString()} accent="text-white" />
             <Metric label="A gagner" value={formatZC(metrics.playerPool)} accent="text-zoyd-yellow" />
             <Metric label="Places ouvertes" value={metrics.openSlots.toString()} accent="text-zoyd-blue" />
@@ -127,31 +127,31 @@ const TournoisPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-[1650px] mx-auto px-8 py-16 relative z-10">
+      <main className="max-w-[1650px] mx-auto px-4 md:px-8 py-8 md:py-16 relative z-10">
         {loadError ? (
           <div className="mb-8 border border-red-400/20 bg-red-400/5 px-5 py-4 text-sm text-red-200">
             {loadError}
           </div>
         ) : null}
         <Tabs defaultValue="upcoming" className="w-full">
-          <div className="flex flex-col gap-8 mb-12">
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 border-b border-white/5 pb-10">
-              <TabsList className="bg-white/5 p-1 border border-white/5 flex h-auto">
+          <div className="flex flex-col gap-6 md:gap-8 mb-8 md:mb-12">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 md:gap-8 border-b border-white/5 pb-6 md:pb-10">
+              <TabsList className="bg-white/5 p-1 border border-white/5 flex flex-wrap sm:flex-nowrap h-auto w-full xl:w-auto">
                 <TabsTrigger
                   value="upcoming"
-                  className="px-8 py-3 text-[10px] font-display font-black uppercase tracking-[0.15em] italic data-[state=active]:bg-white data-[state=active]:text-black transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic data-[state=active]:bg-white data-[state=active]:text-black transition-all rounded-none"
                 >
                   A rejoindre
                 </TabsTrigger>
                 <TabsTrigger
                   value="live"
-                  className="px-8 py-3 text-[10px] font-display font-black uppercase tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-blue data-[state=active]:text-black transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-blue data-[state=active]:text-black transition-all rounded-none"
                 >
                   En cours
                 </TabsTrigger>
                 <TabsTrigger
                   value="history"
-                  className="px-8 py-3 text-[10px] font-display font-black uppercase tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
                 >
                   Termines
                 </TabsTrigger>
@@ -171,12 +171,12 @@ const TournoisPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3">
               {FORMAT_FILTERS.map((format) => (
                 <button
                   key={format}
                   onClick={() => setFilters({ format: format === 'TOUS' ? 'all' : format })}
-                  className={`px-5 py-3 text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
+                  className={`px-4 sm:px-5 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
                     (format === 'TOUS' && (!filters.format || filters.format === 'all')) || filters.format === format
                       ? 'bg-white text-black border-white'
                       : 'bg-black text-white/40 border-white/5 hover:border-white/20'
@@ -185,15 +185,15 @@ const TournoisPage: React.FC = () => {
                   {format}
                 </button>
               ))}
-              <div className="inline-flex items-center gap-2 border border-white/5 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-white/30">
+              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/30">
                 <Users className="w-3.5 h-3.5" />
                 Solo et equipe
               </div>
-              <div className="inline-flex items-center gap-2 border border-white/5 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-white/30">
+              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/30">
                 <Swords className="w-3.5 h-3.5" />
                 Elimination directe
               </div>
-              <div className="inline-flex items-center gap-2 border border-zoyd-yellow/20 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow/80">
+              <div className="inline-flex items-center gap-2 border border-zoyd-yellow/20 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow/80">
                 <Trophy className="w-3.5 h-3.5" />
                 Selon ton profil
               </div>
@@ -240,14 +240,14 @@ const TournamentGrid = ({
 }) => {
   if (tournaments.length === 0) {
     return (
-        <div className="py-32 flex flex-col items-center justify-center text-center border-y border-dashed border-white/10 bg-zoyd-surface/20">
-          <div className="w-16 h-16 border border-white/10 flex items-center justify-center mb-8 text-white/10">
-            <Trophy className="w-8 h-8" />
+        <div className="py-20 md:py-32 px-4 flex flex-col items-center justify-center text-center border-y border-dashed border-white/10 bg-zoyd-surface/20">
+          <div className="w-12 h-12 md:w-16 md:h-16 border border-white/10 flex items-center justify-center mb-6 md:mb-8 text-white/10">
+            <Trophy className="w-6 h-6 md:w-8 md:h-8" />
           </div>
-        <h3 className="text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">
+        <h3 className="text-2xl sm:text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">
           {emptyTitle}
         </h3>
-        <p className="text-white/40 max-w-md font-light mb-8">{emptyBody}</p>
+        <p className="text-white/40 max-w-md font-light mb-6 md:mb-8 text-sm md:text-base">{emptyBody}</p>
         <Link
           to="/mj/tournois/creer"
           className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
@@ -260,7 +260,7 @@ const TournamentGrid = ({
   }
 
   return (
-    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
       {tournaments.map((tournament) => (
         <Link
           key={tournament.id}
@@ -276,9 +276,9 @@ const TournamentGrid = ({
 
 const Metric = ({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
-    <span className="text-[9px] font-mono font-bold text-white/30 uppercase tracking-widest mb-3 italic">{label}</span>
+    <span className="text-[8px] md:text-[9px] font-mono font-bold text-white/30 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
-      <span className={`text-4xl font-display font-black italic ${accent}`}>{value}</span>
+      <span className={`text-3xl sm:text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>
   </div>
 );

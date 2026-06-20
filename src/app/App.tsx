@@ -10,5 +10,5 @@ export default function App() {
   useAuthSessionBootstrap();
   useChatSessionBootstrap();
   useWalletSessionBootstrap();
-  return <RouterProvider router={router} />;
+  return <RouterProvider router={router} fallbackElement={<div className="min-h-screen bg-zoyd-black flex items-center justify-center text-white/50 font-mono text-xs uppercase tracking-widest">Chargement...</div>} />;
 }

@@ -49,13 +49,13 @@ const HubMJPage: React.FC = () => {
     <div className="min-h-screen bg-zoyd-black text-white scanline font-ui">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <header className="relative border-b border-white/5 bg-zoyd-black pt-16 overflow-hidden">
+      <header className="relative border-b border-white/5 bg-zoyd-black pt-14 md:pt-16 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img src="/assets/maps/crash.jpg" alt="Crash" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-transparent to-zoyd-black/50" />
         </div>
-        <div className="relative z-10 max-w-[1600px] mx-auto px-8 pb-20 flex flex-col lg:flex-row justify-between items-end gap-12">
+        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 pb-10 md:pb-20 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 md:gap-12">
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 border border-zoyd-blue flex items-center justify-center text-zoyd-blue">
@@ -63,7 +63,7 @@ const HubMJPage: React.FC = () => {
               </div>
               <span className="text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-blue uppercase">Mode multijoueur</span>
             </div>
-            <h1 className="text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
+            <h1 className="text-4xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
               L'Arène <br /><span className="text-white/20 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
             </h1>
             <p className="text-white/40 text-lg md:text-xl font-light max-w-xl">
@@ -79,7 +79,7 @@ const HubMJPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-8 py-16 relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+      <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 md:py-16 relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
         <div>
           <div className="flex flex-col lg:flex-row gap-8 mb-12 items-start lg:items-center">
             <div className="flex flex-wrap gap-2 flex-1">

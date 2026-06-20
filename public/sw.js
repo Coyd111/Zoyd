@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zoyd-v1';
+const CACHE_NAME = 'zoyd-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

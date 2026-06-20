@@ -21,7 +21,7 @@ const DashboardLayout: React.FC = () => {
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1">
+        <main className="flex-1 pb-20 md:pb-0">
           <Outlet />
         </main>
       </div>

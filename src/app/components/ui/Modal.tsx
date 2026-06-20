@@ -40,7 +40,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'relative w-full bg-zoyd-black border border-zoyd-white-20 rounded-xl shadow-2xl pointer-events-auto',
+                'relative w-full max-h-[90vh] overflow-y-auto bg-zoyd-black border border-zoyd-white-20 rounded-xl shadow-2xl pointer-events-auto',
                 sizeClasses[size]
               )}
             >
@@ -50,6 +50,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
                   <h2 className="text-2xl font-display font-bold text-zoyd-white">{title}</h2>
                   <button
                     onClick={onClose}
+                    title="Fermer"
+                    aria-label="Fermer"
                     className="p-2 rounded-lg hover:bg-zoyd-white-5 transition-colors"
                   >
                     <X className="w-5 h-5 text-zoyd-white" />
@@ -61,6 +63,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               {!title && (
                 <button
                   onClick={onClose}
+                  title="Fermer"
+                  aria-label="Fermer"
                   className="absolute top-4 right-4 p-2 rounded-lg hover:bg-zoyd-white-5 transition-colors z-10"
                 >
                   <X className="w-5 h-5 text-zoyd-white" />

@@ -35,9 +35,9 @@ const WalletPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   const operators = [
-    { id: 'MTN MoMo', name: 'MTN MoMo', color: '#FFCC00' },
-    { id: 'Moov Money', name: 'Moov Money', color: '#009EE2' },
-    { id: 'Orange Money', name: 'Orange Money', color: '#FF7900' },
+    { id: 'MTN MoMo', name: 'MTN MoMo', colorClass: 'bg-[#FFCC00]' },
+    { id: 'Moov Money', name: 'Moov Money', colorClass: 'bg-[#009EE2]' },
+    { id: 'Orange Money', name: 'Orange Money', colorClass: 'bg-[#FF7900]' },
   ];
 
   const presetAmounts = [50, 100, 200, 500];
@@ -73,9 +73,16 @@ const WalletPage: React.FC = () => {
     const depositAmount = parseFloat(amount);
     const amountFCFA = depositAmount * 10; // 1 ZC = 10 FCFA
 
+    const publicKey = (import.meta as any).env.VITE_FEDAPAY_PUBLIC_KEY;
+    
+    if (!publicKey) {
+      toast.error("La cle FedaPay (VITE_FEDAPAY_PUBLIC_KEY) est manquante dans l'environnement local.");
+      return;
+    }
+
     // Using FedaPay Widget
     FedaPay.init({
-      public_key: import.meta.env.VITE_FEDAPAY_PUBLIC_KEY,
+      public_key: publicKey,
       transaction: {
         amount: amountFCFA,
         description: `Recharge de ${depositAmount} ZC (~ ${amountFCFA} FCFA)`,
@@ -91,7 +98,7 @@ const WalletPage: React.FC = () => {
             const result = await verifyFedaPayTransaction(resp.transaction.id);
             toast.dismiss();
             if (result.ok) {
-              toast.success(`${formatZC(result.amount)} ajoutes dans ton wallet.`);
+              toast.success(`${formatZC(result.amount || 0)} ajoutes dans ton wallet.`);
               // Update local state using hydrateFromServer
               useWalletStore.getState().hydrateFromServer(result.wallet);
             } else {
@@ -285,7 +292,7 @@ const WalletPage: React.FC = () => {
                         : 'border-zoyd-white-10 hover:border-zoyd-white-20'
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-full mx-auto mb-2" style={{ backgroundColor: operator.color }} />
+                    <div className={`w-12 h-12 rounded-full mx-auto mb-2 ${operator.colorClass}`} />
                     <p className="text-xs font-display font-semibold text-zoyd-white text-center">{operator.name}</p>
                   </button>
                 ))}

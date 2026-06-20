@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router';
 import ToastContainer from '../components/notifications/ToastContainer';
-import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { fetchCurrentUser } from '../lib/authApi';
 import { fetchAllMatchesFromDb, subscribeToMatches } from '../lib/matchApi';
@@ -10,33 +9,22 @@ import { fetchServerTournaments, subscribeToTournaments } from '../lib/tournamen
 import { useTournamentStore } from '../stores/tournamentStore';
 
 const RootLayout: React.FC = () => {
-  const { hydrateSession, logout } = useAuthStore();
+  const { sessionToken, hydrateSession, logout } = useAuthStore();
 
   useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.access_token) {
-        fetchCurrentUser(session.access_token)
-          .then((res) => hydrateSession(res.user, session.access_token))
-          .catch(() => logout());
-      }
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.access_token) {
-        fetchCurrentUser(session.access_token)
-          .then((res) => hydrateSession(res.user, session.access_token))
-          .catch(() => logout());
-      } else {
-        logout();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [hydrateSession, logout]);
+    // Check initial session with our node backend instead of supabase
+    if (sessionToken) {
+      fetchCurrentUser(sessionToken)
+        .then((res) => {
+          if (res.ok && res.user) {
+            hydrateSession(res.user, sessionToken);
+          } else {
+            logout();
+          }
+        })
+        .catch(() => logout());
+    }
+  }, [sessionToken, hydrateSession, logout]);
 
   useEffect(() => {
     // Initial fetch of all matches
@@ -44,7 +32,7 @@ const RootLayout: React.FC = () => {
       useMatchStore.getState().replaceFromServer(matches);
     });
 
-    // Subscribe to realtime updates for matches and participants
+    // Subscribes via the dummy unsubscribe function (realtime is managed by socketStore)
     const { unsubscribe } = subscribeToMatches(() => {
       fetchAllMatchesFromDb().then((matches) => {
         useMatchStore.getState().replaceFromServer(matches);
@@ -57,13 +45,16 @@ const RootLayout: React.FC = () => {
   useEffect(() => {
     // Initial fetch of all tournaments
     fetchServerTournaments().then((res) => {
-      useTournamentStore.setState({ tournaments: res.tournaments });
+      if (res.ok) {
+        useTournamentStore.setState({ tournaments: res.tournaments });
+      }
     });
 
-    // Subscribe to realtime updates for tournaments
     const { unsubscribe } = subscribeToTournaments(() => {
       fetchServerTournaments().then((res) => {
-        useTournamentStore.setState({ tournaments: res.tournaments });
+        if (res.ok) {
+          useTournamentStore.setState({ tournaments: res.tournaments });
+        }
       });
     });
 

@@ -361,7 +361,7 @@ const TournamentBracketPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40">
-        <div className="max-w-[1650px] mx-auto px-8 py-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-6 md:py-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="flex items-center gap-6">
             <Link
               to="/mj/tournois"
@@ -402,7 +402,7 @@ const TournamentBracketPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-[1650px] mx-auto px-8 py-12 relative z-10 space-y-10">
+      <main className="max-w-[1650px] mx-auto px-4 md:px-8 py-8 md:py-12 relative z-10 space-y-10">
         {loadError ? (
           <div className="border border-red-400/20 bg-red-400/5 px-5 py-4 text-sm text-red-200">
             {loadError}

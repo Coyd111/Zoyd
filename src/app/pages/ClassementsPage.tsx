@@ -240,7 +240,7 @@ const ClassementsPage: React.FC = () => {
           <img src="/assets/illustrations/ranked_arena.jpg" alt="Ranked Arena" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         </div>
-        <div className="relative z-10 max-w-[1400px] mx-auto px-8 pb-12">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-8 pb-12">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
               <Trophy className="w-5 h-5" />
@@ -278,7 +278,7 @@ const ClassementsPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto px-8 py-12 relative z-10">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12 relative z-10">
         <div className="flex flex-wrap gap-2 mb-12 border-b border-white/5 pb-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;

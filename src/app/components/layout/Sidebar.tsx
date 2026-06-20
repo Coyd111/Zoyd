@@ -82,7 +82,7 @@ const Sidebar: React.FC = () => {
               const isActive = location.pathname.startsWith(item.path);
               return (
                 <Link
-                  key={item.path}
+                  key={item.label}
                   to={item.path}
                   className={cn(
                     'flex items-center justify-between px-4 py-3 transition-all font-display font-black text-xs tracking-widest italic uppercase border border-transparent',
@@ -113,6 +113,15 @@ const Sidebar: React.FC = () => {
           <Settings className="w-3 h-3" />
           Parametres
         </Link>
+        <button
+          onClick={() => {
+            useAuthStore.getState().logout();
+          }}
+          className="flex w-full items-center gap-3 px-3 py-2 text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
+        >
+          <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          Se deconnecter
+        </button>
       </div>
 
       <div className="border-t border-white/5 p-5 bg-zoyd-surface/20">

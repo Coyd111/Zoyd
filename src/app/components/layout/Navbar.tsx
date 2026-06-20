@@ -20,7 +20,7 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="sticky top-0 z-40 bg-zoyd-black border-b border-white/5 w-full">
-      <div className="max-w-[1600px] mx-auto px-6 h-14 flex items-center justify-between">
+      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between">
         <Link to={navAuthenticated ? '/mj' : '/'} className="flex items-center gap-3 group">
           <ZoydLogo compact className="group-hover:opacity-90 transition-opacity" />
         </Link>
@@ -56,7 +56,7 @@ const Navbar: React.FC = () => {
                 to="/wallet"
                 className="flex items-center gap-3 px-3 py-1.5 border border-white/5 hover:border-zoyd-yellow/30 bg-zoyd-surface/40 transition-all group"
               >
-                <div className="text-right hidden xs:block">
+                <div className="text-right hidden sm:block">
                   <div className="text-[8px] font-mono font-bold text-white/30 uppercase tracking-widest">Solde</div>
                   <div className="font-display font-black text-xs text-zoyd-yellow tracking-widest leading-none">
                     {formatZC(totalBalance)}
@@ -65,7 +65,7 @@ const Navbar: React.FC = () => {
                 <Wallet className="w-4 h-4 text-zoyd-yellow group-hover:scale-110 transition-transform" />
               </Link>
 
-              <div className="flex items-center gap-4 border-l border-white/10 pl-6 h-14">
+              <div className="flex items-center gap-2 sm:gap-4 border-l border-white/10 pl-3 sm:pl-6 h-14">
                 <NotificationDropdown />
 
                 <button

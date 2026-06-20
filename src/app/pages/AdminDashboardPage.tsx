@@ -240,7 +240,7 @@ const AdminDashboardPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40">
-        <div className="max-w-[1600px] mx-auto px-8 py-10">
+        <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-10">
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-8">
             <div>
               <div className="flex items-center gap-4 mb-2">
@@ -294,7 +294,7 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-8 py-12 relative z-10">
+      <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 md:py-12 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           <StatCard
             icon={<Swords className="w-5 h-5 text-zoyd-blue" />}

@@ -1,16 +1,50 @@
+/**
+ * walletStore.test.ts
+ *
+ * Tests for the wallet Zustand store after the "backend-as-source-of-truth"
+ * refactor. All business-logic mutations (releaseWinnings, settleMatchLoss,
+ * deductEntryFee, addBonus) are now handled exclusively by persistence.mjs.
+ * The store only exposes:
+ *   - hydrateFromServer  : full state replacement from a server snapshot
+ *   - lockFunds          : optimistic-UI helper to lock entry fees locally
+ *   - unlockFunds        : optimistic-UI helper to revert a lock on cancellation
+ *   - addTransaction     : append a transaction record
+ *   - deposit / withdraw : async calls that go through the API
+ *   - getTotalBalance / getAvailableCash / getAvailableToSpend : selectors
+ *
+ * TODO: Once the WebSocket layer emits wallet_update events, replace the
+ * lockFunds / unlockFunds tests with socket-driven integration tests.
+ */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useWalletStore } from './walletStore';
 
+// ---------------------------------------------------------------------------
+// Shared reset state
+// ---------------------------------------------------------------------------
+const EMPTY_WALLET = {
+  cashBalance: 0,
+  bonusBalance: 0,
+  lockedBalance: 0,
+  pendingWinnings: 0,
+  transactions: [],
+  lockedEntries: {},
+};
+
+const FUNDED_WALLET = {
+  cashBalance: 100,
+  bonusBalance: 50,
+  lockedBalance: 0,
+  pendingWinnings: 0,
+  transactions: [],
+  lockedEntries: {},
+};
+
+// ---------------------------------------------------------------------------
+// Hydration
+// ---------------------------------------------------------------------------
 describe('walletStore - Hydration', () => {
   beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 0,
-      bonusBalance: 0,
-      lockedBalance: 0,
-      pendingWinnings: 0,
-      transactions: [],
-      lockedEntries: {},
-    });
+    useWalletStore.setState(EMPTY_WALLET);
   });
 
   it('should hydrate from server snapshot', () => {
@@ -50,14 +84,14 @@ describe('walletStore - Hydration', () => {
     expect(state.lockedEntries['match1']).toBeDefined();
   });
 
-  it('should handle null values in snapshot', () => {
+  it('should handle null / undefined values in snapshot gracefully', () => {
     const snapshot = {
-      cashBalance: null,
-      bonusBalance: undefined,
+      cashBalance: null as any,
+      bonusBalance: undefined as any,
       lockedBalance: 0,
       pendingWinnings: 0,
-      transactions: null,
-      lockedEntries: undefined,
+      transactions: null as any,
+      lockedEntries: undefined as any,
     };
 
     useWalletStore.getState().hydrateFromServer(snapshot);
@@ -68,21 +102,24 @@ describe('walletStore - Hydration', () => {
     expect(state.transactions).toEqual([]);
     expect(state.lockedEntries).toEqual({});
   });
+
+  it('should replace existing state completely on hydration', () => {
+    useWalletStore.setState({ cashBalance: 999 });
+    useWalletStore.getState().hydrateFromServer({ cashBalance: 42, bonusBalance: 0, lockedBalance: 0, pendingWinnings: 0, transactions: [], lockedEntries: {} });
+
+    expect(useWalletStore.getState().cashBalance).toBe(42);
+  });
 });
 
-describe('walletStore - Fund Locking', () => {
+// ---------------------------------------------------------------------------
+// Optimistic-UI fund locking (lockFunds)
+// ---------------------------------------------------------------------------
+describe('walletStore - Optimistic Fund Locking', () => {
   beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 100,
-      bonusBalance: 50,
-      lockedBalance: 0,
-      pendingWinnings: 0,
-      transactions: [],
-      lockedEntries: {},
-    });
+    useWalletStore.setState({ ...FUNDED_WALLET });
   });
 
-  it('should lock funds successfully', () => {
+  it('should lock funds from cash when cash is sufficient', () => {
     const result = useWalletStore.getState().lockFunds(30, 'match1');
 
     expect(result).toBe(true);
@@ -94,202 +131,9 @@ describe('walletStore - Fund Locking', () => {
     expect(state.lockedEntries['match1'].amount).toBe(30);
   });
 
-  it('should fail when insufficient funds', () => {
-    const result = useWalletStore.getState().lockFunds(200, 'match1');
-
-    expect(result).toBe(false);
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(100);
-    expect(state.lockedBalance).toBe(0);
-  });
-
-  it('should create transaction for lock', () => {
-    useWalletStore.getState().lockFunds(30, 'match1');
-
-    const state = useWalletStore.getState();
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].type).toBe('entry_fee');
-    expect(state.transactions[0].amount).toBe(-30);
-  });
-});
-
-describe('walletStore - Fund Unlocking', () => {
-  beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 70,
-      bonusBalance: 45,
-      lockedBalance: 30,
-      pendingWinnings: 0,
-      transactions: [],
-      lockedEntries: {
-        match1: {
-          amount: 30,
-          cashAmount: 25,
-          bonusAmount: 5,
-          lockedAt: '2024-01-01',
-        },
-      },
-    });
-  });
-
-  it('should unlock funds successfully', () => {
-    useWalletStore.getState().unlockFunds(30, 'match1');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(95);
-    expect(state.bonusBalance).toBe(50);
-    expect(state.lockedBalance).toBe(0);
-    expect(state.lockedEntries['match1']).toBeUndefined();
-  });
-
-  it('should do nothing when no reservation exists', () => {
-    useWalletStore.getState().unlockFunds(30, 'match2');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(70);
-    expect(state.bonusBalance).toBe(45);
-    expect(state.lockedBalance).toBe(30);
-  });
-
-  it('should create refund transaction', () => {
-    useWalletStore.getState().unlockFunds(30, 'match1');
-
-    const state = useWalletStore.getState();
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].type).toBe('refund');
-    expect(state.transactions[0].amount).toBe(30);
-  });
-});
-
-describe('walletStore - Winnings Release', () => {
-  beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 70,
-      bonusBalance: 45,
-      lockedBalance: 30,
-      pendingWinnings: 20,
-      transactions: [],
-      lockedEntries: {
-        match1: {
-          amount: 30,
-          cashAmount: 25,
-          bonusAmount: 5,
-          lockedAt: '2024-01-01',
-        },
-      },
-    });
-  });
-
-  it('should release winnings and unlock entry', () => {
-    useWalletStore.getState().releaseWinnings(50, 'match1', 'prize_win', 'Match win');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(120);
-    expect(state.lockedBalance).toBe(0);
-    expect(state.pendingWinnings).toBe(0);
-    expect(state.lockedEntries['match1']).toBeUndefined();
-  });
-
-  it('should release winnings without existing reservation', () => {
-    useWalletStore.setState({ lockedEntries: {} });
-    useWalletStore.getState().releaseWinnings(50, 'match1', 'arbitration_fee', 'Commission');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(120);
-    expect(state.lockedBalance).toBe(0);
-  });
-
-  it('should create prize_win transaction', () => {
-    useWalletStore.getState().releaseWinnings(50, 'match1', 'prize_win', 'Match win');
-
-    const state = useWalletStore.getState();
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].type).toBe('prize_win');
-    expect(state.transactions[0].amount).toBe(50);
-  });
-
-  it('should create arbitration_fee transaction', () => {
-    useWalletStore.getState().releaseWinnings(10, 'match1', 'arbitration_fee');
-
-    const state = useWalletStore.getState();
-    expect(state.transactions[0].type).toBe('arbitration_fee');
-  });
-});
-
-describe('walletStore - Match Loss Settlement', () => {
-  beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 70,
-      bonusBalance: 45,
-      lockedBalance: 30,
-      pendingWinnings: 0,
-      transactions: [],
-      lockedEntries: {
-        match1: {
-          amount: 30,
-          cashAmount: 25,
-          bonusAmount: 5,
-          lockedAt: '2024-01-01',
-        },
-      },
-    });
-  });
-
-  it('should settle match loss without refund', () => {
-    useWalletStore.getState().settleMatchLoss('match1', 'Loss settlement');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(70);
-    expect(state.bonusBalance).toBe(45);
-    expect(state.lockedBalance).toBe(0);
-    expect(state.lockedEntries['match1']).toBeUndefined();
-  });
-
-  it('should do nothing when no reservation exists', () => {
-    useWalletStore.setState({ lockedEntries: {} });
-    useWalletStore.getState().settleMatchLoss('match1', 'Loss settlement');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(70);
-    expect(state.bonusBalance).toBe(45);
-  });
-
-  it('should create match_loss transaction', () => {
-    useWalletStore.getState().settleMatchLoss('match1', 'Loss settlement');
-
-    const state = useWalletStore.getState();
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].type).toBe('match_loss');
-    expect(state.transactions[0].amount).toBe(0);
-    expect(state.transactions[0].metadata?.lockedAmount).toBe(30);
-  });
-});
-
-describe('walletStore - Entry Fee Deduction', () => {
-  beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 100,
-      bonusBalance: 50,
-      lockedBalance: 0,
-      pendingWinnings: 0,
-      transactions: [],
-      lockedEntries: {},
-    });
-  });
-
-  it('should deduct from cash when sufficient', () => {
-    const result = useWalletStore.getState().deductEntryFee(30, 'match1');
-
-    expect(result).toBe(true);
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(70);
-    expect(state.bonusBalance).toBe(50);
-    expect(state.lockedBalance).toBe(30);
-  });
-
-  it('should deduct from bonus when cash insufficient', () => {
-    useWalletStore.setState({ cashBalance: 10, bonusBalance: 50 });
-    const result = useWalletStore.getState().deductEntryFee(30, 'match1');
+  it('should lock funds from bonus when cash is insufficient', () => {
+    useWalletStore.setState({ cashBalance: 10, bonusBalance: 50, lockedBalance: 0, lockedEntries: {} });
+    const result = useWalletStore.getState().lockFunds(30, 'match1');
 
     expect(result).toBe(true);
     const state = useWalletStore.getState();
@@ -298,54 +142,73 @@ describe('walletStore - Entry Fee Deduction', () => {
     expect(state.lockedBalance).toBe(30);
   });
 
-  it('should split deduction between cash and bonus', () => {
-    const result = useWalletStore.getState().deductEntryFee(30, 'match1');
-
-    expect(result).toBe(true);
-    const state = useWalletStore.getState();
-    expect(state.lockedEntries['match1'].cashAmount).toBe(30);
-    expect(state.lockedEntries['match1'].bonusAmount).toBe(0);
-  });
-
-  it('should fail when insufficient total funds', () => {
-    useWalletStore.setState({ cashBalance: 10, bonusBalance: 5 });
-    const result = useWalletStore.getState().deductEntryFee(30, 'match1');
+  it('should return false and not mutate state when total funds are insufficient', () => {
+    useWalletStore.setState({ cashBalance: 10, bonusBalance: 5, lockedBalance: 0, lockedEntries: {} });
+    const result = useWalletStore.getState().lockFunds(30, 'match1');
 
     expect(result).toBe(false);
+    expect(useWalletStore.getState().lockedBalance).toBe(0);
+  });
+
+  it('should create an entry_fee transaction when locking', () => {
+    useWalletStore.getState().lockFunds(30, 'match1');
+
+    const state = useWalletStore.getState();
+    const entryFeeTx = state.transactions.find((tx) => tx.type === 'entry_fee');
+    expect(entryFeeTx).toBeDefined();
+    expect(entryFeeTx?.amount).toBe(-30);
   });
 });
 
-describe('walletStore - Bonus Addition', () => {
+// ---------------------------------------------------------------------------
+// Optimistic-UI fund unlocking (unlockFunds)
+// ---------------------------------------------------------------------------
+describe('walletStore - Optimistic Fund Unlocking', () => {
   beforeEach(() => {
     useWalletStore.setState({
-      cashBalance: 100,
-      bonusBalance: 50,
-      lockedBalance: 0,
+      cashBalance: 70,
+      bonusBalance: 45,
+      lockedBalance: 30,
       pendingWinnings: 0,
       transactions: [],
-      lockedEntries: {},
+      lockedEntries: {
+        match1: { amount: 30, cashAmount: 25, bonusAmount: 5, lockedAt: '2024-01-01' },
+      },
     });
   });
 
-  it('should add bonus successfully', () => {
-    useWalletStore.getState().addBonus(25, 'Welcome bonus');
+  it('should restore cash and bonus on unlock', () => {
+    useWalletStore.getState().unlockFunds(30, 'match1');
 
     const state = useWalletStore.getState();
-    expect(state.bonusBalance).toBe(75);
-    expect(state.cashBalance).toBe(100);
+    expect(state.cashBalance).toBe(95);   // 70 + 25
+    expect(state.bonusBalance).toBe(50);  // 45 + 5
+    expect(state.lockedBalance).toBe(0);
+    expect(state.lockedEntries['match1']).toBeUndefined();
   });
 
-  it('should create bonus transaction', () => {
-    useWalletStore.getState().addBonus(25, 'Welcome bonus');
+  it('should do nothing when entry key has no reservation', () => {
+    useWalletStore.getState().unlockFunds(30, 'unknown');
 
     const state = useWalletStore.getState();
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].type).toBe('bonus');
-    expect(state.transactions[0].amount).toBe(25);
+    expect(state.cashBalance).toBe(70);
+    expect(state.lockedBalance).toBe(30);
+  });
+
+  it('should create a refund transaction on unlock', () => {
+    useWalletStore.getState().unlockFunds(30, 'match1');
+
+    const state = useWalletStore.getState();
+    const refundTx = state.transactions.find((tx) => tx.type === 'refund');
+    expect(refundTx).toBeDefined();
+    expect(refundTx?.amount).toBe(30);
   });
 });
 
-describe('walletStore - Balance Calculations', () => {
+// ---------------------------------------------------------------------------
+// Balance selectors
+// ---------------------------------------------------------------------------
+describe('walletStore - Balance Selectors', () => {
   beforeEach(() => {
     useWalletStore.setState({
       cashBalance: 100,
@@ -357,45 +220,48 @@ describe('walletStore - Balance Calculations', () => {
     });
   });
 
-  it('should calculate total balance', () => {
-    const total = useWalletStore.getState().getTotalBalance();
-    expect(total).toBe(185);
+  it('getTotalBalance should sum all balance components', () => {
+    expect(useWalletStore.getState().getTotalBalance()).toBe(185);
   });
 
-  it('should calculate available cash', () => {
-    const cash = useWalletStore.getState().getAvailableCash();
-    expect(cash).toBe(100);
+  it('getAvailableCash should return only cash balance', () => {
+    expect(useWalletStore.getState().getAvailableCash()).toBe(100);
   });
 
-  it('should calculate available to spend (cash + bonus)', () => {
-    const available = useWalletStore.getState().getAvailableToSpend();
-    expect(available).toBe(150);
+  it('getAvailableToSpend should return cash + bonus (excludes locked)', () => {
+    expect(useWalletStore.getState().getAvailableToSpend()).toBe(150);
   });
 });
 
+// ---------------------------------------------------------------------------
+// Transaction management
+// ---------------------------------------------------------------------------
 describe('walletStore - Transaction Management', () => {
   beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 100,
-      bonusBalance: 50,
-      lockedBalance: 0,
-      pendingWinnings: 0,
-      transactions: [],
-      lockedEntries: {},
-    });
+    useWalletStore.setState({ ...EMPTY_WALLET });
   });
 
-  it('should add transaction', () => {
+  it('should append a transaction with generated id and timestamp', () => {
     useWalletStore.getState().addTransaction({
-      type: 'deposit' as const,
+      type: 'deposit',
       amount: 100,
       description: 'Test deposit',
-      status: 'completed' as const,
+      status: 'completed',
     });
 
     const state = useWalletStore.getState();
     expect(state.transactions).toHaveLength(1);
     expect(state.transactions[0].id).toBeDefined();
     expect(state.transactions[0].timestamp).toBeDefined();
+    expect(state.transactions[0].type).toBe('deposit');
+  });
+
+  it('should prepend newer transactions (most recent first)', () => {
+    useWalletStore.getState().addTransaction({ type: 'deposit', amount: 10, description: 'A', status: 'completed' });
+    useWalletStore.getState().addTransaction({ type: 'bonus', amount: 5, description: 'B', status: 'completed' });
+
+    const state = useWalletStore.getState();
+    expect(state.transactions[0].type).toBe('bonus');
+    expect(state.transactions[1].type).toBe('deposit');
   });
 });

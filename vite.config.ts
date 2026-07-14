@@ -33,22 +33,14 @@ export default defineConfig({
         target: 'http://localhost:4001',
         ws: true,
       },
-      '/api/realtime': {
-        target: 'http://localhost:4001',
-      },
-      '/api/auth': {
-        target: 'http://localhost:4001',
-      },
-      '/api/wallet': {
-        target: 'http://localhost:4001',
-      },
-      '/api/matches': {
-        target: 'http://localhost:4001',
-      },
-      '/api/admin': {
+      '/api': {
         target: 'http://localhost:4001',
       },
     },
+  },
+  optimizeDeps: {
+    force: true,
+    exclude: ['zustand/middleware'],
   },
   build: {
     // Windows can keep copied CODM bundles locked inside dist between builds.

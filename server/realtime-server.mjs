@@ -21,6 +21,7 @@ import {
   getRealtimeSession,
   getUnreadCountForUser,
   getStateCollection,
+  loadFromSupabase,
   markChatChannelRead,
   removePushSubscription,
   replaceStateCollection,
@@ -1822,20 +1823,26 @@ io.on('connection', (socket) => {
   });
 });
 
-ensureGlobalChatChannel();
-syncMatchChatChannels(getStateCollection('matches'));
+const start = async () => {
+  await loadFromSupabase();
 
-setInterval(() => {
-  try {
-    const outcome = processMatchAutomationOnServer(getStateCollection('matches'));
-    if (outcome.changed) {
-      saveMatches(io, outcome.matches);
+  ensureGlobalChatChannel();
+  syncMatchChatChannels(getStateCollection('matches'));
+
+  setInterval(() => {
+    try {
+      const outcome = processMatchAutomationOnServer(getStateCollection('matches'));
+      if (outcome.changed) {
+        saveMatches(io, outcome.matches);
+      }
+    } catch (error) {
+      console.error('[zoyd-realtime] match automation error', error);
     }
-  } catch (error) {
-    console.error('[zoyd-realtime] match automation error', error);
-  }
-}, MATCH_AUTOMATION_INTERVAL_MS);
+  }, MATCH_AUTOMATION_INTERVAL_MS);
 
-server.listen(PORT, () => {
-  console.log(`[zoyd-realtime] listening on http://localhost:${PORT}`);
-});
+  server.listen(PORT, () => {
+    console.log(`[zoyd-realtime] listening on http://localhost:${PORT}`);
+  });
+};
+
+start();

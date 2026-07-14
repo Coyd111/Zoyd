@@ -139,6 +139,9 @@ export const loadFromSupabase = async () => {
     if (users) {
       for (const row of users) {
         memoryUsers.set(row.id, sanitizeUserPayload(row.payload));
+        if (row.password_hash) {
+          storePasswordHash(row.id, row.password_hash, row.payload?.pseudo, row.payload?.email, row.payload?.phone);
+        }
       }
     }
 
@@ -229,6 +232,14 @@ export const loadFromSupabase = async () => {
     if (subs) {
       for (const s of subs) {
         memoryPushSubscriptions.set(s.endpoint, s.payload);
+      }
+    }
+
+    // Processed transactions (FedaPay idempotency)
+    const { data: processed } = await supabase.from('processed_transactions').select('transaction_id');
+    if (processed) {
+      for (const p of processed) {
+        memoryProcessedTransactions.add(p.transaction_id);
       }
     }
 

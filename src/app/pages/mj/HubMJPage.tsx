@@ -73,7 +73,7 @@ const HubMJPage: React.FC = () => {
 
           <div className="hidden md:flex gap-10 border-l border-white/10 pl-10 py-4">
             <Metric label="Matchs Actifs" value={metrics.active.toString()} accent="text-white" />
-            <Metric label="Prize Pool Global" value={`${metrics.livePool.toLocaleString()} FCFA`} accent="text-zoyd-yellow" />
+            <Metric label="Prize Pool Global" value={`${metrics.livePool.toLocaleString()} ZC`} accent="text-zoyd-yellow" />
             <Metric label="Arbitres Demandés" value={metrics.arbitersNeeded.toString()} accent="text-zoyd-blue" />
           </div>
         </div>

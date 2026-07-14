@@ -40,3 +40,7 @@ export const fetchCurrentUser = async (token: string) => {
 export const logoutFromBackend = async (token: string) => {
   return authorizedPost<{ ok: boolean }>('/api/auth/logout');
 };
+
+export const updateServerAccount = async (updates: Partial<User>): Promise<{ ok: boolean; user: User }> => {
+  return authorizedPost<{ ok: boolean; user: User }>('/api/auth/me', updates, { method: 'PATCH' });
+};

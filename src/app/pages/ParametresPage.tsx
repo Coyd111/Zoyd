@@ -7,6 +7,7 @@ import { useNotificationStore } from '../stores/notificationStore';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { updateServerAccount } from '../lib/authApi';
 import { CODM_RANKS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
 
 const tabs = [
@@ -36,6 +37,7 @@ const ParametresPage: React.FC = () => {
   const { user, updateUser } = useAuthStore();
   const { markAllAsRead } = useNotificationStore();
   const [activeTab, setActiveTab] = useState<ActiveTab>('account');
+  const [isSaving, setIsSaving] = useState(false);
   const [notificationToggles, setNotificationToggles] = useState({
     matchStart: true,
     results: true,
@@ -75,20 +77,32 @@ const ParametresPage: React.FC = () => {
     setForm((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
-  const handleSave = () => {
-    updateUser({
-      phone: form.phone,
-      country: form.country,
-      bio: form.bio.trim() || undefined,
-      streamerMode: form.streamerMode,
-      streamerPseudo: form.streamerMode ? form.streamerPseudo.trim() || undefined : undefined,
-      controllerType: form.controllerType,
-      device: form.device,
-      levelCODM: Math.max(1, Number(form.levelCODM) || 1),
-      rankMJ: form.rankMJ,
-      rankBR: form.rankBR,
-    });
-    toast.success('Tes preferences ont bien ete enregistrees.');
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updates = {
+        phone: form.phone,
+        country: form.country,
+        bio: form.bio.trim() || undefined,
+        streamerMode: form.streamerMode,
+        streamerPseudo: form.streamerMode ? form.streamerPseudo.trim() || undefined : undefined,
+        controllerType: form.controllerType,
+        device: form.device,
+        levelCODM: Math.max(1, Number(form.levelCODM) || 1),
+        rankMJ: form.rankMJ,
+        rankBR: form.rankBR,
+      };
+      const response = await updateServerAccount(updates);
+      if (response.ok) {
+        updateUser(response.user);
+        toast.success('Tes préférences ont bien été enregistrées.');
+      }
+    } catch (err) {
+      toast.error('Erreur lors de la sauvegarde de tes paramètres.');
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -347,12 +361,12 @@ const ParametresPage: React.FC = () => {
               </>
             ) : null}
 
-            <div className="pt-2 flex justify-end">
-              <Button variant="primary" onClick={handleSave}>
-                <Save className="w-4 h-4 mr-2" />
-                Enregistrer
-              </Button>
-            </div>
+              <div className="flex justify-end pt-4 border-t border-white/5">
+                <Button variant="primary" onClick={handleSave} disabled={isSaving}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? 'SAUVEGARDE...' : 'ENREGISTRER LES MODIFICATIONS'}
+                </Button>
+              </div>
           </motion.div>
         </div>
       </div>

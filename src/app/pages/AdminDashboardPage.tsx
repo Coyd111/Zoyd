@@ -14,6 +14,8 @@ import {
   Filter,
   ArrowRight,
   Eye,
+  Flame,
+  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminAwardServerMatch, adminCancelServerMatch, adminResolveServerDispute } from '../lib/matchApi';
@@ -54,6 +56,7 @@ const disputeCategoryLabels = {
 
 type MatchFilter = 'all' | 'priority' | 'active' | 'closed';
 type UserFilter = 'all' | 'critical' | 'watch';
+type DisputeFilter = 'all' | 'escalated' | 'level1';
 
 const AdminDashboardPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -64,6 +67,7 @@ const AdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'disputes' | 'users'>('overview');
   const [matchFilter, setMatchFilter] = useState<MatchFilter>('priority');
   const [userFilter, setUserFilter] = useState<UserFilter>('critical');
+  const [disputeFilter, setDisputeFilter] = useState<DisputeFilter>('escalated');
 
   const players = useMemo(
     () =>
@@ -123,6 +127,23 @@ const AdminDashboardPage: React.FC = () => {
     [adminInsights.openDisputes]
   );
 
+  const escalatedDisputes = useMemo(
+    () =>
+      adminInsights.openDisputes.filter((match) =>
+        match.disputes.some((d) => (d.level || 1) >= 2)
+      ),
+    [adminInsights.openDisputes]
+  );
+
+  const filteredDisputes = useMemo(() => {
+    if (disputeFilter === 'escalated') return escalatedDisputes;
+    if (disputeFilter === 'level1')
+      return adminInsights.openDisputes.filter((match) =>
+        match.disputes.every((d) => (d.level || 1) < 2)
+      );
+    return adminInsights.openDisputes;
+  }, [disputeFilter, adminInsights.openDisputes, escalatedDisputes]);
+
   const sortedMatches = useMemo(
     () =>
       [...matches].sort(
@@ -133,16 +154,19 @@ const AdminDashboardPage: React.FC = () => {
   );
 
   const priorityQueue = useMemo(() => {
-    const disputeItems = adminInsights.openDisputes.map((match) => ({
-      id: `dispute-${match.id}`,
-      kind: 'litige' as const,
-      label: match.id,
-      body: `${match.format} / ${match.rules.map} / ${match.players.length} joueurs impactes`,
-      timestamp: match.dispute?.openedAt || match.disputes[0]?.openedAt || match.updatedAt || match.createdAt,
-      severity: 3,
-      action: () => setActiveTab('disputes'),
-      actionLabel: 'Traiter le litige',
-    }));
+    const disputeItems = adminInsights.openDisputes.map((match) => {
+      const isEscalated = match.disputes.some((d) => (d.level || 1) >= 2);
+      return {
+        id: `dispute-${match.id}`,
+        kind: 'litige' as const,
+        label: match.id,
+        body: `${match.format} / ${match.rules.map} / ${match.players.length} joueurs impactes${isEscalated ? ' — ⚠ Escaladé' : ''}`,
+        timestamp: match.dispute?.openedAt || match.disputes[0]?.openedAt || match.updatedAt || match.createdAt,
+        severity: isEscalated ? 4 : 3,
+        action: () => setActiveTab('disputes'),
+        actionLabel: isEscalated ? 'Traiter en urgence' : 'Traiter le litige',
+      };
+    });
 
     const reportItems = pendingReports.map((report) => {
       const targetPlayer = playerById.get(report.targetId);
@@ -239,12 +263,12 @@ const AdminDashboardPage: React.FC = () => {
     <div className="min-h-screen bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <header className="relative border-b border-white/5 bg-zoyd-surface/40">
+      <header className="relative">
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-10">
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-8">
             <div>
               <div className="flex items-center gap-4 mb-2">
-                <div className="w-10 h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
+                <div className="w-10 h-10 flex items-center justify-center text-zoyd-yellow">
                   <Shield className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest italic">
@@ -318,21 +342,31 @@ const AdminDashboardPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 bg-white/5 p-1 border border-white/5 mb-8">
+        <div className="flex flex-wrap gap-2 mb-8">
           {[
             { id: 'overview', label: 'overview', count: priorityQueue.length },
             { id: 'matches', label: 'matches', count: filteredMatches.length },
-            { id: 'disputes', label: 'disputes', count: adminInsights.openDisputes.length },
+            {
+              id: 'disputes',
+              label: 'disputes',
+              count: adminInsights.openDisputes.length,
+              urgent: escalatedDisputes.length,
+            },
             { id: 'users', label: 'users', count: filteredUsers.length },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all ${
+              className={`relative px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all ${
                 activeTab === tab.id ? 'bg-white text-black' : 'text-white/30 hover:text-white hover:bg-white/5'
               }`}
             >
               {tab.label} <span className="opacity-60">({tab.count})</span>
+              {'urgent' in tab && (tab as any).urgent > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] font-mono font-black text-white flex items-center justify-center">
+                  {(tab as any).urgent}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -340,7 +374,7 @@ const AdminDashboardPage: React.FC = () => {
         {activeTab === 'overview' ? (
           <div className="space-y-8">
             <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6">
-              <section className="hud-panel p-6 bg-zoyd-surface/20 border border-white/5">
+              <section className="p-6">
                 <div className="flex items-center justify-between gap-4 mb-5">
                   <div>
                     <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">
@@ -361,7 +395,7 @@ const AdminDashboardPage: React.FC = () => {
                       <button
                         key={item.id}
                         onClick={item.action}
-                        className="w-full text-left border border-white/5 bg-black/40 p-4 hover:border-white/15 transition-colors"
+                        className="w-full text-left p-4 transition-colors"
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                           <div className="min-w-0">
@@ -390,7 +424,7 @@ const AdminDashboardPage: React.FC = () => {
               </section>
 
               <section className="space-y-6">
-                <div className="hud-panel p-6 bg-zoyd-surface/20 border border-white/5">
+                <div className="p-6">
                   <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-4">
                     OPERATIONS HEALTH
                   </div>
@@ -416,7 +450,7 @@ const AdminDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="hud-panel p-6 bg-zoyd-surface/20 border border-white/5">
+                <div className="p-6">
                   <div className="flex items-center justify-between gap-4 mb-4">
                     <div>
                       <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">
@@ -492,7 +526,7 @@ const AdminDashboardPage: React.FC = () => {
 
             <div className="grid gap-3">
               {filteredMatches.map((match) => (
-                <div key={match.id} className="border border-white/5 bg-black/40 p-5">
+                <div key={match.id} className="p-5">
                   <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5">
                     <div className="space-y-3 min-w-0">
                       <div className="flex flex-wrap items-center gap-3">
@@ -545,38 +579,95 @@ const AdminDashboardPage: React.FC = () => {
         ) : null}
 
         {activeTab === 'disputes' ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
+          <div className="space-y-6">
+            {/* Header + filtres */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-display font-black uppercase italic">Litiges en Cours</h2>
                 <p className="text-white/35 text-sm">
-                  Chaque carte remonte le contexte utile pour decider vite sans chercher l&apos;info ailleurs.
+                  Chaque carte remonte le contexte utile pour décider vite sans chercher l&apos;info ailleurs.
                 </p>
               </div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/25">
-                {adminInsights.openDisputes.length} dossiers actifs
+              <div className="flex flex-wrap items-center gap-3">
+                {escalatedDisputes.length > 0 && (
+                  <div className="flex items-center gap-2 border border-red-500/30 bg-red-500/10 px-3 py-2">
+                    <Flame className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-red-400">
+                      {escalatedDisputes.length} escaladé(s) — intervention admin requise
+                    </span>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'escalated', label: 'Escaladés', count: escalatedDisputes.length },
+                    { id: 'level1', label: 'Niveau 1', count: adminInsights.openDisputes.length - escalatedDisputes.length },
+                    { id: 'all', label: 'Tous', count: adminInsights.openDisputes.length },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setDisputeFilter(f.id as DisputeFilter)}
+                      className={`px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors ${
+                        disputeFilter === f.id
+                          ? 'bg-white text-black border-white'
+                          : 'border-white/10 text-white/35 hover:text-white hover:border-white/20'
+                      }`}
+                    >
+                      <Filter className="w-3 h-3 inline mr-2" />
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {adminInsights.openDisputes.length === 0 ? (
-              <p className="text-white/20 text-sm font-mono">Aucun litige actif.</p>
+            {filteredDisputes.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-white/20 text-sm font-mono">
+                  {disputeFilter === 'escalated' ? 'Aucun litige escaladé. Bonne nouvelle !' : 'Aucun litige dans ce filtre.'}
+                </p>
+              </div>
             ) : (
-              <div className="grid gap-4">
-                {adminInsights.openDisputes.map((match) => {
+              <div className="grid gap-5">
+                {filteredDisputes.map((match) => {
                   const activeDispute =
-                    match.disputes.find((dispute) => dispute.status === 'open' || dispute.status === 'under_review') ||
+                    match.disputes.find((d) => d.status === 'open' || d.status === 'under_review') ||
                     match.dispute ||
                     match.disputes[0];
+                  const isEscalated = (activeDispute?.level || 1) >= 2;
 
                   return (
-                    <div key={match.id} className="border border-red-500/20 p-6 bg-red-500/5">
+                    <div
+                      key={match.id}
+                      className="p-6"
+                    >
+                      {/* Bandeau escalade */}
+                      {isEscalated && (
+                        <div className="flex items-center gap-3 mb-5 border-b border-red-500/20 pb-4">
+                          <Flame className="w-4 h-4 text-red-400 shrink-0" />
+                          <div>
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-red-400">
+                              Litige Escaladé — Niveau Admin
+                            </div>
+                            <div className="text-xs text-white/40">
+                              Escaladé par {activeDispute?.escalatedByPseudo || 'l\'arbitre'}
+                              {activeDispute?.escalatedAt
+                                ? ` · ${getRelativeTime(activeDispute.escalatedAt)}`
+                                : ''}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-6 mb-5">
                         <div>
                           <div className="flex flex-wrap items-center gap-3 mb-2">
                             <div className="font-display font-black text-lg uppercase italic">{match.id}</div>
-                            <StatusPill label="litige ouvert" tone="text-red-300 border-red-500/30" />
+                            <StatusPill
+                              label={isEscalated ? 'Niveau Admin' : 'litige ouvert'}
+                              tone={isEscalated ? 'text-red-400 border-red-500/40' : 'text-red-300 border-red-500/30'}
+                            />
                             {activeDispute?.prizePoolFrozen ? (
-                              <StatusPill label="pool gele" tone="text-zoyd-yellow border-zoyd-yellow/30" />
+                              <StatusPill label="pool gelé" tone="text-zoyd-yellow border-zoyd-yellow/30" />
                             ) : null}
                           </div>
                           <div className="text-[11px] text-white/45">
@@ -588,7 +679,7 @@ const AdminDashboardPage: React.FC = () => {
                         <div className="grid sm:grid-cols-3 gap-3 text-sm font-mono text-white/40 min-w-0">
                           <DisputeStat label="Ouvert par" value={activeDispute?.openedByPseudo || 'Inconnu'} />
                           <DisputeStat
-                            label="Categorie"
+                            label="Catégorie"
                             value={activeDispute ? disputeCategoryLabels[activeDispute.category] : 'N/A'}
                           />
                           <DisputeStat label="Prizepool" value={formatZC(match.prizePool)} />
@@ -596,10 +687,8 @@ const AdminDashboardPage: React.FC = () => {
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-4 mb-5">
-                        <div className="border border-white/5 bg-black/30 p-4">
-                          <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">
-                            ROSTER IMPACTE
-                          </div>
+                        <div className="p-4">
+                          <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">ROSTER IMPACTÉ</div>
                           <div className="flex flex-wrap gap-2">
                             {match.players.map((player) => (
                               <PlayerPill key={`${match.id}-${player.userId}`} label={player.pseudo} team={player.team} />
@@ -607,64 +696,76 @@ const AdminDashboardPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="border border-white/5 bg-black/30 p-4">
-                          <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">
-                            CONTEXTE
-                          </div>
+                          <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">CONTEXTE</div>
                           <div className="space-y-2 text-sm text-white/45">
-                            <div>Evidence: {activeDispute?.evidence.length || 0} piece(s) locales</div>
-                            <div>Arbitre: {match.arbiter?.pseudo || 'Non assigne'}</div>
-                            <div>Resolution existante: {match.result ? 'Oui, contestee' : 'Aucune'} </div>
-                            <div>Proof hash: {match.result?.proofHash || 'Aucun hash'}</div>
+                            <div>Preuves: {activeDispute?.evidence.length || 0} pièce(s)</div>
+                            <div>Arbitre: {match.arbiter?.pseudo || 'Non assigné'}</div>
+                            <div>Résolution existante: {match.result ? 'Oui, contestée' : 'Aucune'}</div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="border border-white/5 bg-black/30 p-4 mb-5">
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">
-                          DOSSIER
-                        </div>
-                        <div className="space-y-2 text-sm text-white/55">
-                          <div>Motif: {activeDispute?.reason || 'Aucun motif fourni'}</div>
-                          <div>
-                            Preuves resultat:{' '}
-                            {match.result?.proofs
-                              ? [
-                                  `${match.result.proofs.scoreboard.length} scoreboard`,
-                                  `${match.result.proofs.finalResult.length} ecran final`,
-                                  `${match.result.proofs.roomCapture.length} salle`,
-                                  `${match.result.proofs.extraEvidence.length} extra`,
-                                ].join(' / ')
-                              : 'Aucune piece resultat'}
-                          </div>
+                      <div className="p-4 mb-5">
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">DOSSIER</div>
+                        <div className="space-y-3">
+                          <div className="text-sm text-white/60">{activeDispute?.reason || 'Aucun motif fourni'}</div>
+                          {activeDispute?.evidence && activeDispute.evidence.length > 0 && (
+                            <div className="border-t border-white/5 pt-3">
+                              <div className="text-[10px] font-mono uppercase tracking-widest text-white/20 mb-2">
+                                Pièces jointes ({activeDispute.evidence.length})
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {activeDispute.evidence.map((item: string, i: number) => (
+                                  <a
+                                    key={i}
+                                    href={item.startsWith('http') ? item : undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-[10px] font-mono text-zoyd-blue hover:text-white transition-colors border border-zoyd-blue/20 px-2 py-1"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    Preuve {i + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-4">
+                      <div className="flex flex-wrap gap-3">
                         <button
                           onClick={() => handleResolveWinner(match.id, 0)}
-                          className="bg-green-500 text-black px-6 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-green-400 transition-colors"
+                          className="bg-green-500 text-black px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-green-400 transition-colors"
                         >
                           <CheckCircle2 className="w-3 h-3 inline mr-2" />
                           Valider Alpha
                         </button>
                         <button
                           onClick={() => handleResolveWinner(match.id, 1)}
-                          className="bg-white text-black px-6 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors"
+                          className="bg-white text-black px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors"
                         >
                           Valider Bravo
                         </button>
                         <button
                           onClick={() => handleResolveDisputeOnly(match.id)}
-                          className="border border-zoyd-blue/30 text-zoyd-blue px-6 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-blue hover:text-black transition-colors"
+                          className="border border-zoyd-blue/30 text-zoyd-blue px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-blue hover:text-black transition-colors"
                         >
-                          Clore le litige
+                          Clore sans vainqueur
                         </button>
+                        <Link
+                          to={`/mj/match/${match.id}`}
+                          className="border border-white/10 text-white/40 px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-white hover:border-white transition-colors flex items-center gap-2"
+                        >
+                          <Eye className="w-3 h-3" />
+                          Voir le match
+                        </Link>
                         <button
                           onClick={() => handleCancelMatch(match.id)}
-                          className="border border-white/10 text-white/40 px-6 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-white hover:border-white transition-colors"
+                          className="border border-white/10 text-white/30 px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-red-300 hover:border-red-500/30 transition-colors"
                         >
                           <Ban className="w-3 h-3 inline mr-2" />
-                          Annuler le match
+                          Annuler
                         </button>
                       </div>
                     </div>
@@ -713,7 +814,7 @@ const AdminDashboardPage: React.FC = () => {
                 {filteredUsers.map((flaggedUser) => (
                   <div
                     key={flaggedUser.key}
-                    className="flex flex-col xl:flex-row xl:items-center justify-between border border-white/5 p-4 bg-black/40 gap-4"
+                    className="flex flex-col xl:flex-row xl:items-center justify-between p-4 gap-4"
                   >
                     <div className="flex items-start gap-4 min-w-0">
                       <div
@@ -778,8 +879,8 @@ const AdminDashboardPage: React.FC = () => {
 };
 
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="hud-panel p-6 bg-zoyd-surface/20 border border-white/5 flex items-center gap-4">
-    <div className="w-12 h-12 border border-white/10 flex items-center justify-center">{icon}</div>
+  <div className="p-6 flex items-center gap-4">
+    <div className="w-12 h-12 flex items-center justify-center">{icon}</div>
     <div>
       <div className="text-[9px] font-mono text-white/20 uppercase tracking-widest mb-1">{label}</div>
       <div className="text-2xl font-display font-black italic">{value}</div>
@@ -800,7 +901,7 @@ const FocusCard = ({
   detail: string;
   tone: 'success' | 'warning' | 'danger' | 'neutral';
 }) => (
-  <div className={`border p-4 ${moderationToneMap[tone]}`}>
+  <div className={`p-4 ${moderationToneMap[tone]}`}>
     <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest mb-3">
       {icon}
       {label}
@@ -821,7 +922,7 @@ const StatusLane = ({
   body: string;
   accent: string;
 }) => (
-  <div className="border border-white/5 bg-black/30 p-4">
+  <div className="p-4">
     <div className="flex items-center justify-between gap-3 mb-3">
       <div className="font-display font-black text-sm uppercase italic">{label}</div>
       <div className="text-xl font-display font-black italic text-white">{count}</div>
@@ -834,14 +935,14 @@ const StatusLane = ({
 );
 
 const MetaChip = ({ label, value }: { label: string; value: string }) => (
-  <div className="border border-white/5 bg-black/25 px-3 py-2">
+  <div className="px-3 py-2">
     <div className="text-[9px] text-white/20 mb-1">{label}</div>
     <div className="text-white/65">{value}</div>
   </div>
 );
 
 const DisputeStat = ({ label, value }: { label: string; value: string }) => (
-  <div className="border border-white/5 bg-black/30 px-4 py-3">
+  <div className="px-4 py-3">
     <div className="text-[9px] uppercase tracking-widest text-white/20 mb-1">{label}</div>
     <div className="text-white">{value}</div>
   </div>
@@ -849,8 +950,8 @@ const DisputeStat = ({ label, value }: { label: string; value: string }) => (
 
 const PlayerPill = ({ label, team }: { label: string; team: 0 | 1 }) => (
   <span
-    className={`px-3 py-2 border text-[10px] font-mono uppercase tracking-widest ${
-      team === 0 ? 'border-zoyd-blue/30 text-zoyd-blue' : 'border-zoyd-yellow/30 text-zoyd-yellow'
+    className={`px-3 py-2 text-[10px] font-mono uppercase tracking-widest ${
+      team === 0 ? 'text-zoyd-blue' : 'text-zoyd-yellow'
     }`}
   >
     {team === 0 ? 'A' : 'B'} / {label}
@@ -858,7 +959,7 @@ const PlayerPill = ({ label, team }: { label: string; team: 0 | 1 }) => (
 );
 
 const SignalBadge = ({ label }: { label: string }) => (
-  <span className="px-2 py-1 border border-white/10 bg-white/5">{label}</span>
+  <span className="px-2 py-1 text-white/50">{label}</span>
 );
 
 const PriorityBadge = ({ kind }: { kind: 'litige' | 'signalement' | 'ops' }) => {

@@ -10,10 +10,10 @@ export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 
 const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];
 const TERMINAL_STATUSES = ['finished', 'cancelled', 'forfeited'];
-const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
+export const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
 const getNow = () => new Date().toISOString();
-const getTeamSize = (format) => parseInt(format.split('VS')[0], 10);
-const getSquadLabel = (team) => (team === 0 ? 'Squad Alpha' : 'Squad Bravo');
+export const getTeamSize = (format) => parseInt(format.split('VS')[0], 10);
+export const getSquadLabel = (team) => (team === 0 ? 'Squad Alpha' : 'Squad Bravo');
 const getScheduledTimestamp = (match) => (match.scheduledAt ? new Date(match.scheduledAt).getTime() : null);
 const getTeamCheckInCount = (match, team) =>
   match.players.filter((player) => player.team === team && player.isCheckedIn).length;
@@ -26,7 +26,7 @@ const flattenProofs = (proofs) =>
     : [];
 const buildProofHash = (matchId, winnerTeam, scores, refs) =>
   [matchId, winnerTeam, scores.team0, scores.team1, ...refs.map((ref) => ref.toLowerCase())].join('|');
-const getWinnerPayout = (match) => roundAmount(match.prizePool - match.zoydFee - match.arbiterFee);
+export const getWinnerPayout = (match) => Math.max(0, roundAmount(match.prizePool - match.zoydFee - match.arbiterFee));
 
 const levelThresholds = {
   BEGINNER: 1000,
@@ -38,16 +38,17 @@ const levelThresholds = {
 
 const progressionLevels = ['BEGINNER', 'COMPETITOR', 'CHALLENGER', 'ELITE', 'PRO'];
 
-const addXpToProgression = (progression, amount) => {
+export const addXpToProgression = (progression, amount) => {
   const next = {
     level: progression?.level || 'BEGINNER',
     xp: Number(progression?.xp || 0) + amount,
     nextLevelXp: Number(progression?.nextLevelXp || 1000),
   };
 
-  const currentIdx = progressionLevels.indexOf(next.level);
-  if (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
+  let currentIdx = progressionLevels.indexOf(next.level);
+  while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
     next.level = progressionLevels[currentIdx + 1];
+    currentIdx++;
   }
   next.nextLevelXp = levelThresholds[next.level];
   return next;
@@ -55,7 +56,7 @@ const addXpToProgression = (progression, amount) => {
 
 const cloneMatches = (matches) => matches.map((match) => structuredClone(match));
 
-const getPreferredTeam = (match, preferredTeam) => {
+export const getPreferredTeam = (match, preferredTeam) => {
   const team0Count = match.players.filter((player) => player.team === 0).length;
   const team1Count = match.players.filter((player) => player.team === 1).length;
 
@@ -66,7 +67,7 @@ const getPreferredTeam = (match, preferredTeam) => {
   return null;
 };
 
-const getStatusFromMatch = (match) => {
+export const getStatusFromMatch = (match) => {
   if (match.disputes.some((dispute) => dispute.status === 'open' || dispute.status === 'under_review')) {
     return 'disputed';
   }
@@ -127,7 +128,7 @@ const patchUserForMatchOutcome = (userId, updater) =>
     return next;
   });
 
-const getRankFromElo = (elo) => {
+export const getRankFromElo = (elo) => {
   if (elo < 1200) return 'Bronze';
   if (elo < 1400) return 'Silver';
   if (elo < 1600) return 'Gold';
@@ -777,3 +778,79 @@ export const getMatchActivityForUser = (matches, userId) => ({
       (match.players.some((player) => player.userId === userId) || match.arbiter?.userId === userId)
   ),
 });
+
+export const addEvidenceToDisputeOnServer = (matches, actor, matchId, newEvidence) => {
+  const actorUser = requireActorUser(actor);
+  const nextMatches = cloneMatches(matches);
+  const match = findMatch(nextMatches, matchId);
+
+  if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+
+  const isParticipant =
+    match.players.some((player) => player.userId === actorUser.id) ||
+    match.arbiter?.userId === actorUser.id;
+
+  if (!isParticipant && actorUser.role !== 'admin') {
+    throw makeError('FORBIDDEN', 'Seul un joueur ou l arbitre peut ajouter des preuves.');
+  }
+
+  const activeDispute =
+    match.disputes.find((dispute) => dispute.status === 'open' || dispute.status === 'under_review') ||
+    match.dispute;
+
+  if (!activeDispute) {
+    throw makeError('DISPUTE_NOT_FOUND', 'Aucun litige actif sur ce match.');
+  }
+
+  const normalizedNew = normalizeProofRefs(
+    Array.isArray(newEvidence) ? newEvidence : String(newEvidence).split(',')
+  );
+  if (normalizedNew.length === 0) {
+    throw makeError('DISPUTE_INCOMPLETE', 'Ajoute au moins une preuve valide.');
+  }
+
+  activeDispute.evidence = [...activeDispute.evidence, ...normalizedNew];
+  if (match.dispute?.id === activeDispute.id) {
+    match.dispute = activeDispute;
+  }
+  match.updatedAt = getNow();
+
+  return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
+};
+
+export const escalateDisputeOnServer = (matches, actor, matchId) => {
+  const actorUser = requireActorUser(actor);
+  const nextMatches = cloneMatches(matches);
+  const match = findMatch(nextMatches, matchId);
+
+  if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+
+  const isArbiter = match.arbiter?.userId === actorUser.id;
+  if (!isArbiter && actorUser.role !== 'admin') {
+    throw makeError('FORBIDDEN', 'Seul l arbitre peut escalader un litige.');
+  }
+
+  const activeDispute =
+    match.disputes.find((dispute) => dispute.status === 'open' || dispute.status === 'under_review') ||
+    match.dispute;
+
+  if (!activeDispute) {
+    throw makeError('DISPUTE_NOT_FOUND', 'Aucun litige actif sur ce match.');
+  }
+
+  if ((activeDispute.level || 1) >= 2) {
+    throw makeError('DISPUTE_ALREADY_ESCALATED', 'Ce litige est deja au niveau admin.');
+  }
+
+  activeDispute.level = 2;
+  activeDispute.status = 'under_review';
+  activeDispute.escalatedAt = getNow();
+  activeDispute.escalatedByPseudo = actorUser.pseudo;
+
+  if (match.dispute?.id === activeDispute.id) {
+    match.dispute = activeDispute;
+  }
+  match.updatedAt = getNow();
+
+  return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
+};

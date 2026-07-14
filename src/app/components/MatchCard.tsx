@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, Clock, Radio, Users } from 'lucide-react';
 import { formatZC, getRelativeTime } from '../../lib/utils';
+import { getMapImage } from '../../lib/competition';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
 
@@ -58,7 +59,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       {Array.from({ length: total }).map((_, index) => (
         <div
           key={index}
-          className={`w-3.5 h-3.5 ${index < filled ? colorClass : 'border border-white/10'}`}
+          className={`w-3.5 h-3.5 ${index < filled ? colorClass : 'bg-white/10'}`}
         />
       ))}
     </div>
@@ -75,7 +76,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       viewport={{ once: true }}
       className="group"
     >
-      <div className={`hud-panel p-6 border border-white/5 transition-all duration-500 overflow-hidden ${status === 'in_progress' ? 'border-zoyd-blue' : 'hover:border-zoyd-yellow/50'}`}>
+      <div className="p-6 transition-all duration-500 overflow-hidden">
         <div className="flex justify-between items-center mb-6 gap-3">
           <div className="flex items-center gap-2.5">
             <div className={`w-2 h-2 rounded-full ${status === 'in_progress' ? 'bg-zoyd-blue animate-pulse shadow-[0_0_8px_rgba(0,112,255,0.8)]' : 'bg-zoyd-yellow shadow-[0_0_8px_rgba(255,230,0,0.8)]'}`} />
@@ -84,16 +85,16 @@ const MatchCard: React.FC<MatchCardProps> = ({
             </span>
           </div>
           {trustScoreMin ? (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 border border-zoyd-yellow/30 text-[9px] font-mono font-black uppercase tracking-wider text-zoyd-yellow bg-zoyd-yellow/5">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-mono font-black uppercase tracking-wider text-zoyd-yellow">
               <ShieldCheck className="w-3 h-3" />
               FIABILITE {trustScoreMin}+
             </div>
           ) : null}
         </div>
 
-        <div className="relative h-24 -mx-6 mb-6 bg-zoyd-surface border-y border-white/5 group-hover:border-white/10 transition-colors overflow-hidden">
+        <div className="relative h-24 -mx-6 mb-6 transition-colors overflow-hidden">
           <img 
-            src={`/assets/maps/${map.toLowerCase().replace(/\s+/g, '_')}.jpg`}
+            src={getMapImage(map)}
             alt={map}
             className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity group-hover:opacity-60 transition-opacity duration-500"
             onError={(e) => {
@@ -113,12 +114,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-zoyd-surface/40 p-3 border-l border-zoyd-yellow">
+          <div className="p-3">
             <div className="text-[9px] font-mono text-white/40 uppercase mb-1">A gagner</div>
             <div className="font-display font-black text-xl text-white tracking-tight">{formatZC(pot)}</div>
             <div className="text-[9px] font-mono text-white/20 uppercase mt-1">Inscription: {formatZC(entryFee)}</div>
           </div>
-          <div className="bg-zoyd-surface/40 p-3 border-l border-zoyd-blue">
+          <div className="p-3">
             <div className="text-[9px] font-mono text-white/40 uppercase mb-1">Mode de jeu</div>
             <div className="font-display font-bold text-sm text-white uppercase truncate">
               {gameMode}

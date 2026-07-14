@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 
 export type ControllerType = 'touch' | 'controller' | 'emulator' | 'pc' | 'other';
-export type PlayerLevel = 'BEGINNER' | 'COMPETITOR' | 'CHALLENGER' | 'ELITE' | 'PRO';
+export type PlayerLevel = 'DEBUTANT' | 'COMPETITEUR' | 'CONFIRME' | 'VETERAN' | 'ELITE_ZOYD';
+export type ArbiterLevel = 'NOVICE' | 'PREMIER_MATCH' | 'ACTIF' | 'REGULIER' | 'VETERAN' | 'ELITE';
 export type UserRole = 'player' | 'arbiter' | 'organizer' | 'admin';
 
 export interface UserStats {
@@ -14,6 +15,7 @@ export interface UserStats {
   tournamentsWon: number;
   tournamentsPlayed: number;
   elo: number;
+  arbitratedMatches: number;
 }
 
 export interface User {
@@ -39,6 +41,11 @@ export interface User {
     xp: number;
     nextLevelXp: number;
   };
+  arbiterProgression: {
+    level: ArbiterLevel;
+    xp: number;
+    nextLevelXp: number;
+  };
   achievements: string[];
   bio?: string;
   dateJoined: string; // ISO date
@@ -57,8 +64,6 @@ export interface AuthState {
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   updateStats: (partial: Partial<UserStats>) => void;
-  addXp: (amount: number) => void;
-  adjustTrustScore: (delta: number) => void;
 }
 
 const defaultStats: UserStats = {
@@ -71,6 +76,7 @@ const defaultStats: UserStats = {
   tournamentsWon: 0,
   tournamentsPlayed: 0,
   elo: 1200,
+  arbitratedMatches: 0,
 };
 
 const normalizeUser = (user: User | null | undefined): User | null => {
@@ -101,36 +107,5 @@ export const useAuthStore = create<AuthState>()((set) => ({
       newStats.winRate = total > 0 ? Math.round((newStats.wins / total) * 1000) / 10 : 0;
       newStats.totalMatches = total;
       return { user: { ...state.user, stats: newStats } };
-    }),
-  addXp: (amount) =>
-    set((state) => {
-      if (!state.user) return state;
-      let { xp, level, nextLevelXp } = state.user.progression;
-      xp += amount;
-      const levelThresholds: Record<PlayerLevel, number> = {
-        BEGINNER: 1000,
-        COMPETITOR: 3000,
-        CHALLENGER: 7000,
-        ELITE: 15000,
-        PRO: Infinity,
-      };
-      const levels: PlayerLevel[] = ['BEGINNER', 'COMPETITOR', 'CHALLENGER', 'ELITE', 'PRO'];
-      const currentIdx = levels.indexOf(level);
-      if (currentIdx < levels.length - 1 && xp >= levelThresholds[level]) {
-        level = levels[currentIdx + 1];
-      }
-      nextLevelXp = levelThresholds[level];
-      return {
-        user: {
-          ...state.user,
-          progression: { xp, level, nextLevelXp },
-        },
-      };
-    }),
-  adjustTrustScore: (delta) =>
-    set((state) => {
-      if (!state.user) return state;
-      const newScore = Math.max(0, Math.min(100, state.user.trustScore + delta));
-      return { user: { ...state.user, trustScore: newScore } };
     }),
 }));

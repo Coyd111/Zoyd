@@ -313,7 +313,7 @@ const WalletPage: React.FC = () => {
                 type="number"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
-                placeholder="50 ZC minimum"
+                placeholder="150 ZC minimum (1500 FCFA)"
                 max={cashBalance}
               />
               <p className="text-xs text-zoyd-white-60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
@@ -323,7 +323,7 @@ const WalletPage: React.FC = () => {
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={!amount || parseFloat(amount) < 50 || parseFloat(amount) > cashBalance}
+              disabled={!amount || parseFloat(amount) < 150 || parseFloat(amount) > cashBalance}
             >
               Retirer mes gains
             </Button>

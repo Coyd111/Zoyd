@@ -19,7 +19,7 @@ const Navbar: React.FC = () => {
   const navAuthenticated = true;
 
   return (
-    <nav className="sticky top-0 z-40 bg-zoyd-black border-b border-white/5 w-full">
+    <nav className="sticky top-0 z-40 bg-zoyd-black w-full">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between">
         <Link to={navAuthenticated ? '/mj' : '/'} className="flex items-center gap-3 group">
           <ZoydLogo compact className="group-hover:opacity-90 transition-opacity" />
@@ -54,7 +54,7 @@ const Navbar: React.FC = () => {
 
               <Link
                 to="/wallet"
-                className="flex items-center gap-3 px-3 py-1.5 border border-white/5 hover:border-zoyd-yellow/30 bg-zoyd-surface/40 transition-all group"
+                className="flex items-center gap-3 px-3 py-1.5 transition-all group"
               >
                 <div className="text-right hidden sm:block">
                   <div className="text-[8px] font-mono font-bold text-white/30 uppercase tracking-widest">Solde</div>
@@ -65,7 +65,7 @@ const Navbar: React.FC = () => {
                 <Wallet className="w-4 h-4 text-zoyd-yellow group-hover:scale-110 transition-transform" />
               </Link>
 
-              <div className="flex items-center gap-2 sm:gap-4 border-l border-white/10 pl-3 sm:pl-6 h-14">
+              <div className="flex items-center gap-2 sm:gap-4 pl-3 sm:pl-6 h-14">
                 <NotificationDropdown />
 
                 <button
@@ -78,10 +78,18 @@ const Navbar: React.FC = () => {
                 </button>
 
                 <Link to="/profil" title="Mon Profil" className="flex items-center gap-3 group">
-                  <div className="w-9 h-9 border border-white/10 flex items-center justify-center text-[10px] font-display font-black text-white group-hover:border-zoyd-yellow group-hover:text-zoyd-yellow transition-colors">
+                  <div className="w-9 h-9 flex items-center justify-center text-[10px] font-display font-black text-white group-hover:text-zoyd-yellow transition-colors">
                     {safeUser.pseudo.substring(0, 2).toUpperCase()}
                   </div>
                 </Link>
+
+                <button
+                  onClick={() => useAuthStore.getState().logout()}
+                  title="Se deconnecter"
+                  className="text-white/30 hover:text-red-400 transition-colors ml-2"
+                >
+                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
               </div>
             </div>
             <NotificationSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

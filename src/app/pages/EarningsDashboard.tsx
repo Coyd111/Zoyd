@@ -31,7 +31,7 @@ import { useTournamentStore } from '../stores/tournamentStore';
 import { useWalletStore } from '../stores/walletStore';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { buildWalletInsights } from '../../lib/communityInsights';
-import { formatFCFA, formatZC } from '../../lib/utils';
+import { formatZC } from '../../lib/utils';
 
 const getDeltaLabel = (current: number, previous: number, emptyLabel: string) => {
   if (current === 0 && previous === 0) return emptyLabel;
@@ -94,21 +94,21 @@ const EarningsDashboard: React.FC = () => {
     {
       label: 'Total Généré',
       value: formatZC(summary.stats.totalEarnings + summary.arbiterStats.totalCommissions),
-      subValue: `env. ${formatFCFA(summary.stats.totalEarnings + summary.arbiterStats.totalCommissions)}`,
+      subValue: '',
       icon: DollarSign,
       color: 'text-zoyd-yellow',
     },
     {
       label: 'Cash Prize (Joueur)',
       value: formatZC(summary.stats.totalEarnings),
-      subValue: `env. ${formatFCFA(summary.stats.totalEarnings)}`,
+      subValue: '',
       icon: Trophy,
       color: 'text-white',
     },
     {
       label: 'Commissions (Arbitre)',
       value: formatZC(summary.arbiterStats.totalCommissions),
-      subValue: `env. ${formatFCFA(summary.arbiterStats.totalCommissions)}`,
+      subValue: '',
       icon: ShieldCheck,
       color: 'text-green-400',
     },
@@ -374,7 +374,7 @@ const EarningsDashboard: React.FC = () => {
                       {formatZC(transaction.amount)}
                     </div>
                     <div className="text-[9px] font-mono text-white/20 uppercase tracking-tighter">
-                      ≈ {formatFCFA(Math.abs(transaction.amount))}
+                      Mouvement ZC
                     </div>
                   </div>
                 </div>

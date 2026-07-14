@@ -4,9 +4,16 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   CreditCard,
+  ExternalLink,
+  Flame,
+  Gavel,
+  PlusCircle,
   Radio,
+  ShieldAlert,
   ShieldCheck,
   Swords,
   Trophy,
@@ -19,9 +26,11 @@ import {
   sendServerChatMessage,
 } from '../../../app/lib/chatApi';
 import {
+  addServerDisputeEvidence,
   assignServerArbiter,
   checkInServerMatch,
   confirmServerMatchResult,
+  escalateServerDispute,
   joinServerMatch,
   launchServerMatch,
   openServerMatchDispute,
@@ -37,7 +46,8 @@ import { useChatStore } from '../../../app/stores/chatStore';
 import { useSocketStore } from '../../../app/stores/socketStore';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
-import { formatZC, getCountdownDisplay } from '../../../lib/utils';
+import { getMapImage } from '../../../lib/competition';
+import { adminCancelServerMatch, adminResolveServerDispute } from '../../lib/serverAdminApi';
 import { MatchChat } from '../components/MatchChat';
 
 const statusLabels: Record<string, string> = {
@@ -104,6 +114,10 @@ const MatchDetailPage: React.FC = () => {
   const [disputeCategory, setDisputeCategory] = useState<DisputeCategory>('result');
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeEvidence, setDisputeEvidence] = useState('');
+  const [addEvidenceInput, setAddEvidenceInput] = useState('');
+  const [showAddEvidenceForm, setShowAddEvidenceForm] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
+  const [showArbiterScore, setShowArbiterScore] = useState(false);
 
   const match = id ? getMatchById(id) : undefined;
   const messages = match ? getMessagesForChannel(match.channelId) : [];
@@ -421,6 +435,39 @@ const MatchDetailPage: React.FC = () => {
     }
   };
 
+  const handleAddEvidence = async () => {
+    const refs = addEvidenceInput
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (refs.length === 0) {
+      toast.error('Entre au moins un lien ou une référence de preuve.');
+      return;
+    }
+    try {
+      const response = await addServerDisputeEvidence(match.id, refs);
+      applyMatchResponse(response);
+      setAddEvidenceInput('');
+      setShowAddEvidenceForm(false);
+      toast.success(`${refs.length} preuve(s) ajoutée(s) au dossier.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Impossible d\'ajouter les preuves.');
+    }
+  };
+
+  const handleEscalate = async () => {
+    setIsEscalating(true);
+    try {
+      const response = await escalateServerDispute(match.id);
+      applyMatchResponse(response);
+      toast.success('Litige escaladé. L\'équipe admin a été notifiée.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Escalade impossible.');
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zoyd-black text-white scanline">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
@@ -437,19 +484,29 @@ const MatchDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <header className="mb-10">
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <div className="w-12 h-12 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
-              <Swords className="w-5 h-5" />
+        <header className="relative mb-10 overflow-hidden min-h-[300px] flex flex-col justify-end p-8 -mx-6 md:mx-0">
+          <img 
+            src={getMapImage(match.rules.map)}
+            alt={match.rules.map}
+            className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/80 to-transparent" />
+          <div className="absolute inset-0 tactical-grid opacity-10 pointer-events-none" />
+          
+          <div className="relative z-10">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <div className="w-12 h-12 flex items-center justify-center text-zoyd-yellow">
+                <Swords className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">LOBBY DU WAGER</span>
             </div>
-            <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">LOBBY DU WAGER</span>
+            <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
+              {match.rules.map} <span className="text-white/20">/</span> {match.rules.mode}
+            </h1>
+            <p className="text-white/40 mt-3 max-w-3xl">
+              {match.format} / Wager: {formatZC(match.entryFee)} / Cash Prize: {formatZC(match.prizePool)} / Créé par {match.creatorPseudo}
+            </p>
           </div>
-          <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
-            {match.rules.map} <span className="text-white/20">/</span> {match.rules.mode}
-          </h1>
-          <p className="text-white/40 mt-3 max-w-3xl">
-            {match.format} / Wager: {formatZC(match.entryFee)} / Cash Prize: {formatZC(match.prizePool)} / Créé par {match.creatorPseudo}
-          </p>
         </header>
 
         <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-8">
@@ -466,7 +523,7 @@ const MatchDetailPage: React.FC = () => {
               <TeamCard title="Squad Bravo" players={teamBravo} teamSize={match.teamSize} accent="white" />
             </div>
 
-            <div className="hud-panel p-6 bg-zoyd-surface/20">
+            <div className="p-6">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <h2 className="text-lg font-display font-black uppercase italic">Format et regles</h2>
                 {match.trustScoreMin ? (
@@ -486,7 +543,7 @@ const MatchDetailPage: React.FC = () => {
             </div>
 
             {canSeeRoom && (
-              <div className="hud-panel p-6 bg-zoyd-surface/20">
+              <div className="p-6">
                 <h2 className="text-lg font-display font-black uppercase italic mb-4">Salle privee du match</h2>
                 {match.roomName && match.roomPassword ? (
                   <div className="grid md:grid-cols-2 gap-4">
@@ -507,7 +564,7 @@ const MatchDetailPage: React.FC = () => {
             )}
 
             {match.result && (
-              <div className="hud-panel p-6 bg-zoyd-surface/20">
+              <div className="p-6">
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <h2 className="text-lg font-display font-black uppercase italic">Score confirme</h2>
                   <div className="text-[10px] font-mono uppercase tracking-widest text-green-400 border border-green-400/20 px-3 py-1">
@@ -551,7 +608,7 @@ const MatchDetailPage: React.FC = () => {
           </div>
 
           <div className="space-y-8">
-            <div className="hud-panel p-6 bg-zoyd-surface/20">
+            <div className="p-6">
               <h2 className="text-lg font-display font-black uppercase italic mb-4">Entrer dans la partie</h2>
 
               {!user && (
@@ -741,57 +798,222 @@ const MatchDetailPage: React.FC = () => {
               )}
             </div>
 
-            <div className="hud-panel p-6 bg-zoyd-surface/20">
-              <div className="flex items-center gap-3 mb-4">
-                <AlertTriangle className="w-4 h-4 text-zoyd-yellow" />
-                <h2 className="text-lg font-display font-black uppercase italic">Un souci sur ce match ?</h2>
-              </div>
+            <div className="overflow-hidden">
+              {/* ── LITIGE ACTIF ── */}
               {openDisputeRecord ? (
-                <div className="border border-red-400/20 bg-red-400/5 p-4 text-sm text-white/70 space-y-3">
-                  <div>
-                    Un litige est deja ouvert par {openDisputeRecord.openedByPseudo || openDisputeRecord.requestedBy}. Resolution en cours.
+                <div>
+                  {/* Bandeau d'alerte rouge */}
+                  <div className="bg-red-500/10 border-b border-red-500/30 px-6 py-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
+                      <div>
+                        <div className="text-[10px] font-mono uppercase tracking-[0.3em] text-red-400 mb-0.5">
+                          {openDisputeRecord.level >= 2 ? 'Litige — Niveau Admin' : 'Litige en cours'}
+                        </div>
+                        <div className="text-sm font-display font-black uppercase italic text-white">
+                          Dossier ouvert par {openDisputeRecord.openedByPseudo || 'Inconnu'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-[9px] font-mono uppercase tracking-widest border px-2 py-1 ${openDisputeRecord.level >= 2 ? 'border-red-400/40 text-red-400 bg-red-400/10' : 'border-orange-400/30 text-orange-400 bg-orange-400/5'}`}>
+                        NIV. {openDisputeRecord.level || 1}
+                      </span>
+                      {openDisputeRecord.prizePoolFrozen && (
+                        <span className="text-[9px] font-mono uppercase tracking-widest border border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/5 px-2 py-1">
+                          Gains bloqués
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <RuleRow label="Ticket" value={openDisputeRecord.id} />
-                    <RuleRow label="Categorie" value={disputeCategoryLabels[openDisputeRecord.category]} />
-                    <RuleRow label="Niveau" value={`Niveau ${openDisputeRecord.level}`} />
-                    <RuleRow label="Preuves" value={`${openDisputeRecord.evidence.length} piece(s)`} />
+
+                  <div className="p-6 space-y-5">
+                    {/* Détails du dossier */}
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <RuleRow label="Ticket" value={openDisputeRecord.id} />
+                      <RuleRow label="Catégorie" value={disputeCategoryLabels[openDisputeRecord.category]} />
+                    </div>
+
+                    <div className="border border-white/10 bg-black/30 px-4 py-3">
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Motif déclaré</div>
+                      <div className="text-sm text-white/80 leading-relaxed">{openDisputeRecord.reason}</div>
+                    </div>
+
+                    {/* Preuves actuelles */}
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-3">
+                        Pièces jointes ({openDisputeRecord.evidence.length})
+                      </div>
+                      {openDisputeRecord.evidence.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {openDisputeRecord.evidence.map((item: string, i: number) => (
+                            <a
+                              key={i}
+                              href={item.startsWith('http') ? item : undefined}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-xs text-zoyd-blue hover:text-white transition-colors font-mono break-all"
+                            >
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                              {item}
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-white/30 italic">Aucune pièce jointe.</p>
+                      )}
+                    </div>
+
+                    {/* Ajouter des preuves (joueurs + arbitre) */}
+                    {(!!currentPlayer || isArbiter) && (
+                      <div className="border-t border-white/5 pt-4">
+                        <button
+                          onClick={() => setShowAddEvidenceForm((v) => !v)}
+                          className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-zoyd-blue transition-colors"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" />
+                          Ajouter une preuve au dossier
+                          {showAddEvidenceForm ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+
+                        {showAddEvidenceForm && (
+                          <div className="mt-3 flex gap-3">
+                            <input
+                              type="text"
+                              value={addEvidenceInput}
+                              onChange={(e) => setAddEvidenceInput(e.target.value)}
+                              placeholder="Liens ou refs séparés par des virgules"
+                              className="flex-1 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                            />
+                            <button
+                              onClick={handleAddEvidence}
+                              className="px-5 py-3 border border-zoyd-blue/30 text-zoyd-blue text-[10px] font-display font-black uppercase tracking-widest hover:bg-zoyd-blue hover:text-black transition-colors"
+                            >
+                              Envoyer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── CONSOLE ARBITRE ── */}
+                    {isArbiter && (
+                      <div className="border border-orange-500/20 bg-orange-500/5 p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Gavel className="w-4 h-4 text-orange-400" />
+                          <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-orange-400">Console Arbitre</span>
+                        </div>
+
+                        {/* Valider le score directement depuis ici */}
+                        <div>
+                          <button
+                            onClick={() => setShowArbiterScore((v) => !v)}
+                            className="w-full flex items-center justify-between gap-3 border border-white/10 px-4 py-3 text-[10px] font-display font-black uppercase tracking-widest hover:border-white/30 transition-colors"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Trophy className="w-3.5 h-3.5 text-zoyd-yellow" />
+                              Trancher le litige — Valider le score
+                            </span>
+                            {showArbiterScore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+
+                          {showArbiterScore && (
+                            <div className="mt-3 space-y-3 border border-white/5 p-4 bg-black/30">
+                              <div className="grid md:grid-cols-2 gap-3">
+                                <input
+                                  type="number"
+                                  value={scoreAlpha}
+                                  onChange={(e) => setScoreAlpha(e.target.value)}
+                                  placeholder="Score Alpha"
+                                  className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                                />
+                                <input
+                                  type="number"
+                                  value={scoreBravo}
+                                  onChange={(e) => setScoreBravo(e.target.value)}
+                                  placeholder="Score Bravo"
+                                  className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                                />
+                              </div>
+                              <textarea
+                                value={resultNotes}
+                                onChange={(e) => setResultNotes(e.target.value)}
+                                placeholder="Notes d'arbitrage sur ce litige..."
+                                className="w-full min-h-20 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                              />
+                              <button
+                                onClick={handleResultSubmit}
+                                className="w-full bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
+                              >
+                                Valider le score &amp; clore le litige
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Escalade */}
+                        {(openDisputeRecord.level || 1) < 2 && (
+                          <div className="border-t border-white/5 pt-4">
+                            <p className="text-xs text-white/40 mb-3">
+                              Impossible de trancher ? L'équipe d'administration ZOYD peut prendre le relais.
+                            </p>
+                            <button
+                              onClick={handleEscalate}
+                              disabled={isEscalating}
+                              className="flex items-center gap-2 border border-red-500/30 text-red-400 px-4 py-3 text-[10px] font-display font-black uppercase tracking-widest hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                            >
+                              <Flame className="w-3.5 h-3.5" />
+                              {isEscalating ? 'Escalade en cours…' : 'Escalader à l\'Administration'}
+                            </button>
+                          </div>
+                        )}
+
+                        {(openDisputeRecord.level || 1) >= 2 && (
+                          <div className="border border-red-400/20 bg-red-400/5 px-4 py-3 text-xs text-red-300">
+                            Litige escaladé le {openDisputeRecord.escalatedAt ? new Date(openDisputeRecord.escalatedAt).toLocaleString('fr-FR') : '—'} par {openDisputeRecord.escalatedByPseudo || 'arbitre'}. Un admin va intervenir.
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="border border-white/10 bg-black/30 px-4 py-3">
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Motif</div>
-                    <div className="text-sm text-white/75">{openDisputeRecord.reason}</div>
-                  </div>
-                  <EvidencePanel title="Pieces jointes" items={openDisputeRecord.evidence} />
                 </div>
+
               ) : (
-                <div className="space-y-3">
-                  <select
-                    value={disputeCategory}
-                    onChange={(event) => setDisputeCategory(event.target.value as DisputeCategory)}
-                    className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
-                  >
-                    {Object.entries(disputeCategoryLabels).map(([value, label]) => (
-                      <option key={value} value={value} className="bg-zoyd-black">
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={disputeReason}
-                    onChange={(event) => setDisputeReason(event.target.value)}
-                    placeholder="Raison du litige"
-                    className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
-                  />
-                  <textarea
-                    value={disputeEvidence}
-                    onChange={(event) => setDisputeEvidence(event.target.value)}
-                    placeholder="Screenshots, room logs ou preuves, separes par des virgules"
-                    className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
-                  />
-                  <button onClick={handleDispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">
-                    Ouvrir un litige
-                  </button>
+                /* ── PAS DE LITIGE : formulaire d'ouverture ── */
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <AlertTriangle className="w-4 h-4 text-zoyd-yellow" />
+                    <h2 className="text-lg font-display font-black uppercase italic">Un souci sur ce match ?</h2>
+                  </div>
+                  <div className="space-y-3">
+                    <select
+                      value={disputeCategory}
+                      onChange={(event) => setDisputeCategory(event.target.value as DisputeCategory)}
+                      className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                    >
+                      {Object.entries(disputeCategoryLabels).map(([value, label]) => (
+                        <option key={value} value={value} className="bg-zoyd-black">
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={disputeReason}
+                      onChange={(event) => setDisputeReason(event.target.value)}
+                      placeholder="Raison du litige"
+                      className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                    />
+                    <textarea
+                      value={disputeEvidence}
+                      onChange={(event) => setDisputeEvidence(event.target.value)}
+                      placeholder="Screenshots, room logs ou preuves, séparés par des virgules"
+                      className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                    />
+                    <button onClick={handleDispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">
+                      Ouvrir un litige
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

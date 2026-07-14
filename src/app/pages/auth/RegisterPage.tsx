@@ -161,7 +161,7 @@ const RegisterPage: React.FC = () => {
     <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden border-r border-white/5">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.3 }} className="absolute inset-0">
           <img
             src="/assets/illustrations/operator_ghost.jpg"
@@ -228,7 +228,6 @@ const RegisterPage: React.FC = () => {
                   {...register('pseudo')}
                   error={errors.pseudo?.message}
                   placeholder="ShadowX"
-                  className="bg-zoyd-surface/40"
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
@@ -237,7 +236,6 @@ const RegisterPage: React.FC = () => {
                     {...register('email')}
                     error={errors.email?.message}
                     placeholder="soldat@zoyd.com"
-                    className="bg-zoyd-surface/40"
                   />
                   <Input
                     label="Telephone"
@@ -245,7 +243,6 @@ const RegisterPage: React.FC = () => {
                     {...register('phone')}
                     error={errors.phone?.message}
                     placeholder="+229 60 00 00 00"
-                    className="bg-zoyd-surface/40"
                   />
                 </div>
 
@@ -256,7 +253,6 @@ const RegisterPage: React.FC = () => {
                     {...register('password')}
                     error={errors.password?.message}
                     placeholder="........"
-                    className="bg-zoyd-surface/40"
                   />
                   <button
                     type="button"
@@ -285,7 +281,6 @@ const RegisterPage: React.FC = () => {
                   {...register('confirmPassword')}
                   error={errors.confirmPassword?.message}
                   placeholder="........"
-                  className="bg-zoyd-surface/40"
                 />
 
                 <Button type="submit" variant="primary" fullWidth size="lg" className="py-6 mt-6">
@@ -365,15 +360,14 @@ const RegisterPage: React.FC = () => {
                     label="ID CODM (UID obligatoire)"
                     {...register('gameId')}
                     placeholder="6742..."
-                    className="bg-zoyd-surface/40"
                   />
-                  <Input label="Niveau actuel du compte" type="number" {...register('levelCODM')} placeholder="150" className="bg-zoyd-surface/40" />
+                  <Input label="Niveau actuel du compte" type="number" {...register('levelCODM')} placeholder="150" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade MJ</label>
-                    <select {...register('rankMJ')} className="w-full bg-zoyd-surface/40 border border-white/10 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -383,7 +377,7 @@ const RegisterPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade BR</label>
-                    <select {...register('rankBR')} className="w-full bg-zoyd-surface/40 border border-white/10 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -396,7 +390,7 @@ const RegisterPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Pays</label>
-                    <select {...register('country')} className="w-full bg-zoyd-surface/40 border border-white/10 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {COUNTRY_OPTIONS.map((country) => (
                         <option key={country} value={country} className="bg-zoyd-black">
                           {country}
@@ -404,7 +398,7 @@ const RegisterPage: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="flex items-center gap-3 border border-white/10 px-4 py-3 bg-zoyd-surface/20">
+                  <div className="flex items-center gap-3 border border-white/10 px-4 py-3 bg-transparent">
                     <input id="streamerMode" type="checkbox" {...register('streamerMode')} className="w-4 h-4 accent-zoyd-yellow" />
                     <label htmlFor="streamerMode" className="text-[10px] font-mono font-black uppercase tracking-widest text-white/60">
                       Activer le pseudo streamer
@@ -417,7 +411,6 @@ const RegisterPage: React.FC = () => {
                     label="Pseudo streamer"
                     {...register('streamerPseudo')}
                     placeholder="ShadowXTV"
-                    className="bg-zoyd-surface/40"
                   />
                 )}
 
@@ -466,19 +459,19 @@ const RegisterPage: React.FC = () => {
                 </div>
 
                 <div className="hud-panel p-6 bg-zoyd-surface/20 border-white/5 text-left space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <div className="flex justify-between items-center border-b border-white/20 pb-2">
                     <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Identite</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.pseudo}</span>
                   </div>
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <div className="flex justify-between items-center border-b border-white/20 pb-2">
                     <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Appareil principal</span>
                     <span className="text-xs font-display font-black text-zoyd-blue italic uppercase">{formData.device}</span>
                   </div>
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <div className="flex justify-between items-center border-b border-white/20 pb-2">
                     <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Controle</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.controllerType || 'touch'}</span>
                   </div>
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <div className="flex justify-between items-center border-b border-white/20 pb-2">
                     <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Pays</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.country || 'Benin'}</span>
                   </div>

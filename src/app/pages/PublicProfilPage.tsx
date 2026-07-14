@@ -25,6 +25,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { buildCompetitiveSummary, createPublicProfile, getObservedPlayerSnapshot } from '../../lib/profileMetrics';
 import { formatZC } from '../../lib/utils';
+import { sendServerFriendRequest, blockServerUser } from '../lib/socialApi';
 import { toast } from 'sonner';
 
 const controllerIcons: Record<string, React.ReactNode> = {
@@ -97,13 +98,18 @@ const PublicProfilPage: React.FC = () => {
   const blocked = isBlocked(id);
   const alreadyFriend = isFriend(id);
 
-  const handleAddFriend = () => {
+  const handleAddFriend = async () => {
     if (!currentUser) {
       navigate('/auth/login');
       return;
     }
-    sendRequest(id, publicProfile.pseudo);
-    toast.success(`Demande envoyee a ${publicProfile.pseudo}.`);
+    try {
+      await sendServerFriendRequest(id, 'Salut, jouons ensemble !');
+      sendRequest(id, publicProfile.pseudo); // Optimistic UI update
+      toast.success(`Demande envoyée à ${publicProfile.pseudo}.`);
+    } catch (err) {
+      toast.error('Impossible d\'envoyer la demande.');
+    }
   };
 
   const handleInviteMatch = () => {
@@ -114,13 +120,18 @@ const PublicProfilPage: React.FC = () => {
     navigate('/mj/creer');
   };
 
-  const handleBlock = () => {
+  const handleBlock = async () => {
     if (!currentUser) {
       navigate('/auth/login');
       return;
     }
-    blockUser(id);
-    toast.success(`${publicProfile.pseudo} est maintenant bloque.`);
+    try {
+      await blockServerUser(id);
+      blockUser(id); // Optimistic UI update
+      toast.success(`${publicProfile.pseudo} est maintenant bloqué.`);
+    } catch (err) {
+      toast.error('Erreur lors du blocage.');
+    }
   };
 
   const handleReport = () => {
@@ -129,7 +140,7 @@ const PublicProfilPage: React.FC = () => {
       return;
     }
     reportUser(id, 'other', `Signalement manuel depuis le profil public de ${publicProfile.pseudo}.`);
-    toast.success(`Signalement enregistre pour ${publicProfile.pseudo}.`);
+    toast.success(`Signalement enregistré pour ${publicProfile.pseudo}.`);
   };
 
   return (

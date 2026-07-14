@@ -83,3 +83,11 @@ export const adminResolveServerDispute = async (matchId: string, resolution: str
 export const adminCancelServerMatch = async (matchId: string, reason: string) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/cancel`, { reason });
 };
+
+export const addServerDisputeEvidence = async (matchId: string, evidence: string[]) => {
+  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/dispute/evidence`, { evidence });
+};
+
+export const escalateServerDispute = async (matchId: string) => {
+  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/dispute/escalate`, {});
+};

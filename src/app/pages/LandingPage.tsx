@@ -105,8 +105,6 @@ export default function LandingPage() {
                 transition={{ duration: 0.6 }}
                 className="max-w-3xl"
               >
-                <ZoydLogo className="mb-8" markClassName="h-12 w-12" />
-
                 <h1 className="text-[3.2rem] md:text-[5.5rem] xl:text-[6.8rem] leading-[0.84] font-display font-black uppercase italic tracking-[-0.05em] mb-7">
                   L'Arène Ultime
                   <br />
@@ -149,27 +147,17 @@ export default function LandingPage() {
                 transition={{ delay: 0.12, duration: 0.6 }}
                 className="relative"
               >
-                <div className="absolute inset-0 rounded-[32px] bg-[linear-gradient(135deg,rgba(255,227,81,0.08),rgba(0,122,255,0.04)_55%,transparent)] blur-2xl" />
-
-                <div className="relative rounded-[30px] border border-white/10 bg-black/52 backdrop-blur-xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-                  <div className="absolute inset-0 opacity-28 pointer-events-none">
-                    <img
-                      src="/codm/codm_policy_bg2.png"
-                      alt=""
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
+                <div className="relative">
 
                   <div className="relative z-10 p-6 md:p-8">
                     <div className="flex flex-col gap-4">
                       {/* En-tête Match */}
-                      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                      <div className="flex items-center justify-between pb-4">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                           <span className="text-xs font-mono uppercase tracking-widest text-white/50">Match Live</span>
                         </div>
-                        <div className="px-3 py-1 rounded bg-zoyd-yellow/20 text-zoyd-yellow text-[10px] font-mono uppercase tracking-widest border border-zoyd-yellow/30">
+                        <div className="text-zoyd-yellow text-[10px] font-mono uppercase tracking-widest">
                           Wager 1v1
                         </div>
                       </div>
@@ -177,14 +165,14 @@ export default function LandingPage() {
                       {/* VS Section */}
                       <div className="flex items-center justify-between py-2">
                         <div className="flex flex-col items-center gap-2">
-                          <div className="w-14 h-14 rounded-full bg-zoyd-blue/20 border-2 border-zoyd-blue/50 flex items-center justify-center">
+                          <div className="w-14 h-14 flex items-center justify-center">
                             <span className="text-xl">🥷</span>
                           </div>
                           <span className="font-display font-black text-sm tracking-wide">GHOST_229</span>
                         </div>
                         <div className="text-3xl font-display font-black text-white/20 italic">VS</div>
                         <div className="flex flex-col items-center gap-2">
-                          <div className="w-14 h-14 rounded-full bg-red-500/20 border-2 border-red-500/50 flex items-center justify-center">
+                          <div className="w-14 h-14 flex items-center justify-center">
                             <span className="text-xl">🦅</span>
                           </div>
                           <span className="font-display font-black text-sm tracking-wide">SNIPER_DK</span>
@@ -192,14 +180,13 @@ export default function LandingPage() {
                       </div>
 
                       {/* Cash Prize */}
-                      <div className="rounded-xl bg-black/40 border border-white/5 p-4 flex flex-col items-center justify-center gap-1 my-2 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,227,81,0.1),transparent_50%)]" />
+                      <div className="p-4 flex flex-col items-center justify-center gap-1 my-2 relative overflow-hidden">
                         <span className="text-[10px] font-mono uppercase text-white/40 tracking-widest relative z-10">Cash Prize</span>
-                        <span className="text-3xl font-display font-black text-zoyd-yellow relative z-10">2,000 FCFA</span>
+                        <span className="text-3xl font-display font-black text-zoyd-yellow relative z-10">200 ZC</span>
                       </div>
 
                       {/* Arbitre Info */}
-                      <div className="flex items-center justify-between bg-zoyd-blue/10 border border-zoyd-blue/20 rounded-lg p-3">
+                      <div className="flex items-center justify-between p-3">
                         <div className="flex items-center gap-3">
                           <ShieldCheck className="w-5 h-5 text-zoyd-blue" />
                           <div className="flex flex-col">
@@ -255,9 +242,9 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.25 }}
                   transition={{ delay: index * 0.08, duration: 0.45 }}
-                  className="rounded-[28px] border border-white/8 bg-zoyd-surface/18 p-7 md:p-8 hover:border-zoyd-blue/30 transition-colors"
+                  className="p-7 md:p-8 transition-colors"
                 >
-                  <div className="w-14 h-14 border border-white/10 bg-black/35 flex items-center justify-center text-zoyd-yellow mb-8">
+                  <div className="w-14 h-14 flex items-center justify-center text-zoyd-yellow mb-8">
                     <card.icon className="w-6 h-6" />
                   </div>
                   <h3 className="text-2xl font-display font-black uppercase italic tracking-tight mb-4">
@@ -300,7 +287,7 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-2 gap-6">
               {/* Joueur Card */}
               <div
-                className="rounded-[28px] border p-8 md:p-10 min-h-[310px] flex flex-col justify-between border-zoyd-blue/20 bg-[linear-gradient(135deg,rgba(0,122,255,0.14),rgba(0,122,255,0.03))]"
+                className="p-8 md:p-10 min-h-[310px] flex flex-col justify-between"
               >
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.28em] mb-5 text-zoyd-blue">
@@ -313,7 +300,7 @@ export default function LandingPage() {
                     Mise sur ton propre talent dans des salons 1v1 ou 2v2. Monte dans le classement MMR africain et prouve que tu es une légende. ZOYD sécurise ton argent et gère tes gains.
                   </p>
                 </div>
-                <div className="flex items-center justify-between pt-8 border-t border-white/8 mt-8">
+                <div className="flex items-center justify-between pt-8 mt-8">
                   <div className="flex items-center gap-3 text-sm text-white/56">
                     <Swords className="w-4 h-4 text-zoyd-blue" />
                     Entre dans l'arène
@@ -330,7 +317,7 @@ export default function LandingPage() {
 
               {/* Arbitre Card */}
               <div
-                className="rounded-[28px] border p-8 md:p-10 min-h-[310px] flex flex-col justify-between border-zoyd-yellow/20 bg-[linear-gradient(135deg,rgba(255,227,81,0.08),rgba(255,255,255,0.02))]"
+                className="p-8 md:p-10 min-h-[310px] flex flex-col justify-between"
               >
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.28em] mb-5 text-zoyd-yellow">
@@ -343,7 +330,7 @@ export default function LandingPage() {
                     Ton shoot n'est pas incroyable mais tu connais le jeu ? Rejoins les matchs en tant que spectateur, veille au bon déroulement et touche une commission sur chaque match arbitré.
                   </p>
                 </div>
-                <div className="flex items-center justify-between pt-8 border-t border-white/8 mt-8">
+                <div className="flex items-center justify-between pt-8 mt-8">
                   <div className="flex items-center gap-3 text-sm text-white/56">
                     <Users className="w-4 h-4 text-zoyd-yellow" />
                     Rejoins le staff
@@ -363,7 +350,7 @@ export default function LandingPage() {
 
         <section id="account" className="py-24 md:py-28 border-t border-white/5">
           <div className="max-w-[1600px] mx-auto px-6 md:px-8">
-            <div className="rounded-[32px] border border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,227,81,0.03),rgba(0,122,255,0.04))] p-8 md:p-10">
+            <div className="p-8 md:p-10">
               <div className="max-w-3xl mb-10">
                 <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
                   En trois etapes,
@@ -384,7 +371,7 @@ export default function LandingPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, amount: 0.25 }}
                     transition={{ delay: index * 0.08, duration: 0.45 }}
-                    className="rounded-[24px] border border-white/8 bg-black/35 p-6"
+                    className="p-6"
                   >
                     <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-blue mb-5">
                       Etape 0{index + 1}
@@ -431,7 +418,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-white/5 bg-black">
+      <footer className="bg-black">
         <div className="max-w-[1600px] mx-auto px-6 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <ZoydLogo compact />
           <div className="flex flex-wrap gap-8 text-[10px] font-mono uppercase tracking-[0.28em] text-white/28">
@@ -451,7 +438,7 @@ export default function LandingPage() {
 
 function LandingNav() {
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/6 bg-zoyd-black/72 backdrop-blur-xl">
+    <nav className="fixed inset-x-0 top-0 z-50 bg-zoyd-black/72 backdrop-blur-xl">
       <div className="max-w-[1600px] mx-auto px-6 md:px-8 h-20 flex items-center justify-between gap-6">
         <Link to="/" className="shrink-0">
           <ZoydLogo compact />
@@ -490,7 +477,7 @@ function LandingNav() {
 
 function SignalStrip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-white/8 bg-black/26 px-4 py-3">
+    <div className="px-4 py-3">
       <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24 mb-1">{label}</div>
       <div className="font-display font-black uppercase italic tracking-tight text-white">{value}</div>
     </div>
@@ -507,7 +494,7 @@ function SignalTile({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="border border-white/8 bg-black/28 px-4 py-4">
+    <div className="px-4 py-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">{label}</span>
         <Icon className="w-4 h-4 text-zoyd-yellow" />
@@ -519,7 +506,7 @@ function SignalTile({
 
 function MatchRoomLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-white/6 pb-3 last:border-b-0 last:pb-0">
+    <div className="flex items-center justify-between gap-4 pb-3 last:pb-0">
       <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">{label}</span>
       <span className="font-display font-black uppercase italic tracking-tight text-white">{value}</span>
     </div>

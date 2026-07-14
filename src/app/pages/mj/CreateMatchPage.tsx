@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Check, ShieldCheck, Target } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { MJ_FORMATS, MJ_MAP_POOL, MJ_MODE_OPTIONS } from '../../../lib/competition';
+import { MJ_FORMATS, MJ_MAP_POOL, MJ_MODE_OPTIONS, getMapImage } from '../../../lib/competition';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { createServerMatch } from '../../lib/matchApi';
 import { applyServerAccountState } from '../../lib/serverSync';
@@ -242,7 +242,7 @@ const CreateMatchPage: React.FC = () => {
                             className={`relative h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-yellow shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'border-white/10 hover:border-white/30'}`}
                           >
                             <img 
-                              src={`/assets/maps/${map.toLowerCase().replace(/\s+/g, '_')}.jpg`}
+                              src={getMapImage(map)}
                               alt={map}
                               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${selectedMap === map ? 'opacity-80 mix-blend-normal' : 'opacity-40 mix-blend-luminosity hover:opacity-60'}`}
                               onError={(e) => {

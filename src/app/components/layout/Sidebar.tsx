@@ -30,8 +30,8 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen border-r border-white/5 bg-zoyd-black sticky top-0 z-50">
-      <div className="h-14 flex items-center px-6 border-b border-white/5 bg-zoyd-surface/20">
+    <aside className="hidden md:flex flex-col w-64 h-screen bg-zoyd-black sticky top-0 z-50">
+      <div className="h-14 flex items-center px-6">
         <Link to="/mj" className="overflow-hidden">
           <ZoydLogo compact />
         </Link>
@@ -85,8 +85,8 @@ const Sidebar: React.FC = () => {
                   key={item.label}
                   to={item.path}
                   className={cn(
-                    'flex items-center justify-between px-4 py-3 transition-all font-display font-black text-xs tracking-widest italic uppercase border border-transparent',
-                    isActive ? 'border-white/10 bg-white/5 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'
+                    'flex items-center justify-between px-4 py-3 transition-all font-display font-black text-xs tracking-widest italic uppercase',
+                    isActive ? 'bg-white/5 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'
                   )}
                 >
                   <div className="flex items-center gap-4">
@@ -105,7 +105,7 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-4 py-3 border-t border-white/5 space-y-2">
+      <div className="px-4 py-3 space-y-2">
         <Link
           to="/parametres"
           className="flex items-center gap-3 px-3 py-2 text-white/30 hover:text-white hover:bg-white/5 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
@@ -124,9 +124,9 @@ const Sidebar: React.FC = () => {
         </button>
       </div>
 
-      <div className="border-t border-white/5 p-5 bg-zoyd-surface/20">
+      <div className="p-5">
         <Link to="/profil" className="flex items-center gap-4 group">
-          <div className="w-10 h-10 border border-white/10 flex items-center justify-center font-display font-black text-white text-xs group-hover:border-zoyd-yellow transition-colors">
+          <div className="w-10 h-10 flex items-center justify-center font-display font-black text-white text-xs group-hover:text-zoyd-yellow transition-colors">
             {safeUser.pseudo.slice(0, 2).toUpperCase()}
           </div>
           <div className="flex-1 overflow-hidden">

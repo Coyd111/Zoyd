@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden border-r border-white/5">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 1.1 }}
           animate={{ opacity: 0.3, scale: 1 }}
@@ -102,8 +102,10 @@ const LoginPage: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           className="w-full max-w-[440px]"
         >
-          <div className="lg:hidden mb-12">
-            <ZoydLogo />
+          <div className="lg:hidden mb-12 flex justify-center">
+            <Link to="/" className="inline-block group">
+              <ZoydLogo className="group-hover:opacity-90 transition-opacity" />
+            </Link>
           </div>
 
           <header className="mb-10">
@@ -112,9 +114,6 @@ const LoginPage: React.FC = () => {
             </h1>
             <p className="text-white/40 font-mono text-[11px] uppercase tracking-widest flex items-center gap-2">
               <Lock className="w-3 h-3" /> Acces joueur securise
-            </p>
-            <p className="mt-3 text-white/25 text-[10px] font-mono uppercase tracking-widest">
-              Demo interne admin : <span className="text-white/50">admin@zoyd.com / Admin@ZOYD2026</span>
             </p>
           </header>
 
@@ -125,7 +124,6 @@ const LoginPage: React.FC = () => {
                 {...register('emailOrPseudo', { required: 'Identification requise' })}
                 error={errors.emailOrPseudo?.message}
                 placeholder="ShadowX, +22960000000 ou soldat@zoyd.com"
-                className="bg-zoyd-surface/40 border-white/10"
               />
 
               <div className="relative">
@@ -135,7 +133,6 @@ const LoginPage: React.FC = () => {
                   {...register('password', { required: 'Mot de passe requis' })}
                   error={errors.password?.message}
                   placeholder="........"
-                  className="bg-zoyd-surface/40 border-white/10"
                 />
                 <button
                   type="button"

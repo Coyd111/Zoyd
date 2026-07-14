@@ -12,19 +12,19 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full space-y-2">
         {label && (
-          <label className="block text-sm font-medium text-zoyd-white">
+          <label className="block text-[10px] font-mono font-black uppercase tracking-widest text-white/50 mb-1">
             {label}
           </label>
         )}
         <input
           type={type}
           className={cn(
-            'flex w-full rounded-lg border bg-zoyd-white-5 px-4 py-3 text-base text-zoyd-white',
-            'border-zoyd-white-20 placeholder:text-zoyd-white-30',
-            'focus:outline-none focus:ring-2 focus:ring-zoyd-yellow focus:border-transparent',
+            'flex w-full border-0 border-b border-white/20 bg-transparent py-3 text-base text-white rounded-none',
+            'placeholder:text-white/20',
+            'focus:outline-none focus:ring-0 focus:border-zoyd-yellow',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            'transition-all duration-200',
-            error && 'border-red-500 focus:ring-red-500',
+            'transition-all duration-200 font-display font-black italic',
+            error && 'border-red-500',
             className
           )}
           ref={ref}

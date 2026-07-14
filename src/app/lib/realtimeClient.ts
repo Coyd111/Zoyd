@@ -263,6 +263,10 @@ export const fetchRealtimeBootstrap = async (user: User) => {
     ok: boolean;
     matches: Match[];
     tournaments: Tournament[];
+    friends: any[]; // Friend[]
+    friendRequests: any[]; // FriendRequest[]
+    blockedIds: string[];
+    notifications: any[]; // Notification[]
     timestamp: string;
   };
 };

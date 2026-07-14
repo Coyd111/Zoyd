@@ -58,6 +58,11 @@ export const MJ_MAP_POOL = [
   'Terminal',
 ] as const;
 
+export const getMapImage = (mapName: string): string => {
+  const normalized = mapName.toLowerCase().replace(/\s+/g, '_');
+  return `/maps/map_${normalized}.png`;
+};
+
 export const LANDING_TICKER_ITEMS = [
   'Profil joueur unique',
   'Multijoueur CODM',

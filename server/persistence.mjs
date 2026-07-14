@@ -79,6 +79,51 @@ localDb.exec(`
     updated_at TEXT NOT NULL,
     PRIMARY KEY (kind, entity_id)
   );
+
+  CREATE TABLE IF NOT EXISTS friend_requests (
+    id TEXT PRIMARY KEY,
+    sender_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(sender_id, target_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS friendships (
+    user_id_1 TEXT NOT NULL,
+    user_id_2 TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id_1, user_id_2)
+  );
+
+  CREATE TABLE IF NOT EXISTS user_blocks (
+    blocker_id TEXT NOT NULL,
+    blocked_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (blocker_id, blocked_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS user_notifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    action_url TEXT,
+    metadata TEXT,
+    is_read INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS processed_transactions (
+    transaction_id TEXT PRIMARY KEY,
+    processed_at INTEGER NOT NULL DEFAULT (unixepoch('now')),
+    user_id TEXT,
+    amount_zc REAL
+  );
 `);
 
 const getNow = () => new Date().toISOString();
@@ -101,7 +146,7 @@ const defaultProgression = {
   nextLevelXp: 1000,
 };
 
-const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
+export const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
 const defaultWallet = {
   cashBalance: 0,
   bonusBalance: 0,
@@ -111,14 +156,14 @@ const defaultWallet = {
   transactions: [],
 };
 
-const normalizePseudoKey = (value) => value.trim().toLowerCase();
-const normalizeEmailKey = (value) => value.trim().toLowerCase();
-const normalizePhoneKey = (value) => value.replace(/\D/g, '');
-const normalizeGameIdKey = (value) => value.trim();
-const normalizeChatParticipants = (participants) =>
+export const normalizePseudoKey = (value) => value.trim().toLowerCase();
+export const normalizeEmailKey = (value) => value.trim().toLowerCase();
+export const normalizePhoneKey = (value) => value.replace(/\D/g, '');
+export const normalizeGameIdKey = (value) => value.trim();
+export const normalizeChatParticipants = (participants) =>
   [...new Set((Array.isArray(participants) ? participants : []).map((entry) => `${entry || ''}`.trim()).filter(Boolean))];
 
-const makeError = (code, message) => Object.assign(new Error(message), { code });
+export const makeError = (code, message) => Object.assign(new Error(message), { code });
 
 const cleanupExpiredAuthSessions = () => {
   localDb.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(getNow());
@@ -128,7 +173,7 @@ const cleanupExpiredRealtimeSessions = () => {
   localDb.prepare('DELETE FROM realtime_sessions WHERE expires_at <= ?').run(getNow());
 };
 
-const normalizeChatChannelPayload = (channel) => {
+export const normalizeChatChannelPayload = (channel) => {
   const createdAt = channel?.createdAt || getNow();
   const updatedAt = channel?.updatedAt || channel?.lastMessageAt || createdAt;
 
@@ -147,7 +192,7 @@ const normalizeChatChannelPayload = (channel) => {
   };
 };
 
-const normalizeChatMessagePayload = (message) => ({
+export const normalizeChatMessagePayload = (message) => ({
   id: `${message?.id || ''}`.trim(),
   channelId: `${message?.channelId || ''}`.trim(),
   channelType: message?.channelType || 'private',
@@ -183,13 +228,13 @@ const getChatReadAt = (channelId, userId) =>
     )
     .get(channelId, userId)?.readAt;
 
-const hashPassword = (password) => {
+export const hashPassword = (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
   const digest = crypto.scryptSync(password, salt, 64).toString('hex');
   return `${salt}:${digest}`;
 };
 
-const verifyPassword = (password, passwordHash) => {
+export const verifyPassword = (password, passwordHash) => {
   if (!passwordHash?.includes(':')) return false;
   const [salt, expectedDigest] = passwordHash.split(':');
   const actualDigest = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -200,7 +245,7 @@ const verifyPassword = (password, passwordHash) => {
   return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
 };
 
-const normalizeWalletSnapshot = (wallet) => ({
+export const normalizeWalletSnapshot = (wallet) => ({
   cashBalance: roundAmount(wallet?.cashBalance ?? 0),
   bonusBalance: roundAmount(wallet?.bonusBalance ?? 0),
   lockedBalance: roundAmount(wallet?.lockedBalance ?? 0),
@@ -209,7 +254,7 @@ const normalizeWalletSnapshot = (wallet) => ({
   transactions: Array.isArray(wallet?.transactions) ? wallet.transactions : [],
 });
 
-const sanitizeUserPayload = (payload) => {
+export const sanitizeUserPayload = (payload) => {
   if (!payload) return null;
 
   const wallet = normalizeWalletSnapshot(payload.wallet);
@@ -303,7 +348,7 @@ const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   }
 };
 
-const buildUserPayload = (input, role = 'player') => {
+export const buildUserPayload = (input, role = 'player') => {
   const now = getNow();
   const streamerMode = Boolean(input.streamerMode);
   const wallet = normalizeWalletSnapshot(
@@ -506,7 +551,13 @@ const ensureSeedAdmin = () => {
     pseudo: 'ZOYD Control',
     email: 'admin@zoyd.com',
     phone: '+22960000000',
-    password: process.env.ZOYD_ADMIN_PASSWORD || 'Admin@ZOYD2026',
+    password: process.env.ZOYD_ADMIN_PASSWORD || (() => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('[FATAL] ZOYD_ADMIN_PASSWORD must be set in production environment.');
+      }
+      console.warn('[WARN] ZOYD_ADMIN_PASSWORD not set — using default dev password. NEVER do this in production.');
+      return 'Admin@ZOYD2026';
+    })(),
     gameId: 'ADMIN-ZOYD-0001',
     controllerType: 'touch',
     device: 'pc',
@@ -852,6 +903,90 @@ export const getPushSubscriptionsForUser = (userId) =>
 export const countPushSubscriptions = () =>
   localDb.prepare('SELECT COUNT(*) AS total FROM push_subscriptions').get().total;
 
+// --- SOCIAL SYSTEM ---
+
+export const getFriendRequestsForUser = (userId) => {
+  return localDb.prepare(`
+    SELECT * FROM friend_requests 
+    WHERE target_id = ? OR sender_id = ?
+  `).all(userId, userId);
+};
+
+export const getFriendsForUser = (userId) => {
+  const links = localDb.prepare(`
+    SELECT user_id_2 as friend_id FROM friendships WHERE user_id_1 = ?
+    UNION
+    SELECT user_id_1 as friend_id FROM friendships WHERE user_id_2 = ?
+  `).all(userId, userId);
+  
+  return links.map(link => getUserById(link.friend_id)).filter(Boolean);
+};
+
+export const getBlockedUsers = (userId) => {
+  return localDb.prepare('SELECT blocked_id FROM user_blocks WHERE blocker_id = ?').all(userId).map(r => r.blocked_id);
+};
+
+export const sendFriendRequest = (senderId, targetId, message) => {
+  if (senderId === targetId) throw makeError('INVALID_REQUEST', 'Cannot add yourself.');
+  const target = getUserById(targetId);
+  if (!target) throw makeError('USER_NOT_FOUND', 'Utilisateur introuvable.');
+
+  const existing = localDb.prepare('SELECT id, status FROM friend_requests WHERE (sender_id = ? AND target_id = ?) OR (sender_id = ? AND target_id = ?)').get(senderId, targetId, targetId, senderId);
+  
+  if (existing) {
+    if (existing.status === 'accepted') throw makeError('ALREADY_FRIENDS', 'Vous êtes déjà amis.');
+    if (existing.status === 'pending') throw makeError('REQUEST_PENDING', 'Une demande est déjà en attente.');
+  }
+
+  const id = `FR-${crypto.randomUUID()}`;
+  const now = getNow();
+
+  localDb.prepare(`
+    INSERT INTO friend_requests (id, sender_id, target_id, status, message, created_at, updated_at)
+    VALUES (?, ?, ?, 'pending', ?, ?, ?)
+  `).run(id, senderId, targetId, message || null, now, now);
+
+  return { id, senderId, targetId, status: 'pending', message, timestamp: now };
+};
+
+export const acceptFriendRequest = (requestId, userId) => {
+  const req = localDb.prepare('SELECT * FROM friend_requests WHERE id = ?').get(requestId);
+  if (!req) throw makeError('NOT_FOUND', 'Demande introuvable.');
+  if (req.target_id !== userId) throw makeError('UNAUTHORIZED', 'Non autorisé.');
+  
+  localDb.prepare('UPDATE friend_requests SET status = ?, updated_at = ? WHERE id = ?').run('accepted', getNow(), requestId);
+  localDb.prepare('INSERT OR IGNORE INTO friendships (user_id_1, user_id_2, created_at) VALUES (?, ?, ?)').run(req.sender_id, req.target_id, getNow());
+  
+  return getUserById(req.sender_id);
+};
+
+export const declineFriendRequest = (requestId, userId) => {
+  const req = localDb.prepare('SELECT * FROM friend_requests WHERE id = ?').get(requestId);
+  if (!req) throw makeError('NOT_FOUND', 'Demande introuvable.');
+  if (req.target_id !== userId) throw makeError('UNAUTHORIZED', 'Non autorisé.');
+  localDb.prepare('UPDATE friend_requests SET status = ?, updated_at = ? WHERE id = ?').run('declined', getNow(), requestId);
+};
+
+export const removeFriend = (userId, friendId) => {
+  localDb.prepare(`
+    DELETE FROM friendships 
+    WHERE (user_id_1 = ? AND user_id_2 = ?) OR (user_id_1 = ? AND user_id_2 = ?)
+  `).run(userId, friendId, friendId, userId);
+  localDb.prepare(`
+    DELETE FROM friend_requests
+    WHERE (sender_id = ? AND target_id = ?) OR (sender_id = ? AND target_id = ?)
+  `).run(userId, friendId, friendId, userId);
+};
+
+export const blockUser = (blockerId, blockedId) => {
+  removeFriend(blockerId, blockedId);
+  localDb.prepare('INSERT OR IGNORE INTO user_blocks (blocker_id, blocked_id, created_at) VALUES (?, ?, ?)').run(blockerId, blockedId, getNow());
+};
+
+export const unblockUser = (blockerId, blockedId) => {
+  localDb.prepare('DELETE FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?').run(blockerId, blockedId);
+};
+
 const getItemTimestamp = (item) => {
   if (typeof item?.updatedAt === 'string') return item.updatedAt;
   if (typeof item?.createdAt === 'string') return item.createdAt;
@@ -920,3 +1055,73 @@ export const getStateCollection = (kind) =>
     )
     .all(kind)
     .map((row) => JSON.parse(row.payload));
+
+// --- Notifications ---
+
+export const createNotification = (userId, type, title, message, priority, actionUrl, metadata) => {
+  const id = `NOTIF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6)}`;
+  const now = getNow();
+  localDb.prepare(`
+    INSERT INTO user_notifications (id, user_id, type, title, message, priority, action_url, metadata, is_read, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+  `).run(id, userId, type, title, message, priority, actionUrl || null, metadata ? JSON.stringify(metadata) : null, now);
+  
+  return {
+    id, userId, type, title, message, priority, actionUrl, metadata, isRead: false, createdAt: now
+  };
+};
+
+export const getUnreadNotificationsForUser = (userId) => {
+  const rows = localDb.prepare(`
+    SELECT id, type, title, message, priority, action_url, metadata, created_at
+    FROM user_notifications
+    WHERE user_id = ? AND is_read = 0
+    ORDER BY created_at DESC
+  `).all(userId);
+
+  return rows.map(row => ({
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    message: row.message,
+    priority: row.priority,
+    actionUrl: row.action_url,
+    metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+    createdAt: row.created_at,
+    isRead: false
+  }));
+};
+
+export const markNotificationAsRead = (userId, notificationId) => {
+  const info = localDb.prepare(`
+    UPDATE user_notifications
+    SET is_read = 1
+    WHERE user_id = ? AND id = ?
+  `).run(userId, notificationId);
+  return info.changes > 0;
+};
+
+export const markAllNotificationsAsRead = (userId) => {
+  const info = localDb.prepare(`
+    UPDATE user_notifications
+    SET is_read = 1
+    WHERE user_id = ?
+  `).run(userId);
+  return info.changes;
+};
+
+// ─── FedaPay Transaction Idempotency ─────────────────────────────────────────
+
+export const hasTransactionBeenProcessed = (transactionId) => {
+  const row = localDb
+    .prepare(`SELECT transaction_id FROM processed_transactions WHERE transaction_id = ? LIMIT 1`)
+    .get(transactionId);
+  return Boolean(row);
+};
+
+export const markTransactionAsProcessed = (transactionId, userId, amountZC) => {
+  // PRIMARY KEY constraint guarantees atomicity — duplicate insert throws UNIQUE violation
+  localDb
+    .prepare(`INSERT INTO processed_transactions (transaction_id, user_id, amount_zc) VALUES (?, ?, ?)`)
+    .run(transactionId, userId, amountZC);
+};

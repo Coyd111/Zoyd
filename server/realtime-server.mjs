@@ -26,8 +26,23 @@ import {
   replaceStateCollection,
   upsertChatChannel,
   upsertPushSubscription,
+  updateUserAccount,
+  getFriendsForUser,
+  getFriendRequestsForUser,
+  getBlockedUsers,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  removeFriend,
+  blockUser,
+  unblockUser,
+  createNotification,
+  getUnreadNotificationsForUser,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
+import { initCronJobs } from './cron.mjs';
 import {
   MATCH_AUTOMATION_INTERVAL_MS,
   assignArbiterOnServer,
@@ -35,6 +50,7 @@ import {
   checkInMatchOnServer,
   confirmMatchResultOnServer,
   createMatchOnServer,
+  getPublicMatchesForUser,
   joinMatchOnServer,
   launchMatchOnServer,
   openDisputeOnServer,
@@ -44,6 +60,8 @@ import {
   setRoomDetailsOnServer,
   submitMatchResultOnServer,
   toggleReadyOnServer,
+  addEvidenceToDisputeOnServer,
+  escalateDisputeOnServer,
 } from './match-engine.mjs';
 import { verifyFedaPayTransactionAndCredit } from './payment-engine.mjs';
 import {
@@ -73,23 +91,49 @@ const typingByChannel = new Map();
 
 const getNow = () => new Date().toISOString();
 
-const respondJson = (res, statusCode, payload) => {
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:4001',
+  'https://zoyd.africa',
+  'https://www.zoyd.africa',
+];
+
+const getCorsOrigin = (req) => {
+  const origin = req.headers.origin || '';
+  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+};
+
+const respondJson = (res, statusCode, payload, req = null) => {
+  const origin = req ? getCorsOrigin(req) : ALLOWED_ORIGINS[0];
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   });
   res.end(JSON.stringify(payload));
 };
 
+const BODY_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB
+
 const parseRequestBody = async (req) => {
   const chunks = [];
+  let totalSize = 0;
   for await (const chunk of req) {
+    totalSize += chunk.length;
+    if (totalSize > BODY_SIZE_LIMIT) {
+      throw Object.assign(new Error('Payload trop volumineux (max 1MB).'), { code: 'PAYLOAD_TOO_LARGE' });
+    }
     chunks.push(chunk);
   }
   const rawBody = Buffer.concat(chunks).toString('utf8');
-  return rawBody ? JSON.parse(rawBody) : {};
+  if (!rawBody) return {};
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    throw Object.assign(new Error('Corps de requête JSON invalide.'), { code: 'INVALID_JSON' });
+  }
 };
 
 const readBearerToken = (req) => {
@@ -411,7 +455,20 @@ const sendPushToUser = async (userId, payload) => {
 };
 
 const deliverNotification = async (io, targetUserId, payload) => {
-  io.to(`user:${targetUserId}`).emit('notification:deliver', payload);
+  const { title, body, url, tag, requireInteraction, type = 'system' } = payload;
+  const priority = requireInteraction ? 'urgent' : 'high';
+
+  const notification = createNotification(
+    targetUserId,
+    type,
+    title,
+    body || 'Notification ZOYD',
+    priority,
+    url,
+    { source: 'server-push', browserTag: tag }
+  );
+
+  io.to(`user:${targetUserId}`).emit('notification:deliver', notification);
   await sendPushToUser(targetUserId, payload);
 };
 
@@ -501,6 +558,170 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'PATCH' && pathname === '/api/auth/me') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+
+    try {
+      const body = await parseRequestBody(req);
+      // Whitelist strict — empêche l'escalade de rôle (mass assignment)
+      const ALLOWED_PROFILE_FIELDS = [
+        'pseudo', 'avatar', 'bio', 'device', 'controllerType',
+        'country', 'streamerMode', 'streamerPseudo', 'notifications',
+      ];
+      const safeUpdate = {};
+      for (const field of ALLOWED_PROFILE_FIELDS) {
+        if (field in body) safeUpdate[field] = body[field];
+      }
+      const updatedUser = updateUserAccount(session.user.id, (user) => {
+        return { ...user, ...safeUpdate };
+      });
+      respondJson(res, 200, { ok: true, user: updatedUser }, req);
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/social/request') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const body = await parseRequestBody(req);
+      const request = sendFriendRequest(session.user.id, body.targetId, body.message);
+      
+      deliverNotification(io, body.targetId, {
+        type: 'friend_request',
+        title: "Demande d'ami",
+        body: `${session.user.pseudo} t'a envoyé une demande d'ami.`,
+        url: `/profil`,
+        requireInteraction: false
+      }).catch(console.error);
+
+      respondJson(res, 200, { ok: true, request });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/social/accept') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const body = await parseRequestBody(req);
+      const friend = acceptFriendRequest(body.requestId, session.user.id);
+      
+      const requests = getFriendRequestsForUser(session.user.id);
+      const reqInfo = requests.find(r => r.id === body.requestId);
+      // Wait, `reqInfo` may not be available if it was just accepted (it's no longer 'pending').
+      // Let's rely on the `friend` output from acceptFriendRequest which returns the new friend record.
+      // `friend` has `{ id, pseudo }` of the user.
+      
+      deliverNotification(io, friend.id, {
+        type: 'friend_online',
+        title: 'Demande acceptée',
+        body: `${session.user.pseudo} a accepté ta demande d'ami.`,
+        url: `/profil/${session.user.id}`,
+        requireInteraction: false
+      }).catch(console.error);
+
+      respondJson(res, 200, { ok: true, friend });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/social/decline') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const body = await parseRequestBody(req);
+      declineFriendRequest(body.requestId, session.user.id);
+      respondJson(res, 200, { ok: true });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const socialFriendMatch = pathname.match(/^\/api\/social\/friends\/(.+)$/);
+  if (req.method === 'DELETE' && socialFriendMatch) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      removeFriend(session.user.id, socialFriendMatch[1]);
+      respondJson(res, 200, { ok: true });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/social/block') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const body = await parseRequestBody(req);
+      blockUser(session.user.id, body.targetId);
+      respondJson(res, 200, { ok: true });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/social/unblock') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const body = await parseRequestBody(req);
+      unblockUser(session.user.id, body.targetId);
+      respondJson(res, 200, { ok: true });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/notifications/read') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const body = await parseRequestBody(req);
+      const success = markNotificationAsRead(session.user.id, body.notificationId);
+      respondJson(res, 200, { ok: true, success });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/notifications/read-all') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const changes = markAllNotificationsAsRead(session.user.id);
+      respondJson(res, 200, { ok: true, changes });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
   if (req.method === 'POST' && pathname === '/api/auth/logout') {
     const token = readBearerToken(req);
     const session = token ? getAuthSession(token) : null;
@@ -570,9 +791,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/matches') {
+    // Filter matches server-side based on the connected user's device type
+    const matchSession = readBearerToken(req) ? getAuthSession(readBearerToken(req)) : null;
+    const matchCurrentUser = matchSession?.user ? getUserById(matchSession.user.id) : null;
+    const allMatches = getStateCollection('matches');
+    const visibleMatches = getPublicMatchesForUser(allMatches, matchCurrentUser);
+
     respondJson(res, 200, {
       ok: true,
-      matches: getStateCollection('matches'),
+      matches: visibleMatches,
     });
     return;
   }
@@ -1023,11 +1250,73 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const matchDisputeEvidence = pathname.match(/^\/api\/matches\/([^/]+)\/dispute\/evidence$/);
+  if (req.method === 'POST' && matchDisputeEvidence) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const outcome = addEvidenceToDisputeOnServer(
+        getStateCollection('matches'),
+        session.user,
+        matchDisputeEvidence[1],
+        body.evidence
+      );
+      saveMatches(io, outcome.matches, outcome.match);
+      respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const matchDisputeEscalate = pathname.match(/^\/api\/matches\/([^/]+)\/dispute\/escalate$/);
+  if (req.method === 'POST' && matchDisputeEscalate) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const outcome = escalateDisputeOnServer(
+        getStateCollection('matches'),
+        session.user,
+        matchDisputeEscalate[1]
+      );
+      saveMatches(io, outcome.matches, outcome.match);
+
+      // Notify admins of escalation
+      const match = outcome.match;
+      deliverNotification(io, '__admin__', {
+        type: 'dispute_update',
+        title: 'Litige escaladé',
+        body: `Match ${match.id} — Litige escaladé au niveau admin par ${session.user.pseudo}.`,
+        url: `/admin`,
+        requireInteraction: true,
+      }).catch(console.error);
+
+      respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
   const adminMatchAward = pathname.match(/^\/api\/admin\/matches\/([^/]+)\/award$/);
   if (req.method === 'POST' && adminMatchAward) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
+      return;
+    }
+    if (session.user.role !== 'admin') {
+      console.warn(`[SECURITY] Tentative admin non autorisée par ${session.user.pseudo} (${session.user.id}) sur award match ${adminMatchAward[1]}`);
+      respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
       return;
     }
 
@@ -1057,7 +1346,12 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && adminMatchResolve) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
+      return;
+    }
+    if (session.user.role !== 'admin') {
+      console.warn(`[SECURITY] Tentative admin non autorisée par ${session.user.pseudo} (${session.user.id}) sur resolve-dispute match ${adminMatchResolve[1]}`);
+      respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
       return;
     }
 
@@ -1082,7 +1376,12 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && adminMatchCancel) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
+      return;
+    }
+    if (session.user.role !== 'admin') {
+      console.warn(`[SECURITY] Tentative admin non autorisée par ${session.user.pseudo} (${session.user.id}) sur cancel match ${adminMatchCancel[1]}`);
+      respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
       return;
     }
 
@@ -1284,6 +1583,10 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       matches: getStateCollection('matches'),
       tournaments: getStoredTournaments(),
+      friends: getFriendsForUser(session.user.id),
+      friendRequests: getFriendRequestsForUser(session.user.id),
+      blockedIds: getBlockedUsers(session.user.id),
+      notifications: getUnreadNotificationsForUser(session.user.id),
       timestamp: getNow(),
     });
     return;

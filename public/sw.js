@@ -44,11 +44,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(() => caches.match(request).then(cached => cached || new Response(JSON.stringify({ error: "Serveur injoignable ou hors ligne" }), { status: 503, headers: { 'Content-Type': 'application/json' } })))
     );
     return;
   }
@@ -59,14 +61,21 @@ self.addEventListener('fetch', (event) => {
       if (cached) {
         // Revalidate in background
         fetch(request).then((response) => {
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, response));
+          if (response.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, response));
+          }
         }).catch(() => {});
         return cached;
       }
       return fetch(request).then((response) => {
-        const clone = response.clone();
-        caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
+        if (response.status === 200 && response.type !== 'opaque') {
+          const clone = response.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
+        }
         return response;
+      }).catch((error) => {
+        // Fallback response prevents Uncaught TypeError in console during dev server restarts
+        return new Response('Offline fallback', { status: 503, statusText: 'Service Unavailable' });
       });
     })
   );

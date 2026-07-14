@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useToastStore, type ToastType } from './toastStore';
+import { markServerNotificationRead, markAllServerNotificationsRead } from '../lib/notificationApi';
 
 export type NotificationType =
   | 'match_start'
@@ -40,6 +41,7 @@ export interface NotificationState {
   getUnreadCount: () => number;
   getByPriority: () => Notification[];
   getRecent: (count?: number) => Notification[];
+  hydrateFromServer: (serverNotifications: any[]) => void;
 }
 
 const toastTypeByPriority: Record<NotificationPriority, ToastType> = {
@@ -145,12 +147,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         n.id === id ? { ...n, read: true } : n
       ),
     }));
+    void markServerNotificationRead(id).catch(() => undefined);
   },
 
   markAllAsRead: () => {
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
     }));
+    void markAllServerNotificationsRead().catch(() => undefined);
   },
 
   dismiss: (id) => {
@@ -176,4 +180,20 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     get().notifications
       .filter((n) => !n.dismissed)
       .slice(0, count),
+
+  hydrateFromServer: (serverNotifications) => {
+    const nextNotifications = serverNotifications.map((n: any) => ({
+      id: n.id,
+      type: n.type as NotificationType,
+      title: n.title,
+      message: n.message,
+      priority: n.priority as NotificationPriority,
+      actionUrl: n.actionUrl,
+      metadata: n.metadata,
+      read: n.isRead,
+      dismissed: false,
+      timestamp: n.createdAt,
+    }));
+    set({ notifications: nextNotifications });
+  },
 }));

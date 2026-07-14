@@ -25,9 +25,9 @@
   --color-zoyd-surface: var(--color-gray-900);
   --color-zoyd-border: var(--color-gray-800);
   
-  --font-display: var(--font-display);
-  --font-ui: var(--font-ui);
-  --font-mono: var(--font-mono);
+  --font-display: 'Outfit', sans-serif;
+  --font-ui: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 @layer base {
@@ -87,28 +87,12 @@
     z-index: 50;
   }
 
-  /* Glass HUD Panel */
+  /* Glass HUD Panel - Brutalist Update */
   .hud-panel {
-    background: rgba(10, 10, 10, 0.8);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
-  }
-  
-  .hud-panel::before {
-    content: '';
-    position: absolute;
-    top: -1px; left: -1px; width: 10px; height: 10px;
-    border-top: 1px solid var(--color-white);
-    border-left: 1px solid var(--color-white);
-  }
-
-  .hud-panel::after {
-    content: '';
-    position: absolute;
-    bottom: -1px; right: -1px; width: 10px; height: 10px;
-    border-bottom: 1px solid var(--color-white);
-    border-right: 1px solid var(--color-white);
+    /* background: transparent;
+       border: none;
+       backdrop-filter: none; */
   }
 
   /* Tactical Borders */

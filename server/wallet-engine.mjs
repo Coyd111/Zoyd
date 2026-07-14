@@ -1,6 +1,6 @@
 import { getWalletSnapshot, updateWalletSnapshot } from './persistence.mjs';
 
-const MIN_WITHDRAWAL_ZC = 15;
+const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
 const roundAmount = (amount) => Math.round(Number(amount || 0) * 100) / 100;
 const getNow = () => new Date().toISOString();
@@ -81,8 +81,8 @@ export const lockEntryFee = (userId, amount, matchId) => {
       throw makeError('INSUFFICIENT_FUNDS', 'Solde insuffisant pour bloquer ce pass.');
     }
 
-    const bonusDeduct = Math.min(wallet.bonusBalance, safeAmount);
-    const cashDeduct = roundAmount(safeAmount - bonusDeduct);
+    const cashDeduct = Math.min(wallet.cashBalance, safeAmount);
+    const bonusDeduct = roundAmount(safeAmount - cashDeduct);
 
     return withTransaction(
       {

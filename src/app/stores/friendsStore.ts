@@ -41,6 +41,7 @@ export interface FriendsState {
   blockedIds: string[];
   reports: Report[];
   // Actions
+  hydrateFromServer: (friends: Friend[], requests: FriendRequest[], blockedIds: string[]) => void;
   sendRequest: (targetId: string, targetPseudo: string, message?: string) => void;
   acceptRequest: (requestId: string) => void;
   declineRequest: (requestId: string) => void;
@@ -54,99 +55,96 @@ export interface FriendsState {
   getOnlineFriends: () => Friend[];
 }
 
-export const useFriendsStore = create<FriendsState>()(
-  persist(
-    (set, get) => ({
-      friends: [],
-      requests: [],
-      blockedIds: [],
-      reports: [],
+export const useFriendsStore = create<FriendsState>()((set, get) => ({
+  friends: [],
+  requests: [],
+  blockedIds: [],
+  reports: [],
 
-      sendRequest: (targetId, targetPseudo, message) => {
-        if (get().blockedIds.includes(targetId)) return;
-        const req: FriendRequest = {
-          id: `FR-${Date.now()}`,
-          senderId: 'me',
-          senderPseudo: targetPseudo,
-          status: 'pending',
-          timestamp: new Date().toISOString(),
-          message,
-        };
-        set((state) => ({ requests: [req, ...state.requests] }));
-      },
+  hydrateFromServer: (friends, requests, blockedIds) => {
+    set({ friends, requests, blockedIds });
+  },
 
-      acceptRequest: (requestId) => {
-        set((state) => {
-          const req = state.requests.find((r) => r.id === requestId);
-          if (!req) return state;
-          const newFriend: Friend = {
-            id: req.senderId === 'me' ? 'mock-friend-id' : req.senderId,
-            pseudo: req.senderPseudo,
-            country: 'CI',
-            status: 'offline',
-            isStreamer: false,
-            controllerType: 'touch',
-            trustScore: 80,
-          };
-          return {
-            requests: state.requests.filter((r) => r.id !== requestId),
-            friends: [newFriend, ...state.friends],
-          };
-        });
-      },
+  sendRequest: (targetId, targetPseudo, message) => {
+    if (get().blockedIds.includes(targetId)) return;
+    const req: FriendRequest = {
+      id: `FR-${Date.now()}`,
+      senderId: 'me',
+      senderPseudo: targetPseudo,
+      status: 'pending',
+      timestamp: new Date().toISOString(),
+      message,
+    };
+    set((state) => ({ requests: [req, ...state.requests] }));
+  },
 
-      declineRequest: (requestId) => {
-        set((state) => ({
-          requests: state.requests.filter((r) => r.id !== requestId),
-        }));
-      },
+  acceptRequest: (requestId) => {
+    set((state) => {
+      const req = state.requests.find((r) => r.id === requestId);
+      if (!req) return state;
+      const newFriend: Friend = {
+        id: req.senderId === 'me' ? 'mock-friend-id' : req.senderId,
+        pseudo: req.senderPseudo,
+        country: 'CI',
+        status: 'offline',
+        isStreamer: false,
+        controllerType: 'touch',
+        trustScore: 80,
+      };
+      return {
+        requests: state.requests.filter((r) => r.id !== requestId),
+        friends: [newFriend, ...state.friends],
+      };
+    });
+  },
 
-      removeFriend: (friendId) => {
-        set((state) => ({
-          friends: state.friends.filter((f) => f.id !== friendId),
-        }));
-      },
+  declineRequest: (requestId) => {
+    set((state) => ({
+      requests: state.requests.filter((r) => r.id !== requestId),
+    }));
+  },
 
-      blockUser: (userId) => {
-        set((state) => ({
-          blockedIds: [...state.blockedIds, userId],
-          friends: state.friends.filter((f) => f.id !== userId),
-          requests: state.requests.filter((r) => r.senderId !== userId),
-        }));
-      },
+  removeFriend: (friendId) => {
+    set((state) => ({
+      friends: state.friends.filter((f) => f.id !== friendId),
+    }));
+  },
 
-      unblockUser: (userId) => {
-        set((state) => ({
-          blockedIds: state.blockedIds.filter((id) => id !== userId),
-        }));
-      },
+  blockUser: (userId) => {
+    set((state) => ({
+      blockedIds: [...state.blockedIds, userId],
+      friends: state.friends.filter((f) => f.id !== userId),
+      requests: state.requests.filter((r) => r.senderId !== userId),
+    }));
+  },
 
-      reportUser: (targetId, reason, description) => {
-        const report: Report = {
-          id: `RP-${Date.now()}`,
-          targetId,
-          reason,
-          description,
-          timestamp: new Date().toISOString(),
-          status: 'pending',
-        };
-        set((state) => ({ reports: [report, ...state.reports] }));
-      },
+  unblockUser: (userId) => {
+    set((state) => ({
+      blockedIds: state.blockedIds.filter((id) => id !== userId),
+    }));
+  },
 
-      updateFriendStatus: (friendId, status) => {
-        set((state) => ({
-          friends: state.friends.map((f) =>
-            f.id === friendId ? { ...f, status, lastSeen: new Date().toISOString() } : f
-          ),
-        }));
-      },
+  reportUser: (targetId, reason, description) => {
+    const report: Report = {
+      id: `RP-${Date.now()}`,
+      targetId,
+      reason,
+      description,
+      timestamp: new Date().toISOString(),
+      status: 'pending',
+    };
+    set((state) => ({ reports: [report, ...state.reports] }));
+  },
 
-      isBlocked: (userId) => get().blockedIds.includes(userId),
-      isFriend: (userId) => get().friends.some((f) => f.id === userId),
-      getOnlineFriends: () => get().friends.filter((f) => f.status === 'online' || f.status === 'in_match' || f.status === 'in_lobby'),
-    }),
-    {
-      name: 'zoyd-friends',
-    }
-  )
-);
+  updateFriendStatus: (friendId, status) => {
+    set((state) => ({
+      friends: state.friends.map((f) =>
+        f.id === friendId ? { ...f, status, lastSeen: new Date().toISOString() } : f
+      ),
+    }));
+  },
+
+  isBlocked: (userId) => get().blockedIds.includes(userId),
+  isFriend: (userId) => get().friends.some((f) => f.id === userId),
+  getOnlineFriends: () => get().friends.filter((f) => f.status === 'online' || f.status === 'in_match' || f.status === 'in_lobby'),
+}));

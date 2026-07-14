@@ -3,6 +3,7 @@ import type { User } from './authStore';
 import { useChatStore } from './chatStore';
 import type { Match } from './matchStore';
 import type { Tournament } from './tournamentStore';
+import { useFriendsStore } from './friendsStore';
 import { useNotificationStore } from './notificationStore';
 import {
   bindRealtimeHandlers,
@@ -511,6 +512,19 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     if (!user) return;
     try {
       const bootstrap = await fetchRealtimeBootstrap(user);
+      
+      // Hydrate friends
+      useFriendsStore.getState().hydrateFromServer(
+        bootstrap.friends || [],
+        bootstrap.friendRequests || [],
+        bootstrap.blockedIds || []
+      );
+
+      // Hydrate notifications
+      if (bootstrap.notifications && bootstrap.notifications.length > 0) {
+        useNotificationStore.getState().hydrateFromServer(bootstrap.notifications);
+      }
+
       set((state) => ({
         ...state,
         remoteMatchSnapshots: bootstrap.matches || [],

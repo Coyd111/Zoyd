@@ -21,7 +21,6 @@ const memoryFriendships = new Set();   // `${uid1}:${uid2}`
 const memoryUserBlocks = new Set();    // `${blocker}:${blocked}`
 const memoryNotifications = new Map(); // id -> notification
 const memoryProcessedTransactions = new Set();
-const memoryWalletTransactions = new Map(); // userId -> tx[]
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 export const makeError = (code, message) => Object.assign(new Error(message), { code });
@@ -331,6 +330,19 @@ export const getUserById = (userId) => {
   if (!userId) return null;
   const user = memoryUsers.get(userId);
   return user ? sanitizeUserPayload(user) : null;
+};
+
+export const findUsersByPseudo = (query, limit = 20) => {
+  const q = normalizePseudoKey(query);
+  if (!q) return [];
+  const results = [];
+  for (const user of memoryUsers.values()) {
+    if (normalizePseudoKey(user.pseudo).includes(q)) {
+      results.push(sanitizeUserPayload(user));
+      if (results.length >= limit) break;
+    }
+  }
+  return results;
 };
 
 export const updateUserAccount = (userId, updater) => {

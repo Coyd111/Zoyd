@@ -65,7 +65,7 @@ export const submitServerMatchResult = async (matchId: string, payload: any) => 
 };
 
 export const confirmServerMatchResult = async (matchId: string) => {
-  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/confirm-result`);
+  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/confirm`);
 };
 
 export const openServerMatchDispute = async (matchId: string, payload: any) => {
@@ -73,7 +73,7 @@ export const openServerMatchDispute = async (matchId: string, payload: any) => {
 };
 
 export const adminAwardServerMatch = async (matchId: string, winnerTeam: 0 | 1, arbiterNotes?: string) => {
-  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/result`, { winnerTeam, arbiterNotes, isAdmin: true });
+  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/award`, { winnerTeam, arbiterNotes });
 };
 
 export const adminResolveServerDispute = async (matchId: string, resolution: string) => {

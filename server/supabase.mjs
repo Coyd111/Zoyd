@@ -30,4 +30,3 @@ if (supabaseUrl && supabaseKey) {
 }
 
 export { supabase };
-export const db = null;

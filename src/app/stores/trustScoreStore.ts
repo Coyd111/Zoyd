@@ -16,6 +16,7 @@ export interface TrustScoreState {
   updateCategory: (cat: keyof Omit<TrustBreakdown, 'overall'>, value: number) => void;
   recalcOverall: () => void;
   addHistory: (entry: { delta: number; reason: string }) => void;
+  hydrateFromUser: (trustScore: number) => void;
 }
 
 function clamp(n: number) {
@@ -66,6 +67,13 @@ export const useTrustScoreStore = create<TrustScoreState>((set, get) => ({
         ...state.history,
       ].slice(0, 50),
     })),
+
+  hydrateFromUser: (trustScore) => {
+    if (typeof trustScore !== 'number') return;
+    set((state) => ({
+      score: { ...state.score, overall: clamp(trustScore) },
+    }));
+  },
 }));
 
 // Helpers
@@ -101,7 +109,7 @@ export const categoryLabels: Record<keyof Omit<TrustBreakdown, 'overall'>, strin
 
 export const categoryIcons: Record<keyof Omit<TrustBreakdown, 'overall'>, string> = {
   punctuality: '⏱',
-  fairPlay: '⚖',
+  fairPlay: '⚔',
   results: '📊',
   disputes: '🛡',
   seniority: '⭐',

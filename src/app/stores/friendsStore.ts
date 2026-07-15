@@ -1,5 +1,12 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import {
+  sendServerFriendRequest,
+  acceptServerFriendRequest,
+  declineServerFriendRequest,
+  removeServerFriend,
+  blockServerUser,
+  unblockServerUser,
+} from '../lib/socialApi';
 
 export type FriendStatus = 'online' | 'offline' | 'in_match' | 'in_lobby';
 export type FriendRequestStatus = 'pending' | 'accepted' | 'blocked' | 'declined';
@@ -65,63 +72,76 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
     set({ friends, requests, blockedIds });
   },
 
-  sendRequest: (targetId, targetPseudo, message) => {
+  sendRequest: async (targetId, _targetPseudo, message) => {
     if (get().blockedIds.includes(targetId)) return;
-    const req: FriendRequest = {
-      id: `FR-${Date.now()}`,
-      senderId: 'me',
-      senderPseudo: targetPseudo,
-      status: 'pending',
-      timestamp: new Date().toISOString(),
-      message,
-    };
-    set((state) => ({ requests: [req, ...state.requests] }));
+    try {
+      const res = await sendServerFriendRequest(targetId, message);
+      if (res.ok && res.request) {
+        set((state) => ({ requests: [res.request, ...state.requests] }));
+      }
+    } catch (error) {
+      console.error('Erreur envoi demande ami:', error);
+    }
   },
 
-  acceptRequest: (requestId) => {
-    set((state) => {
-      const req = state.requests.find((r) => r.id === requestId);
-      if (!req) return state;
-      const newFriend: Friend = {
-        id: req.senderId === 'me' ? 'mock-friend-id' : req.senderId,
-        pseudo: req.senderPseudo,
-        country: 'CI',
-        status: 'offline',
-        isStreamer: false,
-        controllerType: 'touch',
-        trustScore: 80,
-      };
-      return {
+  acceptRequest: async (requestId) => {
+    try {
+      const res = await acceptServerFriendRequest(requestId);
+      if (res.ok && res.friend) {
+        set((state) => ({
+          requests: state.requests.filter((r) => r.id !== requestId),
+          friends: [res.friend, ...state.friends],
+        }));
+      }
+    } catch (error) {
+      console.error('Erreur acceptation demande:', error);
+    }
+  },
+
+  declineRequest: async (requestId) => {
+    try {
+      await declineServerFriendRequest(requestId);
+      set((state) => ({
         requests: state.requests.filter((r) => r.id !== requestId),
-        friends: [newFriend, ...state.friends],
-      };
-    });
+      }));
+    } catch (error) {
+      console.error('Erreur refus demande:', error);
+    }
   },
 
-  declineRequest: (requestId) => {
-    set((state) => ({
-      requests: state.requests.filter((r) => r.id !== requestId),
-    }));
+  removeFriend: async (friendId) => {
+    try {
+      await removeServerFriend(friendId);
+      set((state) => ({
+        friends: state.friends.filter((f) => f.id !== friendId),
+      }));
+    } catch (error) {
+      console.error('Erreur suppression ami:', error);
+    }
   },
 
-  removeFriend: (friendId) => {
-    set((state) => ({
-      friends: state.friends.filter((f) => f.id !== friendId),
-    }));
+  blockUser: async (userId) => {
+    try {
+      await blockServerUser(userId);
+      set((state) => ({
+        blockedIds: [...state.blockedIds, userId],
+        friends: state.friends.filter((f) => f.id !== userId),
+        requests: state.requests.filter((r) => r.senderId !== userId),
+      }));
+    } catch (error) {
+      console.error('Erreur blocage:', error);
+    }
   },
 
-  blockUser: (userId) => {
-    set((state) => ({
-      blockedIds: [...state.blockedIds, userId],
-      friends: state.friends.filter((f) => f.id !== userId),
-      requests: state.requests.filter((r) => r.senderId !== userId),
-    }));
-  },
-
-  unblockUser: (userId) => {
-    set((state) => ({
-      blockedIds: state.blockedIds.filter((id) => id !== userId),
-    }));
+  unblockUser: async (userId) => {
+    try {
+      await unblockServerUser(userId);
+      set((state) => ({
+        blockedIds: state.blockedIds.filter((id) => id !== userId),
+      }));
+    } catch (error) {
+      console.error('Erreur deblocage:', error);
+    }
   },
 
   reportUser: (targetId, reason, description) => {

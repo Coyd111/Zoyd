@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useTrustScoreStore } from './trustScoreStore';
 
 export type ControllerType = 'touch' | 'controller' | 'emulator' | 'pc' | 'other';
 export type PlayerLevel = 'DEBUTANT' | 'COMPETITEUR' | 'CONFIRME' | 'VETERAN' | 'ELITE_ZOYD';
@@ -92,13 +93,25 @@ export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   sessionToken: null,
   isAuthenticated: false,
-  login: (user, sessionToken) => set({ user: normalizeUser(user), sessionToken, isAuthenticated: true }),
-  hydrateSession: (user, sessionToken) => set({ user: normalizeUser(user), sessionToken, isAuthenticated: true }),
+  login: (user, sessionToken) => {
+    const normalized = normalizeUser(user);
+    useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
+    set({ user: normalized, sessionToken, isAuthenticated: true });
+  },
+  hydrateSession: (user, sessionToken) => {
+    const normalized = normalizeUser(user);
+    useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
+    set({ user: normalized, sessionToken, isAuthenticated: true });
+  },
   logout: () => set({ user: null, sessionToken: null, isAuthenticated: false }),
-  updateUser: (updates) =>
+  updateUser: (updates) => {
     set((state) => ({
       user: state.user ? normalizeUser({ ...state.user, ...updates }) : null,
-    })),
+    }));
+    if (typeof updates.trustScore === 'number') {
+      useTrustScoreStore.getState().hydrateFromUser(updates.trustScore);
+    }
+  },
   updateStats: (partial) =>
     set((state) => {
       if (!state.user) return state;

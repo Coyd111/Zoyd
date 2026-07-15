@@ -14,6 +14,7 @@ import {
 import { useFriendsStore } from '../../stores/friendsStore';
 import { Button } from '../ui/Button';
 import { cn } from '../../../lib/utils';
+import { searchUsers } from '../../lib/usersApi';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -48,10 +49,13 @@ const FriendsWidget: React.FC = () => {
 
   const pendingRequests = requests.filter((request) => request.status === 'pending');
 
-  const handleInvite = () => {
+  const handleInvite = async () => {
     const cleanPseudo = invitePseudo.trim();
     if (!cleanPseudo) return;
-    sendRequest(`friend-${cleanPseudo.toLowerCase()}`, cleanPseudo);
+    const results = await searchUsers(cleanPseudo);
+    const match = results[0];
+    if (!match) return;
+    await sendRequest(match.id, match.pseudo);
     setInvitePseudo('');
   };
 

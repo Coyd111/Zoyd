@@ -208,21 +208,24 @@ ALTER TABLE user_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE processed_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
 
--- Service role bypasses all RLS
-CREATE POLICY "Service role full access" ON app_users FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON auth_sessions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON realtime_sessions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON push_subscriptions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON chat_channels FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON chat_messages FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON chat_reads FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON state_snapshots FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON friend_requests FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON friendships FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON user_blocks FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON user_notifications FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON processed_transactions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Service role full access" ON wallet_transactions FOR ALL USING (true) WITH CHECK (true);
+-- Service role bypasses all RLS (le frontend n'utilise JAMAIS Supabase directement :
+-- tout passe par le serveur custom avec la service_role key). Les politiques
+-- ci-dessous restreignent explicitement l'acces a service_role, donc une
+-- clé anon/authenticated exposee ne pourrait rien lire/ecrire (filet de sécurité).
+CREATE POLICY "Service role only" ON app_users FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON auth_sessions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON realtime_sessions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON push_subscriptions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON chat_channels FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON chat_messages FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON chat_reads FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON state_snapshots FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON friend_requests FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON friendships FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON user_blocks FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON user_notifications FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON processed_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON wallet_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 
 -- ============================================================
 -- UPDATED_AT TRIGGER

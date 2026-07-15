@@ -14,6 +14,7 @@ import {
   ensureGlobalChatChannel,
   getUserById,
   getPushSubscriptionsForUser,
+  findUsersByPseudo,
   getAuthSession,
   getChatChannelById,
   getChatChannelsForUser,
@@ -809,6 +810,22 @@ const server = http.createServer(async (req, res) => {
     respondJson(res, 200, {
       ok: true,
       tournaments: getStoredTournaments(),
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/users/search') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const q = url.searchParams.get('q') || '';
+    const matches = findUsersByPseudo(q).filter((u) => u.id !== session.user.id);
+    respondJson(res, 200, {
+      ok: true,
+      users: matches.map((u) => ({
+        id: u.id, pseudo: u.pseudo, avatar: u.avatar, country: u.country,
+        trustScore: u.trustScore, controllerType: u.controllerType, isOnline: u.isOnline,
+      })),
     });
     return;
   }

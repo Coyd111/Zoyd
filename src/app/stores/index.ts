@@ -28,4 +28,20 @@ export type {
   ControllerRestriction,
 } from './matchStore';
 
+export { useTournamentStore } from './tournamentStore';
+export type {
+  Tournament,
+  TournamentBracket,
+  TournamentMatch,
+  TournamentFilters,
+  TournamentStatus,
+  TournamentPrivacy,
+} from './tournamentStore';
+
+export { useTrustScoreStore } from './trustScoreStore';
+export type { TrustBreakdown, TrustScoreState } from './trustScoreStore';
+
+export { useToastStore } from './toastStore';
+export type { Toast, ToastType } from './toastStore';
+
 export { useSocketStore } from './socketStore';

@@ -50,3 +50,15 @@ export const authorizedPost = async <T>(path: string, body?: unknown) =>
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   );
+
+export const authorizedPatch = async <T>(path: string, body?: unknown) =>
+  readJson<T>(
+    await fetch(getApiUrl(path), {
+      method: 'PATCH',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  );

@@ -1845,6 +1845,7 @@ const start = async () => {
 
   ensureGlobalChatChannel();
   syncMatchChatChannels(getStateCollection('matches'));
+  initCronJobs();
 
   setInterval(() => {
     try {

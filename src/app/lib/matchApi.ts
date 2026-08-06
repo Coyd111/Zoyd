@@ -77,7 +77,7 @@ export const adminAwardServerMatch = async (matchId: string, winnerTeam: 0 | 1, 
 };
 
 export const adminResolveServerDispute = async (matchId: string, resolution: string) => {
-  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/resolve-dispute`, { resolution });
+  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/resolve-dispute`, { resolution });
 };
 
 export const adminCancelServerMatch = async (matchId: string, reason: string) => {

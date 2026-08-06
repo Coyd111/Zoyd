@@ -3,6 +3,7 @@ dist
 dist-proof-check
 .env
 .env.*
+.env.server
 .DS_Store
 build.log
 public/assets/codm/

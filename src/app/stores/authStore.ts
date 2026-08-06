@@ -53,6 +53,13 @@ export interface User {
   avatar?: string;
   isOnline: boolean;
   lastSeen?: string;
+  notifications?: {
+    matchStart: boolean;
+    results: boolean;
+    messages: boolean;
+    tournaments: boolean;
+    referrals: boolean;
+  };
 }
 
 

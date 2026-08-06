@@ -25,13 +25,15 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { formatZC } from '../../lib/utils';
 
-const levelConfig = {
+const defaultLevel = { label: 'BEGINNER', color: 'text-white/40', bg: 'bg-white/5' } as const;
+
+const levelConfig: Record<string, { label: string; color: string; bg: string }> = {
   BEGINNER: { label: 'BEGINNER', color: 'text-white/40', bg: 'bg-white/5' },
   COMPETITOR: { label: 'COMPETITOR', color: 'text-zoyd-yellow', bg: 'bg-zoyd-yellow/10' },
   CHALLENGER: { label: 'CHALLENGER', color: 'text-zoyd-blue', bg: 'bg-zoyd-blue/10' },
   ELITE: { label: 'ELITE', color: 'text-purple-400', bg: 'bg-purple-400/10' },
   PRO: { label: 'PRO', color: 'text-red-400', bg: 'bg-red-400/10' },
-} as const;
+};
 
 const controllerIcons: Record<string, React.ReactNode> = {
   touch: <Smartphone className="w-4 h-4" />,
@@ -72,7 +74,7 @@ const ProfilPage: React.FC = () => {
     [matches, tournaments, user]
   );
 
-  const lvl = levelConfig[user.progression.level];
+  const lvl = levelConfig[user.progression.level] || defaultLevel;
   const progressPercent =
     user.progression.nextLevelXp > 0
       ? Math.min(100, Math.round((user.progression.xp / user.progression.nextLevelXp) * 100))

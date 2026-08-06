@@ -27,7 +27,7 @@ import {
   COUNTRY_OPTIONS,
   DEVICE_OPTIONS,
 } from '../../../lib/competition';
-import { registerWithBackend } from '../../lib/authApi';
+import { registerWithBackend, type RegisterPayload } from '../../lib/authApi';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 
 const step1Schema = z
@@ -42,6 +42,15 @@ const step1Schema = z
     message: 'Les mots de passe ne correspondent pas',
     path: ['confirmPassword'],
   });
+
+const step2Schema = z.object({
+  gameId: z.string().min(1, 'UID CODM requis'),
+  levelCODM: z.coerce.number().min(1, 'Niveau invalide').optional(),
+  rankMJ: z.string().optional(),
+  rankBR: z.string().optional(),
+  country: z.string().optional(),
+  streamerPseudo: z.string().optional(),
+});
 
 const deviceIcons: Record<string, React.ElementType> = {
   phone: Smartphone,
@@ -62,7 +71,7 @@ const RegisterPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Partial<RegisterPayload>>({});
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const navigate = useNavigate();
   const { login } = useAuthStore();
@@ -74,8 +83,8 @@ const RegisterPage: React.FC = () => {
     watch,
     setValue,
     getValues,
-  } = useForm<any>({
-    resolver: currentStep === 1 ? zodResolver(step1Schema) : undefined,
+  } = useForm<Partial<RegisterPayload>>({
+    resolver: currentStep === 1 ? zodResolver(step1Schema) : currentStep === 2 ? zodResolver(step2Schema) : undefined,
     defaultValues: {
       controllerType: 'touch',
       country: 'Benin',
@@ -102,12 +111,12 @@ const RegisterPage: React.FC = () => {
   const passwordStrength = getPasswordStrength(password);
   const strengthLabels = ['', 'Faible', 'Moyen', 'Fort', 'Elite'];
 
-  const onStep1Submit = (data: any) => {
-    setFormData((prev: any) => ({ ...prev, ...data }));
+  const onStep1Submit = (data: Partial<RegisterPayload>) => {
+    setFormData((prev) => ({ ...prev, ...data }));
     setCurrentStep(2);
   };
 
-  const onStep2Submit = (data: any) => {
+  const onStep2Submit = (data: Partial<RegisterPayload>) => {
     if (!selectedDevice) {
       toast.error("Choisis ton appareil principal pour personnaliser ton experience ZOYD.");
       return;
@@ -118,12 +127,12 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    setFormData((prev: any) => ({
+    setFormData((prev) => ({
       ...prev,
       ...data,
       gameId: data.gameId.trim(),
-      device: selectedDevice,
-      controllerType: data.controllerType || getValues('controllerType') || 'touch',
+      device: selectedDevice as RegisterPayload['device'],
+      controllerType: (data.controllerType || getValues('controllerType') || 'touch') as RegisterPayload['controllerType'],
     }));
     setCurrentStep(3);
   };

@@ -14,6 +14,7 @@ import { useWalletStore } from '../../stores/walletStore';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const WEAPON_OPTIONS = ['Toutes permises', 'Sniper uniquement', 'Assaut / SMG', 'Corps a corps uniquement'];
+const ARBITER_FEE_RATE = 0.02;
 const TEAM_OPTIONS = [
   { label: 'Squad Alpha', value: 0 },
   { label: 'Squad Bravo', value: 1 },
@@ -52,7 +53,7 @@ const CreateMatchPage: React.FC = () => {
   }, [selectedFormat]);
 
   const livePot = useMemo(() => selectedPass * playerSlots, [playerSlots, selectedPass]);
-  const arbiterShare = useMemo(() => livePot * 0.02, [livePot]);
+  const arbiterShare = useMemo(() => livePot * ARBITER_FEE_RATE, [livePot]);
   const winnerShare = useMemo(() => Math.max(0, livePot - arbiterShare), [arbiterShare, livePot]);
   const requiredTopUp = useMemo(() => getRequiredTopUp(selectedPass, availableSpend), [availableSpend, selectedPass]);
 

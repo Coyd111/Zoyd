@@ -448,7 +448,7 @@ function LandingNav() {
           <a href="#platform" className="hover:text-white transition-colors">
             Plateforme
           </a>
-          <a href="#modes" className="hover:text-white transition-colors">
+          <a href="#dual-economy" className="hover:text-white transition-colors">
             Modes
           </a>
           <a href="#account" className="hover:text-white transition-colors">
@@ -480,35 +480,6 @@ function SignalStrip({ label, value }: { label: string; value: string }) {
     <div className="px-4 py-3">
       <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24 mb-1">{label}</div>
       <div className="font-display font-black uppercase italic tracking-tight text-white">{value}</div>
-    </div>
-  );
-}
-
-function SignalTile({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="px-4 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">{label}</span>
-        <Icon className="w-4 h-4 text-zoyd-yellow" />
-      </div>
-      <div className="font-display font-black uppercase italic tracking-tight text-white">{value}</div>
-    </div>
-  );
-}
-
-function MatchRoomLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 pb-3 last:pb-0">
-      <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24">{label}</span>
-      <span className="font-display font-black uppercase italic tracking-tight text-white">{value}</span>
     </div>
   );
 }

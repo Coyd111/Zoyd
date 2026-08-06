@@ -12,6 +12,8 @@ import {
   deleteAuthSession,
   deleteRealtimeSessionsForUser,
   ensureGlobalChatChannel,
+  getAllUsers,
+  getRawUserById,
   getUserById,
   getPushSubscriptionsForUser,
   findUsersByPseudo,
@@ -42,6 +44,9 @@ import {
   getUnreadNotificationsForUser,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  verifyPassword,
+  hashPassword,
+  updatePasswordHash,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
 import { initCronJobs } from './cron.mjs';
@@ -573,6 +578,7 @@ const server = http.createServer(async (req, res) => {
       const ALLOWED_PROFILE_FIELDS = [
         'pseudo', 'avatar', 'bio', 'device', 'controllerType',
         'country', 'streamerMode', 'streamerPseudo', 'notifications',
+        'phone', 'levelCODM', 'rankMJ', 'rankBR',
       ];
       const safeUpdate = {};
       for (const field of ALLOWED_PROFILE_FIELDS) {
@@ -735,6 +741,69 @@ const server = http.createServer(async (req, res) => {
     }
 
     respondJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/change-password') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const { currentPassword, newPassword } = body;
+      if (!currentPassword || !newPassword) {
+        respondJson(res, 400, { ok: false, error: 'Les deux mots de passe sont requis.' });
+        return;
+      }
+      if (newPassword.length < 8) {
+        respondJson(res, 400, { ok: false, error: 'Le nouveau mot de passe doit faire au moins 8 caracteres.' });
+        return;
+      }
+      const user = getRawUserById(session.user.id);
+      if (!user) {
+        respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.' });
+        return;
+      }
+      if (!verifyPassword(currentPassword, user.passwordHash)) {
+        respondJson(res, 403, { ok: false, error: 'Mot de passe actuel incorrect.' });
+        return;
+      }
+      const newHash = hashPassword(newPassword);
+      updatePasswordHash(session.user.id, newHash);
+      respondJson(res, 200, { ok: true });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/leaderboard') {
+    try {
+      const allUsers = getAllUsers();
+      const leaderboard = allUsers
+        .filter((u) => u.stats && (u.stats.totalMatches > 0 || u.stats.totalEarnings > 0))
+        .map((u) => ({
+          id: u.id,
+          pseudo: u.pseudo,
+          country: u.country,
+          elo: u.stats?.elo || 1200,
+          winRate: u.stats?.winRate || 0,
+          totalMatches: u.stats?.totalMatches || 0,
+          totalEarnings: u.stats?.totalEarnings || 0,
+          wins: u.stats?.wins || 0,
+          trustScore: u.trustScore || 0,
+          controllerType: u.controllerType,
+          rankMJ: u.rankMJ,
+          isOnline: u.isOnline || false,
+        }))
+        .sort((a, b) => b.elo - a.elo || b.winRate - a.winRate || b.totalMatches - a.totalMatches);
+      respondJson(res, 200, { ok: true, players: leaderboard });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du classement.' });
+    }
     return;
   }
 

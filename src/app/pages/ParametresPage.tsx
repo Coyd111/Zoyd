@@ -33,12 +33,20 @@ type SettingsForm = Pick<
   | 'rankBR'
 >;
 
+type NotificationSettings = {
+  matchStart: boolean;
+  results: boolean;
+  messages: boolean;
+  tournaments: boolean;
+  referrals: boolean;
+};
+
 const ParametresPage: React.FC = () => {
   const { user, updateUser } = useAuthStore();
   const { markAllAsRead } = useNotificationStore();
   const [activeTab, setActiveTab] = useState<ActiveTab>('account');
   const [isSaving, setIsSaving] = useState(false);
-  const [notificationToggles, setNotificationToggles] = useState({
+  const [notificationToggles, setNotificationToggles] = useState<NotificationSettings>({
     matchStart: true,
     results: true,
     messages: true,
@@ -46,6 +54,12 @@ const ParametresPage: React.FC = () => {
     referrals: false,
   });
   const [form, setForm] = useState<SettingsForm | null>(null);
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -61,6 +75,16 @@ const ParametresPage: React.FC = () => {
       rankMJ: user.rankMJ,
       rankBR: user.rankBR,
     });
+    // Load notification settings from user.notifications if available
+    if (user.notifications && typeof user.notifications === 'object') {
+      setNotificationToggles({
+        matchStart: user.notifications.matchStart ?? true,
+        results: user.notifications.results ?? true,
+        messages: user.notifications.messages ?? true,
+        tournaments: user.notifications.tournaments ?? true,
+        referrals: user.notifications.referrals ?? false,
+      });
+    }
   }, [user]);
 
   if (!user || !form) {
@@ -91,6 +115,7 @@ const ParametresPage: React.FC = () => {
         levelCODM: Math.max(1, Number(form.levelCODM) || 1),
         rankMJ: form.rankMJ,
         rankBR: form.rankBR,
+        notifications: notificationToggles,
       };
       const response = await updateServerAccount(updates);
       if (response.ok) {
@@ -102,6 +127,39 @@ const ParametresPage: React.FC = () => {
       console.error(err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error('Remplis tous les champs.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('Le nouveau mot de passe doit faire au moins 8 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error('Les mots de passe ne correspondent pas.');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const { authorizedPost } = await import('../lib/apiClient');
+      const res = await authorizedPost<{ ok: boolean }>('/api/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+      if (res.ok) {
+        toast.success('Mot de passe change avec succes.');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors du changement de mot de passe.');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -231,18 +289,48 @@ const ParametresPage: React.FC = () => {
 
             {activeTab === 'security' ? (
               <>
-                <SectionTitle title="Authentification" />
-                <div className="grid md:grid-cols-2 gap-4">
-                  <SecurityCard
-                    title="Mot de passe"
-                    body="Le changement de mot de passe arrivera bientot directement depuis cette page."
-                    badge="A venir"
+                <SectionTitle title="Changer le mot de passe" />
+                <div className="space-y-4 max-w-md">
+                  <Input
+                    label="Mot de passe actuel"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Ton mot de passe actuel"
                   />
-                  <SecurityCard
-                    title="Verification OTP"
-                    body={`Le numero ${user.phone || 'non renseigne'} servira a confirmer certains retraits et actions sensibles.`}
-                    badge="Prioritaire"
+                  <Input
+                    label="Nouveau mot de passe"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 8 caracteres"
                   />
+                  <Input
+                    label="Confirmer le nouveau mot de passe"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Repete le nouveau mot de passe"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleChangePassword}
+                    disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
+                  >
+                    {isChangingPassword ? 'CHANGEMENT...' : 'CHANGER LE MOT DE PASSE'}
+                  </Button>
+                </div>
+
+                <SectionTitle title="Verification OTP" />
+                <div className="hud-panel p-6 bg-zoyd-surface/20">
+                  <div className="flex items-center justify-between gap-4 mb-3">
+                    <div className="font-display font-black text-white uppercase italic">Verification par telephone</div>
+                    <Badge variant="yellow">Bientot</Badge>
+                  </div>
+                  <p className="text-sm text-white/40">
+                    Le numero {user.phone || 'non renseigne'} servira a confirmer certains retraits et actions sensibles.
+                  </p>
                 </div>
 
                 <SectionTitle title="En bref" />

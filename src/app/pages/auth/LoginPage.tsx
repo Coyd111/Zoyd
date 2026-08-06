@@ -18,6 +18,7 @@ interface LoginFormData {
 const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
@@ -146,17 +147,16 @@ const LoginPage: React.FC = () => {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer group">
-                <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5 checked:bg-zoyd-blue" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/10 bg-white/5 checked:bg-zoyd-blue"
+                />
                 <span className="text-[11px] font-mono text-white/40 uppercase group-hover:text-white/60 transition-colors">
                   Rester connecte
                 </span>
               </label>
-              <Link
-                to="/auth/forgot"
-                className="text-[11px] font-mono text-zoyd-yellow/60 hover:text-zoyd-yellow uppercase transition-colors italic"
-              >
-                Mot de passe oublie ?
-              </Link>
             </div>
 
             <Button

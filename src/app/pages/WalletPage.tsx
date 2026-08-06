@@ -7,10 +7,13 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { useWalletStore } from '../stores/walletStore';
+import { useAuthStore } from '../stores/authStore';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
+
+const MIN_WITHDRAWAL_ZC = 150;
 
 declare const FedaPay: any;
 
@@ -25,6 +28,7 @@ const WalletPage: React.FC = () => {
     pendingWinnings,
     getAvailableToSpend,
   } = useWalletStore();
+  const { user } = useAuthStore();
 
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -122,7 +126,7 @@ const WalletPage: React.FC = () => {
     if (!amount) return;
     try {
       const withdrawAmount = parseFloat(amount);
-      await withdraw(withdrawAmount, 'Mobile Money', '60000000');
+      await withdraw(withdrawAmount, 'Mobile Money', user?.phone || '');
       toast.success(`Retrait lance pour ${formatZC(withdrawAmount)}.`);
       setShowWithdrawModal(false);
       setAmount('');
@@ -227,7 +231,7 @@ const WalletPage: React.FC = () => {
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Retrait minimum</div>
-                <div className="text-2xl font-display font-black text-white">50 ZC</div>
+                <div className="text-2xl font-display font-black text-white">150 ZC</div>
               </div>
             </div>
           </CardContent>
@@ -313,7 +317,7 @@ const WalletPage: React.FC = () => {
                 type="number"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
-                placeholder="150 ZC minimum (1500 FCFA)"
+                placeholder={`${MIN_WITHDRAWAL_ZC} ZC minimum (${MIN_WITHDRAWAL_ZC * 10} FCFA)`}
                 max={cashBalance}
               />
               <p className="text-xs text-zoyd-white-60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
@@ -323,7 +327,7 @@ const WalletPage: React.FC = () => {
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={!amount || parseFloat(amount) < 150 || parseFloat(amount) > cashBalance}
+              disabled={!amount || parseFloat(amount) < MIN_WITHDRAWAL_ZC || parseFloat(amount) > cashBalance}
             >
               Retirer mes gains
             </Button>

@@ -117,7 +117,7 @@ const PublicProfilPage: React.FC = () => {
       navigate('/auth/login');
       return;
     }
-    navigate('/mj/creer');
+    navigate(`/mj/creer?invite=${encodeURIComponent(id)}`);
   };
 
   const handleBlock = async () => {

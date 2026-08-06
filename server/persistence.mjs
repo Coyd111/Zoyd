@@ -332,6 +332,14 @@ export const getUserById = (userId) => {
   return user ? sanitizeUserPayload(user) : null;
 };
 
+export const getRawUserById = (userId) => {
+  if (!userId) return null;
+  const user = memoryUsers.get(userId);
+  if (!user) return null;
+  const hashEntry = memoryPasswordHashes.get(userId);
+  return { ...user, passwordHash: hashEntry?.[1] || '' };
+};
+
 export const findUsersByPseudo = (query, limit = 20) => {
   const q = normalizePseudoKey(query);
   if (!q) return [];
@@ -343,6 +351,10 @@ export const findUsersByPseudo = (query, limit = 20) => {
     }
   }
   return results;
+};
+
+export const getAllUsers = () => {
+  return Array.from(memoryUsers.values()).map(sanitizeUserPayload);
 };
 
 export const updateUserAccount = (userId, updater) => {
@@ -401,6 +413,31 @@ const storePasswordHash = (userId, passwordHash, pseudo, email, phone) => {
   if (pseudo) memoryPasswordHashes.set(normalizePseudoKey(pseudo), [userId, passwordHash]);
   if (email) memoryPasswordHashes.set(normalizeEmailKey(email), [userId, passwordHash]);
   if (phone) memoryPasswordHashes.set(normalizePhoneKey(phone), [userId, passwordHash]);
+};
+
+export const updatePasswordHash = (userId, newHash) => {
+  const user = memoryUsers.get(userId);
+  if (!user) return;
+  // Clear old hash entries
+  memoryPasswordHashes.delete(userId);
+  if (user.pseudo) memoryPasswordHashes.delete(normalizePseudoKey(user.pseudo));
+  if (user.email) memoryPasswordHashes.delete(normalizeEmailKey(user.email));
+  if (user.phone) memoryPasswordHashes.delete(normalizePhoneKey(user.phone));
+  // Store new hash
+  storePasswordHash(userId, newHash, user.pseudo, user.email, user.phone);
+  // Persist to Supabase
+  sbUpsert('app_users', {
+    id: userId,
+    pseudo_key: normalizePseudoKey(user.pseudo),
+    email_key: normalizeEmailKey(user.email),
+    phone_key: normalizePhoneKey(user.phone),
+    game_id_key: normalizeGameIdKey(user.gameId),
+    role: user.role,
+    password_hash: newHash,
+    payload: user,
+    created_at: user.dateJoined,
+    updated_at: getNow(),
+  });
 };
 
 // ─── Auth Sessions ──────────────────────────────────────────────────────────

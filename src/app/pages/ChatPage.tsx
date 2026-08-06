@@ -109,7 +109,7 @@ const ChatPage: React.FC = () => {
             {/* Back button on mobile when channel is active */}
             {activeChannelId && (
               <button
-                onClick={() => setActiveChannel(null as any)}
+                onClick={() => setActiveChannel(null)}
                 className="sm:hidden text-white/40 hover:text-white transition-colors mr-1"
                 aria-label="Retour aux canaux"
               >

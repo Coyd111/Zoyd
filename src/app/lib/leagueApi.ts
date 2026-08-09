@@ -9,8 +9,8 @@ interface LeagueListResponse {
 interface LeagueResponse {
   ok: boolean;
   season: LeagueSeason;
-  user?: any;
-  wallet?: any;
+  user?: { id: string; pseudo: string; wallet?: { cashBalance: number; bonusBalance: number } };
+  wallet?: { cashBalance: number; bonusBalance: number };
 }
 
 export const fetchServerLeagues = async (): Promise<LeagueListResponse> => {

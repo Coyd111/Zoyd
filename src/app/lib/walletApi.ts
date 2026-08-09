@@ -1,18 +1,28 @@
 import { authorizedGet, authorizedPost } from './apiClient';
 
+export interface WalletTransaction {
+  id: string;
+  type: string;
+  amount: number;
+  description?: string;
+  status: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface WalletSnapshot {
   cashBalance: number;
   bonusBalance: number;
   lockedBalance: number;
   pendingWinnings: number;
-  transactions: any[];
-  lockedEntries: Record<string, any>;
+  transactions: WalletTransaction[];
+  lockedEntries: Record<string, { amount: number; reason: string; lockedAt: string }>;
 }
 
 interface WalletResponse {
   ok: boolean;
   wallet: WalletSnapshot;
-  user: any;
+  user?: { id: string; pseudo: string; wallet?: WalletSnapshot };
   amount?: number;
 }
 

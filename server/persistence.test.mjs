@@ -14,9 +14,9 @@ vi.mock('./supabase.mjs', () => ({
 import * as persistence from './persistence.mjs';
 
 describe('persistence - Password Hashing', () => {
-  it('should hash password with salt', () => {
+  it('should hash password with salt', async () => {
     const password = 'TestPassword123';
-    const hash = persistence.hashPassword(password);
+    const hash = await persistence.hashPassword(password);
     
     expect(hash).toContain(':');
     const [salt, digest] = hash.split(':');
@@ -24,32 +24,32 @@ describe('persistence - Password Hashing', () => {
     expect(digest).toHaveLength(128); // 64 bytes = 128 hex chars
   });
 
-  it('should generate different hashes for same password', () => {
+  it('should generate different hashes for same password', async () => {
     const password = 'TestPassword123';
-    const hash1 = persistence.hashPassword(password);
-    const hash2 = persistence.hashPassword(password);
+    const hash1 = await persistence.hashPassword(password);
+    const hash2 = await persistence.hashPassword(password);
     
     expect(hash1).not.toBe(hash2);
   });
 
-  it('should verify correct password', () => {
+  it('should verify correct password', async () => {
     const password = 'TestPassword123';
-    const hash = persistence.hashPassword(password);
+    const hash = await persistence.hashPassword(password);
     
-    expect(persistence.verifyPassword(password, hash)).toBe(true);
+    expect(await persistence.verifyPassword(password, hash)).toBe(true);
   });
 
-  it('should reject incorrect password', () => {
+  it('should reject incorrect password', async () => {
     const password = 'TestPassword123';
-    const hash = persistence.hashPassword(password);
+    const hash = await persistence.hashPassword(password);
     
-    expect(persistence.verifyPassword('WrongPassword', hash)).toBe(false);
+    expect(await persistence.verifyPassword('WrongPassword', hash)).toBe(false);
   });
 
-  it('should handle invalid hash format', () => {
-    expect(persistence.verifyPassword('test', 'invalid')).toBe(false);
-    expect(persistence.verifyPassword('test', '')).toBe(false);
-    expect(persistence.verifyPassword('test', null)).toBe(false);
+  it('should handle invalid hash format', async () => {
+    expect(await persistence.verifyPassword('test', 'invalid')).toBe(false);
+    expect(await persistence.verifyPassword('test', '')).toBe(false);
+    expect(await persistence.verifyPassword('test', null)).toBe(false);
   });
 });
 

@@ -12,6 +12,28 @@ interface MatchListResponse {
   matches: Match[];
 }
 
+export interface CreateMatchPayload {
+  visibility?: 'public' | 'private';
+  format?: string;
+  betAmount?: number;
+  gameMode?: string;
+  region?: string;
+  scheduledAt?: string;
+  description?: string;
+}
+
+export interface MatchResultPayload {
+  winnerTeam: 0 | 1;
+  score?: string;
+  screenshots?: string[];
+  arbiterNotes?: string;
+}
+
+export interface DisputePayload {
+  reason: string;
+  evidence?: string[];
+}
+
 export const subscribeToMatches = (onUpdate: () => void) => {
   // En temps réel via socket, ceci est géré par realtimeClient et socketStore.
   // On retourne une fonction de désabonnement vide pour garder la signature compatible avec le RootLayout actuel.
@@ -28,7 +50,7 @@ export const fetchAllMatchesFromDb = async (): Promise<Match[]> => {
   }
 };
 
-export const createServerMatch = async (payload: any) => {
+export const createServerMatch = async (payload: CreateMatchPayload) => {
   return authorizedPost<MatchResponse>('/api/matches', payload);
 };
 
@@ -60,7 +82,7 @@ export const launchServerMatch = async (matchId: string) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/launch`);
 };
 
-export const submitServerMatchResult = async (matchId: string, payload: any) => {
+export const submitServerMatchResult = async (matchId: string, payload: MatchResultPayload) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/result`, payload);
 };
 
@@ -68,7 +90,7 @@ export const confirmServerMatchResult = async (matchId: string) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/confirm`);
 };
 
-export const openServerMatchDispute = async (matchId: string, payload: any) => {
+export const openServerMatchDispute = async (matchId: string, payload: DisputePayload) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/dispute`, payload);
 };
 

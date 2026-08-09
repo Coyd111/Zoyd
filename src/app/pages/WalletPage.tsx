@@ -15,7 +15,14 @@ import { verifyFedaPayTransaction } from '../lib/walletApi';
 
 const MIN_WITHDRAWAL_ZC = 150;
 
-declare const FedaPay: any;
+declare const FedaPay: {
+  checkout: (config: {
+    public_key: string;
+    transaction: { amount: number; description: string; currency: { code: string } };
+    onComplete: (resp: { data?: { token: string } }) => void;
+    onClose: () => void;
+  }) => void;
+};
 
 const WalletPage: React.FC = () => {
   const {
@@ -77,7 +84,7 @@ const WalletPage: React.FC = () => {
     const depositAmount = parseFloat(amount);
     const amountFCFA = depositAmount * 10; // 1 ZC = 10 FCFA
 
-    const publicKey = (import.meta as any).env.VITE_FEDAPAY_PUBLIC_KEY;
+    const publicKey = import.meta.env.VITE_FEDAPAY_PUBLIC_KEY;
     
     if (!publicKey) {
       toast.error("La cle FedaPay (VITE_FEDAPAY_PUBLIC_KEY) est manquante dans l'environnement local.");
@@ -95,7 +102,7 @@ const WalletPage: React.FC = () => {
         email: 'joueur@zoyd.app',
         lastname: 'Joueur ZOYD'
       },
-      onComplete: async (resp: any) => {
+      onComplete: async (resp: { reason?: string; transaction?: { id: number | string } }) => {
         if (resp.reason === 'CHECKOUT COMPLETE') {
           toast.loading('Verification de la transaction...');
           try {
@@ -368,7 +375,16 @@ const FundingMetric = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const TransactionRow = ({ type, amount, description, status, timestamp, metadata }: any) => {
+interface TransactionRowProps {
+  type: string;
+  amount: number;
+  description?: string;
+  status: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+const TransactionRow = ({ type, amount, description, status, timestamp, metadata }: TransactionRowProps) => {
   const isPositive = amount >= 0;
   const typeLabel =
     type === 'deposit'

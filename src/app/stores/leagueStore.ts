@@ -103,7 +103,26 @@ export interface LeagueState {
   isPlayerRegistered: (seasonId: string, userId?: string) => boolean;
 }
 
-const normalizePersistedSeason = (season: any): LeagueSeason => {
+interface StoredSeason {
+  id?: string;
+  cycleNumber?: number;
+  status?: string;
+  entryFee?: number;
+  maxPlayers?: number;
+  registeredPlayers?: LeaguePlayer[];
+  qualificationGroups?: Partial<Record<LeagueDayKey, Partial<LeagueDaySlot>>>;
+  standings?: LeagueStanding[];
+  finalists?: LeagueFinalist[];
+  finalMatch?: Partial<LeagueFinalMatch>;
+  podium?: Partial<LeaguePodium>;
+  payout?: Partial<LeaguePayout>;
+  schedule?: Partial<LeagueSchedule>;
+  createdAt?: string;
+  updatedAt?: string;
+  finishedAt?: string | null;
+}
+
+const normalizePersistedSeason = (season: StoredSeason): LeagueSeason => {
   const DAY_KEYS: LeagueDayKey[] = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const qualificationGroups: Partial<Record<LeagueDayKey, LeagueDaySlot>> = {};
   for (const day of DAY_KEYS) {

@@ -188,11 +188,31 @@ const getArbitersNeeded = (maxEntries: number): 1 | 2 => (maxEntries > 8 ? 2 : 1
 /** Extract team size from format string (e.g. '4VS4' → 4). */
 const getTeamSize = (format: MatchFormat) => parseInt(format.split('VS')[0], 10);
 
-const normalizePersistedTournament = (tournament: any): Tournament => {
+interface StoredTournamentEntry {
+  id?: string;
+  userId?: string;
+  pseudo?: string;
+  seed?: number;
+  teamSize?: number;
+  members?: Array<{ userId: string; pseudo: string }>;
+  [key: string]: unknown;
+}
+
+interface StoredTournament {
+  format?: string;
+  teamSize?: number;
+  entries?: StoredTournamentEntry[];
+  arbitersNeeded?: number;
+  maxEntries?: number;
+  entryFee?: number;
+  [key: string]: unknown;
+}
+
+const normalizePersistedTournament = (tournament: StoredTournament): Tournament => {
   const format = tournament?.format || '1VS1';
-  const teamSize = tournament?.teamSize || getTeamSize(format);
+  const teamSize = tournament?.teamSize || getTeamSize(format as MatchFormat);
   const entries = Array.isArray(tournament?.entries)
-    ? tournament.entries.map((entry: any, index: number) => ({
+    ? tournament.entries.map((entry: StoredTournamentEntry, index: number) => ({
         ...entry,
         seed: entry?.seed || index + 1,
         teamSize: entry?.teamSize || teamSize,
@@ -203,12 +223,12 @@ const normalizePersistedTournament = (tournament: any): Tournament => {
 
   return {
     ...tournament,
-    format,
+    format: format as MatchFormat,
     teamSize,
     entries,
     arbitersNeeded,
     payout: buildPayout(Number(tournament?.entryFee || 0), entries.length, arbitersNeeded, teamSize),
-  };
+  } as Tournament;
 };
 
 const mergeTournamentsByFreshness = (currentTournaments: Tournament[], incomingTournaments: Tournament[]) => {

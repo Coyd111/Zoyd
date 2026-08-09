@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import type { ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import type { Match } from '../stores/matchStore';
 import type { Tournament } from '../stores/tournamentStore';
+import type { LeagueSeason } from '../stores/leagueStore';
 
 export interface ServerPresenceSnapshot {
   channelId: string;
@@ -55,7 +56,7 @@ interface RealtimeHandlers {
   onPushDelivery?: (payload: PushDeliveryPayload) => void;
   onMatchesSnapshot?: (matches: Match[]) => void;
   onTournamentsSnapshot?: (tournaments: Tournament[]) => void;
-  onLeaguesSnapshot?: (seasons: any[]) => void;
+  onLeaguesSnapshot?: (seasons: LeagueSeason[]) => void;
   onChatChannel?: (channel: ChatChannelDef) => void;
   onChatMessage?: (payload: { channel: ChatChannelDef; message: ChatMessage }) => void;
   onChatRead?: (payload: { channelId: string; userId: string; readAt: string }) => void;
@@ -262,14 +263,40 @@ export const fetchRealtimeBootstrap = async (user: User) => {
     throw new Error('Unable to fetch realtime bootstrap.');
   }
 
+interface BootstrapFriend {
+  userId: string;
+  pseudo: string;
+  status: string;
+  createdAt: string;
+}
+
+interface BootstrapFriendRequest {
+  id: string;
+  senderId: string;
+  targetId: string;
+  status: string;
+  message?: string;
+  createdAt: string;
+}
+
+interface BootstrapNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  priority: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
   return (await response.json()) as {
     ok: boolean;
     matches: Match[];
     tournaments: Tournament[];
-    friends: any[]; // Friend[]
-    friendRequests: any[]; // FriendRequest[]
+    friends: BootstrapFriend[];
+    friendRequests: BootstrapFriendRequest[];
     blockedIds: string[];
-    notifications: any[]; // Notification[]
+    notifications: BootstrapNotification[];
     timestamp: string;
   };
 };

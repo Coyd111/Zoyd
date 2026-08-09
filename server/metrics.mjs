@@ -54,8 +54,13 @@ const getHistogram = (name, labels = {}, buckets = DEFAULT_BUCKETS) => {
   return histograms.get(key);
 };
 
+const MAX_OBSERVATIONS = 1000;
+
 export const observeHistogram = (name, value, labels = {}) => {
   const h = getHistogram(name, labels);
+  if (h.observations.length >= MAX_OBSERVATIONS) {
+    h.observations.shift();
+  }
   h.observations.push(value);
   h.sum += value;
   h.count += 1;

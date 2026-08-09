@@ -13,8 +13,8 @@ interface TournamentListResponse {
 interface TournamentResponse {
   ok: boolean;
   tournament: Tournament;
-  user?: any;
-  wallet?: any;
+  user?: { id: string; pseudo: string; wallet?: { cashBalance: number; bonusBalance: number } };
+  wallet?: { cashBalance: number; bonusBalance: number };
 }
 
 export const subscribeToTournaments = (onUpdate: () => void) => {

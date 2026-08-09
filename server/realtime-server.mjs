@@ -103,12 +103,18 @@ import {
 
 const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
-const allowedOrigins = (process.env.ZOYD_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const ALLOWED_ORIGINS = [
+  ...(process.env.ZOYD_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean),
+  'https://zoyd.africa',
+  'https://www.zoyd.africa',
+];
 
-webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
+if (vapidKeys) {
+  webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
+}
 
 const channels = new Map();
 const channelsBySocket = new Map();
@@ -116,13 +122,6 @@ const seenByChannel = new Map();
 const typingByChannel = new Map();
 
 const getNow = () => new Date().toISOString();
-
-const ALLOWED_ORIGINS = [
-  'http://localhost:5173',
-  'http://localhost:4001',
-  'https://zoyd.africa',
-  'https://www.zoyd.africa',
-];
 
 const getCorsOrigin = (req) => {
   const origin = req.headers.origin || '';
@@ -148,6 +147,16 @@ const respondJson = (res, statusCode, payload, req = null) => {
     endTimer('zoyd_http_request_duration_seconds', req._metricsStart, { method, pathname });
     if (statusCode >= 500) incCounter('zoyd_http_errors_total', { method, status: String(statusCode) });
   }
+};
+
+const sanitizeText = (input) => {
+  return String(input)
+    .replace(/<[^>]*>/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .replace(/data:/gi, '')
+    .trim()
+    .slice(0, 5000);
 };
 
 const BODY_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB
@@ -495,6 +504,7 @@ const removeSocketFromChannel = (io, socket, channelId) => {
 };
 
 const sendPushToUser = async (userId, payload) => {
+  if (!vapidKeys) return { delivered: 0, attempted: 0 };
   const subscriptions = getPushSubscriptionsForUser(userId);
   if (subscriptions.length === 0) {
     return { delivered: 0, attempted: 0 };
@@ -895,11 +905,11 @@ const server = http.createServer(async (req, res) => {
         respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.' });
         return;
       }
-      if (!verifyPassword(currentPassword, user.passwordHash)) {
+      if (!(await verifyPassword(currentPassword, user.passwordHash))) {
         respondJson(res, 403, { ok: false, error: 'Mot de passe actuel incorrect.' });
         return;
       }
-      const newHash = hashPassword(newPassword);
+      const newHash = await hashPassword(newPassword);
       updatePasswordHash(session.user.id, newHash);
       respondJson(res, 200, { ok: true });
     } catch (error) {
@@ -2060,7 +2070,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const text = `${body.text || ''}`.trim();
+      const text = sanitizeText(body.text || '');
       if (!text) {
         respondJson(res, 400, { ok: false, error: 'Le message est vide.' });
         return;
@@ -2136,7 +2146,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/realtime/push/public-key') {
-    respondJson(res, 200, { publicKey: vapidKeys.publicKey });
+    if (!vapidKeys) {
+      respondJson(res, 503, { ok: false, error: 'Push notifications not configured.' });
+    } else {
+      respondJson(res, 200, { publicKey: vapidKeys.publicKey });
+    }
     return;
   }
 
@@ -2262,7 +2276,7 @@ const server = http.createServer(async (req, res) => {
 const io = new SocketIOServer(server, {
   cors: {
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
         callback(null, true);
         return;
       }

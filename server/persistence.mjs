@@ -3,6 +3,9 @@
 // Supabase provides durable persistence. On startup, data loads from Supabase.
 
 import crypto from 'node:crypto';
+import { promisify } from 'node:util';
+
+const scryptAsync = promisify(crypto.scrypt);
 import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
 
@@ -71,16 +74,16 @@ export const sanitizeUserPayload = (payload) => {
   };
 };
 
-export const hashPassword = (password) => {
+export const hashPassword = async (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
-  const digest = crypto.scryptSync(password, salt, 64).toString('hex');
+  const digest = (await scryptAsync(password, salt, 64)).toString('hex');
   return `${salt}:${digest}`;
 };
 
-export const verifyPassword = (password, passwordHash) => {
+export const verifyPassword = async (password, passwordHash) => {
   if (!passwordHash?.includes(':')) return false;
   const [salt, expectedDigest] = passwordHash.split(':');
-  const actualDigest = crypto.scryptSync(password, salt, 64).toString('hex');
+  const actualDigest = (await scryptAsync(password, salt, 64)).toString('hex');
   const expectedBuffer = Buffer.from(expectedDigest, 'hex');
   const actualBuffer = Buffer.from(actualDigest, 'hex');
   return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
@@ -297,7 +300,7 @@ const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   }
 };
 
-const insertUser = ({ password, role = 'player', ...input }) => {
+const insertUser = async ({ password, role = 'player', ...input }) => {
   if (!input.pseudo?.trim() || !input.email?.trim() || !input.phone?.trim() || !input.gameId?.trim()) {
     throw makeError('INVALID_REGISTRATION', 'Informations joueur incompletes.');
   }
@@ -310,7 +313,7 @@ const insertUser = ({ password, role = 'player', ...input }) => {
   const id = input.id || crypto.randomUUID();
   const createdAt = input.dateJoined || getNow();
   const payload = buildUserPayload({ ...input, id, dateJoined: createdAt }, role);
-  const passwordHash = hashPassword(password);
+  const passwordHash = await hashPassword(password);
 
   // Write to memory
   memoryUsers.set(id, payload);
@@ -390,7 +393,7 @@ export const updateWalletSnapshot = (userId, updater) =>
 
 export const createUserAccount = (payload) => insertUser(payload);
 
-export const authenticateUserAccount = ({ identifier, password }) => {
+export const authenticateUserAccount = async ({ identifier, password }) => {
   const trimmed = identifier.trim();
   const pk = normalizePseudoKey(trimmed);
   const ek = normalizeEmailKey(trimmed);
@@ -400,7 +403,7 @@ export const authenticateUserAccount = ({ identifier, password }) => {
   if (!hash) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
 
   const [userId, passwordHash] = hash;
-  if (!verifyPassword(password, passwordHash)) {
+  if (!(await verifyPassword(password, passwordHash))) {
     throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
   }
 

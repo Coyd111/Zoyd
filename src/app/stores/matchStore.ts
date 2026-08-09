@@ -197,23 +197,78 @@ const flattenProofs = (proofs?: MatchProofBundle) =>
     : [];
 const buildProofHash = (matchId: string, winnerTeam: MatchTeam, scores: { team0: number; team1: number }, refs: string[]) =>
   [matchId, winnerTeam, scores.team0, scores.team1, ...refs.map((ref) => ref.toLowerCase())].join('|');
-const normalizeStoredDispute = (dispute: any): Dispute => ({
-  ...dispute,
+interface StoredDispute {
+  id?: string;
+  level?: number;
+  category?: DisputeCategory;
+  reason?: string;
+  evidence?: string[];
+  requestedBy?: string;
+  status?: string;
+  resolution?: string;
+  createdAt?: string;
+  openedAt?: string;
+  resolvedAt?: string;
+  prizePoolFrozen?: boolean;
+}
+
+interface StoredProofs {
+  scoreboard?: string[];
+  finalResult?: string[];
+  roomCapture?: string[];
+  extraEvidence?: string[];
+}
+
+interface StoredResult {
+  winnerTeam?: MatchTeam;
+  scores?: { team0: number; team1: number };
+  screenshots?: string[];
+  proofs?: StoredProofs;
+  proofHash?: string;
+  arbiterNotes?: string;
+  resolutionType?: 'played' | 'forfeit';
+  forfeitTeam?: MatchTeam;
+  submittedBy?: string;
+  submittedAt?: string;
+  confirmedByTeams?: string[];
+  payoutDistributed?: boolean;
+}
+
+interface StoredMatch {
+  id?: string;
+  disputes?: StoredDispute[];
+  dispute?: StoredDispute;
+  result?: StoredResult;
+  [key: string]: unknown;
+}
+
+const normalizeStoredDispute = (dispute: StoredDispute): Dispute => ({
+  id: dispute?.id || '',
+  level: (dispute?.level as 1 | 2 | 3) || 1,
   category: dispute?.category || 'result',
+  reason: dispute?.reason || '',
   evidence: Array.isArray(dispute?.evidence) ? dispute.evidence : [],
+  requestedBy: dispute?.requestedBy || '',
+  status: (dispute?.status as Dispute['status']) || 'open',
+  resolution: dispute?.resolution,
+  createdAt: dispute?.createdAt || '',
+  openedAt: dispute?.openedAt,
+  resolvedAt: dispute?.resolvedAt,
+  prizePoolFrozen: Boolean(dispute?.prizePoolFrozen),
 });
-const normalizeStoredProofs = (proofs: any): MatchProofBundle => ({
+const normalizeStoredProofs = (proofs: StoredProofs): MatchProofBundle => ({
   scoreboard: Array.isArray(proofs?.scoreboard) ? proofs.scoreboard : [],
   finalResult: Array.isArray(proofs?.finalResult) ? proofs.finalResult : [],
   roomCapture: Array.isArray(proofs?.roomCapture) ? proofs.roomCapture : [],
   extraEvidence: Array.isArray(proofs?.extraEvidence) ? proofs.extraEvidence : [],
 });
-const normalizeStoredResult = (matchId: string, result: any): MatchResult => {
+const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResult => {
   const proofs = result?.proofs ? normalizeStoredProofs(result.proofs) : undefined;
   const screenshots = Array.isArray(result?.screenshots) ? result.screenshots : flattenProofs(proofs);
 
   return {
-    ...result,
+    winnerTeam: result?.winnerTeam ?? 0,
+    scores: result?.scores || { team0: 0, team1: 0 },
     screenshots,
     proofs,
     resolutionType: result?.resolutionType || 'played',
@@ -225,14 +280,21 @@ const normalizeStoredResult = (matchId: string, result: any): MatchResult => {
         result?.scores || { team0: 0, team1: 0 },
         screenshots
       ),
+    arbiterNotes: result?.arbiterNotes,
+    forfeitTeam: result?.forfeitTeam,
+    submittedBy: result?.submittedBy || '',
+    submittedAt: result?.submittedAt || '',
+    confirmedByTeams: result?.confirmedByTeams || [],
+    payoutDistributed: Boolean(result?.payoutDistributed),
   };
 };
-const normalizeStoredMatch = (match: any): Match => ({
+const normalizeStoredMatch = (match: StoredMatch): Match => ({
   ...match,
+  id: match.id || '',
   disputes: Array.isArray(match?.disputes) ? match.disputes.map(normalizeStoredDispute) : [],
   dispute: match?.dispute ? normalizeStoredDispute(match.dispute) : undefined,
-  result: match?.result ? normalizeStoredResult(match.id, match.result) : undefined,
-});
+  result: match?.result ? normalizeStoredResult(match.id || '', match.result) : undefined,
+} as Match);
 
 const getPreferredTeam = (match: Match, preferredTeam?: number): MatchTeam | null => {
   const team0Count = match.players.filter((player) => player.team === 0).length;

@@ -103,6 +103,15 @@ import {
 
 const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
+
+const notifyAllAdmins = async (io, payload) => {
+  const admins = getAllUsers().filter((u) => u.role === 'admin');
+  for (const admin of admins) {
+    try {
+      await deliverNotification(io, admin.id, payload);
+    } catch { /* best effort */ }
+  }
+};
 const ALLOWED_ORIGINS = [
   ...(process.env.ZOYD_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
     .split(',')
@@ -212,6 +221,13 @@ const getAuthenticatedRealtimeSession = (req) => {
 };
 
 const getPathname = (req) => new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
+
+const normalizePathForMetrics = (pathname) =>
+  pathname
+    .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/*')
+    .replace(/\/M-[A-Za-z0-9]+/g, '/M/*')
+    .replace(/\/T-[A-Za-z0-9]+/g, '/T/*')
+    .replace(/\/FR-[A-Za-z0-9-]+/g, '/FR/*');
 
 const buildMatchChatChannel = (match) => {
   const channelId = match.channelId || match.chatChannelId || `match-${match.id}`;
@@ -617,7 +633,7 @@ const server = http.createServer(async (req, res) => {
 
   const pathname = getPathname(req);
   req._metricsStart = startTimer();
-  req._metricsPathname = pathname;
+  req._metricsPathname = normalizePathForMetrics(pathname);
 
   if (req.method === 'OPTIONS') {
     respondJson(res, 204, {});
@@ -685,7 +701,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const body = await parseRequestBody(req);
-      const user = authenticateUserAccount({
+      const user = await authenticateUserAccount({
         identifier: body.identifier || '',
         password: body.password || '',
       });
@@ -1278,8 +1294,9 @@ const server = http.createServer(async (req, res) => {
   // ─── League Endpoints ───────────────────────────────────────────────────
 
   if (req.method === 'GET' && pathname === '/api/leagues') {
-    const seasons = getStoredLeagues();
-    respondJson(res, 200, { ok: true, seasons });
+    const { limit, offset } = parseQueryParams(req.url);
+    const all = getStoredLeagues();
+    respondJson(res, 200, { ok: true, seasons: paginate(all, { limit, offset }), total: all.length });
     return;
   }
 
@@ -1894,7 +1911,7 @@ const server = http.createServer(async (req, res) => {
 
       // Notify admins of escalation
       const match = outcome.match;
-      deliverNotification(io, '__admin__', {
+      notifyAllAdmins(io, {
         type: 'dispute_update',
         title: 'Litige escaladé',
         body: `Match ${match.id} — Litige escaladé au niveau admin par ${session.user.pseudo}.`,
@@ -2196,10 +2213,10 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       matches: getStateCollection('matches'),
       tournaments: getStoredTournaments(),
-      friends: getFriendsForUser(session.user.id),
-      friendRequests: getFriendRequestsForUser(session.user.id),
-      blockedIds: getBlockedUsers(session.user.id),
-      notifications: getUnreadNotificationsForUser(session.user.id),
+      friends: getFriendsForUser(session.userId),
+      friendRequests: getFriendRequestsForUser(session.userId),
+      blockedIds: getBlockedUsers(session.userId),
+      notifications: getUnreadNotificationsForUser(session.userId),
       timestamp: getNow(),
     });
     return;

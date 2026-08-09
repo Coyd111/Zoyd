@@ -47,7 +47,7 @@ import { useSocketStore } from '../../../app/stores/socketStore';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { getMapImage } from '../../../lib/competition';
-import { adminCancelServerMatch, adminResolveServerDispute } from '../../lib/serverAdminApi';
+import { adminCancelServerMatch, adminResolveServerDispute } from '../../../app/lib/matchApi';
 import { MatchChat } from '../components/MatchChat';
 
 const statusLabels: Record<string, string> = {

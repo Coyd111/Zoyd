@@ -192,7 +192,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
 
           get().addTransaction({
             type: 'refund',
-            amount: roundAmount(amount),
+            amount: roundAmount(reservation.amount),
             description: `Mise debloquee (${entryKey})`,
             status: 'completed',
           });

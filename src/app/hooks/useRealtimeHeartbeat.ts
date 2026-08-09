@@ -50,7 +50,7 @@ export const useRealtimeHeartbeat = (enabled: boolean) => {
   }, [enabled, remoteMatchSnapshots, replaceMatches]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || remoteTournamentSnapshots.length === 0) return;
     replaceTournaments(remoteTournamentSnapshots);
   }, [enabled, remoteTournamentSnapshots, replaceTournaments]);
 };

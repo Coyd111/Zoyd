@@ -43,10 +43,7 @@ export default defineConfig({
     exclude: ['zustand/middleware'],
   },
   build: {
-    // Windows can keep copied CODM bundles locked inside dist between builds.
-    // Reusing the output directory avoids EBUSY cleanup failures while still
-    // refreshing the current hashed bundles referenced by index.html.
-    emptyOutDir: false,
+    emptyOutDir: true,
     rollupOptions: {
       external: ['pg', 'socket.io', 'web-push', 'dotenv', 'fedapay'],
       output: {

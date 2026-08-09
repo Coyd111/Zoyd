@@ -27,6 +27,7 @@ const memoryFriendships = new Set();   // `${uid1}:${uid2}`
 const memoryUserBlocks = new Set();    // `${blocker}:${blocked}`
 const memoryNotifications = new Map(); // id -> notification
 const memoryProcessedTransactions = new Set();
+const MAX_PROCESSED_TX = 10000;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 export const makeError = (code, message) => Object.assign(new Error(message), { code });
@@ -601,6 +602,7 @@ export const appendChatMessage = (message) => {
 
   const msgs = memoryChatMessages.get(nextMessage.channelId) || [];
   msgs.push(nextMessage);
+  if (msgs.length > 500) msgs.splice(0, msgs.length - 500);
   memoryChatMessages.set(nextMessage.channelId, msgs);
 
   sbUpsert('chat_messages', { id: nextMessage.id, channel_id: nextMessage.channelId, payload: nextMessage, created_at: nextMessage.timestamp });
@@ -736,6 +738,7 @@ export const acceptFriendRequest = (requestId, userId) => {
 
   sbUpsert('friend_requests', req);
   sbUpsert('friendships', { user_id_1: req.sender_id, user_id_2: req.target_id, created_at: getNow() });
+  sbUpsert('friendships', { user_id_1: req.target_id, user_id_2: req.sender_id, created_at: getNow() });
 
   return getUserById(req.sender_id);
 };
@@ -821,6 +824,10 @@ export const hasTransactionBeenProcessed = (transactionId) => memoryProcessedTra
 
 export const markTransactionAsProcessed = (transactionId, userId, amountZC) => {
   memoryProcessedTransactions.add(transactionId);
+  if (memoryProcessedTransactions.size > MAX_PROCESSED_TX) {
+    const first = memoryProcessedTransactions.values().next().value;
+    memoryProcessedTransactions.delete(first);
+  }
   sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
 };
 

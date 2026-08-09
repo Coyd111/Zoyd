@@ -164,6 +164,16 @@ const sanitizeText = (input) => {
     .slice(0, 5000);
 };
 
+const parseQueryParams = (url) => {
+  const params = new URL(url, 'http://localhost').searchParams;
+  return {
+    limit: Math.min(Math.max(parseInt(params.get('limit') || '100', 10) || 100, 1), 500),
+    offset: Math.max(parseInt(params.get('offset') || '0', 10) || 0, 0),
+  };
+};
+
+const paginate = (arr, { limit, offset }) => arr.slice(offset, offset + limit);
+
 const BODY_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB
 
 const parseRequestBody = async (req) => {
@@ -384,7 +394,6 @@ const mapPersistenceError = (error) => {
     case 'NO_PLAYERS':
     case 'INVALID_DAY':
     case 'INVALID_RESULTS':
-    case 'ALREADY_JOINED':
     default:
       return { status: 500, message: 'Une erreur serveur est survenue.' };
   }
@@ -589,7 +598,7 @@ const cleanupRateLimits = () => {
 };
 setInterval(cleanupRateLimits, 60 * 1000);
 
-const getClientIp = (req) => req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '127.0.0.1';
+const getClientIp = (req) => req.headers['x-real-ip'] || req.socket.remoteAddress || '127.0.0.1';
 
 const rateLimitGuard = (res, ip, group) => {
   const { allowed, remaining } = checkRateLimit(ip, group);
@@ -954,7 +963,8 @@ const server = http.createServer(async (req, res) => {
           isOnline: u.isOnline || false,
         }))
         .sort((a, b) => b.elo - a.elo || b.winRate - a.winRate || b.totalMatches - a.totalMatches);
-      respondJson(res, 200, { ok: true, players: leaderboard });
+      const { limit, offset } = parseQueryParams(req.url);
+      respondJson(res, 200, { ok: true, players: paginate(leaderboard, { limit, offset }), total: leaderboard.length });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du classement.' });
     }
@@ -1018,23 +1028,28 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/matches') {
-    // Filter matches server-side based on the connected user's device type
-    const matchSession = readBearerToken(req) ? getAuthSession(readBearerToken(req)) : null;
+    const token = readBearerToken(req);
+    const matchSession = token ? getAuthSession(token) : null;
     const matchCurrentUser = matchSession?.user ? getUserById(matchSession.user.id) : null;
     const allMatches = getStateCollection('matches');
     const visibleMatches = getPublicMatchesForUser(allMatches, matchCurrentUser);
+    const { limit, offset } = parseQueryParams(req.url);
 
     respondJson(res, 200, {
       ok: true,
-      matches: visibleMatches,
+      matches: paginate(visibleMatches, { limit, offset }),
+      total: visibleMatches.length,
     });
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/tournaments') {
+    const { limit, offset } = parseQueryParams(req.url);
+    const all = getStoredTournaments();
     respondJson(res, 200, {
       ok: true,
-      tournaments: getStoredTournaments(),
+      tournaments: paginate(all, { limit, offset }),
+      total: all.length,
     });
     return;
   }
@@ -1044,7 +1059,9 @@ const server = http.createServer(async (req, res) => {
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
     const url = new URL(req.url, `http://${req.headers.host}`);
     const q = url.searchParams.get('q') || '';
-    const matches = findUsersByPseudo(q).filter((u) => u.id !== session.user.id);
+    const { limit, offset } = parseQueryParams(req.url);
+    const allMatches = findUsersByPseudo(q).filter((u) => u.id !== session.user.id);
+    const matches = paginate(allMatches, { limit: Math.min(limit, 50), offset });
     respondJson(res, 200, {
       ok: true,
       users: matches.map((u) => ({
@@ -1567,17 +1584,16 @@ const server = http.createServer(async (req, res) => {
       }
 
       const outcome = await verifyFedaPayTransactionAndCredit(body.transactionId, session.user);
-      // Synchronize the updated wallet state
-      const { depositToWallet, getServerWallet } = await import('./wallet-engine.mjs');
-      // The payment-engine already modifies the wallet in memory. We just return it.
+      const wallet = getServerWallet(session.user.id);
       respondJson(res, 200, { 
         ok: true, 
         amount: outcome.amountZC, 
-        wallet: getServerWallet(session.user.id),
+        wallet,
         user: outcome.user
       });
     } catch (error) {
-      respondJson(res, 400, { ok: false, error: error.message });
+      log.error('Payment verification failed', { message: error.message });
+      respondJson(res, 400, { ok: false, error: 'Verification du paiement echouee.' });
     }
     return;
   }
@@ -2222,7 +2238,7 @@ const server = http.createServer(async (req, res) => {
       const { subscription } = body;
 
       if (!subscription?.endpoint) {
-        respondJson(res, 400, { error: 'Missing subscription endpoint.' });
+        respondJson(res, 400, { ok: false, error: 'Missing subscription endpoint.' });
         return;
       }
 
@@ -2246,7 +2262,7 @@ const server = http.createServer(async (req, res) => {
       const { endpoint } = body;
 
       if (!endpoint) {
-        respondJson(res, 400, { error: 'Missing endpoint.' });
+        respondJson(res, 400, { ok: false, error: 'Missing endpoint.' });
         return;
       }
 

@@ -22,7 +22,7 @@ if (supabaseUrl && supabaseKey) {
     supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    log.info('Client actif', { url: supabaseUrl });
+    log.info('Client actif');
   } catch (err) {
     log.error('Erreur creation client', err);
     supabase = null;

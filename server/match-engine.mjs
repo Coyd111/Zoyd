@@ -22,7 +22,7 @@ const makeError = (code, message) => Object.assign(new Error(message), { code })
 const normalizeProofRefs = (refs = []) => refs.map((ref) => `${ref}`.trim()).filter(Boolean);
 const flattenProofs = (proofs) =>
   proofs
-    ? [...proofs.scoreboard, ...proofs.finalResult, ...proofs.roomCapture, ...proofs.extraEvidence]
+    ? [...(proofs.scoreboard || []), ...(proofs.finalResult || []), ...(proofs.roomCapture || []), ...(proofs.extraEvidence || [])]
     : [];
 const buildProofHash = (matchId, winnerTeam, scores, refs) =>
   [matchId, winnerTeam, scores.team0, scores.team1, ...refs.map((ref) => ref.toLowerCase())].join('|');

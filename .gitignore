@@ -22,3 +22,5 @@ check-db.mjs
 # Documentation interne
 guidelines/
 src/imports/
+
+test-results/

@@ -1,7 +1,9 @@
 // VAPID Keys for Web Push Notifications
 // En production : définir VAPID_PUBLIC_KEY et VAPID_PRIVATE_KEY dans les variables d'environnement.
-// Pour générer de nouvelles clés :
-//   node --input-type=module -e "import wp from 'web-push'; console.log(JSON.stringify(wp.generateVAPIDKeys()));"
+
+import { createLogger } from './logger.mjs';
+
+const log = createLogger('vapid');
 
 const ENV_PUBLIC = process.env.VAPID_PUBLIC_KEY;
 const ENV_PRIVATE = process.env.VAPID_PRIVATE_KEY;
@@ -15,7 +17,7 @@ if (process.env.NODE_ENV === 'production' && (!ENV_PUBLIC || !ENV_PRIVATE)) {
 }
 
 if (!ENV_PUBLIC || !ENV_PRIVATE) {
-  console.warn('[WARN] VAPID keys not set in environment — using hardcoded dev keys. NEVER do this in production.');
+  log.warn('VAPID keys not set in environment — using hardcoded dev keys. NEVER do this in production.');
 }
 
 export const vapidKeys = {

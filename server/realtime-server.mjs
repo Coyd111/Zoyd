@@ -2,6 +2,8 @@ import http from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
 import webpush from 'web-push';
 import { vapidKeys } from './vapid-keys.mjs';
+import { createLogger } from './logger.mjs';
+import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from './metrics.mjs';
 import {
   authenticateUserAccount,
   appendChatMessage,
@@ -82,7 +84,24 @@ import {
   startTournamentOnServer,
   submitTournamentMatchResultOnServer,
 } from './tournament-engine.mjs';
+import {
+  normalizeLeagueCollection,
+  createLeagueSeasonOnServer,
+  joinLeagueSeasonOnServer,
+  leaveLeagueSeasonOnServer,
+  startLeagueQualificationOnServer,
+  startLeagueDayOnServer,
+  submitLeagueDayResultsOnServer,
+  advanceToFinalOnServer,
+  submitLeagueFinalResultsOnServer,
+  getLeagueLeaderboard,
+  updateLeagueSettingsOnServer,
+  reassignPlayerOnServer,
+  refundLeaguePlayerOnServer,
+  getLeaguePayments,
+} from './league-engine.mjs';
 
+const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
 const allowedOrigins = (process.env.ZOYD_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
   .split(',')
@@ -120,6 +139,15 @@ const respondJson = (res, statusCode, payload, req = null) => {
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   });
   res.end(JSON.stringify(payload));
+
+  if (req && req._metricsStart) {
+    const pathname = req._metricsPathname || 'unknown';
+    const method = req.method || 'UNKNOWN';
+    const labels = { method, status: String(statusCode) };
+    incCounter('zoyd_http_requests_total', labels);
+    endTimer('zoyd_http_request_duration_seconds', req._metricsStart, { method, pathname });
+    if (statusCode >= 500) incCounter('zoyd_http_errors_total', { method, status: String(statusCode) });
+  }
 };
 
 const BODY_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB
@@ -276,6 +304,25 @@ const buildTournamentActionPayload = (tournament, userId) => {
   };
 };
 
+const getStoredLeagues = () => normalizeLeagueCollection(getStateCollection('leagues'));
+
+const saveLeagues = (io, seasons) => {
+  replaceStateCollection('leagues', seasons);
+  const storedLeagues = getStoredLeagues();
+  broadcastStateSnapshot(io, 'leagues', storedLeagues);
+  return storedLeagues;
+};
+
+const buildLeagueActionPayload = (season, userId) => {
+  const user = getUserById(userId);
+  return {
+    ok: true,
+    season,
+    user,
+    wallet: user?.wallet || getServerWallet(userId),
+  };
+};
+
 const mapPersistenceError = (error) => {
   switch (error?.code) {
     case 'INVALID_REGISTRATION':
@@ -310,10 +357,20 @@ const mapPersistenceError = (error) => {
       return { status: 409, message: error.message };
     case 'MATCH_NOT_FOUND':
     case 'TOURNAMENT_NOT_FOUND':
+    case 'LEAGUE_NOT_FOUND':
     case 'CHANNEL_NOT_FOUND':
     case 'PLAYER_NOT_FOUND':
     case 'USER_NOT_FOUND':
       return { status: 404, message: error.message };
+    case 'NOT_ENOUGH_PLAYERS':
+    case 'QUALIFICATION_INCOMPLETE':
+    case 'REGISTRATION_CLOSED':
+    case 'NOT_JOINED':
+    case 'MATCH_ALREADY_LIVE':
+    case 'NO_PLAYERS':
+    case 'INVALID_DAY':
+    case 'INVALID_RESULTS':
+    case 'ALREADY_JOINED':
     default:
       return { status: 500, message: 'Une erreur serveur est survenue.' };
   }
@@ -483,6 +540,51 @@ const broadcastStateSnapshot = (io, kind, items) => {
   io.emit(`state:${kind}`, { items });
 };
 
+const rateLimitBuckets = new Map();
+const RATE_LIMIT_CONFIG = {
+  auth:    { max: 50,  windowMs: 15 * 60 * 1000 },  // 50 req / 15 min
+  social:  { max: 30,  windowMs: 60 * 1000 },        // 30 req / 1 min
+  wallet:  { max: 20,  windowMs: 10 * 60 * 1000 },   // 20 req / 10 min
+  chat:    { max: 60,  windowMs: 60 * 1000 },         // 60 req / 1 min
+  admin:   { max: 20,  windowMs: 5 * 60 * 1000 },    // 20 req / 5 min
+  default: { max: 60,  windowMs: 60 * 1000 },         // 60 req / 1 min
+};
+
+const checkRateLimit = (ip, group = 'default') => {
+  const config = RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default;
+  const key = `${ip}:${group}`;
+  const now = Date.now();
+  const record = rateLimitBuckets.get(key);
+  if (!record || now - record.windowStart > config.windowMs) {
+    rateLimitBuckets.set(key, { windowStart: now, attempts: 1 });
+    return { allowed: true, remaining: config.max - 1 };
+  }
+  record.attempts += 1;
+  const allowed = record.attempts <= config.max;
+  return { allowed, remaining: Math.max(0, config.max - record.attempts) };
+};
+
+const cleanupRateLimits = () => {
+  const now = Date.now();
+  for (const [key, record] of rateLimitBuckets) {
+    const group = key.split(':').pop();
+    const config = RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default;
+    if (now - record.windowStart > config.windowMs) rateLimitBuckets.delete(key);
+  }
+};
+setInterval(cleanupRateLimits, 60 * 1000);
+
+const getClientIp = (req) => req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '127.0.0.1';
+
+const rateLimitGuard = (res, ip, group) => {
+  const { allowed, remaining } = checkRateLimit(ip, group);
+  if (!allowed) {
+    respondJson(res, 429, { ok: false, error: 'Trop de requetes. Reessayez plus tard.' });
+    return false;
+  }
+  return true;
+};
+
 const server = http.createServer(async (req, res) => {
   if (!req.url) {
     respondJson(res, 404, { error: 'Not found' });
@@ -490,6 +592,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   const pathname = getPathname(req);
+  req._metricsStart = startTimer();
+  req._metricsPathname = pathname;
 
   if (req.method === 'OPTIONS') {
     respondJson(res, 204, {});
@@ -509,7 +613,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && pathname === '/metrics') {
+    setGauge('zoyd_channels', channels.size);
+    setGauge('zoyd_push_subscriptions', countPushSubscriptions());
+    setGauge('zoyd_stored_matches', getStateCollection('matches').length);
+    setGauge('zoyd_stored_tournaments', getStoredTournaments().length);
+    setGauge('zoyd_stored_leagues', getStateCollection('leagues').length);
+    setGauge('zoyd_stored_users', getStateCollection('users')?.length || 0);
+    const body = metricsToPrometheus();
+    res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
+    res.end(body);
+    return;
+  }
+
   if (req.method === 'POST' && pathname === '/api/auth/register') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
+
     try {
       const body = await parseRequestBody(req);
       const user = createUserAccount(body);
@@ -529,6 +649,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/login') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
+
     try {
       const body = await parseRequestBody(req);
       const user = authenticateUserAccount({
@@ -598,6 +721,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/social/request') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
       const request = sendFriendRequest(session.user.id, body.targetId, body.message);
@@ -608,7 +732,7 @@ const server = http.createServer(async (req, res) => {
         body: `${session.user.pseudo} t'a envoyé une demande d'ami.`,
         url: `/profil`,
         requireInteraction: false
-      }).catch(console.error);
+      }).catch(err => log.error('Notification delivery failed', err));
 
       respondJson(res, 200, { ok: true, request });
     } catch (error) {
@@ -621,6 +745,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/social/accept') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
       const friend = acceptFriendRequest(body.requestId, session.user.id);
@@ -637,7 +762,7 @@ const server = http.createServer(async (req, res) => {
         body: `${session.user.pseudo} a accepté ta demande d'ami.`,
         url: `/profil/${session.user.id}`,
         requireInteraction: false
-      }).catch(console.error);
+      }).catch(err => log.error('Notification delivery failed', err));
 
       respondJson(res, 200, { ok: true, friend });
     } catch (error) {
@@ -650,6 +775,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/social/decline') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
       declineFriendRequest(body.requestId, session.user.id);
@@ -665,6 +791,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'DELETE' && socialFriendMatch) {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       removeFriend(session.user.id, socialFriendMatch[1]);
       respondJson(res, 200, { ok: true });
@@ -678,6 +805,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/social/block') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
       blockUser(session.user.id, body.targetId);
@@ -692,6 +820,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/social/unblock') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
       unblockUser(session.user.id, body.targetId);
@@ -829,6 +958,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
 
     try {
       const body = await parseRequestBody(req);
@@ -848,6 +978,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
 
     try {
       const body = await parseRequestBody(req);
@@ -1002,6 +1133,21 @@ const server = http.createServer(async (req, res) => {
     try {
       const outcome = startTournamentOnServer(getStoredTournaments(), session.user, tournamentStart[1]);
       saveTournaments(io, outcome.tournaments);
+
+      const tournament = outcome.tournament;
+      const participantIds = [...new Set(
+        (tournament.entries || []).flatMap(entry => (entry.members || []).map(m => m.userId))
+      )];
+      for (const uid of participantIds) {
+        deliverNotification(io, uid, {
+          type: 'tournament_started',
+          title: 'Tournoi demarre',
+          body: `Le tournoi "${tournament.name}" a commence !`,
+          url: `/mj/tournois/${tournament.id}`,
+          requireInteraction: false
+        }).catch(err => log.error('Notification delivery failed', err));
+      }
+
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     } catch (error) {
       const mapped = mapPersistenceError(error);
@@ -1087,12 +1233,306 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ─── League Endpoints ───────────────────────────────────────────────────
+
+  if (req.method === 'GET' && pathname === '/api/leagues') {
+    const seasons = getStoredLeagues();
+    respondJson(res, 200, { ok: true, seasons });
+    return;
+  }
+
+  const leagueGetOne = pathname.match(/^\/api\/leagues\/([^/]+)$/);
+  if (req.method === 'GET' && leagueGetOne) {
+    const seasons = getStoredLeagues();
+    const season = seasons.find((s) => s.id === leagueGetOne[1]);
+    if (!season) {
+      respondJson(res, 404, { ok: false, error: 'Ligue introuvable.' });
+      return;
+    }
+    respondJson(res, 200, { ok: true, season });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/leagues') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const outcome = createLeagueSeasonOnServer(getStoredLeagues(), session.user, body);
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 201, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueJoin = pathname.match(/^\/api\/leagues\/([^/]+)\/join$/);
+  if (req.method === 'POST' && leagueJoin) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const outcome = joinLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueJoin[1]);
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueLeave = pathname.match(/^\/api\/leagues\/([^/]+)\/leave$/);
+  if (req.method === 'POST' && leagueLeave) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const outcome = leaveLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueLeave[1]);
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueStartQualification = pathname.match(/^\/api\/leagues\/([^/]+)\/start-qualification$/);
+  if (req.method === 'POST' && leagueStartQualification) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const outcome = startLeagueQualificationOnServer(getStoredLeagues(), session.user, leagueStartQualification[1]);
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueStartDay = pathname.match(/^\/api\/leagues\/([^/]+)\/days\/([^/]+)\/start$/);
+  if (req.method === 'POST' && leagueStartDay) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const outcome = startLeagueDayOnServer(getStoredLeagues(), session.user, leagueStartDay[1], leagueStartDay[2]);
+      saveLeagues(io, outcome.seasons);
+
+      const season = outcome.season;
+      const participantIds = (season.players || []).map(p => p.userId);
+      for (const uid of participantIds) {
+        deliverNotification(io, uid, {
+          type: 'league_day_started',
+          title: 'Journee BR Lancee',
+          body: `La journee ${leagueStartDay[2]} de la ligue "${season.name}" est en cours !`,
+          url: `/br-league/${season.id}`,
+          requireInteraction: false
+        }).catch(err => log.error('Notification delivery failed', err));
+      }
+
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueDayResults = pathname.match(/^\/api\/leagues\/([^/]+)\/days\/([^/]+)\/results$/);
+  if (req.method === 'POST' && leagueDayResults) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const outcome = submitLeagueDayResultsOnServer(
+        getStoredLeagues(),
+        session.user,
+        leagueDayResults[1],
+        leagueDayResults[2],
+        body.results
+      );
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueAdvanceToFinal = pathname.match(/^\/api\/leagues\/([^/]+)\/advance-to-final$/);
+  if (req.method === 'POST' && leagueAdvanceToFinal) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const outcome = advanceToFinalOnServer(getStoredLeagues(), session.user, leagueAdvanceToFinal[1]);
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueFinalResults = pathname.match(/^\/api\/leagues\/([^/]+)\/final-results$/);
+  if (req.method === 'POST' && leagueFinalResults) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const outcome = submitLeagueFinalResultsOnServer(
+        getStoredLeagues(),
+        session.user,
+        leagueFinalResults[1],
+        body.results
+      );
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueLeaderboard = pathname.match(/^\/api\/leagues\/([^/]+)\/leaderboard$/);
+  if (req.method === 'GET' && leagueLeaderboard) {
+    try {
+      const standings = getLeagueLeaderboard(getStoredLeagues(), leagueLeaderboard[1]);
+      respondJson(res, 200, { ok: true, standings });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueUpdateSettings = pathname.match(/^\/api\/leagues\/([^/]+)$/);
+  if (req.method === 'PATCH' && leagueUpdateSettings) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const outcome = updateLeagueSettingsOnServer(getStoredLeagues(), session.user, leagueUpdateSettings[1], body);
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueReassign = pathname.match(/^\/api\/leagues\/([^/]+)\/reassign$/);
+  if (req.method === 'POST' && leagueReassign) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const outcome = reassignPlayerOnServer(
+        getStoredLeagues(),
+        session.user,
+        leagueReassign[1],
+        body.userId,
+        body.fromDay,
+        body.toDay
+      );
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leagueRefund = pathname.match(/^\/api\/leagues\/([^/]+)\/refund\/([^/]+)$/);
+  if (req.method === 'POST' && leagueRefund) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    try {
+      const outcome = refundLeaguePlayerOnServer(
+        getStoredLeagues(),
+        session.user,
+        leagueRefund[1],
+        leagueRefund[2]
+      );
+      saveLeagues(io, outcome.seasons);
+      respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  const leaguePayments = pathname.match(/^\/api\/leagues\/([^/]+)\/payments$/);
+  if (req.method === 'GET' && leaguePayments) {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      return;
+    }
+    if (session.user.role !== 'admin') {
+      respondJson(res, 403, { ok: false, error: 'Acces admin requis.' });
+      return;
+    }
+    try {
+      const payments = getLeaguePayments(getStoredLeagues(), leaguePayments[1]);
+      respondJson(res, 200, { ok: true, payments });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  // ─── End League Endpoints ───────────────────────────────────────────────
+
   if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
 
     try {
       const body = await parseRequestBody(req);
@@ -1167,6 +1607,15 @@ const server = http.createServer(async (req, res) => {
     try {
       const outcome = assignArbiterOnServer(getStateCollection('matches'), session.user, matchArbiter[1]);
       saveMatches(io, outcome.matches, outcome.match);
+
+      deliverNotification(io, session.user.id, {
+        type: 'arbiter_assigned',
+        title: 'Arbitre assigne',
+        body: `Tu es arbitre du match "${outcome.match?.name || 'MJ'}".`,
+        url: `/mj/match/${outcome.match?.id}`,
+        requireInteraction: true
+      }).catch(err => log.error('Notification delivery failed', err));
+
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     } catch (error) {
       const mapped = mapPersistenceError(error);
@@ -1309,6 +1758,19 @@ const server = http.createServer(async (req, res) => {
     try {
       const outcome = confirmMatchResultOnServer(getStateCollection('matches'), session.user, matchConfirm[1]);
       saveMatches(io, outcome.matches, outcome.match);
+
+      const match = outcome.match;
+      const otherPlayerId = match.players?.find(p => p.userId !== session.user.id)?.userId;
+      if (otherPlayerId) {
+        deliverNotification(io, otherPlayerId, {
+          type: 'match_result',
+          title: 'Resultat confirme',
+          body: `${session.user.pseudo} a confirme le resultat du match.`,
+          url: `/mj/match/${match.id}`,
+          requireInteraction: false
+        }).catch(err => log.error('Notification delivery failed', err));
+      }
+
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     } catch (error) {
       const mapped = mapPersistenceError(error);
@@ -1329,6 +1791,19 @@ const server = http.createServer(async (req, res) => {
       const body = await parseRequestBody(req);
       const outcome = openDisputeOnServer(getStateCollection('matches'), session.user, matchDisputes[1], body);
       saveMatches(io, outcome.matches, outcome.match);
+
+      const match = outcome.match;
+      const otherPlayerId = match.players?.find(p => p.userId !== session.user.id)?.userId;
+      if (otherPlayerId) {
+        deliverNotification(io, otherPlayerId, {
+          type: 'dispute_opened',
+          title: 'Litige ouvert',
+          body: `${session.user.pseudo} a ouvert un litige sur un match.`,
+          url: `/mj/match/${match.id}`,
+          requireInteraction: true
+        }).catch(err => log.error('Notification delivery failed', err));
+      }
+
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     } catch (error) {
       const mapped = mapPersistenceError(error);
@@ -1384,7 +1859,7 @@ const server = http.createServer(async (req, res) => {
         body: `Match ${match.id} — Litige escaladé au niveau admin par ${session.user.pseudo}.`,
         url: `/admin`,
         requireInteraction: true,
-      }).catch(console.error);
+      }).catch(err => log.error('Notification delivery failed', err));
 
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     } catch (error) {
@@ -1401,8 +1876,9 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     if (session.user.role !== 'admin') {
-      console.warn(`[SECURITY] Tentative admin non autorisée par ${session.user.pseudo} (${session.user.id}) sur award match ${adminMatchAward[1]}`);
+      log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `award match ${adminMatchAward[1]}` });
       respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
       return;
     }
@@ -1436,8 +1912,9 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     if (session.user.role !== 'admin') {
-      console.warn(`[SECURITY] Tentative admin non autorisée par ${session.user.pseudo} (${session.user.id}) sur resolve-dispute match ${adminMatchResolve[1]}`);
+      log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `resolve-dispute match ${adminMatchResolve[1]}` });
       respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
       return;
     }
@@ -1466,8 +1943,9 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     if (session.user.role !== 'admin') {
-      console.warn(`[SECURITY] Tentative admin non autorisée par ${session.user.pseudo} (${session.user.id}) sur cancel match ${adminMatchCancel[1]}`);
+      log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `cancel match ${adminMatchCancel[1]}` });
       respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
       return;
     }
@@ -1534,6 +2012,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
 
     try {
       const body = await parseRequestBody(req);
@@ -1571,6 +2050,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
 
     try {
       const body = await parseRequestBody(req);
@@ -1621,6 +2101,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
 
     const channel = getChatChannelById(chatChannelRead[1]);
     if (!channel || !canAccessChatChannel(channel, session.user)) {
@@ -1807,6 +2288,8 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   const session = socket.data.session;
   socket.join(`user:${session.userId}`);
+  incCounter('zoyd_socket_connections_total');
+  setGauge('zoyd_socket_connections', io.engine.clientsCount);
 
   socket.emit('server:hello', {
     socketId: socket.id,
@@ -1906,6 +2389,8 @@ io.on('connection', (socket) => {
     }
 
     channelsBySocket.delete(socket.id);
+    incCounter('zoyd_socket_disconnects_total');
+    setGauge('zoyd_socket_connections', io.engine.clientsCount);
   });
 });
 
@@ -1923,12 +2408,12 @@ const start = async () => {
         saveMatches(io, outcome.matches);
       }
     } catch (error) {
-      console.error('[zoyd-realtime] match automation error', error);
+      log.error('Match automation error', error);
     }
   }, MATCH_AUTOMATION_INTERVAL_MS);
 
   server.listen(PORT, () => {
-    console.log(`[zoyd-realtime] listening on http://localhost:${PORT}`);
+    log.info(`Listening on http://localhost:${PORT}`);
   });
 };
 

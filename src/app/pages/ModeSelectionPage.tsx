@@ -14,7 +14,7 @@ const ModeSelectionPage: React.FC = () => {
   };
 
   const handleBRClick = () => {
-    toast.info('Battle Royale arrive bientot sur ZOYD.');
+    navigate('/br-league');
   };
 
   return (
@@ -115,33 +115,32 @@ const ModeSelectionPage: React.FC = () => {
 
               <div className="relative z-10 h-full p-6 sm:p-8 md:p-10 flex flex-col justify-between">
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-10">
-                  <Badge variant="disabled">BIENTOT</Badge>
+                  <Badge variant="yellow">DISPONIBLE</Badge>
                   <div className="border border-white/10 bg-black/35 px-3 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zoyd-yellow text-center">
-                    Future arena
+                    BR League
                   </div>
                 </div>
 
                 <div>
                   <div className="inline-flex items-center gap-3 text-zoyd-yellow mb-3 md:mb-4">
                     <Gamepad2 className="w-5 h-5" />
-                    <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.28em]">Mode annonce</span>
+                    <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.28em]">Mode ouvert</span>
                   </div>
                   <h2 className="text-4xl sm:text-5xl md:text-6xl font-display font-black uppercase italic tracking-[-0.05em] leading-[0.88] mb-4 md:mb-5">
                     Battle Royale
                   </h2>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
-                    Le mode BR viendra s&apos;ajouter au meme profil ZOYD, avec la meme identite joueur et le meme
-                    wallet.
+                    500 joueurs, 5 jours de qualification, 1 finale. Le meilleur joueur de la semaine remporte le pot.
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
-                    <InfoChip label="Profil" value="Conserve" />
-                    <InfoChip label="Wallet" value="Partage" />
-                    <InfoChip label="Acces" value="Ouverture prochaine" className="col-span-2 sm:col-span-1" />
+                    <InfoChip label="Format" value="500 joueurs" />
+                    <InfoChip label="Entree" value="50 ZC" />
+                    <InfoChip label="Cycle" value="Hebdomadaire" className="col-span-2 sm:col-span-1" />
                   </div>
 
-                  <div className="inline-flex items-center justify-center w-full sm:w-auto gap-3 border border-white/10 text-white/64 px-6 py-4 font-display font-black uppercase tracking-[0.22em] text-xs italic group-hover:text-white group-hover:border-white/20 transition-colors">
-                    Voir le mode BR
+                  <div className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-[0.22em] text-xs italic group-hover:bg-white transition-colors">
+                    Entrer en BR League
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>

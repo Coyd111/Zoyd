@@ -57,7 +57,7 @@ export interface WalletState {
   getAvailableToSpend: () => number;
 }
 
-const MIN_WITHDRAWAL_ZC = 15;
+const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
 
 const roundAmount = (amount: number) => Math.round(amount * 100) / 100;

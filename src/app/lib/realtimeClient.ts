@@ -55,6 +55,7 @@ interface RealtimeHandlers {
   onPushDelivery?: (payload: PushDeliveryPayload) => void;
   onMatchesSnapshot?: (matches: Match[]) => void;
   onTournamentsSnapshot?: (tournaments: Tournament[]) => void;
+  onLeaguesSnapshot?: (seasons: any[]) => void;
   onChatChannel?: (channel: ChatChannelDef) => void;
   onChatMessage?: (payload: { channel: ChatChannelDef; message: ChatMessage }) => void;
   onChatRead?: (payload: { channelId: string; userId: string; readAt: string }) => void;
@@ -142,6 +143,7 @@ export const bindRealtimeHandlers = (handlers: RealtimeHandlers) => {
   currentSocket.off('notification:deliver');
   currentSocket.off('state:matches');
   currentSocket.off('state:tournaments');
+  currentSocket.off('state:leagues');
   currentSocket.off('chat:channel');
   currentSocket.off('chat:message');
   currentSocket.off('chat:read');
@@ -153,6 +155,7 @@ export const bindRealtimeHandlers = (handlers: RealtimeHandlers) => {
   currentSocket.on('notification:deliver', (payload) => handlers.onPushDelivery?.(payload));
   currentSocket.on('state:matches', (payload) => handlers.onMatchesSnapshot?.(payload.items || []));
   currentSocket.on('state:tournaments', (payload) => handlers.onTournamentsSnapshot?.(payload.items || []));
+  currentSocket.on('state:leagues', (payload) => handlers.onLeaguesSnapshot?.(payload.items || []));
   currentSocket.on('chat:channel', (payload) => handlers.onChatChannel?.(payload.channel));
   currentSocket.on('chat:message', (payload) => handlers.onChatMessage?.(payload));
   currentSocket.on('chat:read', (payload) => handlers.onChatRead?.(payload));

@@ -1,5 +1,5 @@
-import { useAuthStore } from '../stores/authStore';
 import type { ChatChannel, ChatChannelDef, ChatMessage } from '../stores/chatStore';
+import { authorizedGet, authorizedPost } from './apiClient';
 
 interface ChatBootstrapResponse {
   ok: boolean;
@@ -25,59 +25,6 @@ interface ChatReadResponse {
   userId: string;
   readAt: string;
 }
-
-const getBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_REALTIME_URL;
-  if (typeof envUrl === 'string' && envUrl.length > 0) {
-    return envUrl;
-  }
-
-  return window.location.origin;
-};
-
-const getApiUrl = (path: string) => `${getBaseUrl()}${path}`;
-
-const getAuthHeaders = () => {
-  const token = useAuthStore.getState().sessionToken;
-  if (!token) {
-    throw new Error('Session joueur requise.');
-  }
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-};
-
-const readJson = async <T>(response: Response): Promise<T> => {
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || 'Une erreur reseau est survenue.');
-  }
-
-  return payload as T;
-};
-
-const authorizedGet = async <T>(path: string) =>
-  readJson<T>(
-    await fetch(getApiUrl(path), {
-      method: 'GET',
-      headers: {
-        ...getAuthHeaders(),
-      },
-    })
-  );
-
-const authorizedPost = async <T>(path: string, body?: unknown) =>
-  readJson<T>(
-    await fetch(getApiUrl(path), {
-      method: 'POST',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  );
 
 export const fetchChatBootstrap = () => authorizedGet<ChatBootstrapResponse>('/api/chat/bootstrap');
 

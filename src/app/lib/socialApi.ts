@@ -1,4 +1,4 @@
-import { authorizedPost } from './apiClient';
+import { authorizedPost, authorizedDelete } from './apiClient';
 import type { Friend, FriendRequest } from '../stores/friendsStore';
 
 export const sendServerFriendRequest = async (targetId: string, message?: string) => {
@@ -14,7 +14,7 @@ export const declineServerFriendRequest = async (requestId: string) => {
 };
 
 export const removeServerFriend = async (friendId: string) => {
-  return authorizedPost<{ ok: boolean }>(`/api/social/friends/${friendId}`, undefined, { method: 'DELETE' });
+  return authorizedDelete<{ ok: boolean }>(`/api/social/friends/${friendId}`);
 };
 
 export const blockServerUser = async (targetId: string) => {

@@ -4,7 +4,9 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createLogger } from './logger.mjs';
 
+const log = createLogger('supabase');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '..', '.env.server') });
@@ -20,13 +22,13 @@ if (supabaseUrl && supabaseKey) {
     supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    console.log('[Supabase] Client actif (url:', supabaseUrl, ')');
+    log.info('Client actif', { url: supabaseUrl });
   } catch (err) {
-    console.error('[Supabase] Erreur creation client:', err.message);
+    log.error('Erreur creation client', err);
     supabase = null;
   }
 } else {
-  console.warn('[Supabase] Variables SUPABASE_URL/SUPABASE_SERVICE_KEY absentes — mode degrade');
+  log.warn('Variables SUPABASE_URL/SUPABASE_SERVICE_KEY absentes — mode degrade');
 }
 
 export { supabase };

@@ -1,0 +1,3079 @@
+openapi: 3.1.0
+info:
+  title: ZOYD Gaming Platform REST API
+  description: API REST du plateau de jeu ZOYD — Multijoueur, Tournois, Ligues Battle Royale, Chat et Notifications.
+  version: 1.0.0
+  contact:
+    name: ZOYD Team
+    url: https://zoyd.africa
+
+servers:
+  - url: http://localhost:4001
+    description: Serveur de développement
+  - url: https://zoyd.africa
+    description: Production
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentification, inscription, profil et gestion de session.
+  - name: Social
+    description: Gestion des amis, demandes, blocage.
+  - name: Notifications
+    description: Notifications utilisateur (lecture).
+  - name: Leaderboard
+    description: Classement global des joueurs.
+  - name: Wallet
+    description: Portefeuille, dépôts, retraits et vérification FedaPay.
+  - name: Matches
+    description: Création, gestion et résolution des matchs multijoueur.
+  - name: Tournaments
+    description: Tournois — création, inscription, déroulement et résultats.
+  - name: Leagues
+    description: Ligues Battle Royale — saisons, journées, qualifications et finales.
+  - name: Admin
+    description: Actions d'administration sur les matchs.
+  - name: Chat
+    description: Canaux de discussion, messages et marquer lu.
+  - name: Realtime
+    description: Santé du serveur, sessions temps réel, abonnements push et synchronisation d'état.
+  - name: Users
+    description: Recherche d'utilisateurs.
+
+paths:
+  # ─── Auth ──────────────────────────────────────────────────────────────────
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Inscription d'un nouveau compte joueur
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Compte créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          description: Données d'inscription invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Pseudo, email, téléphone ou Game ID déjà utilisé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Trop de requêtes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Connexion au compte joueur
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '401':
+          description: Identifiants incorrects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Trop de requêtes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Récupérer le profil de la session courante
+      operationId: getMe
+      responses:
+        '200':
+          description: Profil utilisateur retourné
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags: [Auth]
+      summary: Mettre à jour le profil (champs autorisés uniquement)
+      description: |
+        Whitelist stricte — empêche l'escalade de rôle (mass assignment).
+        Champs modifiables : pseudo, avatar, bio, device, controllerType,
+        country, streamerMode, streamerPseudo, notifications, phone,
+        levelCODM, rankMJ, rankBR.
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profil mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Déconnexion (détruit la session applicative et les sessions temps réel)
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Déconnexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+
+  /api/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Changer le mot de passe
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Mot de passe changé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          description: Mot de passe trop court ou champs manquants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Mot de passe actuel incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Utilisateur introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Social ────────────────────────────────────────────────────────────────
+  /api/social/request:
+    post:
+      tags: [Social]
+      summary: Envoyer une demande d'ami
+      operationId: sendFriendRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialTargetRequest'
+      responses:
+        '200':
+          description: Demande envoyée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  request:
+                    $ref: '#/components/schemas/FriendRequest'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflit (déjà amis, auto-demande, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/social/accept:
+    post:
+      tags: [Social]
+      summary: Accepter une demande d'ami
+      operationId: acceptFriendRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialRequestRequest'
+      responses:
+        '200':
+          description: Demande acceptée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  friend:
+                    $ref: '#/components/schemas/FriendProfile'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/social/decline:
+    post:
+      tags: [Social]
+      summary: Refuser une demande d'ami
+      operationId: declineFriendRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialRequestRequest'
+      responses:
+        '200':
+          description: Demande refusée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/social/friends/{id}:
+    delete:
+      tags: [Social]
+      summary: Supprimer un ami
+      operationId: removeFriend
+      parameters:
+        - $ref: '#/components/parameters/FriendId'
+      responses:
+        '200':
+          description: Ami supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/social/block:
+    post:
+      tags: [Social]
+      summary: Bloquer un utilisateur
+      operationId: blockUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialTargetRequest'
+      responses:
+        '200':
+          description: Utilisateur bloqué
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/social/unblock:
+    post:
+      tags: [Social]
+      summary: Débloquer un utilisateur
+      operationId: unblockUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialTargetRequest'
+      responses:
+        '200':
+          description: Utilisateur débloqué
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Notifications ─────────────────────────────────────────────────────────
+  /api/notifications/read:
+    post:
+      tags: [Notifications]
+      summary: Marquer une notification comme lue
+      operationId: markNotificationRead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationReadRequest'
+      responses:
+        '200':
+          description: Notification marquée lue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  success:
+                    type: boolean
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Marquer toutes les notifications comme lues
+      operationId: markAllNotificationsRead
+      responses:
+        '200':
+          description: Toutes les notifications marquées lues
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  changes:
+                    description: Nombre de notifications mises à jour
+                    type: integer
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Leaderboard ───────────────────────────────────────────────────────────
+  /api/leaderboard:
+    get:
+      tags: [Leaderboard]
+      summary: Récupérer le classement global
+      description: Retourne tous les joueurs ayant au moins 1 match ou des gains, triés par ELO décroissant.
+      operationId: getLeaderboard
+      security: []
+      responses:
+        '200':
+          description: Classement retourné
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  players:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
+        '500':
+          description: Erreur lors du chargement du classement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Wallet ────────────────────────────────────────────────────────────────
+  /api/wallet/me:
+    get:
+      tags: [Wallet]
+      summary: Récupérer le portefeuille et le profil utilisateur
+      operationId: getMyWallet
+      responses:
+        '200':
+          description: Portefeuille et utilisateur retournés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  wallet:
+                    $ref: '#/components/schemas/Wallet'
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/wallet/deposit:
+    post:
+      tags: [Wallet]
+      summary: Effectuer un dépôt
+      operationId: depositToWallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositRequest'
+      responses:
+        '200':
+          description: Dépôt effectué
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  wallet:
+                    $ref: '#/components/schemas/Wallet'
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Montant invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/wallet/withdraw:
+    post:
+      tags: [Wallet]
+      summary: Effectuer un retrait
+      operationId: withdrawFromWallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawRequest'
+      responses:
+        '200':
+          description: Retrait effectué
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  wallet:
+                    $ref: '#/components/schemas/Wallet'
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Montant invalide ou retrait minimum non atteint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Fonds insuffisants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/wallet/verify-fedapay:
+    post:
+      tags: [Wallet]
+      summary: Vérifier une transaction FedaPay et créditer le portefeuille
+      operationId: verifyFedaPayTransaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyFedaPayRequest'
+      responses:
+        '200':
+          description: Transaction vérifiée et portefeuille crédité
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  amount:
+                    type: number
+                    description: Montant crédité en ZC
+                  wallet:
+                    $ref: '#/components/schemas/Wallet'
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: transactionId manquant ou transaction invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Matches ───────────────────────────────────────────────────────────────
+  /api/matches:
+    get:
+      tags: [Matches]
+      summary: Lister les matchs visibles
+      description: >
+        Filtre les matchs côté serveur selon le type d'appareil de l'utilisateur connecté.
+        Si aucun token n'est fourni, tous les matchs publics sont retournés.
+      operationId: listMatches
+      security: []
+      responses:
+        '200':
+          description: Liste des matchs retournée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  matches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Match'
+
+    post:
+      tags: [Matches]
+      summary: Créer un nouveau match
+      operationId: createMatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMatchRequest'
+      responses:
+        '201':
+          description: Match créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/join:
+    post:
+      tags: [Matches]
+      summary: Rejoindre un match
+      operationId: joinMatch
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                team:
+                  type: integer
+                  description: Numéro d'équipe (0 ou 1)
+      responses:
+        '200':
+          description: Match rejoint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Place déjà prise, déjà rejoint, ou match fermé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/arbiter:
+    post:
+      tags: [Matches]
+      summary: S'assigner comme arbitre d'un match
+      operationId: assignArbiter
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Arbitre assigné
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Arbitre déjà assigné ou conflit de rôle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/check-in:
+    post:
+      tags: [Matches]
+      summary: Enregistrer le check-in d'un joueur
+      operationId: checkInMatch
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Check-in effectué
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/ready:
+    post:
+      tags: [Matches]
+      summary: Basculer le statut prêt / pas prêt
+      operationId: toggleReady
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Statut prêt mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/schedule:
+    post:
+      tags: [Matches]
+      summary: Planifier la date/heure du match
+      operationId: scheduleMatch
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduledAt:
+                  type: string
+                  format: date-time
+                  description: Date et heure prévues du match (ISO 8601)
+      responses:
+        '200':
+          description: Match planifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/room:
+    post:
+      tags: [Matches]
+      summary: Définir les détails de la salle de jeu
+      operationId: setMatchRoom
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomDetailsRequest'
+      responses:
+        '200':
+          description: Salle configurée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/launch:
+    post:
+      tags: [Matches]
+      summary: Lancer le match
+      operationId: launchMatch
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Match lancé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/result:
+    post:
+      tags: [Matches]
+      summary: Soumettre le résultat d'un match
+      operationId: submitMatchResult
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchResultRequest'
+      responses:
+        '200':
+          description: Résultat soumis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/confirm:
+    post:
+      tags: [Matches]
+      summary: Confirmer le résultat d'un match
+      operationId: confirmMatchResult
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Résultat confirmé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/disputes:
+    post:
+      tags: [Matches]
+      summary: Ouvrir un litige sur un match
+      operationId: openDispute
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisputeRequest'
+      responses:
+        '200':
+          description: Litige ouvert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Litige déjà ouvert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/dispute/evidence:
+    post:
+      tags: [Matches]
+      summary: Ajouter une preuve au litige
+      operationId: addDisputeEvidence
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                evidence:
+                  description: Preuve(s) à joindre (URL, texte, etc.)
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+      responses:
+        '200':
+          description: Preuve ajoutée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/matches/{id}/dispute/escalate:
+    post:
+      tags: [Matches]
+      summary: Escalader un litige au niveau admin
+      operationId: escalateDispute
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Litige escaladé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Tournaments ───────────────────────────────────────────────────────────
+  /api/tournaments:
+    get:
+      tags: [Tournaments]
+      summary: Lister tous les tournois
+      operationId: listTournaments
+      security: []
+      responses:
+        '200':
+          description: Liste des tournois
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  tournaments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tournament'
+
+    post:
+      tags: [Tournaments]
+      summary: Créer un tournoi
+      operationId: createTournament
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTournamentRequest'
+      responses:
+        '201':
+          description: Tournoi créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}:
+    get:
+      tags: [Tournaments]
+      summary: Récupérer le détail d'un tournoi
+      operationId: getTournament
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+      responses:
+        '200':
+          description: Tournoi trouvé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  tournament:
+                    $ref: '#/components/schemas/Tournament'
+        '404':
+          description: Tournoi introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}/register:
+    post:
+      tags: [Tournaments]
+      summary: S'inscrire à un tournoi
+      operationId: registerForTournament
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TournamentRegisterRequest'
+      responses:
+        '200':
+          description: Inscription confirmée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Inscription clôturée ou déjà inscrit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}/leave:
+    post:
+      tags: [Tournaments]
+      summary: Quitter un tournoi
+      operationId: leaveTournament
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+      responses:
+        '200':
+          description: Tournoi quitté
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}/arbiter:
+    post:
+      tags: [Tournaments]
+      summary: S'assigner comme arbitre du tournoi
+      operationId: assignTournamentArbiter
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+      responses:
+        '200':
+          description: Arbitre assigné
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Arbitre déjà assigné
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}/start:
+    post:
+      tags: [Tournaments]
+      summary: Démarrer un tournoi
+      operationId: startTournament
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+      responses:
+        '200':
+          description: Tournoi démarré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}/matches/{matchId}/room:
+    post:
+      tags: [Tournaments]
+      summary: Définir la salle de jeu d'un match de tournoi
+      operationId: setTournamentMatchRoom
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+        - $ref: '#/components/parameters/TournamentMatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomDetailsRequest'
+      responses:
+        '200':
+          description: Salle configurée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}/matches/{matchId}/live:
+    post:
+      tags: [Tournaments]
+      summary: Passer un match de tournoi en mode live
+      operationId: setTournamentMatchLive
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+        - $ref: '#/components/parameters/TournamentMatchId'
+      responses:
+        '200':
+          description: Match passé en live
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tournaments/{id}/matches/{matchId}/result:
+    post:
+      tags: [Tournaments]
+      summary: Soumettre le résultat d'un match de tournoi
+      operationId: submitTournamentMatchResult
+      parameters:
+        - $ref: '#/components/parameters/TournamentId'
+        - $ref: '#/components/parameters/TournamentMatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchResultRequest'
+      responses:
+        '200':
+          description: Résultat soumis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Leagues (BR) ──────────────────────────────────────────────────────────
+  /api/leagues:
+    get:
+      tags: [Leagues]
+      summary: Lister toutes les saisons de ligue
+      operationId: listLeagues
+      security: []
+      responses:
+        '200':
+          description: Liste des saisons
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  seasons:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeagueSeason'
+
+    post:
+      tags: [Leagues]
+      summary: Créer une nouvelle saison de ligue
+      operationId: createLeagueSeason
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeagueSeasonRequest'
+      responses:
+        '201':
+          description: Saison créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}:
+    get:
+      tags: [Leagues]
+      summary: Récupérer le détail d'une saison de ligue
+      operationId: getLeagueSeason
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      responses:
+        '200':
+          description: Saison trouvée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  season:
+                    $ref: '#/components/schemas/LeagueSeason'
+        '404':
+          description: Ligue introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags: [Leagues]
+      summary: Modifier les paramètres d'une saison de ligue
+      operationId: updateLeagueSettings
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeagueSettingsRequest'
+      responses:
+        '200':
+          description: Paramètres mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/join:
+    post:
+      tags: [Leagues]
+      summary: Rejoindre une saison de ligue
+      operationId: joinLeagueSeason
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      responses:
+        '200':
+          description: Saison rejointe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Déjà inscrit ou inscription clôturée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/leave:
+    post:
+      tags: [Leagues]
+      summary: Quitter une saison de ligue
+      operationId: leaveLeagueSeason
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      responses:
+        '200':
+          description: Saison quittée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/start-qualification:
+    post:
+      tags: [Leagues]
+      summary: Lancer la phase de qualification
+      operationId: startLeagueQualification
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      responses:
+        '200':
+          description: Qualification lancée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/days/{dayId}/start:
+    post:
+      tags: [Leagues]
+      summary: Démarrer une journée de qualification
+      operationId: startLeagueDay
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+        - $ref: '#/components/parameters/LeagueDayId'
+      responses:
+        '200':
+          description: Journée démarrée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/days/{dayId}/results:
+    post:
+      tags: [Leagues]
+      summary: Soumettre les résultats d'une journée
+      operationId: submitLeagueDayResults
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+        - $ref: '#/components/parameters/LeagueDayId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                results:
+                  description: Résultats de la journée
+                  type: array
+                  items:
+                    type: object
+              required: [results]
+      responses:
+        '200':
+          description: Résultats soumis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/advance-to-final:
+    post:
+      tags: [Leagues]
+      summary: Avancer les joueurs qualifiés vers la finale
+      operationId: advanceToFinal
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      responses:
+        '200':
+          description: Qualifiés avancés vers la finale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/final-results:
+    post:
+      tags: [Leagues]
+      summary: Soumettre les résultats de la finale
+      operationId: submitLeagueFinalResults
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                results:
+                  description: Résultats de la finale
+                  type: array
+                  items:
+                    type: object
+              required: [results]
+      responses:
+        '200':
+          description: Résultats de la finale soumis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/leaderboard:
+    get:
+      tags: [Leagues]
+      summary: Récupérer le classement d'une ligue
+      operationId: getLeagueLeaderboard
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      responses:
+        '200':
+          description: Classement retourné
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  standings:
+                    type: array
+                    items:
+                      type: object
+
+  /api/leagues/{id}/reassign:
+    post:
+      tags: [Leagues]
+      summary: Réaffecter un joueur d'une journée à une autre
+      operationId: reassignLeaguePlayer
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeagueReassignRequest'
+      responses:
+        '200':
+          description: Joueur réaffecté
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/refund/{playerId}:
+    post:
+      tags: [Leagues]
+      summary: Rembourser un joueur de la ligue
+      operationId: refundLeaguePlayer
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+        - $ref: '#/components/parameters/PlayerId'
+      responses:
+        '200':
+          description: Remboursement effectué
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leagues/{id}/payments:
+    get:
+      tags: [Leagues]
+      summary: Récupérer l'historique des paiements d'une ligue
+      description: Accès réservé aux administrateurs.
+      operationId: getLeaguePayments
+      parameters:
+        - $ref: '#/components/parameters/LeagueId'
+      responses:
+        '200':
+          description: Paiements retournés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  payments:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Accès admin requis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Admin ─────────────────────────────────────────────────────────────────
+  /api/admin/matches/{id}/award:
+    post:
+      tags: [Admin]
+      summary: Attribuer la victoire d'un match (admin)
+      operationId: adminAwardMatch
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAwardRequest'
+      responses:
+        '200':
+          description: Victoire attribuée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Accès réservé aux administrateurs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/matches/{id}/resolve-dispute:
+    post:
+      tags: [Admin]
+      summary: Résoudre un litige (admin)
+      operationId: adminResolveDispute
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminResolveDisputeRequest'
+      responses:
+        '200':
+          description: Litige résolu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Accès réservé aux administrateurs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/matches/{id}/cancel:
+    post:
+      tags: [Admin]
+      summary: Annuler un match (admin)
+      operationId: adminCancelMatch
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCancelRequest'
+      responses:
+        '200':
+          description: Match annulé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchActionResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Accès réservé aux administrateurs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Chat ──────────────────────────────────────────────────────────────────
+  /api/chat/bootstrap:
+    get:
+      tags: [Chat]
+      summary: Charger l'état initial du chat (canaux + messages)
+      operationId: chatBootstrap
+      responses:
+        '200':
+          description: État initial du chat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatBootstrapResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/chat/channels/{id}:
+    get:
+      tags: [Chat]
+      summary: Récupérer le détail d'un canal et ses messages
+      operationId: getChatChannel
+      parameters:
+        - $ref: '#/components/parameters/ChannelId'
+      responses:
+        '200':
+          description: Canal et messages retournés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  channel:
+                    $ref: '#/components/schemas/ChatChannel'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatMessage'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Canal de discussion introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/chat/channels:
+    post:
+      tags: [Chat]
+      summary: Créer un nouveau canal de discussion
+      operationId: createChatChannel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChatChannelRequest'
+      responses:
+        '201':
+          description: Canal créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateChatChannelResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/chat/channels/{id}/messages:
+    get:
+      tags: [Chat]
+      summary: Récupérer les messages d'un canal (paginé)
+      operationId: getChatChannelMessages
+      parameters:
+        - $ref: '#/components/parameters/ChannelId'
+        - name: limit
+          in: query
+          description: Nombre maximum de messages à retourner
+          schema:
+            type: integer
+            default: 150
+      responses:
+        '200':
+          description: Messages retournés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatMessage'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Canal de discussion introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [Chat]
+      summary: Envoyer un message dans un canal
+      operationId: sendChatMessage
+      parameters:
+        - $ref: '#/components/parameters/ChannelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendChatMessageRequest'
+      responses:
+        '201':
+          description: Message envoyé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendChatMessageResponse'
+        '400':
+          description: Le message est vide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Canal de discussion introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/chat/channels/{id}/read:
+    post:
+      tags: [Chat]
+      summary: Marquer un canal de discussion comme lu
+      operationId: markChatChannelRead
+      parameters:
+        - $ref: '#/components/parameters/ChannelId'
+      responses:
+        '200':
+          description: Canal marqué lu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReadReceipt'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Canal de discussion introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Realtime ──────────────────────────────────────────────────────────────
+  /api/realtime/health:
+    get:
+      tags: [Realtime]
+      summary: Santé du serveur temps réel
+      operationId: realtimeHealth
+      security: []
+      responses:
+        '200':
+          description: État du serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/realtime/auth/session:
+    post:
+      tags: [Realtime]
+      summary: Créer une session temps réel (pour Socket.IO)
+      operationId: createRealtimeSession
+      responses:
+        '200':
+          description: Session temps réel créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  session:
+                    $ref: '#/components/schemas/RealtimeSession'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Impossible de créer la session temps réel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/realtime/push/public-key:
+    get:
+      tags: [Realtime]
+      summary: Récupérer la clé publique VAPID pour les notifications push
+      operationId: getPushPublicKey
+      security: []
+      responses:
+        '200':
+          description: Clé publique VAPID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  publicKey:
+                    type: string
+                    description: Clé publique VAPID
+
+  /api/realtime/state/sync:
+    post:
+      tags: [Realtime]
+      summary: Synchroniser l'état côté client vers le serveur
+      description: >
+        Anciennement utilisé pour synchroniser les tournois. Désormais les tournois
+        sont gérés par les routes dédiées. Retourne 409 si kind=tournaments.
+      operationId: stateSync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StateSyncRequest'
+      responses:
+        '400':
+          description: Payload de synchronisation invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Realtime session required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Tournament state is now managed by dedicated API routes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/realtime/push/subscribe:
+    post:
+      tags: [Realtime]
+      summary: S'abonner aux notifications push
+      operationId: subscribePush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscribeRequest'
+      responses:
+        '200':
+          description: Abonnement enregistré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          description: Endpoint manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Realtime session required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/realtime/push/unsubscribe:
+    post:
+      tags: [Realtime]
+      summary: Se désabonner des notifications push
+      operationId: unsubscribePush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushUnsubscribeRequest'
+      responses:
+        '200':
+          description: Désabonnement effectué
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          description: Endpoint manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Realtime session required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/realtime/push/test:
+    post:
+      tags: [Realtime]
+      summary: Envoyer une notification push de test
+      operationId: sendTestPush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTestRequest'
+      responses:
+        '200':
+          description: Notification de test envoyée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '401':
+          description: Realtime session required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Impossible d'envoyer la notification de test
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Users ─────────────────────────────────────────────────────────────────
+  /api/users/search:
+    get:
+      tags: [Users]
+      summary: Rechercher des utilisateurs par pseudo
+      operationId: searchUsers
+      parameters:
+        - name: q
+          in: query
+          description: Terme de recherche (pseudo)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Utilisateurs correspondants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserPublicProfile'
+        '401':
+          description: Session joueur requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+# ─── Components ──────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: >
+        Token de session applicative (Bearer). Obtenu via /api/auth/register
+        ou /api/auth/login. Certains endpoints publics ne nécessitent pas
+        d'authentification.
+
+  parameters:
+    MatchId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant du match
+      schema:
+        type: string
+    TournamentId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant du tournoi
+      schema:
+        type: string
+    TournamentMatchId:
+      name: matchId
+      in: path
+      required: true
+      description: Identifiant du match dans le tournoi
+      schema:
+        type: string
+    LeagueId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant de la saison de ligue
+      schema:
+        type: string
+    LeagueDayId:
+      name: dayId
+      in: path
+      required: true
+      description: Identifiant de la journée de qualification
+      schema:
+        type: string
+    FriendId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant de l'ami à supprimer
+      schema:
+        type: string
+    ChannelId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant du canal de discussion
+      schema:
+        type: string
+    PlayerId:
+      name: playerId
+      in: path
+      required: true
+      description: Identifiant du joueur
+      schema:
+        type: string
+
+  schemas:
+    # ── Réponses génériques ──────────────────────────────────────────────────
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+    ErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Message d'erreur
+
+    # ── Auth ─────────────────────────────────────────────────────────────────
+    RegisterRequest:
+      type: object
+      description: Corps de la requête d'inscription (passé à createUserAccount)
+      additionalProperties: true
+
+    LoginRequest:
+      type: object
+      properties:
+        identifier:
+          type: string
+          description: Pseudo, email ou numéro de téléphone
+        password:
+          type: string
+          description: Mot de passe en clair
+      required: [identifier, password]
+
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          description: Mot de passe actuel
+        newPassword:
+          type: string
+          minLength: 8
+          description: Nouveau mot de passe (minimum 8 caractères)
+      required: [currentPassword, newPassword]
+
+    UpdateProfileRequest:
+      type: object
+      description: |
+        Champs autorisés : pseudo, avatar, bio, device, controllerType,
+        country, streamerMode, streamerPseudo, notifications, phone,
+        levelCODM, rankMJ, rankBR.
+      properties:
+        pseudo:
+          type: string
+        avatar:
+          type: string
+        bio:
+          type: string
+        device:
+          type: string
+        controllerType:
+          type: string
+        country:
+          type: string
+        streamerMode:
+          type: boolean
+        streamerPseudo:
+          type: string
+        notifications:
+          type: object
+        phone:
+          type: string
+        levelCODM:
+          type: string
+        rankMJ:
+          type: string
+        rankBR:
+          type: string
+
+    AuthSessionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        token:
+          type: string
+          description: Token de session applicative (Bearer)
+        user:
+          $ref: '#/components/schemas/User'
+        expiresAt:
+          type: string
+          format: date-time
+          description: Date d'expiration de la session
+
+    MeResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+        expiresAt:
+          type: string
+          format: date-time
+
+    UserResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+
+    # ── User ─────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      description: Objet utilisateur complet (profil, stats, portefeuille)
+      properties:
+        id:
+          type: string
+        pseudo:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        avatar:
+          type: string
+        bio:
+          type: string
+        country:
+          type: string
+        role:
+          type: string
+          enum: [player, admin]
+        device:
+          type: string
+        controllerType:
+          type: string
+        levelCODM:
+          type: string
+        rankMJ:
+          type: string
+        rankBR:
+          type: string
+        streamerMode:
+          type: boolean
+        streamerPseudo:
+          type: string
+        trustScore:
+          type: number
+        isOnline:
+          type: boolean
+        stats:
+          $ref: '#/components/schemas/UserStats'
+        wallet:
+          $ref: '#/components/schemas/Wallet'
+        createdAt:
+          type: string
+          format: date-time
+
+    UserStats:
+      type: object
+      properties:
+        elo:
+          type: number
+        winRate:
+          type: number
+        totalMatches:
+          type: integer
+        totalEarnings:
+          type: number
+        wins:
+          type: integer
+
+    UserPublicProfile:
+      type: object
+      description: Profil public d'un utilisateur (recherche)
+      properties:
+        id:
+          type: string
+        pseudo:
+          type: string
+        avatar:
+          type: string
+        country:
+          type: string
+        trustScore:
+          type: number
+        controllerType:
+          type: string
+        isOnline:
+          type: boolean
+
+    # ── Social ───────────────────────────────────────────────────────────────
+    SocialTargetRequest:
+      type: object
+      properties:
+        targetId:
+          type: string
+          description: ID de l'utilisateur cible
+      required: [targetId]
+
+    SocialRequestRequest:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: ID de la demande d'ami
+      required: [requestId]
+
+    FriendRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        fromUserId:
+          type: string
+        toUserId:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, declined]
+        createdAt:
+          type: string
+          format: date-time
+
+    FriendProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        pseudo:
+          type: string
+
+    # ── Notifications ────────────────────────────────────────────────────────
+    NotificationReadRequest:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          description: ID de la notification à marquer lue
+      required: [notificationId]
+
+    # ── Leaderboard ──────────────────────────────────────────────────────────
+    LeaderboardEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        pseudo:
+          type: string
+        country:
+          type: string
+        elo:
+          type: number
+          description: Score ELO du joueur
+        winRate:
+          type: number
+          description: Taux de victoire (0-1)
+        totalMatches:
+          type: integer
+        totalEarnings:
+          type: number
+        wins:
+          type: integer
+        trustScore:
+          type: number
+        controllerType:
+          type: string
+        rankMJ:
+          type: string
+        isOnline:
+          type: boolean
+
+    # ── Wallet ───────────────────────────────────────────────────────────────
+    Wallet:
+      type: object
+      description: Portefeuille du joueur
+      properties:
+        balance:
+          type: number
+          description: Solde actuel en ZC
+        pendingWithdrawal:
+          type: number
+          description: Montant en attente de retrait
+        totalDeposited:
+          type: number
+        totalWithdrawn:
+          type: number
+
+    DepositRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+          description: Montant du dépôt
+        method:
+          type: string
+          description: Méthode de dépôt
+      required: [amount, method]
+
+    WithdrawRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+          description: Montant du retrait
+        method:
+          type: string
+          description: Méthode de retrait
+        phone:
+          type: string
+          description: Numéro de téléphone (pour Mobile Money)
+      required: [amount, method]
+
+    VerifyFedaPayRequest:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          description: ID de la transaction FedaPay
+      required: [transactionId]
+
+    # ── Matches ──────────────────────────────────────────────────────────────
+    Match:
+      type: object
+      description: Objet match
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        game:
+          type: string
+        mode:
+          type: string
+        visibility:
+          type: string
+          enum: [public, private]
+        status:
+          type: string
+          description: Statut du match (waiting, lobby, live, completed, cancelled, etc.)
+        stake:
+          type: number
+          description: Mise en ZC
+        entryFee:
+          type: number
+        maxPlayers:
+          type: integer
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchPlayer'
+        arbiter:
+          type: object
+          nullable: true
+        teams:
+          type: array
+          items:
+            type: object
+        result:
+          type: object
+          nullable: true
+        dispute:
+          type: object
+          nullable: true
+        roomName:
+          type: string
+        roomPassword:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        channelId:
+          type: string
+        chatChannelId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MatchPlayer:
+      type: object
+      properties:
+        userId:
+          type: string
+        pseudo:
+          type: string
+        team:
+          type: integer
+        isCheckedIn:
+          type: boolean
+        isReady:
+          type: boolean
+
+    MatchActionResponse:
+      type: object
+      description: Réponse standard après une action sur un match
+      properties:
+        ok:
+          type: boolean
+        match:
+          $ref: '#/components/schemas/Match'
+        user:
+          $ref: '#/components/schemas/User'
+        wallet:
+          $ref: '#/components/schemas/Wallet'
+
+    CreateMatchRequest:
+      type: object
+      description: Corps de la requête de création de match (passé à createMatchOnServer)
+      additionalProperties: true
+
+    MatchResultRequest:
+      type: object
+      description: Résultat soumis pour un match
+      properties:
+        winnerTeam:
+          type: integer
+          description: Numéro de l'équipe gagnante (0 ou 1)
+        scores:
+          type: object
+          properties:
+            team0:
+              type: integer
+            team1:
+              type: integer
+        screenshots:
+          type: array
+          items:
+            type: string
+          description: URLs des captures d'écran
+        proofs:
+          type: object
+          nullable: true
+        arbiterNotes:
+          type: string
+          description: Notes de l'arbitre
+
+    DisputeRequest:
+      type: object
+      description: Données pour ouvrir un litige
+      properties:
+        reason:
+          type: string
+          description: Raison du litige
+        proofs:
+          type: object
+          nullable: true
+
+    RoomDetailsRequest:
+      type: object
+      properties:
+        roomName:
+          type: string
+          description: Nom de la salle de jeu
+        roomPassword:
+          type: string
+          description: Mot de passe de la salle
+      required: [roomName, roomPassword]
+
+    # ── Tournaments ──────────────────────────────────────────────────────────
+    Tournament:
+      type: object
+      description: Objet tournoi
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        game:
+          type: string
+        mode:
+          type: string
+        status:
+          type: string
+        maxTeams:
+          type: integer
+        teamSize:
+          type: integer
+        stake:
+          type: number
+        entryFee:
+          type: number
+        prizePool:
+          type: number
+        entries:
+          type: array
+          items:
+            type: object
+        bracket:
+          type: object
+          nullable: true
+        matches:
+          type: array
+          items:
+            type: object
+        arbiter:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TournamentActionResponse:
+      type: object
+      description: Réponse standard après une action sur un tournoi
+      properties:
+        ok:
+          type: boolean
+        tournament:
+          $ref: '#/components/schemas/Tournament'
+        user:
+          $ref: '#/components/schemas/User'
+        wallet:
+          $ref: '#/components/schemas/Wallet'
+
+    CreateTournamentRequest:
+      type: object
+      description: Corps de la requête de création de tournoi
+      additionalProperties: true
+
+    TournamentRegisterRequest:
+      type: object
+      description: Données d'inscription au tournoi
+      additionalProperties: true
+
+    # ── Leagues (BR) ─────────────────────────────────────────────────────────
+    LeagueSeason:
+      type: object
+      description: Saison de ligue Battle Royale
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        game:
+          type: string
+        mode:
+          type: string
+        status:
+          type: string
+        maxPlayers:
+          type: integer
+        entryFee:
+          type: number
+        prizePool:
+          type: number
+        players:
+          type: array
+          items:
+            type: object
+        days:
+          type: array
+          items:
+            type: object
+        final:
+          type: object
+          nullable: true
+        settings:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LeagueActionResponse:
+      type: object
+      description: Réponse standard après une action sur une ligue
+      properties:
+        ok:
+          type: boolean
+        season:
+          $ref: '#/components/schemas/LeagueSeason'
+        user:
+          $ref: '#/components/schemas/User'
+        wallet:
+          $ref: '#/components/schemas/Wallet'
+
+    CreateLeagueSeasonRequest:
+      type: object
+      description: Corps de la requête de création de saison de ligue
+      additionalProperties: true
+
+    LeagueSettingsRequest:
+      type: object
+      description: Paramètres modifiables de la saison de ligue
+      additionalProperties: true
+
+    LeagueReassignRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: ID du joueur à réaffecter
+        fromDay:
+          type: string
+          description: ID de la journée source
+        toDay:
+          type: string
+          description: ID de la journée cible
+      required: [userId, fromDay, toDay]
+
+    # ── Admin ────────────────────────────────────────────────────────────────
+    AdminAwardRequest:
+      type: object
+      properties:
+        winnerTeam:
+          type: integer
+          description: Numéro de l'équipe gagnante (0 ou 1)
+        arbiterNotes:
+          type: string
+          description: Notes de l'admin
+      required: [winnerTeam]
+
+    AdminResolveDisputeRequest:
+      type: object
+      properties:
+        resolution:
+          type: string
+          description: Décision de résolution du litige
+          default: Litige clos par moderation.
+
+    AdminCancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Raison de l'annulation
+          default: Match annule par moderation.
+
+    # ── Chat ─────────────────────────────────────────────────────────────────
+    ChatBootstrapResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatChannel'
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+
+    ChatChannel:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: Type de canal (global, match, private, team)
+        name:
+          type: string
+        participants:
+          type: array
+          items:
+            type: string
+        scope:
+          type: string
+          description: Portée du canal (public, participants)
+        inbox:
+          type: string
+        unreadCount:
+          type: integer
+          description: Nombre de messages non lus
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        channelId:
+          type: string
+        channelType:
+          type: string
+        senderId:
+          type: string
+        senderPseudo:
+          type: string
+        text:
+          type: string
+        replyTo:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    CreateChatChannelRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID du canal (auto-généré si absent)
+        type:
+          type: string
+          description: Type de canal (private, team, match)
+          default: private
+        name:
+          type: string
+          description: Nom du canal
+          default: Nouvelle conversation
+        participants:
+          type: array
+          description: IDs des participants (l'utilisateur courant est ajouté automatiquement)
+          items:
+            type: string
+
+    CreateChatChannelResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        channel:
+          $ref: '#/components/schemas/ChatChannel'
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+
+    SendChatMessageRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          description: Contenu du message (ne peut pas être vide)
+        replyTo:
+          type: string
+          description: ID du message auquel on répond
+      required: [text]
+
+    SendChatMessageResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        channel:
+          $ref: '#/components/schemas/ChatChannel'
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+
+    ChatReadReceipt:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        channelId:
+          type: string
+        userId:
+          type: string
+        readAt:
+          type: string
+          format: date-time
+
+    # ── Realtime ─────────────────────────────────────────────────────────────
+    HealthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        service:
+          type: string
+          example: zoyd-realtime
+        channels:
+          type: integer
+          description: Nombre de canaux Socket.IO actifs
+        subscriptions:
+          type: integer
+          description: Nombre d'abonnements push enregistrés
+        storedMatches:
+          type: integer
+          description: Nombre de matchs en mémoire
+        storedTournaments:
+          type: integer
+          description: Nombre de tournois en mémoire
+        timestamp:
+          type: string
+          format: date-time
+
+    RealtimeSession:
+      type: object
+      properties:
+        userId:
+          type: string
+        pseudo:
+          type: string
+        role:
+          type: string
+        token:
+          type: string
+          description: Token de session temps réel (pour Socket.IO)
+        createdAt:
+          type: string
+          format: date-time
+
+    StateSyncRequest:
+      type: object
+      description: Données de synchronisation d'état
+      properties:
+        kind:
+          type: string
+          description: Type d'état à synchroniser
+      required: [kind]
+
+    PushSubscribeRequest:
+      type: object
+      properties:
+        subscription:
+          type: object
+          description: Objet PushSubscription (Web Push API)
+          properties:
+            endpoint:
+              type: string
+              description: URL de l'endpoint push
+            keys:
+              type: object
+              properties:
+                p256dh:
+                  type: string
+                auth:
+                  type: string
+          required: [endpoint]
+      required: [subscription]
+
+    PushUnsubscribeRequest:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          description: URL de l'endpoint push à supprimer
+      required: [endpoint]
+
+    PushTestRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Titre de la notification de test
+          default: ZOYD
+        body:
+          type: string
+          description: Corps du message
+          default: Notification de test ZOYD
+        url:
+          type: string
+          description: URL de destination au clic
+          default: /mj
+        tag:
+          type: string
+          description: Tag de la notification

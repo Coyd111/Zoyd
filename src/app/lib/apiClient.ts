@@ -62,3 +62,13 @@ export const authorizedPatch = async <T>(path: string, body?: unknown) =>
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   );
+
+export const authorizedDelete = async <T>(path: string) =>
+  readJson<T>(
+    await fetch(getApiUrl(path), {
+      method: 'DELETE',
+      headers: {
+        ...getAuthHeaders(),
+      },
+    })
+  );

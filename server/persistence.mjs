@@ -4,6 +4,9 @@
 
 import crypto from 'node:crypto';
 import { supabase } from './supabase.mjs';
+import { createLogger } from './logger.mjs';
+
+const log = createLogger('persistence');
 
 const getNow = () => new Date().toISOString();
 
@@ -87,7 +90,7 @@ export const verifyPassword = (password, passwordHash) => {
 const sbUpsert = async (table, data) => {
   if (!supabase) return;
   const { error } = await supabase.from(table).upsert(data);
-  if (error) console.error(`[Supabase] ${table} upsert error:`, error.message);
+  if (error) log.error(`${table} upsert error`, { message: error.message });
 };
 
 const sbDelete = async (table, filters) => {
@@ -97,13 +100,13 @@ const sbDelete = async (table, filters) => {
     q = q.eq(col, val);
   }
   const { error } = await q;
-  if (error) console.error(`[Supabase] ${table} delete error:`, error.message);
+  if (error) log.error(`${table} delete error`, { message: error.message });
 };
 
 const sbDeleteMulti = async (table, col, values) => {
   if (!supabase || values.length === 0) return;
   const { error } = await supabase.from(table).delete().in(col, values);
-  if (error) console.error(`[Supabase] ${table} delete-in error:`, error.message);
+  if (error) log.error(`${table} delete-in error`, { message: error.message });
 };
 
 const sbSelect = async (table, filters = {}, columns = '*') => {
@@ -114,7 +117,7 @@ const sbSelect = async (table, filters = {}, columns = '*') => {
   }
   const { data, error } = await q;
   if (error) {
-    console.error(`[Supabase] ${table} select error:`, error.message);
+    log.error(`${table} select error`, { message: error.message });
     return [];
   }
   return data || [];
@@ -123,13 +126,13 @@ const sbSelect = async (table, filters = {}, columns = '*') => {
 // ─── Load from Supabase on startup ──────────────────────────────────────────
 export const loadFromSupabase = async () => {
   if (!supabase) {
-    console.warn('[Persistence] No Supabase client — running from memory only');
+    log.warn('No Supabase client — running from memory only');
     ensureSeedAdmin();
     ensureGlobalChatChannel();
     return;
   }
 
-  console.log('[Persistence] Loading from Supabase...');
+  log.info('Loading from Supabase...');
   const t0 = Date.now();
 
   try {
@@ -242,10 +245,9 @@ export const loadFromSupabase = async () => {
       }
     }
 
-    console.log(`[Persistence] Loaded from Supabase in ${Date.now() - t0}ms`);
-    console.log(`  Users: ${memoryUsers.size}, Channels: ${memoryChatChannels.size}, Snapshots: ${memoryStateSnapshots.size}`);
+    log.info('Loaded from Supabase', { durationMs: Date.now() - t0, users: memoryUsers.size, channels: memoryChatChannels.size, snapshots: memoryStateSnapshots.size });
   } catch (err) {
-    console.error('[Persistence] Error loading from Supabase:', err.message);
+    log.error('Error loading from Supabase', err);
   }
 
   ensureSeedAdmin();
@@ -825,7 +827,7 @@ const ensureSeedAdmin = () => {
       if (process.env.NODE_ENV === 'production') {
         throw new Error('[FATAL] ZOYD_ADMIN_PASSWORD must be set in production.');
       }
-      console.warn('[WARN] ZOYD_ADMIN_PASSWORD not set — using dev password.');
+      log.warn('ZOYD_ADMIN_PASSWORD not set — using dev password.');
       return 'Admin@ZOYD2026';
     })(),
     gameId: 'ADMIN-ZOYD-0001', controllerType: 'touch', device: 'pc',

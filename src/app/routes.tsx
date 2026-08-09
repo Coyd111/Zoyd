@@ -24,6 +24,8 @@ const earningsLoader = async () => { const { default: Component } = await import
 const matchDetailLoader = async () => { const { default: Component } = await import('../features/match/pages/MatchDetailPage'); return { Component }; };
 const tournoisLoader = async () => { const { default: Component } = await import('../features/tournament/pages/TournoisPage'); return { Component }; };
 const bracketLoader = async () => { const { default: Component } = await import('../features/tournament/pages/TournamentBracketPage'); return { Component }; };
+const leagueLoader = async () => { const { default: Component } = await import('../features/league/pages/LeaguePage'); return { Component }; };
+const leagueSeasonLoader = async () => { const { default: Component } = await import('../features/league/pages/LeagueSeasonPage'); return { Component }; };
 const adminLoader = async () => { const { default: Component } = await import('./pages/AdminDashboardPage'); return { Component }; };
 const publicProfilLoader = async () => { const { default: Component } = await import('./pages/PublicProfilPage'); return { Component }; };
 
@@ -122,6 +124,14 @@ export const router = createBrowserRouter([
         path: 'parametres',
         Component: DashboardLayout,
         children: [{ index: true, lazy: parametresLoader }],
+      },
+      {
+        path: 'br-league',
+        Component: DashboardLayout,
+        children: [
+          { index: true, lazy: leagueLoader },
+          { path: ':seasonId', lazy: leagueSeasonLoader },
+        ],
       },
       {
         path: 'admin',

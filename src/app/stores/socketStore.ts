@@ -3,6 +3,7 @@ import type { User } from './authStore';
 import { useChatStore } from './chatStore';
 import type { Match } from './matchStore';
 import type { Tournament } from './tournamentStore';
+import { useLeagueStore } from './leagueStore';
 import { useFriendsStore } from './friendsStore';
 import { useNotificationStore } from './notificationStore';
 import {
@@ -334,6 +335,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         set((state) => ({
           ...state,
           remoteTournamentSnapshots: tournaments,
+          lastHeartbeatAt: getNow(),
+        }));
+      },
+      onLeaguesSnapshot: (seasons) => {
+        useLeagueStore.getState().hydrateFromServer(seasons);
+        set((state) => ({
+          ...state,
           lastHeartbeatAt: getNow(),
         }));
       },

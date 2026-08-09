@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router';
-import { BarChart3, LayoutGrid, MessageCircle, Plus, Settings, ShieldCheck, Trophy, Users, Wallet } from 'lucide-react';
+import { BarChart3, LayoutGrid, MessageCircle, Plus, Settings, ShieldCheck, Trophy, Users, Wallet, Zap } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useChatStore } from '../../stores/chatStore';
@@ -20,6 +20,7 @@ const Sidebar: React.FC = () => {
   const navItems = [
     { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
     { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
+    { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
     { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
     ...(isAdmin ? [{ icon: ShieldCheck, label: 'CONTROLE', path: '/admin' }] : []),
   ];

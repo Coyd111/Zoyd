@@ -1,15 +1,21 @@
 import { FedaPay, Transaction } from 'fedapay';
 import { depositToWallet } from './wallet-engine.mjs';
 import { hasTransactionBeenProcessed, markTransactionAsProcessed } from './persistence.mjs';
+import { createLogger } from './logger.mjs';
 
-// Configuration FedaPay
-const FEDAPAY_SECRET_KEY = process.env.FEDAPAY_SECRET_KEY;
-if (FEDAPAY_SECRET_KEY) {
-  FedaPay.setApiKey(FEDAPAY_SECRET_KEY);
-  FedaPay.setEnvironment(FEDAPAY_SECRET_KEY.includes('sandbox') ? 'sandbox' : 'live');
-}
+const log = createLogger('payment');
+
+const getFedaPayConfig = () => {
+  const key = process.env.FEDAPAY_SECRET_KEY;
+  if (key && !FedaPay.apiKey) {
+    FedaPay.setApiKey(key);
+    FedaPay.setEnvironment(key.includes('sandbox') ? 'sandbox' : 'live');
+  }
+  return key;
+};
 
 export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => {
+  const FEDAPAY_SECRET_KEY = getFedaPayConfig();
   if (!FEDAPAY_SECRET_KEY) {
     throw new Error("FedaPay n'est pas configuré sur le serveur.");
   }
@@ -48,7 +54,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       user: updatedUser
     };
   } catch (error) {
-    console.error('[FedaPay] Erreur de vérification :', error.message);
+    log.error('FedaPay verification error', { message: error.message });
     // Si c'est une erreur d'idempotence qu'on a nous-même levée, la relancer telle quelle
     if (error.message.includes('déjà été traitée') || error.message.includes('UNIQUE')) {
       throw new Error('Cette transaction a déjà été traitée.');

@@ -1,30 +1,14 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router';
 import ToastContainer from '../components/notifications/ToastContainer';
-import { useAuthStore } from '../stores/authStore';
-import { fetchCurrentUser } from '../lib/authApi';
+import { useAuthSessionBootstrap } from '../hooks/useAuthSessionBootstrap';
 import { fetchAllMatchesFromDb, subscribeToMatches } from '../lib/matchApi';
 import { useMatchStore } from '../stores/matchStore';
 import { fetchServerTournaments, subscribeToTournaments } from '../lib/tournamentApi';
 import { useTournamentStore } from '../stores/tournamentStore';
 
 const RootLayout: React.FC = () => {
-  const { sessionToken, hydrateSession, logout } = useAuthStore();
-
-  useEffect(() => {
-    // Check initial session with our node backend instead of supabase
-    if (sessionToken) {
-      fetchCurrentUser(sessionToken)
-        .then((res) => {
-          if (res.ok && res.user) {
-            hydrateSession(res.user, sessionToken);
-          } else {
-            logout();
-          }
-        })
-        .catch(() => logout());
-    }
-  }, [sessionToken, hydrateSession, logout]);
+  useAuthSessionBootstrap();
 
   useEffect(() => {
     // Initial fetch of all matches

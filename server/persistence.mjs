@@ -130,7 +130,7 @@ const sbSelect = async (table, filters = {}, columns = '*') => {
 export const loadFromSupabase = async () => {
   if (!supabase) {
     log.warn('No Supabase client — running from memory only');
-    ensureSeedAdmin();
+    await ensureSeedAdmin();
     ensureGlobalChatChannel();
     return;
   }
@@ -253,7 +253,7 @@ export const loadFromSupabase = async () => {
     log.error('Error loading from Supabase', err);
   }
 
-  ensureSeedAdmin();
+  await ensureSeedAdmin();
   ensureGlobalChatChannel();
 };
 
@@ -507,8 +507,12 @@ export const deleteRealtimeSession = (token) => {
 };
 
 export const deleteRealtimeSessionsForUser = (userId) => {
+  const tokensToDelete = [];
   for (const [token, session] of memoryRealtimeSessions) {
-    if (session.userId === userId) memoryRealtimeSessions.delete(token);
+    if (session.userId === userId) tokensToDelete.push(token);
+  }
+  for (const token of tokensToDelete) {
+    memoryRealtimeSessions.delete(token);
   }
   sbDelete('realtime_sessions', { user_id: userId });
 };
@@ -639,10 +643,14 @@ export const replaceStateCollection = (kind, items) => {
   }
 
   // Remove stale
+  const keysToDelete = [];
   for (const key of memoryStateSnapshots.keys()) {
     if (key.startsWith(`${kind}:`) && !itemIds.has(key.split(':').slice(1).join(':'))) {
-      memoryStateSnapshots.delete(key);
+      keysToDelete.push(key);
     }
+  }
+  for (const key of keysToDelete) {
+    memoryStateSnapshots.delete(key);
   }
 
   // Sync to Supabase (batch upsert)
@@ -817,13 +825,13 @@ export const markTransactionAsProcessed = (transactionId, userId, amountZC) => {
 };
 
 // ─── Seed data ──────────────────────────────────────────────────────────────
-const ensureSeedAdmin = () => {
+const ensureSeedAdmin = async () => {
   const adminEmail = normalizeEmailKey('admin@zoyd.com');
   for (const user of memoryUsers.values()) {
     if (normalizeEmailKey(user.email) === adminEmail) return;
   }
 
-  insertUser({
+  await insertUser({
     id: 'admin-zoyd-control', role: 'admin',
     pseudo: 'ZOYD Control', email: 'admin@zoyd.com', phone: '+22960000000',
     password: process.env.ZOYD_ADMIN_PASSWORD || (() => {

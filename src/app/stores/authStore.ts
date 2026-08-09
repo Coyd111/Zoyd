@@ -67,8 +67,9 @@ export interface AuthState {
   user: User | null;
   sessionToken: string | null;
   isAuthenticated: boolean;
-  login: (user: User, sessionToken: string) => void;
-  hydrateSession: (user: User, sessionToken: string) => void;
+  expiresAt: string | null;
+  login: (user: User, sessionToken: string, expiresAt?: string) => void;
+  hydrateSession: (user: User, sessionToken: string, expiresAt?: string) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   updateStats: (partial: Partial<UserStats>) => void;
@@ -100,17 +101,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   sessionToken: null,
   isAuthenticated: false,
-  login: (user, sessionToken) => {
+  expiresAt: null,
+  login: (user, sessionToken, expiresAt) => {
     const normalized = normalizeUser(user);
     useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
-    set({ user: normalized, sessionToken, isAuthenticated: true });
+    set({ user: normalized, sessionToken, isAuthenticated: true, expiresAt: expiresAt || null });
   },
-  hydrateSession: (user, sessionToken) => {
+  hydrateSession: (user, sessionToken, expiresAt) => {
     const normalized = normalizeUser(user);
     useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
-    set({ user: normalized, sessionToken, isAuthenticated: true });
+    set({ user: normalized, sessionToken, isAuthenticated: true, expiresAt: expiresAt || null });
   },
-  logout: () => set({ user: null, sessionToken: null, isAuthenticated: false }),
+  logout: () => set({ user: null, sessionToken: null, isAuthenticated: false, expiresAt: null }),
   updateUser: (updates) => {
     set((state) => ({
       user: state.user ? normalizeUser({ ...state.user, ...updates }) : null,

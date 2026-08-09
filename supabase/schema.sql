@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS processed_transactions (
   transaction_id TEXT PRIMARY KEY,
   processed_at BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM now()),
   user_id TEXT,
-  amount_zc DOUBLE PRECISION
+  amount_zc NUMERIC(12,2)
 );
 
 -- ============================================================
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
-  amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+  amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   description TEXT,
   status TEXT NOT NULL DEFAULT 'completed',
   metadata JSONB,

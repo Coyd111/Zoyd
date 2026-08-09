@@ -136,6 +136,11 @@ const respondJson = (res, statusCode, payload, req = null) => {
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws:; frame-ancestors 'none';",
   });
   res.end(JSON.stringify(payload));
 
@@ -642,7 +647,14 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const body = await parseRequestBody(req);
-      const user = createUserAccount(body);
+      const { role: _role, ...rawBody } = body;
+      const safeBody = {
+        ...rawBody,
+        pseudo: sanitizeText(rawBody.pseudo || ''),
+        bio: sanitizeText(rawBody.bio || ''),
+        streamerPseudo: sanitizeText(rawBody.streamerPseudo || ''),
+      };
+      const user = createUserAccount(safeBody);
       const session = createAuthSession(user.id);
 
       respondJson(res, 201, {
@@ -714,8 +726,11 @@ const server = http.createServer(async (req, res) => {
         'phone', 'levelCODM', 'rankMJ', 'rankBR',
       ];
       const safeUpdate = {};
+      const STRING_FIELDS = ['pseudo', 'bio', 'avatar', 'streamerPseudo', 'country', 'phone'];
       for (const field of ALLOWED_PROFILE_FIELDS) {
-        if (field in body) safeUpdate[field] = body[field];
+        if (field in body) {
+          safeUpdate[field] = STRING_FIELDS.includes(field) ? sanitizeText(body[field]) : body[field];
+        }
       }
       const updatedUser = updateUserAccount(session.user.id, (user) => {
         return { ...user, ...safeUpdate };
@@ -2385,12 +2400,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('notification:push', async (payload = {}) => {
-    const { targetUserId, title, body, url, tag, requireInteraction } = payload;
+    const { targetUserId, title, body: notifBody, url, tag, requireInteraction } = payload;
     if (!targetUserId || !title) return;
+
+    // Security: users can only send push to themselves, admins can send to anyone
+    if (session.userId !== targetUserId && session.role !== 'admin') {
+      return;
+    }
 
     await deliverNotification(io, targetUserId, {
       title,
-      body: body || 'Notification ZOYD',
+      body: notifBody || 'Notification ZOYD',
       url: url || '/mj',
       tag: tag || `zoyd-${Date.now()}`,
       requireInteraction: Boolean(requireInteraction),

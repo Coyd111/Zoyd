@@ -20,9 +20,16 @@ export const getAuthHeaders = () => {
   };
 };
 
+const handleAuthError = (status: number) => {
+  if (status === 401) {
+    useAuthStore.getState().logout();
+  }
+};
+
 export const readJson = async <T>(response: Response): Promise<T> => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    handleAuthError(response.status);
     throw new Error(payload.error || 'Une erreur reseau est survenue.');
   }
 

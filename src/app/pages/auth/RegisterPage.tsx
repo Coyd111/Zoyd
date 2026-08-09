@@ -156,7 +156,7 @@ const RegisterPage: React.FC = () => {
         streamerPseudo: formData.streamerMode ? formData.streamerPseudo : '',
       });
 
-      login(auth.user, auth.token);
+      login(auth.user, auth.token, auth.expiresAt);
       toast.success('Compte active. Bienvenue sur ZOYD.');
       navigate('/mode');
     } catch (error) {

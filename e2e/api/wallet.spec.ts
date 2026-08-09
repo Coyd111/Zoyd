@@ -23,7 +23,7 @@ test.describe('Wallet', () => {
     if (res.status() === 429) {
       // Try logging in with a known user
       const loginRes = await request.post(`${BASE}/auth/login`, {
-        data: { identifier: 'admin@zoyd.com', password: process.env.ZOYD_ADMIN_PASSWORD || 'Admin@ZOYD2026' },
+        data: { identifier: 'admin@zoyd.com', password: process.env.ZOYD_ADMIN_PASSWORD! },
       });
       if (loginRes.status() === 200) {
         const loginBody = await loginRes.json();

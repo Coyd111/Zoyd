@@ -123,6 +123,6 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
 
     await expect(
       verifyFedaPayTransactionAndCredit('TX-RACE', mockUser)
-    ).rejects.toThrow(/déjà été traitée/);
+    ).rejects.toThrow(/enregistrement de la transaction/);
   });
 });

@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 
 export const useAuthSessionBootstrap = () => {
   const sessionToken = useAuthStore((state) => state.sessionToken);
+  const expiresAt = useAuthStore((state) => state.expiresAt);
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
   const logout = useAuthStore((state) => state.logout);
   const bootstrappedTokenRef = useRef<string | null>(null);
@@ -11,6 +12,12 @@ export const useAuthSessionBootstrap = () => {
   useEffect(() => {
     if (!sessionToken) {
       bootstrappedTokenRef.current = null;
+      return;
+    }
+
+    // Client-side expiration check — avoid network round-trip for expired tokens
+    if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+      logout();
       return;
     }
 
@@ -23,7 +30,7 @@ export const useAuthSessionBootstrap = () => {
     fetchCurrentUser(sessionToken)
       .then((payload) => {
         if (cancelled) return;
-        hydrateSession(payload.user, sessionToken);
+        hydrateSession(payload.user, sessionToken, payload.expiresAt);
         bootstrappedTokenRef.current = sessionToken;
       })
       .catch(() => {
@@ -34,5 +41,5 @@ export const useAuthSessionBootstrap = () => {
     return () => {
       cancelled = true;
     };
-  }, [hydrateSession, logout, sessionToken]);
+  }, [hydrateSession, logout, sessionToken, expiresAt]);
 };

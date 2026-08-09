@@ -48,6 +48,7 @@ export default defineConfig({
     // refreshing the current hashed bundles referenced by index.html.
     emptyOutDir: false,
     rollupOptions: {
+      external: ['pg', 'socket.io', 'web-push', 'dotenv', 'fedapay'],
       output: {
         manualChunks(id: string) {
           if (/node_modules\/(react|react-dom|react-router)/.test(id)) {

@@ -84,7 +84,7 @@ const Navbar: React.FC = () => {
                 </Link>
 
                 <button
-                  onClick={() => useAuthStore.getState().logout()}
+                  onClick={() => { useSocketStore.getState().disconnect(); useAuthStore.getState().logout(); }}
                   title="Se deconnecter"
                   className="text-white/30 hover:text-red-400 transition-colors ml-2"
                 >

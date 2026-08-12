@@ -1,14 +1,16 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { BarChart3, LayoutGrid, MessageCircle, Plus, Settings, ShieldCheck, Trophy, Users, Wallet, Zap } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useChatStore } from '../../stores/chatStore';
+import { useSocketStore } from '../../stores/socketStore';
 import { cn, formatZC } from '../../../lib/utils';
 import ZoydLogo from '../branding/ZoydLogo';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { getTotalBalance } = useWalletStore();
   const { getUnreadTotal } = useChatStore();
@@ -116,7 +118,9 @@ const Sidebar: React.FC = () => {
         </Link>
         <button
           onClick={() => {
+            useSocketStore.getState().disconnect();
             useAuthStore.getState().logout();
+            navigate('/auth/login');
           }}
           className="flex w-full items-center gap-3 px-3 py-2 text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
         >

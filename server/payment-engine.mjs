@@ -21,6 +21,9 @@ const getFedaPayConfig = () => {
   return key;
 };
 
+// Lock in-memory pour éviter le TOCTOU race condition sur les transactions
+const processingTransactions = new Set();
+
 export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => {
   const FEDAPAY_SECRET_KEY = getFedaPayConfig();
   if (!FEDAPAY_SECRET_KEY) {
@@ -32,6 +35,12 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     throw new Error('Cette transaction a déjà été traitée.');
   }
 
+  // Verrou atomique pour éviter le double-crediting concurrent
+  if (processingTransactions.has(transactionId)) {
+    throw new Error('Cette transaction est en cours de traitement.');
+  }
+  processingTransactions.add(transactionId);
+
   try {
     // 1. Récupérer la transaction directement depuis FedaPay (évite la falsification côté frontend)
     const transaction = await Transaction.retrieve(transactionId);
@@ -41,17 +50,22 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       throw new Error(`La transaction n'est pas approuvée (Statut: ${transaction.status})`);
     }
 
-    // 3. Calculer les Zoyd Coins (1 ZC = 10 FCFA)
+    // 3. Double-check idempotence après retrieve (deuxième filet de sécurité)
+    if (hasTransactionBeenProcessed(transactionId)) {
+      throw new Error('Cette transaction a déjà été traitée.');
+    }
+
+    // 4. Calculer les Zoyd Coins (1 ZC = 10 FCFA)
     const amountZC = transaction.amount / 10;
 
-    // 4. Créditer le portefeuille EN PREMIER (si ça échoue, on ne marquera pas comme traité)
+    // 5. Créditer le portefeuille EN PREMIER (si ça échoue, on ne marquera pas comme traité)
     const updatedUser = depositToWallet(
       user.id,
       amountZC,
       `Recharge FedaPay (${transactionId})`
     );
 
-    // 5. Marquer comme traitée APRÈS crédit réussi
+    // 6. Marquer comme traitée APRÈS crédit réussi
     try {
       markTransactionAsProcessed(transactionId, user.id, amountZC);
     } catch (markErr) {
@@ -77,5 +91,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       throw new Error('Cette transaction a déjà été traitée.');
     }
     throw new Error('Erreur lors de la vérification de la transaction FedaPay.');
+  } finally {
+    processingTransactions.delete(transactionId);
   }
 };

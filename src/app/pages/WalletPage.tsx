@@ -92,7 +92,7 @@ const WalletPage: React.FC = () => {
     }
 
     // Using FedaPay Widget
-    FedaPay.init({
+    FedaPay.checkout({
       public_key: publicKey,
       transaction: {
         amount: amountFCFA,

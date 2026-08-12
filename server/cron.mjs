@@ -22,7 +22,7 @@ export const initCronJobs = () => {
         const dateToCheck = match.updatedAt || match.createdAt;
         if (!dateToCheck) return match;
 
-        const isStale = ['open', 'recruiting', 'scheduled'].includes(match.status)
+        const isStale = ['recruiting', 'full', 'check_in'].includes(match.status)
           && dateToCheck < fourteenDaysAgo;
 
         if (isStale) {
@@ -61,9 +61,22 @@ export const initCronJobs = () => {
         const closesAt = new Date(season.schedule.registrationCloses);
         if (now >= closesAt && season.registeredPlayers.length >= 10) {
           changed = true;
+          const players = season.registeredPlayers.map((p) => p.userId || p.id || p);
+          const groupSize = 10;
+          const groups = {};
+          for (let i = 0; i < players.length; i += groupSize) {
+            const key = `G${Math.floor(i / groupSize) + 1}`;
+            groups[key] = {
+              players: players.slice(i, i + groupSize),
+              standings: [],
+              currentDay: 1,
+              status: 'pending',
+            };
+          }
           return {
             ...season,
             status: 'qualifying',
+            qualificationGroups: groups,
             schedule: {
               ...season.schedule,
               qualifyingStarts: getNow(),

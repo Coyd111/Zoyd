@@ -25,8 +25,16 @@ export interface CreateMatchPayload {
 export interface MatchResultPayload {
   winnerTeam: 0 | 1;
   score?: string;
+  scores?: { team0: number; team1: number };
   screenshots?: string[];
+  proofs?: {
+    scoreboard?: string[];
+    finalResult?: string[];
+    roomCapture?: string[];
+    extraEvidence?: string[];
+  };
   arbiterNotes?: string;
+  submittedBy?: string;
 }
 
 export interface DisputePayload {

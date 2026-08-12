@@ -132,6 +132,18 @@ const typingByChannel = new Map();
 
 const getNow = () => new Date().toISOString();
 
+// Nettoyage périodique des Maps de canaux orphelins (toutes les 30 min)
+const cleanupChannelMaps = () => {
+  const channelIds = new Set(channels.keys());
+  for (const [key] of seenByChannel) {
+    if (!channelIds.has(key)) seenByChannel.delete(key);
+  }
+  for (const [key] of typingByChannel) {
+    if (!channelIds.has(key)) typingByChannel.delete(key);
+  }
+};
+setInterval(cleanupChannelMaps, 30 * 60 * 1000);
+
 const getCorsOrigin = (req) => {
   const origin = req.headers.origin || '';
   return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -2484,5 +2496,12 @@ const start = async () => {
     log.info(`Listening on http://localhost:${PORT}`);
   });
 };
+
+process.on('unhandledRejection', (err) => {
+  log.fatal('Unhandled promise rejection', err);
+});
+process.on('uncaughtException', (err) => {
+  log.fatal('Uncaught exception', err);
+});
 
 start();

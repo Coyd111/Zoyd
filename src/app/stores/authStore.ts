@@ -25,7 +25,7 @@ export interface User {
   pseudo: string;
   email: string;
   phone: string;
-  gameId: string; // Identifiant CODM unique (ex: 674292618xxxx)
+  gameId: string;
   controllerType: ControllerType;
   device: 'phone' | 'tablet' | 'pc' | 'other';
   levelCODM: number;
@@ -35,7 +35,7 @@ export interface User {
   streamerPseudo?: string;
   streamerMode: boolean;
   walletBalance: number;
-  trustScore: number; // 0-100
+  trustScore: number;
   stats: UserStats;
   progression: {
     level: PlayerLevel;
@@ -49,7 +49,7 @@ export interface User {
   };
   achievements: string[];
   bio?: string;
-  dateJoined: string; // ISO date
+  dateJoined: string;
   avatar?: string;
   isOnline: boolean;
   lastSeen?: string;
@@ -62,49 +62,80 @@ export interface User {
   };
 }
 
+const STORAGE_KEY_ZOYD_TOKEN = 'zoyd_session_token';
+const STORAGE_KEY_ZOYD_EXPIRES = 'zoyd_session_expires';
+const STORAGE_KEY_ZOYD_REMEMBER = 'zoyd_remember_me';
+
+function persistSession(token: string, expiresAt: string | null, remember: boolean) {
+  try {
+    if (remember) {
+      localStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
+      if (expiresAt) localStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
+    } else {
+      sessionStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
+      if (expiresAt) sessionStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
+    }
+  } catch { /* storage full or blocked */ }
+}
+
+function readPersistedSession(): { token: string | null; expiresAt: string | null } {
+  try {
+    const token = sessionStorage.getItem(STORAGE_KEY_ZOYD_TOKEN) || localStorage.getItem(STORAGE_KEY_ZOYD_TOKEN);
+    const expiresAt = sessionStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES) || localStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
+    if (!token) return { token: null, expiresAt: null };
+    if (expiresAt && new Date(expiresAt) < new Date()) {
+      clearPersistedSession();
+      return { token: null, expiresAt: null };
+    }
+    return { token, expiresAt };
+  } catch {
+    return { token: null, expiresAt: null };
+  }
+}
+
+function clearPersistedSession() {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY_ZOYD_TOKEN);
+    sessionStorage.removeItem(STORAGE_KEY_ZOYD_EXPIRES);
+    localStorage.removeItem(STORAGE_KEY_ZOYD_TOKEN);
+    localStorage.removeItem(STORAGE_KEY_ZOYD_EXPIRES);
+    localStorage.removeItem(STORAGE_KEY_ZOYD_REMEMBER);
+  } catch { /* ok */ }
+}
 
 export interface AuthState {
   user: User | null;
   sessionToken: string | null;
   isAuthenticated: boolean;
   expiresAt: string | null;
-  login: (user: User, sessionToken: string, expiresAt?: string) => void;
+  login: (user: User, sessionToken: string, expiresAt?: string, remember?: boolean) => void;
   hydrateSession: (user: User, sessionToken: string, expiresAt?: string) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   updateStats: (partial: Partial<UserStats>) => void;
+  getPersistedToken: () => string | null;
 }
-
-const defaultStats: UserStats = {
-  wins: 0,
-  losses: 0,
-  draws: 0,
-  totalMatches: 0,
-  totalEarnings: 0,
-  winRate: 0,
-  tournamentsWon: 0,
-  tournamentsPlayed: 0,
-  elo: 1200,
-  arbitratedMatches: 0,
-};
 
 const normalizeUser = (user: User | null | undefined): User | null => {
   if (!user) return null;
-
   return {
     ...user,
     role: user.role ?? 'player',
   };
 };
 
+// Hydrate from storage on module load
+const initialSession = readPersistedSession();
+
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
-  sessionToken: null,
+  sessionToken: initialSession.token,
   isAuthenticated: false,
-  expiresAt: null,
-  login: (user, sessionToken, expiresAt) => {
+  expiresAt: initialSession.expiresAt,
+  login: (user, sessionToken, expiresAt, remember = false) => {
     const normalized = normalizeUser(user);
     useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
+    persistSession(sessionToken, expiresAt || null, remember);
     set({ user: normalized, sessionToken, isAuthenticated: true, expiresAt: expiresAt || null });
   },
   hydrateSession: (user, sessionToken, expiresAt) => {
@@ -112,7 +143,10 @@ export const useAuthStore = create<AuthState>()((set) => ({
     useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
     set({ user: normalized, sessionToken, isAuthenticated: true, expiresAt: expiresAt || null });
   },
-  logout: () => set({ user: null, sessionToken: null, isAuthenticated: false, expiresAt: null }),
+  logout: () => {
+    clearPersistedSession();
+    set({ user: null, sessionToken: null, isAuthenticated: false, expiresAt: null });
+  },
   updateUser: (updates) => {
     set((state) => ({
       user: state.user ? normalizeUser({ ...state.user, ...updates }) : null,
@@ -130,4 +164,5 @@ export const useAuthStore = create<AuthState>()((set) => ({
       newStats.totalMatches = total;
       return { user: { ...state.user, stats: newStats } };
     }),
+  getPersistedToken: () => readPersistedSession().token,
 }));

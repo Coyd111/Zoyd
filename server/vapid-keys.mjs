@@ -10,9 +10,6 @@ const ENV_PUBLIC = process.env.VAPID_PUBLIC_KEY;
 const ENV_PRIVATE = process.env.VAPID_PRIVATE_KEY;
 
 if (!ENV_PUBLIC || !ENV_PRIVATE) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('[FATAL] VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set in production.');
-  }
   log.warn('VAPID keys not set — push notifications disabled.');
 }
 

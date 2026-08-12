@@ -376,6 +376,7 @@ const mapPersistenceError = (error) => {
     case 'DISPUTE_INCOMPLETE':
     case 'MATCH_NOT_READY':
     case 'CHECKIN_REQUIRED':
+    case 'INVALID_MATCH':
       return { status: 400, message: error.message };
     case 'INVALID_CREDENTIALS':
       return { status: 401, message: error.message };

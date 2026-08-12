@@ -243,6 +243,14 @@ const resolveOpenDisputes = (match, resolution) =>
 
 export const createMatchOnServer = (matches, actor, input) => {
   const actorUser = requireActorUser(actor);
+
+  if (!input.format || typeof input.format !== 'string') {
+    throw makeError('INVALID_MATCH', 'Le format du match (ex: 1VS1, 2VS2) est requis.');
+  }
+  if (input.entryFee === undefined || input.entryFee === null || Number(input.entryFee) < 0) {
+    throw makeError('INVALID_AMOUNT', 'Le droit dentree est requis et doit etre positif.');
+  }
+
   const matchId = `M-${Date.now().toString(36).toUpperCase()}`;
   const teamSize = getTeamSize(input.format);
   const maxPlayers = teamSize * 2;

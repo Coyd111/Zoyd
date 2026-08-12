@@ -4,9 +4,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   ArrowRight,
   ChevronDown,
-  Gamepad2,
   ShieldCheck,
-  Smartphone,
   Swords,
   Users,
   Wallet,
@@ -32,23 +30,6 @@ const platformCards = [
     description:
       'Gère tes dépôts et retire tes gains instantanément via MTN, Moov ou Celtiis directement depuis ton téléphone.',
     icon: Wallet,
-  },
-];
-
-const modeCards = [
-  {
-    title: 'Multijoueur',
-    status: 'Ouvert',
-    description:
-      'Entre dans les matchs 1v1, 2v2 ou 3v3 ultra-compétitifs. Mise sur ta victoire et encaisse tes gains immédiatement.',
-    accent: 'blue' as const,
-  },
-  {
-    title: 'Battle Royale',
-    status: 'Bientot',
-    description:
-      'Prépare ton escouade pour les plus grands tournois BR d\'Afrique. Le même compte, le même wallet.',
-    accent: 'yellow' as const,
   },
 ];
 
@@ -449,7 +430,7 @@ function LandingNav() {
             Plateforme
           </a>
           <a href="#dual-economy" className="hover:text-white transition-colors">
-            Modes
+            Joueur / Arbitre
           </a>
           <a href="#account" className="hover:text-white transition-colors">
             Compte

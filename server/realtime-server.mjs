@@ -679,7 +679,7 @@ const server = http.createServer(async (req, res) => {
         bio: sanitizeText(rawBody.bio || ''),
         streamerPseudo: sanitizeText(rawBody.streamerPseudo || ''),
       };
-      const user = createUserAccount(safeBody);
+      const user = await createUserAccount(safeBody);
       const session = createAuthSession(user.id);
 
       respondJson(res, 201, {

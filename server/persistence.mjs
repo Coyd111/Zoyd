@@ -392,7 +392,7 @@ export const updateWalletSnapshot = (userId, updater) =>
     return user;
   });
 
-export const createUserAccount = (payload) => insertUser(payload);
+export const createUserAccount = async (payload) => await insertUser(payload);
 
 export const authenticateUserAccount = async ({ identifier, password }) => {
   const trimmed = identifier.trim();

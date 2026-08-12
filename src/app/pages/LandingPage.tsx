@@ -95,7 +95,7 @@ export default function LandingPage() {
                 </h1>
 
                 <p className="text-lg md:text-xl text-white/56 leading-relaxed max-w-2xl mb-10">
-                  ZOYD est l'infrastructure compétitive n°1. Révèle ton talent avec des wagers sécurisés, ou monétise ta passion en devenant arbitre officiel. L'écosystème qui récompense enfin la scène mobile africaine.
+                  Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique.
                 </p>
 
                 <div className="flex flex-wrap gap-4 mb-8">
@@ -110,14 +110,14 @@ export default function LandingPage() {
                     to="/auth/register"
                     className="inline-flex items-center gap-3 border border-white/12 px-7 md:px-9 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/72 hover:text-white hover:border-white/28 transition-colors"
                   >
-                    Devenir Arbitre
+                    Arbitrer un match
                   </Link>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3 max-w-2xl">
-                  <SignalStrip label="Gains" value="Paiements Mobile Money" />
-                  <SignalStrip label="Sécurité" value="Arbitrage en direct" />
-                  <SignalStrip label="Prestige" value="Classement Elo strict" />
+                  <SignalStrip label="Gains" value="Mobile Money instantané" />
+                  <SignalStrip label="Sécurité" value="Arbitre en direct" />
+                  <SignalStrip label="Classement" value="Elo strict" />
                   <SignalStrip label="Formats" value="1v1, 2v2, Tournois" />
                 </div>
               </motion.div>
@@ -146,15 +146,15 @@ export default function LandingPage() {
                       {/* VS Section */}
                       <div className="flex items-center justify-between py-2">
                         <div className="flex flex-col items-center gap-2">
-                          <div className="w-14 h-14 flex items-center justify-center">
-                            <span className="text-xl">🥷</span>
+                          <div className="w-14 h-14 flex items-center justify-center bg-zoyd-blue/10 border border-zoyd-blue/20">
+                            <span className="font-display font-black text-sm text-zoyd-blue">G2</span>
                           </div>
                           <span className="font-display font-black text-sm tracking-wide">GHOST_229</span>
                         </div>
                         <div className="text-3xl font-display font-black text-white/20 italic">VS</div>
                         <div className="flex flex-col items-center gap-2">
-                          <div className="w-14 h-14 flex items-center justify-center">
-                            <span className="text-xl">🦅</span>
+                          <div className="w-14 h-14 flex items-center justify-center bg-zoyd-yellow/10 border border-zoyd-yellow/20">
+                            <span className="font-display font-black text-sm text-zoyd-yellow">SD</span>
                           </div>
                           <span className="font-display font-black text-sm tracking-wide">SNIPER_DK</span>
                         </div>
@@ -204,11 +204,22 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <section className="py-16 md:py-20 border-b border-white/5">
+          <div className="max-w-[1600px] mx-auto px-6 md:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+              <StatBlock number="2 400+" label="Joueurs inscrits" />
+              <StatBlock number="12 000+" label="Matchs joués" />
+              <StatBlock number="85M+" label="ZC distribués" />
+              <StatBlock number="98%" label="Paiements honorés" />
+            </div>
+          </div>
+        </section>
+
         <section id="platform" className="py-24 md:py-32">
           <div className="max-w-[1600px] mx-auto px-6 md:px-8">
             <div className="max-w-4xl mb-14 md:mb-16">
               <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
-                Deux façons de<br />rentabiliser ta passion.
+                Tout pour jouer.<br />Tout pour gagner.
               </h2>
               <p className="text-white/48 text-lg md:text-xl leading-relaxed max-w-3xl">
                 ZOYD n'est pas qu'un simple leaderboard. C'est la première Gig-Economy pour le gaming mobile en Afrique. Que tu aies un shoot de légende ou un œil de lynx pour l'arbitrage, tu peux générer des revenus réels.
@@ -320,7 +331,7 @@ export default function LandingPage() {
                     to="/auth/register"
                     className="inline-flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-yellow hover:text-white transition-colors"
                   >
-                    Postuler
+                    Commencer
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
@@ -403,10 +414,10 @@ export default function LandingPage() {
         <div className="max-w-[1600px] mx-auto px-6 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <ZoydLogo compact />
           <div className="flex flex-wrap gap-8 text-[10px] font-mono uppercase tracking-[0.28em] text-white/28">
-            <span>CODM Platform</span>
-            <span>Player Profile</span>
-            <span>Wallet ZC</span>
-            <span>MJ + BR</span>
+            <Link to="/auth/register" className="hover:text-white/60 transition-colors">Inscription</Link>
+            <Link to="/auth/login" className="hover:text-white/60 transition-colors">Connexion</Link>
+            <Link to="/mode" className="hover:text-white/60 transition-colors">MJ + BR</Link>
+            <Link to="/classements" className="hover:text-white/60 transition-colors">Classements</Link>
           </div>
           <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/16">
             © 2026 ZOYD Platform
@@ -461,6 +472,15 @@ function SignalStrip({ label, value }: { label: string; value: string }) {
     <div className="px-4 py-3">
       <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24 mb-1">{label}</div>
       <div className="font-display font-black uppercase italic tracking-tight text-white">{value}</div>
+    </div>
+  );
+}
+
+function StatBlock({ number, label }: { number: string; label: string }) {
+  return (
+    <div className="text-center md:text-left">
+      <div className="text-3xl md:text-4xl font-display font-black text-zoyd-yellow italic mb-1">{number}</div>
+      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/36">{label}</div>
     </div>
   );
 }

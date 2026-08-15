@@ -328,7 +328,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
 
   const id = input.id || crypto.randomUUID();
   const createdAt = input.dateJoined || getNow();
-  const payload = buildUserPayload({ ...input, id, dateJoined: createdAt }, role);
+  const payload = buildUserPayload({ ...input, id, dateJoined: createdAt, isActive: false }, role);
   const passwordHash = await hashPassword(password);
 
   // Write to memory
@@ -341,6 +341,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
     game_id_key: normalizeGameIdKey(payload.gameId), role,
     password_hash: passwordHash, payload,
+    is_active: false,
     created_at: createdAt, updated_at: createdAt,
   });
 
@@ -459,6 +460,50 @@ export const updatePasswordHash = (userId, newHash) => {
     created_at: user.dateJoined,
     updated_at: getNow(),
   });
+};
+
+// ─── Account Activation Codes ─────────────────────────────────────────────────
+const memoryActivationCodes = new Map(); // email -> { code, expiresAt, userId }
+
+export const generateActivationCode = (email, userId) => {
+  const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
+  memoryActivationCodes.set(email, { code, expiresAt, userId });
+  return code;
+};
+
+export const verifyActivationCode = (email, code) => {
+  const record = memoryActivationCodes.get(email);
+  if (!record) return { valid: false, error: 'Code invalide ou expire.' };
+  
+  if (record.code !== code) return { valid: false, error: 'Code incorrect.' };
+  
+  if (new Date(record.expiresAt) < new Date()) {
+    memoryActivationCodes.delete(email);
+    return { valid: false, error: 'Code expire.' };
+  }
+  
+  memoryActivationCodes.delete(email);
+  return { valid: true, userId: record.userId };
+};
+
+export const activateUserAccount = (userId) => {
+  const user = memoryUsers.get(userId);
+  if (!user) throw new Error('Utilisateur introuvable.');
+  
+  user.isActive = true;
+  user.activatedAt = getNow();
+  
+  // Update in Supabase
+  sbUpsert('app_users', {
+    id: userId,
+    is_active: true,
+    activated_at: getNow(),
+    payload: user,
+    updated_at: getNow(),
+  });
+  
+  return user;
 };
 
 // ─── Auth Sessions ──────────────────────────────────────────────────────────

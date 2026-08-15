@@ -8,6 +8,7 @@ import AdminLayout from './layouts/AdminLayout';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ActivatePage from './pages/auth/ActivatePage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Lazy page loaders
@@ -50,7 +51,15 @@ export const router = createBrowserRouter([
             path: 'register',
             Component: RegisterPage,
           },
+          {
+            path: 'activate',
+            Component: ActivatePage,
+          },
         ],
+      },
+      {
+        path: 'activate',
+        Component: ActivatePage,
       },
       {
         path: 'mode',

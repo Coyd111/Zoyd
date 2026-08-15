@@ -4,7 +4,37 @@ import webpush from 'web-push';
 import { vapidKeys } from './vapid-keys.mjs';
 import { createLogger } from './logger.mjs';
 import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from './metrics.mjs';
+
+// Simple cookie serialization function
+const serializeCookie = (name, value, options = {}) => {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  
+  if (options.maxAge) {
+    parts.push(`Max-Age=${options.maxAge}`);
+  }
+  if (options.domain) {
+    parts.push(`Domain=${options.domain}`);
+  }
+  if (options.path) {
+    parts.push(`Path=${options.path}`);
+  }
+  if (options.expires) {
+    parts.push(`Expires=${options.expires.toUTCString()}`);
+  }
+  if (options.httpOnly) {
+    parts.push('HttpOnly');
+  }
+  if (options.secure) {
+    parts.push('Secure');
+  }
+  if (options.sameSite) {
+    parts.push(`SameSite=${options.sameSite}`);
+  }
+  
+  return parts.join('; ');
+};
 import {
+  activateUserAccount,
   authenticateUserAccount,
   appendChatMessage,
   countPushSubscriptions,
@@ -14,10 +44,12 @@ import {
   deleteAuthSession,
   deleteRealtimeSessionsForUser,
   ensureGlobalChatChannel,
+  generateActivationCode,
   getAllUsers,
   getRawUserById,
   getUserById,
   getPushSubscriptionsForUser,
+  verifyActivationCode,
   findUsersByPseudo,
   getAuthSession,
   getChatChannelById,
@@ -217,6 +249,16 @@ const parseRequestBody = async (req) => {
 };
 
 const readBearerToken = (req) => {
+  // First try to get token from HttpOnly cookie
+  const cookies = req.headers.cookie;
+  if (cookies) {
+    const cookieToken = cookies.split(';').find(c => c.trim().startsWith('zoyd_auth='));
+    if (cookieToken) {
+      return cookieToken.split('=')[1].trim();
+    }
+  }
+  
+  // Fallback to Authorization header
   const authorization = req.headers.authorization || '';
   if (!authorization.startsWith('Bearer ')) return null;
   return authorization.slice('Bearer '.length).trim();
@@ -693,13 +735,16 @@ const server = http.createServer(async (req, res) => {
         streamerPseudo: sanitizeText(rawBody.streamerPseudo || ''),
       };
       const user = await createUserAccount(safeBody);
-      const session = createAuthSession(user.id);
+      
+      // Generate activation code
+      const activationCode = generateActivationCode(user.email, user.id);
 
+      // In production, send this code via email. For now, return it.
       respondJson(res, 201, {
         ok: true,
-        token: session.token,
-        user: session.user,
-        expiresAt: session.expiresAt,
+        user: sanitizeUserPayload(user),
+        activationCode, // TODO: Send via email in production
+        message: 'Un code d\'activation a ete envoye a votre email.',
       });
     } catch (error) {
       const mapped = mapPersistenceError(error);
@@ -718,13 +763,69 @@ const server = http.createServer(async (req, res) => {
         identifier: body.identifier || '',
         password: body.password || '',
       });
+      
+      // Check if account is activated
+      if (!user.isActive) {
+        respondJson(res, 403, { 
+          ok: false, 
+          error: 'Compte non active. Veuillez activer votre compte avec le code envoye par email.',
+          requiresActivation: true,
+          email: user.email
+        });
+        return;
+      }
+      
       const session = createAuthSession(user.id);
+
+      // Set HttpOnly cookie for enhanced security
+      const cookieValue = serializeCookie('zoyd_auth', session.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/',
+      });
+
+      res.setHeader('Set-Cookie', cookieValue);
 
       respondJson(res, 200, {
         ok: true,
-        token: session.token,
         user: session.user,
         expiresAt: session.expiresAt,
+      });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/activate') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
+
+    try {
+      const body = await parseRequestBody(req);
+      const { email, code } = body;
+      
+      if (!email || !code) {
+        respondJson(res, 400, { ok: false, error: 'Email et code requis.' });
+        return;
+      }
+      
+      const verification = verifyActivationCode(email, code);
+      
+      if (!verification.valid) {
+        respondJson(res, 400, { ok: false, error: verification.error });
+        return;
+      }
+      
+      const activatedUser = activateUserAccount(verification.userId);
+      
+      respondJson(res, 200, {
+        ok: true,
+        user: sanitizeUserPayload(activatedUser),
+        message: 'Compte active avec succes. Vous pouvez maintenant vous connecter.',
       });
     } catch (error) {
       const mapped = mapPersistenceError(error);
@@ -931,6 +1032,17 @@ const server = http.createServer(async (req, res) => {
     if (session?.user?.id) {
       deleteRealtimeSessionsForUser(session.user.id);
     }
+
+    // Clear HttpOnly cookie
+    const cookieValue = serializeCookie('zoyd_auth', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 0,
+      path: '/',
+    });
+
+    res.setHeader('Set-Cookie', cookieValue);
 
     respondJson(res, 200, { ok: true });
     return;

@@ -34,8 +34,19 @@ const LoginPage: React.FC = () => {
       const auth = await loginWithBackend(data.emailOrPseudo, data.password);
       login(auth.user, auth.token, auth.expiresAt, rememberMe);
       navigate(auth.user.role === 'admin' ? '/admin' : '/mode');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Connexion impossible.');
+    } catch (error: any) {
+      const errorMessage = error.message || 'Connexion impossible.';
+      
+      // Check if account requires activation
+      if (errorMessage.includes('non active') || errorMessage.includes('activer')) {
+        toast.error(errorMessage);
+        // Extract email from error if available
+        const emailMatch = errorMessage.match(/email:\s*(\S+)/);
+        const email = emailMatch ? emailMatch[1] : data.emailOrPseudo;
+        navigate('/activate', { state: { email } });
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }

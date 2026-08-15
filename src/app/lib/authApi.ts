@@ -3,9 +3,11 @@ import { authorizedGet, authorizedPost, authorizedPatch } from './apiClient';
 
 interface AuthResponse {
   ok: boolean;
-  token: string;
+  token?: string;
   user: User;
-  expiresAt: string;
+  expiresAt?: string;
+  activationCode?: string;
+  message?: string;
 }
 
 export interface RegisterPayload {

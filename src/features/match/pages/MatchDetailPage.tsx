@@ -971,7 +971,6 @@ const MatchDetailPage: React.FC = () => {
                               >
                                 {isSubmittingResult ? 'Soumission en cours...' : 'Valider le score & clore le litige'}
                               </button>
-                              </button>
                             </div>
                           )}
                         </div>

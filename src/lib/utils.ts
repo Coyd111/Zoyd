@@ -50,3 +50,18 @@ export function getInitials(name: string): string {
     .toUpperCase()
     .slice(0, 2);
 }
+
+/**
+ * Sanitize user input to prevent XSS attacks
+ * Removes HTML tags, javascript: protocols, and event handlers
+ */
+export function sanitizeText(input: string): string {
+  if (!input) return '';
+  return String(input)
+    .replace(/<[^>]*>/g, '')           // Remove HTML tags
+    .replace(/javascript:/gi, '')       // Remove javascript: protocol
+    .replace(/on\w+\s*=/gi, '')        // Remove event handlers like onclick=
+    .replace(/data:/gi, '')             // Remove data: protocol
+    .trim()
+    .slice(0, 5000);                    // Limit length
+}

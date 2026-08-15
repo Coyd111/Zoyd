@@ -13,7 +13,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
-import { cn, getRelativeTime } from '../../lib/utils';
+import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
 
 const channelIcons: Record<string, React.ReactNode> = {
   global: <Globe className="w-4 h-4" />,
@@ -262,7 +262,7 @@ const ChatPage: React.FC = () => {
                         >
                           <div className="flex-1 h-[1px] bg-white/5" />
                           <span className="text-zoyd-yellow text-[9px] uppercase font-black tracking-[0.2em] italic bg-zoyd-yellow/5 px-3 py-1 border border-zoyd-yellow/10">
-                            Systeme: {message.text}
+                            Systeme: {sanitizeText(message.text)}
                           </span>
                           <div className="flex-1 h-[1px] bg-white/5" />
                         </motion.div>
@@ -291,7 +291,7 @@ const ChatPage: React.FC = () => {
                               : 'border-white/5 bg-zoyd-surface/40 text-white/70'
                           } ${message.isDeleted ? 'opacity-50 line-through' : ''}`}
                         >
-                          {message.text}
+                          {sanitizeText(message.text)}
                         </div>
                       </motion.div>
                     );

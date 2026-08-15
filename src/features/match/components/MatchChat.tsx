@@ -3,6 +3,7 @@ import { Send, ShieldCheck, Terminal, Users, Radio } from 'lucide-react';
 import type { ChatMessage } from '../../../app/stores/chatStore';
 import { useAuthStore } from '../../../app/stores/authStore';
 import type { RoomPresenceMember, TypingMember } from '../../../app/stores/socketStore';
+import { sanitizeText } from '../../../lib/utils';
 
 interface MatchChatProps {
   messages: ChatMessage[];
@@ -146,7 +147,7 @@ export const MatchChat: React.FC<MatchChatProps> = ({
                 <div key={message.id} className="w-full flex items-center gap-4 py-2">
                   <div className="flex-1 h-[1px] bg-white/5" />
                   <span className="text-zoyd-yellow text-[9px] uppercase font-black tracking-[0.2em] italic bg-zoyd-yellow/5 px-3 py-1 border border-zoyd-yellow/10">
-                    Avis : {message.text}
+                    Avis : {sanitizeText(message.text)}
                   </span>
                   <div className="flex-1 h-[1px] bg-white/5" />
                 </div>
@@ -173,7 +174,7 @@ export const MatchChat: React.FC<MatchChatProps> = ({
                       : 'border-white/5 bg-zoyd-surface/60 text-white/60'
                   }`}
                 >
-                  {message.text}
+                  {sanitizeText(message.text)}
                 </div>
               </div>
             );

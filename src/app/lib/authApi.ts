@@ -32,12 +32,11 @@ export const loginWithBackend = async (identifier: string, password: string): Pr
   return authorizedPost<AuthResponse>('/api/auth/login', { identifier, password });
 };
 
-export const fetchCurrentUser = async (token: string) => {
-  // Using authorizedGet which will automatically include the token from authStore
+export const fetchCurrentUser = async () => {
   return authorizedGet<AuthResponse>('/api/auth/me');
 };
 
-export const logoutFromBackend = async (token: string) => {
+export const logoutFromBackend = async () => {
   return authorizedPost<{ ok: boolean }>('/api/auth/logout');
 };
 

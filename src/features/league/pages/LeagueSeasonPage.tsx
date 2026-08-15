@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Trophy, Users, Crown, Medal, Zap, ChevronRight, Play, CheckCircle, Clock, Settings, DollarSign, RefreshCw, UserMinus } from 'lucide-react';
+import { ArrowLeft, Trophy, Users, Crown, Medal, Zap, ChevronRight, Play, CheckCircle, Clock, Settings, DollarSign, RefreshCw, UserMinus, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
+import { Button } from '../../../app/components/ui/Button';
 import { useLeagueStore, type LeagueSeason, type LeagueDayKey, type LeagueStanding } from '../../../app/stores/leagueStore';
 import { useAuthStore } from '../../../app/stores/authStore';
 import {
@@ -602,6 +603,7 @@ const LeagueSeasonPage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('standings');
   const [actionLoading, setActionLoading] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: any; message: string } | null>(null);
 
   useEffect(() => {
     if (!seasonId) return;
@@ -668,6 +670,35 @@ const LeagueSeasonPage: React.FC = () => {
 
   const handleAdminAction = async (action: string, payload?: any) => {
     if (!seasonId || actionLoading || user?.role !== 'admin') return;
+
+    // Show confirmation dialog for destructive actions
+    const destructiveActions = ['refund', 'reassign', 'submit-final-results', 'advance-to-final'];
+    if (destructiveActions.includes(action)) {
+      let message = '';
+      switch (action) {
+        case 'refund':
+          message = `Confirmer le remboursement pour le joueur ${payload?.userId || ''} ?`;
+          break;
+        case 'reassign':
+          message = `Confirmer la réassignation du joueur du ${payload?.fromDay} au ${payload?.toDay} ?`;
+          break;
+        case 'submit-final-results':
+          message = 'Confirmer la soumission des résultats de finale ? Cette action est irréversible.';
+          break;
+        case 'advance-to-final':
+          message = 'Confirmer l\'avancement vers la finale ? Cette action clôturera les qualifications.';
+          break;
+      }
+      setConfirmAction({ action, payload, message });
+      return;
+    }
+
+    // Execute non-destructive actions directly
+    executeAdminAction(action, payload);
+  };
+
+  const executeAdminAction = async (action: string, payload?: any) => {
+    if (!seasonId || actionLoading || user?.role !== 'admin') return;
     try {
       setActionLoading(true);
       let response;
@@ -708,6 +739,7 @@ const LeagueSeasonPage: React.FC = () => {
       console.error('Erreur action admin:', error);
     } finally {
       setActionLoading(false);
+      setConfirmAction(null);
     }
   };
 
@@ -957,6 +989,43 @@ const LeagueSeasonPage: React.FC = () => {
           </div>
         </Tabs>
       </div>
+
+      {/* Confirmation Dialog for Destructive Admin Actions */}
+      {confirmAction && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
+                  Confirmation requise
+                </h3>
+                <p className="text-white/60 text-sm">{confirmAction.message}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmAction(null)}
+                disabled={actionLoading}
+                className="flex-1"
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => executeAdminAction(confirmAction.action, confirmAction.payload)}
+                disabled={actionLoading}
+                className="flex-1"
+              >
+                {actionLoading ? 'Traitement...' : 'Confirmer'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

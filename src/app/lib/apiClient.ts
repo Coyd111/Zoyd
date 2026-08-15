@@ -13,7 +13,15 @@ export const getApiUrl = (path: string) => `${getBaseUrl()}${path}`;
 
 export const getAuthHeaders = () => {
   const token = useAuthStore.getState().sessionToken;
+  const expiresAt = useAuthStore.getState().expiresAt;
+  
   if (!token) return {};
+
+  // Check token expiration on client side
+  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
+    useAuthStore.getState().logout();
+    return {};
+  }
 
   return {
     Authorization: `Bearer ${token}`,
@@ -21,7 +29,7 @@ export const getAuthHeaders = () => {
 };
 
 const handleAuthError = (status: number) => {
-  if (status === 401) {
+  if (status === 401 || status === 403) {
     useAuthStore.getState().logout();
   }
 };
@@ -30,6 +38,15 @@ export const readJson = async <T>(response: Response): Promise<T> => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     handleAuthError(response.status);
+    
+    // Provide specific error messages for auth errors
+    if (response.status === 401) {
+      throw new Error('Session expiree. Veuillez te reconnecter.');
+    }
+    if (response.status === 403) {
+      throw new Error('Acces refuse. Tu n\'as pas les permissions necessaires.');
+    }
+    
     throw new Error(payload.error || 'Une erreur reseau est survenue.');
   }
 

@@ -43,9 +43,9 @@ export interface DisputePayload {
 }
 
 export const subscribeToMatches = (onUpdate: () => void) => {
-  // En temps réel via socket, ceci est géré par realtimeClient et socketStore.
-  // On retourne une fonction de désabonnement vide pour garder la signature compatible avec le RootLayout actuel.
-  return { unsubscribe: () => {} };
+  // Polling léger pour les mises à jour hors-socket (remplace le no-op précédent)
+  const intervalId = setInterval(onUpdate, 30_000);
+  return { unsubscribe: () => clearInterval(intervalId) };
 };
 
 export const fetchAllMatchesFromDb = async (): Promise<Match[]> => {

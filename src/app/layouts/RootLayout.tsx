@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Outlet } from 'react-router';
 import ToastContainer from '../components/notifications/ToastContainer';
 import { useAuthSessionBootstrap } from '../hooks/useAuthSessionBootstrap';
+import { useAuthStore } from '../stores/authStore';
 import { fetchAllMatchesFromDb, subscribeToMatches } from '../lib/matchApi';
 import { useMatchStore } from '../stores/matchStore';
 import { fetchServerTournaments, subscribeToTournaments } from '../lib/tournamentApi';
@@ -9,8 +10,14 @@ import { useTournamentStore } from '../stores/tournamentStore';
 
 const RootLayout: React.FC = () => {
   useAuthSessionBootstrap();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
+    // Only fetch matches if user is authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+
     // Initial fetch of all matches
     fetchAllMatchesFromDb().then((matches) => {
       useMatchStore.getState().replaceFromServer(matches);
@@ -24,9 +31,14 @@ const RootLayout: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    // Only fetch tournaments if user is authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+
     // Initial fetch of all tournaments
     fetchServerTournaments().then((res) => {
       if (res.ok) {
@@ -43,7 +55,7 @@ const RootLayout: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <>

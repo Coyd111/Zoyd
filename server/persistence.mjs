@@ -33,6 +33,21 @@ const MAX_PROCESSED_TX = 10000;
 export const makeError = (code, message) => Object.assign(new Error(message), { code });
 export const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
 
+/**
+ * Sanitize user input to prevent XSS attacks
+ * Removes HTML tags, javascript: protocols, and event handlers
+ */
+export const sanitizeText = (input) => {
+  if (!input) return '';
+  return String(input)
+    .replace(/<[^>]*>/g, '')           // Remove HTML tags
+    .replace(/javascript:/gi, '')       // Remove javascript: protocol
+    .replace(/on\w+\s*=/gi, '')        // Remove event handlers like onclick=
+    .replace(/data:/gi, '')             // Remove data: protocol
+    .trim()
+    .slice(0, 5000);                    // Limit length
+};
+
 export const normalizePseudoKey = (value) => value.trim().toLowerCase();
 export const normalizeEmailKey = (value) => value.trim().toLowerCase();
 export const normalizePhoneKey = (value) => value.replace(/\D/g, '');
@@ -564,7 +579,7 @@ export const normalizeChatMessagePayload = (message) => ({
   senderId: `${message?.senderId || message?.sender_id || ''}`.trim(),
   senderPseudo: `${message?.senderPseudo || message?.sender_pseudo || 'ZOYD'}`.trim(),
   senderAvatar: message?.senderAvatar || message?.sender_avatar,
-  text: `${message?.text || ''}`.trim(),
+  text: sanitizeText(`${message?.text || ''}`.trim()),
   timestamp: message?.timestamp || message?.created_at || getNow(),
   isSystem: Boolean(message?.isSystem || message?.is_system),
   isDeleted: Boolean(message?.isDeleted || message?.is_deleted),

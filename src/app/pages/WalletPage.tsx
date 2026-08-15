@@ -22,7 +22,7 @@ declare const FedaPay: {
     onComplete: (resp: { data?: { token: string } }) => void;
     onClose: () => void;
   }) => void;
-};
+} | undefined;
 
 const WalletPage: React.FC = () => {
   const {
@@ -87,7 +87,13 @@ const WalletPage: React.FC = () => {
     const publicKey = import.meta.env.VITE_FEDAPAY_PUBLIC_KEY;
     
     if (!publicKey) {
-      toast.error("La cle FedaPay (VITE_FEDAPAY_PUBLIC_KEY) est manquante dans l'environnement local.");
+      toast.error("La clé FedaPay (VITE_FEDAPAY_PUBLIC_KEY) est manquante dans l'environnement local.");
+      return;
+    }
+
+    // Check if FedaPay is loaded
+    if (typeof FedaPay === 'undefined') {
+      toast.error("Le service de paiement FedaPay n'est pas disponible. Recharge la page ou essaie plus tard.");
       return;
     }
 

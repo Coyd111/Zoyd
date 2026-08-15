@@ -9,14 +9,21 @@ import { useAuthStore } from '../stores/authStore';
 
 const AdminLayout: React.FC = () => {
   const { isAuthenticated, user } = useAuthStore();
-  useMatchAutomationHeartbeat(isAuthenticated && user?.role === 'admin');
-  useRealtimeHeartbeat(isAuthenticated && user?.role === 'admin');
+  
+  // Enhanced admin protection with role validation
+  const isAdmin = isAuthenticated && user?.role === 'admin';
+  
+  useMatchAutomationHeartbeat(isAdmin);
+  useRealtimeHeartbeat(isAdmin);
 
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (user?.role !== 'admin') {
+  // Strict role check - only exact 'admin' role is allowed
+  if (!isAdmin) {
+    // Log unauthorized access attempt for security monitoring
+    console.warn(`Unauthorized admin access attempt by user: ${user?.id} with role: ${user?.role}`);
     return <Navigate to="/mj" replace />;
   }
 

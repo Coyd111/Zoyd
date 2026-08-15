@@ -137,6 +137,8 @@ export const router = createBrowserRouter([
         path: 'admin',
         Component: AdminLayout,
         children: [{ index: true, lazy: adminLoader }],
+        // Note: Server-side role validation should be implemented in the API
+        // This is client-side protection only as defense in depth
       },
       {
         path: '*',

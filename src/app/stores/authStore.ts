@@ -83,6 +83,14 @@ function readPersistedSession(): { token: string | null; expiresAt: string | nul
     const token = sessionStorage.getItem(STORAGE_KEY_ZOYD_TOKEN) || localStorage.getItem(STORAGE_KEY_ZOYD_TOKEN);
     const expiresAt = sessionStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES) || localStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
     if (!token) return { token: null, expiresAt: null };
+    
+    // Validate token format (basic check for UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(token)) {
+      clearPersistedSession();
+      return { token: null, expiresAt: null };
+    }
+    
     if (expiresAt && new Date(expiresAt) < new Date()) {
       clearPersistedSession();
       return { token: null, expiresAt: null };

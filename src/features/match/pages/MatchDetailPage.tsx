@@ -118,6 +118,7 @@ const MatchDetailPage: React.FC = () => {
   const [showAddEvidenceForm, setShowAddEvidenceForm] = useState(false);
   const [isEscalating, setIsEscalating] = useState(false);
   const [showArbiterScore, setShowArbiterScore] = useState(false);
+  const [isSubmittingResult, setIsSubmittingResult] = useState(false);
 
   const match = id ? getMatchById(id) : undefined;
   const messages = match ? getMessagesForChannel(match.channelId) : [];
@@ -330,6 +331,12 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const handleResultSubmit = async () => {
+    // Prevent double submission
+    if (isSubmittingResult) {
+      toast.error('Un resultat est deja en cours de soumission. Patientes...');
+      return;
+    }
+
     const alpha = Number(scoreAlpha);
     const bravo = Number(scoreBravo);
     const scoreboardRefs = parseRefs(scoreboardProofs);
@@ -341,6 +348,8 @@ const MatchDetailPage: React.FC = () => {
       toast.error('Le score final doit designer une equipe gagnante.');
       return;
     }
+
+    setIsSubmittingResult(true);
 
     try {
       const response = await submitServerMatchResult(match.id, {
@@ -364,6 +373,8 @@ const MatchDetailPage: React.FC = () => {
       toast.success('Resultat valide. Les gains sont en cours de distribution.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ajoute au moins un scoreboard et un ecran final avant de valider le score.");
+    } finally {
+      setIsSubmittingResult(false);
     }
   };
 
@@ -790,8 +801,16 @@ const MatchDetailPage: React.FC = () => {
                       placeholder="Autres preuves utiles (clips, captures, etc.)"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
-                    <button onClick={handleResultSubmit} className="w-full bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic">
-                      Valider le score final
+                    <button 
+                      onClick={handleResultSubmit} 
+                      disabled={isSubmittingResult}
+                      className={`w-full py-4 font-display font-black uppercase tracking-widest text-xs italic ${
+                        isSubmittingResult 
+                          ? 'bg-white/50 text-black/50 cursor-not-allowed' 
+                          : 'bg-white text-black hover:bg-zoyd-yellow'
+                      }`}
+                    >
+                      {isSubmittingResult ? 'Soumission en cours...' : 'Valider le score final'}
                     </button>
                   </div>
                 </div>
@@ -943,9 +962,15 @@ const MatchDetailPage: React.FC = () => {
                               />
                               <button
                                 onClick={handleResultSubmit}
-                                className="w-full bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
+                                disabled={isSubmittingResult}
+                                className={`w-full py-3 font-display font-black uppercase tracking-widest text-xs italic transition-colors ${
+                                  isSubmittingResult 
+                                    ? 'bg-zoyd-yellow/50 text-black/50 cursor-not-allowed' 
+                                    : 'bg-zoyd-yellow text-black hover:bg-white'
+                                }`}
                               >
-                                Valider le score &amp; clore le litige
+                                {isSubmittingResult ? 'Soumission en cours...' : 'Valider le score & clore le litige'}
+                              </button>
                               </button>
                             </div>
                           )}

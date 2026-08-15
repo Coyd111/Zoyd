@@ -18,8 +18,8 @@ interface TournamentResponse {
 }
 
 export const subscribeToTournaments = (onUpdate: () => void) => {
-  // Géré via socketIO dans realtimeClient
-  return { unsubscribe: () => {} };
+  const intervalId = setInterval(onUpdate, 30_000);
+  return { unsubscribe: () => clearInterval(intervalId) };
 };
 
 export const fetchServerTournaments = async (): Promise<TournamentListResponse> => {

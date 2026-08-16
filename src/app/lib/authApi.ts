@@ -1,5 +1,5 @@
 import type { User } from '../stores/authStore';
-import { authorizedGet, authorizedPost, authorizedPatch } from './apiClient';
+import { authorizedGet, authorizedPost, authorizedPatch, getApiUrl } from './apiClient';
 
 interface AuthResponse {
   ok: boolean;
@@ -8,6 +8,14 @@ interface AuthResponse {
   expiresAt?: string;
   activationCode?: string;
   message?: string;
+  requiresActivation?: boolean;
+  email?: string;
+}
+
+interface ActivationResponse {
+  ok: boolean;
+  user: User;
+  message: string;
 }
 
 export interface RegisterPayload {
@@ -44,4 +52,14 @@ export const logoutFromBackend = async () => {
 
 export const updateServerAccount = async (updates: Partial<User>): Promise<{ ok: boolean; user: User }> => {
   return authorizedPatch<{ ok: boolean; user: User }>('/api/auth/me', updates);
+};
+
+export const activateAccount = async (email: string, code: string): Promise<ActivationResponse> => {
+  const response = await fetch(getApiUrl('/api/auth/activate'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  });
+  const data = await response.json();
+  return data;
 };

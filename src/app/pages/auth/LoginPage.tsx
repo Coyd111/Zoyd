@@ -32,15 +32,22 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       const auth = await loginWithBackend(data.emailOrPseudo, data.password);
+      
+      // Check if account requires activation
+      if (auth.requiresActivation) {
+        toast.error(auth.message || 'Compte non active. Veuillez activer votre compte.');
+        navigate('/activate', { state: { email: auth.email || data.emailOrPseudo } });
+        return;
+      }
+      
       login(auth.user, auth.token, auth.expiresAt, rememberMe);
       navigate(auth.user.role === 'admin' ? '/admin' : '/mode');
     } catch (error: any) {
       const errorMessage = error.message || 'Connexion impossible.';
       
-      // Check if account requires activation
+      // Check if account requires activation (fallback for error message)
       if (errorMessage.includes('non active') || errorMessage.includes('activer')) {
         toast.error(errorMessage);
-        // Extract email from error if available
         const emailMatch = errorMessage.match(/email:\s*(\S+)/);
         const email = emailMatch ? emailMatch[1] : data.emailOrPseudo;
         navigate('/activate', { state: { email } });

@@ -790,6 +790,7 @@ const server = http.createServer(async (req, res) => {
 
       respondJson(res, 200, {
         ok: true,
+        token: session.token,
         user: session.user,
         expiresAt: session.expiresAt,
       });

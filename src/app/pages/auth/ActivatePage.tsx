@@ -4,13 +4,14 @@ import { toast } from 'sonner';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react';
-import { getApiUrl } from '../../lib/apiClient';
+import { activateAccount } from '../../lib/authApi';
 
 const ActivatePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email || '';
+  const initialEmail = location.state?.email || '';
   
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -19,22 +20,11 @@ const ActivatePage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(getApiUrl('/api/auth/activate'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email || code, // Allow entering email directly if not in state
-          code,
-        }),
-      });
+      const response = await activateAccount(email, code);
 
-      const data = await response.json();
-
-      if (data.ok) {
-        toast.success(data.message);
+      if (response.ok) {
+        toast.success(response.message);
         navigate('/login');
-      } else {
-        toast.error(data.error || 'Activation impossible.');
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Activation impossible.');
@@ -72,7 +62,7 @@ const ActivatePage: React.FC = () => {
           </p>
 
           <form onSubmit={handleActivate} className="space-y-4">
-            {email ? (
+            {initialEmail ? (
               <div className="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center gap-3">
                 <Mail className="w-5 h-5 text-zoyd-yellow" />
                 <div>
@@ -89,7 +79,7 @@ const ActivatePage: React.FC = () => {
                   type="email"
                   placeholder="ton@email.com"
                   value={email}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="bg-black border border-white/10 text-white"
                   required
                 />

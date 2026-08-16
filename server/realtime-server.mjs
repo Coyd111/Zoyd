@@ -149,6 +149,7 @@ const ALLOWED_ORIGINS = [
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean),
+  'https://zoyd.vercel.app',
   'https://zoyd.africa',
   'https://www.zoyd.africa',
 ];

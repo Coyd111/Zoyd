@@ -42,7 +42,15 @@ export const loginWithBackend = async (identifier: string, password: string): Pr
   return authorizedPost<AuthResponse>('/api/auth/login', { identifier, password });
 };
 
-export const fetchCurrentUser = async () => {
+export const fetchCurrentUser = async (token?: string) => {
+  if (token) {
+    // Use the provided token directly for bootstrap
+    const response = await fetch(getApiUrl('/api/auth/me'), {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    const data = await response.json();
+    return data;
+  }
   return authorizedGet<AuthResponse>('/api/auth/me');
 };
 

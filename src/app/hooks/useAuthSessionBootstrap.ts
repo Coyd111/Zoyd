@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { fetchCurrentUser } from '../lib/authApi';
+import { fetchCurrentUser, type AuthResponse } from '../lib/authApi';
 import { useAuthStore } from '../stores/authStore';
 
 export const useAuthSessionBootstrap = () => {
@@ -28,7 +28,7 @@ export const useAuthSessionBootstrap = () => {
     let cancelled = false;
 
     fetchCurrentUser(sessionToken)
-      .then((payload) => {
+      .then((payload: AuthResponse) => {
         if (cancelled) return;
         hydrateSession(payload.user, sessionToken, payload.expiresAt);
         bootstrappedTokenRef.current = sessionToken;

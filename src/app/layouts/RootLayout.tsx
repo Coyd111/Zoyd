@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 import ToastContainer from '../components/notifications/ToastContainer';
 import { useAuthSessionBootstrap } from '../hooks/useAuthSessionBootstrap';
 import { useAuthStore, type AuthState } from '../stores/authStore';

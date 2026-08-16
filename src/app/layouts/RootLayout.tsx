@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import ToastContainer from '../components/notifications/ToastContainer';
 import { useAuthSessionBootstrap } from '../hooks/useAuthSessionBootstrap';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, type AuthState } from '../stores/authStore';
 import { fetchAllMatchesFromDb, subscribeToMatches } from '../lib/matchApi';
 import { useMatchStore } from '../stores/matchStore';
 import { fetchServerTournaments, subscribeToTournaments } from '../lib/tournamentApi';
@@ -10,7 +10,7 @@ import { useTournamentStore } from '../stores/tournamentStore';
 
 const RootLayout: React.FC = () => {
   useAuthSessionBootstrap();
-  const isAuthenticated = useAuthStore((state: { isAuthenticated: boolean }) => state.isAuthenticated);
+  const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
 
   useEffect(() => {
     // Only fetch matches if user is authenticated

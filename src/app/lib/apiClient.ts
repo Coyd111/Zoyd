@@ -12,8 +12,14 @@ export const getBaseUrl = () => {
 export const getApiUrl = (path: string) => `${getBaseUrl()}${path}`;
 
 export const getAuthHeaders = () => {
-  const token = useAuthStore.getState().sessionToken;
+  // First try to get token from HttpOnly cookie
+  const cookieToken = getCookie('zoyd_auth');
+  
+  // Fallback to store token (for backward compatibility)
+  const storeToken = useAuthStore.getState().sessionToken;
   const expiresAt = useAuthStore.getState().expiresAt;
+  
+  const token = cookieToken || storeToken;
   
   if (!token) return {};
 
@@ -26,6 +32,16 @@ export const getAuthHeaders = () => {
   return {
     Authorization: `Bearer ${token}`,
   };
+};
+
+// Helper to read cookie on client
+const getCookie = (name: string): string | null => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
 };
 
 const handleAuthError = (status: number) => {

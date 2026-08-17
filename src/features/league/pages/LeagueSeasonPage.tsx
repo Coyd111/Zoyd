@@ -18,6 +18,7 @@ import {
   refundServerLeaguePlayer,
   fetchServerLeaguePayments,
 } from '../../../app/lib/leagueApi';
+import { toast } from 'sonner';
 import { formatZC, getRelativeTime } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
 
@@ -259,7 +260,7 @@ const AdminPanel: React.FC<{
       const response = await fetchServerLeaguePayments(season.id);
       setPayments(response.payments);
     } catch (error) {
-      console.error('Erreur chargement paiements:', error);
+      toast.error("Erreur lors du chargement des paiements.");
     } finally {
       setLoadingPayments(false);
     }
@@ -648,7 +649,7 @@ const LeagueSeasonPage: React.FC = () => {
       replaceFromServer([response.season]);
       if (response.user && response.wallet) applyServerAccountState(response.user, response.wallet);
     } catch (error) {
-      console.error('Erreur inscription:', error);
+      toast.error(error instanceof Error ? error.message : "Impossible de rejoindre la saison.");
     } finally {
       setActionLoading(false);
     }
@@ -662,7 +663,7 @@ const LeagueSeasonPage: React.FC = () => {
       replaceFromServer([response.season]);
       if (response.user && response.wallet) applyServerAccountState(response.user, response.wallet);
     } catch (error) {
-      console.error('Erreur desinscription:', error);
+      toast.error(error instanceof Error ? error.message : "Impossible de quitter la saison.");
     } finally {
       setActionLoading(false);
     }
@@ -736,7 +737,7 @@ const LeagueSeasonPage: React.FC = () => {
       }
       if (response) replaceFromServer([response.season]);
     } catch (error) {
-      console.error('Erreur action admin:', error);
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'action admin.");
     } finally {
       setActionLoading(false);
       setConfirmAction(null);

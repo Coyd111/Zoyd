@@ -24,7 +24,7 @@ const ActivatePage: React.FC = () => {
 
       if (response.ok) {
         toast.success(response.message);
-        navigate('/login');
+        navigate('/auth/login');
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Activation impossible.');

@@ -11,6 +11,7 @@ import {
   createServerLeagueSeason,
   startServerLeagueQualification,
 } from '../../../app/lib/leagueApi';
+import { toast } from 'sonner';
 import { formatZC, formatFCFA, getRelativeTime } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
 
@@ -184,7 +185,7 @@ const LeaguePage: React.FC = () => {
       replaceFromServer([response.season]);
       if (response.user && response.wallet) applyServerAccountState(response.user, response.wallet);
     } catch (error) {
-      console.error('Erreur inscription:', error);
+      toast.error(error instanceof Error ? error.message : "Impossible de rejoindre la saison.");
     } finally {
       setActionLoading(false);
     }
@@ -198,7 +199,7 @@ const LeaguePage: React.FC = () => {
       replaceFromServer([response.season]);
       if (response.user && response.wallet) applyServerAccountState(response.user, response.wallet);
     } catch (error) {
-      console.error('Erreur desinscription:', error);
+      toast.error(error instanceof Error ? error.message : "Impossible de quitter la saison.");
     } finally {
       setActionLoading(false);
     }
@@ -211,7 +212,7 @@ const LeaguePage: React.FC = () => {
       const response = await createServerLeagueSeason();
       replaceFromServer([response.season]);
     } catch (error) {
-      console.error('Erreur creation saison:', error);
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la création.");
     } finally {
       setActionLoading(false);
     }
@@ -224,7 +225,7 @@ const LeaguePage: React.FC = () => {
       const response = await startServerLeagueQualification(seasonId);
       replaceFromServer([response.season]);
     } catch (error) {
-      console.error('Erreur lancement qualification:', error);
+      toast.error(error instanceof Error ? error.message : "Erreur lors du lancement.");
     } finally {
       setActionLoading(false);
     }

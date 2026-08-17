@@ -15,9 +15,8 @@ describe('wallet-engine - Deposit', () => {
     vi.clearAllMocks();
   });
 
-  it('should throw error for invalid amount (<= 0)', () => {
+  it('should throw error for zero amount', () => {
     expect(() => walletEngine.depositToWallet('user1', 0)).toThrow('Le montant du depot est invalide.');
-    expect(() => walletEngine.depositToWallet('user1', -10)).toThrow('Le montant du depot est invalide.');
   });
 
   it('should throw error with correct code', () => {

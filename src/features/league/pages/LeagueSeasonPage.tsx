@@ -647,7 +647,7 @@ const LeagueSeasonPage: React.FC = () => {
       setActionLoading(true);
       const response = await joinServerLeagueSeason(seasonId);
       replaceFromServer([response.season]);
-      if (response.user && response.wallet) applyServerAccountState(response.user, response.wallet);
+      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: response.wallet });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de rejoindre la saison.");
     } finally {
@@ -661,7 +661,7 @@ const LeagueSeasonPage: React.FC = () => {
       setActionLoading(true);
       const response = await leaveServerLeagueSeason(seasonId);
       replaceFromServer([response.season]);
-      if (response.user && response.wallet) applyServerAccountState(response.user, response.wallet);
+      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: response.wallet });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de quitter la saison.");
     } finally {

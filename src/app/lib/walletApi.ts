@@ -16,7 +16,7 @@ export interface WalletSnapshot {
   lockedBalance: number;
   pendingWinnings: number;
   transactions: WalletTransaction[];
-  lockedEntries: Record<string, { amount: number; reason: string; lockedAt: string }>;
+  lockedEntries: Record<string, { amount: number; cashAmount?: number; bonusAmount?: number; lockedAt: string }>;
 }
 
 interface WalletResponse {

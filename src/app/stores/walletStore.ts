@@ -180,11 +180,14 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           const reservation = state.lockedEntries[entryKey];
           if (!reservation) return;
 
+          const cashToRefund = reservation.cashAmount ?? reservation.amount;
+          const bonusToRefund = reservation.bonusAmount ?? 0;
+
           set((s) => {
             const { [entryKey]: _, ...rest } = s.lockedEntries;
             return {
-              cashBalance: roundAmount(s.cashBalance + reservation.cashAmount),
-              bonusBalance: roundAmount(s.bonusBalance + reservation.bonusAmount),
+              cashBalance: roundAmount(s.cashBalance + cashToRefund),
+              bonusBalance: roundAmount(s.bonusBalance + bonusToRefund),
               lockedBalance: roundAmount(Math.max(0, s.lockedBalance - reservation.amount)),
               lockedEntries: rest,
             };

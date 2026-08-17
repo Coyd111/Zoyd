@@ -1523,7 +1523,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
 
       const season = outcome.season;
-      const participantIds = (season.players || []).map(p => p.userId);
+      const participantIds = (season.registeredPlayers || []).map(p => p.userId);
       for (const uid of participantIds) {
         deliverNotification(io, uid, {
           type: 'league_day_started',

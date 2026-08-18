@@ -12,10 +12,6 @@ export interface TrustBreakdown {
 export interface TrustScoreState {
   score: TrustBreakdown;
   history: { date: string; delta: number; reason: string }[];
-  setScore: (s: TrustBreakdown) => void;
-  updateCategory: (cat: keyof Omit<TrustBreakdown, 'overall'>, value: number) => void;
-  recalcOverall: () => void;
-  addHistory: (entry: { delta: number; reason: string }) => void;
   hydrateFromUser: (trustScore: number) => void;
 }
 
@@ -23,7 +19,7 @@ function clamp(n: number) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-export const useTrustScoreStore = create<TrustScoreState>((set, get) => ({
+export const useTrustScoreStore = create<TrustScoreState>((set) => ({
   score: {
     overall: 84,
     punctuality: 92,
@@ -32,41 +28,7 @@ export const useTrustScoreStore = create<TrustScoreState>((set, get) => ({
     disputes: 85,
     seniority: 45,
   },
-  history: [
-    { date: '2025-04-12', delta: +3, reason: 'Check-in à l\'heure match #MJ-2291' },
-    { date: '2025-04-10', delta: -10, reason: 'Absence au check-in match #MJ-2288' },
-    { date: '2025-04-08', delta: +5, reason: 'Confirmation rapide résultat match #MJ-2285' },
-    { date: '2025-04-05', delta: +2, reason: 'Match terminé sans litige' },
-    { date: '2025-03-28', delta: -8, reason: 'Litige perdu match #MJ-2254' },
-  ],
-
-  setScore: (s) => set({ score: s }),
-
-  updateCategory: (cat, value) =>
-    set((state) => ({
-      score: { ...state.score, [cat]: clamp(value) },
-    })),
-
-  recalcOverall: () => {
-    const s = get().score;
-    const weights = { punctuality: 0.25, fairPlay: 0.30, results: 0.20, disputes: 0.15, seniority: 0.10 };
-    const overall = clamp(
-      s.punctuality * weights.punctuality +
-      s.fairPlay * weights.fairPlay +
-      s.results * weights.results +
-      s.disputes * weights.disputes +
-      s.seniority * weights.seniority
-    );
-    set((state) => ({ score: { ...state.score, overall } }));
-  },
-
-  addHistory: (entry) =>
-    set((state) => ({
-      history: [
-        { date: new Date().toISOString().split('T')[0], ...entry },
-        ...state.history,
-      ].slice(0, 50),
-    })),
+  history: [],
 
   hydrateFromUser: (trustScore) => {
     if (typeof trustScore !== 'number') return;

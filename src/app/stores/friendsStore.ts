@@ -6,6 +6,7 @@ import {
   removeServerFriend,
   blockServerUser,
   unblockServerUser,
+  reportServerUser,
 } from '../lib/socialApi';
 
 export type FriendStatus = 'online' | 'offline' | 'in_match' | 'in_lobby';
@@ -144,16 +145,21 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
     }
   },
 
-  reportUser: (targetId, reason, description) => {
-    const report: Report = {
-      id: `RP-${Date.now()}`,
-      targetId,
-      reason,
-      description,
-      timestamp: new Date().toISOString(),
-      status: 'pending',
-    };
-    set((state) => ({ reports: [report, ...state.reports] }));
+  reportUser: async (targetId, reason, description) => {
+    try {
+      await reportServerUser(targetId, reason, description);
+      const report: Report = {
+        id: `RP-${Date.now()}`,
+        targetId,
+        reason,
+        description,
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+      };
+      set((state) => ({ reports: [report, ...state.reports] }));
+    } catch (error) {
+      console.error('Erreur signalement:', error);
+    }
   },
 
   updateFriendStatus: (friendId, status) => {

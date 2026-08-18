@@ -179,7 +179,7 @@ setInterval(cleanupChannelMaps, 30 * 60 * 1000);
 
 const getCorsOrigin = (req) => {
   const origin = req.headers.origin || '';
-  return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return ALLOWED_ORIGINS.includes(origin) ? origin : '';
 };
 
 const respondJson = (res, statusCode, payload, req = null) => {
@@ -992,6 +992,35 @@ const server = http.createServer(async (req, res) => {
       const body = await parseRequestBody(req);
       unblockUser(session.user.id, body.targetId);
       respondJson(res, 200, { ok: true });
+    } catch (error) {
+      const mapped = mapPersistenceError(error);
+      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/social/report') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
+    try {
+      const body = await parseRequestBody(req);
+      if (!body.targetId || !body.reason) {
+        respondJson(res, 400, { ok: false, error: 'targetId et reason requis.' });
+        return;
+      }
+      const report = {
+        id: `RP-${Date.now().toString(36).toUpperCase()}`,
+        reporterId: session.user.id,
+        reporterPseudo: session.user.pseudo,
+        targetId: body.targetId,
+        reason: body.reason,
+        description: sanitizeText(body.description || ''),
+        status: 'pending',
+        createdAt: getNow(),
+      };
+      sbUpsert('user_reports', { id: report.id, payload: report, created_at: getNow() });
+      respondJson(res, 201, { ok: true, report });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2205,7 +2234,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseRequestBody(req);
       const channel = upsertChatChannel({
-        id: body.id || `CH-${body.type || 'private'}-${Date.now().toString(36).toUpperCase()}`,
+        id: `CH-${body.type || 'private'}-${Date.now().toString(36).toUpperCase()}`,
         type: body.type || 'private',
         name: body.name || 'Nouvelle conversation',
         participants: [session.user.id, ...((Array.isArray(body.participants) ? body.participants : []).filter(Boolean))],

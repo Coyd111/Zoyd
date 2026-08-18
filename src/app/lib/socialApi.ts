@@ -1,6 +1,17 @@
 import { authorizedPost, authorizedDelete } from './apiClient';
 import type { Friend, FriendRequest } from '../stores/friendsStore';
 
+export interface Report {
+  id: string;
+  reporterId: string;
+  reporterPseudo: string;
+  targetId: string;
+  reason: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}
+
 export const sendServerFriendRequest = async (targetId: string, message?: string) => {
   return authorizedPost<{ ok: boolean; request: FriendRequest }>('/api/social/request', { targetId, message });
 };
@@ -23,4 +34,8 @@ export const blockServerUser = async (targetId: string) => {
 
 export const unblockServerUser = async (targetId: string) => {
   return authorizedPost<{ ok: boolean }>('/api/social/unblock', { targetId });
+};
+
+export const reportServerUser = async (targetId: string, reason: string, description: string) => {
+  return authorizedPost<{ ok: boolean; report: Report }>('/api/social/report', { targetId, reason, description });
 };

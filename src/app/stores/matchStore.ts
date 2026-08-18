@@ -1,9 +1,6 @@
 import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
-import { useChatStore } from './chatStore';
-import { useNotificationStore } from './notificationStore';
-import { useWalletStore } from './walletStore';
 
 export type MatchFormat = '1VS1' | '2VS2' | '3VS3' | '4VS4' | '5VS5';
 export type MatchStatus =
@@ -159,8 +156,6 @@ export interface CreateMatchInput {
 
 export interface MatchState {
   matches: Match[];
-  myMatches: string[];
-  myArbitrations: string[];
   filters: MatchFilters;
   hydrateFromServer: (matches: Match[]) => void;
   replaceFromServer: (matches: Match[]) => void;
@@ -309,54 +304,6 @@ const getPreferredTeam = (match: Match, preferredTeam?: number): MatchTeam | nul
 
 const isCurrentUser = (userId: string) => useAuthStore.getState().user?.id === userId;
 
-const getStatusFromMatch = (match: Match): MatchStatus => {
-  if (match.disputes.some((dispute) => dispute.status === 'open' || dispute.status === 'under_review')) {
-    return 'disputed';
-  }
-
-  if (match.status === 'cancelled' || match.status === 'forfeited' || match.status === 'finished') {
-    return match.status;
-  }
-
-  if (match.result || match.finishedAt) {
-    return 'finished';
-  }
-
-  const allPlayersPresent = match.players.length >= match.maxPlayers;
-  if (!allPlayersPresent) return 'recruiting';
-  if (!match.arbiter) return 'full';
-
-  const everyoneCheckedIn = match.players.every((player) => player.isCheckedIn);
-  const everyoneReady = match.players.every((player) => player.isReady);
-
-  if (!everyoneCheckedIn || !everyoneReady) {
-    return 'check_in';
-  }
-
-  if (match.status === 'in_progress') {
-    return 'in_progress';
-  }
-
-  return 'ready';
-};
-
-const updateMatchSnapshot = (match: Match, updates: Partial<Match>): Match => {
-  const next = {
-    ...match,
-    ...updates,
-    updatedAt: getNow(),
-  };
-
-  return {
-    ...next,
-    status: getStatusFromMatch(next),
-  };
-};
-
-const withMatchUpdate = (matches: Match[], matchId: string, updater: (match: Match) => Match): Match[] =>
-  matches.map((match) => (match.id === matchId ? updater(match) : match));
-
-const getWinnerPayout = (match: Match) => roundAmount(match.prizePool - match.zoydFee - match.arbiterFee);
 const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match[]) => {
   const merged = new Map<string, Match>();
 
@@ -389,8 +336,6 @@ const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match
 export const useMatchStore = create<MatchState>()((set, get) => {
       return {
         matches: [],
-        myMatches: [],
-        myArbitrations: [],
         filters: { format: 'all', status: 'all' },
 
         hydrateFromServer: (matches) => {

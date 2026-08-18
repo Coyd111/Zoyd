@@ -20,5 +20,5 @@ services:
         sync: false
       - key: VAPID_PRIVATE_KEY
         sync: false
-      - key: ALLOWED_ORIGINS
+      - key: ZOYD_ALLOWED_ORIGINS
         value: "https://zoyd.vercel.app,https://zoyd.africa,https://www.zoyd.africa"

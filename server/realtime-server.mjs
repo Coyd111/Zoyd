@@ -196,7 +196,7 @@ const respondJson = (res, statusCode, payload, req = null) => {
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Vary': 'Origin',
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws:; frame-ancestors 'none';",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws: https: http:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; frame-ancestors 'none';",
   });
   res.end(JSON.stringify(payload));
 
@@ -694,7 +694,7 @@ const server = http.createServer(async (req, res) => {
   req._metricsPathname = normalizePathForMetrics(pathname);
 
   if (req.method === 'OPTIONS') {
-    respondJson(res, 204, {});
+    respondJson(res, 204, {}, req);
     return;
   }
 

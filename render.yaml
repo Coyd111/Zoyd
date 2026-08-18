@@ -3,7 +3,7 @@ services:
     name: zoyd-backend
     env: node
     plan: free
-    buildCommand: pnpm install --config.node-linker=hoisted
+    buildCommand: pnpm install --no-frozen-lockfile --config.node-linker=hoisted
     startCommand: node server/realtime-server.mjs
     envVars:
       - key: NODE_ENV

@@ -2644,7 +2644,7 @@ const start = async () => {
   syncMatchChatChannels(getStateCollection('matches'));
   initCronJobs();
 
-  setInterval(() => {
+  setInterval(async () => {
     try { await withMatchMutex(async () => {
       const outcome = processMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.changed) {

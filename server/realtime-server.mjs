@@ -83,6 +83,7 @@ import {
   updatePasswordHash,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
+import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex } from './mutex.mjs';
 import { initCronJobs } from './cron.mjs';
 import {
   MATCH_AUTOMATION_INTERVAL_MS,
@@ -1170,12 +1171,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
 
-    try {
+    try { await withWalletMutex(session.user.id, async () => {
       const body = await parseRequestBody(req);
       const wallet = depositToWallet(session.user.id, body.amount, body.method);
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1190,12 +1191,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
 
-    try {
+    try { await withWalletMutex(session.user.id, async () => {
       const body = await parseRequestBody(req);
       const wallet = withdrawFromWallet(session.user.id, body.amount, body.method, body.phone);
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1269,12 +1270,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = createTournamentOnServer(getStoredTournaments(), session.user, body);
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 201, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1289,12 +1290,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1309,11 +1310,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const outcome = leaveTournamentOnServer(getStoredTournaments(), session.user, tournamentLeave[1]);
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1328,11 +1329,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const outcome = assignTournamentArbiterOnServer(getStoredTournaments(), session.user, tournamentArbiter[1]);
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1347,7 +1348,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const outcome = startTournamentOnServer(getStoredTournaments(), session.user, tournamentStart[1]);
       saveTournaments(io, outcome.tournaments);
 
@@ -1366,7 +1367,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1381,7 +1382,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = setTournamentMatchRoomDetailsOnServer(
         getStoredTournaments(),
@@ -1393,7 +1394,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1408,7 +1409,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const outcome = setTournamentMatchLiveOnServer(
         getStoredTournaments(),
         session.user,
@@ -1417,7 +1418,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1432,7 +1433,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = submitTournamentMatchResultOnServer(
         getStoredTournaments(),
@@ -1443,7 +1444,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1477,12 +1478,12 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = createLeagueSeasonOnServer(getStoredLeagues(), session.user, body);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 201, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1496,11 +1497,11 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const outcome = joinLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueJoin[1]);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1514,11 +1515,11 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const outcome = leaveLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueLeave[1]);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1532,11 +1533,11 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const outcome = startLeagueQualificationOnServer(getStoredLeagues(), session.user, leagueStartQualification[1]);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1550,7 +1551,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const outcome = startLeagueDayOnServer(getStoredLeagues(), session.user, leagueStartDay[1], leagueStartDay[2]);
       saveLeagues(io, outcome.seasons);
 
@@ -1567,7 +1568,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1581,7 +1582,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = submitLeagueDayResultsOnServer(
         getStoredLeagues(),
@@ -1592,7 +1593,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1606,11 +1607,11 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const outcome = advanceToFinalOnServer(getStoredLeagues(), session.user, leagueAdvanceToFinal[1]);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1624,7 +1625,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = submitLeagueFinalResultsOnServer(
         getStoredLeagues(),
@@ -1634,7 +1635,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1660,12 +1661,12 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = updateLeagueSettingsOnServer(getStoredLeagues(), session.user, leagueUpdateSettings[1], body);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1679,7 +1680,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = reassignPlayerOnServer(
         getStoredLeagues(),
@@ -1691,7 +1692,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1705,7 +1706,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withLeagueMutex(async () => {
       const outcome = refundLeaguePlayerOnServer(
         getStoredLeagues(),
         session.user,
@@ -1714,7 +1715,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
-    } catch (error) {
+    }); } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
     }
@@ -1752,7 +1753,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
 
-    try {
+    try { await withWalletMutex(session.user.id, async () => {
       const body = await parseRequestBody(req);
       if (!body.transactionId) {
         respondJson(res, 400, { ok: false, error: 'transactionId manquant.' });
@@ -1767,7 +1768,7 @@ const server = http.createServer(async (req, res) => {
         wallet,
         user: outcome.user
       });
-    } catch (error) {
+    }); } catch (error) {
       log.error('Payment verification failed', { message: error.message });
       respondJson(res, 400, { ok: false, error: 'Verification du paiement echouee.' });
     }
@@ -1781,11 +1782,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = createMatchOnServer(getStateCollection('matches'), session.user, body);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 201, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1801,11 +1803,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1821,7 +1824,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const outcome = assignArbiterOnServer(getStateCollection('matches'), session.user, matchArbiter[1]);
       saveMatches(io, outcome.matches, outcome.match);
 
@@ -1834,6 +1837,7 @@ const server = http.createServer(async (req, res) => {
       }).catch(err => log.error('Notification delivery failed', err));
 
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1849,10 +1853,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const outcome = checkInMatchOnServer(getStateCollection('matches'), session.user, matchCheckIn[1]);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1868,10 +1873,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const outcome = toggleReadyOnServer(getStateCollection('matches'), session.user, matchReady[1]);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1887,11 +1893,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = scheduleMatchOnServer(getStateCollection('matches'), session.user, matchSchedule[1], body.scheduledAt);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1907,7 +1914,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = setRoomDetailsOnServer(
         getStateCollection('matches'),
@@ -1918,6 +1925,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1933,10 +1941,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const outcome = launchMatchOnServer(getStateCollection('matches'), session.user, matchLaunch[1]);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1952,11 +1961,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = submitMatchResultOnServer(getStateCollection('matches'), session.user, matchResult[1], body);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -1972,7 +1982,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const outcome = confirmMatchResultOnServer(getStateCollection('matches'), session.user, matchConfirm[1]);
       saveMatches(io, outcome.matches, outcome.match);
 
@@ -1989,6 +1999,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2004,7 +2015,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = openDisputeOnServer(getStateCollection('matches'), session.user, matchDisputes[1], body);
       saveMatches(io, outcome.matches, outcome.match);
@@ -2022,6 +2033,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2036,7 +2048,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = addEvidenceToDisputeOnServer(
         getStateCollection('matches'),
@@ -2046,6 +2058,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2060,7 +2073,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-    try {
+    try { await withMatchMutex(async () => {
       const outcome = escalateDisputeOnServer(
         getStateCollection('matches'),
         session.user,
@@ -2079,6 +2092,7 @@ const server = http.createServer(async (req, res) => {
       }).catch(err => log.error('Notification delivery failed', err));
 
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2100,7 +2114,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const currentMatches = getStateCollection('matches');
       const targetMatch = currentMatches.find((entry) => entry.id === adminMatchAward[1]);
@@ -2115,6 +2129,7 @@ const server = http.createServer(async (req, res) => {
       });
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2136,7 +2151,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = resolveDisputeOnServer(
         getStateCollection('matches'),
@@ -2146,6 +2161,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2167,7 +2183,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    try {
+    try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = cancelMatchOnServer(
         getStateCollection('matches'),
@@ -2177,6 +2193,7 @@ const server = http.createServer(async (req, res) => {
       );
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+    });
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
@@ -2628,11 +2645,12 @@ const start = async () => {
   initCronJobs();
 
   setInterval(() => {
-    try {
+    try { await withMatchMutex(async () => {
       const outcome = processMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.changed) {
         saveMatches(io, outcome.matches);
       }
+    });
     } catch (error) {
       log.error('Match automation error', error);
     }

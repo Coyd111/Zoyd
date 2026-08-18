@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { Settings, Wallet } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useSocketStore } from '../../stores/socketStore';
+import { logoutFromBackend } from '../../lib/authApi';
+import { unsubscribeFromRealtimePush } from '../../lib/realtimeClient';
 import { useWalletStore } from '../../stores/walletStore';
 import { formatZC } from '../../../lib/utils';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
@@ -12,7 +14,7 @@ import ZoydLogo from '../branding/ZoydLogo';
 const Navbar: React.FC = () => {
   const { user } = useAuthStore();
   const { getTotalBalance } = useWalletStore();
-  const { isConnected, serverConnected, latencyMs, liveMatches } = useSocketStore();
+  const { isConnected, serverConnected, liveMatches } = useSocketStore();
   const safeUser = user || { pseudo: 'ShadowX' };
   const totalBalance = getTotalBalance();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -37,7 +39,7 @@ const Navbar: React.FC = () => {
             Serveurs Afrique : {serverConnected ? 'En ligne' : isConnected ? 'Sync local' : 'Hors ligne'}
           </div>
           <div className="flex items-center gap-2">Z-Bridge : {liveMatches.length} salon(s) live</div>
-          <div className="flex items-center gap-2">Ping Moyen : {latencyMs}ms</div>
+          <div className="flex items-center gap-2">{serverConnected ? 'Serveur connecte' : 'Hors ligne'}</div>
         </div>
 
         {navAuthenticated ? (
@@ -84,7 +86,17 @@ const Navbar: React.FC = () => {
                 </Link>
 
                 <button
-                  onClick={() => { useSocketStore.getState().disconnect(); useAuthStore.getState().logout(); }}
+                  onClick={() => {
+                    const u = useAuthStore.getState().user;
+                    logoutFromBackend().catch(() => undefined);
+                    if (u && 'serviceWorker' in navigator) {
+                      navigator.serviceWorker.ready
+                        .then((reg) => unsubscribeFromRealtimePush(u, reg))
+                        .catch(() => undefined);
+                    }
+                    useSocketStore.getState().disconnect();
+                    useAuthStore.getState().logout();
+                  }}
                   title="Se deconnecter"
                   className="text-white/30 hover:text-red-400 transition-colors ml-2"
                 >

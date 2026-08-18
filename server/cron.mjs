@@ -61,17 +61,12 @@ export const initCronJobs = () => {
         const closesAt = new Date(season.schedule.registrationCloses);
         if (now >= closesAt && season.registeredPlayers.length >= 10) {
           changed = true;
-          const players = season.registeredPlayers.map((p) => p.userId || p.id || p);
-          const groupSize = 10;
+          const playerIds = season.registeredPlayers.map((p) => p.userId || p.id || p);
+          const DAY_KEYS = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           const groups = {};
-          for (let i = 0; i < players.length; i += groupSize) {
-            const key = `G${Math.floor(i / groupSize) + 1}`;
-            groups[key] = {
-              players: players.slice(i, i + groupSize),
-              standings: [],
-              currentDay: 1,
-              status: 'pending',
-            };
+          for (const day of DAY_KEYS) groups[day] = { players: [], standings: [], currentDay: 1, status: 'pending' };
+          for (let i = 0; i < playerIds.length; i++) {
+            groups[DAY_KEYS[i % DAY_KEYS.length]].players.push(playerIds[i]);
           }
           return {
             ...season,

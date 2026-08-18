@@ -194,6 +194,7 @@ const respondJson = (res, statusCode, payload, req = null) => {
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Vary': 'Origin',
     "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws:; frame-ancestors 'none';",
   });
   res.end(JSON.stringify(payload));
@@ -1051,6 +1052,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/change-password') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
@@ -2512,8 +2515,8 @@ io.on('connection', (socket) => {
       const createdMember = upsertChannelMember(socket, safePayload);
       if (!createdMember) return;
     } else {
-      existingMember.role = safePayload.role || existingMember.role;
-      existingMember.team = typeof safePayload.team === 'number' ? safePayload.team : existingMember.team;
+      existingMember.role = ['player', 'arbiter', 'spectator'].includes(safePayload.role) ? safePayload.role : existingMember.role;
+      existingMember.team = typeof safePayload.team === 'number' && safePayload.team <= 1 ? safePayload.team : existingMember.team;
       existingMember.isCheckedIn = Boolean(safePayload.isCheckedIn);
       existingMember.isReady = Boolean(safePayload.isReady);
       existingMember.lastActiveAt = getNow();

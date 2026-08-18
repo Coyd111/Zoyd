@@ -152,6 +152,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
         return state;
       }
 
+      const isDuplicate = state.messages.some(
+        (entry) =>
+          entry.channelId === normalizedMessage.channelId &&
+          entry.senderId === normalizedMessage.senderId &&
+          entry.text === normalizedMessage.text &&
+          Math.abs(new Date(entry.timestamp).getTime() - new Date(normalizedMessage.timestamp).getTime()) < 5000
+      );
+      if (isDuplicate) {
+        return state;
+      }
+
       const existingChannel = state.channels.find((channel) => channel.id === normalizedMessage.channelId);
       const fallbackChannel: ChatChannelDef = existingChannel || {
         id: normalizedMessage.channelId,

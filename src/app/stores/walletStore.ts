@@ -105,32 +105,46 @@ export const useWalletStore = create<WalletState>()((set, get) => {
         },
 
         refreshFromServer: async () => {
-          const payload = await fetchWalletSnapshot();
-          get().hydrateFromServer(payload.wallet);
-          if (payload.user) {
-            useAuthStore.getState().updateUser(payload.user);
+          try {
+            const payload = await fetchWalletSnapshot();
+            get().hydrateFromServer(payload.wallet);
+            if (payload.user) {
+              useAuthStore.getState().updateUser(payload.user);
+            }
+          } catch (error) {
+            console.error('Wallet refresh failed:', error);
           }
         },
 
         deposit: async (amount, method) => {
           const safeAmount = roundAmount(amount);
-          const payload = await depositWalletBalance(safeAmount, method);
-          get().hydrateFromServer(payload.wallet);
-          if (payload.user) {
-            useAuthStore.getState().updateUser(payload.user);
+          try {
+            const payload = await depositWalletBalance(safeAmount, method);
+            get().hydrateFromServer(payload.wallet);
+            if (payload.user) {
+              useAuthStore.getState().updateUser(payload.user);
+            }
+            pushWalletNotification('Depot confirme', `${safeAmount.toFixed(1)} ZC ajoutes via ${method}.`);
+          } catch (error) {
+            console.error('Deposit failed:', error);
+            throw error;
           }
-          pushWalletNotification('Depot confirme', `${safeAmount.toFixed(1)} ZC ajoutes via ${method}.`);
         },
 
         withdraw: async (amount, method, phone) => {
           const safeAmount = roundAmount(amount);
-          const payload = await withdrawWalletBalance(safeAmount, method, phone);
-          get().hydrateFromServer(payload.wallet);
-          if (payload.user) {
-            useAuthStore.getState().updateUser(payload.user);
+          try {
+            const payload = await withdrawWalletBalance(safeAmount, method, phone);
+            get().hydrateFromServer(payload.wallet);
+            if (payload.user) {
+              useAuthStore.getState().updateUser(payload.user);
+            }
+            const netAmount = roundAmount(safeAmount - safeAmount * WITHDRAWAL_FEE_RATE);
+            pushWalletNotification('Retrait confirme', `${netAmount.toFixed(1)} ZC net envoyes apres frais.`);
+          } catch (error) {
+            console.error('Withdrawal failed:', error);
+            throw error;
           }
-          const netAmount = roundAmount(safeAmount - safeAmount * WITHDRAWAL_FEE_RATE);
-          pushWalletNotification('Retrait confirme', `${netAmount.toFixed(1)} ZC net envoyes apres frais.`);
         },
 
         addTransaction: (txData) => {

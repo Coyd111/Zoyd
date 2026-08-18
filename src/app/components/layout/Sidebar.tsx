@@ -5,6 +5,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useSocketStore } from '../../stores/socketStore';
+import { logoutFromBackend } from '../../lib/authApi';
+import { unsubscribeFromRealtimePush } from '../../lib/realtimeClient';
 import { cn, formatZC } from '../../../lib/utils';
 import ZoydLogo from '../branding/ZoydLogo';
 
@@ -118,6 +120,13 @@ const Sidebar: React.FC = () => {
         </Link>
         <button
           onClick={() => {
+            const user = useAuthStore.getState().user;
+            logoutFromBackend().catch(() => undefined);
+            if (user && 'serviceWorker' in navigator) {
+              navigator.serviceWorker.ready
+                .then((reg) => unsubscribeFromRealtimePush(user, reg))
+                .catch(() => undefined);
+            }
             useSocketStore.getState().disconnect();
             useAuthStore.getState().logout();
             navigate('/auth/login');

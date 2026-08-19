@@ -757,15 +757,10 @@ const server = http.createServer(async (req, res) => {
       };
       const user = await createUserAccount(safeBody);
       
-      // Generate activation code
-      const activationCode = generateActivationCode(user.email, user.id);
-
-      // In production, send this code via email. For now, return it.
       respondJson(res, 201, {
         ok: true,
         user: sanitizeUserPayload(user),
-        activationCode, // TODO: Send via email in production
-        message: 'Un code d\'activation a ete envoye a votre email.',
+        message: 'Compte cree avec succes.',
       });
     } catch (error) {
       log.error('register error', { message: error.message, code: error.code });
@@ -785,16 +780,6 @@ const server = http.createServer(async (req, res) => {
         identifier: body.identifier || '',
         password: body.password || '',
       });
-      
-      // Check if account is activated
-      if (!user.isActive) {
-        respondJson(res, 403, { 
-          ok: false, 
-          error: 'Compte non active. Veuillez activer votre compte avec le code envoye par email.',
-          requiresActivation: true,
-        });
-        return;
-      }
       
       const session = createAuthSession(user.id);
 

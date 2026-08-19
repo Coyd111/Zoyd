@@ -156,12 +156,11 @@ const RegisterPage: React.FC = () => {
         streamerPseudo: formData.streamerMode ? formData.streamerPseudo : '',
       });
 
-      // Show activation code (in production, this would be sent via email)
-      toast.success(`Compte cree. Code d'activation: ${auth.activationCode}`);
-      toast.info('Un code d\'activation a ete envoye a votre email.');
+      // Show success and redirect to login
+      toast.success('Compte cree avec succes. Connecte-toi maintenant.');
       
-      // Redirect to activation page
-      navigate('/activate', { state: { email: formData.email } });
+      // Redirect to login page
+      navigate('/auth/login');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Inscription impossible.');
     } finally {
@@ -512,7 +511,7 @@ const RegisterPage: React.FC = () => {
                     className="flex-[2] py-6"
                     disabled={isLoading}
                   >
-                    {isLoading ? <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'ACTIVER MON COMPTE'}
+                    {isLoading ? <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'CREER MON COMPTE'}
                   </Button>
                 </div>
               </motion.div>

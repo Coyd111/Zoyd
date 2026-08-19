@@ -328,7 +328,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
 
   const id = input.id || crypto.randomUUID();
   const createdAt = input.dateJoined || getNow();
-  const payload = buildUserPayload({ ...input, id, dateJoined: createdAt, isActive: false }, role);
+  const payload = buildUserPayload({ ...input, id, dateJoined: createdAt, isActive: true }, role);
   const passwordHash = await hashPassword(password);
 
   // Write to memory

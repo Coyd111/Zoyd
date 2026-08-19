@@ -15,7 +15,10 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "npx playwright test --config=playwright.config.ts",
-    "test:e2e:ui": "npx playwright test --config=playwright.config.ts --ui"
+    "test:e2e:ui": "npx playwright test --config=playwright.config.ts --ui",
+    "test:e2e:live": "npx playwright test --config=playwright.config.ts --project=live-api",
+    "test:e2e:live-ui": "npx playwright test --config=playwright.config.ts --project=live-ui",
+    "test:e2e:live-all": "npx playwright test --config=playwright.config.ts --project=live-api --project=live-ui"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

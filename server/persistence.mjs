@@ -463,28 +463,50 @@ export const updatePasswordHash = (userId, newHash) => {
 };
 
 // ─── Account Activation Codes ─────────────────────────────────────────────────
-const memoryActivationCodes = new Map(); // email -> { code, expiresAt, userId }
+const memoryActivationCodes = new Map(); // email -> { code, expiresAt, userId, attempts }
+const ACTIVATION_CODE_MAX_LENGTH = 8;
+const ACTIVATION_CODE_MAX_ATTEMPTS = 5;
+const ACTIVATION_CODE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 
 export const generateActivationCode = (email, userId) => {
-  const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
-  memoryActivationCodes.set(email, { code, expiresAt, userId });
+  const max = Math.pow(10, ACTIVATION_CODE_MAX_LENGTH);
+  const min = Math.pow(10, ACTIVATION_CODE_MAX_LENGTH - 1);
+  const code = Math.floor(min + Math.random() * (max - min)).toString();
+  const expiresAt = new Date(Date.now() + ACTIVATION_CODE_EXPIRY_MS).toISOString();
+  memoryActivationCodes.set(email, { code, expiresAt, userId, attempts: 0 });
   return code;
 };
 
 export const verifyActivationCode = (email, code) => {
   const record = memoryActivationCodes.get(email);
   if (!record) return { valid: false, error: 'Code invalide ou expire.' };
-  
-  if (record.code !== code) return { valid: false, error: 'Code incorrect.' };
-  
+
+  if (record.code !== code) {
+    record.attempts = (record.attempts || 0) + 1;
+    if (record.attempts >= ACTIVATION_CODE_MAX_ATTEMPTS) {
+      memoryActivationCodes.delete(email);
+      return { valid: false, error: 'Trop de tentatives. Demande un nouveau code.' };
+    }
+    return { valid: false, error: 'Code incorrect.' };
+  }
+
   if (new Date(record.expiresAt) < new Date()) {
     memoryActivationCodes.delete(email);
     return { valid: false, error: 'Code expire.' };
   }
-  
+
+  // Atomic: delete immediately after successful verification
   memoryActivationCodes.delete(email);
   return { valid: true, userId: record.userId };
+};
+
+export const cleanupExpiredActivationCodes = () => {
+  const now = new Date();
+  for (const [email, record] of memoryActivationCodes) {
+    if (new Date(record.expiresAt) < now) {
+      memoryActivationCodes.delete(email);
+    }
+  }
 };
 
 export const activateUserAccount = (userId) => {
@@ -877,6 +899,33 @@ export const markAllNotificationsAsRead = (userId) => {
   }
   if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {});
   return count;
+};
+
+// ─── Memory Cleanup ──────────────────────────────────────────────────────────
+export const cleanupMemoryChatReads = () => {
+  const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const cutoff = new Date(Date.now() - maxAge).toISOString();
+  for (const [key, readAt] of memoryChatReads) {
+    if (readAt < cutoff) memoryChatReads.delete(key);
+  }
+};
+
+export const cleanupMemoryNotifications = () => {
+  const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const cutoff = new Date(Date.now() - maxAge).toISOString();
+  for (const [id, n] of memoryNotifications) {
+    if (n.isRead && n.createdAt < cutoff) memoryNotifications.delete(id);
+  }
+};
+
+export const cleanupMemoryFriendRequests = () => {
+  const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const cutoff = new Date(Date.now() - maxAge).toISOString();
+  for (const [id, fr] of memoryFriendRequests) {
+    if ((fr.status === 'declined' || fr.status === 'cancelled') && fr.createdAt < cutoff) {
+      memoryFriendRequests.delete(id);
+    }
+  }
 };
 
 // ─── FedaPay Transaction Idempotency ────────────────────────────────────────

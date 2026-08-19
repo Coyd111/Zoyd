@@ -48,6 +48,10 @@ export const fetchCurrentUser = async (token?: string) => {
     const response = await fetch(getApiUrl('/api/auth/me'), {
       headers: { 'Authorization': `Bearer ${token}` },
     });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
     const data = await response.json();
     return data;
   }
@@ -69,5 +73,8 @@ export const activateAccount = async (email: string, code: string): Promise<Acti
     body: JSON.stringify({ email, code }),
   });
   const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
   return data;
 };

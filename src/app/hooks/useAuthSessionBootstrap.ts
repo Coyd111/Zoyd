@@ -6,12 +6,14 @@ export const useAuthSessionBootstrap = () => {
   const sessionToken = useAuthStore((state) => state.sessionToken);
   const expiresAt = useAuthStore((state) => state.expiresAt);
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
+  const setLoading = useAuthStore((state) => state.setLoading);
   const logout = useAuthStore((state) => state.logout);
   const bootstrappedTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!sessionToken) {
       bootstrappedTokenRef.current = null;
+      setLoading(false);
       return;
     }
 
@@ -27,9 +29,14 @@ export const useAuthSessionBootstrap = () => {
 
     let cancelled = false;
 
+    setLoading(true);
     fetchCurrentUser(sessionToken)
       .then((payload: AuthResponse) => {
         if (cancelled) return;
+        if (!payload?.user) {
+          logout();
+          return;
+        }
         hydrateSession(payload.user, sessionToken, payload.expiresAt);
         bootstrappedTokenRef.current = sessionToken;
       })
@@ -41,5 +48,5 @@ export const useAuthSessionBootstrap = () => {
     return () => {
       cancelled = true;
     };
-  }, [hydrateSession, logout, sessionToken, expiresAt]);
+  }, [hydrateSession, logout, setLoading, sessionToken, expiresAt]);
 };

@@ -112,6 +112,7 @@ const MatchDetailPage: React.FC = () => {
   const [roomCaptureProofs, setRoomCaptureProofs] = useState('');
   const [extraResultProofs, setExtraResultProofs] = useState('');
   const [disputeCategory, setDisputeCategory] = useState<DisputeCategory>('result');
+  const [isJoining, setIsJoining] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeEvidence, setDisputeEvidence] = useState('');
   const [addEvidenceInput, setAddEvidenceInput] = useState('');
@@ -280,12 +281,16 @@ const MatchDetailPage: React.FC = () => {
       return;
     }
 
+    if (isJoining) return;
+    setIsJoining(true);
     try {
       const response = await joinServerMatch(match.id, team);
       applyMatchResponse(response);
       toast.success(`Pass bloque. Tu rejoins ${team === 1 ? 'Squad Bravo' : team === 0 ? 'Squad Alpha' : 'l equipe disponible'}.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de rejoindre ce match avec ton profil actuel.");
+    } finally {
+      setIsJoining(false);
     }
   };
 

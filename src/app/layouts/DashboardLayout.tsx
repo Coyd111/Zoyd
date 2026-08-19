@@ -8,9 +8,18 @@ import { useRealtimeHeartbeat } from '../hooks/useRealtimeHeartbeat';
 import { useAuthStore } from '../stores/authStore';
 
 const DashboardLayout: React.FC = () => {
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
   useMatchAutomationHeartbeat(isAuthenticated);
   useRealtimeHeartbeat(isAuthenticated);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-zoyd-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-zoyd-blue border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" replace />;

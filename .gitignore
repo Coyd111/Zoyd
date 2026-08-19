@@ -17,7 +17,6 @@ server/data/
 # Scripts one-shot
 download-*.mjs
 check-db.mjs
-.npmrc
 
 # Documentation interne
 guidelines/

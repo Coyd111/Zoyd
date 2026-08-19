@@ -115,9 +115,11 @@ export interface AuthState {
   user: User | null;
   sessionToken: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   expiresAt: string | null;
   login: (user: User, sessionToken: string, expiresAt?: string, remember?: boolean) => void;
   hydrateSession: (user: User, sessionToken: string, expiresAt?: string) => void;
+  setLoading: (loading: boolean) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   updateStats: (partial: Partial<UserStats>) => void;
@@ -139,21 +141,23 @@ export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   sessionToken: initialSession.token,
   isAuthenticated: false,
+  isLoading: !!initialSession.token,
   expiresAt: initialSession.expiresAt,
   login: (user, sessionToken, expiresAt, remember = false) => {
     const normalized = normalizeUser(user);
     useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
     persistSession(sessionToken, expiresAt || null, remember);
-    set({ user: normalized, sessionToken, isAuthenticated: true, expiresAt: expiresAt || null });
+    set({ user: normalized, sessionToken, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },
   hydrateSession: (user, sessionToken, expiresAt) => {
     const normalized = normalizeUser(user);
     useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
-    set({ user: normalized, sessionToken, isAuthenticated: true, expiresAt: expiresAt || null });
+    set({ user: normalized, sessionToken, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },
+  setLoading: (loading) => set({ isLoading: loading }),
   logout: () => {
     clearPersistedSession();
-    set({ user: null, sessionToken: null, isAuthenticated: false, expiresAt: null });
+    set({ user: null, sessionToken: null, isAuthenticated: false, isLoading: false, expiresAt: null });
   },
   updateUser: (updates) => {
     set((state) => ({

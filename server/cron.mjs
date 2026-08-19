@@ -1,5 +1,6 @@
-import { getStateCollection, replaceStateCollection } from './persistence.mjs';
+import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
+import { withMatchMutex, withLeagueMutex } from './mutex.mjs';
 
 const log = createLogger('cron');
 const getNow = () => new Date().toISOString();
@@ -8,86 +9,103 @@ export const initCronJobs = () => {
   log.info('Service de tâches planifiées initialisé.');
 
   // Nettoyage des matchs inactifs — toutes les 6 heures
-  setInterval(() => {
+  setInterval(async () => {
     try {
       log.info('Démarrage du nettoyage des matchs inactifs...');
-      const matches = getStateCollection('matches');
+      await withMatchMutex(async () => {
+        const matches = getStateCollection('matches');
 
-      const fourteenDaysAgoDate = new Date();
-      fourteenDaysAgoDate.setDate(fourteenDaysAgoDate.getDate() - 14);
-      const fourteenDaysAgo = fourteenDaysAgoDate.toISOString();
+        const fourteenDaysAgoDate = new Date();
+        fourteenDaysAgoDate.setDate(fourteenDaysAgoDate.getDate() - 14);
+        const fourteenDaysAgo = fourteenDaysAgoDate.toISOString();
 
-      let archivedCount = 0;
-      const updatedMatches = matches.map((match) => {
-        const dateToCheck = match.updatedAt || match.createdAt;
-        if (!dateToCheck) return match;
+        let archivedCount = 0;
+        const updatedMatches = matches.map((match) => {
+          const dateToCheck = match.updatedAt || match.createdAt;
+          if (!dateToCheck) return match;
 
-        const isStale = ['recruiting', 'full', 'check_in'].includes(match.status)
-          && dateToCheck < fourteenDaysAgo;
+          const isStale = ['recruiting', 'full', 'check_in'].includes(match.status)
+            && dateToCheck < fourteenDaysAgo;
 
-        if (isStale) {
-          archivedCount++;
-          return {
-            ...match,
-            status: 'archived',
-            updatedAt: getNow(),
-            notes: 'Archivé automatiquement pour inactivité (plus de 14 jours).',
-          };
+          if (isStale) {
+            archivedCount++;
+            return {
+              ...match,
+              status: 'archived',
+              updatedAt: getNow(),
+              notes: 'Archivé automatiquement pour inactivité (plus de 14 jours).',
+            };
+          }
+          return match;
+        });
+
+        if (archivedCount > 0) {
+          replaceStateCollection('matches', updatedMatches);
         }
-        return match;
+
+        log.info(`Nettoyage terminé. ${archivedCount} matchs archivés.`);
       });
-
-      if (archivedCount > 0) {
-        replaceStateCollection('matches', updatedMatches);
-      }
-
-      log.info(`Nettoyage terminé. ${archivedCount} matchs archivés.`);
     } catch (error) {
       log.error('Erreur lors du nettoyage des matchs', error);
     }
   }, 6 * 60 * 60 * 1000);
 
   // Fermeture automatique des inscriptions ligue — toutes les heures
-  setInterval(() => {
+  setInterval(async () => {
     try {
-      const seasons = getStateCollection('leagues');
-      const now = new Date();
-      let changed = false;
+      await withLeagueMutex(async () => {
+        const seasons = getStateCollection('leagues');
+        const now = new Date();
+        let changed = false;
 
-      const updatedSeasons = seasons.map((season) => {
-        if (season.status !== 'registering') return season;
-        if (!season.schedule?.registrationCloses) return season;
+        const updatedSeasons = seasons.map((season) => {
+          if (season.status !== 'registering') return season;
+          if (!season.schedule?.registrationCloses) return season;
 
-        const closesAt = new Date(season.schedule.registrationCloses);
-        if (now >= closesAt && season.registeredPlayers.length >= 10) {
-          changed = true;
-          const playerIds = season.registeredPlayers.map((p) => p.userId || p.id || p);
-          const DAY_KEYS = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-          const groups = {};
-          for (const day of DAY_KEYS) groups[day] = { players: [], standings: [], currentDay: 1, status: 'pending' };
-          for (let i = 0; i < playerIds.length; i++) {
-            groups[DAY_KEYS[i % DAY_KEYS.length]].players.push(playerIds[i]);
+          const closesAt = new Date(season.schedule.registrationCloses);
+          if (now >= closesAt && season.registeredPlayers.length >= 10) {
+            changed = true;
+            const playerIds = season.registeredPlayers.map((p) => p.userId || p.id || p);
+            const DAY_KEYS = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const groups = {};
+            for (const day of DAY_KEYS) groups[day] = { players: [], standings: [], currentDay: 1, status: 'pending' };
+            for (let i = 0; i < playerIds.length; i++) {
+              groups[DAY_KEYS[i % DAY_KEYS.length]].players.push(playerIds[i]);
+            }
+            return {
+              ...season,
+              status: 'qualifying',
+              qualificationGroups: groups,
+              schedule: {
+                ...season.schedule,
+                qualifyingStarts: getNow(),
+              },
+              updatedAt: getNow(),
+            };
           }
-          return {
-            ...season,
-            status: 'qualifying',
-            qualificationGroups: groups,
-            schedule: {
-              ...season.schedule,
-              qualifyingStarts: getNow(),
-            },
-            updatedAt: getNow(),
-          };
-        }
-        return season;
-      });
+          return season;
+        });
 
-      if (changed) {
-        replaceStateCollection('leagues', updatedSeasons);
-        log.info('Inscriptions ligue fermées automatiquement.');
-      }
+        if (changed) {
+          replaceStateCollection('leagues', updatedSeasons);
+          log.info('Inscriptions ligue fermées automatiquement.');
+        }
+      });
     } catch (error) {
       log.error('Erreur fermeture inscriptions ligue', error);
+    }
+  }, 60 * 60 * 1000);
+
+  // Nettoyage mémoire — toutes les heures
+  setInterval(() => {
+    try {
+      cleanupExpiredActivationCodes();
+      cleanupMemoryChatReads();
+      cleanupMemoryNotifications();
+      cleanupMemoryFriendRequests();
+      log.info('Nettoyage mémoire terminé.');
+    } catch (error) {
+      log.error('Erreur nettoyage mémoire', error);
     }
   }, 60 * 60 * 1000);
 };

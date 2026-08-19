@@ -77,10 +77,12 @@ export interface Dispute {
   evidence: string[];
   requestedBy: string;
   openedByPseudo?: string;
+  escalatedByPseudo?: string;
   status: 'open' | 'under_review' | 'resolved' | 'rejected';
   resolution?: string;
   createdAt: string;
   openedAt?: string;
+  escalatedAt?: string;
   resolvedAt?: string;
   prizePoolFrozen: boolean;
 }

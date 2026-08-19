@@ -259,7 +259,12 @@ const readBearerToken = (req) => {
   if (cookies) {
     const cookieToken = cookies.split(';').find(c => c.trim().startsWith('zoyd_auth='));
     if (cookieToken) {
-      return cookieToken.split('=')[1].trim();
+      const value = cookieToken.split('=').slice(1).join('=').trim();
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
     }
   }
   
@@ -367,7 +372,8 @@ const saveMatches = (io, matches, changedMatch = null) => {
   syncMatchChatChannels(matches);
   replaceStateCollection('matches', matches);
   const storedMatches = getStateCollection('matches');
-  broadcastStateSnapshot(io, 'matches', storedMatches);
+  const sanitizedMatches = storedMatches.map(sanitizeMatchForBroadcast);
+  broadcastStateSnapshot(io, 'matches', sanitizedMatches);
   if (changedMatch) {
     broadcastChatChannel(io, buildMatchChatChannel(changedMatch));
   }
@@ -391,6 +397,15 @@ const buildMatchActionPayload = (match, userId) => {
     user,
     wallet: user?.wallet || getServerWallet(userId),
   };
+};
+
+const sanitizeMatchForBroadcast = (match) => {
+  const { roomPassword, ...safe } = match;
+  if (safe.arbiter) {
+    const { roomPassword: _ap, ...safeArbiter } = safe.arbiter;
+    safe.arbiter = safeArbiter;
+  }
+  return safe;
 };
 
 const buildTournamentActionPayload = (tournament, userId) => {
@@ -777,7 +792,6 @@ const server = http.createServer(async (req, res) => {
           ok: false, 
           error: 'Compte non active. Veuillez activer votre compte avec le code envoye par email.',
           requiresActivation: true,
-          email: user.email
         });
         return;
       }
@@ -1835,7 +1849,7 @@ const server = http.createServer(async (req, res) => {
       deliverNotification(io, session.user.id, {
         type: 'arbiter_assigned',
         title: 'Arbitre assigne',
-        body: `Tu es arbitre du match "${outcome.match?.name || 'MJ'}".`,
+        body: `Tu es arbitre du match "${outcome.match?.format || 'MJ'}" (${outcome.match?.id}).`,
         url: `/mj/match/${outcome.match?.id}`,
         requireInteraction: true
       }).catch(err => log.error('Notification delivery failed', err));

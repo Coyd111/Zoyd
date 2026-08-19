@@ -184,7 +184,8 @@ const getCorsOrigin = (req) => {
 };
 
 const respondJson = (res, statusCode, payload, req = null) => {
-  const origin = req ? getCorsOrigin(req) : ALLOWED_ORIGINS[0];
+  const effectiveReq = req || res._req;
+  const origin = effectiveReq ? getCorsOrigin(effectiveReq) : ALLOWED_ORIGINS[0];
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': origin,
@@ -200,12 +201,12 @@ const respondJson = (res, statusCode, payload, req = null) => {
   });
   res.end(JSON.stringify(payload));
 
-  if (req && req._metricsStart) {
-    const pathname = req._metricsPathname || 'unknown';
-    const method = req.method || 'UNKNOWN';
+  if (effectiveReq && effectiveReq._metricsStart) {
+    const pathname = effectiveReq._metricsPathname || 'unknown';
+    const method = effectiveReq.method || 'UNKNOWN';
     const labels = { method, status: String(statusCode) };
     incCounter('zoyd_http_requests_total', labels);
-    endTimer('zoyd_http_request_duration_seconds', req._metricsStart, { method, pathname });
+    endTimer('zoyd_http_request_duration_seconds', effectiveReq._metricsStart, { method, pathname });
     if (statusCode >= 500) incCounter('zoyd_http_errors_total', { method, status: String(statusCode) });
   }
 };
@@ -692,6 +693,7 @@ const server = http.createServer(async (req, res) => {
   const pathname = getPathname(req);
   req._metricsStart = startTimer();
   req._metricsPathname = normalizePathForMetrics(pathname);
+  res._req = req;
 
   if (req.method === 'OPTIONS') {
     respondJson(res, 204, {}, req);

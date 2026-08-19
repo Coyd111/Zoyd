@@ -66,6 +66,7 @@ import {
   upsertPushSubscription,
   updateUserAccount,
   sanitizeUserPayload,
+  sanitizeText,
   getFriendsForUser,
   getFriendRequestsForUser,
   getBlockedUsers,
@@ -210,16 +211,6 @@ const respondJson = (res, statusCode, payload, req = null) => {
     endTimer('zoyd_http_request_duration_seconds', effectiveReq._metricsStart, { method, pathname });
     if (statusCode >= 500) incCounter('zoyd_http_errors_total', { method, status: String(statusCode) });
   }
-};
-
-const sanitizeText = (input) => {
-  return String(input)
-    .replace(/<[^>]*>/g, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '')
-    .replace(/data:/gi, '')
-    .trim()
-    .slice(0, 5000);
 };
 
 const parseQueryParams = (url) => {

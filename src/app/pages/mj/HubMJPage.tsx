@@ -27,9 +27,10 @@ const HubMJPage: React.FC = () => {
     return baseMatches.filter((match) => {
       const query = searchQuery.trim().toLowerCase();
       if (!query) return true;
+      const rules = typeof match.rules === 'string' ? {} : match.rules;
       return (
-        match.rules.map.toLowerCase().includes(query) ||
-        match.rules.mode.toLowerCase().includes(query) ||
+        (rules.map || '').toLowerCase().includes(query) ||
+        (rules.mode || '').toLowerCase().includes(query) ||
         match.creatorPseudo.toLowerCase().includes(query)
       );
     });
@@ -154,21 +155,23 @@ const HubMJPage: React.FC = () => {
 
           {filteredMatches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {filteredMatches.map((match) => (
+              {filteredMatches.map((match) => {
+                const rules = typeof match.rules === 'string' ? {} : match.rules;
+                return (
                 <MatchCard
                   key={match.id}
                   id={match.id}
-                  map={match.rules.map}
+                  map={rules.map || ''}
                   format={match.format}
                   pot={match.prizePool}
                   entryFee={match.entryFee}
                   createdAt={match.createdAt}
                   scheduledAt={match.scheduledAt}
-                  gameMode={match.rules.mode}
+                  gameMode={rules.mode || ''}
                   rules={{
-                    weapons: match.rules.weaponRestrictions,
-                    score: match.rules.scoreTarget,
-                    bestOf: match.rules.bestOf,
+                    weapons: rules.weaponRestrictions,
+                    score: rules.scoreTarget,
+                    bestOf: rules.bestOf,
                   }}
                   teams={{
                     team1: { slots: match.teamSize, filled: match.players.filter((player) => player.team === 0).length },
@@ -194,7 +197,8 @@ const HubMJPage: React.FC = () => {
                   }
                   trustScoreMin={match.trustScoreMin}
                 />
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="py-40 flex flex-col items-center justify-center text-center border-y border-dashed border-white/10 group bg-zoyd-surface/20">

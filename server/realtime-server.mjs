@@ -384,7 +384,7 @@ const buildMatchActionPayload = (match, userId) => {
   const user = getUserById(userId);
   return {
     ok: true,
-    match,
+    match: sanitizeMatchForBroadcast(match),
     user,
     wallet: user?.wallet || getServerWallet(userId),
   };
@@ -704,6 +704,15 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'OPTIONS') {
     respondJson(res, 204, {}, req);
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/health') {
+    respondJson(res, 200, {
+      ok: true,
+      service: 'zoyd-api',
+      timestamp: getNow(),
+    });
     return;
   }
 
@@ -1222,7 +1231,7 @@ const server = http.createServer(async (req, res) => {
 
     respondJson(res, 200, {
       ok: true,
-      matches: paginate(visibleMatches, { limit, offset }),
+      matches: paginate(visibleMatches.map(sanitizeMatchForBroadcast), { limit, offset }),
       total: visibleMatches.length,
     });
     return;

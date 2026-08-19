@@ -65,6 +65,7 @@ import {
   upsertChatChannel,
   upsertPushSubscription,
   updateUserAccount,
+  sanitizeUserPayload,
   getFriendsForUser,
   getFriendRequestsForUser,
   getBlockedUsers,

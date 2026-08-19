@@ -752,9 +752,9 @@ const server = http.createServer(async (req, res) => {
         message: 'Un code d\'activation a ete envoye a votre email.',
       });
     } catch (error) {
-      log.error('register error', { message: error.message, code: error.code, stack: error.stack });
+      log.error('register error', { message: error.message, code: error.code, name: error.name });
       const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondJson(res, mapped.status, { ok: false, error: mapped.message, _debug: error.message });
     }
     return;
   }

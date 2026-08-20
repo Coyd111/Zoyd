@@ -362,6 +362,7 @@ export const useMatchStore = create<MatchState>()((set, get) => {
         getFilteredMatches: () => {
           const { matches, filters } = get();
           const currentUser = useAuthStore.getState().user;
+          if (!Array.isArray(matches)) return [];
 
           return matches.filter((match) => {
             if (match.visibility !== 'public') return false;

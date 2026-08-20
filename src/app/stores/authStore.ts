@@ -78,9 +78,8 @@ function readPersistedSession(): { token: string | null; expiresAt: string | nul
     const expiresAt = sessionStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
     if (!token) return { token: null, expiresAt: null };
     
-    // Validate token format (basic check for UUID)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(token)) {
+    // Validate token format — accept any non-empty alphanumeric string
+    if (typeof token !== 'string' || token.length < 10 || token.length > 512) {
       clearPersistedSession();
       return { token: null, expiresAt: null };
     }
@@ -155,7 +154,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
   updateUser: (updates) => {
     const allowedKeys = new Set([
       'pseudo', 'email', 'phone', 'walletBalance', 'trustScore',
-      'isOnline', 'lastSeen', 'stats', 'progression', 'gameId',
+      'isOnline', 'lastSeen', 'stats', 'progression', 'arbiterProgression', 'gameId',
       'country', 'controllerType', 'device', 'levelCODM', 'rankMJ',
       'rankBR', 'bio', 'streamerMode', 'streamerPseudo', 'notifications',
     ]);

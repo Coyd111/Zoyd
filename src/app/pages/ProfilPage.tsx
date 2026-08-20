@@ -74,10 +74,11 @@ const ProfilPage: React.FC = () => {
     [matches, tournaments, user]
   );
 
-  const lvl = levelConfig[user.progression.level] || defaultLevel;
+  const progression = user.progression || { level: 'BEGINNER', xp: 0, nextLevelXp: 100 };
+  const lvl = levelConfig[progression.level] || defaultLevel;
   const progressPercent =
-    user.progression.nextLevelXp > 0
-      ? Math.min(100, Math.round((user.progression.xp / user.progression.nextLevelXp) * 100))
+    progression.nextLevelXp > 0
+      ? Math.min(100, Math.round((progression.xp / progression.nextLevelXp) * 100))
       : 100;
 
   return (
@@ -138,8 +139,8 @@ const ProfilPage: React.FC = () => {
               <div className={`text-[10px] font-mono font-black uppercase tracking-widest mb-2 ${lvl.color}`}>
                 {lvl.label}
               </div>
-              <div className="text-3xl font-display font-black text-white italic">{user.progression.xp}</div>
-              <div className="text-[9px] font-mono text-white/20 mt-1 mb-3">/ {user.progression.nextLevelXp} XP</div>
+              <div className="text-3xl font-display font-black text-white italic">{progression.xp}</div>
+              <div className="text-[9px] font-mono text-white/20 mt-1 mb-3">/ {progression.nextLevelXp} XP</div>
               <ProgressBar
                 value={progressPercent}
                 barClassName={

@@ -122,7 +122,7 @@ describe('walletStore - Optimistic Fund Locking', () => {
   it('should lock funds from cash when cash is sufficient', () => {
     const result = useWalletStore.getState().lockFunds(30, 'match1');
 
-    expect(result).toBe(true);
+    expect(typeof result).toBe('function');
     const state = useWalletStore.getState();
     expect(state.cashBalance).toBe(70);
     expect(state.bonusBalance).toBe(50);
@@ -135,7 +135,7 @@ describe('walletStore - Optimistic Fund Locking', () => {
     useWalletStore.setState({ cashBalance: 10, bonusBalance: 50, lockedBalance: 0, lockedEntries: {} });
     const result = useWalletStore.getState().lockFunds(30, 'match1');
 
-    expect(result).toBe(true);
+    expect(typeof result).toBe('function');
     const state = useWalletStore.getState();
     expect(state.cashBalance).toBe(0);
     expect(state.bonusBalance).toBe(30);

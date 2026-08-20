@@ -171,8 +171,13 @@ const typingByChannel = new Map();
 const getNow = () => new Date().toISOString();
 
 // Nettoyage périodique des Maps de canaux orphelins (toutes les 30 min)
+const MAX_ACTIVE_CHANNELS = 500;
 const cleanupChannelMaps = () => {
   const channelIds = new Set(channels.keys());
+  // Remove empty channels (no members)
+  for (const [id, members] of channels) {
+    if (members.size === 0) channels.delete(id);
+  }
   for (const [key] of seenByChannel) {
     if (!channelIds.has(key)) seenByChannel.delete(key);
   }
@@ -199,6 +204,7 @@ const respondJson = (res, statusCode, payload, req = null) => {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Vary': 'Origin',
     "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws: https: http:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; frame-ancestors 'none';",
@@ -485,6 +491,7 @@ const mapPersistenceError = (error) => {
 
 const getChannelMemberMap = (channelId) => {
   if (!channels.has(channelId)) {
+    if (channels.size >= MAX_ACTIVE_CHANNELS) return new Map();
     channels.set(channelId, new Map());
   }
   return channels.get(channelId);
@@ -682,7 +689,12 @@ const cleanupRateLimits = () => {
 };
 setInterval(cleanupRateLimits, 60 * 1000);
 
-const getClientIp = (req) => req.headers['x-real-ip'] || req.socket.remoteAddress || '127.0.0.1';
+// Use X-Forwarded-For (set by Render proxy) to get real client IP
+const getClientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.socket.remoteAddress || '127.0.0.1';
+};
 
 const rateLimitGuard = (res, ip, group) => {
   const { allowed, remaining } = checkRateLimit(ip, group);
@@ -1043,6 +1055,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/notifications/read') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const body = await parseRequestBody(req);
       const success = markNotificationAsRead(session.user.id, body.notificationId);
@@ -1057,6 +1070,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/notifications/read-all') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const changes = markAllNotificationsAsRead(session.user.id);
       respondJson(res, 200, { ok: true, changes });
@@ -1792,6 +1806,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
@@ -2287,11 +2302,14 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const body = await parseRequestBody(req);
+      // Validate participants — only existing user IDs allowed
+      const rawParticipants = Array.isArray(body.participants) ? body.participants.filter(Boolean) : [];
+      const validParticipants = rawParticipants.filter((id) => getUserById(id));
       const channel = upsertChatChannel({
         id: `CH-${body.type || 'private'}-${Date.now().toString(36).toUpperCase()}`,
         type: body.type || 'private',
         name: body.name || 'Nouvelle conversation',
-        participants: [session.user.id, ...((Array.isArray(body.participants) ? body.participants : []).filter(Boolean))],
+        participants: [session.user.id, ...validParticipants],
         scope: 'participants',
         inbox: 'participants',
         createdAt: getNow(),
@@ -2550,7 +2568,25 @@ const io = new SocketIOServer(server, {
   },
 });
 
+// Socket.io connection rate limit per IP
+const socketConnectionCounts = new Map();
+const SOCKET_CONNECTION_LIMIT = 10;
+const SOCKET_CONNECTION_WINDOW = 60 * 1000;
+
 io.use((socket, next) => {
+  const ip = socket.handshake.address || '127.0.0.1';
+  const now = Date.now();
+  const entry = socketConnectionCounts.get(ip);
+  if (!entry || now - entry.start > SOCKET_CONNECTION_WINDOW) {
+    socketConnectionCounts.set(ip, { start: now, count: 1 });
+  } else {
+    entry.count++;
+    if (entry.count > SOCKET_CONNECTION_LIMIT) {
+      next(new Error('rate_limited'));
+      return;
+    }
+  }
+
   const token = socket.handshake.auth?.token;
   const session = getRealtimeSession(token);
 

@@ -41,7 +41,10 @@ export const useRealtimeHeartbeat = (enabled: boolean) => {
     sync();
 
     const interval = window.setInterval(sync, REALTIME_HEARTBEAT_INTERVAL_MS);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      useSocketStore.getState().disconnect();
+    };
   }, [enabled, isAuthenticated, user]);
 
   useEffect(() => {

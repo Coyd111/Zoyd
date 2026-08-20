@@ -115,7 +115,16 @@ export const NotificationDropdown: React.FC = () => {
                     className={`px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${n.read ? 'opacity-60' : ''}`}
                     onClick={() => {
                       if (!n.read) markAsRead(n.id);
-                      if (n.actionUrl) window.location.href = n.actionUrl;
+                      if (n.actionUrl) {
+                        try {
+                          const url = new URL(n.actionUrl, window.location.origin);
+                          if (url.origin === window.location.origin || url.protocol === 'https:') {
+                            window.location.href = url.pathname + url.search + url.hash;
+                          }
+                        } catch {
+                          window.location.href = '/';
+                        }
+                      }
                     }}
                   >
                     <div className="flex items-start gap-3">

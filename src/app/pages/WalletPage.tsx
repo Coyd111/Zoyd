@@ -82,6 +82,7 @@ const WalletPage: React.FC = () => {
   const handleDeposit = async () => {
     if (!amount) return;
     const depositAmount = parseFloat(amount);
+    if (isNaN(depositAmount) || depositAmount <= 0) return;
     const amountFCFA = depositAmount * 10; // 1 ZC = 10 FCFA
 
     const publicKey = import.meta.env.VITE_FEDAPAY_PUBLIC_KEY;
@@ -110,6 +111,10 @@ const WalletPage: React.FC = () => {
       },
       onComplete: async (resp: { reason?: string; transaction?: { id: number | string } }) => {
         if (resp.reason === 'CHECKOUT COMPLETE') {
+          if (!resp.transaction?.id) {
+            toast.error('Transaction invalide.');
+            return;
+          }
           toast.loading('Verification de la transaction...');
           try {
             const result = await verifyFedaPayTransaction(resp.transaction.id);
@@ -136,10 +141,11 @@ const WalletPage: React.FC = () => {
   };
 
   const handleWithdraw = async () => {
-    if (!amount) return;
+    if (!amount || !user) return;
     try {
       const withdrawAmount = parseFloat(amount);
-      await withdraw(withdrawAmount, 'Mobile Money', user?.phone || '');
+      if (isNaN(withdrawAmount) || withdrawAmount <= 0) return;
+      await withdraw(withdrawAmount, 'Mobile Money', user.phone || '');
       toast.success(`Retrait lance pour ${formatZC(withdrawAmount)}.`);
       setShowWithdrawModal(false);
       setAmount('');

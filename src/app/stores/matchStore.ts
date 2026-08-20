@@ -285,12 +285,26 @@ const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResu
   };
 };
 const normalizeStoredMatch = (match: StoredMatch): Match => ({
-  ...match,
   id: match.id || '',
+  format: match.format || '1VS1',
+  rules: match.rules || { mode: 'ranked', map: 'Unknown' },
+  players: match.players || [],
+  teamSize: match.teamSize || 1,
+  status: match.status || 'recruiting',
+  stake: match.stake || 0,
+  createdAt: match.createdAt || '',
+  updatedAt: match.updatedAt || '',
+  scheduledAt: match.scheduledAt,
+  startedAt: match.startedAt,
+  finishedAt: match.finishedAt,
+  roomId: match.roomId,
+  roomName: match.roomName,
+  arbiter: match.arbiter,
+  arbiterFee: match.arbiterFee || 0,
   disputes: Array.isArray(match?.disputes) ? match.disputes.map(normalizeStoredDispute) : [],
   dispute: match?.dispute ? normalizeStoredDispute(match.dispute) : undefined,
   result: match?.result ? normalizeStoredResult(match.id || '', match.result) : undefined,
-} as Match);
+});
 
 const getPreferredTeam = (match: Match, preferredTeam?: number): MatchTeam | null => {
   const team0Count = match.players.filter((player) => player.team === 0).length;

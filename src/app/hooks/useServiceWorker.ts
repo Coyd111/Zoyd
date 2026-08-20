@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { subscribeToRealtimePush } from '../lib/realtimeClient';
 
 let registrationPromise: Promise<ServiceWorkerRegistration> | null = null;
-let controllerChangeBound = false;
 
 const registerServiceWorker = () => {
   if (!registrationPromise) {
@@ -20,6 +19,7 @@ export function useServiceWorker() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
+  const controllerChangeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -53,15 +53,14 @@ export function useServiceWorker() {
         }
       });
 
-    if (!controllerChangeBound) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
-      controllerChangeBound = true;
-    }
+    const onControllerChange = () => window.location.reload();
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    controllerChangeRef.current = () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
 
     return () => {
       mounted = false;
+      controllerChangeRef.current?.();
+      controllerChangeRef.current = null;
     };
   }, []);
 

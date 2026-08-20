@@ -2128,14 +2128,9 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 400, { ok: false, error: 'Code 2FA requis.' });
       return;
     }
-    // TODO: Implement TOTP verification with otpauth library
-    // For now, accept any 6-digit code as valid
-    if (/^\d{6}$/.test(code)) {
-      log.info('Admin 2FA verified', { adminId: session.user.id });
-      respondJson(res, 200, { ok: true, verified: true });
-    } else {
-      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.' });
-    }
+    // SECURITY FIX: 2FA not yet implemented — reject all codes
+    log.warn('Admin 2FA verification attempted but TOTP not implemented', { adminId: session.user.id });
+    respondJson(res, 501, { ok: false, error: '2FA non implemente. Contactez l\'administrateur.' });
     return;
   }
 
@@ -2602,13 +2597,22 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:update', (payload = {}) => {
+    const channelId = payload.channelId;
+    if (!channelId) return;
+
+    const channel = getChatChannelById(channelId);
+    const user = getUserById(session.userId);
+    if (!canAccessChatChannel(channel, user)) {
+      socket.emit('server:error', { error: 'Access denied to this channel.' });
+      return;
+    }
+
     const safePayload = {
       ...payload,
       userId: session.userId,
       pseudo: session.pseudo,
     };
-    const { channelId, userId } = safePayload;
-    if (!channelId || !userId) return;
+    const { userId } = safePayload;
 
     const members = getChannelMemberMap(channelId);
     const existingMember = members.get(userId);
@@ -2639,6 +2643,10 @@ io.on('connection', (socket) => {
     const { channelId } = payload;
     if (!channelId) return;
 
+    const channel = getChatChannelById(channelId);
+    const user = getUserById(session.userId);
+    if (!canAccessChatChannel(channel, user)) return;
+
     const seen = getSeenMap(channelId);
     seen.set(session.userId, getNow());
     emitChannelSnapshots(io, channelId);
@@ -2647,6 +2655,10 @@ io.on('connection', (socket) => {
   socket.on('typing:update', (payload = {}) => {
     const { channelId, isTyping } = payload;
     if (!channelId) return;
+
+    const channel = getChatChannelById(channelId);
+    const user = getUserById(session.userId);
+    if (!canAccessChatChannel(channel, user)) return;
 
     const typing = getTypingMap(channelId);
     if (isTyping) {

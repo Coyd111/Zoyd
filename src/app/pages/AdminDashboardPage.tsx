@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, Navigate } from 'react-router';
 import {
   Shield,
   Swords,
@@ -62,6 +62,10 @@ type DisputeFilter = 'all' | 'escalated' | 'level1';
 // recommended when match count exceeds ~500 for real-time accuracy.
 const AdminDashboardPage: React.FC = () => {
   const { user } = useAuthStore();
+
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
   const { friends, reports } = useFriendsStore();
   const { matches } = useMatchStore();
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);

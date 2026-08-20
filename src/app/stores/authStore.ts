@@ -66,22 +66,17 @@ const STORAGE_KEY_ZOYD_TOKEN = 'zoyd_session_token';
 const STORAGE_KEY_ZOYD_EXPIRES = 'zoyd_session_expires';
 const STORAGE_KEY_ZOYD_REMEMBER = 'zoyd_remember_me';
 
-function persistSession(token: string, expiresAt: string | null, remember: boolean) {
+function persistSession(token: string, expiresAt: string | null, _remember: boolean) {
   try {
-    if (remember) {
-      localStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
-      if (expiresAt) localStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
-    } else {
-      sessionStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
-      if (expiresAt) sessionStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
-    }
+    sessionStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
+    if (expiresAt) sessionStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
   } catch { /* storage full or blocked */ }
 }
 
 function readPersistedSession(): { token: string | null; expiresAt: string | null } {
   try {
-    const token = sessionStorage.getItem(STORAGE_KEY_ZOYD_TOKEN) || localStorage.getItem(STORAGE_KEY_ZOYD_TOKEN);
-    const expiresAt = sessionStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES) || localStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
+    const token = sessionStorage.getItem(STORAGE_KEY_ZOYD_TOKEN);
+    const expiresAt = sessionStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
     if (!token) return { token: null, expiresAt: null };
     
     // Validate token format (basic check for UUID)

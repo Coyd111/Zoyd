@@ -85,8 +85,6 @@ export const sanitizeUserPayload = (payload) => {
     walletBalance: roundAmount(wallet.cashBalance + wallet.bonusBalance),
     trustScore: Number(payload.trustScore || 0),
     levelCODM: Number(payload.levelCODM || 1),
-    isOnline: false,
-    lastSeen: getNow(),
   };
 };
 
@@ -106,7 +104,7 @@ export const verifyPassword = async (password, passwordHash) => {
 };
 
 // ─── Supabase helpers ───────────────────────────────────────────────────────
-const sbUpsert = async (table, data) => {
+export const sbUpsert = async (table, data) => {
   if (!supabase) return;
   const { error } = await supabase.from(table).upsert(data);
   if (error) log.error(`${table} upsert error`, { message: error.message });
@@ -950,12 +948,12 @@ const ensureSeedAdmin = async () => {
   await insertUser({
     id: 'admin-zoyd-control', role: 'admin',
     pseudo: 'ZOYD Control', email: 'admin@zoyd.com', phone: '+22960000000',
-    password: process.env.ZOYD_ADMIN_PASSWORD || (() => {
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('[FATAL] ZOYD_ADMIN_PASSWORD must be set in production.');
+    password: (() => {
+      const pw = process.env.ZOYD_ADMIN_PASSWORD;
+      if (!pw) {
+        throw new Error('[FATAL] ZOYD_ADMIN_PASSWORD must be set.');
       }
-      log.warn('ZOYD_ADMIN_PASSWORD not set — using dev password.');
-      return 'Admin@ZOYD2026';
+      return pw;
     })(),
     gameId: 'ADMIN-ZOYD-0001', controllerType: 'touch', device: 'pc',
     levelCODM: 150, rankMJ: 'Legendary', rankBR: 'Legendary', country: 'Benin',

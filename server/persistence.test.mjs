@@ -147,8 +147,6 @@ describe('persistence - User Payload Sanitization', () => {
     expect(user.walletBalance).toBe(0);
     expect(user.trustScore).toBe(0);
     expect(user.levelCODM).toBe(1);
-    expect(user.isOnline).toBe(false);
-    expect(user.lastSeen).toBeDefined();
   });
 
   it('should calculate wallet balance correctly', () => {

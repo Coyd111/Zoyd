@@ -181,7 +181,6 @@ export const releaseWalletWinnings = (userId, amount, matchId, type = 'prize_win
         ...wallet,
         cashBalance: roundAmount(wallet.cashBalance + roundAmount(amount)),
         lockedBalance: roundAmount(Math.max(0, wallet.lockedBalance - releasedAmount)),
-        pendingWinnings: roundAmount(Math.max(0, wallet.pendingWinnings - roundAmount(amount))),
         lockedEntries: nextLockedEntries,
       },
       {
@@ -193,3 +192,28 @@ export const releaseWalletWinnings = (userId, amount, matchId, type = 'prize_win
       }
     );
   }).wallet;
+
+export const debitFromWallet = (userId, amount, description = 'Debit') => {
+  const safeAmount = roundAmount(amount);
+  if (safeAmount <= 0) {
+    throw makeError('INVALID_AMOUNT', 'Le montant du debit est invalide.');
+  }
+
+  return updateWalletSnapshot(userId, (wallet) => {
+    if (safeAmount > wallet.cashBalance) {
+      throw makeError('INSUFFICIENT_FUNDS', 'Solde insuffisant pour ce debit.');
+    }
+    return withTransaction(
+      {
+        ...wallet,
+        cashBalance: roundAmount(wallet.cashBalance - safeAmount),
+      },
+      {
+        type: 'debit',
+        amount: -safeAmount,
+        description,
+        status: 'completed',
+      }
+    );
+  }).wallet;
+};

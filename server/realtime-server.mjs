@@ -83,6 +83,7 @@ import {
   verifyPassword,
   hashPassword,
   updatePasswordHash,
+  sbUpsert,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex } from './mutex.mjs';
@@ -1787,7 +1788,9 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = createMatchOnServer(getStateCollection('matches'), session.user, body);
+      const outcome = await withWalletMutex(session.user.id, () =>
+        createMatchOnServer(getStateCollection('matches'), session.user, body)
+      );
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 201, buildMatchActionPayload(outcome.match, session.user.id));
     });
@@ -1808,7 +1811,9 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team);
+      const outcome = await withWalletMutex(session.user.id, () =>
+        joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team)
+      );
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
@@ -2390,7 +2395,10 @@ const server = http.createServer(async (req, res) => {
 
     respondJson(res, 200, {
       ok: true,
-      matches: getStateCollection('matches'),
+      matches: getStateCollection('matches').map((m) => {
+        const { roomPassword, ...safe } = m;
+        return safe;
+      }),
       tournaments: getStoredTournaments(),
       friends: getFriendsForUser(session.userId),
       friendRequests: getFriendRequestsForUser(session.userId),
@@ -2539,6 +2547,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:join', (payload = {}) => {
+    const channelId = payload.channelId;
+    if (!channelId) return;
+
+    const channel = getChatChannelById(channelId);
+    const user = getUserById(session.userId);
+    if (!canAccessChatChannel(channel, user)) {
+      socket.emit('server:error', { error: 'Access denied to this channel.' });
+      return;
+    }
+
     const safePayload = {
       ...payload,
       userId: session.userId,

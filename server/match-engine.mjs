@@ -5,6 +5,7 @@ import {
   releaseWalletWinnings,
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
+import { withWalletMutex } from './mutex.mjs';
 
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 

@@ -1,5 +1,5 @@
 import { FedaPay, Transaction } from 'fedapay';
-import { depositToWallet } from './wallet-engine.mjs';
+import { depositToWallet, debitFromWallet } from './wallet-engine.mjs';
 import { hasTransactionBeenProcessed, markTransactionAsProcessed } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 
@@ -72,7 +72,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       // Rollback : annuler le crédit si l'enregistrement échoue
       log.error('Failed to mark transaction processed, rolling back wallet credit', { transactionId, error: markErr.message });
       try {
-        depositToWallet(user.id, -amountZC, `Rollback FedaPay (${transactionId})`);
+        debitFromWallet(user.id, amountZC, `Rollback FedaPay (${transactionId})`);
       } catch (rollbackErr) {
         log.error('CRITICAL: Rollback also failed', { transactionId, error: rollbackErr.message });
       }

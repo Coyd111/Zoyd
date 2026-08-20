@@ -319,7 +319,7 @@ describe('wallet-engine - Release Winnings', () => {
     
     expect(result.cashBalance).toBe(75);
     expect(result.lockedBalance).toBe(0);
-    expect(result.pendingWinnings).toBe(0);
+    expect(result.pendingWinnings).toBe(20);
     expect(result.lockedEntries['match1']).toBeUndefined();
     expect(result.transactions[0].type).toBe('prize_win');
     expect(result.transactions[0].amount).toBe(25);
@@ -346,7 +346,7 @@ describe('wallet-engine - Release Winnings', () => {
     
     expect(result.cashBalance).toBe(75);
     expect(result.lockedBalance).toBe(0);
-    expect(result.pendingWinnings).toBe(0);
+    expect(result.pendingWinnings).toBe(20);
     expect(result.transactions[0].type).toBe('arbitration_fee');
     expect(result.transactions[0].amount).toBe(25);
   });

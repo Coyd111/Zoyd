@@ -58,10 +58,14 @@ export function getInitials(name: string): string {
 export function sanitizeText(input: string): string {
   if (!input) return '';
   return String(input)
-    .replace(/<[^>]*>/g, '')           // Remove HTML tags
-    .replace(/javascript:/gi, '')       // Remove javascript: protocol
-    .replace(/on\w+\s*=/gi, '')        // Remove event handlers like onclick=
-    .replace(/data:/gi, '')             // Remove data: protocol
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .replace(/data:/gi, '')
     .trim()
-    .slice(0, 5000);                    // Limit length
+    .slice(0, 5000);
 }

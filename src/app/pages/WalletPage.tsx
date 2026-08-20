@@ -105,8 +105,8 @@ const WalletPage: React.FC = () => {
         description: `Recharge de ${depositAmount} ZC (~ ${amountFCFA} FCFA)`,
       },
       customer: {
-        email: 'joueur@zoyd.app',
-        lastname: 'Joueur ZOYD'
+        email: user?.email || 'joueur@zoyd.app',
+        lastname: user?.pseudo || 'Joueur ZOYD'
       },
       onComplete: async (resp: { reason?: string; transaction?: { id: number | string } }) => {
         if (resp.reason === 'CHECKOUT COMPLETE') {

@@ -228,7 +228,7 @@ const normalizePersistedTournament = (tournament: StoredTournament): Tournament 
     entries,
     arbitersNeeded,
     payout: buildPayout(Number(tournament?.entryFee || 0), entries.length, arbitersNeeded, teamSize),
-  } as Tournament;
+  };
 };
 
 const mergeTournamentsByFreshness = (currentTournaments: Tournament[], incomingTournaments: Tournament[]) => {

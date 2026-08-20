@@ -56,9 +56,9 @@ const PublicProfilPage: React.FC = () => {
         ? createPublicProfile({
             userId: id,
             currentUser,
-            observedPlayer,
-            observedArbiter,
-            friendRecord,
+            observedPlayer: observedPlayer ?? null,
+            observedArbiter: observedArbiter ?? null,
+            friendRecord: friendRecord ?? null,
           })
         : null,
     [currentUser, friendRecord, id, observedArbiter, observedPlayer]

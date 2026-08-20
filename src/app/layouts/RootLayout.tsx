@@ -17,10 +17,14 @@ const RootLayout: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Initial fetch only
     fetchAllMatchesFromDb().then((matches) => {
       useMatchStore.getState().replaceFromServer(matches);
     }).catch(() => {});
+
+    return () => {
+      useMatchStore.getState().replaceFromServer([]);
+      useTournamentStore.setState({ tournaments: [] });
+    };
   }, [isAuthenticated]);
 
   useEffect(() => {

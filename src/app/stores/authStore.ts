@@ -153,8 +153,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
     set({ user: null, sessionToken: null, isAuthenticated: false, isLoading: false, expiresAt: null });
   },
   updateUser: (updates) => {
+    const allowedKeys = new Set([
+      'pseudo', 'email', 'phone', 'walletBalance', 'trustScore',
+      'isOnline', 'lastSeen', 'stats', 'progression', 'gameId',
+      'country', 'controllerType', 'device', 'levelCODM', 'rankMJ',
+      'rankBR', 'bio', 'streamerMode', 'streamerPseudo', 'notifications',
+    ]);
+    const safeUpdates: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (allowedKeys.has(key)) safeUpdates[key] = value;
+    }
     set((state) => ({
-      user: state.user ? normalizeUser({ ...state.user, ...updates }) : null,
+      user: state.user ? normalizeUser({ ...state.user, ...safeUpdates }) : null,
     }));
     if (typeof updates.trustScore === 'number') {
       useTrustScoreStore.getState().hydrateFromUser(updates.trustScore);

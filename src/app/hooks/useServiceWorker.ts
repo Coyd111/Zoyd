@@ -46,8 +46,9 @@ export function useServiceWorker() {
           setIsInstalled(true);
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (mounted) {
+          console.warn('Service worker registration failed:', err?.message || err);
           setIsInstalled(false);
         }
       });

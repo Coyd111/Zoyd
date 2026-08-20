@@ -74,8 +74,15 @@ const ChatPage: React.FC = () => {
     };
   }, [activeChannelId, hydrateFromServer, user]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [currentMessages.length]);
 
   const handleSend = async (event: React.FormEvent) => {
@@ -238,7 +245,7 @@ const ChatPage: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              <div ref={containerRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                 <AnimatePresence>
                   {currentMessages.length === 0 && (
                     <motion.div

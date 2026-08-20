@@ -20,9 +20,21 @@ const TEAM_OPTIONS = [
   { label: 'Squad Bravo', value: 1 },
 ] as const;
 
+interface MatchFormData {
+  entryFee: number;
+  maxPlayers: number;
+  trustScoreMin: number;
+  weaponRestriction: string;
+  isPrivate: boolean;
+  deviceRestriction?: string;
+  controllerRestriction?: string;
+  rules?: Record<string, unknown>;
+  scheduledAt?: string;
+}
+
 const CreateMatchPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Partial<MatchFormData>>({});
   const [selectedFormat, setSelectedFormat] = useState<MatchFormat | ''>('');
   const [selectedGameMode, setSelectedGameMode] = useState('');
   const [selectedMap, setSelectedMap] = useState('');
@@ -67,7 +79,7 @@ const CreateMatchPage: React.FC = () => {
     setCurrentStep(2);
   };
 
-  const onStep2Submit = (data: Record<string, any>) => {
+  const onStep2Submit = (data: Partial<MatchFormData>) => {
     if (!selectedGameMode || !selectedMap) {
       toast.error('Choisis un mode et une carte.');
       return;
@@ -82,7 +94,7 @@ const CreateMatchPage: React.FC = () => {
     setCurrentStep(3);
   };
 
-  const onStep3Submit = (data: Record<string, any>) => {
+  const onStep3Submit = (data: Partial<MatchFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setCurrentStep(4);
   };

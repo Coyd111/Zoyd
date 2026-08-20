@@ -197,3 +197,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ notifications: nextNotifications });
   },
 }));
+
+// Selectors — use these with useNotificationStore(selector) for optimal re-render behavior
+export const selectUnreadCount = (s: NotificationState) =>
+  s.notifications.filter((n) => !n.read && !n.dismissed).length;
+
+export const selectActiveNotifications = (s: NotificationState) => {
+  const priorityOrder: Record<NotificationPriority, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+  return s.notifications
+    .filter((n) => !n.dismissed)
+    .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+};

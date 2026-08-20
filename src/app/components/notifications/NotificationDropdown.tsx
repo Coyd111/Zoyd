@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Check, Trash2, X, Swords, Trophy, UserPlus, AlertTriangle, Wallet, ShieldCheck, Calendar, Clock } from 'lucide-react';
-import { useNotificationStore, type Notification, type NotificationType } from '../../stores/notificationStore';
+import { useNotificationStore, type Notification, type NotificationType, selectUnreadCount } from '../../stores/notificationStore';
 import { useServiceWorker } from '../../hooks/useServiceWorker';
 
 const typeIcons: Record<NotificationType, React.ReactNode> = {
@@ -29,9 +29,12 @@ const priorityBadge: Record<Notification['priority'], string> = {
 export const NotificationDropdown: React.FC = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { notifications, markAsRead, markAllAsRead, dismiss, getUnreadCount } = useNotificationStore();
+  const markAsRead = useNotificationStore((s) => s.markAsRead);
+  const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
+  const dismiss = useNotificationStore((s) => s.dismiss);
+  const notifications = useNotificationStore((s) => s.notifications);
+  const unread = useNotificationStore(selectUnreadCount);
   const { notificationPermission, requestNotificationPermission } = useServiceWorker();
-  const unread = getUnreadCount();
 
   useEffect(() => {
     const handle = (e: MouseEvent) => {

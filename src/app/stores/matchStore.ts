@@ -111,7 +111,6 @@ export interface Match {
   zoydFee: number;
   arbiterFee: number;
   visibility: MatchVisibility;
-  privacy: MatchVisibility;
   deviceRestriction: DeviceRestriction;
   controllerRestriction: ControllerRestriction;
   status: MatchStatus;

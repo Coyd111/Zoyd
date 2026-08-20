@@ -18,7 +18,6 @@ interface LoginFormData {
 const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
@@ -33,7 +32,7 @@ const LoginPage: React.FC = () => {
     try {
       const auth = await loginWithBackend(data.emailOrPseudo, data.password);
       
-      login(auth.user, auth.token, auth.expiresAt, rememberMe);
+      login(auth.user, auth.token, auth.expiresAt);
       navigate(auth.user.role === 'admin' ? '/admin' : '/mode');
     } catch (error: any) {
       const errorMessage = error.message || 'Connexion impossible.';
@@ -145,20 +144,6 @@ const LoginPage: React.FC = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-white/10 bg-white/5 checked:bg-zoyd-blue"
-                />
-                <span className="text-[11px] font-mono text-white/40 uppercase group-hover:text-white/60 transition-colors">
-                  Rester connecte
-                </span>
-              </label>
             </div>
 
             <Button

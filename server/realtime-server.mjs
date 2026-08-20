@@ -2136,6 +2136,7 @@ const server = http.createServer(async (req, res) => {
         submittedBy: 'admin-dashboard',
       });
       saveMatches(io, outcome.matches, outcome.match);
+      log.info('Admin action: award match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2168,6 +2169,7 @@ const server = http.createServer(async (req, res) => {
         body.resolution || 'Litige clos par moderation.'
       );
       saveMatches(io, outcome.matches, outcome.match);
+      log.info('Admin action: resolve dispute', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchResolve[1], resolution: body.resolution });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2200,6 +2202,7 @@ const server = http.createServer(async (req, res) => {
         body.reason || 'Match annule par moderation.'
       );
       saveMatches(io, outcome.matches, outcome.match);
+      log.info('Admin action: cancel match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchCancel[1], reason: body.reason });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {

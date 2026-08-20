@@ -156,8 +156,8 @@ const ParametresPage: React.FC = () => {
         setNewPassword('');
         setConfirmNewPassword('');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors du changement de mot de passe.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors du changement de mot de passe.');
     } finally {
       setIsChangingPassword(false);
     }
@@ -493,16 +493,6 @@ const SelectField = ({
       ))}
     </select>
   </label>
-);
-
-const SecurityCard = ({ title, body, badge }: { title: string; body: string; badge: string }) => (
-  <div className="hud-panel p-6 bg-zoyd-surface/20">
-    <div className="flex items-center justify-between gap-4 mb-3">
-      <div className="font-display font-black text-white uppercase italic">{title}</div>
-      <Badge variant="yellow">{badge}</Badge>
-    </div>
-    <p className="text-sm text-white/40">{body}</p>
-  </div>
 );
 
 const StatusCard = ({ label, value, accent }: { label: string; value: string; accent: string }) => (

@@ -34,8 +34,8 @@ const LoginPage: React.FC = () => {
       
       login(auth.user, auth.token, auth.expiresAt);
       navigate(auth.user.role === 'admin' ? '/admin' : '/mode');
-    } catch (error: any) {
-      const errorMessage = error.message || 'Connexion impossible.';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Connexion impossible.';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

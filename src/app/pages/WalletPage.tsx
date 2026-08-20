@@ -126,9 +126,9 @@ const WalletPage: React.FC = () => {
             } else {
               toast.error('Erreur lors de la verification.');
             }
-          } catch (error: any) {
+          } catch (err) {
             toast.dismiss();
-            toast.error(error.message || 'Erreur lors de la verification de la transaction FedaPay.');
+            toast.error(err instanceof Error ? err.message : 'Erreur lors de la verification de la transaction FedaPay.');
           }
         } else {
           toast.error('Transaction annulee ou echouee.');
@@ -149,8 +149,8 @@ const WalletPage: React.FC = () => {
       toast.success(`Retrait lance pour ${formatZC(withdrawAmount)}.`);
       setShowWithdrawModal(false);
       setAmount('');
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur de retrait.');
     }
   };
 

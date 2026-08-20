@@ -90,6 +90,8 @@ export const sanitizeUserPayload = (payload) => {
 
 export const hashPassword = async (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
+  // NOTE: Salt is passed as hex string (UTF-8), not as Buffer.
+  // This reduces effective entropy but is consistent between hash and verify.
   const digest = (await scryptAsync(password, salt, 64)).toString('hex');
   return `${salt}:${digest}`;
 };
@@ -97,6 +99,7 @@ export const hashPassword = async (password) => {
 export const verifyPassword = async (password, passwordHash) => {
   if (!passwordHash?.includes(':')) return false;
   const [salt, expectedDigest] = passwordHash.split(':');
+  // NOTE: Uses same hex string salt as hashPassword for consistency.
   const actualDigest = (await scryptAsync(password, salt, 64)).toString('hex');
   const expectedBuffer = Buffer.from(expectedDigest, 'hex');
   const actualBuffer = Buffer.from(actualDigest, 'hex');
@@ -300,6 +303,9 @@ export const buildUserPayload = (input, role = 'player') => {
   };
 };
 
+import { Mutex } from 'async-mutex';
+const registrationMutex = new Mutex();
+
 const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   const pk = normalizePseudoKey(pseudo);
   const ek = normalizeEmailKey(email);
@@ -322,28 +328,33 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     throw makeError('INVALID_REGISTRATION', 'Le mot de passe doit contenir au moins 8 caracteres.');
   }
 
-  ensureUniqueRegistration(input);
+  const release = await registrationMutex.acquire();
+  try {
+    ensureUniqueRegistration(input);
 
-  const id = input.id || crypto.randomUUID();
-  const createdAt = input.dateJoined || getNow();
-  const payload = buildUserPayload({ ...input, id, dateJoined: createdAt, isActive: true }, role);
-  const passwordHash = await hashPassword(password);
+    const id = input.id || crypto.randomUUID();
+    const createdAt = input.dateJoined || getNow();
+    const payload = buildUserPayload({ ...input, id, dateJoined: createdAt, isActive: true }, role);
+    const passwordHash = await hashPassword(password);
 
-  // Write to memory
-  memoryUsers.set(id, payload);
-  storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
+    // Write to memory
+    memoryUsers.set(id, payload);
+    storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
 
-  // Write to Supabase
-  sbUpsert('app_users', {
-    id, pseudo_key: normalizePseudoKey(payload.pseudo),
-    email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
-    game_id_key: normalizeGameIdKey(payload.gameId), role,
-    password_hash: passwordHash, payload,
-    is_active: false,
-    created_at: createdAt, updated_at: createdAt,
-  });
+    // Write to Supabase
+    sbUpsert('app_users', {
+      id, pseudo_key: normalizePseudoKey(payload.pseudo),
+      email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
+      game_id_key: normalizeGameIdKey(payload.gameId), role,
+      password_hash: passwordHash, payload,
+      is_active: false,
+      created_at: createdAt, updated_at: createdAt,
+    });
 
   return sanitizeUserPayload(payload);
+  } finally {
+    release();
+  }
 };
 
 export const getUserById = (userId) => {
@@ -383,6 +394,17 @@ export const updateUserAccount = (userId, updater) => {
 
   const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
   memoryUsers.set(userId, next);
+
+  // Clean up old password hash lookup entries when pseudo/email/phone change
+  const oldPseudoKey = normalizePseudoKey(current.pseudo);
+  const oldEmailKey = normalizeEmailKey(current.email);
+  const oldPhoneKey = normalizePhoneKey(current.phone);
+  const newPseudoKey = normalizePseudoKey(next.pseudo);
+  const newEmailKey = normalizeEmailKey(next.email);
+  const newPhoneKey = normalizePhoneKey(next.phone);
+  if (oldPseudoKey !== newPseudoKey) memoryPasswordHashes.delete(oldPseudoKey);
+  if (oldEmailKey !== newEmailKey) memoryPasswordHashes.delete(oldEmailKey);
+  if (oldPhoneKey !== newPhoneKey) memoryPasswordHashes.delete(oldPhoneKey);
 
   const passwordHash = memoryPasswordHashes.get(userId)?.[1] || '';
 
@@ -920,7 +942,7 @@ export const cleanupMemoryFriendRequests = () => {
   const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
   const cutoff = new Date(Date.now() - maxAge).toISOString();
   for (const [id, fr] of memoryFriendRequests) {
-    if ((fr.status === 'declined' || fr.status === 'cancelled') && fr.createdAt < cutoff) {
+    if ((fr.status === 'declined' || fr.status === 'cancelled') && fr.created_at < cutoff) {
       memoryFriendRequests.delete(id);
     }
   }

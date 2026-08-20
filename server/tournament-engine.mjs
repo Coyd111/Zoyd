@@ -1,4 +1,5 @@
 import { getUserById, updateUserAccount } from './persistence.mjs';
+import { withWalletMutex } from './mutex.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
@@ -568,17 +569,19 @@ const getPlacementXp = (placement) => {
   return 45;
 };
 
-const applyTournamentSettlement = (tournament) => {
+const applyTournamentSettlement = async (tournament) => {
   if (tournament.status !== 'completed') return;
 
   for (const entry of tournament.entries) {
     const payout = roundAmount(getPlacementPayout(tournament, entry.finalPlacement));
 
-    if (payout > 0) {
-      releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
-    } else {
-      settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
-    }
+    await withWalletMutex(entry.captainId, () => {
+      if (payout > 0) {
+        releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
+      } else {
+        settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
+      }
+    });
 
     const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
     for (const userId of memberUserIds) {
@@ -601,13 +604,15 @@ const applyTournamentSettlement = (tournament) => {
   if (arbiterShare > 0) {
     for (const arbiter of tournament.arbiters) {
       if (!arbiter.userId) continue;
-      releaseWalletWinnings(
-        arbiter.userId,
-        arbiterShare,
-        `${tournament.id}-ARB-${arbiter.slot}`,
-        'arbitration_fee',
-        `Commission arbitre ${tournament.name}`
-      );
+      await withWalletMutex(arbiter.userId, () => {
+        releaseWalletWinnings(
+          arbiter.userId,
+          arbiterShare,
+          `${tournament.id}-ARB-${arbiter.slot}`,
+          'arbitration_fee',
+          `Commission arbitre ${tournament.name}`
+        );
+      });
     }
   }
 };
@@ -910,7 +915,7 @@ export const setTournamentMatchLiveOnServer = (tournaments, actor, tournamentId,
   };
 };
 
-export const submitTournamentMatchResultOnServer = (tournaments, actor, tournamentId, matchId, payload) => {
+export const submitTournamentMatchResultOnServer = async (tournaments, actor, tournamentId, matchId, payload) => {
   const { actorUser, nextTournaments, assignedSlot } = requireTournamentMatchAction(
     tournaments,
     actor,
@@ -958,7 +963,7 @@ export const submitTournamentMatchResultOnServer = (tournaments, actor, tourname
   }
 
   if (!wasCompleted && nextTournament.status === 'completed') {
-    applyTournamentSettlement(nextTournament);
+    await applyTournamentSettlement(nextTournament);
   }
 
   return {

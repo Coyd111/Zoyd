@@ -1446,7 +1446,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = submitTournamentMatchResultOnServer(
+      const outcome = await submitTournamentMatchResultOnServer(
         getStoredTournaments(),
         session.user,
         tournamentResult[1],
@@ -1978,7 +1978,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = submitMatchResultOnServer(getStateCollection('matches'), session.user, matchResult[1], body);
+      const outcome = await submitMatchResultOnServer(getStateCollection('matches'), session.user, matchResult[1], body);
       saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
@@ -2153,7 +2153,7 @@ const server = http.createServer(async (req, res) => {
       const currentMatches = getStateCollection('matches');
       const targetMatch = currentMatches.find((entry) => entry.id === adminMatchAward[1]);
       const defaultScores = body.winnerTeam === 0 ? { team0: 1, team1: 0 } : { team0: 0, team1: 1 };
-      const outcome = submitMatchResultOnServer(currentMatches, session.user, adminMatchAward[1], {
+      const outcome = await submitMatchResultOnServer(currentMatches, session.user, adminMatchAward[1], {
         winnerTeam: body.winnerTeam,
         scores: targetMatch?.result?.scores || defaultScores,
         screenshots: targetMatch?.result?.screenshots || [],
@@ -2221,7 +2221,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = cancelMatchOnServer(
+      const outcome = await cancelMatchOnServer(
         getStateCollection('matches'),
         session.user,
         adminMatchCancel[1],
@@ -2713,7 +2713,7 @@ const start = async () => {
 
   setInterval(async () => {
     try { await withMatchMutex(async () => {
-      const outcome = processMatchAutomationOnServer(getStateCollection('matches'));
+      const outcome = await processMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.changed) {
         saveMatches(io, outcome.matches);
       }

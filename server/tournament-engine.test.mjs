@@ -394,7 +394,7 @@ describe('tournament-engine - submitTournamentMatchResultOnServer', () => {
     getUserById.mockReturnValue(mockAdmin);
   });
 
-  it('should record match result and advance winner', () => {
+  it('should record match result and advance winner', async () => {
     const entries = [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
@@ -423,7 +423,7 @@ describe('tournament-engine - submitTournamentMatchResultOnServer', () => {
     }])[0];
 
     const matchId = tournament.matches[0].id;
-    const result = tournamentEngine.submitTournamentMatchResultOnServer(
+    const result = await tournamentEngine.submitTournamentMatchResultOnServer(
       [tournament], mockAdmin, 'T-TEST', matchId,
       { winnerEntryId: 'ENTRY-P1-1', scoreA: 7, scoreB: 3 }
     );

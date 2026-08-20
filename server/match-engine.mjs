@@ -138,7 +138,7 @@ export const getRankFromElo = (elo) => {
   return 'Master';
 };
 
-const applyResultSettlement = (match, result) => {
+const applyResultSettlement = async (match, result) => {
   const payout = getWinnerPayout(match);
 
   // Elo Calculation
@@ -175,63 +175,69 @@ const applyResultSettlement = (match, result) => {
     const deltaElo = eloDeltaByTeam[player.team] || 0;
 
     if (isWinner) {
-      releaseWalletWinnings(
-        player.userId,
-        payout,
-        match.id,
-        'prize_win',
-        `Gain du match ${match.rules.mode} / ${match.rules.map}`
-      );
+      await withWalletMutex(player.userId, () => {
+        releaseWalletWinnings(
+          player.userId,
+          payout,
+          match.id,
+          'prize_win',
+          `Gain du match ${match.rules.mode} / ${match.rules.map}`
+        );
 
-      patchUserForMatchOutcome(player.userId, (user) => {
-        const nextStats = {
-          ...user.stats,
-          wins: Number(user.stats?.wins || 0) + 1,
-          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout),
-          elo: Math.round(Number(user.stats?.elo || 1200) + deltaElo),
-        };
-        const total = nextStats.wins + Number(nextStats.losses || 0) + Number(nextStats.draws || 0);
-        nextStats.totalMatches = total;
-        nextStats.winRate = total > 0 ? Math.round((nextStats.wins / total) * 1000) / 10 : 0;
-        user.stats = nextStats;
-        user.rankMJ = getRankFromElo(nextStats.elo);
-        user.progression = addXpToProgression(user.progression, 120);
-        if (result.resolutionType === 'forfeit') {
-          user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) + 2));
-        }
-        return user;
+        patchUserForMatchOutcome(player.userId, (user) => {
+          const nextStats = {
+            ...user.stats,
+            wins: Number(user.stats?.wins || 0) + 1,
+            totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout),
+            elo: Math.round(Number(user.stats?.elo || 1200) + deltaElo),
+          };
+          const total = nextStats.wins + Number(nextStats.losses || 0) + Number(nextStats.draws || 0);
+          nextStats.totalMatches = total;
+          nextStats.winRate = total > 0 ? Math.round((nextStats.wins / total) * 1000) / 10 : 0;
+          user.stats = nextStats;
+          user.rankMJ = getRankFromElo(nextStats.elo);
+          user.progression = addXpToProgression(user.progression, 120);
+          if (result.resolutionType === 'forfeit') {
+            user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) + 2));
+          }
+          return user;
+        });
       });
       continue;
     }
 
-    settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
-    patchUserForMatchOutcome(player.userId, (user) => {
-      const nextStats = {
-        ...user.stats,
-        losses: Number(user.stats?.losses || 0) + 1,
-        elo: Math.max(0, Math.round(Number(user.stats?.elo || 1200) + deltaElo)),
-      };
-      const total = Number(nextStats.wins || 0) + nextStats.losses + Number(nextStats.draws || 0);
-      nextStats.totalMatches = total;
-      nextStats.winRate = total > 0 ? Math.round((Number(nextStats.wins || 0) / total) * 1000) / 10 : 0;
-      user.stats = nextStats;
-      user.rankMJ = getRankFromElo(nextStats.elo);
-      user.progression = addXpToProgression(user.progression, 35);
-      if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
-        user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));
-      }
-      return user;
+    await withWalletMutex(player.userId, () => {
+      settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
+      patchUserForMatchOutcome(player.userId, (user) => {
+        const nextStats = {
+          ...user.stats,
+          losses: Number(user.stats?.losses || 0) + 1,
+          elo: Math.max(0, Math.round(Number(user.stats?.elo || 1200) + deltaElo)),
+        };
+        const total = Number(nextStats.wins || 0) + nextStats.losses + Number(nextStats.draws || 0);
+        nextStats.totalMatches = total;
+        nextStats.winRate = total > 0 ? Math.round((Number(nextStats.wins || 0) / total) * 1000) / 10 : 0;
+        user.stats = nextStats;
+        user.rankMJ = getRankFromElo(nextStats.elo);
+        user.progression = addXpToProgression(user.progression, 35);
+        if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
+          user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));
+        }
+        return user;
+      });
     });
   }
 
   if (match.arbiter?.userId && match.arbiterFee > 0) {
-    releaseWalletWinnings(
-      match.arbiter.userId,
-      match.arbiterFee,
-      match.id,
-      'arbitration_fee',
-      `Commission arbitre ${match.id}`
-    );
+    await withWalletMutex(match.arbiter.userId, () => {
+      releaseWalletWinnings(
+        match.arbiter.userId,
+        match.arbiterFee,
+        match.id,
+        'arbitration_fee',
+        `Commission arbitre ${match.id}`
+      );
+    });
   }
 };
 
@@ -488,7 +494,7 @@ export const launchMatchOnServer = (matches, actor, matchId) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
-export const submitMatchResultOnServer = (matches, actor, matchId, resultPayload) => {
+export const submitMatchResultOnServer = async (matches, actor, matchId, resultPayload) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
@@ -540,7 +546,7 @@ export const submitMatchResultOnServer = (matches, actor, matchId, resultPayload
   match.finishedAt = getNow();
   match.updatedAt = getNow();
 
-  applyResultSettlement(match, fullResult);
+  await applyResultSettlement(match, fullResult);
 
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
@@ -620,7 +626,7 @@ export const resolveDisputeOnServer = (matches, actor, matchId, resolution) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
-export const cancelMatchOnServer = (matches, actor, matchId, reason = 'Match annule par moderation.') => {
+export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Match annule par moderation.') => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') {
     throw makeError('FORBIDDEN', 'Seul un admin peut annuler un match.');
@@ -644,7 +650,7 @@ export const cancelMatchOnServer = (matches, actor, matchId, reason = 'Match ann
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
-const resolveForfeit = (match, winnerTeam, losingTeam, reason) => {
+const resolveForfeit = async (match, winnerTeam, losingTeam, reason) => {
   const fullResult = {
     winnerTeam,
     scores: {
@@ -669,7 +675,7 @@ const resolveForfeit = (match, winnerTeam, losingTeam, reason) => {
   match.finishedAt = getNow();
   match.updatedAt = getNow();
 
-  applyResultSettlement(match, fullResult);
+  await applyResultSettlement(match, fullResult);
 };
 
 const cancelForAutomation = (match, reason) => {
@@ -699,7 +705,7 @@ const autoReadyCheckedInPlayers = (match) => {
   }
 };
 
-export const processMatchAutomationOnServer = (matches) => {
+export const processMatchAutomationOnServer = async (matches) => {
   const now = Date.now();
   const nextMatches = cloneMatches(matches);
   let changed = false;
@@ -751,7 +757,7 @@ export const processMatchAutomationOnServer = (matches) => {
       continue;
     }
 
-    resolveForfeit(
+    await resolveForfeit(
       match,
       teamAlphaReady ? 0 : 1,
       teamAlphaReady ? 1 : 0,

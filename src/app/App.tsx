@@ -1,5 +1,6 @@
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuthSessionBootstrap } from './hooks/useAuthSessionBootstrap';
 import { useChatSessionBootstrap } from './hooks/useChatSessionBootstrap';
 import { useServiceWorker } from './hooks/useServiceWorker';
@@ -10,5 +11,9 @@ export default function App() {
   useAuthSessionBootstrap();
   useChatSessionBootstrap();
   useWalletSessionBootstrap();
-  return <RouterProvider router={router} fallbackElement={<div className="min-h-screen bg-zoyd-black flex items-center justify-center text-white/50 font-mono text-xs uppercase tracking-widest">Chargement...</div>} />;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} fallbackElement={<div className="min-h-screen bg-zoyd-black flex items-center justify-center text-white/50 font-mono text-xs uppercase tracking-widest">Chargement...</div>} />;
+    </ErrorBoundary>
+  );
 }

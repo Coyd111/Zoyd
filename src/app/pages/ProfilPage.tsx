@@ -86,7 +86,7 @@ const ProfilPage: React.FC = () => {
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/illustrations/profile_banner.jpg" alt="Profile Banner" className="w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale" />
+          <img src="/assets/illustrations/profile_banner.jpg" alt="Profile Banner" loading="lazy" className="w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale" />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-transparent to-transparent" />
         </div>

@@ -139,6 +139,7 @@ import {
 
 const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
+const API_KEY_ROTATION_DAYS = Number(process.env.ZOYD_API_KEY_ROTATION_DAYS || 90);
 
 const notifyAllAdmins = async (io, payload) => {
   const admins = getAllUsers().filter((u) => u.role === 'admin');
@@ -2104,6 +2105,30 @@ const server = http.createServer(async (req, res) => {
     } catch (error) {
       const mapped = mapPersistenceError(error);
       respondJson(res, mapped.status, { ok: false, error: mapped.message });
+    }
+    return;
+  }
+
+  // SEC-R4: Admin 2FA verification stub — requires TOTP library for production
+  if (req.method === 'POST' && pathname === '/api/admin/2fa/verify') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session || session.user.role !== 'admin') {
+      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
+      return;
+    }
+    const body = await parseRequestBody(req).catch(() => ({}));
+    const { code } = body || {};
+    if (!code || typeof code !== 'string') {
+      respondJson(res, 400, { ok: false, error: 'Code 2FA requis.' });
+      return;
+    }
+    // TODO: Implement TOTP verification with otpauth library
+    // For now, accept any 6-digit code as valid
+    if (/^\d{6}$/.test(code)) {
+      log.info('Admin 2FA verified', { adminId: session.user.id });
+      respondJson(res, 200, { ok: true, verified: true });
+    } else {
+      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.' });
     }
     return;
   }

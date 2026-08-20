@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -43,7 +43,10 @@ const ChatPage: React.FC = () => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const currentMessages = activeChannelId ? getMessagesForChannel(activeChannelId) : [];
+  const currentMessages = useMemo(
+    () => (activeChannelId ? getMessagesForChannel(activeChannelId) : []),
+    [activeChannelId, messages, getMessagesForChannel]
+  );
   const activeChannel = channels.find((channel) => channel.id === activeChannelId);
 
   useEffect(() => {

@@ -35,7 +35,12 @@ const step1Schema = z
     pseudo: z.string().min(3, 'Minimum 3 caracteres').max(20, 'Maximum 20 caracteres'),
     email: z.string().email('Email invalide'),
     phone: z.string().min(8, 'Numero invalide'),
-    password: z.string().min(8, 'Minimum 8 caracteres'),
+    password: z
+      .string()
+      .min(8, 'Minimum 8 caracteres')
+      .regex(/[A-Z]/, 'Doit contenir au moins une majuscule')
+      .regex(/[0-9]/, 'Doit contenir au moins un chiffre')
+      .regex(/[^A-Za-z0-9]/, 'Doit contenir au moins un caractere special'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {

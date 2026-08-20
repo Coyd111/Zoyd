@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, Suspense } from 'react';
 import { motion } from 'motion/react';
 import {
   TrendingUp,
@@ -11,23 +11,24 @@ import {
   Wallet,
   Lock,
 } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell,
-} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { useAuthStore } from '../stores/authStore';
 import { useMatchStore } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
+
+const LazyEarningsAreaChart = React.lazy(() =>
+  import('./EarningsCharts').then((m) => ({ default: m.EarningsAreaChart }))
+);
+const LazyMatchResultsBarChart = React.lazy(() =>
+  import('./EarningsCharts').then((m) => ({ default: m.MatchResultsBarChart }))
+);
+
+const ChartFallback = () => (
+  <div className="h-full w-full flex items-center justify-center">
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/20 animate-pulse">Chargement...</div>
+  </div>
+);
 import { useWalletStore } from '../stores/walletStore';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { buildWalletInsights } from '../../lib/communityInsights';
@@ -194,51 +195,9 @@ const EarningsDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="h-[350px] w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={walletInsights.trend}>
-                    <defs>
-                      <linearGradient id="earningsArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FFCC00" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#FFCC00" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                    <XAxis
-                      dataKey="day"
-                      stroke="#ffffff20"
-                      fontSize={10}
-                      fontFamily="monospace"
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      stroke="#ffffff20"
-                      fontSize={10}
-                      fontFamily="monospace"
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `${value}ZC`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0A0A0A',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        fontSize: '12px',
-                        fontFamily: 'monospace',
-                      }}
-                      formatter={(value: number, _name, payload) => [formatZC(value), payload?.payload?.label || 'Jour']}
-                      labelFormatter={(_value, payload) => payload?.[0]?.payload?.label || ''}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="amount"
-                      stroke="#FFCC00"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#earningsArea)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <Suspense fallback={<ChartFallback />}>
+                  <LazyEarningsAreaChart data={walletInsights.trend} />
+                </Suspense>
               </div>
             </CardContent>
           </Card>
@@ -258,32 +217,9 @@ const EarningsDashboard: React.FC = () => {
                 ) : (
                   <>
                     <div className="h-[200px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={matchResultsData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                          <XAxis
-                            dataKey="name"
-                            stroke="#ffffff20"
-                            fontSize={10}
-                            fontFamily="monospace"
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis hide />
-                          <Tooltip
-                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                            contentStyle={{
-                              backgroundColor: '#0A0A0A',
-                              border: '1px solid rgba(255,255,255,0.1)',
-                            }}
-                          />
-                          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                            {matchResultsData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                      <Suspense fallback={<ChartFallback />}>
+                        <LazyMatchResultsBarChart data={matchResultsData} />
+                      </Suspense>
                     </div>
                     <div className="flex justify-around mt-4">
                       <div className="text-center">

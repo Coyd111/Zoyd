@@ -21,6 +21,11 @@ export interface ToastState {
 let toastIdCounter = 0;
 const toastTimers = new Map<string, NodeJS.Timeout>();
 
+export function cleanupToastTimers() {
+  toastTimers.forEach((timer) => clearTimeout(timer));
+  toastTimers.clear();
+}
+
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
 
@@ -39,7 +44,6 @@ export const useToastStore = create<ToastState>((set) => ({
   },
 
   removeToast: (id) => {
-    // Clear the timer if it exists
     const timer = toastTimers.get(id);
     if (timer) {
       clearTimeout(timer);
@@ -49,9 +53,7 @@ export const useToastStore = create<ToastState>((set) => ({
   },
 
   clearAll: () => {
-    // Clear all timers
-    toastTimers.forEach((timer) => clearTimeout(timer));
-    toastTimers.clear();
+    cleanupToastTimers();
     set({ toasts: [] });
   },
 }));

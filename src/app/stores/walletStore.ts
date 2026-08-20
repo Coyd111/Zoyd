@@ -154,6 +154,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
 
         // Optimistic-UI: lock funds immediately while the server confirms.
         // On server confirmation, hydrateFromServer will overwrite this state.
+        // Returns a revert function to roll back if server rejects.
         lockFunds: (amount, entryKey) => {
           const state = get();
           const safeAmount = roundAmount(amount);
@@ -162,6 +163,10 @@ export const useWalletStore = create<WalletState>()((set, get) => {
 
           const cashUsed = Math.min(state.cashBalance, safeAmount);
           const bonusUsed = roundAmount(safeAmount - cashUsed);
+          const previousCash = state.cashBalance;
+          const previousBonus = state.bonusBalance;
+          const previousLocked = state.lockedBalance;
+          const previousEntries = { ...state.lockedEntries };
 
           set((s) => ({
             cashBalance: roundAmount(s.cashBalance - cashUsed),
@@ -185,7 +190,14 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             status: 'completed',
           });
 
-          return true;
+          return () => {
+            set({
+              cashBalance: previousCash,
+              bonusBalance: previousBonus,
+              lockedBalance: previousLocked,
+              lockedEntries: previousEntries,
+            });
+          };
         },
 
         // Optimistic-UI: restore funds if registration is cancelled.

@@ -120,6 +120,7 @@ const MatchDetailPage: React.FC = () => {
   const [isEscalating, setIsEscalating] = useState(false);
   const [showArbiterScore, setShowArbiterScore] = useState(false);
   const [isSubmittingResult, setIsSubmittingResult] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   const match = id ? getMatchById(id) : undefined;
   const messages = match ? getMessagesForChannel(match.channelId) : [];
@@ -413,41 +414,57 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const handleCheckIn = async () => {
+    if (isProcessingAction) return;
+    setIsProcessingAction(true);
     try {
       const response = await checkInServerMatch(match.id);
       applyMatchResponse(response);
       toast.success('Presence confirmee.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Check-in impossible.');
+    } finally {
+      setIsProcessingAction(false);
     }
   };
 
   const handleToggleReady = async () => {
+    if (isProcessingAction) return;
+    setIsProcessingAction(true);
     try {
       const response = await toggleServerReady(match.id);
       applyMatchResponse(response);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Mise a jour ready impossible.');
+    } finally {
+      setIsProcessingAction(false);
     }
   };
 
   const handleLaunch = async () => {
+    if (isProcessingAction) return;
+    setIsProcessingAction(true);
     try {
       const response = await launchServerMatch(match.id);
       applyMatchResponse(response);
       toast.success('Le match passe en direct.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Lancement impossible.');
+    } finally {
+      setIsProcessingAction(false);
     }
   };
 
   const handleConfirmResult = async () => {
+    if (isProcessingAction) return;
+    setIsProcessingAction(true);
     try {
       const response = await confirmServerMatchResult(match.id);
       applyMatchResponse(response);
       toast.success('Resultat confirme de ton cote.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Confirmation impossible.');
+    } finally {
+      setIsProcessingAction(false);
     }
   };
 

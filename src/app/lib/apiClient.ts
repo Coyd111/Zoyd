@@ -55,7 +55,6 @@ export const readJson = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     handleAuthError(response.status);
     
-    // Provide specific error messages for auth errors
     if (response.status === 401) {
       throw new Error('Session expiree. Veuillez te reconnecter.');
     }
@@ -69,46 +68,21 @@ export const readJson = async <T>(response: Response): Promise<T> => {
   return payload as T;
 };
 
-export const authorizedGet = async <T>(path: string) =>
-  readJson<T>(
-    await fetch(getApiUrl(path), {
-      method: 'GET',
-      headers: {
-        ...getAuthHeaders(),
-      },
-    })
-  );
+type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
-export const authorizedPost = async <T>(path: string, body?: unknown) =>
+const authorizedRequest = async <T>(method: HttpMethod, path: string, body?: unknown) =>
   readJson<T>(
     await fetch(getApiUrl(path), {
-      method: 'POST',
+      method,
       headers: {
         ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   );
 
-export const authorizedPatch = async <T>(path: string, body?: unknown) =>
-  readJson<T>(
-    await fetch(getApiUrl(path), {
-      method: 'PATCH',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  );
-
-export const authorizedDelete = async <T>(path: string) =>
-  readJson<T>(
-    await fetch(getApiUrl(path), {
-      method: 'DELETE',
-      headers: {
-        ...getAuthHeaders(),
-      },
-    })
-  );
+export const authorizedGet = <T>(path: string) => authorizedRequest<T>('GET', path);
+export const authorizedPost = <T>(path: string, body?: unknown) => authorizedRequest<T>('POST', path, body);
+export const authorizedPatch = <T>(path: string, body?: unknown) => authorizedRequest<T>('PATCH', path, body);
+export const authorizedDelete = <T>(path: string) => authorizedRequest<T>('DELETE', path);

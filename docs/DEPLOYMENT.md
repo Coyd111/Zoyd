@@ -97,3 +97,24 @@ curl -X POST https://zoyd.onrender.com/api/auth/login \
 2. Push: `git push origin main`
 3. Render auto-deploys the rollback
 4. Verify health endpoint
+
+## Scaling Plan
+
+### Current State
+- **Backend**: Render free tier (single instance, 512MB RAM)
+- **Database**: Supabase free tier (500MB, 500K rows)
+- **Frontend**: Vercel (serverless, auto-scales)
+
+### Growth Triggers
+| Metric | Current Limit | Action |
+|--------|--------------|--------|
+| Active users | ~100 | Upgrade Render to paid tier |
+| DB rows | 500K | Upgrade Supabase Pro |
+| Concurrent matches | ~20 | Add Render horizontal scaling |
+| Storage | 500MB | Migrate to Supabase Pro (8GB) |
+
+### Scale-Up Path
+1. **Phase 1** (100-500 users): Render Starter ($7/mo), Supabase Pro ($25/mo)
+2. **Phase 2** (500-2K users): Render Standard ($25/mo), add Redis for sessions
+3. **Phase 3** (2K+ users): Split monolith into services (match, wallet, chat)
+4. **Phase 4** (10K+ users): Kubernetes, dedicated Postgres, CDN for assets

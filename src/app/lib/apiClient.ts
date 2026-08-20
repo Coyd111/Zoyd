@@ -1,5 +1,7 @@
 import { useAuthStore } from '../stores/authStore';
 
+// M-01: Named VITE_REALTIME_URL because backend serves both REST API and Socket.io (realtime).
+// This is the single backend URL for all communication.
 export const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_REALTIME_URL;
   if (typeof envUrl === 'string' && envUrl.length > 0) {

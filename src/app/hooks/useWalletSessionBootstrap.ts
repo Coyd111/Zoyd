@@ -4,7 +4,6 @@ import { useWalletStore } from '../stores/walletStore';
 
 export const useWalletSessionBootstrap = () => {
   const sessionToken = useAuthStore((state) => state.sessionToken);
-  const refreshFromServer = useWalletStore((state) => state.refreshFromServer);
   const hydratedTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -19,7 +18,7 @@ export const useWalletSessionBootstrap = () => {
 
     let cancelled = false;
 
-    refreshFromServer()
+    useWalletStore.getState().refreshFromServer()
       .then(() => {
         if (!cancelled) {
           hydratedTokenRef.current = sessionToken;
@@ -34,5 +33,5 @@ export const useWalletSessionBootstrap = () => {
     return () => {
       cancelled = true;
     };
-  }, [refreshFromServer, sessionToken]);
+  }, [sessionToken]);
 };

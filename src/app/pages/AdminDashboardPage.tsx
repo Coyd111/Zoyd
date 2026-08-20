@@ -58,6 +58,8 @@ type MatchFilter = 'all' | 'priority' | 'active' | 'closed';
 type UserFilter = 'all' | 'critical' | 'watch';
 type DisputeFilter = 'all' | 'escalated' | 'level1';
 
+// M-07: Admin analytics computed from local stores. Server-side aggregation
+// recommended when match count exceeds ~500 for real-time accuracy.
 const AdminDashboardPage: React.FC = () => {
   const { user } = useAuthStore();
   const { friends, reports } = useFriendsStore();

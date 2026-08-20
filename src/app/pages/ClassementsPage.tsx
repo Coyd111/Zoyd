@@ -63,6 +63,8 @@ const rankIcon = (rank: number) => {
 const sortWithRank = <T,>(items: T[], sorter: (left: T, right: T) => number) =>
   [...items].sort(sorter).map((item, index) => ({ item, rank: index + 1 }));
 
+// M-06: Rankings computed client-side for now. Server-side pagination recommended
+// when dataset exceeds ~1K players. Current approach works for community-scale.
 const ClassementsPage: React.FC = () => {
   const { user } = useAuthStore();
   const { friends, reports } = useFriendsStore();

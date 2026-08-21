@@ -19,6 +19,7 @@ const memoryAuthSessions = new Map();
 const memoryRealtimeSessions = new Map();
 const memoryPushSubscriptions = new Map();
 const memoryChatChannels = new Map();
+const MAX_CHAT_CHANNELS = 1000;
 const memoryChatMessages = new Map(); // channelId -> message[]
 const memoryChatReads = new Map();    // `${channelId}:${userId}` -> readAt
 const memoryStateSnapshots = new Map(); // `${kind}:${entityId}` -> payload
@@ -40,12 +41,19 @@ export const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100
 export const sanitizeText = (input) => {
   if (!input) return '';
   return String(input)
-    .replace(/<[^>]*>/g, '')           // Remove HTML tags
-    .replace(/javascript:/gi, '')       // Remove javascript: protocol
-    .replace(/on\w+\s*=/gi, '')        // Remove event handlers like onclick=
-    .replace(/data:/gi, '')             // Remove data: protocol
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '')      // Remove SVG tags and content
+    .replace(/<svg[\s\S]*?\/>/gi, '')           // Remove self-closing SVG tags
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '') // Remove iframe tags and content
+    .replace(/<iframe[\s\S]*?\/>/gi, '')        // Remove self-closing iframe tags
+    .replace(/<object[\s\S]*?<\/object>/gi, '') // Remove object tags and content
+    .replace(/<object[\s\S]*?\/>/gi, '')        // Remove self-closing object tags
+    .replace(/<embed[\s\S]*?\/?>/gi, '')        // Remove embed tags
+    .replace(/<[^>]*>/g, '')                     // Remove remaining HTML tags
+    .replace(/javascript:/gi, '')                // Remove javascript: protocol
+    .replace(/on\w+\s*=/gi, '')                 // Remove event handlers (e.g. onclick=)
+    .replace(/data:(?!image\/)/gi, '')           // Remove data: URIs except images
     .trim()
-    .slice(0, 5000);                    // Limit length
+    .slice(0, 5000);                             // Limit length
 };
 
 export const normalizePseudoKey = (value) => value.trim().toLowerCase();
@@ -691,6 +699,17 @@ export const upsertChatChannel = (channel) => {
   const next = normalizeChatChannelPayload({ ...existing, ...channel });
   memoryChatChannels.set(next.id, next);
 
+  // Evict oldest entries when limit is exceeded
+  if (memoryChatChannels.size > MAX_CHAT_CHANNELS) {
+    const entries = [...memoryChatChannels.entries()]
+      .sort((a, b) => new Date(a[1].updatedAt || 0) - new Date(b[1].updatedAt || 0));
+    const toEvict = entries.slice(0, memoryChatChannels.size - MAX_CHAT_CHANNELS);
+    for (const [id] of toEvict) {
+      if (id === 'global') continue;
+      memoryChatChannels.delete(id);
+    }
+  }
+
   sbUpsert('chat_channels', { id: next.id, type: next.type, payload: next, created_at: next.createdAt, updated_at: next.updatedAt });
   return next;
 };
@@ -882,7 +901,7 @@ export const unblockUser = (blockerId, blockedId) => {
 
 // ─── Notifications ──────────────────────────────────────────────────────────
 export const createNotification = (userId, type, title, message, priority, actionUrl, metadata) => {
-  const id = `NOTIF-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6)}`;
+  const id = `NOTIF-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().substring(0, 4)}`;
   const now = getNow();
   const notification = { id, userId, type, title, message, priority, actionUrl, metadata, isRead: false, createdAt: now };
 
@@ -948,6 +967,8 @@ export const cleanupMemoryFriendRequests = () => {
     }
   }
 };
+
+export const getMemoryChatChannels = () => memoryChatChannels;
 
 // ─── FedaPay Transaction Idempotency ────────────────────────────────────────
 export const hasTransactionBeenProcessed = async (transactionId) => {

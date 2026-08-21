@@ -36,17 +36,24 @@ export const withLeagueMutex = async (fn) => {
 
 export const withWalletMutex = async (userId, fn) => {
   if (!walletMutex.has(userId)) walletMutex.set(userId, new Mutex());
-  walletMutexTimestamps.set(userId, Date.now());
   const mutex = walletMutex.get(userId);
   const release = await mutex.acquire();
+  walletMutexTimestamps.set(userId, Date.now());
   try {
     return await fn();
   } finally {
     release();
-    // Cleanup idle mutexes
-    if (Date.now() - (walletMutexTimestamps.get(userId) || 0) > WALLET_MUTEX_MAX_AGE) {
+  }
+};
+
+// Periodic cleanup of idle wallet mutexes (runs every 5 minutes)
+const cleanupIdleWalletMutexes = () => {
+  const now = Date.now();
+  for (const [userId, timestamp] of walletMutexTimestamps) {
+    if (now - timestamp > WALLET_MUTEX_MAX_AGE) {
       walletMutex.delete(userId);
       walletMutexTimestamps.delete(userId);
     }
   }
 };
+setInterval(cleanupIdleWalletMutexes, 5 * 60 * 1000);

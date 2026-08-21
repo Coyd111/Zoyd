@@ -122,9 +122,8 @@ const ParametresPage: React.FC = () => {
         updateUser(response.user);
         toast.success('Tes préférences ont bien été enregistrées.');
       }
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors de la sauvegarde de tes paramètres.');
-      console.error(err);
     } finally {
       setIsSaving(false);
     }

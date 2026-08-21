@@ -72,6 +72,9 @@ export default defineConfig({
           if (/node_modules\/lucide/.test(id)) {
             return 'vendor-icons'
           }
+          if (/node_modules\/recharts/.test(id)) {
+            return 'vendor-charts'
+          }
         },
       },
     },

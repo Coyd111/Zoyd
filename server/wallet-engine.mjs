@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { getWalletSnapshot, updateWalletSnapshot } from './persistence.mjs';
 
 const MIN_WITHDRAWAL_ZC = 150;
@@ -8,7 +9,7 @@ const makeError = (code, message) => Object.assign(new Error(message), { code })
 
 const buildTransaction = (tx) => ({
   ...tx,
-  id: `TX-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  id: `TX-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
   timestamp: getNow(),
 });
 

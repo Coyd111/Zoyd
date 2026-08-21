@@ -17,10 +17,7 @@ const AdminLayout: React.FC = () => {
     return <Navigate to="/auth/login" replace />;
   }
 
-  // Strict role check - only exact 'admin' role is allowed
   if (!isAdmin) {
-    // Log unauthorized access attempt for security monitoring
-    console.warn(`Unauthorized admin access attempt by user: ${user?.id} with role: ${user?.role}`);
     return <Navigate to="/mj" replace />;
   }
 

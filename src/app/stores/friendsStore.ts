@@ -80,8 +80,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       if (res.ok && res.request) {
         set((state) => ({ requests: [res.request, ...state.requests] }));
       }
-    } catch (error) {
-      console.error('Erreur envoi demande ami:', error);
+    } catch {
+      // silent
     }
   },
 
@@ -94,8 +94,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
           friends: [res.friend, ...state.friends],
         }));
       }
-    } catch (error) {
-      console.error('Erreur acceptation demande:', error);
+    } catch {
+      // silent
     }
   },
 
@@ -105,8 +105,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       set((state) => ({
         requests: state.requests.filter((r) => r.id !== requestId),
       }));
-    } catch (error) {
-      console.error('Erreur refus demande:', error);
+    } catch {
+      // silent
     }
   },
 
@@ -116,8 +116,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       set((state) => ({
         friends: state.friends.filter((f) => f.id !== friendId),
       }));
-    } catch (error) {
-      console.error('Erreur suppression ami:', error);
+    } catch {
+      // silent
     }
   },
 
@@ -129,8 +129,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         friends: state.friends.filter((f) => f.id !== userId),
         requests: state.requests.filter((r) => r.senderId !== userId),
       }));
-    } catch (error) {
-      console.error('Erreur blocage:', error);
+    } catch {
+      // silent
     }
   },
 
@@ -140,8 +140,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       set((state) => ({
         blockedIds: state.blockedIds.filter((id) => id !== userId),
       }));
-    } catch (error) {
-      console.error('Erreur deblocage:', error);
+    } catch {
+      // silent
     }
   },
 
@@ -157,8 +157,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         status: 'pending',
       };
       set((state) => ({ reports: [report, ...state.reports] }));
-    } catch (error) {
-      console.error('Erreur signalement:', error);
+    } catch {
+      // silent
     }
   },
 

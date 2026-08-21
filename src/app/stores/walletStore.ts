@@ -111,8 +111,8 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             if (payload.user) {
               useAuthStore.getState().updateUser(payload.user);
             }
-          } catch (error) {
-            console.error('Wallet refresh failed:', error);
+          } catch {
+            // silent
           }
         },
 
@@ -125,9 +125,8 @@ export const useWalletStore = create<WalletState>()((set, get) => {
               useAuthStore.getState().updateUser(payload.user);
             }
             pushWalletNotification('Depot confirme', `${safeAmount.toFixed(1)} ZC ajoutes via ${method}.`);
-          } catch (error) {
-            console.error('Deposit failed:', error);
-            throw error;
+          } catch (err) {
+            throw err;
           }
         },
 
@@ -141,9 +140,8 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             }
             const netAmount = roundAmount(safeAmount - safeAmount * WITHDRAWAL_FEE_RATE);
             pushWalletNotification('Retrait confirme', `${netAmount.toFixed(1)} ZC net envoyes apres frais.`);
-          } catch (error) {
-            console.error('Withdrawal failed:', error);
-            throw error;
+          } catch (err) {
+            throw err;
           }
         },
 

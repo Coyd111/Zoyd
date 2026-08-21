@@ -87,6 +87,7 @@ import {
   hashPassword,
   updatePasswordHash,
   sbUpsert,
+  getMemoryChatChannels,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex } from './mutex.mjs';
@@ -186,6 +187,19 @@ const cleanupChannelMaps = () => {
   }
   for (const [key] of typingByChannel) {
     if (!channelIds.has(key)) typingByChannel.delete(key);
+  }
+
+  // Evict stale chat channels: 0 members AND last updated > 24h ago
+  const MAX_CHAT_CHANNEL_AGE_MS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const chatChannels = getMemoryChatChannels();
+  for (const [id, ch] of chatChannels) {
+    if (ch.id === 'global') continue;
+    const memberCount = channels.get(id)?.size ?? 0;
+    const updatedAt = ch.updatedAt ? new Date(ch.updatedAt).getTime() : 0;
+    if (memberCount === 0 && now - updatedAt > MAX_CHAT_CHANNEL_AGE_MS) {
+      chatChannels.delete(id);
+    }
   }
 };
 setInterval(cleanupChannelMaps, 30 * 60 * 1000);
@@ -2513,7 +2527,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const message = appendChatMessage({
-        id: `MSG-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: `MSG-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
         channelId: channel.id,
         channelType: channel.type,
         senderId: session.user.id,
@@ -2766,6 +2780,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:join', (payload = {}) => {
+    const ip = socket.handshake.address || '127.0.0.1';
+    const { allowed } = checkRateLimit(ip, 'chat');
+    if (!allowed) {
+      socket.emit('error', { message: 'Rate limit exceeded' });
+      return;
+    }
+
     const channelId = payload.channelId;
     if (!channelId) return;
 
@@ -2787,6 +2808,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:update', (payload = {}) => {
+    const ip = socket.handshake.address || '127.0.0.1';
+    const { allowed } = checkRateLimit(ip, 'chat');
+    if (!allowed) {
+      socket.emit('error', { message: 'Rate limit exceeded' });
+      return;
+    }
+
     const channelId = payload.channelId;
     if (!channelId) return;
 
@@ -2825,11 +2853,25 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:leave', (payload = {}) => {
+    const ip = socket.handshake.address || '127.0.0.1';
+    const { allowed } = checkRateLimit(ip, 'chat');
+    if (!allowed) {
+      socket.emit('error', { message: 'Rate limit exceeded' });
+      return;
+    }
+
     if (!payload.channelId) return;
     removeSocketFromChannel(io, socket, payload.channelId);
   });
 
   socket.on('channel:seen', (payload = {}) => {
+    const ip = socket.handshake.address || '127.0.0.1';
+    const { allowed } = checkRateLimit(ip, 'chat');
+    if (!allowed) {
+      socket.emit('error', { message: 'Rate limit exceeded' });
+      return;
+    }
+
     const { channelId } = payload;
     if (!channelId) return;
 
@@ -2843,6 +2885,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing:update', (payload = {}) => {
+    const ip = socket.handshake.address || '127.0.0.1';
+    const { allowed } = checkRateLimit(ip, 'chat');
+    if (!allowed) {
+      socket.emit('error', { message: 'Rate limit exceeded' });
+      return;
+    }
+
     const { channelId, isTyping } = payload;
     if (!channelId) return;
 
@@ -2866,6 +2915,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('notification:push', async (payload = {}) => {
+    const ip = socket.handshake.address || '127.0.0.1';
+    const { allowed } = checkRateLimit(ip, 'default');
+    if (!allowed) {
+      socket.emit('error', { message: 'Rate limit exceeded' });
+      return;
+    }
+
     const { targetUserId, title, body: notifBody, url, tag, requireInteraction } = payload;
     if (!targetUserId || !title) return;
 

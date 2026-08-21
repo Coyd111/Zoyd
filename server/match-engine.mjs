@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { getUserById, updateUserAccount } from './persistence.mjs';
 import {
   lockEntryFee,
@@ -582,7 +583,7 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
   }
 
   const dispute = {
-    id: `DSP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: `DSP-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
     level: 1,
     category: payload.category || 'result',
     reason: payload.reason.trim(),

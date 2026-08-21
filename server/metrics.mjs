@@ -7,9 +7,16 @@ const log = createLogger('metrics');
 
 // ─── Counters ────────────────────────────────────────────────────────────────
 const counters = new Map();
+const MAX_COUNTER_ENTRIES = 5000;
 const getCounter = (name, labels = {}) => {
   const key = name + '|' + JSON.stringify(labels);
-  if (!counters.has(key)) counters.set(key, { name, labels, value: 0 });
+  if (!counters.has(key)) {
+    if (counters.size >= MAX_COUNTER_ENTRIES) {
+      const first = counters.keys().next().value;
+      counters.delete(first);
+    }
+    counters.set(key, { name, labels, value: 0 });
+  }
   return counters.get(key);
 };
 
@@ -75,7 +82,7 @@ export const endTimer = (name, start, labels = {}) => {
 };
 
 // ─── Format as Prometheus text exposition ────────────────────────────────────
-const escapeLabelValue = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+const escapeLabelValue = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 
 const formatLabels = (labels) => {
   const keys = Object.keys(labels);
@@ -147,8 +154,27 @@ export const collectServerMetrics = () => {
   setGauge('zoyd_node_external_bytes', process.memoryUsage().external);
 };
 
+// Periodic cleanup: reset gauges and trim histograms to prevent unbounded growth
+const cleanupMetrics = () => {
+  // Reset server gauges (they're re-collected every 15s anyway)
+  const serverGaugePrefixes = ['zoyd_uptime_', 'zoyd_node_'];
+  for (const [key] of gauges) {
+    if (serverGaugePrefixes.some(p => key.startsWith(p + '|'))) {
+      gauges.delete(key);
+    }
+  }
+  // Trim histograms that exceed max observations
+  for (const [key, h] of histograms) {
+    if (h.observations.length > MAX_OBSERVATIONS) {
+      h.observations = h.observations.slice(-MAX_OBSERVATIONS);
+    }
+  }
+};
+
 // Collect every 15 seconds
 setInterval(collectServerMetrics, 15_000);
+// Cleanup every 5 minutes
+setInterval(cleanupMetrics, 5 * 60 * 1000);
 collectServerMetrics();
 
 log.info('Metrics collector initialized');

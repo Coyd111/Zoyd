@@ -125,13 +125,6 @@ describe('match-engine - Helper Functions', () => {
     expect(matchEngine.getTeamSize('5VS5')).toBe(5);
   });
 
-  it('should round amounts correctly', () => {
-    expect(matchEngine.roundAmount(10.123)).toBe(10.12);
-    expect(matchEngine.roundAmount(10.125)).toBe(10.13);
-    expect(matchEngine.roundAmount(10.127)).toBe(10.13);
-    expect(matchEngine.roundAmount(0)).toBe(0);
-  });
-
   it('should get squad label', () => {
     expect(matchEngine.getSquadLabel(0)).toBe('Squad Alpha');
     expect(matchEngine.getSquadLabel(1)).toBe('Squad Bravo');

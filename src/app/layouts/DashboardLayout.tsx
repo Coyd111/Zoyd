@@ -10,8 +10,6 @@ import { useAuthStore } from '../stores/authStore';
 const DashboardLayout: React.FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
-  useMatchAutomationHeartbeat(isAuthenticated);
-  useRealtimeHeartbeat(isAuthenticated);
 
   if (isLoading) {
     return (
@@ -24,6 +22,9 @@ const DashboardLayout: React.FC = () => {
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" replace />;
   }
+
+  useMatchAutomationHeartbeat(isAuthenticated);
+  useRealtimeHeartbeat(isAuthenticated);
 
   return (
     <div className="min-h-screen bg-zoyd-black">

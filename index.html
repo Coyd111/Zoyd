@@ -12,10 +12,10 @@
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://cdn.fedapay.com;
+      script-src 'self' https://cdn.fedapay.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com;
       img-src 'self' data: blob: https: http:;
-      connect-src 'self' wss: ws: https://zoyd.onrender.com https://cdn.fedapay.com;
+      connect-src 'self' wss://zoyd.onrender.com https://zoyd.onrender.com https://cdn.fedapay.com;
       font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com;
       object-src 'none';
       base-uri 'self';
@@ -32,13 +32,7 @@
     <div id="root"></div>
     <script src="https://cdn.fedapay.com/checkout.js" integrity="sha384-E9lU89D8jHruyCNyk28mrPLRMG4ytMWpCz1BTSJWJsq1mvqg9/XVgAZolfzt64lD" crossorigin="anonymous"></script>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('SW registration failed:', e));
-        });
-      }
-    </script>
+    <script src="sw-register.js" defer></script>
   </body>
 </html>
   

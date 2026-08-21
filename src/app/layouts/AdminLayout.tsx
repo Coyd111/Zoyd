@@ -12,9 +12,6 @@ const AdminLayout: React.FC = () => {
   
   // Enhanced admin protection with role validation
   const isAdmin = isAuthenticated && user?.role === 'admin';
-  
-  useMatchAutomationHeartbeat(isAdmin);
-  useRealtimeHeartbeat(isAdmin);
 
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" replace />;
@@ -26,6 +23,9 @@ const AdminLayout: React.FC = () => {
     console.warn(`Unauthorized admin access attempt by user: ${user?.id} with role: ${user?.role}`);
     return <Navigate to="/mj" replace />;
   }
+
+  useMatchAutomationHeartbeat(isAdmin);
+  useRealtimeHeartbeat(isAdmin);
 
   return (
     <div className="min-h-screen bg-zoyd-black">

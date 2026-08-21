@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router';
 import ToastContainer from '../components/notifications/ToastContainer';
-import { useAuthSessionBootstrap } from '../hooks/useAuthSessionBootstrap';
 import { useAuthStore, type AuthState } from '../stores/authStore';
 import { fetchAllMatchesFromDb, subscribeToMatches } from '../lib/matchApi';
 import { useMatchStore } from '../stores/matchStore';
@@ -10,7 +9,6 @@ import { useTournamentStore } from '../stores/tournamentStore';
 import { useSocketStore } from '../stores/socketStore';
 
 const RootLayout: React.FC = () => {
-  useAuthSessionBootstrap();
   const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
   const isSocketConnected = useSocketStore((s) => s.isConnected);
 

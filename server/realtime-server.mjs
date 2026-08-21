@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import http from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
 import webpush from 'web-push';
@@ -689,10 +690,15 @@ const cleanupRateLimits = () => {
 };
 setInterval(cleanupRateLimits, 60 * 1000);
 
-// Use X-Forwarded-For (set by Render proxy) to get real client IP
+// Use X-Forwarded-For (set by Render proxy) to get real client IP.
+// Validate format to prevent spoofing via arbitrary header values.
+const isValidIp = (ip) => /^[\d.:a-fA-F]+$/.test(ip);
 const getClientIp = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) return forwarded.split(',')[0].trim();
+  if (forwarded) {
+    const firstIp = forwarded.split(',')[0].trim();
+    if (isValidIp(firstIp)) return firstIp;
+  }
   return req.socket.remoteAddress || '127.0.0.1';
 };
 
@@ -700,6 +706,75 @@ const rateLimitGuard = (res, ip, group) => {
   const { allowed, remaining } = checkRateLimit(ip, group);
   if (!allowed) {
     respondJson(res, 429, { ok: false, error: 'Trop de requetes. Reessayez plus tard.' });
+    return false;
+  }
+  return true;
+};
+
+// ─── TOTP 2FA (RFC 6238) ──────────────────────────────────────────────────
+const TOTP_DIGITS = 6;
+const TOTP_PERIOD = 30;
+const TOTP_ALGORITHM = 'sha1';
+
+const generateTotpSecret = () => {
+  return crypto.randomBytes(20).toString('base64');
+};
+
+const base32Decode = (encoded) => {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const char of encoded.toUpperCase()) {
+    const val = alphabet.indexOf(char);
+    if (val === -1) continue;
+    bits += val.toString(2).padStart(5, '0');
+  }
+  const bytes = new Uint8Array(Math.floor(bits.length / 8));
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+  }
+  return Buffer.from(bytes);
+};
+
+const verifyTotp = (secret, code) => {
+  const key = base32Decode(secret);
+  const now = Math.floor(Date.now() / 1000 / TOTP_PERIOD);
+  for (const offset of [-1, 0, 1]) {
+    const counter = now + offset;
+    const counterBuffer = Buffer.alloc(8);
+    counterBuffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+    counterBuffer.writeUInt32BE(counter & 0xFFFFFFFF, 4);
+    const hmac = crypto.createHmac(TOTP_ALGORITHM, key).update(counterBuffer).digest();
+    const offset2 = hmac[hmac.length - 1] & 0x0f;
+    const otp = ((hmac[offset2] & 0x7f) << 24) | (hmac[offset2 + 1] << 16) | (hmac[offset2 + 2] << 8) | hmac[offset2 + 3];
+    const expected = String(otp % Math.pow(10, TOTP_DIGITS)).padStart(TOTP_DIGITS, '0');
+    if (expected === code) return true;
+  }
+  return false;
+};
+
+const toBase32 = (buffer) => {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const byte of buffer) {
+    bits += byte.toString(2).padStart(8, '0');
+  }
+  let result = '';
+  for (let i = 0; i < bits.length; i += 5) {
+    const chunk = bits.slice(i, i + 5).padEnd(5, '0');
+    result += alphabet[parseInt(chunk, 2)];
+  }
+  return result;
+};
+
+// ─── Admin 2FA secrets storage ─────────────────────────────────────────────
+const adminTotpSecrets = new Map(); // adminUserId -> { secret, enabled, verifiedAt }
+
+const requireAdmin2fa = (req, res) => {
+  const session = getAuthenticatedAppSession(req);
+  if (!session || session.user.role !== 'admin') return false;
+  const totpEntry = adminTotpSecrets.get(session.user.id);
+  if (totpEntry?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
+    respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
     return false;
   }
   return true;
@@ -2130,7 +2205,59 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // SEC-R4: Admin 2FA verification stub — requires TOTP library for production
+  // SEC-R4: Admin 2FA setup — generate TOTP secret for admin
+  if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session || session.user.role !== 'admin') {
+      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
+      return;
+    }
+    const secret = toBase32(crypto.randomBytes(20));
+    adminTotpSecrets.set(session.user.id, { secret, enabled: false, verifiedAt: null });
+    const otpauthUrl = `otpauth://totp/ZOYD:${encodeURIComponent(session.user.email || session.user.pseudo)}?secret=${secret}&issuer=ZOYD`;
+    log.info('Admin 2FA setup initiated', { adminId: session.user.id });
+    respondJson(res, 200, { ok: true, secret, otpauthUrl });
+    return;
+  }
+
+  // SEC-R4: Admin 2FA enable — verify code and activate 2FA
+  if (req.method === 'POST' && pathname === '/api/admin/2fa/enable') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session || session.user.role !== 'admin') {
+      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
+      return;
+    }
+    const body = await parseRequestBody(req).catch(() => ({}));
+    const { code } = body || {};
+    if (!code || typeof code !== 'string') {
+      respondJson(res, 400, { ok: false, error: 'Code 2FA requis.' });
+      return;
+    }
+    const totpEntry = adminTotpSecrets.get(session.user.id);
+    if (!totpEntry || !totpEntry.secret) {
+      respondJson(res, 400, { ok: false, error: 'Aucune configuration 2FA en cours. Effectuez /api/admin/2fa/setup d\'abord.' });
+      return;
+    }
+    if (totpEntry.enabled) {
+      respondJson(res, 400, { ok: false, error: '2FA deja activee.' });
+      return;
+    }
+    if (!verifyTotp(totpEntry.secret, code)) {
+      log.warn('Admin 2FA enable failed — invalid code', { adminId: session.user.id });
+      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.' });
+      return;
+    }
+    totpEntry.enabled = true;
+    totpEntry.verifiedAt = new Date().toISOString();
+    adminTotpSecrets.set(session.user.id, totpEntry);
+    session.admin2faVerified = true;
+    session.admin2faExpires = Date.now() + 5 * 60 * 1000;
+    log.info('Admin 2FA enabled', { adminId: session.user.id });
+    respondJson(res, 200, { ok: true });
+    return;
+  }
+
+  // SEC-R4: Admin 2FA verify — verify TOTP code for financial operations
   if (req.method === 'POST' && pathname === '/api/admin/2fa/verify') {
     const session = getAuthenticatedAppSession(req);
     if (!session || session.user.role !== 'admin') {
@@ -2143,9 +2270,20 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 400, { ok: false, error: 'Code 2FA requis.' });
       return;
     }
-    // SECURITY FIX: 2FA not yet implemented — reject all codes
-    log.warn('Admin 2FA verification attempted but TOTP not implemented', { adminId: session.user.id });
-    respondJson(res, 501, { ok: false, error: '2FA non implemente. Contactez l\'administrateur.' });
+    const totpEntry = adminTotpSecrets.get(session.user.id);
+    if (!totpEntry?.enabled) {
+      respondJson(res, 400, { ok: false, error: '2FA non active pour ce compte admin.' });
+      return;
+    }
+    if (!verifyTotp(totpEntry.secret, code)) {
+      log.warn('Admin 2FA verify failed — invalid code', { adminId: session.user.id });
+      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.' });
+      return;
+    }
+    session.admin2faVerified = true;
+    session.admin2faExpires = Date.now() + 5 * 60 * 1000;
+    log.info('Admin 2FA verified', { adminId: session.user.id });
+    respondJson(res, 200, { ok: true });
     return;
   }
 
@@ -2160,6 +2298,11 @@ const server = http.createServer(async (req, res) => {
     if (session.user.role !== 'admin') {
       log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `award match ${adminMatchAward[1]}` });
       respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
+      return;
+    }
+    const totpEntryAward = adminTotpSecrets.get(session.user.id);
+    if (totpEntryAward?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
+      respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
       return;
     }
 
@@ -2200,6 +2343,11 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
       return;
     }
+    const totpEntryResolve = adminTotpSecrets.get(session.user.id);
+    if (totpEntryResolve?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
+      respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
+      return;
+    }
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
@@ -2231,6 +2379,11 @@ const server = http.createServer(async (req, res) => {
     if (session.user.role !== 'admin') {
       log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `cancel match ${adminMatchCancel[1]}` });
       respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
+      return;
+    }
+    const totpEntryCancel = adminTotpSecrets.get(session.user.id);
+    if (totpEntryCancel?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
+      respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
       return;
     }
 

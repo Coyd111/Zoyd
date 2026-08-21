@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import path from 'path'
+import fs from 'fs'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
@@ -15,12 +16,27 @@ function figmaAssetResolver() {
   }
 }
 
+function excludeHeavyPublicDirs(dirs: string[]) {
+  return {
+    name: 'exclude-heavy-public-dirs',
+    closeBundle() {
+      const distPublic = path.resolve(__dirname, 'dist', 'assets', 'codm');
+      for (const dir of dirs) {
+        const target = path.join(distPublic, dir);
+        if (fs.existsSync(target)) {
+          fs.rmSync(target, { recursive: true, force: true });
+        }
+      }
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     figmaAssetResolver(),
-    // Core frontend plugins kept explicitly because the app relies on both.
     react(),
     tailwindcss(),
+    excludeHeavyPublicDirs(['raw_unity']),
   ],
   resolve: {
     alias: {
@@ -39,7 +55,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    force: true,
     exclude: ['zustand/middleware'],
   },
   build: {

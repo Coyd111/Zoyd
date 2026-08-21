@@ -1,5 +1,5 @@
 {
-  "installCommand": "pnpm install --no-frozen-lockfile",
+  "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "dist",
   "framework": "vite",
   "headers": [
@@ -27,7 +27,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/assets/(.*)", "destination": "/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

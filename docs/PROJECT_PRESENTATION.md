@@ -21,7 +21,7 @@
 | **Base de données** | Supabase (PostgreSQL) + cache mémoire in-process |
 | **Paiements** | FedaPay (Mobile Money, FCFA) |
 | **Notifications** | Web Push (VAPID) |
-| **Tests** | Vitest (149 unit) + Playwright (34 E2E) |
+| **Tests** | Vitest (176 unit) + Playwright (34 E2E) |
 | **Déploiement** | Render (render.yaml) |
 | **Package manager** | pnpm 11 |
 
@@ -75,7 +75,7 @@
 | **Tables BDD** | 14 |
 | **Packages npm** | 73 (66 deps + 7 devDeps) |
 | **Fichiers de test** | 11 |
-| **Tests unitaires** | 149 ✅ |
+| **Tests unitaires** | 176 ✅ |
 | **Tests E2E** | 34 ✅ |
 | **Build Vite** | ✅ (~2min) |
 | **Commits** | 28 (1 contributeur, 2026) |
@@ -243,7 +243,7 @@
 | **Backend** | ✅ 68 endpoints REST + 7 Socket.IO events |
 | **BDD** | ✅ 14 tables Supabase, cache mémoire |
 | **Paiements** | ✅ FedaPay intégré, idempotent |
-| **Tests** | ✅ 149 unit + 34 E2E = **183 tests** |
+| **Tests** | ✅ 176 unit + 34 E2E = **210 tests** |
 | **Build** | ✅ Vite build réussi |
 | **Documentation** | ✅ OpenAPI 3.1 (2 945 lignes) |
 | **Logging** | ✅ Structuré JSON (logger.mjs) |

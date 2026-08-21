@@ -8,7 +8,7 @@ graph TB
         A[React 18 + TypeScript]
         B[Vite 6.3]
         C[Tailwind v4]
-        D[Zustand 13 stores]
+        D[Zustand 14 stores]
         E[Socket.IO Client]
         F[FedaPay Widget]
     end
@@ -96,7 +96,7 @@ Multiplayer Gaming Platform/
 │   ├── tournament-engine.mjs  # Tournament logic
 │   ├── league-engine.mjs      # League seasons
 │   ├── metrics.mjs            # Prometheus metrics
-│   └── *.test.mjs             # 162 Vitest tests
+│   └── *.test.mjs             # Vitest tests
 ├── src/
 │   ├── app/
 │   │   ├── components/        # UI components
@@ -104,7 +104,7 @@ Multiplayer Gaming Platform/
 │   │   ├── layouts/           # Root, Dashboard, Admin, Auth
 │   │   ├── lib/               # API clients (apiClient, authApi, etc.)
 │   │   ├── pages/             # 16 pages + sub-pages
-│   │   ├── stores/            # 13 Zustand stores
+│   │   ├── stores/            # 14 Zustand stores
 │   │   └── routes.tsx         # Lazy-loaded routes
 │   ├── features/              # Match, Tournament, League
 │   └── lib/                   # Utils, competition, walletFunding

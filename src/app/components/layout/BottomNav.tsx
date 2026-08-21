@@ -53,7 +53,7 @@ const BottomNav: React.FC = () => {
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
               <span className="font-display font-black text-[10px] text-white/40 tracking-widest uppercase italic">Plus</span>
-              <button onClick={() => setMenuOpen(false)} className="text-white/30 hover:text-white">
+              <button onClick={() => setMenuOpen(false)} className="text-white/30 hover:text-white" aria-label="Fermer le menu">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -65,6 +65,7 @@ const BottomNav: React.FC = () => {
                   <button
                     key={item.path}
                     onClick={() => handleNavigate(item.path)}
+                    aria-label={item.label}
                     className={cn(
                       'flex items-center gap-4 w-full px-4 py-3 font-display font-black text-xs tracking-widest italic uppercase transition-all',
                       isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/40 hover:text-white hover:bg-white/5'
@@ -90,6 +91,7 @@ const BottomNav: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                aria-label={item.label}
                 className={cn(
                   'relative flex flex-col items-center justify-center w-full h-full transition-all',
                   isActive ? 'text-white bg-white/5' : 'text-white/30 hover:text-white'
@@ -109,6 +111,7 @@ const BottomNav: React.FC = () => {
 
           <button
             onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Plus d'options"
             className={cn(
               'relative flex flex-col items-center justify-center w-full h-full transition-all',
               menuOpen ? 'text-white bg-white/5' : 'text-white/30 hover:text-white'

@@ -63,6 +63,7 @@ const FriendsWidget: React.FC = () => {
     <div className="bg-zoyd-black border border-white/5 overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? 'Réduire le panneau amis' : 'Développer le panneau amis'}
         className="w-full flex items-center justify-between px-5 py-4 bg-zoyd-surface/20 hover:bg-zoyd-surface/40 transition-colors"
       >
         <div className="flex items-center gap-3">
@@ -97,6 +98,7 @@ const FriendsWidget: React.FC = () => {
                 <button
                   key={value}
                   onClick={() => setTab(value)}
+                  aria-label={value === 'friends' ? 'Amis' : value === 'requests' ? 'Demandes d\'amis' : 'Joueurs bloqués'}
                   className={cn(
                     'flex-1 py-2 text-[9px] font-display font-black uppercase tracking-widest italic transition-colors',
                     tab === value ? 'bg-white text-black' : 'text-white/30 hover:text-white/60'
@@ -118,11 +120,12 @@ const FriendsWidget: React.FC = () => {
                     value={tab === 'friends' ? search : invitePseudo}
                     onChange={(event) => (tab === 'friends' ? setSearch(event.target.value) : setInvitePseudo(event.target.value))}
                     placeholder={tab === 'friends' ? 'Rechercher un ami...' : 'Pseudo a ajouter...'}
+                    aria-label={tab === 'friends' ? 'Rechercher un ami' : 'Saisir un pseudo à ajouter'}
                     className="w-full bg-black border border-white/10 pl-8 pr-3 py-2 text-[11px] font-display font-bold tracking-wider text-white focus:outline-none focus:border-zoyd-yellow transition-colors"
                   />
                 </div>
                 {tab === 'requests' && (
-                  <Button variant="primary" size="sm" onClick={handleInvite} className="px-3">
+                  <Button variant="primary" size="sm" onClick={handleInvite} className="px-3" aria-label="Ajouter un ami">
                     <UserPlus className="w-3 h-3" />
                   </Button>
                 )}
@@ -160,13 +163,14 @@ const FriendsWidget: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1.5 text-white/20 hover:text-zoyd-blue transition-colors" title="Message">
+                        <button className="p-1.5 text-white/20 hover:text-zoyd-blue transition-colors" title="Message" aria-label={`Envoyer un message à ${friend.pseudo}`}>
                           <MessageCircle className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => removeFriend(friend.id)}
                           className="p-1.5 text-white/20 hover:text-red-400 transition-colors"
                           title="Supprimer"
+                          aria-label={`Supprimer ${friend.pseudo} des amis`}
                         >
                           <UserX className="w-3.5 h-3.5" />
                         </button>
@@ -201,6 +205,7 @@ const FriendsWidget: React.FC = () => {
                           onClick={() => acceptRequest(request.id)}
                           className="p-1.5 text-green-400 hover:text-green-300 transition-colors"
                           title="Accepter"
+                          aria-label={`Accepter la demande de ${request.senderPseudo}`}
                         >
                           <UserCheck className="w-4 h-4" />
                         </button>
@@ -208,6 +213,7 @@ const FriendsWidget: React.FC = () => {
                           onClick={() => declineRequest(request.id)}
                           className="p-1.5 text-white/20 hover:text-red-400 transition-colors"
                           title="Refuser"
+                          aria-label={`Refuser la demande de ${request.senderPseudo}`}
                         >
                           <UserX className="w-4 h-4" />
                         </button>
@@ -238,6 +244,7 @@ const FriendsWidget: React.FC = () => {
                       <button
                         onClick={() => unblockUser(blockedId)}
                         className="text-[9px] font-mono text-white/30 hover:text-white uppercase"
+                        aria-label={`Débloquer ${blockedId}`}
                       >
                         Debloquer
                       </button>

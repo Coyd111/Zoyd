@@ -198,7 +198,7 @@ const WalletPage: React.FC = () => {
 
             <div className="mt-5 flex flex-wrap gap-3">
               {!canResumeFundingFlow ? (
-                <Button variant="primary" onClick={() => setShowDepositModal(true)}>
+                <Button variant="primary" onClick={() => setShowDepositModal(true)} aria-label="Ajouter les ZC nécessaires">
                   <ArrowDownToLine className="w-5 h-5" />
                   AJOUTER LES ZC
                 </Button>
@@ -207,6 +207,7 @@ const WalletPage: React.FC = () => {
               {canResumeFundingFlow && fundingPrompt.returnTo ? (
                 <Link
                   to={fundingPrompt.returnTo}
+                  aria-label={fundingCopy.returnLabel}
                   className="inline-flex items-center justify-center gap-2 bg-white text-black px-5 py-3 text-sm font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors"
                 >
                   {fundingCopy.returnLabel}
@@ -224,11 +225,11 @@ const WalletPage: React.FC = () => {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <Button variant="primary" size="lg" fullWidth onClick={() => setShowDepositModal(true)}>
+          <Button variant="primary" size="lg" fullWidth onClick={() => setShowDepositModal(true)} aria-label="Effectuer un dépôt Mobile Money">
             <ArrowDownToLine className="w-5 h-5" />
             DÉPÔT MOBILE MONEY (AJOUTER DES ZC)
           </Button>
-          <Button variant="secondary" size="lg" fullWidth onClick={() => setShowWithdrawModal(true)}>
+          <Button variant="secondary" size="lg" fullWidth onClick={() => setShowWithdrawModal(true)} aria-label="Retirer mes gains">
             <ArrowUpFromLine className="w-5 h-5" />
             RETIRER MES GAINS
           </Button>
@@ -293,6 +294,7 @@ const WalletPage: React.FC = () => {
                   <button
                     key={preset}
                     onClick={() => setAmount(preset.toString())}
+                    aria-label={`Ajouter ${preset} ZC`}
                     className="px-4 py-3 rounded-lg bg-zoyd-white-5 border border-zoyd-white-10 hover:border-zoyd-yellow text-zoyd-yellow font-display font-bold transition-all"
                   >
                     {preset} ZC
@@ -309,6 +311,7 @@ const WalletPage: React.FC = () => {
                   <button
                     key={operator.id}
                     onClick={() => setSelectedOperator(operator.id)}
+                    aria-label={`Payer avec ${operator.name}`}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       selectedOperator === operator.id
                         ? 'border-zoyd-yellow bg-zoyd-white-10'
@@ -322,7 +325,7 @@ const WalletPage: React.FC = () => {
               </div>
             </div>
 
-            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={!selectedOperator || !amount}>
+            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={!selectedOperator || !amount} aria-label="Confirmer le dépôt">
               Ajouter ces ZC
             </Button>
           </div>
@@ -347,6 +350,7 @@ const WalletPage: React.FC = () => {
               fullWidth
               onClick={handleWithdraw}
               disabled={!amount || parseFloat(amount) < MIN_WITHDRAWAL_ZC || parseFloat(amount) > cashBalance}
+              aria-label="Confirmer le retrait"
             >
               Retirer mes gains
             </Button>
@@ -372,6 +376,7 @@ const BalanceCard = ({ label, value, hint, accent = false }: { label: string; va
 const WalletFilter = ({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
   <button
     onClick={onClick}
+    aria-label={`Filtrer par ${label}`}
     className={`px-3 py-1 text-[10px] font-mono font-black uppercase tracking-widest border transition-all ${
       active ? 'bg-white text-black border-white' : 'bg-transparent text-white/40 border-white/10 hover:border-white/20'
     }`}

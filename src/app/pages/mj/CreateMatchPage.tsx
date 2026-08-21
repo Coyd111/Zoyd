@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ChevronLeft, Check, ShieldCheck, Target } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, ShieldCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { MJ_FORMATS, MJ_MAP_POOL, MJ_MODE_OPTIONS, getMapImage } from '../../../lib/competition';
@@ -192,6 +192,7 @@ const CreateMatchPage: React.FC = () => {
                     <button
                       key={format}
                       onClick={() => setSelectedFormat(format)}
+                      aria-label={`Sélectionner le format ${format}`}
                       className={`group relative p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
                     >
                       <p className={`text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/20 group-hover:text-white transition-colors'}`}>
@@ -209,6 +210,7 @@ const CreateMatchPage: React.FC = () => {
                   onClick={onStep1Submit}
                   className="bg-white text-black w-full py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow disabled:opacity-20 transition-all flex items-center justify-center gap-4"
                   disabled={!selectedFormat}
+                  aria-label="Continuer à l'étape suivante"
                 >
                   Continuer <ChevronRight className="w-6 h-6" />
                 </button>
@@ -233,6 +235,7 @@ const CreateMatchPage: React.FC = () => {
                             type="button"
                             key={mode.id}
                             onClick={() => setSelectedGameMode(mode.name)}
+                            aria-label={`Sélectionner le mode ${mode.name}`}
                             className={`p-4 border text-left transition-all ${selectedGameMode === mode.name ? 'border-white bg-white/5' : 'border-white/5 hover:border-white/20'}`}
                           >
                             <div className="font-display font-black text-lg italic text-white">{mode.name}</div>
@@ -252,6 +255,7 @@ const CreateMatchPage: React.FC = () => {
                             type="button"
                             key={map}
                             onClick={() => setSelectedMap(map)}
+                            aria-label={`Sélectionner la carte ${map}`}
                             className={`relative h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-yellow shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'border-white/10 hover:border-white/30'}`}
                           >
                             <img 
@@ -276,7 +280,7 @@ const CreateMatchPage: React.FC = () => {
                         <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Restriction d'armes
                         </label>
-                        <select {...register('weapons')} className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                        <select {...register('weapons')} aria-label="Restriction d'armes" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
                           {WEAPON_OPTIONS.map((weapon) => (
                             <option key={weapon} value={weapon}>
                               {weapon}
@@ -288,7 +292,7 @@ const CreateMatchPage: React.FC = () => {
                         <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Point streaks
                         </label>
-                        <select {...register('pointstreaks')} className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                        <select {...register('pointstreaks')} aria-label="Point streaks" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
                           <option value="restricted">Interdites</option>
                           <option value="allowed">Permises</option>
                         </select>
@@ -297,19 +301,19 @@ const CreateMatchPage: React.FC = () => {
                         <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Score cible
                         </label>
-                        <input type="number" {...register('score')} placeholder="15" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
+                        <input type="number" {...register('score')} placeholder="15" aria-label="Score cible" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
                       </div>
                       <div>
                         <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Best of
                         </label>
-                        <input type="number" {...register('bestOf')} placeholder="3" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
+                        <input type="number" {...register('bestOf')} placeholder="3" aria-label="Best of" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
                       </div>
                     </div>
 
                     <label className="flex items-center gap-4 cursor-pointer group">
                       <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
-                        <input type="checkbox" {...register('meleeAllowed')} className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
+                        <input type="checkbox" {...register('meleeAllowed')} aria-label="Autoriser le corps à corps" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
                         <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                       </div>
                       <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
@@ -319,10 +323,10 @@ const CreateMatchPage: React.FC = () => {
                   </div>
 
                   <div className="flex gap-4 mt-12">
-                    <button type="button" onClick={() => setCurrentStep(1)} className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => setCurrentStep(1)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </button>
-                    <button type="submit" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
+                    <button type="submit" aria-label="Passer à la mise" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
                       La Mise (Wager) <ChevronRight className="w-6 h-6" />
                     </button>
                   </div>
@@ -348,13 +352,14 @@ const CreateMatchPage: React.FC = () => {
                             key={amount}
                             type="button"
                             onClick={() => setValue('passAmount', amount)}
+                            aria-label={`Mise de ${amount} ZC`}
                             className={`p-3 border font-display font-black italic text-sm transition-all ${selectedPass === amount ? 'border-zoyd-yellow bg-zoyd-yellow/10 text-zoyd-yellow' : 'border-white/5 hover:border-zoyd-yellow text-zoyd-yellow'}`}
                           >
                             {amount}
                           </button>
                         ))}
                       </div>
-                      <input {...register('passAmount')} type="number" step="0.5" placeholder="Montant personnalise" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:outline-none focus:border-zoyd-yellow transition-all" />
+                      <input {...register('passAmount')} type="number" step="0.5" placeholder="Montant personnalise" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:outline-none focus:border-zoyd-yellow transition-all" />
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8 items-start">
@@ -382,7 +387,7 @@ const CreateMatchPage: React.FC = () => {
                           <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                             Niveau de confiance minimum
                           </label>
-                          <select {...register('trustScoreMin')} className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                          <select {...register('trustScoreMin')} aria-label="Niveau de confiance minimum" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
                             <option value="0">Aucun (0+)</option>
                             <option value="30">30+</option>
                             <option value="50">50+</option>
@@ -401,6 +406,7 @@ const CreateMatchPage: React.FC = () => {
                                 key={team.value}
                                 type="button"
                                 onClick={() => setValue('creatorTeam', team.value)}
+                                aria-label={`Sélectionner ${team.label}`}
                                 className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/40 hover:border-white/30'}`}
                               >
                                 {team.label}
@@ -411,7 +417,7 @@ const CreateMatchPage: React.FC = () => {
 
                         <label className="flex items-center gap-4 cursor-pointer group">
                           <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
-                            <input type="checkbox" {...register('isPrivate')} className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
+                            <input type="checkbox" {...register('isPrivate')} aria-label="Partie privée sur invitation" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
                             <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                           </div>
                           <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
@@ -423,10 +429,10 @@ const CreateMatchPage: React.FC = () => {
                   </div>
 
                   <div className="flex gap-4">
-                    <button type="button" onClick={() => setCurrentStep(2)} className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => setCurrentStep(2)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </button>
-                    <button type="submit" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
+                    <button type="submit" aria-label="Passer au récapitulatif" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
                       Recapitulatif <ChevronRight className="w-6 h-6" />
                     </button>
                   </div>
@@ -465,10 +471,10 @@ const CreateMatchPage: React.FC = () => {
                 ) : null}
 
                 <div className="flex gap-4">
-                  <button onClick={() => setCurrentStep(3)} className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
+                  <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={onFinalSubmit} className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
+                  <button onClick={onFinalSubmit} aria-label="Verrouiller la mise et publier" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
                     VERROUILLER LA MISE & PUBLIER <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>

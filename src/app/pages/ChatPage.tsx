@@ -171,6 +171,7 @@ const ChatPage: React.FC = () => {
                   });
               }}
               className="w-full bg-white text-black py-3 font-display font-black text-[10px] tracking-[0.2em] uppercase italic hover:bg-zoyd-yellow transition-colors"
+              aria-label="Créer une nouvelle discussion"
             >
               Nouvelle discussion
             </button>
@@ -181,6 +182,7 @@ const ChatPage: React.FC = () => {
               <button
                 key={channel.id}
                 onClick={() => setActiveChannel(channel.id)}
+                aria-label={`Ouvrir le canal ${channel.name}`}
                 className={cn(
                   'w-full flex items-center justify-between px-3 py-2.5 text-left transition-all font-display font-black text-[11px] tracking-wider uppercase italic',
                   activeChannelId === channel.id
@@ -240,6 +242,7 @@ const ChatPage: React.FC = () => {
                     activeChannel.isMuted ? unmuteChannel(activeChannel.id) : muteChannel(activeChannel.id)
                   }
                   className="text-white/20 hover:text-white transition-colors"
+                  aria-label={activeChannel.isMuted ? 'Activer les notifications' : 'Couper les notifications'}
                 >
                   {activeChannel.isMuted ? <BellOff className="w-4 h-4" /> : <MoreVertical className="w-4 h-4" />}
                 </button>
@@ -316,9 +319,10 @@ const ChatPage: React.FC = () => {
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   placeholder="Envoyer un message..."
+                  aria-label="Saisir un message"
                   className="flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:outline-none focus:border-zoyd-blue transition-colors"
                 />
-                <Button type="submit" variant="primary" disabled={!input.trim()} className="px-6">
+                <Button type="submit" variant="primary" disabled={!input.trim()} className="px-6" aria-label="Envoyer le message">
                   <Send className="w-4 h-4" />
                 </Button>
               </form>

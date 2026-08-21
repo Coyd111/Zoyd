@@ -9,7 +9,6 @@ import {
   TrendingUp,
   DollarSign,
   Users,
-  Clock,
   Lock,
   Filter,
   ArrowRight,

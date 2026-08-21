@@ -31,7 +31,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
   }
 
   // Vérification d'idempotence en BDD (résiste aux redémarrages serveur)
-  if (hasTransactionBeenProcessed(transactionId)) {
+  if (await hasTransactionBeenProcessed(transactionId)) {
     throw new Error('Cette transaction a déjà été traitée.');
   }
 
@@ -51,7 +51,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     }
 
     // 3. Double-check idempotence après retrieve (deuxième filet de sécurité)
-    if (hasTransactionBeenProcessed(transactionId)) {
+    if (await hasTransactionBeenProcessed(transactionId)) {
       throw new Error('Cette transaction a déjà été traitée.');
     }
 

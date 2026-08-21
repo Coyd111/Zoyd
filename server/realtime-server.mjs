@@ -60,9 +60,11 @@ import {
   getUnreadCountForUser,
   getStateCollection,
   loadFromSupabase,
+  loadAdminTotpSecrets,
   markChatChannelRead,
   removePushSubscription,
   replaceStateCollection,
+  saveAdminTotpSecret,
   upsertChatChannel,
   upsertPushSubscription,
   updateUserAccount,
@@ -2214,9 +2216,10 @@ const server = http.createServer(async (req, res) => {
     }
     const secret = toBase32(crypto.randomBytes(20));
     adminTotpSecrets.set(session.user.id, { secret, enabled: false, verifiedAt: null });
+    await saveAdminTotpSecret(session.user.id, secret, false);
     const otpauthUrl = `otpauth://totp/ZOYD:${encodeURIComponent(session.user.email || session.user.pseudo)}?secret=${secret}&issuer=ZOYD`;
     log.info('Admin 2FA setup initiated', { adminId: session.user.id });
-    respondJson(res, 200, { ok: true, secret, otpauthUrl });
+    respondJson(res, 200, { ok: true, otpauthUrl });
     return;
   }
 
@@ -2250,6 +2253,7 @@ const server = http.createServer(async (req, res) => {
     totpEntry.enabled = true;
     totpEntry.verifiedAt = new Date().toISOString();
     adminTotpSecrets.set(session.user.id, totpEntry);
+    await saveAdminTotpSecret(session.user.id, totpEntry.secret, true);
     session.admin2faVerified = true;
     session.admin2faExpires = Date.now() + 5 * 60 * 1000;
     log.info('Admin 2FA enabled', { adminId: session.user.id });
@@ -2595,10 +2599,7 @@ const server = http.createServer(async (req, res) => {
 
     respondJson(res, 200, {
       ok: true,
-      matches: getStateCollection('matches').map((m) => {
-        const { roomPassword, ...safe } = m;
-        return safe;
-      }),
+      matches: getStateCollection('matches').map(sanitizeMatchForBroadcast),
       tournaments: getStoredTournaments(),
       friends: getFriendsForUser(session.userId),
       friendRequests: getFriendRequestsForUser(session.userId),
@@ -2895,6 +2896,12 @@ io.on('connection', (socket) => {
 
 const start = async () => {
   await loadFromSupabase();
+
+  // Load admin 2FA secrets from Supabase
+  const loaded2fa = await loadAdminTotpSecrets();
+  for (const [userId, entry] of loaded2fa) {
+    adminTotpSecrets.set(userId, entry);
+  }
 
   ensureGlobalChatChannel();
   syncMatchChatChannels(getStateCollection('matches'));

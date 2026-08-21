@@ -490,8 +490,7 @@ const ACTIVATION_CODE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 
 export const generateActivationCode = (email, userId) => {
   const max = Math.pow(10, ACTIVATION_CODE_MAX_LENGTH);
-  const min = Math.pow(10, ACTIVATION_CODE_MAX_LENGTH - 1);
-  const code = Math.floor(min + Math.random() * (max - min)).toString();
+  const code = crypto.randomInt(0, max).toString().padStart(ACTIVATION_CODE_MAX_LENGTH, '0');
   const expiresAt = new Date(Date.now() + ACTIVATION_CODE_EXPIRY_MS).toISOString();
   memoryActivationCodes.set(email, { code, expiresAt, userId, attempts: 0 });
   return code;
@@ -501,7 +500,9 @@ export const verifyActivationCode = (email, code) => {
   const record = memoryActivationCodes.get(email);
   if (!record) return { valid: false, error: 'Code invalide ou expire.' };
 
-  if (record.code !== code) {
+  const expected = Buffer.from(record.code, 'utf-8');
+  const actual = Buffer.from(code, 'utf-8');
+  if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
     record.attempts = (record.attempts || 0) + 1;
     if (record.attempts >= ACTIVATION_CODE_MAX_ATTEMPTS) {
       memoryActivationCodes.delete(email);
@@ -949,7 +950,18 @@ export const cleanupMemoryFriendRequests = () => {
 };
 
 // ─── FedaPay Transaction Idempotency ────────────────────────────────────────
-export const hasTransactionBeenProcessed = (transactionId) => memoryProcessedTransactions.has(transactionId);
+export const hasTransactionBeenProcessed = async (transactionId) => {
+  if (memoryProcessedTransactions.has(transactionId)) return true;
+  // Fallback: check Supabase in case entry was evicted from memory
+  try {
+    const rows = await sbSelect('processed_transactions', { transaction_id: transactionId }, 'transaction_id');
+    if (rows && rows.length > 0) {
+      memoryProcessedTransactions.add(transactionId);
+      return true;
+    }
+  } catch { /* ignore — will be caught by rate limit or processing check */ }
+  return false;
+};
 
 export const markTransactionAsProcessed = (transactionId, userId, amountZC) => {
   memoryProcessedTransactions.add(transactionId);
@@ -958,6 +970,24 @@ export const markTransactionAsProcessed = (transactionId, userId, amountZC) => {
     memoryProcessedTransactions.delete(first);
   }
   sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
+};
+
+// ─── Admin 2FA Persistence ─────────────────────────────────────────────────
+export const saveAdminTotpSecret = async (userId, secret, enabled = false) => {
+  await sbUpsert('admin_2fa_secrets', { user_id: userId, secret, enabled });
+};
+
+export const loadAdminTotpSecrets = async () => {
+  const result = new Map();
+  try {
+    const rows = await sbSelect('admin_2fa_secrets');
+    if (rows) {
+      for (const row of rows) {
+        result.set(row.user_id, { secret: row.secret, enabled: row.enabled, verifiedAt: null });
+      }
+    }
+  } catch { /* table may not exist yet */ }
+  return result;
 };
 
 // ─── Seed data ──────────────────────────────────────────────────────────────

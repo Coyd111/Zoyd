@@ -73,6 +73,7 @@ const AdminDashboardPage: React.FC = () => {
   const [matchFilter, setMatchFilter] = useState<MatchFilter>('priority');
   const [userFilter, setUserFilter] = useState<UserFilter>('critical');
   const [disputeFilter, setDisputeFilter] = useState<DisputeFilter>('escalated');
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
   const players = useMemo(
     () =>
@@ -114,15 +115,18 @@ const AdminDashboardPage: React.FC = () => {
     [reports]
   );
 
-  const liveMatches = useMemo(
-    () => matches.filter((match) => match.status === 'in_progress'),
-    [matches]
-  );
+  const matchQueues = useMemo(() => {
+    const live: typeof matches = [];
+    const ready: typeof matches = [];
+    for (const match of matches) {
+      if (match.status === 'in_progress') live.push(match);
+      else if (match.status === 'ready' || match.status === 'check_in') ready.push(match);
+    }
+    return { live, ready };
+  }, [matches]);
 
-  const readyMatches = useMemo(
-    () => matches.filter((match) => match.status === 'ready' || match.status === 'check_in'),
-    [matches]
-  );
+  const liveMatches = matchQueues.live;
+  const readyMatches = matchQueues.ready;
 
   const frozenPools = useMemo(
     () =>
@@ -149,14 +153,23 @@ const AdminDashboardPage: React.FC = () => {
     return adminInsights.openDisputes;
   }, [disputeFilter, adminInsights.openDisputes, escalatedDisputes]);
 
-  const sortedMatches = useMemo(
-    () =>
-      [...matches].sort(
-        (left, right) =>
-          new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime()
-      ),
-    [matches]
-  );
+  const filteredMatches = useMemo(() => {
+    const sorted = [...matches].sort(
+      (left, right) =>
+        new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime()
+    );
+
+    if (matchFilter === 'priority') {
+      return sorted.filter((match) => ['disputed', 'check_in', 'ready', 'in_progress'].includes(match.status));
+    }
+    if (matchFilter === 'active') {
+      return sorted.filter((match) => !['finished', 'cancelled', 'forfeited'].includes(match.status));
+    }
+    if (matchFilter === 'closed') {
+      return sorted.filter((match) => ['finished', 'cancelled', 'forfeited'].includes(match.status));
+    }
+    return sorted;
+  }, [matchFilter, matches]);
 
   const priorityQueue = useMemo(() => {
     const disputeItems = adminInsights.openDisputes.map((match) => {
@@ -205,19 +218,6 @@ const AdminDashboardPage: React.FC = () => {
       )
       .slice(0, 8);
   }, [adminInsights.openDisputes, pendingReports, playerById, readyMatches]);
-
-  const filteredMatches = useMemo(() => {
-    if (matchFilter === 'priority') {
-      return sortedMatches.filter((match) => ['disputed', 'check_in', 'ready', 'in_progress'].includes(match.status));
-    }
-    if (matchFilter === 'active') {
-      return sortedMatches.filter((match) => !['finished', 'cancelled', 'forfeited'].includes(match.status));
-    }
-    if (matchFilter === 'closed') {
-      return sortedMatches.filter((match) => ['finished', 'cancelled', 'forfeited'].includes(match.status));
-    }
-    return sortedMatches;
-  }, [matchFilter, sortedMatches]);
 
   const filteredUsers = useMemo(() => {
     if (userFilter === 'critical') {
@@ -766,11 +766,25 @@ const AdminDashboardPage: React.FC = () => {
                           Voir le match
                         </Link>
                         <button
-                          onClick={() => handleCancelMatch(match.id)}
-                          className="border border-white/10 text-white/30 px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-red-300 hover:border-red-500/30 transition-colors"
+                          onClick={() => {
+                            if (pendingCancelId === match.id) {
+                              setPendingCancelId(null);
+                              void handleCancelMatch(match.id);
+                            } else {
+                              setPendingCancelId(match.id);
+                            }
+                          }}
+                          onMouseLeave={() => {
+                            if (pendingCancelId === match.id) setPendingCancelId(null);
+                          }}
+                          className={`border px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors ${
+                            pendingCancelId === match.id
+                              ? 'border-red-500/50 bg-red-500/10 text-red-300'
+                              : 'border-white/10 text-white/30 hover:text-red-300 hover:border-red-500/30'
+                          }`}
                         >
                           <Ban className="w-3 h-3 inline mr-2" />
-                          Annuler
+                          {pendingCancelId === match.id ? 'Confirmer l\'annulation' : 'Annuler'}
                         </button>
                       </div>
                     </div>

@@ -84,36 +84,11 @@ const ClassementsPage: React.FC = () => {
     [friends, matches, reports, tournaments, user]
   );
 
-  const teamRankings = useMemo(() => buildTeamRankings(players, tournaments), [players, tournaments]);
-  const countryRankings = useMemo(() => buildCountryRankings(players), [players]);
-  const controllerRankings = useMemo(() => buildControllerRankings(players), [players]);
-
-  const rowsByTab = useMemo(() => {
+  const earningsRanking = useMemo(() => {
     const indexedPlayers = players.filter(
       (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0 || player.isMe
     );
-
-    const elo = sortWithRank(
-      indexedPlayers,
-      (left, right) =>
-        right.elo - left.elo ||
-        right.winRate - left.winRate ||
-        right.totalMatches - left.totalMatches
-    ).map(({ item, rank }) => ({
-      key: `${item.key}-elo`,
-      rank,
-      label: item.pseudo,
-      href: item.hasPublicProfile && item.primaryUserId ? `/profil/${item.primaryUserId}` : undefined,
-      countryCode: item.countryCode,
-      detail: item.rankMJ || 'Bronze',
-      value: item.elo,
-      rate: item.winRate,
-      earnings: item.totalEarnings,
-      trust: item.trustScore,
-      isMe: item.isMe,
-    } satisfies RankingRow));
-
-    const earnings = sortWithRank(
+    return sortWithRank(
       indexedPlayers,
       (left, right) =>
         right.totalEarnings - left.totalEarnings ||
@@ -132,105 +107,132 @@ const ClassementsPage: React.FC = () => {
       trust: item.trustScore,
       isMe: item.isMe,
     } satisfies RankingRow));
+  }, [players]);
 
-    const winrate = sortWithRank(
-      indexedPlayers.filter((player) => player.totalMatches > 0),
-      (left, right) =>
-        right.winRate - left.winRate || right.totalMatches - left.totalMatches || right.totalEarnings - left.totalEarnings
-    ).map(({ item, rank }) => ({
-      key: `${item.key}-winrate`,
-      rank,
-      label: item.pseudo,
-      href: item.hasPublicProfile && item.primaryUserId ? `/profil/${item.primaryUserId}` : undefined,
-      countryCode: item.countryCode,
-      detail: item.controllerType || item.rankMJ || '--',
-      value: item.wins,
-      rate: item.winRate,
-      earnings: item.totalEarnings,
-      trust: item.trustScore,
-      isMe: item.isMe,
-    } satisfies RankingRow));
+  const rowsByActiveTab = useMemo(() => {
+    const indexedPlayers = players.filter(
+      (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0 || player.isMe
+    );
 
-    const activity = sortWithRank(
-      indexedPlayers.filter((player) => player.activityCount > 0),
-      (left, right) =>
-        right.activityCount - left.activityCount || right.totalMatches - left.totalMatches || right.totalEarnings - left.totalEarnings
-    ).map(({ item, rank }) => ({
-      key: `${item.key}-activity`,
-      rank,
-      label: item.pseudo,
-      href: item.hasPublicProfile && item.primaryUserId ? `/profil/${item.primaryUserId}` : undefined,
-      countryCode: item.countryCode,
-      detail: `${item.activityCount} sessions`,
-      value: item.totalMatches,
-      rate: item.winRate,
-      earnings: item.totalEarnings,
-      trust: item.trustScore,
-      isMe: item.isMe,
-    } satisfies RankingRow));
+    switch (activeTab) {
+      case 'elo':
+        return sortWithRank(
+          indexedPlayers,
+          (left, right) =>
+            right.elo - left.elo ||
+            right.winRate - left.winRate ||
+            right.totalMatches - left.totalMatches
+        ).map(({ item, rank }) => ({
+          key: `${item.key}-elo`,
+          rank,
+          label: item.pseudo,
+          href: item.hasPublicProfile && item.primaryUserId ? `/profil/${item.primaryUserId}` : undefined,
+          countryCode: item.countryCode,
+          detail: item.rankMJ || 'Bronze',
+          value: item.elo,
+          rate: item.winRate,
+          earnings: item.totalEarnings,
+          trust: item.trustScore,
+          isMe: item.isMe,
+        } satisfies RankingRow));
+      case 'earnings':
+        return earningsRanking;
+      case 'winrate':
+        return sortWithRank(
+          indexedPlayers.filter((player) => player.totalMatches > 0),
+          (left, right) =>
+            right.winRate - left.winRate || right.totalMatches - left.totalMatches || right.totalEarnings - left.totalEarnings
+        ).map(({ item, rank }) => ({
+          key: `${item.key}-winrate`,
+          rank,
+          label: item.pseudo,
+          href: item.hasPublicProfile && item.primaryUserId ? `/profil/${item.primaryUserId}` : undefined,
+          countryCode: item.countryCode,
+          detail: item.controllerType || item.rankMJ || '--',
+          value: item.wins,
+          rate: item.winRate,
+          earnings: item.totalEarnings,
+          trust: item.trustScore,
+          isMe: item.isMe,
+        } satisfies RankingRow));
+      case 'activity':
+        return sortWithRank(
+          indexedPlayers.filter((player) => player.activityCount > 0),
+          (left, right) =>
+            right.activityCount - left.activityCount || right.totalMatches - left.totalMatches || right.totalEarnings - left.totalEarnings
+        ).map(({ item, rank }) => ({
+          key: `${item.key}-activity`,
+          rank,
+          label: item.pseudo,
+          href: item.hasPublicProfile && item.primaryUserId ? `/profil/${item.primaryUserId}` : undefined,
+          countryCode: item.countryCode,
+          detail: `${item.activityCount} sessions`,
+          value: item.totalMatches,
+          rate: item.winRate,
+          earnings: item.totalEarnings,
+          trust: item.trustScore,
+          isMe: item.isMe,
+        } satisfies RankingRow));
+      case 'teams': {
+        const teamRankings = buildTeamRankings(players, tournaments);
+        return sortWithRank(
+          teamRankings,
+          (left, right) => right.earnings - left.earnings || right.wins - left.wins || right.winRate - left.winRate
+        ).map(({ item, rank }) => ({
+          key: `${item.key}-teams`,
+          rank,
+          label: item.squadName,
+          countryCode: item.countryCode,
+          detail: `${item.members} joueurs`,
+          value: item.wins,
+          rate: item.winRate,
+          earnings: item.earnings,
+          trust: item.averageTrust,
+        } satisfies RankingRow));
+      }
+      case 'country': {
+        const countryRankings = buildCountryRankings(players);
+        return sortWithRank(
+          countryRankings,
+          (left, right) => right.earnings - left.earnings || right.wins - left.wins || right.playersCount - left.playersCount
+        ).map(({ item, rank }) => ({
+          key: `${item.key}-country`,
+          rank,
+          label: item.country,
+          countryCode: item.countryCode,
+          detail: `${item.playersCount} joueurs`,
+          value: item.wins,
+          rate: item.winRate,
+          earnings: item.earnings,
+          trust: item.averageTrust,
+        } satisfies RankingRow));
+      }
+      case 'controller': {
+        const controllerRankings = buildControllerRankings(players);
+        return sortWithRank(
+          controllerRankings,
+          (left, right) => right.earnings - left.earnings || right.wins - left.wins || right.playersCount - left.playersCount
+        ).map(({ item, rank }) => ({
+          key: `${item.key}-controller`,
+          rank,
+          label: item.controllerType,
+          countryCode: '--',
+          detail: `${item.playersCount} joueurs`,
+          value: item.wins,
+          rate: item.winRate,
+          earnings: item.earnings,
+          trust: item.averageTrust,
+        } satisfies RankingRow));
+      }
+    }
+  }, [activeTab, earningsRanking, players, tournaments]);
 
-    const teams = sortWithRank(
-      teamRankings,
-      (left, right) => right.earnings - left.earnings || right.wins - left.wins || right.winRate - left.winRate
-    ).map(({ item, rank }) => ({
-      key: `${item.key}-teams`,
-      rank,
-      label: item.squadName,
-      countryCode: item.countryCode,
-      detail: `${item.members} joueurs`,
-      value: item.wins,
-      rate: item.winRate,
-      earnings: item.earnings,
-      trust: item.averageTrust,
-    } satisfies RankingRow));
-
-    const countries = sortWithRank(
-      countryRankings,
-      (left, right) => right.earnings - left.earnings || right.wins - left.wins || right.playersCount - left.playersCount
-    ).map(({ item, rank }) => ({
-      key: `${item.key}-country`,
-      rank,
-      label: item.country,
-      countryCode: item.countryCode,
-      detail: `${item.playersCount} joueurs`,
-      value: item.wins,
-      rate: item.winRate,
-      earnings: item.earnings,
-      trust: item.averageTrust,
-    } satisfies RankingRow));
-
-    const controllers = sortWithRank(
-      controllerRankings,
-      (left, right) => right.earnings - left.earnings || right.wins - left.wins || right.playersCount - left.playersCount
-    ).map(({ item, rank }) => ({
-      key: `${item.key}-controller`,
-      rank,
-      label: item.controllerType,
-      countryCode: '--',
-      detail: `${item.playersCount} joueurs`,
-      value: item.wins,
-      rate: item.winRate,
-      earnings: item.earnings,
-      trust: item.averageTrust,
-    } satisfies RankingRow));
-
-    return {
-      elo,
-      earnings,
-      winrate,
-      activity,
-      teams,
-      country: countries,
-      controller: controllers,
-    } satisfies Record<RankingTab, RankingRow[]>;
-  }, [controllerRankings, countryRankings, players, teamRankings]);
-
-  const entries = rowsByTab[activeTab];
+  const entries = rowsByActiveTab;
   const activeColumns = tabColumns[activeTab];
-  const myRank = rowsByTab.earnings.find((entry) => entry.isMe)?.rank;
+  const myRank = earningsRanking.find((entry) => entry.isMe)?.rank;
   const topPercent =
-    myRank && rowsByTab.earnings.length > 0
-      ? Math.max(1, Math.round((myRank / rowsByTab.earnings.length) * 100))
+    myRank && earningsRanking.length > 0
+      ? Math.max(1, Math.round((myRank / earningsRanking.length) * 100))
       : undefined;
 
   return (
@@ -370,7 +372,7 @@ const ClassementsPage: React.FC = () => {
                   key={entry.key}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.04 }}
+                  transition={{ delay: Math.min(index * 0.04, 0.4) }}
                   className={`border transition-all ${
                     entry.isMe
                       ? 'border-zoyd-yellow/30 bg-zoyd-yellow/5'

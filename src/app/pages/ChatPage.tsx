@@ -85,7 +85,7 @@ const ChatPage: React.FC = () => {
     }
   }, [currentMessages.length]);
 
-  const handleSend = async (event: React.FormEvent) => {
+  const handleSend = async (event: React.FormEvent | React.KeyboardEvent) => {
     event.preventDefault();
     if (!activeChannelId) return;
     if (!user) {
@@ -318,6 +318,12 @@ const ChatPage: React.FC = () => {
                   type="text"
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      void handleSend(event);
+                    }
+                  }}
                   placeholder="Envoyer un message..."
                   aria-label="Saisir un message"
                   className="flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:outline-none focus:border-zoyd-blue transition-colors"

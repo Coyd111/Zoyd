@@ -190,7 +190,7 @@ const CreateTournamentPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline pb-20">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-20">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-[1550px] mx-auto px-6 py-10 relative z-10">
@@ -209,7 +209,7 @@ const CreateTournamentPage: React.FC = () => {
 
         <header className="relative mb-10 p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
           <div className="absolute inset-0 z-0">
-            <img src="/assets/illustrations/tournament_cup.jpg" alt="Tournament Cup" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale" />
+            <img src="/assets/illustrations/tournament_cup.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
             <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
             <div className="absolute inset-0 tactical-grid opacity-10" />
           </div>
@@ -367,6 +367,7 @@ const CreateTournamentPage: React.FC = () => {
                     </label>
                     <select
                       {...register('weaponRestrictions')}
+                      aria-label="Restriction d'armes"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       {WEAPON_OPTIONS.map((weapon) => (
@@ -383,6 +384,7 @@ const CreateTournamentPage: React.FC = () => {
                     </label>
                     <select
                       {...register('pointstreaks')}
+                      aria-label="Point streaks"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       <option value="restricted">Interdites</option>
@@ -398,6 +400,7 @@ const CreateTournamentPage: React.FC = () => {
                       type="number"
                       min={1}
                       {...register('scoreTarget', { valueAsNumber: true })}
+                      aria-label="Score cible"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     />
                   </div>
@@ -410,6 +413,7 @@ const CreateTournamentPage: React.FC = () => {
                       type="number"
                       min={1}
                       {...register('bestOf', { valueAsNumber: true })}
+                      aria-label="Best of"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     />
                   </div>
@@ -499,6 +503,7 @@ const CreateTournamentPage: React.FC = () => {
                   </label>
                     <select
                       {...register('deviceRestriction')}
+                      aria-label="Appareils acceptes"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       <option value="open">Ouvert</option>
@@ -516,6 +521,7 @@ const CreateTournamentPage: React.FC = () => {
                   </label>
                     <select
                       {...register('controllerRestriction')}
+                      aria-label="Type de controle accepte"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       <option value="open">Ouvert</option>

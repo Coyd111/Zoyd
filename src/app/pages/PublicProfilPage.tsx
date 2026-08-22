@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { motion } from 'motion/react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -144,11 +145,13 @@ const PublicProfilPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline pb-24">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <header className="relative border-b border-white/5 bg-zoyd-surface/40">
-        <div className="max-w-[1450px] mx-auto px-6 py-12">
+      <header className="relative border-b border-white/5 bg-zoyd-surface/40 overflow-hidden">
+        <img src="/assets/maps/standoff.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/maps/oasis.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+        <div className="relative z-10 max-w-[1450px] mx-auto px-6 py-12">
           <div className="flex items-center gap-3 mb-6">
             <Link to="/profil" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
               <ArrowLeft className="w-4 h-4" />
@@ -235,7 +238,11 @@ const PublicProfilPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
+      >
         <div className="space-y-6">
           <div className="space-y-4">
             <div>
@@ -368,7 +375,7 @@ const PublicProfilPage: React.FC = () => {
             )}
           </section>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

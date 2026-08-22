@@ -56,7 +56,7 @@ const tabColumns: Record<
 const rankIcon = (rank: number) => {
   if (rank === 1) return <Crown className="w-5 h-5 text-zoyd-yellow" />;
   if (rank === 2) return <Medal className="w-5 h-5 text-white/60" />;
-  if (rank === 3) return <Medal className="w-5 h-5 text-amber-600" />;
+  if (rank === 3) return <Medal className="w-5 h-5 text-orange-400" />;
   return <span className="text-sm font-display font-black text-white/20 w-5 text-center">{rank}</span>;
 };
 
@@ -236,12 +236,13 @@ const ClassementsPage: React.FC = () => {
       : undefined;
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline pb-24">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden pt-16">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/illustrations/ranked_arena.jpg" alt="Ranked Arena" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale" />
+          <img src="/assets/illustrations/ranked_arena.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/maps/summit.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         </div>
         <div className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-8 pb-12">
@@ -283,13 +284,15 @@ const ClassementsPage: React.FC = () => {
       </header>
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12 relative z-10">
-        <div className="flex flex-wrap gap-2 mb-12 border-b border-white/5 pb-4">
+        <div role="tablist" className="flex flex-wrap gap-2 mb-12 border-b border-white/5 pb-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border ${
                   isActive
@@ -318,7 +321,7 @@ const ClassementsPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[9px] font-mono font-black uppercase tracking-widest text-white/20 italic">
+            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[9px] font-mono font-black uppercase tracking-widest text-white/20 italic">
               <div className="col-span-1">RANK</div>
               <div className="col-span-3">{activeColumns.primary}</div>
               <div className="col-span-1 text-center">PAYS</div>
@@ -367,6 +370,30 @@ const ClassementsPage: React.FC = () => {
                 </>
               );
 
+              const mobileContent = (
+                <div className="md:hidden flex items-center gap-3 px-4 py-3">
+                  <div className="shrink-0">{rankIcon(entry.rank)}</div>
+                  <div className="w-8 h-8 border border-white/10 flex items-center justify-center font-display font-black text-white text-xs bg-black shrink-0">
+                    {entry.label.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display font-black text-white text-sm uppercase italic truncate">{entry.label}</div>
+                    <div className="flex items-center gap-3 text-[10px] font-mono text-white/30">
+                      <span>{entry.countryCode}</span>
+                      <span>{entry.detail}</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-display font-black text-zoyd-yellow text-sm italic">{formatZC(entry.earnings)}</div>
+                    {typeof entry.trust === 'number' && (
+                      <div className={`text-[10px] font-mono font-black ${entry.trust >= 90 ? 'text-green-400' : entry.trust >= 70 ? 'text-white/60' : 'text-red-300'}`}>
+                        {entry.trust}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+
               return (
                 <motion.div
                   key={entry.key}
@@ -379,15 +406,16 @@ const ClassementsPage: React.FC = () => {
                       : 'border-white/5 bg-zoyd-surface/10 hover:bg-zoyd-surface/20'
                   }`}
                 >
+                  {mobileContent}
                   {entry.href ? (
                     <Link
                       to={entry.href}
-                      className="grid grid-cols-12 gap-4 px-4 py-4 items-center"
+                      className="hidden md:grid grid-cols-12 gap-4 px-4 py-4 items-center"
                     >
                       {content}
                     </Link>
                   ) : (
-                    <div className="grid grid-cols-12 gap-4 px-4 py-4 items-center">{content}</div>
+                    <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-4 items-center">{content}</div>
                   )}
                 </motion.div>
               );

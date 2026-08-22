@@ -172,61 +172,65 @@ const applyResultSettlement = async (match, result) => {
   const eloDeltaByTeam = { 0: deltaA, 1: deltaB };
 
   for (const player of match.players) {
-    const isWinner = player.team === result.winnerTeam;
-    const deltaElo = eloDeltaByTeam[player.team] || 0;
+    try {
+      const isWinner = player.team === result.winnerTeam;
+      const deltaElo = eloDeltaByTeam[player.team] || 0;
 
-    if (isWinner) {
+      if (isWinner) {
+        await withWalletMutex(player.userId, () => {
+          releaseWalletWinnings(
+            player.userId,
+            payout,
+            match.id,
+            'prize_win',
+            `Gain du match ${match.rules.mode} / ${match.rules.map}`
+          );
+
+          patchUserForMatchOutcome(player.userId, (user) => {
+            const nextStats = {
+              ...user.stats,
+              wins: Number(user.stats?.wins || 0) + 1,
+              totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout),
+              elo: Math.round(Number(user.stats?.elo || 1200) + deltaElo),
+            };
+            const total = nextStats.wins + Number(nextStats.losses || 0) + Number(nextStats.draws || 0);
+            nextStats.totalMatches = total;
+            nextStats.winRate = total > 0 ? Math.round((nextStats.wins / total) * 1000) / 10 : 0;
+            user.stats = nextStats;
+            user.rankMJ = getRankFromElo(nextStats.elo);
+            user.progression = addXpToProgression(user.progression, 120);
+            if (result.resolutionType === 'forfeit') {
+              user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) + 2));
+            }
+            return user;
+          });
+        });
+        continue;
+      }
+
       await withWalletMutex(player.userId, () => {
-        releaseWalletWinnings(
-          player.userId,
-          payout,
-          match.id,
-          'prize_win',
-          `Gain du match ${match.rules.mode} / ${match.rules.map}`
-        );
-
+        settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
         patchUserForMatchOutcome(player.userId, (user) => {
           const nextStats = {
             ...user.stats,
-            wins: Number(user.stats?.wins || 0) + 1,
-            totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout),
-            elo: Math.round(Number(user.stats?.elo || 1200) + deltaElo),
+            losses: Number(user.stats?.losses || 0) + 1,
+            elo: Math.max(0, Math.round(Number(user.stats?.elo || 1200) + deltaElo)),
           };
-          const total = nextStats.wins + Number(nextStats.losses || 0) + Number(nextStats.draws || 0);
+          const total = Number(nextStats.wins || 0) + nextStats.losses + Number(nextStats.draws || 0);
           nextStats.totalMatches = total;
-          nextStats.winRate = total > 0 ? Math.round((nextStats.wins / total) * 1000) / 10 : 0;
+          nextStats.winRate = total > 0 ? Math.round((Number(nextStats.wins || 0) / total) * 1000) / 10 : 0;
           user.stats = nextStats;
           user.rankMJ = getRankFromElo(nextStats.elo);
-          user.progression = addXpToProgression(user.progression, 120);
-          if (result.resolutionType === 'forfeit') {
-            user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) + 2));
+          user.progression = addXpToProgression(user.progression, 35);
+          if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
+            user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));
           }
           return user;
         });
       });
-      continue;
+    } catch (err) {
+      log.error('Settlement error for player', { matchId: match.id, playerId: player.userId, error: err.message });
     }
-
-    await withWalletMutex(player.userId, () => {
-      settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
-      patchUserForMatchOutcome(player.userId, (user) => {
-        const nextStats = {
-          ...user.stats,
-          losses: Number(user.stats?.losses || 0) + 1,
-          elo: Math.max(0, Math.round(Number(user.stats?.elo || 1200) + deltaElo)),
-        };
-        const total = Number(nextStats.wins || 0) + nextStats.losses + Number(nextStats.draws || 0);
-        nextStats.totalMatches = total;
-        nextStats.winRate = total > 0 ? Math.round((Number(nextStats.wins || 0) / total) * 1000) / 10 : 0;
-        user.stats = nextStats;
-        user.rankMJ = getRankFromElo(nextStats.elo);
-        user.progression = addXpToProgression(user.progression, 35);
-        if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
-          user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));
-        }
-        return user;
-      });
-    });
   }
 
   if (match.arbiter?.userId && match.arbiterFee > 0) {
@@ -712,59 +716,63 @@ export const processMatchAutomationOnServer = async (matches) => {
   let changed = false;
 
   for (const match of nextMatches) {
-    if (match.status === 'disputed' || TERMINAL_STATUSES.includes(match.status)) {
-      continue;
-    }
+    try {
+      if (match.status === 'disputed' || TERMINAL_STATUSES.includes(match.status)) {
+        continue;
+      }
 
-    const expired = new Date(match.expiresAt).getTime() <= now;
-    if (expired) {
-      cancelForAutomation(
+      const expired = new Date(match.expiresAt).getTime() <= now;
+      if (expired) {
+        cancelForAutomation(
+          match,
+          "Le match est annule automatiquement: la fenetre de 14 jours est depassee sans resultat valide."
+        );
+        changed = true;
+        continue;
+      }
+
+      const scheduledAt = getScheduledTimestamp(match);
+      if (!scheduledAt || scheduledAt > now || match.status === 'in_progress') {
+        continue;
+      }
+
+      if (!match.arbiter) {
+        cancelForAutomation(
+          match,
+          "Le match est annule automatiquement: aucun arbitre n'a confirme la salle a l'heure prevue."
+        );
+        changed = true;
+        continue;
+      }
+
+      const teamAlphaReady = isTeamReadyForLaunch(match, 0);
+      const teamBravoReady = isTeamReadyForLaunch(match, 1);
+
+      if (teamAlphaReady && teamBravoReady) {
+        autoReadyCheckedInPlayers(match);
+        changed = true;
+        continue;
+      }
+
+      if (!teamAlphaReady && !teamBravoReady) {
+        cancelForAutomation(
+          match,
+          "Le match est annule automatiquement: aucune equipe n'a valide tous ses joueurs a l'heure convenue."
+        );
+        changed = true;
+        continue;
+      }
+
+      await resolveForfeit(
         match,
-        "Le match est annule automatiquement: la fenetre de 14 jours est depassee sans resultat valide."
+        teamAlphaReady ? 0 : 1,
+        teamAlphaReady ? 1 : 0,
+        `${getSquadLabel(teamAlphaReady ? 1 : 0)} ne s'est pas presente avec un roster complet a l'heure convenue.`
       );
       changed = true;
-      continue;
+    } catch (err) {
+      log.error('Automation error for match', { matchId: match.id, error: err.message });
     }
-
-    const scheduledAt = getScheduledTimestamp(match);
-    if (!scheduledAt || scheduledAt > now || match.status === 'in_progress') {
-      continue;
-    }
-
-    if (!match.arbiter) {
-      cancelForAutomation(
-        match,
-        "Le match est annule automatiquement: aucun arbitre n'a confirme la salle a l'heure prevue."
-      );
-      changed = true;
-      continue;
-    }
-
-    const teamAlphaReady = isTeamReadyForLaunch(match, 0);
-    const teamBravoReady = isTeamReadyForLaunch(match, 1);
-
-    if (teamAlphaReady && teamBravoReady) {
-      autoReadyCheckedInPlayers(match);
-      changed = true;
-      continue;
-    }
-
-    if (!teamAlphaReady && !teamBravoReady) {
-      cancelForAutomation(
-        match,
-        "Le match est annule automatiquement: aucune equipe n'a valide tous ses joueurs a l'heure convenue."
-      );
-      changed = true;
-      continue;
-    }
-
-    await resolveForfeit(
-      match,
-      teamAlphaReady ? 0 : 1,
-      teamAlphaReady ? 1 : 0,
-      `${getSquadLabel(teamAlphaReady ? 1 : 0)} ne s'est pas presente avec un roster complet a l'heure convenue.`
-    );
-    changed = true;
   }
 
   return { matches: nextMatches, changed };

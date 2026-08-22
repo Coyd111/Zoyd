@@ -123,22 +123,26 @@ const EarningsDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-zoyd-black p-4 md:p-8 font-ui relative overflow-hidden">
+    <div className="min-h-screen bg-zoyd-black p-4 md:p-8 font-ui scanline relative overflow-hidden">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <header className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 border border-zoyd-yellow/50 flex items-center justify-center text-zoyd-yellow bg-zoyd-yellow/5">
-              <Zap className="w-6 h-6 fill-zoyd-yellow" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-display font-black text-white italic uppercase tracking-tighter">
-                TABLEAU DE BORD FINANCIER
-              </h1>
-              <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest">
-                Suivi de tes Cash Prizes et de tes Commissions d'arbitrage
-              </p>
+        <header className="mb-10 relative overflow-hidden border border-white/5">
+          <img src="/assets/illustrations/tournament_cup.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/maps/firing_range.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <div className="relative z-10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 border border-zoyd-yellow/50 flex items-center justify-center text-zoyd-yellow bg-zoyd-yellow/5">
+                <Zap className="w-6 h-6 fill-zoyd-yellow" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-display font-black text-white italic uppercase tracking-tighter">
+                  TABLEAU DE BORD FINANCIER
+                </h1>
+                <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest">
+                  Suivi de tes Cash Prizes et de tes Commissions d'arbitrage
+                </p>
+              </div>
             </div>
           </div>
         </header>
@@ -247,7 +251,7 @@ const EarningsDashboard: React.FC = () => {
             <Card className="bg-zoyd-surface/20 border-white/5 border-l-4 border-l-zoyd-blue">
               <CardContent className="p-6 space-y-5">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full border border-zoyd-blue/20 flex items-center justify-center bg-zoyd-blue/5">
+                  <div className="w-12 h-12 border border-zoyd-blue/20 flex items-center justify-center bg-zoyd-blue/5">
                     <ShieldCheck className="w-6 h-6 text-zoyd-blue" />
                   </div>
                   <div>
@@ -285,7 +289,7 @@ const EarningsDashboard: React.FC = () => {
               {walletInsights.recentTransactions.map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="flex items-center justify-between p-4 bg-black border border-white/5 rounded-lg group hover:border-white/10 transition-colors"
+                   className="flex items-center justify-between p-4 bg-black border border-white/5 group hover:border-white/10 transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 border border-white/10 flex items-center justify-center bg-white/5">

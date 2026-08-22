@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router';
+import { motion } from 'motion/react';
 import {
   Shield,
   Swords,
@@ -268,8 +269,10 @@ const AdminDashboardPage: React.FC = () => {
     <div className="min-h-screen bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <header className="relative">
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-10">
+      <header className="relative overflow-hidden border-b border-white/5">
+        <img src="/assets/maps/highrise.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/maps/scrapyard.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-10">
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-8">
             <div>
               <div className="flex items-center gap-4 mb-2">
@@ -347,7 +350,7 @@ const AdminDashboardPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div role="tablist" className="flex flex-wrap gap-2 mb-8">
           {[
             { id: 'overview', label: 'overview', count: priorityQueue.length },
             { id: 'matches', label: 'matches', count: filteredMatches.length },
@@ -361,6 +364,8 @@ const AdminDashboardPage: React.FC = () => {
           ].map((tab) => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`relative px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all ${
                 activeTab === tab.id ? 'bg-white text-black' : 'text-white/30 hover:text-white hover:bg-white/5'
@@ -377,7 +382,11 @@ const AdminDashboardPage: React.FC = () => {
         </div>
 
         {activeTab === 'overview' ? (
-          <div className="space-y-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
             <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6">
               <section className="p-6">
                 <div className="flex items-center justify-between gap-4 mb-5">
@@ -494,7 +503,7 @@ const AdminDashboardPage: React.FC = () => {
                 </div>
               </section>
             </div>
-          </div>
+          </motion.div>
         ) : null}
 
         {activeTab === 'matches' ? (

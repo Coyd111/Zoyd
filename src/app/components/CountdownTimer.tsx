@@ -37,7 +37,7 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ targetDate, className, 
     <div 
       className={cn(
         'font-display font-bold tabular-nums text-2xl',
-        isUrgent() ? 'text-zoyd-yellow' : 'text-zoyd-white',
+        isUrgent() ? 'text-zoyd-yellow' : 'text-white',
         className
       )}
     >

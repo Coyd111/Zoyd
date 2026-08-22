@@ -12,28 +12,40 @@ export interface TrustBreakdown {
 export interface TrustScoreState {
   score: TrustBreakdown;
   history: { date: string; delta: number; reason: string }[];
-  hydrateFromUser: (trustScore: number) => void;
+  hydrateFromUser: (user: { trustScore?: number; trustBreakdown?: Partial<TrustBreakdown> }) => void;
 }
 
 function clamp(n: number) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+const defaultScore: TrustBreakdown = {
+  overall: 50,
+  punctuality: 50,
+  fairPlay: 50,
+  results: 50,
+  disputes: 50,
+  seniority: 50,
+};
+
 export const useTrustScoreStore = create<TrustScoreState>((set) => ({
-  score: {
-    overall: 84,
-    punctuality: 92,
-    fairPlay: 100,
-    results: 68,
-    disputes: 85,
-    seniority: 45,
-  },
+  score: { ...defaultScore },
   history: [],
 
-  hydrateFromUser: (trustScore) => {
-    if (typeof trustScore !== 'number') return;
+  hydrateFromUser: (user) => {
+    if (!user) return;
+    const overall = typeof user.trustScore === 'number' ? clamp(user.trustScore) : undefined;
+    const breakdown = user.trustBreakdown;
     set((state) => ({
-      score: { ...state.score, overall: clamp(trustScore) },
+      score: {
+        ...state.score,
+        ...(overall !== undefined ? { overall } : {}),
+        ...(breakdown?.punctuality !== undefined ? { punctuality: clamp(breakdown.punctuality) } : {}),
+        ...(breakdown?.fairPlay !== undefined ? { fairPlay: clamp(breakdown.fairPlay) } : {}),
+        ...(breakdown?.results !== undefined ? { results: clamp(breakdown.results) } : {}),
+        ...(breakdown?.disputes !== undefined ? { disputes: clamp(breakdown.disputes) } : {}),
+        ...(breakdown?.seniority !== undefined ? { seniority: clamp(breakdown.seniority) } : {}),
+      },
     }));
   },
 }));

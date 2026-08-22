@@ -1,27 +1,27 @@
 import React from 'react';
 import { Link } from 'react-router';
-import { Button } from '../components/ui/Button';
 import { motion } from 'motion/react';
 
 const NotFoundPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-zoyd-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-zoyd-black flex items-center justify-center p-4 relative font-ui scanline">
+      <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
+      <img src="/assets/maps/nuketown.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+      <img src="/assets/maps/coastal.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center max-w-md"
       >
         <h1 className="text-9xl font-display font-black text-zoyd-yellow mb-4">404</h1>
-        <h2 className="text-3xl font-display font-bold text-zoyd-white mb-4">
+        <h2 className="text-3xl font-display font-bold text-white mb-4">
           ZONE NON TROUVÉE
         </h2>
-        <p className="text-zoyd-white-60 mb-8">
+        <p className="text-white/40 mb-8">
           Cette page n'existe pas ou a été déplacée. Retourne au hub pour continuer à compétitionner.
         </p>
-        <Link to="/mj">
-          <Button variant="primary" size="lg">
-            RETOUR AU HUB
-          </Button>
+        <Link to="/mj" className="inline-block bg-zoyd-yellow text-black px-8 py-4 font-display font-black text-[11px] tracking-[0.2em] uppercase italic hover:bg-white transition-colors">
+          RETOUR AU HUB
         </Link>
       </motion.div>
     </div>

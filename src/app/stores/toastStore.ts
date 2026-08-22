@@ -13,12 +13,12 @@ export interface Toast {
 
 export interface ToastState {
   toasts: Toast[];
+  idCounter: number;
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
   clearAll: () => void;
 }
 
-let toastIdCounter = 0;
 const toastTimers = new Map<string, NodeJS.Timeout>();
 
 export function cleanupToastTimers() {
@@ -28,19 +28,23 @@ export function cleanupToastTimers() {
 
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
+  idCounter: 0,
 
   addToast: (toast) => {
-    const id = `TOAST-${++toastIdCounter}-${Date.now()}`;
-    const t: Toast = { ...toast, id };
-    set((state) => ({ toasts: [...state.toasts, t] }));
+    set((state) => {
+      const id = `TOAST-${state.idCounter + 1}-${Date.now()}`;
+      const t: Toast = { ...toast, id };
 
-    if (toast.duration > 0) {
-      const timer = setTimeout(() => {
-        toastTimers.delete(id);
-        set((state) => ({ toasts: state.toasts.filter((x) => x.id !== id) }));
-      }, toast.duration);
-      toastTimers.set(id, timer);
-    }
+      if (toast.duration > 0) {
+        const timer = setTimeout(() => {
+          toastTimers.delete(id);
+          set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) }));
+        }, toast.duration);
+        toastTimers.set(id, timer);
+      }
+
+      return { toasts: [...state.toasts, t], idCounter: state.idCounter + 1 };
+    });
   },
 
   removeToast: (id) => {

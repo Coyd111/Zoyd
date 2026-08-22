@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   ArrowRight,
   ChevronDown,
+  Menu,
   ShieldCheck,
   Swords,
   Users,
   Wallet,
+  X,
 } from 'lucide-react';
 import { LANDING_TICKER_ITEMS } from '../../lib/competition';
 import ZoydLogo from '../components/branding/ZoydLogo';
@@ -52,7 +54,7 @@ export default function LandingPage() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui selection:bg-zoyd-yellow selection:text-black overflow-x-hidden">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline selection:bg-zoyd-yellow selection:text-black overflow-x-hidden">
       <LandingNav />
 
       <main className="relative">
@@ -94,7 +96,7 @@ export default function LandingPage() {
                   <span className="text-zoyd-yellow">Afrique.</span>
                 </h1>
 
-                <p className="text-lg md:text-xl text-white/56 leading-relaxed max-w-2xl mb-10">
+                <p className="text-lg md:text-xl text-white/40 leading-relaxed max-w-2xl mb-10">
                   Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique.
                 </p>
 
@@ -108,7 +110,7 @@ export default function LandingPage() {
                   </Link>
                   <Link
                     to="/auth/register"
-                    className="inline-flex items-center gap-3 border border-white/12 px-7 md:px-9 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/72 hover:text-white hover:border-white/28 transition-colors"
+                    className="inline-flex items-center gap-3 border border-white/10 px-7 md:px-9 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/60 hover:text-white hover:border-white/20 transition-colors"
                   >
                     Arbitrer un match
                   </Link>
@@ -221,7 +223,7 @@ export default function LandingPage() {
               <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
                 Tout pour jouer.<br />Tout pour gagner.
               </h2>
-              <p className="text-white/48 text-lg md:text-xl leading-relaxed max-w-3xl">
+              <p className="text-white/40 text-lg md:text-xl leading-relaxed max-w-3xl">
                 ZOYD n'est pas qu'un simple leaderboard. C'est la première Gig-Economy pour le gaming mobile en Afrique. Que tu aies un shoot de légende ou un œil de lynx pour l'arbitrage, tu peux générer des revenus réels.
               </p>
             </div>
@@ -242,7 +244,7 @@ export default function LandingPage() {
                   <h3 className="text-2xl font-display font-black uppercase italic tracking-tight mb-4">
                     {card.title}
                   </h3>
-                  <p className="text-white/42 leading-relaxed text-base">{card.description}</p>
+                  <p className="text-white/40 leading-relaxed text-base">{card.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -258,7 +260,7 @@ export default function LandingPage() {
               <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.92] mb-6">
                 Choisis ta voie.<br />Construis ton empire.
               </h2>
-              <p className="text-white/48 text-lg leading-relaxed mb-8">
+              <p className="text-white/40 text-lg leading-relaxed mb-8">
                 ZOYD repose sur deux piliers : ceux qui font le spectacle, et ceux qui assurent l'équité. Les deux méritent d'être payés.
               </p>
               <div className="space-y-3">
@@ -268,7 +270,7 @@ export default function LandingPage() {
                   'Un écosystème sain et sans triche',
                   'Des opportunités de revenus pour tous',
                 ].map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-sm md:text-base text-white/58">
+                  <div key={item} className="flex items-center gap-3 text-sm md:text-base text-white/40">
                     <div className="w-2 h-2 bg-zoyd-blue" />
                     {item}
                   </div>
@@ -288,12 +290,12 @@ export default function LandingPage() {
                   <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
                     Le Joueur
                   </h3>
-                  <p className="text-white/46 leading-relaxed max-w-xl">
+                  <p className="text-white/40 leading-relaxed max-w-xl">
                     Mise sur ton propre talent dans des salons 1v1 ou 2v2. Monte dans le classement MMR africain et prouve que tu es une légende. ZOYD sécurise ton argent et gère tes gains.
                   </p>
                 </div>
                 <div className="flex items-center justify-between pt-8 mt-8">
-                  <div className="flex items-center gap-3 text-sm text-white/56">
+                  <div className="flex items-center gap-3 text-sm text-white/40">
                     <Swords className="w-4 h-4 text-zoyd-blue" />
                     Entre dans l'arène
                   </div>
@@ -318,12 +320,12 @@ export default function LandingPage() {
                   <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
                     L'Arbitre
                   </h3>
-                  <p className="text-white/46 leading-relaxed max-w-xl">
+                  <p className="text-white/40 leading-relaxed max-w-xl">
                     Ton shoot n'est pas incroyable mais tu connais le jeu ? Rejoins les matchs en tant que spectateur, veille au bon déroulement et touche une commission sur chaque match arbitré.
                   </p>
                 </div>
                 <div className="flex items-center justify-between pt-8 mt-8">
-                  <div className="flex items-center gap-3 text-sm text-white/56">
+                  <div className="flex items-center gap-3 text-sm text-white/40">
                     <Users className="w-4 h-4 text-zoyd-yellow" />
                     Rejoins le staff
                   </div>
@@ -349,7 +351,7 @@ export default function LandingPage() {
                   <br />
                   tu entres sur ZOYD.
                 </h2>
-                <p className="text-white/46 text-lg leading-relaxed">
+                <p className="text-white/40 text-lg leading-relaxed">
                   Le parcours d&apos;entree doit etre simple: creer ton compte, choisir ton mode, retrouver ton activite
                   au meme endroit a chaque connexion.
                 </p>
@@ -371,7 +373,7 @@ export default function LandingPage() {
                     <h3 className="text-2xl font-display font-black uppercase italic tracking-tight mb-3">
                       {step.title}
                     </h3>
-                    <p className="text-white/42 leading-relaxed">{step.body}</p>
+                    <p className="text-white/40 leading-relaxed">{step.body}</p>
                   </motion.div>
                 ))}
               </div>
@@ -386,7 +388,7 @@ export default function LandingPage() {
               <br />
               et choisis ton <span className="text-zoyd-yellow">terrain</span>.
             </h2>
-            <p className="text-white/46 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
+            <p className="text-white/40 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
               Cree ton compte, configure ton profil CODM et retrouve une plateforme pensee pour la competition, la
               progression et tes gains.
             </p>
@@ -401,7 +403,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 to="/auth/login"
-                className="inline-flex items-center gap-3 border border-white/12 px-8 md:px-10 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/72 hover:text-white hover:border-white/28 transition-colors"
+                className="inline-flex items-center gap-3 border border-white/10 px-8 md:px-10 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic text-white/60 hover:text-white hover:border-white/20 transition-colors"
               >
                 Me connecter
               </Link>
@@ -429,6 +431,8 @@ export default function LandingPage() {
 }
 
 function LandingNav() {
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
   return (
     <nav className="fixed inset-x-0 top-0 z-50 bg-zoyd-black/72 backdrop-blur-xl">
       <div className="max-w-[1600px] mx-auto px-6 md:px-8 h-20 flex items-center justify-between gap-6">
@@ -436,7 +440,7 @@ function LandingNav() {
           <ZoydLogo compact />
         </Link>
 
-        <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/36">
+        <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/20">
           <a href="#platform" className="hover:text-white transition-colors">
             Plateforme
           </a>
@@ -448,10 +452,10 @@ function LandingNav() {
           </a>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-4">
+        <div className="hidden lg:flex items-center gap-3 md:gap-4">
           <Link
             to="/auth/login"
-            className="text-[10px] md:text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/58 hover:text-white transition-colors italic"
+            className="text-[10px] md:text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/40 hover:text-white transition-colors italic"
           >
             Connexion
           </Link>
@@ -462,7 +466,50 @@ function LandingNav() {
             Commencer
           </Link>
         </div>
+
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="lg:hidden p-2 text-white/60 hover:text-white transition-colors"
+          aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+        >
+          {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
       </div>
+
+      {mobileOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="lg:hidden bg-zoyd-black/95 backdrop-blur-xl border-t border-white/5 px-6 py-6 space-y-4"
+        >
+          <a href="#platform" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-2">
+            Plateforme
+          </a>
+          <a href="#dual-economy" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-2">
+            Joueur / Arbitre
+          </a>
+          <a href="#account" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-2">
+            Compte
+          </a>
+          <div className="border-t border-white/5 pt-4 space-y-3">
+            <Link
+              to="/auth/login"
+              onClick={() => setMobileOpen(false)}
+              className="block text-center text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/40 hover:text-white transition-colors italic py-2"
+            >
+              Connexion
+            </Link>
+            <Link
+              to="/auth/register"
+              onClick={() => setMobileOpen(false)}
+              className="block text-center bg-white text-black px-6 py-3 text-[11px] font-display font-black uppercase tracking-[0.22em] italic hover:bg-zoyd-yellow transition-colors"
+            >
+              Commencer
+            </Link>
+          </div>
+        </motion.div>
+      )}
     </nav>
   );
 }
@@ -480,7 +527,7 @@ function StatBlock({ number, label }: { number: string; label: string }) {
   return (
     <div className="text-center md:text-left">
       <div className="text-3xl md:text-4xl font-display font-black text-zoyd-yellow italic mb-1">{number}</div>
-      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/36">{label}</div>
+      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/20">{label}</div>
     </div>
   );
 }

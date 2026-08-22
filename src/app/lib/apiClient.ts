@@ -25,9 +25,9 @@ export const getAuthHeaders = () => {
   
   if (!token) return {};
 
-  // Check token expiration on client side
+  // Check token expiration on client side — defer logout to avoid race conditions with parallel requests
   if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
-    useAuthStore.getState().logout();
+    queueMicrotask(() => useAuthStore.getState().logout());
     return {};
   }
 

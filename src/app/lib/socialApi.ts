@@ -13,29 +13,64 @@ export interface Report {
 }
 
 export const sendServerFriendRequest = async (targetId: string, message?: string) => {
-  return authorizedPost<{ ok: boolean; request: FriendRequest }>('/api/social/request', { targetId, message });
+  try {
+    return await authorizedPost<{ ok: boolean; request: FriendRequest }>('/api/social/request', { targetId, message });
+  } catch (error) {
+    console.error('Erreur envoi demande ami:', error);
+    throw error;
+  }
 };
 
 export const acceptServerFriendRequest = async (requestId: string) => {
-  return authorizedPost<{ ok: boolean; friend: Friend }>('/api/social/accept', { requestId });
+  try {
+    return await authorizedPost<{ ok: boolean; friend: Friend }>('/api/social/accept', { requestId });
+  } catch (error) {
+    console.error('Erreur acceptation ami:', error);
+    throw error;
+  }
 };
 
 export const declineServerFriendRequest = async (requestId: string) => {
-  return authorizedPost<{ ok: boolean }>('/api/social/decline', { requestId });
+  try {
+    return await authorizedPost<{ ok: boolean }>('/api/social/decline', { requestId });
+  } catch (error) {
+    console.error('Erreur refus ami:', error);
+    throw error;
+  }
 };
 
 export const removeServerFriend = async (friendId: string) => {
-  return authorizedDelete<{ ok: boolean }>(`/api/social/friends/${friendId}`);
+  try {
+    return await authorizedDelete<{ ok: boolean }>(`/api/social/friends/${friendId}`);
+  } catch (error) {
+    console.error('Erreur suppression ami:', error);
+    throw error;
+  }
 };
 
 export const blockServerUser = async (targetId: string) => {
-  return authorizedPost<{ ok: boolean }>('/api/social/block', { targetId });
+  try {
+    return await authorizedPost<{ ok: boolean }>('/api/social/block', { targetId });
+  } catch (error) {
+    console.error('Erreur blocage utilisateur:', error);
+    throw error;
+  }
 };
 
 export const unblockServerUser = async (targetId: string) => {
-  return authorizedPost<{ ok: boolean }>('/api/social/unblock', { targetId });
+  try {
+    return await authorizedPost<{ ok: boolean }>('/api/social/unblock', { targetId });
+  } catch (error) {
+    console.error('Erreur deblocage utilisateur:', error);
+    throw error;
+  }
 };
 
 export const reportServerUser = async (targetId: string, reason: string, description: string) => {
-  return authorizedPost<{ ok: boolean; report: Report }>('/api/social/report', { targetId, reason, description });
+  try {
+    return await authorizedPost<{ ok: boolean; report: Report }>('/api/social/report', { targetId, reason, description });
+  } catch (error) {
+    console.error('Erreur signalement utilisateur:', error);
+    throw error;
+  }
 };

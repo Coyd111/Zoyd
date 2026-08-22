@@ -27,17 +27,37 @@ interface WalletResponse {
 }
 
 export const fetchWalletSnapshot = async (): Promise<WalletResponse> => {
-  return authorizedGet<WalletResponse>('/api/wallet/me');
+  try {
+    return await authorizedGet<WalletResponse>('/api/wallet/me');
+  } catch (error) {
+    console.error('Erreur chargement wallet:', error);
+    throw error;
+  }
 };
 
 export const depositWalletBalance = async (amount: number, method: string): Promise<WalletResponse> => {
-  return authorizedPost<WalletResponse>('/api/wallet/deposit', { amount, method });
+  try {
+    return await authorizedPost<WalletResponse>('/api/wallet/deposit', { amount, method });
+  } catch (error) {
+    console.error('Erreur depot wallet:', error);
+    throw error;
+  }
 };
 
 export const withdrawWalletBalance = async (amount: number, method: string, phone: string): Promise<WalletResponse> => {
-  return authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone });
+  try {
+    return await authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone });
+  } catch (error) {
+    console.error('Erreur retrait wallet:', error);
+    throw error;
+  }
 };
 
 export const verifyFedaPayTransaction = async (transactionId: number | string): Promise<WalletResponse> => {
-  return authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });
+  try {
+    return await authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });
+  } catch (error) {
+    console.error('Erreur verification FedaPay:', error);
+    throw error;
+  }
 };

@@ -10,7 +10,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, hover = false, animate = false, children, ...props }, ref) => {
     const cardClasses = cn(
-      'bg-zoyd-black border border-zoyd-white-10 rounded-lg p-6',
+      'bg-zoyd-black border border-white/10 p-6',
       hover && 'transition-all duration-200 hover:border-zoyd-yellow-50 hover:shadow-lg hover:shadow-zoyd-yellow/10',
       className
     );
@@ -49,14 +49,14 @@ CardHeader.displayName = 'CardHeader';
 
 const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn('font-display text-xl font-bold text-zoyd-white', className)} {...props} />
+    <h3 ref={ref} className={cn('font-display text-xl font-bold text-white', className)} {...props} />
   )
 );
 CardTitle.displayName = 'CardTitle';
 
 const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn('text-sm text-zoyd-white-60', className)} {...props} />
+    <p ref={ref} className={cn('text-sm text-white/60', className)} {...props} />
   )
 );
 CardDescription.displayName = 'CardDescription';

@@ -58,10 +58,6 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        path: 'activate',
-        Component: ActivatePage,
-      },
-      {
         path: 'mode',
         lazy: modeLoader,
       },

@@ -153,22 +153,25 @@ const CreateMatchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline pb-20">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-20">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-4xl mx-auto px-6 pt-12 relative z-10">
-        <header className="mb-12">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 border border-zoyd-blue flex items-center justify-center text-zoyd-blue">
-              <span className="font-display font-black">VS</span>
+        <header className="mb-12 relative overflow-hidden border border-white/5">
+          <img src="/assets/maps/rust.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+          <div className="relative z-10 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 border border-zoyd-blue flex items-center justify-center text-zoyd-blue">
+                <span className="font-display font-black">VS</span>
+              </div>
+              <span className="text-[10px] font-mono font-black text-zoyd-blue uppercase tracking-[0.3em]">
+                Configure ton Wager
+              </span>
             </div>
-            <span className="text-[10px] font-mono font-black text-zoyd-blue uppercase tracking-[0.3em]">
-              Configure ton Wager
-            </span>
+            <h1 className="text-4xl md:text-6xl font-display font-black uppercase tracking-tighter italic">
+              CRÉER UN <span className="text-zoyd-yellow">WAGER</span>
+            </h1>
           </div>
-          <h1 className="text-4xl md:text-6xl font-display font-black uppercase tracking-tighter italic">
-            CRÉER UN <span className="text-zoyd-yellow">WAGER</span>
-          </h1>
         </header>
 
         <div className="flex items-center gap-4 mb-16">

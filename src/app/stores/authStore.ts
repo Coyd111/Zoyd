@@ -137,13 +137,13 @@ export const useAuthStore = create<AuthState>()((set) => ({
   expiresAt: initialSession.expiresAt,
   login: (user, sessionToken, expiresAt) => {
     const normalized = normalizeUser(user);
-    useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
+    useTrustScoreStore.getState().hydrateFromUser(normalized ?? {});
     persistSession(sessionToken, expiresAt || null);
     set({ user: normalized, sessionToken, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },
   hydrateSession: (user, sessionToken, expiresAt) => {
     const normalized = normalizeUser(user);
-    useTrustScoreStore.getState().hydrateFromUser(normalized?.trustScore ?? 0);
+    useTrustScoreStore.getState().hydrateFromUser(normalized ?? {});
     set({ user: normalized, sessionToken, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },
   setLoading: (loading) => set({ isLoading: loading }),
@@ -166,7 +166,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
       user: state.user ? normalizeUser({ ...state.user, ...safeUpdates }) : null,
     }));
     if (typeof updates.trustScore === 'number') {
-      useTrustScoreStore.getState().hydrateFromUser(updates.trustScore);
+      useTrustScoreStore.getState().hydrateFromUser(updates);
     }
   },
   updateStats: (partial) =>

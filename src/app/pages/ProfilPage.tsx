@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router';
+import { motion } from 'motion/react';
 import {
   Award,
   Calendar,
@@ -8,6 +9,7 @@ import {
   Gamepad2,
   Globe,
   Joystick,
+  LogOut,
   Monitor,
   ShieldCheck,
   Smartphone,
@@ -82,12 +84,13 @@ const ProfilPage: React.FC = () => {
       : 100;
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline pb-24">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/illustrations/profile_banner.jpg" alt="Profile Banner" loading="lazy" className="w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale" />
+          <img src="/assets/illustrations/profile_banner.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/maps/highrise.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-transparent to-transparent" />
         </div>
@@ -163,7 +166,7 @@ const ProfilPage: React.FC = () => {
                   }}
                   className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-red-400/50 hover:text-red-400"
                 >
-                  <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                  <LogOut className="w-3 h-3" aria-hidden="true" />
                   Se deconnecter
                 </button>
               </div>
@@ -172,7 +175,11 @@ const ProfilPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
+      >
         <div className="space-y-6">
           <div className="space-y-4">
             <div>
@@ -318,7 +325,7 @@ const ProfilPage: React.FC = () => {
             )}
           </section>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

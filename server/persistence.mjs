@@ -96,6 +96,16 @@ export const sanitizeUserPayload = (payload) => {
   };
 };
 
+export const sanitizePublicUserPayload = (payload) => {
+  if (!payload) return null;
+  const { wallet, walletBalance, email, phone, ...publicFields } = payload;
+  return {
+    ...publicFields,
+    trustScore: Number(payload.trustScore || 0),
+    levelCODM: Number(payload.levelCODM || 1),
+  };
+};
+
 export const hashPassword = async (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
   // NOTE: Salt is passed as hex string (UTF-8), not as Buffer.
@@ -355,7 +365,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
       email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
       game_id_key: normalizeGameIdKey(payload.gameId), role,
       password_hash: passwordHash, payload,
-      is_active: false,
+      is_active: true,
       created_at: createdAt, updated_at: createdAt,
     });
 
@@ -369,6 +379,12 @@ export const getUserById = (userId) => {
   if (!userId) return null;
   const user = memoryUsers.get(userId);
   return user ? sanitizeUserPayload(user) : null;
+};
+
+export const getPublicUserById = (userId) => {
+  if (!userId) return null;
+  const user = memoryUsers.get(userId);
+  return user ? sanitizePublicUserPayload(user) : null;
 };
 
 export const getRawUserById = (userId) => {
@@ -385,7 +401,7 @@ export const findUsersByPseudo = (query, limit = 20) => {
   const results = [];
   for (const user of memoryUsers.values()) {
     if (normalizePseudoKey(user.pseudo).includes(q)) {
-      results.push(sanitizeUserPayload(user));
+      results.push(sanitizePublicUserPayload(user));
       if (results.length >= limit) break;
     }
   }
@@ -810,8 +826,7 @@ export const getFriendsForUser = (userId) => {
     const [u1, u2] = key.split(':');
     const friendId = u1 === userId ? u2 : u2 === userId ? u1 : null;
     if (friendId) {
-      const user = getUserById(friendId);
-      if (user) friends.push(user);
+      const user = getPublicUserById(friendId);      if (user) friends.push(user);
     }
   }
   return friends;
@@ -928,7 +943,7 @@ export const markNotificationAsRead = (userId, notificationId) => {
   if (!n || n.userId !== userId) return false;
   n.isRead = true;
   memoryNotifications.set(notificationId, n);
-  if (supabase) supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId).then(() => {});
+  if (supabase) supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId).then(() => {}).catch((err) => log.error('Failed to mark notification read in DB', { notificationId, error: err.message }));
   return true;
 };
 
@@ -937,7 +952,7 @@ export const markAllNotificationsAsRead = (userId) => {
   for (const [id, n] of memoryNotifications) {
     if (n.userId === userId && !n.isRead) { n.isRead = true; memoryNotifications.set(id, n); count++; }
   }
-  if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {});
+  if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {}).catch((err) => log.error('Failed to mark all notifications read in DB', { userId, error: err.message }));
   return count;
 };
 

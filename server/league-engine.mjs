@@ -477,7 +477,7 @@ export const advanceToFinalOnServer = (seasons, actor, seasonId) => {
   };
 };
 
-export const submitLeagueFinalResultsOnServer = (seasons, actor, seasonId, finalResults) => {
+export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId, finalResults) => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut soumettre les resultats de la finale.');
   const nextSeasons = cloneLeagues(seasons);
@@ -518,7 +518,7 @@ export const submitLeagueFinalResultsOnServer = (seasons, actor, seasonId, final
   season.schedule.finalAt = getNow();
   season.updatedAt = getNow();
 
-  applyLeagueSettlement(season);
+  await applyLeagueSettlement(season);
 
   return {
     seasons: nextSeasons,
@@ -535,63 +535,79 @@ const getPlacementXp = (placement) => {
   return 30;
 };
 
-const applyLeagueSettlement = (season) => {
+const applyLeagueSettlement = async (season) => {
   if (season.status !== 'completed') return;
 
   const { payout, podium } = season;
 
   if (podium.first) {
-    releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
-    patchUserForLeagueOutcome(podium.first, (user) => {
-      user.stats = {
-        ...user.stats,
-        leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
-        leaguesWon: Number(user.stats?.leaguesWon || 0) + 1,
-        totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.first),
-      };
-      user.progression = addXpToProgression(user.progression, getPlacementXp(1));
-      return user;
-    });
-  }
-
-  if (podium.second) {
-    releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
-    patchUserForLeagueOutcome(podium.second, (user) => {
-      user.stats = {
-        ...user.stats,
-        leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
-        totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.second),
-      };
-      user.progression = addXpToProgression(user.progression, getPlacementXp(2));
-      return user;
-    });
-  }
-
-  if (podium.third) {
-    releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
-    patchUserForLeagueOutcome(podium.third, (user) => {
-      user.stats = {
-        ...user.stats,
-        leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
-        totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.third),
-      };
-      user.progression = addXpToProgression(user.progression, getPlacementXp(3));
-      return user;
-    });
-  }
-
-  for (const player of season.registeredPlayers) {
-    const isPodium = [podium.first, podium.second, podium.third].includes(player.userId);
-    if (!isPodium) {
-      settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
-      patchUserForLeagueOutcome(player.userId, (user) => {
+    try {
+      releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
+      patchUserForLeagueOutcome(podium.first, (user) => {
         user.stats = {
           ...user.stats,
           leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+          leaguesWon: Number(user.stats?.leaguesWon || 0) + 1,
+          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.first),
         };
-        user.progression = addXpToProgression(user.progression, getPlacementXp(0));
+        user.progression = addXpToProgression(user.progression, getPlacementXp(1));
         return user;
       });
+    } catch (err) {
+      log.error('League settlement error for 1st place', { seasonId: season.id, userId: podium.first, error: err.message });
+    }
+  }
+
+  if (podium.second) {
+    try {
+      releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
+      patchUserForLeagueOutcome(podium.second, (user) => {
+        user.stats = {
+          ...user.stats,
+          leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.second),
+        };
+        user.progression = addXpToProgression(user.progression, getPlacementXp(2));
+        return user;
+      });
+    } catch (err) {
+      log.error('League settlement error for 2nd place', { seasonId: season.id, userId: podium.second, error: err.message });
+    }
+  }
+
+  if (podium.third) {
+    try {
+      releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
+      patchUserForLeagueOutcome(podium.third, (user) => {
+        user.stats = {
+          ...user.stats,
+          leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.third),
+        };
+        user.progression = addXpToProgression(user.progression, getPlacementXp(3));
+        return user;
+      });
+    } catch (err) {
+      log.error('League settlement error for 3rd place', { seasonId: season.id, userId: podium.third, error: err.message });
+    }
+  }
+
+  for (const player of season.registeredPlayers) {
+    try {
+      const isPodium = [podium.first, podium.second, podium.third].includes(player.userId);
+      if (!isPodium) {
+        settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
+        patchUserForLeagueOutcome(player.userId, (user) => {
+          user.stats = {
+            ...user.stats,
+            leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+          };
+          user.progression = addXpToProgression(user.progression, getPlacementXp(0));
+          return user;
+        });
+      }
+    } catch (err) {
+      log.error('League settlement error for player', { seasonId: season.id, playerId: player.userId, error: err.message });
     }
   }
 };

@@ -163,11 +163,13 @@ const ParametresPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline pb-24">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">
-        <div className="max-w-[1240px] mx-auto px-4 md:px-8 pb-12">
+      <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16 overflow-hidden">
+        <img src="/assets/maps/terminal.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/maps/takeoff.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+        <div className="relative z-10 max-w-[1240px] mx-auto px-4 md:px-8 pb-12">
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
             Parametres
           </h1>
@@ -185,6 +187,8 @@ const ParametresPage: React.FC = () => {
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center gap-4 px-4 py-3 font-display font-black text-xs tracking-widest italic uppercase transition-all ${
                   isActive
@@ -246,12 +250,12 @@ const ParametresPage: React.FC = () => {
                 <SectionTitle title="Profil public" />
                 <div className="space-y-4">
                   <label className="block space-y-2">
-                    <span className="block text-sm font-medium text-zoyd-white">Bio</span>
+                    <span className="block text-sm font-medium text-white">Bio</span>
                     <textarea
                       value={form.bio}
                       onChange={(event) => updateForm('bio', event.target.value)}
                       rows={4}
-                      className="flex w-full rounded-lg border bg-zoyd-white-5 px-4 py-3 text-base text-zoyd-white border-zoyd-white-20 placeholder:text-zoyd-white-30 focus:outline-none focus:ring-2 focus:ring-zoyd-yellow focus:border-transparent transition-all duration-200"
+                      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white-30 focus:outline-none focus:border-zoyd-yellow transition-all duration-200"
                       placeholder="Quelques lignes pour decrire ton style de jeu ou ton identite competitive."
                     />
                   </label>
@@ -479,11 +483,11 @@ const SelectField = ({
   options: Array<{ value: string; label: string }>;
 }) => (
   <label className="block space-y-2">
-    <span className="block text-sm font-medium text-zoyd-white">{label}</span>
+    <span className="block text-sm font-medium text-white">{label}</span>
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="flex w-full rounded-lg border bg-zoyd-white-5 px-4 py-3 text-base text-zoyd-white border-zoyd-white-20 focus:outline-none focus:ring-2 focus:ring-zoyd-yellow focus:border-transparent transition-all duration-200"
+      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 focus:outline-none focus:border-zoyd-yellow transition-all duration-200"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value} className="bg-zoyd-black text-white">
@@ -511,19 +515,23 @@ const NotificationRow = ({
   desc: string;
   value: boolean;
   onChange: (value: boolean) => void;
-}) => (
-  <div className="hud-panel p-4 bg-zoyd-surface/20 flex items-center justify-between gap-4">
-    <div>
-      <div className="font-display font-black text-white text-sm uppercase italic">{label}</div>
-      <div className="text-[10px] font-mono text-white/30 mt-1">{desc}</div>
+}) => {
+  const id = `notif-${label.toLowerCase().replace(/\s+/g, '-')}`;
+  return (
+    <div className="hud-panel p-4 bg-zoyd-surface/20 flex items-center justify-between gap-4">
+      <label htmlFor={id} className="flex-1 cursor-pointer">
+        <div className="font-display font-black text-white text-sm uppercase italic">{label}</div>
+        <div className="text-[10px] font-mono text-white/30 mt-1">{desc}</div>
+      </label>
+      <input
+        id={id}
+        type="checkbox"
+        checked={value}
+        onChange={(event) => onChange(event.target.checked)}
+        className="w-5 h-5 accent-zoyd-yellow"
+      />
     </div>
-    <input
-      type="checkbox"
-      checked={value}
-      onChange={(event) => onChange(event.target.checked)}
-      className="w-5 h-5 accent-zoyd-yellow"
-    />
-  </div>
-);
+  );
+};
 
 export default ParametresPage;

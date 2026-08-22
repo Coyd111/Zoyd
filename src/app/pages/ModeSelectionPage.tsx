@@ -17,7 +17,7 @@ const ModeSelectionPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="relative max-w-[1500px] mx-auto px-6 md:px-8 py-10 md:py-14">
@@ -56,7 +56,7 @@ const ModeSelectionPage: React.FC = () => {
             onClick={handleMJClick}
             className="group text-left h-full"
           >
-            <div className="relative h-full min-h-[420px] sm:min-h-[520px] rounded-[24px] sm:rounded-[30px] overflow-hidden border border-zoyd-blue/20 bg-black hover:border-zoyd-yellow transition-all duration-300 group/card">
+            <div className="relative h-full min-h-[420px] sm:min-h-[520px] overflow-hidden border border-zoyd-blue/20 bg-black hover:border-zoyd-yellow transition-all duration-300 group/card">
               <img src="/assets/maps/crossfire.jpg" alt="Multijoueur" className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity grayscale group-hover/card:scale-105 group-hover/card:grayscale-0 transition-all duration-700" />
               <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:opacity-40 transition-opacity duration-700 pointer-events-none">
                 <source src="/assets/codm/videos/ExecutionTutorial_Generic02.mp4" type="video/mp4" />
@@ -105,7 +105,7 @@ const ModeSelectionPage: React.FC = () => {
             onClick={handleBRClick}
             className="group text-left h-full mt-4 lg:mt-0"
           >
-            <div className="relative h-full min-h-[420px] sm:min-h-[520px] rounded-[24px] sm:rounded-[30px] overflow-hidden border border-zoyd-yellow/20 bg-black/80 hover:border-zoyd-yellow/40 transition-all duration-300 group/br">
+            <div className="relative h-full min-h-[420px] sm:min-h-[520px] overflow-hidden border border-zoyd-yellow/20 bg-black/80 hover:border-zoyd-yellow/40 transition-all duration-300 group/br">
               <img src="/assets/maps/standby.jpg" alt="Battle Royale" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale group-hover/br:scale-105 group-hover/br:grayscale-0 transition-all duration-700" />
               <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/br:opacity-24 transition-opacity duration-700 pointer-events-none">
                 <source src="/assets/codm/videos/AvatarView_Video.mp4" type="video/mp4" />
@@ -148,7 +148,7 @@ const ModeSelectionPage: React.FC = () => {
           </motion.button>
         </div>
 
-        <div className="mt-8 md:mt-10 rounded-[20px] md:rounded-[24px] border border-white/8 bg-zoyd-surface/20 px-5 md:px-6 py-4 md:py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="mt-8 md:mt-10 border border-white/8 bg-zoyd-surface/20 px-5 md:px-6 py-4 md:py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/28 mb-1.5 md:mb-2">Compte ZOYD</div>
             <div className="text-base sm:text-lg font-display font-black italic text-white">

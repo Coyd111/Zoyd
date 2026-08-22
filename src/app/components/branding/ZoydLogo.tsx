@@ -3,9 +3,6 @@ import { cn } from '../../../lib/utils';
 
 interface ZoydLogoProps {
   className?: string;
-  wordmarkClassName?: string;
-  markClassName?: string;
-  theme?: 'dark' | 'light';
   compact?: boolean;
 }
 

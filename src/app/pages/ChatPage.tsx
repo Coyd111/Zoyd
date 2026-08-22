@@ -110,7 +110,7 @@ const ChatPage: React.FC = () => {
   const onlineFriends = friends.filter((friend) => friend.status === 'online');
 
   return (
-    <div className="flex flex-col bg-zoyd-black text-white scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
+    <div className="flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
       <div className="fixed inset-0 tactical-grid opacity-5 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 z-10 shrink-0">
@@ -144,9 +144,10 @@ const ChatPage: React.FC = () => {
       <div className="flex-1 max-w-[1400px] w-full mx-auto flex relative z-10 min-h-0 overflow-hidden">
         {/* Channel sidebar — full width on mobile when no channel active, hidden when channel active */}
         <div className={cn(
-          'border-r border-white/5 bg-zoyd-black/80 flex flex-col shrink-0',
+          'border-r border-white/5 bg-zoyd-black/80 flex flex-col shrink-0 relative overflow-hidden',
           activeChannelId ? 'hidden sm:flex sm:w-64' : 'w-full sm:w-64'
         )}>
+          <img src="/assets/maps/rust.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
           <div className="p-4 border-b border-white/5">
             <button
               onClick={() => {
@@ -248,7 +249,7 @@ const ChatPage: React.FC = () => {
                 </button>
               </div>
 
-              <div ref={containerRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              <div ref={containerRef} role="log" aria-live="polite" className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                 <AnimatePresence>
                   {currentMessages.length === 0 && (
                     <motion.div

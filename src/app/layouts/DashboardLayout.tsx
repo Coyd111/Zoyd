@@ -3,7 +3,6 @@ import { Outlet, Navigate } from 'react-router';
 import { Navbar } from '../components/layout/Navbar';
 import { Sidebar } from '../components/layout/Sidebar';
 import { BottomNav } from '../components/layout/BottomNav';
-import { useMatchAutomationHeartbeat } from '../hooks/useMatchAutomationHeartbeat';
 import { useRealtimeHeartbeat } from '../hooks/useRealtimeHeartbeat';
 import { useAuthStore } from '../stores/authStore';
 
@@ -23,7 +22,6 @@ const DashboardLayout: React.FC = () => {
     return <Navigate to="/auth/login" replace />;
   }
 
-  useMatchAutomationHeartbeat(isAuthenticated);
   useRealtimeHeartbeat(isAuthenticated);
 
   return (

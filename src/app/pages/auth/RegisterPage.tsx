@@ -88,6 +88,7 @@ const RegisterPage: React.FC = () => {
     watch,
     setValue,
     getValues,
+    trigger,
   } = useForm<Partial<RegisterPayload>>({
     resolver: currentStep === 1 ? zodResolver(step1Schema) : currentStep === 2 ? zodResolver(step2Schema) : undefined,
     defaultValues: {
@@ -174,19 +175,41 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui">
+    <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui scanline">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.3 }} className="absolute inset-0">
           <img
-            src="/assets/illustrations/operator_ghost.jpg"
-            alt="Call of Duty Mobile Operator"
-            className="w-full h-full object-cover opacity-80 mix-blend-luminosity grayscale transition-opacity duration-1000"
+            src="/assets/illustrations/profile_banner.jpg"
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.12 }}
+          transition={{ duration: 3, delay: 0.5 }}
+          className="absolute inset-0"
+        >
+          <img
+            src="/assets/maps/summit.jpg"
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
           />
         </motion.div>
 
         <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
+
+        <div className="absolute top-8 left-8 z-10">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-sm border border-white/10">
+            <Zap className="w-3 h-3 text-zoyd-yellow" />
+            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Rejoins la zone</span>
+          </div>
+        </div>
 
         <div className="relative z-10 p-16 flex flex-col justify-end h-full">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-lg">
@@ -201,11 +224,25 @@ const RegisterPage: React.FC = () => {
             <p className="text-white/40 text-lg font-light">
               Cree ton compte, configure ton profil CODM et prepare ton entree dans l'univers ZOYD.
             </p>
+
+            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/5">
+              {[
+                { label: 'Matchs', value: '12.4K' },
+                { label: 'Tournois', value: '847' },
+                { label: 'Joueurs', value: '2.8K' },
+              ].map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <div className="text-xl font-display font-black text-white italic">{stat.value}</div>
+                  <div className="text-[9px] font-mono text-white/20 uppercase tracking-widest mt-1">{stat.label}</div>
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+        <img src="/assets/maps/dome.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
         <div className="w-full max-w-[560px]">
           <header className="mb-10">
             <div className="flex items-center justify-between mb-8">
@@ -273,6 +310,7 @@ const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     className="absolute right-4 top-10 text-white/20 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -437,7 +475,7 @@ const RegisterPage: React.FC = () => {
                 <div className="flex gap-4">
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(1)}
+                    onClick={() => { trigger(); setCurrentStep(1); }}
                     className="flex-1 border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" /> RETOUR
@@ -454,27 +492,41 @@ const RegisterPage: React.FC = () => {
                 key="step3"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="space-y-8 text-center"
+                className="space-y-8 text-center relative"
               >
-                <div className="relative inline-block">
-                  <div className="w-24 h-24 border-2 border-green-500 rounded-full flex items-center justify-center bg-green-500/10">
-                    <ShieldCheck className="w-12 h-12 text-green-500" />
+                <div className="absolute inset-0 -mx-8 -my-4 overflow-hidden pointer-events-none">
+                  <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
+                  >
+                    <source src="/assets/codm/videos/CLY_Master.mp4" type="video/mp4" />
+                  </video>
+                </div>
+
+                <div className="relative z-10">
+                  <div className="relative inline-block">
+                    <div className="w-24 h-24 border-2 border-green-500 flex items-center justify-center bg-green-500/10">
+                      <ShieldCheck className="w-12 h-12 text-green-500" />
+                    </div>
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1], opacity: [0, 0.5, 0] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="absolute inset-0 border-2 border-green-500"
+                    />
                   </div>
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1], opacity: [0, 0.5, 0] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute inset-0 border-2 border-green-500 rounded-full"
-                  />
+
+                  <div className="mt-6">
+                    <h2 className="text-3xl font-display font-black text-white uppercase italic tracking-tighter">Profil pret</h2>
+                    <p className="text-white/40 font-mono text-[11px] uppercase tracking-widest mt-2">
+                      Compte #{formData.pseudo || 'ZOYD'} pret pour ZOYD
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <h2 className="text-3xl font-display font-black text-white uppercase italic tracking-tighter">Profil pret</h2>
-                  <p className="text-white/40 font-mono text-[11px] uppercase tracking-widest mt-2">
-                    Compte #{formData.pseudo || 'ZOYD'} pret pour ZOYD
-                  </p>
-                </div>
-
-                <div className="hud-panel p-6 bg-zoyd-surface/20 border-white/5 text-left space-y-4">
+                <div className="relative z-10 hud-panel p-6 bg-zoyd-surface/20 border-white/5 text-left space-y-4">
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
                     <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Identite</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.pseudo}</span>
@@ -499,10 +551,10 @@ const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="relative z-10 flex gap-4">
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(2)}
+                    onClick={() => { trigger(); setCurrentStep(2); }}
                     className="flex-1 border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
                     REGLAGES

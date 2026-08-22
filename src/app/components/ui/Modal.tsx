@@ -40,21 +40,21 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'relative w-full max-h-[90vh] overflow-y-auto bg-zoyd-black border border-zoyd-white-20 rounded-xl shadow-2xl pointer-events-auto',
+                'relative w-full max-h-[90vh] overflow-y-auto bg-zoyd-black border border-white/20 shadow-2xl pointer-events-auto',
                 sizeClasses[size]
               )}
             >
               {/* Header */}
               {title && (
-                <div className="flex items-center justify-between p-6 border-b border-zoyd-white-10">
-                  <h2 className="text-2xl font-display font-bold text-zoyd-white">{title}</h2>
+                <div className="flex items-center justify-between p-6 border-b border-white/10">
+                  <h2 className="text-2xl font-display font-bold text-white">{title}</h2>
                   <button
                     onClick={onClose}
                     title="Fermer"
                     aria-label="Fermer"
-                    className="p-2 rounded-lg hover:bg-zoyd-white-5 transition-colors"
+                    className="p-2 hover:bg-white/5 transition-colors"
                   >
-                    <X className="w-5 h-5 text-zoyd-white" />
+                    <X className="w-5 h-5 text-white" />
                   </button>
                 </div>
               )}
@@ -65,9 +65,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
                   onClick={onClose}
                   title="Fermer"
                   aria-label="Fermer"
-                  className="absolute top-4 right-4 p-2 rounded-lg hover:bg-zoyd-white-5 transition-colors z-10"
+                  className="absolute top-4 right-4 p-2 hover:bg-white/5 transition-colors z-10"
                 >
-                  <X className="w-5 h-5 text-zoyd-white" />
+                  <X className="w-5 h-5 text-white" />
                 </button>
               )}
 

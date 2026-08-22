@@ -21,7 +21,7 @@ const RootLayout: React.FC = () => {
 
     return () => {
       useMatchStore.getState().replaceFromServer([]);
-      useTournamentStore.setState({ tournaments: [] });
+      useTournamentStore.getState().replaceFromServer([]);
     };
   }, [isAuthenticated]);
 
@@ -45,7 +45,7 @@ const RootLayout: React.FC = () => {
 
     fetchServerTournaments().then((res) => {
       if (res.ok) {
-        useTournamentStore.setState({ tournaments: res.tournaments });
+        useTournamentStore.getState().replaceFromServer(res.tournaments);
       }
     }).catch(() => {});
 
@@ -54,7 +54,7 @@ const RootLayout: React.FC = () => {
     const { unsubscribe } = subscribeToTournaments(() => {
       fetchServerTournaments().then((res) => {
         if (res.ok) {
-          useTournamentStore.setState({ tournaments: res.tournaments });
+          useTournamentStore.getState().replaceFromServer(res.tournaments);
         }
       }).catch(() => {});
     });

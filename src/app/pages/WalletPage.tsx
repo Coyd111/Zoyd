@@ -155,11 +155,12 @@ const WalletPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black p-4 md:p-8">
+    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="relative mb-8 p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
           <div className="absolute inset-0 z-0">
-            <img src="/assets/illustrations/wallet_vault.jpg" alt="ZOYD Vault" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale" />
+            <img src="/assets/illustrations/wallet_vault.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+            <img src="/assets/maps/hijacked.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
             <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
             <div className="absolute inset-0 tactical-grid opacity-10" />
           </div>
@@ -288,14 +289,14 @@ const WalletPage: React.FC = () => {
         <Modal isOpen={showDepositModal} onClose={() => setShowDepositModal(false)} title="Ajouter des ZC" size="md">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-zoyd-white mb-3">Montant a ajouter</label>
+              <label className="block text-sm font-medium text-white mb-3">Montant a ajouter</label>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {presetAmounts.map((preset) => (
                   <button
                     key={preset}
                     onClick={() => setAmount(preset.toString())}
                     aria-label={`Ajouter ${preset} ZC`}
-                    className="px-4 py-3 rounded-lg bg-zoyd-white-5 border border-zoyd-white-10 hover:border-zoyd-yellow text-zoyd-yellow font-display font-bold transition-all"
+                    className="px-4 py-3 bg-white/5 border border-white/10 hover:border-zoyd-yellow text-zoyd-yellow font-display font-bold transition-all"
                   >
                     {preset} ZC
                   </button>
@@ -305,21 +306,21 @@ const WalletPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zoyd-white mb-3">Operateur Mobile Money</label>
+              <label className="block text-sm font-medium text-white mb-3">Operateur Mobile Money</label>
               <div className="grid grid-cols-3 gap-3">
                 {operators.map((operator) => (
                   <button
                     key={operator.id}
                     onClick={() => setSelectedOperator(operator.id)}
                     aria-label={`Payer avec ${operator.name}`}
-                    className={`p-4 rounded-lg border-2 transition-all ${
+                    className={`p-4 border transition-all ${
                       selectedOperator === operator.id
-                        ? 'border-zoyd-yellow bg-zoyd-white-10'
-                        : 'border-zoyd-white-10 hover:border-zoyd-white-20'
+                        ? 'border-zoyd-yellow bg-white/10'
+                        : 'border-white/10 hover:border-white/20'
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-full mx-auto mb-2 ${operator.colorClass}`} />
-                    <p className="text-xs font-display font-semibold text-zoyd-white text-center">{operator.name}</p>
+                    <div className={`w-12 h-12 mx-auto mb-2 ${operator.colorClass}`} />
+                    <p className="text-xs font-display font-semibold text-white text-center">{operator.name}</p>
                   </button>
                 ))}
               </div>
@@ -334,7 +335,7 @@ const WalletPage: React.FC = () => {
         <Modal isOpen={showWithdrawModal} onClose={() => setShowWithdrawModal(false)} title="Retirer mes ZC" size="md">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-zoyd-white mb-3">Montant a retirer</label>
+              <label className="block text-sm font-medium text-white mb-3">Montant a retirer</label>
               <Input
                 type="number"
                 value={amount}
@@ -342,7 +343,7 @@ const WalletPage: React.FC = () => {
                 placeholder={`${MIN_WITHDRAWAL_ZC} ZC minimum (${MIN_WITHDRAWAL_ZC * 10} FCFA)`}
                 max={cashBalance}
               />
-              <p className="text-xs text-zoyd-white-60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
+              <p className="text-xs text-white-60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
             </div>
 
             <Button
@@ -364,11 +365,11 @@ const WalletPage: React.FC = () => {
 const BalanceCard = ({ label, value, hint, accent = false }: { label: string; value: string; hint: string; accent?: boolean }) => (
   <Card className={accent ? 'bg-gradient-to-br from-zoyd-yellow/10 to-transparent border-zoyd-yellow' : ''}>
     <CardHeader>
-      <CardTitle className="text-zoyd-white-60 text-sm">{label}</CardTitle>
+      <CardTitle className="text-white-60 text-sm">{label}</CardTitle>
     </CardHeader>
     <CardContent>
-      <div className={`text-4xl font-display font-black mb-2 ${accent ? 'text-zoyd-yellow' : 'text-zoyd-white'}`}>{value}</div>
-      <div className="text-sm text-zoyd-white-60">{hint}</div>
+      <div className={`text-4xl font-display font-black mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</div>
+      <div className="text-sm text-white-60">{hint}</div>
     </CardContent>
   </Card>
 );

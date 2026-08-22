@@ -75,6 +75,9 @@ export const withdrawFromWallet = (userId, amount, method = 'Mobile Money', phon
 
 export const lockEntryFee = (userId, amount, matchId) => {
   const safeAmount = roundAmount(amount);
+  if (safeAmount <= 0) {
+    throw makeError('INVALID_AMOUNT', 'Le montant du pass doit etre superieur a zero.');
+  }
 
   return updateWalletSnapshot(userId, (wallet) => {
     const available = roundAmount(wallet.cashBalance + wallet.bonusBalance);

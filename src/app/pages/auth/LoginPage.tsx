@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -10,10 +12,12 @@ import { loginWithBackend } from '../../lib/authApi';
 import { useAuthStore } from '../../stores/authStore';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 
-interface LoginFormData {
-  emailOrPseudo: string;
-  password: string;
-}
+const loginSchema = z.object({
+  emailOrPseudo: z.string().min(1, 'Email ou pseudo requis'),
+  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caracteres'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +29,9 @@ const LoginPage: React.FC = () => {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>();
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -43,7 +49,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui">
+    <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui scanline">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
@@ -54,14 +60,36 @@ const LoginPage: React.FC = () => {
           className="absolute inset-0"
         >
           <img
-            src="/codm/codm_splash.png"
-            alt="Call of Duty Mobile"
-            className="w-full h-full object-cover grayscale opacity-60"
+            src="/assets/illustrations/operator_ghost.jpg"
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.15 }}
+          transition={{ duration: 3, delay: 1 }}
+          className="absolute inset-0"
+        >
+          <img
+            src="/assets/maps/raid.jpg"
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
           />
         </motion.div>
 
         <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black/40 to-transparent" />
+
+        <div className="absolute top-8 right-8 z-10">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-sm border border-white/10">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">En ligne</span>
+          </div>
+        </div>
 
         <div className="relative z-10 p-16 flex flex-col justify-end h-full">
           <motion.div
@@ -94,11 +122,25 @@ const LoginPage: React.FC = () => {
                 <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest mt-1">Gains et activite</div>
               </div>
             </div>
+
+            <div className="flex items-center gap-4 pt-4">
+              <div className="flex -space-x-2">
+                {['S1', 'X2', 'ZK'].map((tag, i) => (
+                  <div key={tag} className="w-8 h-8 border-2 border-zoyd-black bg-zoyd-surface flex items-center justify-center">
+                    <span className="text-[8px] font-display font-black text-white/60 italic">{tag}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10px] font-mono text-white/20">
+                <span className="text-white/40 font-black">2,847</span> joueurs actifs
+              </div>
+            </div>
           </motion.div>
         </div>
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+        <img src="/assets/maps/crash.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -139,6 +181,7 @@ const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   className="absolute right-4 top-10 text-white/20 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

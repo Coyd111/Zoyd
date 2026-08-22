@@ -31,7 +31,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {helperText && !error && (
-          <p className="text-xs text-zoyd-white-60">{helperText}</p>
+          <p className="text-xs text-white/60">{helperText}</p>
         )}
         {error && (
           <p className="text-xs text-red-400">{error}</p>

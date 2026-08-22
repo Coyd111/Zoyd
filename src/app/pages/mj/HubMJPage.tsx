@@ -52,7 +52,8 @@ const HubMJPage: React.FC = () => {
 
       <header className="relative border-b border-white/5 bg-zoyd-black pt-14 md:pt-16 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/maps/crash.jpg" alt="Crash" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale" />
+          <img src="/assets/maps/crash.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/maps/standoff.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-transparent to-zoyd-black/50" />
         </div>

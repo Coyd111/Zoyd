@@ -26,20 +26,52 @@ interface ChatReadResponse {
   readAt: string;
 }
 
-export const fetchChatBootstrap = () => authorizedGet<ChatBootstrapResponse>('/api/chat/bootstrap');
+export const fetchChatBootstrap = async () => {
+  try {
+    return await authorizedGet<ChatBootstrapResponse>('/api/chat/bootstrap');
+  } catch (error) {
+    console.error('Erreur chargement chat:', error);
+    throw error;
+  }
+};
 
-export const fetchServerChatChannel = (channelId: string) =>
-  authorizedGet<ChatChannelResponse>(`/api/chat/channels/${channelId}`);
+export const fetchServerChatChannel = async (channelId: string) => {
+  try {
+    return await authorizedGet<ChatChannelResponse>(`/api/chat/channels/${channelId}`);
+  } catch (error) {
+    console.error('Erreur chargement salon:', error);
+    throw error;
+  }
+};
 
-export const createServerChatChannel = (payload: {
+export const createServerChatChannel = async (payload: {
   id?: string;
   type: ChatChannel;
   name: string;
   participants: string[];
-}) => authorizedPost<ChatChannelResponse>('/api/chat/channels', payload);
+}) => {
+  try {
+    return await authorizedPost<ChatChannelResponse>('/api/chat/channels', payload);
+  } catch (error) {
+    console.error('Erreur creation salon:', error);
+    throw error;
+  }
+};
 
-export const sendServerChatMessage = (channelId: string, text: string, replyTo?: string) =>
-  authorizedPost<ChatMessageResponse>(`/api/chat/channels/${channelId}/messages`, { text, replyTo });
+export const sendServerChatMessage = async (channelId: string, text: string, replyTo?: string) => {
+  try {
+    return await authorizedPost<ChatMessageResponse>(`/api/chat/channels/${channelId}/messages`, { text, replyTo });
+  } catch (error) {
+    console.error('Erreur envoi message:', error);
+    throw error;
+  }
+};
 
-export const markServerChatChannelRead = (channelId: string) =>
-  authorizedPost<ChatReadResponse>(`/api/chat/channels/${channelId}/read`);
+export const markServerChatChannelRead = async (channelId: string) => {
+  try {
+    return await authorizedPost<ChatReadResponse>(`/api/chat/channels/${channelId}/read`);
+  } catch (error) {
+    console.error('Erreur marquage lu:', error);
+    throw error;
+  }
+};

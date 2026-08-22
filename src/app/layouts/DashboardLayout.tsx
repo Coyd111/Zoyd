@@ -12,7 +12,7 @@ const DashboardLayout: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zoyd-black flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-zoyd-blue border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -25,11 +25,11 @@ const DashboardLayout: React.FC = () => {
   useRealtimeHeartbeat(isAuthenticated);
 
   return (
-    <div className="min-h-screen bg-zoyd-black">
+    <div className="min-h-dvh bg-zoyd-black safe-top">
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 pb-20 md:pb-0">
+        <main className="flex-1 pb-24 md:pb-4 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

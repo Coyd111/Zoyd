@@ -36,7 +36,7 @@ const ToastContainer: React.FC = () => {
 
   return (
     <div
-      className="fixed top-16 right-4 z-[70] flex flex-col gap-3 w-[360px] max-w-[calc(100vw-2rem)]"
+      className="fixed top-16 right-4 z-[70] flex flex-col gap-3 w-[360px] max-w-[calc(100vw-2rem)] safe-top"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -78,7 +78,7 @@ const ToastContainer: React.FC = () => {
                 </div>
                 <button
                   onClick={() => removeToast(toast.id)}
-                  className="text-white/20 hover:text-white transition-colors shrink-0 -mt-0.5"
+                  className="text-white/20 hover:text-white transition-colors shrink-0 -mt-0.5 touch-target"
                   aria-label="Fermer la notification"
                   title="Fermer"
                 >

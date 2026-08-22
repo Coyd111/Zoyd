@@ -152,7 +152,7 @@ const TournamentBracketPage: React.FC = () => {
 
   if (!tournament && isLoading) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Chargement du tournoi</h2>
           <p className="text-white/40">Le bracket et les inscriptions se synchronisent avec le serveur.</p>
@@ -163,7 +163,7 @@ const TournamentBracketPage: React.FC = () => {
 
   if (!tournament) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Tournoi introuvable</h2>
           {loadError ? <p className="text-sm text-red-200 mb-4">{loadError}</p> : null}
@@ -357,7 +357,7 @@ const TournamentBracketPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-24 lg:pb-0">
+    <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-24 lg:pb-0 safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40">
@@ -379,7 +379,7 @@ const TournamentBracketPage: React.FC = () => {
                   {statusLabels[tournament.status]}
                 </span>
               </div>
-              <h1 className="text-3xl md:text-5xl font-display font-black uppercase tracking-tighter italic">
+              <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-black uppercase tracking-tighter italic">
                 {tournament.name}
               </h1>
             </div>

@@ -110,7 +110,7 @@ const ChatPage: React.FC = () => {
   const onlineFriends = friends.filter((friend) => friend.status === 'online');
 
   return (
-    <div className="flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
+    <div className="safe-top flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
       <div className="fixed inset-0 tactical-grid opacity-5 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 z-10 shrink-0">
@@ -120,7 +120,7 @@ const ChatPage: React.FC = () => {
             {activeChannelId && (
               <button
                 onClick={() => setActiveChannel(null)}
-                className="sm:hidden text-white/40 hover:text-white transition-colors mr-1"
+                className="touch-target sm:hidden text-white/40 hover:text-white transition-colors mr-1"
                 aria-label="Retour aux canaux"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -185,7 +185,7 @@ const ChatPage: React.FC = () => {
                 onClick={() => setActiveChannel(channel.id)}
                 aria-label={`Ouvrir le canal ${channel.name}`}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-2.5 text-left transition-all font-display font-black text-[11px] tracking-wider uppercase italic',
+                  'touch-target w-full flex items-center justify-between px-3 py-2.5 text-left transition-all font-display font-black text-[11px] tracking-wider uppercase italic',
                   activeChannelId === channel.id
                     ? 'bg-white text-black'
                     : 'text-white/40 hover:bg-white/5 hover:text-white/60'
@@ -327,9 +327,9 @@ const ChatPage: React.FC = () => {
                   }}
                   placeholder="Envoyer un message..."
                   aria-label="Saisir un message"
-                  className="flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:outline-none focus:border-zoyd-blue transition-colors"
+                  className="touch-target flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:outline-none focus:border-zoyd-blue transition-colors"
                 />
-                <Button type="submit" variant="primary" disabled={!input.trim()} className="px-6" aria-label="Envoyer le message">
+                <Button type="submit" variant="primary" disabled={!input.trim()} className="touch-target px-6" aria-label="Envoyer le message">
                   <Send className="w-4 h-4" />
                 </Button>
               </form>

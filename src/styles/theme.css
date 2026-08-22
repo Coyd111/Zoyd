@@ -14,6 +14,12 @@
   --font-display: 'Outfit', sans-serif;
   --font-ui: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* Safe areas */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 @theme inline {
@@ -42,6 +48,8 @@
   html {
     background-color: var(--color-black);
     scrollbar-gutter: stable;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -49,6 +57,8 @@
     color: var(--color-white);
     font-family: var(--font-ui);
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4 {
@@ -57,9 +67,25 @@
     text-transform: uppercase;
     letter-spacing: -0.02em;
   }
+
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
 @layer utilities {
+  .safe-top { padding-top: var(--sat); }
+  .safe-bottom { padding-bottom: var(--sab); }
+  .safe-left { padding-left: var(--sal); }
+  .safe-right { padding-right: var(--sar); }
+  .pb-safe { padding-bottom: calc(var(--sab) + 4rem); }
+  .pb-safe-sm { padding-bottom: calc(var(--sab) + 1rem); }
+
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
   /* Tactical Grid Pattern */
   .tactical-grid {
     background-image: 
@@ -94,9 +120,6 @@
   /* Glass HUD Panel - Brutalist Update */
   .hud-panel {
     position: relative;
-    /* background: transparent;
-       border: none;
-       backdrop-filter: none; */
   }
 
   /* Tactical Borders */
@@ -113,4 +136,8 @@
   .animate-pulse-yellow {
     animation: pulse-yellow 1.5s infinite;
   }
+
+  /* Mobile scrollbar hide */
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 }

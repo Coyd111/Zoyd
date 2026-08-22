@@ -97,7 +97,7 @@ const SeasonCard: React.FC<{
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLeave(season.id); }}
                 disabled={isActionLoading}
-                className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
+                className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50 touch-target"
               >
                 Se desinscrire
               </button>
@@ -105,7 +105,7 @@ const SeasonCard: React.FC<{
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onJoin(season.id); }}
                 disabled={isActionLoading || slotsLeft <= 0}
-                className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
+                className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
               >
                 S'inscrire
               </button>
@@ -233,7 +233,7 @@ const LeaguePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
+      <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
         <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-5 text-sm text-white/60">
@@ -245,7 +245,7 @@ const LeaguePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
+    <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">
@@ -259,7 +259,7 @@ const LeaguePage: React.FC = () => {
                 Battle Royale League
               </span>
             </div>
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight leading-[0.9] mb-3 md:mb-5">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight leading-[0.9] mb-3 md:mb-5">
               BR<br />
               <span className="text-zoyd-yellow">League</span>
             </h1>
@@ -272,7 +272,7 @@ const LeaguePage: React.FC = () => {
             {activeSeason && (
               <Link
                 to={`/br-league/${activeSeason.id}`}
-                className="flex items-center gap-2 border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors"
+                className="flex items-center gap-2 border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors touch-target"
               >
                 <Trophy className="w-3.5 h-3.5" />
                 Saison active — Cycle #{activeSeason.cycleNumber}
@@ -283,7 +283,7 @@ const LeaguePage: React.FC = () => {
               <button
                 onClick={handleCreateSeason}
                 disabled={actionLoading}
-                className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50 touch-target"
               >
                 <Calendar className="w-3.5 h-3.5" />
                 Creer une saison

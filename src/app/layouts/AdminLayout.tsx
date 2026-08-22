@@ -9,12 +9,11 @@ import { useAuthStore } from '../stores/authStore';
 const AdminLayout: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuthStore();
   
-  // Enhanced admin protection with role validation
   const isAdmin = isAuthenticated && user?.role === 'admin';
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zoyd-black flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-white/20 border-t-zoyd-yellow rounded-full animate-spin" />
       </div>
     );
@@ -31,11 +30,11 @@ const AdminLayout: React.FC = () => {
   useRealtimeHeartbeat(isAdmin);
 
   return (
-    <div className="min-h-screen bg-zoyd-black">
+    <div className="min-h-dvh bg-zoyd-black safe-top">
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1">
+        <main className="flex-1 pb-24 md:pb-4 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

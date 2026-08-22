@@ -128,7 +128,7 @@ const QualificationPanel: React.FC<{
         <button
           onClick={() => onAdminAction('start-qualification')}
           disabled={isActionLoading || season.registeredPlayers.length < 10}
-          className="flex items-center gap-2 border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
         >
           <Play className="w-3.5 h-3.5" />
           Lancer la qualification ({season.registeredPlayers.length} joueurs)
@@ -183,7 +183,7 @@ const QualificationPanel: React.FC<{
                   <button
                     onClick={() => onAdminAction('start-day', { dayKey: day })}
                     disabled={isActionLoading}
-                    className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-1 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
+                    className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-1 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
                   >
                     Demarrer
                   </button>
@@ -220,7 +220,7 @@ const QualificationPanel: React.FC<{
         <button
           onClick={() => onAdminAction('advance-to-final')}
           disabled={isActionLoading}
-          className="flex items-center gap-2 border border-orange-400/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-orange-400 hover:bg-orange-400/10 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 border border-orange-400/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-orange-400 hover:bg-orange-400/10 transition-colors disabled:opacity-50 touch-target"
         >
           <Trophy className="w-3.5 h-3.5" />
           Avancer vers la finale (Top 40)
@@ -348,7 +348,7 @@ const AdminPanel: React.FC<{
             <button
               onClick={handleSaveSettings}
               disabled={isActionLoading || season.status !== 'registering'}
-              className="text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
+              className="text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
             >
               Sauvegarder
             </button>
@@ -418,7 +418,7 @@ const AdminPanel: React.FC<{
               <button
                 onClick={handleReassign}
                 disabled={isActionLoading || !reassignUserId || reassignFromDay === reassignToDay}
-                className="w-full text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
+                className="w-full text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
               >
                 <RefreshCw className="w-3.5 h-3.5 inline mr-2" />
                 Reassigner
@@ -746,7 +746,7 @@ const LeagueSeasonPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
+      <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
         <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-5 text-sm text-white/60">
@@ -759,7 +759,7 @@ const LeagueSeasonPage: React.FC = () => {
 
   if (loadError || !season) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
+      <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
         <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/40 hover:text-white mb-6">
@@ -777,7 +777,7 @@ const LeagueSeasonPage: React.FC = () => {
   const badge = STATUS_LABELS[season.status];
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
+    <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-[1650px] mx-auto px-4 md:px-8 relative z-10">
@@ -799,7 +799,7 @@ const LeagueSeasonPage: React.FC = () => {
                   {badge.label}
                 </span>
               </div>
-              <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tight">
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-black uppercase tracking-tight">
                 BR League — Saison {season.cycleNumber}
               </h1>
               <p className="text-xs text-white/40 mt-2">

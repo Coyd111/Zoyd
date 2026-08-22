@@ -54,7 +54,7 @@ export default function LandingPage() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline selection:bg-zoyd-yellow selection:text-black overflow-x-hidden">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline selection:bg-zoyd-yellow selection:text-black overflow-x-hidden safe-top">
       <LandingNav />
 
       <main className="relative">
@@ -80,7 +80,7 @@ export default function LandingPage() {
           <div className="absolute left-[-10rem] top-24 h-[24rem] w-[24rem] rounded-full bg-zoyd-yellow/10 blur-[120px]" />
           <div className="absolute right-[-7rem] top-40 h-[22rem] w-[22rem] rounded-full bg-zoyd-blue/10 blur-[110px]" />
 
-          <div className="relative z-10 max-w-[1600px] mx-auto px-6 md:px-8 pt-28 md:pt-32 pb-16 min-h-screen flex items-center">
+          <div className="relative z-10 max-w-[1600px] mx-auto px-5 md:px-8 pt-24 md:pt-32 pb-20 safe-bottom min-h-dvh flex items-center">
             <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 xl:gap-20 items-center w-full">
               <motion.div
                 initial={{ opacity: 0, y: reduceMotion ? 0 : 22 }}
@@ -88,7 +88,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.6 }}
                 className="max-w-3xl"
               >
-                <h1 className="text-[3.2rem] md:text-[5.5rem] xl:text-[6.8rem] leading-[0.84] font-display font-black uppercase italic tracking-[-0.05em] mb-7">
+                <h1 className="text-[2.5rem] md:text-[5.5rem] xl:text-[6.8rem] leading-[0.84] font-display font-black uppercase italic tracking-[-0.05em] mb-7">
                   L'Arène Ultime
                   <br />
                   de CODM en
@@ -96,7 +96,7 @@ export default function LandingPage() {
                   <span className="text-zoyd-yellow">Afrique.</span>
                 </h1>
 
-                <p className="text-lg md:text-xl text-white/40 leading-relaxed max-w-2xl mb-10">
+                <p className="text-base md:text-xl text-white/40 leading-relaxed max-w-2xl mb-10">
                   Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique.
                 </p>
 
@@ -116,7 +116,7 @@ export default function LandingPage() {
                   </Link>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-3 max-w-2xl">
+                <div className="grid grid-cols-2 gap-3 max-w-2xl">
                   <SignalStrip label="Gains" value="Mobile Money instantané" />
                   <SignalStrip label="Sécurité" value="Arbitre en direct" />
                   <SignalStrip label="Classement" value="Elo strict" />
@@ -413,7 +413,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="bg-black">
-        <div className="max-w-[1600px] mx-auto px-6 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="max-w-[1600px] mx-auto px-5 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <ZoydLogo compact />
           <div className="flex flex-wrap gap-8 text-[10px] font-mono uppercase tracking-[0.28em] text-white/28">
             <Link to="/auth/register" className="hover:text-white/60 transition-colors">Inscription</Link>
@@ -434,8 +434,8 @@ function LandingNav() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 bg-zoyd-black/72 backdrop-blur-xl">
-      <div className="max-w-[1600px] mx-auto px-6 md:px-8 h-20 flex items-center justify-between gap-6">
+      <nav className="fixed inset-x-0 top-0 z-50 bg-zoyd-black/72 backdrop-blur-xl safe-top">
+      <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 flex items-center justify-between gap-6">
         <Link to="/" className="shrink-0">
           <ZoydLogo compact />
         </Link>
@@ -469,7 +469,7 @@ function LandingNav() {
 
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="lg:hidden p-2 text-white/60 hover:text-white transition-colors"
+          className="lg:hidden touch-target flex items-center justify-center text-white/60 hover:text-white transition-colors"
           aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         >
           {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -481,30 +481,30 @@ function LandingNav() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="lg:hidden bg-zoyd-black/95 backdrop-blur-xl border-t border-white/5 px-6 py-6 space-y-4"
+          className="lg:hidden bg-zoyd-black/95 backdrop-blur-xl border-t border-white/5 px-5 py-6 space-y-1 safe-bottom"
         >
-          <a href="#platform" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-2">
+          <a href="#platform" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-3 touch-target">
             Plateforme
           </a>
-          <a href="#dual-economy" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-2">
+          <a href="#dual-economy" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-3 touch-target">
             Joueur / Arbitre
           </a>
-          <a href="#account" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-2">
+          <a href="#account" onClick={() => setMobileOpen(false)} className="block text-[11px] font-mono uppercase tracking-[0.28em] text-white/40 hover:text-white transition-colors py-3 touch-target">
             Compte
           </a>
           <div className="border-t border-white/5 pt-4 space-y-3">
-            <Link
-              to="/auth/login"
-              onClick={() => setMobileOpen(false)}
-              className="block text-center text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/40 hover:text-white transition-colors italic py-2"
-            >
-              Connexion
-            </Link>
-            <Link
-              to="/auth/register"
-              onClick={() => setMobileOpen(false)}
-              className="block text-center bg-white text-black px-6 py-3 text-[11px] font-display font-black uppercase tracking-[0.22em] italic hover:bg-zoyd-yellow transition-colors"
-            >
+          <Link
+            to="/auth/login"
+            onClick={() => setMobileOpen(false)}
+            className="block text-center text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/40 hover:text-white transition-colors italic py-3 touch-target"
+          >
+            Connexion
+          </Link>
+          <Link
+            to="/auth/register"
+            onClick={() => setMobileOpen(false)}
+            className="block text-center bg-white text-black px-6 py-4 text-[11px] font-display font-black uppercase tracking-[0.22em] italic hover:bg-zoyd-yellow transition-colors touch-target"
+          >
               Commencer
             </Link>
           </div>

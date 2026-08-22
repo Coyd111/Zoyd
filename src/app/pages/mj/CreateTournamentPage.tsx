@@ -190,14 +190,14 @@ const CreateTournamentPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-20">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div className="max-w-[1550px] mx-auto px-6 py-10 relative z-10">
+      <div className="max-w-[1550px] mx-auto px-4 sm:px-6 py-8 relative z-10">
         <div className="flex items-center justify-between gap-4 mb-10">
           <Link
             to="/mj/tournois"
-            className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest"
+            className="touch-target inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour aux tournois
@@ -207,7 +207,7 @@ const CreateTournamentPage: React.FC = () => {
           </div>
         </div>
 
-        <header className="relative mb-10 p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
+        <header className="relative mb-10 p-5 sm:p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
           <div className="absolute inset-0 z-0">
             <img src="/assets/illustrations/tournament_cup.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
             <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
@@ -222,7 +222,7 @@ const CreateTournamentPage: React.FC = () => {
                 Ton prochain tournoi
               </span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
               Creer un <span className="text-zoyd-yellow">tournoi</span>
             </h1>
             <p className="text-white/60 mt-3 max-w-xl">
@@ -238,7 +238,7 @@ const CreateTournamentPage: React.FC = () => {
           <input type="hidden" {...register('entryFee', { valueAsNumber: true })} />
           <input type="hidden" {...register('maxEntries', { valueAsNumber: true })} />
           <div className="space-y-8">
-            <section className="hud-panel p-8 bg-zoyd-surface/30">
+            <section className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/30">
               <div className="flex items-center gap-3 mb-6">
                 <Swords className="w-5 h-5 text-zoyd-blue" />
                 <h2 className="text-2xl font-display font-black uppercase italic">Ton tournoi</h2>
@@ -303,7 +303,7 @@ const CreateTournamentPage: React.FC = () => {
               </div>
             </section>
 
-            <section className="hud-panel p-8 bg-zoyd-surface/30">
+            <section className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/30">
               <div className="flex items-center gap-3 mb-6">
                 <ShieldCheck className="w-5 h-5 text-zoyd-blue" />
                 <h2 className="text-2xl font-display font-black uppercase italic">Comment il se joue</h2>
@@ -445,7 +445,7 @@ const CreateTournamentPage: React.FC = () => {
               </div>
             </section>
 
-            <section className="hud-panel p-8 bg-zoyd-surface/30">
+            <section className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/30">
               <div className="flex items-center gap-3 mb-6">
                 <Users className="w-5 h-5 text-zoyd-yellow" />
                 <h2 className="text-2xl font-display font-black uppercase italic">Inscriptions et recompenses</h2>
@@ -552,7 +552,7 @@ const CreateTournamentPage: React.FC = () => {
           </div>
 
           <aside className="space-y-6 xl:sticky xl:top-10 h-fit">
-            <div className="hud-panel p-8 bg-zoyd-surface/40">
+            <div className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/40">
               <div className="inline-flex items-center gap-3 px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-400 font-display font-black text-[10px] tracking-widest uppercase mb-6 italic">
                 <CheckCircle2 className="w-4 h-4" /> En un coup d'oeil
               </div>
@@ -570,7 +570,7 @@ const CreateTournamentPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="hud-panel p-8 bg-zoyd-surface/40">
+            <div className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/40">
               <h2 className="text-lg font-display font-black uppercase italic mb-6">Ce que les joueurs jouent</h2>
               <div className="space-y-4">
                 <ProjectionRow label="Places ouvertes" value={`${selectedMaxEntries} ${teamSize > 1 ? 'equipes' : 'joueurs'}`} />
@@ -586,7 +586,7 @@ const CreateTournamentPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="hud-panel p-8 bg-zoyd-surface/40">
+            <div className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/40">
               <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-4">
                 Publication
               </div>
@@ -606,7 +606,7 @@ const CreateTournamentPage: React.FC = () => {
               ) : null}
               <button
                 type="submit"
-                className="w-full bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all"
+                className="touch-target w-full bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all"
               >
                 Publier le tournoi
               </button>

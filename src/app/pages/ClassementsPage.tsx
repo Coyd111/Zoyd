@@ -236,7 +236,7 @@ const ClassementsPage: React.FC = () => {
       : undefined;
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden pt-16">
@@ -245,7 +245,7 @@ const ClassementsPage: React.FC = () => {
           <img src="/assets/maps/summit.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         </div>
-        <div className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-8 pb-12">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 pb-12">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
               <Trophy className="w-5 h-5" />
@@ -254,7 +254,7 @@ const ClassementsPage: React.FC = () => {
               Classements joueurs
             </span>
           </div>
-          <h1 className="text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9]">
+          <h1 className="text-4xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9]">
             Les
             <br />
             <span className="text-white/20 underline decoration-zoyd-yellow/50 underline-offset-8">
@@ -283,8 +283,8 @@ const ClassementsPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12 relative z-10">
-        <div role="tablist" className="flex flex-wrap gap-2 mb-12 border-b border-white/5 pb-4">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 relative z-10">
+        <div role="tablist" className="flex flex-wrap flex-nowrap gap-2 mb-12 border-b border-white/5 pb-4 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -294,7 +294,7 @@ const ClassementsPage: React.FC = () => {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border ${
+                className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
                   isActive
                     ? 'bg-white text-black border-white'
                     : 'text-white/30 border-white/5 hover:border-white/20 hover:text-white/60'

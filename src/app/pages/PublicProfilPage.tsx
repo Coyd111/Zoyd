@@ -80,7 +80,7 @@ const PublicProfilPage: React.FC = () => {
 
   if (!publicProfile || !summary) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center">
         <div className="text-center max-w-lg px-6">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Profil public indisponible</h2>
           <p className="text-white/35 mb-6">
@@ -145,13 +145,13 @@ const PublicProfilPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24 pt-safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 overflow-hidden">
         <img src="/assets/maps/standoff.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
         <img src="/assets/maps/oasis.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
-        <div className="relative z-10 max-w-[1450px] mx-auto px-6 py-12">
+        <div className="relative z-10 max-w-[1450px] mx-auto px-4 sm:px-6 py-12">
           <div className="flex items-center gap-3 mb-6">
             <Link to="/profil" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
               <ArrowLeft className="w-4 h-4" />
@@ -161,7 +161,7 @@ const PublicProfilPage: React.FC = () => {
 
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             <div className="relative">
-              <div className="w-28 h-28 border-2 border-white/10 bg-zoyd-surface flex items-center justify-center">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-white/10 bg-zoyd-surface flex items-center justify-center">
                 <span className="text-5xl font-display font-black text-white/20 italic">
                   {publicProfile.pseudo.slice(0, 2).toUpperCase()}
                 </span>
@@ -173,7 +173,7 @@ const PublicProfilPage: React.FC = () => {
 
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                <h1 className="text-4xl font-display font-black uppercase tracking-tighter italic">
+                <h1 className="text-3xl sm:text-4xl font-display font-black uppercase tracking-tighter italic">
                   {publicProfile.pseudo}
                 </h1>
                 {publicProfile.streamerMode ? <Badge variant="yellow">Streamer mode</Badge> : null}
@@ -216,19 +216,19 @@ const PublicProfilPage: React.FC = () => {
 
             {!ownProfile ? (
               <div className="flex flex-col gap-2 min-w-[220px]">
-                <Button variant="primary" size="sm" onClick={handleAddFriend} disabled={alreadyFriend || blocked}>
+                <Button variant="primary" size="sm" onClick={handleAddFriend} disabled={alreadyFriend || blocked} className="touch-target">
                   <UserPlus className="w-4 h-4 mr-2" />
                   {alreadyFriend ? 'Deja ami' : blocked ? 'Bloque' : 'Ajouter en ami'}
                 </Button>
-                <Button variant="secondary" size="sm" onClick={handleInviteMatch}>
+                <Button variant="secondary" size="sm" onClick={handleInviteMatch} className="touch-target">
                   <Swords className="w-4 h-4 mr-2" />
                   Inviter en match
                 </Button>
-                <Button variant="danger" size="sm" onClick={handleBlock}>
+                <Button variant="danger" size="sm" onClick={handleBlock} className="touch-target">
                   <UserX className="w-4 h-4 mr-2" />
                   Bloquer
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleReport} className="text-red-300 hover:text-red-200">
+                <Button variant="ghost" size="sm" onClick={handleReport} className="text-red-300 hover:text-red-200 touch-target">
                   <AlertTriangle className="w-4 h-4 mr-2" />
                   Signaler
                 </Button>
@@ -241,7 +241,7 @@ const PublicProfilPage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
+        className="max-w-[1450px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
       >
         <div className="space-y-6">
           <div className="space-y-4">

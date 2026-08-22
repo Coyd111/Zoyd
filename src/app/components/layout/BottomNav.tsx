@@ -49,15 +49,15 @@ const BottomNav: React.FC = () => {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="md:hidden fixed bottom-16 left-0 right-0 z-50 bg-zoyd-black border-t border-white/10"
+            className="md:hidden fixed bottom-20 left-0 right-0 z-50 bg-zoyd-black border-t border-white/10 safe-bottom"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
               <span className="font-display font-black text-[10px] text-white/40 tracking-widest uppercase italic">Plus</span>
-              <button onClick={() => setMenuOpen(false)} className="text-white/30 hover:text-white" aria-label="Fermer le menu">
-                <X className="w-4 h-4" />
+              <button onClick={() => setMenuOpen(false)} className="touch-target flex items-center justify-center text-white/30 hover:text-white" aria-label="Fermer le menu">
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-2">
+            <div className="p-2 pb-4">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -67,7 +67,7 @@ const BottomNav: React.FC = () => {
                     onClick={() => handleNavigate(item.path)}
                     aria-label={item.label}
                     className={cn(
-                      'flex items-center gap-4 w-full px-4 py-3 font-display font-black text-xs tracking-widest italic uppercase transition-all',
+                      'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
                       isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/40 hover:text-white hover:bg-white/5'
                     )}
                   >
@@ -81,8 +81,8 @@ const BottomNav: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-zoyd-black border-t border-white/5 pb-safe backdrop-blur-xl">
-        <div className="flex items-center justify-around h-16 relative">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-zoyd-black/95 border-t border-white/10 safe-bottom backdrop-blur-xl">
+        <div className="flex items-center justify-around h-[4.5rem] relative">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path || (item.path !== '/mj' && location.pathname.startsWith(item.path));
@@ -93,8 +93,8 @@ const BottomNav: React.FC = () => {
                 to={item.path}
                 aria-label={item.label}
                 className={cn(
-                  'relative flex flex-col items-center justify-center w-full h-full transition-all',
-                  isActive ? 'text-white bg-white/5' : 'text-white/30 hover:text-white'
+                  'relative flex flex-col items-center justify-center w-full h-full touch-target transition-all',
+                  isActive ? 'text-white' : 'text-white/30'
                 )}
               >
                 {isActive && (
@@ -113,8 +113,8 @@ const BottomNav: React.FC = () => {
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Plus d'options"
             className={cn(
-              'relative flex flex-col items-center justify-center w-full h-full transition-all',
-              menuOpen ? 'text-white bg-white/5' : 'text-white/30 hover:text-white'
+              'relative flex flex-col items-center justify-center w-full h-full touch-target transition-all',
+              menuOpen ? 'text-white' : 'text-white/30'
             )}
           >
             {menuOpen && (

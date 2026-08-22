@@ -175,7 +175,7 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui scanline">
+    <div className="min-h-dvh bg-zoyd-black flex flex-col lg:flex-row font-ui scanline safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
@@ -241,7 +241,7 @@ const RegisterPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-5 py-10 sm:p-8 relative safe-bottom">
         <img src="/assets/maps/dome.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
         <div className="w-full max-w-[560px]">
           <header className="mb-10">
@@ -278,14 +278,17 @@ const RegisterPage: React.FC = () => {
               >
                 <Input
                   label="Pseudo CODM"
+                  autoComplete="username"
                   {...register('pseudo')}
                   error={errors.pseudo?.message}
                   placeholder="ShadowX"
                 />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     label="Email"
                     type="email"
+                    autoComplete="email"
+                    inputMode="email"
                     {...register('email')}
                     error={errors.email?.message}
                     placeholder="soldat@zoyd.com"
@@ -293,6 +296,8 @@ const RegisterPage: React.FC = () => {
                   <Input
                     label="Telephone"
                     type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
                     {...register('phone')}
                     error={errors.phone?.message}
                     placeholder="+229 60 00 00 00"
@@ -303,6 +308,7 @@ const RegisterPage: React.FC = () => {
                   <Input
                     label="Mot de passe"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     {...register('password')}
                     error={errors.password?.message}
                     placeholder="........"
@@ -311,7 +317,7 @@ const RegisterPage: React.FC = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                    className="absolute right-4 top-10 text-white/20 hover:text-white transition-colors"
+                    className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/20 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -332,6 +338,7 @@ const RegisterPage: React.FC = () => {
                 <Input
                   label="Confirmation du mot de passe"
                   type="password"
+                  autoComplete="new-password"
                   {...register('confirmPassword')}
                   error={errors.confirmPassword?.message}
                   placeholder="........"
@@ -356,7 +363,7 @@ const RegisterPage: React.FC = () => {
                   <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                     01 / Type d'appareil
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {DEVICE_OPTIONS.map((device) => {
                       const Icon = deviceIcons[device.id];
                       return (
@@ -382,7 +389,7 @@ const RegisterPage: React.FC = () => {
                   <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                     02 / Type de controle
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {CONTROLLER_OPTIONS.map((option) => {
                       const Icon = controllerIcons[option.id];
                       return (
@@ -409,19 +416,20 @@ const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
                     label="ID CODM (UID obligatoire)"
+                    inputMode="numeric"
                     {...register('gameId')}
                     placeholder="6742..."
                   />
-                  <Input label="Niveau actuel du compte" type="number" {...register('levelCODM')} placeholder="150" />
+                  <Input label="Niveau actuel du compte" type="number" inputMode="numeric" {...register('levelCODM')} placeholder="150" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade MJ</label>
-                    <select {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -431,7 +439,7 @@ const RegisterPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade BR</label>
-                    <select {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -441,10 +449,10 @@ const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Pays</label>
-                    <select {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {COUNTRY_OPTIONS.map((country) => (
                         <option key={country} value={country} className="bg-zoyd-black">
                           {country}
@@ -452,7 +460,7 @@ const RegisterPage: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="flex items-center gap-3 border border-white/10 px-4 py-3 bg-transparent">
+                  <div className="flex items-center gap-3 border border-white/10 px-4 py-3 bg-transparent touch-target">
                     <input id="streamerMode" type="checkbox" {...register('streamerMode')} className="w-4 h-4 accent-zoyd-yellow" />
                     <label htmlFor="streamerMode" className="text-[10px] font-mono font-black uppercase tracking-widest text-white/60">
                       Activer le pseudo streamer

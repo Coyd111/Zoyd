@@ -74,7 +74,7 @@ const TournoisPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
+      <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
         <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-5 text-sm text-white/60">
@@ -86,7 +86,7 @@ const TournoisPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline font-ui pb-20">
+    <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">

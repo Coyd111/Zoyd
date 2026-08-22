@@ -40,7 +40,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'relative w-full max-h-[90vh] overflow-y-auto bg-zoyd-black border border-white/20 shadow-2xl pointer-events-auto',
+                'relative w-[calc(100%-2rem)] sm:w-full max-h-[85dvh] overflow-y-auto bg-zoyd-black border border-white/20 shadow-2xl pointer-events-auto safe-bottom',
                 sizeClasses[size]
               )}
             >
@@ -52,7 +52,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
                     onClick={onClose}
                     title="Fermer"
                     aria-label="Fermer"
-                    className="p-2 hover:bg-white/5 transition-colors"
+                    className="touch-target p-2 hover:bg-white/5 transition-colors"
                   >
                     <X className="w-5 h-5 text-white" />
                   </button>
@@ -65,7 +65,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
                   onClick={onClose}
                   title="Fermer"
                   aria-label="Fermer"
-                  className="absolute top-4 right-4 p-2 hover:bg-white/5 transition-colors z-10"
+                  className="absolute top-4 right-4 touch-target p-2 hover:bg-white/5 transition-colors z-10"
                 >
                   <X className="w-5 h-5 text-white" />
                 </button>

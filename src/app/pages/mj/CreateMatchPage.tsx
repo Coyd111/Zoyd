@@ -153,10 +153,10 @@ const CreateMatchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-20">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto px-6 pt-12 relative z-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 relative z-10">
         <header className="mb-12 relative overflow-hidden border border-white/5">
           <img src="/assets/maps/rust.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
           <div className="relative z-10 p-6">
@@ -168,7 +168,7 @@ const CreateMatchPage: React.FC = () => {
                 Configure ton Wager
               </span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-display font-black uppercase tracking-tighter italic">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-display font-black uppercase tracking-tighter italic">
               CRÉER UN <span className="text-zoyd-yellow">WAGER</span>
             </h1>
           </div>
@@ -188,15 +188,15 @@ const CreateMatchPage: React.FC = () => {
         <AnimatePresence mode="wait">
           {currentStep === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-              <div className="hud-panel p-10 bg-zoyd-surface/40">
+              <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                 <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">Choisis le format</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
                   {MJ_FORMATS.map((format) => (
                     <button
                       key={format}
                       onClick={() => setSelectedFormat(format)}
                       aria-label={`Sélectionner le format ${format}`}
-                      className={`group relative p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
+                      className={`group relative p-5 sm:p-6 md:p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
                     >
                       <p className={`text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/20 group-hover:text-white transition-colors'}`}>
                         {format}
@@ -224,7 +224,7 @@ const CreateMatchPage: React.FC = () => {
           {currentStep === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <form onSubmit={handleSubmit(onStep2Submit)} className="space-y-8">
-                <div className="hud-panel p-10 bg-zoyd-surface/40">
+                <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                   <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">Comment vous allez jouer</h2>
 
                   <div className="space-y-12">
@@ -259,7 +259,7 @@ const CreateMatchPage: React.FC = () => {
                             key={map}
                             onClick={() => setSelectedMap(map)}
                             aria-label={`Sélectionner la carte ${map}`}
-                            className={`relative h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-yellow shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'border-white/10 hover:border-white/30'}`}
+                            className={`relative h-20 sm:h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-yellow shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'border-white/10 hover:border-white/30'}`}
                           >
                             <img 
                               src={getMapImage(map)}
@@ -326,10 +326,10 @@ const CreateMatchPage: React.FC = () => {
                   </div>
 
                   <div className="flex gap-4 mt-12">
-                    <button type="button" onClick={() => setCurrentStep(1)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => setCurrentStep(1)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </button>
-                    <button type="submit" aria-label="Passer à la mise" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
+                    <button type="submit" aria-label="Passer à la mise" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
                       La Mise (Wager) <ChevronRight className="w-6 h-6" />
                     </button>
                   </div>
@@ -341,7 +341,7 @@ const CreateMatchPage: React.FC = () => {
           {currentStep === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <form onSubmit={handleSubmit(onStep3Submit)}>
-                <div className="hud-panel p-10 bg-zoyd-surface/40">
+                <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                   <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">La Mise (Prize Pool)</h2>
 
                   <div className="space-y-12 mb-12">
@@ -362,7 +362,7 @@ const CreateMatchPage: React.FC = () => {
                           </button>
                         ))}
                       </div>
-                      <input {...register('passAmount')} type="number" step="0.5" placeholder="Montant personnalise" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:outline-none focus:border-zoyd-yellow transition-all" />
+                      <input {...register('passAmount')} type="number" inputMode="numeric" step="0.5" placeholder="Montant personnalise" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:outline-none focus:border-zoyd-yellow transition-all" />
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8 items-start">
@@ -446,12 +446,12 @@ const CreateMatchPage: React.FC = () => {
 
           {currentStep === 4 && (
             <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-              <div className="hud-panel p-10 bg-zoyd-surface/40">
+              <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                 <div className="text-center mb-12">
                   <div className="inline-flex items-center gap-3 px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-500 font-display font-black text-[10px] tracking-widest uppercase mb-6 italic">
                     <ShieldCheck className="w-4 h-4" /> Pret a publier
                   </div>
-                  <h2 className="text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter">
+                  <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter">
                     Récapitulatif du Wager
                   </h2>
                 </div>
@@ -474,11 +474,11 @@ const CreateMatchPage: React.FC = () => {
                 ) : null}
 
                 <div className="flex gap-4">
-                  <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
+                  <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={onFinalSubmit} aria-label="Verrouiller la mise et publier" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
-                    VERROUILLER LA MISE & PUBLIER <ShieldCheck className="w-6 h-6" />
+                  <button onClick={onFinalSubmit} aria-label="Verrouiller la mise et publier" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
+                    <span className="text-xs sm:text-sm">VERROUILLER LA MISE & PUBLIER</span> <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>
               </div>

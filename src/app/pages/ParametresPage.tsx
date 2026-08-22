@@ -163,14 +163,14 @@ const ParametresPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24 safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16 overflow-hidden">
         <img src="/assets/maps/terminal.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
         <img src="/assets/maps/takeoff.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
-        <div className="relative z-10 max-w-[1240px] mx-auto px-4 md:px-8 pb-12">
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
+        <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-6 md:px-8 pb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
             Parametres
           </h1>
           <p className="text-white/40 mt-4 max-w-2xl">
@@ -179,7 +179,7 @@ const ParametresPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-[1240px] mx-auto px-4 md:px-8 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
         <div className="lg:col-span-1 space-y-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -190,7 +190,7 @@ const ParametresPage: React.FC = () => {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-4 px-4 py-3 font-display font-black text-xs tracking-widest italic uppercase transition-all ${
+                className={`w-full flex items-center gap-4 px-4 py-3.5 touch-target font-display font-black text-xs tracking-widest italic uppercase transition-all ${
                   isActive
                     ? 'bg-white text-black shadow-[4px_0_0_0_#FFE600]'
                     : 'text-white/40 hover:text-white hover:bg-white/5'
@@ -267,7 +267,7 @@ const ParametresPage: React.FC = () => {
                         Affiche un pseudo different quand tu veux jouer ou streamer plus discretement.
                       </div>
                     </div>
-                    <label className="flex items-center gap-3 cursor-pointer">
+                    <label className="flex items-center gap-3 cursor-pointer touch-target">
                       <input
                         type="checkbox"
                         checked={form.streamerMode}
@@ -297,6 +297,7 @@ const ParametresPage: React.FC = () => {
                   <Input
                     label="Mot de passe actuel"
                     type="password"
+                    autoComplete="current-password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Ton mot de passe actuel"
@@ -304,6 +305,7 @@ const ParametresPage: React.FC = () => {
                   <Input
                     label="Nouveau mot de passe"
                     type="password"
+                    autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Minimum 8 caracteres"
@@ -311,6 +313,7 @@ const ParametresPage: React.FC = () => {
                   <Input
                     label="Confirmer le nouveau mot de passe"
                     type="password"
+                    autoComplete="new-password"
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
                     placeholder="Repete le nouveau mot de passe"
@@ -337,7 +340,7 @@ const ParametresPage: React.FC = () => {
                 </div>
 
                 <SectionTitle title="En bref" />
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <StatusCard label="Fiabilite" value={`${user.trustScore}/100`} accent="text-zoyd-yellow" />
                   <StatusCard label="Solde affiche" value={user.walletBalance.toFixed(1) + ' ZC'} accent="text-white" />
                   <StatusCard label="Connexion" value={user.isOnline ? 'Active' : 'Hors ligne'} accent={user.isOnline ? 'text-green-400' : 'text-white/50'} />

@@ -266,13 +266,13 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline pt-safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative overflow-hidden border-b border-white/5">
         <img src="/assets/maps/highrise.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
         <img src="/assets/maps/scrapyard.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
-        <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-10">
+            <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-4 md:px-8 py-10">
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-8">
             <div>
               <div className="flex items-center gap-4 mb-2">
@@ -283,7 +283,7 @@ const AdminDashboardPage: React.FC = () => {
                   Administration
                 </span>
               </div>
-              <h1 className="text-4xl md:text-6xl font-display font-black uppercase tracking-tighter italic">
+              <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">
                 Command <span className="text-white/20">Center</span>
               </h1>
               <p className="text-white/40 max-w-2xl mt-2">
@@ -326,7 +326,7 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 md:py-12 relative z-10">
+        <main className="max-w-[1600px] mx-auto px-4 sm:px-4 md:px-8 py-8 md:py-12 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           <StatCard
             icon={<Swords className="w-5 h-5 text-zoyd-blue" />}
@@ -367,7 +367,7 @@ const AdminDashboardPage: React.FC = () => {
               role="tab"
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`relative px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all ${
+                      className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${
                 activeTab === tab.id ? 'bg-white text-black' : 'text-white/30 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -525,7 +525,7 @@ const AdminDashboardPage: React.FC = () => {
                   <button
                     key={filter.id}
                     onClick={() => setMatchFilter(filter.id as MatchFilter)}
-                    className={`px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors ${
+                    className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
                       matchFilter === filter.id
                         ? 'bg-white text-black border-white'
                         : 'border-white/10 text-white/35 hover:text-white hover:border-white/20'
@@ -620,7 +620,7 @@ const AdminDashboardPage: React.FC = () => {
                     <button
                       key={f.id}
                       onClick={() => setDisputeFilter(f.id as DisputeFilter)}
-                      className={`px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors ${
+                    className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
                         disputeFilter === f.id
                           ? 'bg-white text-black border-white'
                           : 'border-white/10 text-white/35 hover:text-white hover:border-white/20'
@@ -750,26 +750,26 @@ const AdminDashboardPage: React.FC = () => {
                       <div className="flex flex-wrap gap-3">
                         <button
                           onClick={() => handleResolveWinner(match.id, 0)}
-                          className="bg-green-500 text-black px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-green-400 transition-colors"
+                          className="bg-green-500 text-black px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-green-400 transition-colors touch-target"
                         >
                           <CheckCircle2 className="w-3 h-3 inline mr-2" />
                           Valider Alpha
                         </button>
                         <button
                           onClick={() => handleResolveWinner(match.id, 1)}
-                          className="bg-white text-black px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors"
+                          className="bg-white text-black px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors touch-target"
                         >
                           Valider Bravo
                         </button>
                         <button
                           onClick={() => handleResolveDisputeOnly(match.id)}
-                          className="border border-zoyd-blue/30 text-zoyd-blue px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-blue hover:text-black transition-colors"
+                          className="border border-zoyd-blue/30 text-zoyd-blue px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-blue hover:text-black transition-colors touch-target"
                         >
                           Clore sans vainqueur
                         </button>
                         <Link
                           to={`/mj/match/${match.id}`}
-                          className="border border-white/10 text-white/40 px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-white hover:border-white transition-colors flex items-center gap-2"
+                          className="border border-white/10 text-white/40 px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-white hover:border-white transition-colors flex items-center gap-2 touch-target"
                         >
                           <Eye className="w-3 h-3" />
                           Voir le match
@@ -786,7 +786,7 @@ const AdminDashboardPage: React.FC = () => {
                           onMouseLeave={() => {
                             if (pendingCancelId === match.id) setPendingCancelId(null);
                           }}
-                          className={`border px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors ${
+                          className={`border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
                             pendingCancelId === match.id
                               ? 'border-red-500/50 bg-red-500/10 text-red-300'
                               : 'border-white/10 text-white/30 hover:text-red-300 hover:border-red-500/30'
@@ -820,10 +820,10 @@ const AdminDashboardPage: React.FC = () => {
                   { id: 'watch', label: 'Sous watch' },
                   { id: 'all', label: 'Tous' },
                 ].map((filter) => (
-                  <button
-                    key={filter.id}
-                    onClick={() => setUserFilter(filter.id as UserFilter)}
-                    className={`px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors ${
+                      <button
+                        key={f.id}
+                        onClick={() => setDisputeFilter(f.id as DisputeFilter)}
+                        className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
                       userFilter === filter.id
                         ? 'bg-white text-black border-white'
                         : 'border-white/10 text-white/35 hover:text-white hover:border-white/20'
@@ -883,7 +883,7 @@ const AdminDashboardPage: React.FC = () => {
                       {flaggedUser.hasPublicProfile && flaggedUser.primaryUserId ? (
                         <Link
                           to={`/profil/${flaggedUser.primaryUserId}`}
-                          className="bg-white text-black px-4 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors"
+                          className="bg-white text-black px-3 sm:px-4 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors touch-target"
                         >
                           <Eye className="w-3 h-3 inline mr-2" />
                           Ouvrir profil

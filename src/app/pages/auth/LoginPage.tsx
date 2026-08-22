@@ -49,7 +49,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black flex flex-col lg:flex-row font-ui scanline">
+    <div className="min-h-dvh bg-zoyd-black flex flex-col lg:flex-row font-ui scanline safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
@@ -139,7 +139,7 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-5 py-10 sm:p-8 relative safe-bottom">
         <img src="/assets/maps/crash.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
         <motion.div
           initial={{ opacity: 0, x: 20 }}
@@ -165,6 +165,8 @@ const LoginPage: React.FC = () => {
             <div className="space-y-4">
               <Input
                 label="Email, telephone ou pseudo"
+                autoComplete="username"
+                inputMode="text"
                 {...register('emailOrPseudo', { required: 'Identification requise' })}
                 error={errors.emailOrPseudo?.message}
                 placeholder="ShadowX, +22960000000 ou soldat@zoyd.com"
@@ -174,6 +176,7 @@ const LoginPage: React.FC = () => {
                 <Input
                   label="Mot de passe"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   {...register('password', { required: 'Mot de passe requis' })}
                   error={errors.password?.message}
                   placeholder="........"
@@ -182,7 +185,7 @@ const LoginPage: React.FC = () => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                  className="absolute right-4 top-10 text-white/20 hover:text-white transition-colors"
+                  className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/20 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>

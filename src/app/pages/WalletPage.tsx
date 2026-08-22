@@ -155,9 +155,9 @@ const WalletPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline p-4 md:p-8">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline p-4 md:p-8 safe-top safe-bottom">
       <div className="max-w-6xl mx-auto">
-        <div className="relative mb-8 p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
+            <div className="relative mb-8 p-5 sm:p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
           <div className="absolute inset-0 z-0">
             <img src="/assets/illustrations/wallet_vault.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
             <img src="/assets/maps/hijacked.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
@@ -165,7 +165,7 @@ const WalletPage: React.FC = () => {
             <div className="absolute inset-0 tactical-grid opacity-10" />
           </div>
           <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter mb-2">
               LE COFFRE-FORT <span className="text-zoyd-yellow">(WALLET)</span>
             </h1>
             <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouille tes wagers et retire tes gains de maniere securisee.</p>
@@ -292,11 +292,11 @@ const WalletPage: React.FC = () => {
               <label className="block text-sm font-medium text-white mb-3">Montant a ajouter</label>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {presetAmounts.map((preset) => (
-                  <button
-                    key={preset}
-                    onClick={() => setAmount(preset.toString())}
-                    aria-label={`Ajouter ${preset} ZC`}
-                    className="px-4 py-3 bg-white/5 border border-white/10 hover:border-zoyd-yellow text-zoyd-yellow font-display font-bold transition-all"
+                    <button
+                      key={preset}
+                      onClick={() => setAmount(preset.toString())}
+                      aria-label={`Ajouter ${preset} ZC`}
+                      className="px-4 py-3 touch-target bg-white/5 border border-white/10 hover:border-zoyd-yellow text-zoyd-yellow font-display font-bold transition-all"
                   >
                     {preset} ZC
                   </button>
@@ -307,13 +307,13 @@ const WalletPage: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-white mb-3">Operateur Mobile Money</label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {operators.map((operator) => (
-                  <button
-                    key={operator.id}
-                    onClick={() => setSelectedOperator(operator.id)}
-                    aria-label={`Payer avec ${operator.name}`}
-                    className={`p-4 border transition-all ${
+                    <button
+                      key={operator.id}
+                      onClick={() => setSelectedOperator(operator.id)}
+                      aria-label={`Payer avec ${operator.name}`}
+                      className={`p-4 touch-target border transition-all ${
                       selectedOperator === operator.id
                         ? 'border-zoyd-yellow bg-white/10'
                         : 'border-white/10 hover:border-white/20'
@@ -375,10 +375,10 @@ const BalanceCard = ({ label, value, hint, accent = false }: { label: string; va
 );
 
 const WalletFilter = ({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
-  <button
+    <button
     onClick={onClick}
     aria-label={`Filtrer par ${label}`}
-    className={`px-3 py-1 text-[10px] font-mono font-black uppercase tracking-widest border transition-all ${
+    className={`px-3 py-1.5 touch-target text-[10px] font-mono font-black uppercase tracking-widest border transition-all ${
       active ? 'bg-white text-black border-white' : 'bg-transparent text-white/40 border-white/10 hover:border-white/20'
     }`}
   >
@@ -433,7 +433,7 @@ const TransactionRow = ({ type, amount, description, status, timestamp, metadata
     );
 
   return (
-    <div className="flex items-center justify-between border border-white/5 p-4 bg-black/40">
+    <div className="flex items-center justify-between border border-white/5 p-4 bg-black/40 touch-target">
       <div className="flex items-center gap-4">
         {statusIcon}
         <div>

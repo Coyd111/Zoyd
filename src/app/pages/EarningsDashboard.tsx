@@ -82,7 +82,7 @@ const EarningsDashboard: React.FC = () => {
 
   if (!user || !summary) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center pt-safe-top">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase italic">Vue des gains indisponible</h2>
           <p className="mt-3 text-white/35">Connecte-toi pour retrouver ce que tes matchs et tournois t'ont rapporte.</p>
@@ -123,20 +123,20 @@ const EarningsDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-zoyd-black p-4 md:p-8 font-ui scanline relative overflow-hidden">
+    <div className="min-h-dvh bg-zoyd-black p-4 md:p-8 font-ui scanline relative overflow-hidden pt-safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
         <header className="mb-10 relative overflow-hidden border border-white/5">
           <img src="/assets/illustrations/tournament_cup.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
           <img src="/assets/maps/firing_range.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
-          <div className="relative z-10 p-6">
+                <div className="relative z-10 p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 border border-zoyd-yellow/50 flex items-center justify-center text-zoyd-yellow bg-zoyd-yellow/5">
                 <Zap className="w-6 h-6 fill-zoyd-yellow" />
               </div>
               <div>
-                <h1 className="text-4xl font-display font-black text-white italic uppercase tracking-tighter">
+                <h1 className="text-3xl sm:text-4xl font-display font-black text-white italic uppercase tracking-tighter">
                   TABLEAU DE BORD FINANCIER
                 </h1>
                 <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest">
@@ -147,7 +147,7 @@ const EarningsDashboard: React.FC = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -156,7 +156,7 @@ const EarningsDashboard: React.FC = () => {
               transition={{ delay: index * 0.08 }}
             >
               <Card className="bg-zoyd-surface/20 border-white/5 hover:border-white/10 transition-all group">
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="p-2 bg-white/5 border border-white/5 group-hover:border-white/20 transition-colors">
                       <stat.icon className={`w-5 h-5 ${stat.color}`} />
@@ -249,7 +249,7 @@ const EarningsDashboard: React.FC = () => {
             </Card>
 
             <Card className="bg-zoyd-surface/20 border-white/5 border-l-4 border-l-zoyd-blue">
-              <CardContent className="p-6 space-y-5">
+              <CardContent className="p-4 sm:p-6 space-y-5">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 border border-zoyd-blue/20 flex items-center justify-center bg-zoyd-blue/5">
                     <ShieldCheck className="w-6 h-6 text-zoyd-blue" />

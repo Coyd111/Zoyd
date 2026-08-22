@@ -34,7 +34,7 @@ const ActivatePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black flex flex-col items-center justify-center p-4 relative font-ui scanline">
+    <div className="min-h-dvh bg-zoyd-black flex flex-col items-center justify-center p-5 relative font-ui scanline safe-top safe-bottom">
       <img src="/assets/maps/shipment.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       
@@ -99,6 +99,7 @@ const ActivatePage: React.FC = () => {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 aria-label="Code d'activation"
                 className="bg-black border border-white/10 text-white text-center text-2xl tracking-widest"
+                inputMode="numeric"
                 maxLength={6}
                 required
               />

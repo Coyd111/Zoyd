@@ -84,7 +84,7 @@ const ProfilPage: React.FC = () => {
       : 100;
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white font-ui scanline pb-24">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden">
@@ -94,11 +94,11 @@ const ProfilPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-transparent to-transparent" />
         </div>
-        <div className="relative z-10 max-w-[1450px] mx-auto px-6 py-12">
+        <div className="relative z-10 max-w-[1450px] mx-auto px-4 sm:px-6 py-12">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             <div className="relative">
-              <div className="w-28 h-28 border-2 border-white/10 bg-zoyd-surface flex items-center justify-center">
-                <span className="text-5xl font-display font-black text-white/20 italic">
+              <div className="w-20 h-20 sm:w-28 sm:h-28 border-2 border-white/10 bg-zoyd-surface flex items-center justify-center">
+                <span className="text-3xl sm:text-5xl font-display font-black text-white/20 italic">
                   {user.pseudo.slice(0, 2).toUpperCase()}
                 </span>
               </div>
@@ -109,7 +109,7 @@ const ProfilPage: React.FC = () => {
 
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                <h1 className="text-4xl font-display font-black uppercase tracking-tighter italic">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter italic">
                   {user.pseudo}
                 </h1>
                 {user.streamerMode && user.streamerPseudo ? (
@@ -138,7 +138,7 @@ const ProfilPage: React.FC = () => {
               {user.bio ? <p className="mt-5 max-w-3xl text-white/52">{user.bio}</p> : null}
             </div>
 
-            <div className={`${lvl.bg} border border-white/5 p-4 min-w-[210px]`}>
+            <div className={`${lvl.bg} border border-white/5 p-4 min-w-[210px] w-full sm:w-auto`}>
               <div className={`text-[10px] font-mono font-black uppercase tracking-widest mb-2 ${lvl.color}`}>
                 {lvl.label}
               </div>
@@ -157,14 +157,14 @@ const ProfilPage: React.FC = () => {
                 }
               />
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-4">
-                <Link to="/parametres" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-white">
+                <Link to="/parametres" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-white touch-target">
                   Modifier le profil <ChevronRight className="w-3 h-3" />
                 </Link>
                 <button
                   onClick={() => {
                     useAuthStore.getState().logout();
                   }}
-                  className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-red-400/50 hover:text-red-400"
+                  className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-red-400/50 hover:text-red-400 touch-target"
                 >
                   <LogOut className="w-3 h-3" aria-hidden="true" />
                   Se deconnecter
@@ -178,7 +178,7 @@ const ProfilPage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-[1450px] mx-auto px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
+        className="max-w-[1450px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
       >
         <div className="space-y-6">
           <div className="space-y-4">
@@ -331,7 +331,7 @@ const ProfilPage: React.FC = () => {
 };
 
 const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="hud-panel p-5 bg-zoyd-surface/20 flex items-center gap-4">
+  <div className="hud-panel p-4 sm:p-5 bg-zoyd-surface/20 flex items-center gap-4">
     <div className="w-10 h-10 border border-white/10 flex items-center justify-center bg-black">{icon}</div>
     <div>
       <div className="text-[9px] font-mono font-black uppercase tracking-widest text-white/30 mb-1">{label}</div>

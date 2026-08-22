@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zoyd-v3';
+const CACHE_NAME = 'zoyd-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -38,6 +38,10 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-HTTP(S) requests
   if (!request.url.startsWith('http')) return;
+
+  // Skip external requests — let browser handle CDN resources natively
+  const origin = self.location.origin;
+  if (!request.url.startsWith(origin)) return;
 
   // API calls : network first, cache fallback
   if (request.url.includes('/api/')) {

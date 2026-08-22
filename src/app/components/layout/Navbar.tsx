@@ -9,7 +9,6 @@ import { useWalletStore } from '../../stores/walletStore';
 import { formatZC } from '../../../lib/utils';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import NotificationSettingsModal from '../notifications/NotificationSettingsModal';
-import ZoydLogo from '../branding/ZoydLogo';
 
 const Navbar: React.FC = () => {
   const { user } = useAuthStore();
@@ -23,7 +22,7 @@ const Navbar: React.FC = () => {
     <nav className="sticky top-0 z-40 bg-zoyd-black/95 backdrop-blur-xl safe-top border-b border-white/5">
       <div className="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between">
         <Link to="/mj" className="flex items-center gap-3 group">
-          <ZoydLogo compact className="group-hover:opacity-90 transition-opacity" />
+          <img src="/logo.png" alt="ZOYD" className="h-8 w-auto object-contain group-hover:opacity-90 transition-opacity" />
         </Link>
 
         <div className="hidden lg:flex items-center gap-12 font-mono text-[9px] uppercase tracking-[0.3em] text-white/20">

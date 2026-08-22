@@ -58,7 +58,7 @@ export default function LandingPage() {
       <LandingNav />
 
       <main className="relative">
-        <section id="hero" className="relative min-h-screen overflow-hidden border-b border-white/5">
+        <section id="hero" className="relative min-h-dvh overflow-hidden border-b border-white/5">
           <div className="absolute inset-0">
             <video
               autoPlay

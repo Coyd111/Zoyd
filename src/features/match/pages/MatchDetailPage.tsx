@@ -206,10 +206,10 @@ const MatchDetailPage: React.FC = () => {
 
   if (!match) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Match introuvable</h2>
-          <Link to="/mj" className="border border-white/10 px-6 py-3 uppercase text-sm font-display font-black tracking-widest">
+          <Link to="/mj" className="border border-white/10 px-6 py-3 uppercase text-sm font-display font-black tracking-widest touch-target">
             Retour aux matchs
           </Link>
         </div>
@@ -502,10 +502,10 @@ const MatchDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zoyd-black text-white scanline">
+    <div className="min-h-dvh bg-zoyd-black text-white scanline safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div className="max-w-[1500px] mx-auto px-6 py-10 relative z-10">
+      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 relative z-10">
         <div className="flex items-center justify-between gap-4 mb-8">
           <Link to="/mj" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
             <ArrowLeft className="w-4 h-4" />
@@ -517,7 +517,7 @@ const MatchDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <header className="relative mb-10 overflow-hidden min-h-[300px] flex flex-col justify-end p-8 -mx-6 md:mx-0">
+        <header className="relative mb-10 overflow-hidden min-h-[300px] flex flex-col justify-end p-5 sm:p-8 -mx-4 sm:-mx-6 md:mx-0">
           <img 
             src={getMapImage(match.rules.map)}
             alt={match.rules.map}

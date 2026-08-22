@@ -89,7 +89,7 @@ const ParametresPage: React.FC = () => {
 
   if (!user || !form) {
     return (
-      <div className="min-h-screen bg-zoyd-black text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Parametres indisponibles</h2>
         </div>

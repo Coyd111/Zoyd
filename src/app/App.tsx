@@ -13,7 +13,7 @@ export default function App() {
   useWalletSessionBootstrap();
   return (
     <ErrorBoundary>
-      <RouterProvider router={router} fallbackElement={<div className="min-h-screen bg-zoyd-black flex items-center justify-center text-white/50 font-mono text-xs uppercase tracking-widest">Chargement...</div>} />
+      <RouterProvider router={router} fallbackElement={<div className="min-h-dvh bg-zoyd-black flex items-center justify-center text-white/50 font-mono text-xs uppercase tracking-widest safe-top">Chargement...</div>} />
     </ErrorBoundary>
   );
 }

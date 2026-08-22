@@ -11,7 +11,6 @@ public/assets/codm/
 *.db-journal
 
 # Fichiers sensibles serveur
-server/vapid-keys.mjs
 server/data/
 
 # Scripts one-shot

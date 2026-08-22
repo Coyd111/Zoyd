@@ -114,8 +114,8 @@ self.addEventListener('message', (event) => {
     event.waitUntil(
       self.registration.showNotification(payload.title || 'ZOYD', {
         body: payload.body || 'Notification ZOYD',
-        icon: '/codm/codm_app_icon.png',
-        badge: '/codm/codm_app_icon.png',
+        icon: '/logo icone.png',
+        badge: '/logo icone.png',
         tag: payload.tag || 'zoyd-local',
         requireInteraction: Boolean(payload.requireInteraction),
         data: payload.url ? { url: payload.url } : undefined,

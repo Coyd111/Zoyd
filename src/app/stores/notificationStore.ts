@@ -71,8 +71,8 @@ const showBrowserNotification = async (notification: Notification) => {
   const registration = await navigator.serviceWorker.ready;
   await registration.showNotification(notification.title, {
     body: notification.message,
-    icon: '/codm/codm_app_icon.png',
-    badge: '/codm/codm_app_icon.png',
+    icon: '/logo icone.png',
+    badge: '/logo icone.png',
     tag: notification.metadata?.browserTag || notification.metadata?.dedupeKey || notification.id,
     requireInteraction: notification.priority === 'urgent',
     data: notification.actionUrl ? { url: notification.actionUrl } : undefined,

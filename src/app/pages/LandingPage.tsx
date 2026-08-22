@@ -66,7 +66,7 @@ export default function LandingPage() {
               loop
               playsInline
               preload="metadata"
-              poster="/codm/codm_app_icon.png"
+              poster="/logo icone.png"
               className="h-full w-full object-cover opacity-24"
             >
               <source src="/assets/codm/videos/StartVideo.mp4" type="video/mp4" />

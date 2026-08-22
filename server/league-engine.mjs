@@ -1,3 +1,4 @@
+import { createLogger } from './logger.mjs';
 import { getUserById, updateUserAccount } from './persistence.mjs';
 import {
   lockEntryFee,
@@ -5,6 +6,9 @@ import {
   releaseWalletWinnings,
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
+import { withWalletMutex } from './mutex.mjs';
+
+const log = createLogger('league-engine');
 
 const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
 const getNow = () => new Date().toISOString();
@@ -542,7 +546,9 @@ const applyLeagueSettlement = async (season) => {
 
   if (podium.first) {
     try {
-      releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
+      await withWalletMutex(podium.first, async () => {
+        releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
+      });
       patchUserForLeagueOutcome(podium.first, (user) => {
         user.stats = {
           ...user.stats,
@@ -560,7 +566,9 @@ const applyLeagueSettlement = async (season) => {
 
   if (podium.second) {
     try {
-      releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
+      await withWalletMutex(podium.second, async () => {
+        releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
+      });
       patchUserForLeagueOutcome(podium.second, (user) => {
         user.stats = {
           ...user.stats,
@@ -577,7 +585,9 @@ const applyLeagueSettlement = async (season) => {
 
   if (podium.third) {
     try {
-      releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
+      await withWalletMutex(podium.third, async () => {
+        releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
+      });
       patchUserForLeagueOutcome(podium.third, (user) => {
         user.stats = {
           ...user.stats,
@@ -596,7 +606,9 @@ const applyLeagueSettlement = async (season) => {
     try {
       const isPodium = [podium.first, podium.second, podium.third].includes(player.userId);
       if (!isPodium) {
-        settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
+        await withWalletMutex(player.userId, async () => {
+          settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
+        });
         patchUserForLeagueOutcome(player.userId, (user) => {
           user.stats = {
             ...user.stats,

@@ -899,7 +899,7 @@ const server = http.createServer(async (req, res) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 6 * 60 * 60, // 6 hours — matches session expiry in persistence.mjs
         path: '/',
       });
 

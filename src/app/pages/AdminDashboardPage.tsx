@@ -729,10 +729,18 @@ const AdminDashboardPage: React.FC = () => {
                                 Pièces jointes ({activeDispute.evidence.length})
                               </div>
                               <div className="flex flex-wrap gap-2">
-                                {activeDispute.evidence.map((item: string, i: number) => (
+                                {activeDispute.evidence.map((item: string, i: number) => {
+                                  let safeHref: string | undefined;
+                                  try {
+                                    const url = new URL(item);
+                                    if (url.protocol === 'http:' || url.protocol === 'https:') {
+                                      safeHref = url.href;
+                                    }
+                                  } catch { /* invalid URL, leave undefined */ }
+                                  return (
                                   <a
                                     key={i}
-                                    href={item.startsWith('http') ? item : undefined}
+                                    href={safeHref}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1.5 text-[10px] font-mono text-zoyd-blue hover:text-white transition-colors border border-zoyd-blue/20 px-2 py-1"
@@ -740,7 +748,8 @@ const AdminDashboardPage: React.FC = () => {
                                     <ExternalLink className="w-2.5 h-2.5" />
                                     Preuve {i + 1}
                                   </a>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}

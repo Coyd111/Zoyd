@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { createLogger } from './logger.mjs';
 import { getUserById, updateUserAccount } from './persistence.mjs';
 import {
   lockEntryFee,
@@ -7,6 +8,8 @@ import {
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
+
+const log = createLogger('match-engine');
 
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 
@@ -642,7 +645,9 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
 
   for (const player of match.players) {
-    refundLockedEntry(player.userId, match.id, `Remboursement moderation ${match.id}`);
+    await withWalletMutex(player.userId, async () => {
+      refundLockedEntry(player.userId, match.id, `Remboursement moderation ${match.id}`);
+    });
   }
 
   match.disputes = resolveOpenDisputes(match, reason);

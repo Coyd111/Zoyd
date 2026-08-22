@@ -8,6 +8,7 @@ import {
   unblockServerUser,
   reportServerUser,
 } from '../lib/socialApi';
+import { useToastStore } from './toastStore';
 
 export type FriendStatus = 'online' | 'offline' | 'in_match' | 'in_lobby';
 export type FriendRequestStatus = 'pending' | 'accepted' | 'blocked' | 'declined';
@@ -81,7 +82,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         set((state) => ({ requests: [res.request, ...state.requests] }));
       }
     } catch {
-      // silent
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'envoyer la demande d'ami.", duration: 4000 });
     }
   },
 
@@ -95,7 +96,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         }));
       }
     } catch {
-      // silent
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'accepter la demande.", duration: 4000 });
     }
   },
 
@@ -106,7 +107,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         requests: state.requests.filter((r) => r.id !== requestId),
       }));
     } catch {
-      // silent
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de refuser la demande.", duration: 4000 });
     }
   },
 
@@ -117,7 +118,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         friends: state.friends.filter((f) => f.id !== friendId),
       }));
     } catch {
-      // silent
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de retirer l'ami.", duration: 4000 });
     }
   },
 
@@ -130,7 +131,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         requests: state.requests.filter((r) => r.senderId !== userId),
       }));
     } catch {
-      // silent
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de bloquer l'utilisateur.", duration: 4000 });
     }
   },
 
@@ -141,7 +142,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         blockedIds: state.blockedIds.filter((id) => id !== userId),
       }));
     } catch {
-      // silent
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de débloquer l'utilisateur.", duration: 4000 });
     }
   },
 
@@ -157,8 +158,9 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         status: 'pending',
       };
       set((state) => ({ reports: [report, ...state.reports] }));
+      useToastStore.getState().addToast({ type: 'success', title: 'Signalement envoyé', message: "Merci pour votre signalement.", duration: 4000 });
     } catch {
-      // silent
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'envoyer le signalement.", duration: 4000 });
     }
   },
 

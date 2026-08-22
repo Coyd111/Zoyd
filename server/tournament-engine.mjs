@@ -1,5 +1,6 @@
 import { getUserById, updateUserAccount } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
+import { roundAmount } from './utils.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
@@ -7,7 +8,6 @@ import {
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
 
-const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
 const getNow = () => new Date().toISOString();
 const getTeamSize = (format) => parseInt(`${format || '1VS1'}`.split('VS')[0], 10) || 1;
 const getBracketSize = (entriesCount) => {

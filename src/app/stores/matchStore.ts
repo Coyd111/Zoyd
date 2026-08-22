@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
+import { roundAmount } from '../../lib/utils';
 
 export type MatchFormat = '1VS1' | '2VS2' | '3VS3' | '4VS4' | '5VS5';
 export type MatchStatus =
@@ -173,7 +174,6 @@ export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 
 const getNow = () => new Date().toISOString();
 const getTeamSize = (format: MatchFormat) => parseInt(format.split('VS')[0], 10);
-const roundAmount = (value: number) => Math.round(value * 100) / 100;
 const getSquadLabel = (team: MatchTeam) => (team === 0 ? 'Squad Alpha' : 'Squad Bravo');
 const getScheduledTimestamp = (match: Match) => (match.scheduledAt ? new Date(match.scheduledAt).getTime() : null);
 const getTeamCheckInCount = (match: Match, team: MatchTeam) =>

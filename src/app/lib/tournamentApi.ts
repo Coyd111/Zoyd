@@ -26,7 +26,7 @@ export const fetchServerTournaments = async (): Promise<TournamentListResponse> 
   try {
     return await authorizedGet<TournamentListResponse>('/api/tournaments');
   } catch (error) {
-    console.error('Erreur chargement tournois:', error);
+    console.error('Erreur chargement tournois:', error instanceof Error ? error.message : 'Erreur inconnue');
     return { ok: false, tournaments: [] };
   }
 };

@@ -3,7 +3,7 @@ import { getWalletSnapshot, updateWalletSnapshot } from './persistence.mjs';
 
 const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
-const roundAmount = (amount) => Math.round(Number(amount || 0) * 100) / 100;
+import { roundAmount } from './utils.mjs';
 const getNow = () => new Date().toISOString();
 const makeError = (code, message) => Object.assign(new Error(message), { code });
 

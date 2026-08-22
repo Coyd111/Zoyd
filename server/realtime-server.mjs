@@ -1236,6 +1236,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/leaderboard') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const allUsers = getAllUsers();
       const leaderboard = allUsers
@@ -1336,6 +1337,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/tournaments') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const { limit, offset } = parseQueryParams(req.url);
     const all = getStoredTournaments();
     respondJson(res, 200, {
@@ -1570,6 +1572,7 @@ const server = http.createServer(async (req, res) => {
   // ─── League Endpoints ───────────────────────────────────────────────────
 
   if (req.method === 'GET' && pathname === '/api/leagues') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const { limit, offset } = parseQueryParams(req.url);
     const all = getStoredLeagues();
     respondJson(res, 200, { ok: true, seasons: paginate(all, { limit, offset }), total: all.length });
@@ -2438,6 +2441,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
 
     respondJson(res, 200, {
       ok: true,
@@ -2753,6 +2757,16 @@ const io = new SocketIOServer(server, {
 const socketConnectionCounts = new Map();
 const SOCKET_CONNECTION_LIMIT = 10;
 const SOCKET_CONNECTION_WINDOW = 60 * 1000;
+
+const cleanupSocketConnectionCounts = () => {
+  const now = Date.now();
+  for (const [ip, entry] of socketConnectionCounts) {
+    if (now - entry.start > SOCKET_CONNECTION_WINDOW * 2) {
+      socketConnectionCounts.delete(ip);
+    }
+  }
+};
+setInterval(cleanupSocketConnectionCounts, 5 * 60 * 1000);
 
 io.use((socket, next) => {
   const ip = socket.handshake.address || '127.0.0.1';

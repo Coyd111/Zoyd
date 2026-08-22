@@ -9,6 +9,10 @@ export function formatZC(amount: number): string {
   return `${amount.toFixed(1)} ZC`;
 }
 
+export function roundAmount(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export function formatFCFA(amount: number): string {
   return `${(amount * 10).toLocaleString()} FCFA`;
 }

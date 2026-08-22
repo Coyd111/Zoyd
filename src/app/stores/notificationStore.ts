@@ -26,8 +26,21 @@ export interface Notification {
   read: boolean;
   timestamp: string;
   actionUrl?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   dismissed: boolean;
+}
+
+export interface ServerNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  priority: string;
+  read?: boolean;
+  actionUrl?: string;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+  timestamp?: string;
 }
 
 export interface NotificationState {
@@ -41,7 +54,7 @@ export interface NotificationState {
   getUnreadCount: () => number;
   getByPriority: () => Notification[];
   getRecent: (count?: number) => Notification[];
-  hydrateFromServer: (serverNotifications: any[]) => void;
+  hydrateFromServer: (serverNotifications: ServerNotification[]) => void;
 }
 
 const toastTypeByPriority: Record<NotificationPriority, ToastType> = {
@@ -182,7 +195,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       .slice(0, count),
 
   hydrateFromServer: (serverNotifications) => {
-    const nextNotifications = serverNotifications.map((n: any) => ({
+    const nextNotifications = serverNotifications.map((n: ServerNotification) => ({
       id: n.id,
       type: n.type as NotificationType,
       title: n.title,

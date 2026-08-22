@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 const scryptAsync = promisify(crypto.scrypt);
 import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
+import { roundAmount } from './utils.mjs';
 
 const log = createLogger('persistence');
 
@@ -32,7 +33,7 @@ const MAX_PROCESSED_TX = 10000;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 export const makeError = (code, message) => Object.assign(new Error(message), { code });
-export const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
+export { roundAmount };
 
 /**
  * Sanitize user input to prevent XSS attacks

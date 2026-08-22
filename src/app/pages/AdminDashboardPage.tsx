@@ -20,12 +20,13 @@ import {
 import { toast } from 'sonner';
 import { adminAwardServerMatch, adminCancelServerMatch, adminResolveServerDispute } from '../lib/matchApi';
 import { applyServerAccountState } from '../lib/serverSync';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, type User } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
-import { useMatchStore } from '../stores/matchStore';
+import { useMatchStore, type Match } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
 import { buildAdminInsights, buildCommunityPlayers } from '../../lib/communityInsights';
 import { formatZC, getRelativeTime } from '../../lib/utils';
+import type { WalletSnapshot } from '../lib/walletApi';
 
 const statusToneMap = {
   recruiting: 'text-white/50 border-white/10',
@@ -230,7 +231,7 @@ const AdminDashboardPage: React.FC = () => {
     return adminInsights.flaggedUsers;
   }, [adminInsights.flaggedUsers, userFilter]);
 
-  const applyAdminMatchResponse = (payload: { match: any; user?: any; wallet?: any }) => {
+  const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
     hydrateMatches([payload.match]);
     applyServerAccountState(payload);
   };
@@ -361,7 +362,7 @@ const AdminDashboardPage: React.FC = () => {
               urgent: escalatedDisputes.length,
             },
             { id: 'users', label: 'users', count: filteredUsers.length },
-          ].map((tab) => (
+            ].map((tab: { id: string; label: string; count: number; urgent?: number }) => (
             <button
               key={tab.id}
               role="tab"
@@ -372,9 +373,9 @@ const AdminDashboardPage: React.FC = () => {
               }`}
             >
               {tab.label} <span className="opacity-60">({tab.count})</span>
-              {'urgent' in tab && (tab as any).urgent > 0 && (
+              {'urgent' in tab && tab.urgent !== undefined && tab.urgent > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] font-mono font-black text-white flex items-center justify-center">
-                  {(tab as any).urgent}
+                  {tab.urgent}
                 </span>
               )}
             </button>

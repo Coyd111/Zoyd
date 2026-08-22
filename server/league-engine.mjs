@@ -7,10 +7,10 @@ import {
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
+import { roundAmount } from './utils.mjs';
 
 const log = createLogger('league-engine');
 
-const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
 const getNow = () => new Date().toISOString();
 const makeError = (code, message) => Object.assign(new Error(message), { code });
 

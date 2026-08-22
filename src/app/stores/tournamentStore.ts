@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
 import type { MatchFormat } from './matchStore';
+import { roundAmount } from '../../lib/utils';
 
 export type TournamentStatus = 'recruiting' | 'live' | 'completed' | 'cancelled';
 export type TournamentMatchStatus = 'pending' | 'ready' | 'live' | 'finished';
@@ -167,7 +168,6 @@ const buildPayout = (
   arbitersNeeded: 1 | 2,
   teamSize = 1
 ): TournamentPayout => {
-  const roundAmount = (v: number) => Math.round(v * 100) / 100;
   const grossPool = roundAmount(entryFee * entriesCount * teamSize);
   const arbiterRate = arbitersNeeded === 2 ? 0.1 : 0.05;
   const arbiterPool = roundAmount(grossPool * arbiterRate);

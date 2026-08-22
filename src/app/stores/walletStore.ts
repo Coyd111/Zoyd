@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { depositWalletBalance, fetchWalletSnapshot, type WalletSnapshot, withdrawWalletBalance } from '../lib/walletApi';
 import { useAuthStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
+import { roundAmount } from '../../lib/utils';
 
 export type TransactionType =
   | 'deposit'
@@ -26,7 +27,7 @@ export interface Transaction {
   timestamp: string;
   matchId?: string;
   tournamentId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface LockedEntry {
@@ -59,8 +60,6 @@ export interface WalletState {
 
 const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
-
-const roundAmount = (amount: number) => Math.round(amount * 100) / 100;
 
 export const useWalletStore = create<WalletState>()((set, get) => {
       const syncAuthBalance = () => {

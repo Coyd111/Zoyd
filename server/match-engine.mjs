@@ -11,7 +11,6 @@ import { withWalletMutex } from './mutex.mjs';
 import { roundAmount } from './utils.mjs';
 
 const log = createLogger('match-engine');
-export { roundAmount } from './utils.mjs';
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 
 const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];

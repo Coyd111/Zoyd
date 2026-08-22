@@ -147,11 +147,11 @@ const ProfilPage: React.FC = () => {
               <ProgressBar
                 value={progressPercent}
                 barClassName={
-                  user.progression.level === 'PRO'
+                  progression.level === 'PRO'
                     ? 'bg-red-400'
-                    : user.progression.level === 'ELITE'
+                    : progression.level === 'ELITE'
                       ? 'bg-purple-400'
-                      : user.progression.level === 'CHALLENGER'
+                      : progression.level === 'CHALLENGER'
                         ? 'bg-zoyd-blue'
                         : 'bg-zoyd-yellow'
                 }

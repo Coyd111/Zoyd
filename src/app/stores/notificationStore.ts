@@ -203,9 +203,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       priority: n.priority as NotificationPriority,
       actionUrl: n.actionUrl,
       metadata: n.metadata,
-      read: n.isRead,
+      read: n.read ?? false,
       dismissed: false,
-      timestamp: n.createdAt,
+      timestamp: n.created_at || n.timestamp || new Date().toISOString(),
     }));
     set({ notifications: nextNotifications });
   },

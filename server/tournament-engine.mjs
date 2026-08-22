@@ -40,7 +40,7 @@ const addXpToProgression = (progression, amount) => {
   };
 
   const currentIdx = progressionLevels.indexOf(next.level);
-  if (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
+  while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
     next.level = progressionLevels[currentIdx + 1];
   }
   next.nextLevelXp = levelThresholds[next.level];
@@ -575,29 +575,29 @@ const applyTournamentSettlement = async (tournament) => {
   for (const entry of tournament.entries) {
     const payout = roundAmount(getPlacementPayout(tournament, entry.finalPlacement));
 
-    await withWalletMutex(entry.captainId, () => {
+    await withWalletMutex(entry.captainId, async () => {
       if (payout > 0) {
         releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
       } else {
         settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
       }
-    });
 
-    const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
-    for (const userId of memberUserIds) {
-      patchUserForTournamentOutcome(userId, (user) => {
-        const isCaptain = userId === entry.captainId;
-        const nextStats = {
-          ...user.stats,
-          tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
-          tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
-          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (isCaptain ? payout : 0)),
-        };
-        user.stats = nextStats;
-        user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
-        return user;
-      });
-    }
+      const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
+      for (const userId of memberUserIds) {
+        patchUserForTournamentOutcome(userId, (user) => {
+          const isCaptain = userId === entry.captainId;
+          const nextStats = {
+            ...user.stats,
+            tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
+            tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
+            totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (isCaptain ? payout : 0)),
+          };
+          user.stats = nextStats;
+          user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
+          return user;
+        });
+      }
+    });
   }
 
   const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbitersNeeded);

@@ -59,7 +59,7 @@ const addXpToProgression = (progression, amount) => {
     nextLevelXp: Number(progression?.nextLevelXp || 1000),
   };
   const currentIdx = progressionLevels.indexOf(next.level);
-  if (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
+  while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
     next.level = progressionLevels[currentIdx + 1];
   }
   next.nextLevelXp = levelThresholds[next.level];
@@ -552,16 +552,16 @@ const applyLeagueSettlement = async (season) => {
     try {
       await withWalletMutex(podium.first, async () => {
         releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
-      });
-      patchUserForLeagueOutcome(podium.first, (user) => {
-        user.stats = {
-          ...user.stats,
-          leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
-          leaguesWon: Number(user.stats?.leaguesWon || 0) + 1,
-          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.first),
-        };
-        user.progression = addXpToProgression(user.progression, getPlacementXp(1));
-        return user;
+        patchUserForLeagueOutcome(podium.first, (user) => {
+          user.stats = {
+            ...user.stats,
+            leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+            leaguesWon: Number(user.stats?.leaguesWon || 0) + 1,
+            totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.first),
+          };
+          user.progression = addXpToProgression(user.progression, getPlacementXp(1));
+          return user;
+        });
       });
     } catch (err) {
       log.error('League settlement error for 1st place', { seasonId: season.id, userId: podium.first, error: err.message });
@@ -572,15 +572,15 @@ const applyLeagueSettlement = async (season) => {
     try {
       await withWalletMutex(podium.second, async () => {
         releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
-      });
-      patchUserForLeagueOutcome(podium.second, (user) => {
-        user.stats = {
-          ...user.stats,
-          leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
-          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.second),
-        };
-        user.progression = addXpToProgression(user.progression, getPlacementXp(2));
-        return user;
+        patchUserForLeagueOutcome(podium.second, (user) => {
+          user.stats = {
+            ...user.stats,
+            leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+            totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.second),
+          };
+          user.progression = addXpToProgression(user.progression, getPlacementXp(2));
+          return user;
+        });
       });
     } catch (err) {
       log.error('League settlement error for 2nd place', { seasonId: season.id, userId: podium.second, error: err.message });
@@ -591,15 +591,15 @@ const applyLeagueSettlement = async (season) => {
     try {
       await withWalletMutex(podium.third, async () => {
         releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
-      });
-      patchUserForLeagueOutcome(podium.third, (user) => {
-        user.stats = {
-          ...user.stats,
-          leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
-          totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.third),
-        };
-        user.progression = addXpToProgression(user.progression, getPlacementXp(3));
-        return user;
+        patchUserForLeagueOutcome(podium.third, (user) => {
+          user.stats = {
+            ...user.stats,
+            leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+            totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout.third),
+          };
+          user.progression = addXpToProgression(user.progression, getPlacementXp(3));
+          return user;
+        });
       });
     } catch (err) {
       log.error('League settlement error for 3rd place', { seasonId: season.id, userId: podium.third, error: err.message });
@@ -612,14 +612,14 @@ const applyLeagueSettlement = async (season) => {
       if (!isPodium) {
         await withWalletMutex(player.userId, async () => {
           settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
-        });
-        patchUserForLeagueOutcome(player.userId, (user) => {
-          user.stats = {
-            ...user.stats,
-            leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
-          };
-          user.progression = addXpToProgression(user.progression, getPlacementXp(0));
-          return user;
+          patchUserForLeagueOutcome(player.userId, (user) => {
+            user.stats = {
+              ...user.stats,
+              leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
+            };
+            user.progression = addXpToProgression(user.progression, getPlacementXp(0));
+            return user;
+          });
         });
       }
     } catch (err) {

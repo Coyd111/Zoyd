@@ -196,7 +196,7 @@ export default function LandingPage() {
         </section>
 
         <section className="border-y border-white/5 bg-zoyd-yellow py-4 overflow-hidden whitespace-nowrap">
-          <div className="flex gap-16 animate-marquee items-center text-black font-display font-black text-lg md:text-2xl uppercase tracking-wider italic">
+          <div className="flex w-max gap-16 animate-marquee items-center text-black font-display font-black text-lg md:text-2xl uppercase tracking-wider italic">
             {[...LANDING_TICKER_ITEMS, ...LANDING_TICKER_ITEMS].map((item, index) => (
               <React.Fragment key={`${item}-${index}`}>
                 <span>{item}</span>

@@ -16,7 +16,7 @@ const LiveTicker: React.FC = () => {
         <Badge variant="live" className="ml-4 flex-shrink-0">
           EN DIRECT
         </Badge>
-        <div className="flex gap-8 animate-marquee">
+        <div className="flex w-max gap-8 animate-marquee">
           {[...liveMatches, ...liveMatches].map((match, index) => (
             <div key={index} className="flex items-center gap-2 text-sm whitespace-nowrap">
               <span className="text-zoyd-yellow">DIRECT</span>

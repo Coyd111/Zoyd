@@ -1408,7 +1408,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
+      const outcome = await registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
@@ -1427,7 +1427,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try { await withTournamentMutex(async () => {
-      const outcome = leaveTournamentOnServer(getStoredTournaments(), session.user, tournamentLeave[1]);
+      const outcome = await leaveTournamentOnServer(getStoredTournaments(), session.user, tournamentLeave[1]);
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
@@ -1614,7 +1614,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try { await withLeagueMutex(async () => {
-      const outcome = joinLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueJoin[1]);
+      const outcome = await joinLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueJoin[1]);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
@@ -1632,7 +1632,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try { await withLeagueMutex(async () => {
-      const outcome = leaveLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueLeave[1]);
+      const outcome = await leaveLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueLeave[1]);
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
@@ -1823,7 +1823,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try { await withLeagueMutex(async () => {
-      const outcome = refundLeaguePlayerOnServer(
+      const outcome = await refundLeaguePlayerOnServer(
         getStoredLeagues(),
         session.user,
         leagueRefund[1],
@@ -2230,7 +2230,11 @@ const server = http.createServer(async (req, res) => {
     }
     const secret = toBase32(crypto.randomBytes(20));
     adminTotpSecrets.set(session.user.id, { secret, enabled: false, verifiedAt: null });
-    await saveAdminTotpSecret(session.user.id, secret, false);
+    try {
+      await saveAdminTotpSecret(session.user.id, secret, false);
+    } catch (dbErr) {
+      log.error('2FA setup: failed to persist secret', { adminId: session.user.id, error: dbErr.message });
+    }
     const otpauthUrl = `otpauth://totp/ZOYD:${encodeURIComponent(session.user.email || session.user.pseudo)}?secret=${secret}&issuer=ZOYD`;
     log.info('Admin 2FA setup initiated', { adminId: session.user.id });
     respondJson(res, 200, { ok: true, otpauthUrl });
@@ -2267,7 +2271,11 @@ const server = http.createServer(async (req, res) => {
     totpEntry.enabled = true;
     totpEntry.verifiedAt = new Date().toISOString();
     adminTotpSecrets.set(session.user.id, totpEntry);
-    await saveAdminTotpSecret(session.user.id, totpEntry.secret, true);
+    try {
+      await saveAdminTotpSecret(session.user.id, totpEntry.secret, true);
+    } catch (dbErr) {
+      log.error('2FA enable: failed to persist secret', { adminId: session.user.id, error: dbErr.message });
+    }
     session.admin2faVerified = true;
     session.admin2faExpires = Date.now() + 5 * 60 * 1000;
     log.info('Admin 2FA enabled', { adminId: session.user.id });
@@ -2569,9 +2577,14 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const receipt = markChatChannelRead(channel.id, session.user.id, getNow());
-    broadcastChatRead(io, receipt.channelId, receipt.userId, receipt.readAt);
-    respondJson(res, 200, { ok: true, ...receipt });
+    try {
+      const receipt = markChatChannelRead(channel.id, session.user.id, getNow());
+      broadcastChatRead(io, receipt.channelId, receipt.userId, receipt.readAt);
+      respondJson(res, 200, { ok: true, ...receipt });
+    } catch (err) {
+      log.error('chat/channel read failed', { channelId: channel.id, userId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la marque de lecture.' });
+    }
     return;
   }
 

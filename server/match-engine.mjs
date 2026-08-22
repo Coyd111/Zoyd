@@ -688,9 +688,11 @@ const resolveForfeit = async (match, winnerTeam, losingTeam, reason) => {
   await applyResultSettlement(match, fullResult);
 };
 
-const cancelForAutomation = (match, reason) => {
+const cancelForAutomation = async (match, reason) => {
   for (const player of match.players) {
-    refundLockedEntry(player.userId, match.id, `Remboursement automatique ${match.id}`);
+    await withWalletMutex(player.userId, async () => {
+      refundLockedEntry(player.userId, match.id, `Remboursement automatique ${match.id}`);
+    });
   }
 
   match.status = 'cancelled';
@@ -728,7 +730,7 @@ export const processMatchAutomationOnServer = async (matches) => {
 
       const expired = new Date(match.expiresAt).getTime() <= now;
       if (expired) {
-        cancelForAutomation(
+        await cancelForAutomation(
           match,
           "Le match est annule automatiquement: la fenetre de 14 jours est depassee sans resultat valide."
         );
@@ -742,7 +744,7 @@ export const processMatchAutomationOnServer = async (matches) => {
       }
 
       if (!match.arbiter) {
-        cancelForAutomation(
+        await cancelForAutomation(
           match,
           "Le match est annule automatiquement: aucun arbitre n'a confirme la salle a l'heure prevue."
         );
@@ -760,7 +762,7 @@ export const processMatchAutomationOnServer = async (matches) => {
       }
 
       if (!teamAlphaReady && !teamBravoReady) {
-        cancelForAutomation(
+        await cancelForAutomation(
           match,
           "Le match est annule automatiquement: aucune equipe n'a valide tous ses joueurs a l'heure convenue."
         );

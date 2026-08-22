@@ -261,7 +261,7 @@ export const createLeagueSeasonOnServer = (seasons, actor, input = {}) => {
   };
 };
 
-export const joinLeagueSeasonOnServer = (seasons, actor, seasonId) => {
+export const joinLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
   const actorUser = requireActorUser(actor);
   const nextSeasons = cloneLeagues(seasons);
   const season = findSeason(nextSeasons, seasonId);
@@ -275,7 +275,9 @@ export const joinLeagueSeasonOnServer = (seasons, actor, seasonId) => {
     throw makeError('ALREADY_JOINED', 'Tu es deja inscrit a cette ligue.');
   }
 
-  lockEntryFee(actorUser.id, season.entryFee, seasonId);
+  await withWalletMutex(actorUser.id, async () => {
+    lockEntryFee(actorUser.id, season.entryFee, seasonId);
+  });
 
   season.registeredPlayers.push({
     userId: actorUser.id,
@@ -293,7 +295,7 @@ export const joinLeagueSeasonOnServer = (seasons, actor, seasonId) => {
   };
 };
 
-export const leaveLeagueSeasonOnServer = (seasons, actor, seasonId) => {
+export const leaveLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
   const actorUser = requireActorUser(actor);
   const nextSeasons = cloneLeagues(seasons);
   const season = findSeason(nextSeasons, seasonId);
@@ -304,7 +306,9 @@ export const leaveLeagueSeasonOnServer = (seasons, actor, seasonId) => {
   const playerIndex = season.registeredPlayers.findIndex((p) => p.userId === actorUser.id);
   if (playerIndex === -1) throw makeError('NOT_JOINED', 'Tu n es pas inscrit a cette ligue.');
 
-  refundLockedEntry(actorUser.id, seasonId, 'Remboursement inscription ligue');
+  await withWalletMutex(actorUser.id, async () => {
+    refundLockedEntry(actorUser.id, seasonId, 'Remboursement inscription ligue');
+  });
 
   season.registeredPlayers.splice(playerIndex, 1);
   season.payout = buildLeaguePayout(season.registeredPlayers.length * season.entryFee);
@@ -716,7 +720,7 @@ export const reassignPlayerOnServer = (seasons, actor, seasonId, userId, fromDay
   };
 };
 
-export const refundLeaguePlayerOnServer = (seasons, actor, seasonId, userId) => {
+export const refundLeaguePlayerOnServer = async (seasons, actor, seasonId, userId) => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut effectuer des remboursements.');
   const nextSeasons = cloneLeagues(seasons);
@@ -727,7 +731,9 @@ export const refundLeaguePlayerOnServer = (seasons, actor, seasonId, userId) => 
   const playerIndex = season.registeredPlayers.findIndex((p) => p.userId === userId);
   if (playerIndex === -1) throw makeError('NOT_JOINED', 'Ce joueur n est pas inscrit a cette ligue.');
 
-  refundLockedEntry(userId, seasonId, `Remboursement admin ligue cycle ${season.cycleNumber}`);
+  await withWalletMutex(userId, async () => {
+    refundLockedEntry(userId, seasonId, `Remboursement admin ligue cycle ${season.cycleNumber}`);
+  });
 
   season.registeredPlayers.splice(playerIndex, 1);
   season.payout = buildLeaguePayout(season.registeredPlayers.length * season.entryFee);

@@ -652,7 +652,7 @@ export const createTournamentOnServer = (tournaments, actor, input) => {
   };
 };
 
-export const registerForTournamentOnServer = (tournaments, actor, tournamentId, input = {}) => {
+export const registerForTournamentOnServer = async (tournaments, actor, tournamentId, input = {}) => {
   const actorUser = requireActorUser(actor);
   const nextTournaments = cloneTournaments(tournaments);
   const tournament = findTournament(nextTournaments, tournamentId);
@@ -722,7 +722,9 @@ export const registerForTournamentOnServer = (tournaments, actor, tournamentId, 
     throw makeError('INVALID_REGISTRATION', 'Ce nom de squad est deja pris.');
   }
 
-  lockEntryFee(actorUser.id, getSquadLockAmount(tournament.entryFee, tournament.teamSize), tournament.id);
+  await withWalletMutex(actorUser.id, async () => {
+    lockEntryFee(actorUser.id, getSquadLockAmount(tournament.entryFee, tournament.teamSize), tournament.id);
+  });
 
   const nextEntry = createRegisteredEntry({
     format: tournament.format,
@@ -746,7 +748,7 @@ export const registerForTournamentOnServer = (tournaments, actor, tournamentId, 
   };
 };
 
-export const leaveTournamentOnServer = (tournaments, actor, tournamentId) => {
+export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) => {
   const actorUser = requireActorUser(actor);
   const nextTournaments = cloneTournaments(tournaments);
   const tournament = findTournament(nextTournaments, tournamentId);
@@ -762,7 +764,9 @@ export const leaveTournamentOnServer = (tournaments, actor, tournamentId) => {
     throw makeError('FORBIDDEN', 'Seul le capitaine peut retirer cette squad.');
   }
 
-  refundLockedEntry(actorUser.id, tournament.id, `Remboursement du pass ${tournament.name}`);
+  await withWalletMutex(actorUser.id, async () => {
+    refundLockedEntry(actorUser.id, tournament.id, `Remboursement du pass ${tournament.name}`);
+  });
 
   tournament.entries = tournament.entries
     .filter((entry) => entry.id !== removedEntry.id)

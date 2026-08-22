@@ -130,7 +130,7 @@ describe('tournament-engine - registerForTournamentOnServer', () => {
     getUserById.mockReturnValue(mockPlayer);
   });
 
-  it('should register player for tournament', () => {
+  it('should register player for tournament', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       maxEntries: 8,
@@ -141,7 +141,7 @@ describe('tournament-engine - registerForTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    const result = tournamentEngine.registerForTournamentOnServer(
+    const result = await tournamentEngine.registerForTournamentOnServer(
       [tournament], mockPlayer, 'T-TEST', { pseudo: 'ShadowX' }
     );
     expect(result.tournament.entries).toHaveLength(1);
@@ -149,13 +149,13 @@ describe('tournament-engine - registerForTournamentOnServer', () => {
     expect(lockEntryFee).toHaveBeenCalled();
   });
 
-  it('should reject if tournament not found', () => {
-    expect(() =>
+  it('should reject if tournament not found', async () => {
+    await expect(
       tournamentEngine.registerForTournamentOnServer([], mockPlayer, 'T-NOPE', { pseudo: 'X' })
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
-  it('should reject if tournament is full', () => {
+  it('should reject if tournament is full', async () => {
     const entries = Array.from({ length: 8 }, (_, i) => makeEntry(`p-${i}`, `P${i}`, i + 1));
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
@@ -167,12 +167,12 @@ describe('tournament-engine - registerForTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.registerForTournamentOnServer([tournament], mockPlayer, 'T-TEST', { pseudo: 'ShadowX' })
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
-  it('should reject if already registered', () => {
+  it('should reject if already registered', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       maxEntries: 8,
@@ -183,12 +183,12 @@ describe('tournament-engine - registerForTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.registerForTournamentOnServer([tournament], mockPlayer, 'T-TEST', { pseudo: 'ShadowX' })
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
-  it('should reject if not recruiting', () => {
+  it('should reject if not recruiting', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       status: 'live',
@@ -196,12 +196,12 @@ describe('tournament-engine - registerForTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.registerForTournamentOnServer([tournament], mockPlayer, 'T-TEST', { pseudo: 'X' })
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
-  it('should reject if player is arbiter', () => {
+  it('should reject if player is arbiter', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       maxEntries: 8,
@@ -212,9 +212,9 @@ describe('tournament-engine - registerForTournamentOnServer', () => {
       arbiters: [{ userId: 'player-1', pseudo: 'ShadowX', slot: 1 }],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.registerForTournamentOnServer([tournament], mockPlayer, 'T-TEST', { pseudo: 'ShadowX' })
-    ).toThrow();
+    ).rejects.toThrow();
   });
 });
 
@@ -224,7 +224,7 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
     getUserById.mockReturnValue(mockPlayer);
   });
 
-  it('should remove entry and refund', () => {
+  it('should remove entry and refund', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       maxEntries: 8,
@@ -235,12 +235,12 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    const result = tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST');
+    const result = await tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST');
     expect(result.tournament.entries).toHaveLength(0);
     expect(refundLockedEntry).toHaveBeenCalledWith('player-1', 'T-TEST', expect.any(String));
   });
 
-  it('should reject if not registered', () => {
+  it('should reject if not registered', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       status: 'recruiting',
@@ -248,12 +248,12 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST')
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
-  it('should reject if not captain', () => {
+  it('should reject if not captain', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       maxEntries: 8,
@@ -271,12 +271,12 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST')
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
-  it('should reject if tournament already started', () => {
+  it('should reject if tournament already started', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       status: 'live',
@@ -284,9 +284,9 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST')
-    ).toThrow();
+    ).rejects.toThrow();
   });
 });
 

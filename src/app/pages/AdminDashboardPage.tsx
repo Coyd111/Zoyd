@@ -830,8 +830,8 @@ const AdminDashboardPage: React.FC = () => {
                   { id: 'all', label: 'Tous' },
                 ].map((filter) => (
                       <button
-                        key={f.id}
-                        onClick={() => setDisputeFilter(f.id as DisputeFilter)}
+                        key={filter.id}
+                        onClick={() => setUserFilter(filter.id as UserFilter)}
                         className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
                       userFilter === filter.id
                         ? 'bg-white text-black border-white'

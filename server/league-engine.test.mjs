@@ -134,38 +134,38 @@ describe('league-engine - joinLeagueSeasonOnServer', () => {
     getUserById.mockReturnValue(mockPlayer);
   });
 
-  it('should join registering season', () => {
+  it('should join registering season', async () => {
     const season = makeSeason();
-    const result = leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST');
+    const result = await leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST');
     expect(result.season.registeredPlayers).toHaveLength(1);
     expect(result.season.registeredPlayers[0].userId).toBe('player-1');
     expect(lockEntryFee).toHaveBeenCalledWith('player-1', 50, 'LS-TEST');
   });
 
-  it('should reject if already joined', () => {
+  it('should reject if already joined', async () => {
     const season = makeSeason({
       registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
     });
-    expect(() => leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).toThrow();
+    await expect(leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
   });
 
-  it('should reject if season is full', () => {
+  it('should reject if season is full', async () => {
     const players = Array.from({ length: 500 }, (_, i) => ({
       userId: `p-${i}`,
       pseudo: `P${i}`,
       joinedAt: new Date().toISOString(),
     }));
     const season = makeSeason({ registeredPlayers: players });
-    expect(() => leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).toThrow();
+    await expect(leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
   });
 
-  it('should reject if not registering', () => {
+  it('should reject if not registering', async () => {
     const season = makeSeason({ status: 'qualifying' });
-    expect(() => leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).toThrow();
+    await expect(leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
   });
 
-  it('should reject if season not found', () => {
-    expect(() => leagueEngine.joinLeagueSeasonOnServer([], mockPlayer, 'LS-NOPE')).toThrow();
+  it('should reject if season not found', async () => {
+    await expect(leagueEngine.joinLeagueSeasonOnServer([], mockPlayer, 'LS-NOPE')).rejects.toThrow();
   });
 });
 
@@ -175,18 +175,18 @@ describe('league-engine - leaveLeagueSeasonOnServer', () => {
     getUserById.mockReturnValue(mockPlayer);
   });
 
-  it('should remove player from season', () => {
+  it('should remove player from season', async () => {
     const season = makeSeason({
       registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
     });
-    const result = leagueEngine.leaveLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST');
+    const result = await leagueEngine.leaveLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST');
     expect(result.season.registeredPlayers).toHaveLength(0);
     expect(refundLockedEntry).toHaveBeenCalledWith('player-1', 'LS-TEST', expect.any(String));
   });
 
-  it('should reject if not joined', () => {
+  it('should reject if not joined', async () => {
     const season = makeSeason();
-    expect(() => leagueEngine.leaveLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).toThrow();
+    await expect(leagueEngine.leaveLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
   });
 });
 
@@ -293,20 +293,20 @@ describe('league-engine - refundLeaguePlayerOnServer', () => {
     getUserById.mockReturnValue(mockAdmin);
   });
 
-  it('should refund and remove player', () => {
+  it('should refund and remove player', async () => {
     const season = makeSeason({
       registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
       standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 50, bestPlacement: 3, matchesPlayed: 2, placements: [3, 5] }],
     });
-    const result = leagueEngine.refundLeaguePlayerOnServer([season], mockAdmin, 'LS-TEST', 'player-1');
+    const result = await leagueEngine.refundLeaguePlayerOnServer([season], mockAdmin, 'LS-TEST', 'player-1');
     expect(result.season.registeredPlayers).toHaveLength(0);
     expect(result.season.standings).toHaveLength(0);
     expect(refundLockedEntry).toHaveBeenCalled();
   });
 
-  it('should reject if player not in season', () => {
+  it('should reject if player not in season', async () => {
     const season = makeSeason();
-    expect(() => leagueEngine.refundLeaguePlayerOnServer([season], mockAdmin, 'LS-TEST', 'player-1')).toThrow();
+    await expect(leagueEngine.refundLeaguePlayerOnServer([season], mockAdmin, 'LS-TEST', 'player-1')).rejects.toThrow();
   });
 });
 

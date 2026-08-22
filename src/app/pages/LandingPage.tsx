@@ -66,7 +66,7 @@ export default function LandingPage() {
               loop
               playsInline
               preload="metadata"
-              poster="/logo icone.png"
+              poster="/logo.png"
               className="h-full w-full object-cover opacity-24"
             >
               <source src="/assets/codm/videos/StartVideo.mp4" type="video/mp4" />
@@ -437,7 +437,7 @@ function LandingNav() {
       <nav className="fixed inset-x-0 top-0 z-50 bg-zoyd-black/72 backdrop-blur-xl safe-top">
       <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 flex items-center justify-between gap-6">
         <Link to="/" className="shrink-0">
-          <ZoydLogo compact />
+          <img src="/logo.png" alt="ZOYD" className="h-8 w-auto object-contain" />
         </Link>
 
         <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/20">

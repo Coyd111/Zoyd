@@ -518,11 +518,13 @@ const MatchDetailPage: React.FC = () => {
         </div>
 
         <header className="relative mb-10 overflow-hidden min-h-[300px] flex flex-col justify-end p-5 sm:p-8 -mx-4 sm:-mx-6 md:mx-0">
-          <img 
-            src={getMapImage(match.rules.map)}
-            alt={match.rules.map}
-            className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity"
-          />
+          {getMapImage(match.rules.map) && (
+            <img 
+              src={getMapImage(match.rules.map)}
+              alt={match.rules.map}
+              className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 tactical-grid opacity-10 pointer-events-none" />
           

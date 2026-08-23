@@ -339,7 +339,7 @@ const CreateTournamentPage: React.FC = () => {
                   <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Cartes au programme
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="max-h-[300px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-2">
                     {MJ_MAP_POOL.map((map) => {
                       const selected = selectedMapPool.includes(map);
                       return (

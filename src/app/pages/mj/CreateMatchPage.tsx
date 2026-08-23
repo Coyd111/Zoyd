@@ -252,7 +252,7 @@ const CreateMatchPage: React.FC = () => {
                       <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                         02 / Carte choisie
                       </label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
                         {MJ_MAP_POOL.map((map) => (
                           <button
                             type="button"
@@ -261,14 +261,13 @@ const CreateMatchPage: React.FC = () => {
                             aria-label={`Sélectionner la carte ${map}`}
                             className={`relative h-20 sm:h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-yellow shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'border-white/10 hover:border-white/30'}`}
                           >
-                            <img 
-                              src={getMapImage(map)}
-                              alt={map}
-                              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${selectedMap === map ? 'opacity-80 mix-blend-normal' : 'opacity-40 mix-blend-luminosity hover:opacity-60'}`}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
+                            {getMapImage(map) && (
+                              <img 
+                                src={getMapImage(map)}
+                                alt={map}
+                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${selectedMap === map ? 'opacity-80 mix-blend-normal' : 'opacity-40 mix-blend-luminosity hover:opacity-60'}`}
+                              />
+                            )}
                             <div className={`absolute inset-0 bg-gradient-to-t ${selectedMap === map ? 'from-black/90 to-transparent' : 'from-black/80 to-black/20'}`} />
                             <span className={`relative z-10 flex h-full items-end p-3 text-xs font-display font-black italic uppercase tracking-wider ${selectedMap === map ? 'text-zoyd-yellow' : 'text-white'}`}>
                               {map}

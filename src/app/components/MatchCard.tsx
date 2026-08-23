@@ -93,14 +93,13 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
 
         <div className="relative h-24 -mx-6 mb-6 transition-colors overflow-hidden">
-          <img 
-            src={getMapImage(map)}
-            alt={map}
-            className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity group-hover:opacity-60 transition-opacity duration-500"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
+          {getMapImage(map) && (
+            <img 
+              src={getMapImage(map)}
+              alt={map}
+              className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity group-hover:opacity-60 transition-opacity duration-500"
+            />
+          )}
           <div className="absolute inset-0 w-full h-full tactical-grid opacity-20" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
           <div className="absolute inset-y-0 left-6 flex items-center z-10">

@@ -48,19 +48,42 @@ export const MJ_MODE_OPTIONS = [
 ] as const;
 
 export const MJ_MAP_POOL = [
+  'Crash',
+  'Crossfire',
+  'Summit',
   'Raid',
   'Standoff',
   'Firing Range',
   'Nuketown',
-  'Crash',
-  'Summit',
   'Shipment',
   'Terminal',
+  'Killhouse',
+  'Cage',
+  'King',
+  'Pawnshop',
+  'Satellite',
+  'Coastal',
+  'Oasis',
+  'Slums',
+  'Tunisia',
+  'Hackney Yard',
+  'Meltdown',
+  'Shoot House',
+  'Scrapyard',
+  'Highrise',
+  'Dome',
+  'Dashboard',
+  'Reactor',
+  'Aerial',
+  'Boulevard',
+  'Canopy',
+  'Townhouse',
+  'Sandbox',
+  'Grazna',
 ] as const;
 
-export const getMapImage = (mapName: string): string => {
-  const normalized = mapName.toLowerCase().replace(/\s+/g, '_');
-  return `/maps/map_${normalized}.png`;
+export const getMapImage = (_mapName: string): string => {
+  return '';
 };
 
 export const LANDING_TICKER_ITEMS = [

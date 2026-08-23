@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Gamepad2, Swords } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Gamepad2, Swords, Wallet } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import ZoydLogo from '../components/branding/ZoydLogo';
 

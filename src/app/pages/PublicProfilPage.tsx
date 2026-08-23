@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { motion } from 'motion/react';
 import {
@@ -135,13 +135,20 @@ const PublicProfilPage: React.FC = () => {
     }
   };
 
+  const [confirmReport, setConfirmReport] = useState(false);
+
   const handleReport = () => {
     if (!currentUser) {
       navigate('/auth/login');
       return;
     }
+    if (!confirmReport) {
+      setConfirmReport(true);
+      return;
+    }
     reportUser(id, 'other', `Signalement manuel depuis le profil public de ${publicProfile.pseudo}.`);
     toast.success(`Signalement enregistré pour ${publicProfile.pseudo}.`);
+    setConfirmReport(false);
   };
 
   return (
@@ -229,10 +236,15 @@ const PublicProfilPage: React.FC = () => {
                   <UserX className="w-4 h-4 mr-2" />
                   Bloquer
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleReport} className="text-red-300 hover:text-red-200 touch-target">
+                <Button variant="ghost" size="sm" onClick={handleReport} className={`touch-target ${confirmReport ? 'border-red-400 text-red-300' : 'text-red-300 hover:text-red-200'}`}>
                   <AlertTriangle className="w-4 h-4 mr-2" />
-                  Signaler
+                  {confirmReport ? 'Confirmer le signalement' : 'Signaler'}
                 </Button>
+                {confirmReport && (
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmReport(false)} className="touch-target text-white/40 hover:text-white">
+                    Annuler
+                  </Button>
+                )}
               </div>
             ) : null}
           </div>

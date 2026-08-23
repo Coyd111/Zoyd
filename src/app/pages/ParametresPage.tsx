@@ -256,7 +256,7 @@ const ParametresPage: React.FC = () => {
                       value={form.bio}
                       onChange={(event) => updateForm('bio', event.target.value)}
                       rows={4}
-                      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white-30 focus:outline-none focus:border-zoyd-yellow transition-all duration-200"
+                      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white/30 focus:outline-none focus:border-zoyd-yellow transition-all duration-200"
                       placeholder="Quelques lignes pour decrire ton style de jeu ou ton identite competitive."
                     />
                   </label>

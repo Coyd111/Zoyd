@@ -86,7 +86,7 @@ const HubMJPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-8 mb-12 items-start lg:items-center">
             <div className="overflow-x-auto scrollbar-hide"
             >
-              <div className="flex flex-wrap gap-2 flex-1 flex-nowrap">
+              <div className="flex flex-nowrap gap-2 flex-1">
               {MATCH_FORMATS.map((format) => (
                 <button
                   key={format}

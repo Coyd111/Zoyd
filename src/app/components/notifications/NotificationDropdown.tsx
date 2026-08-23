@@ -50,7 +50,7 @@ export const NotificationDropdown: React.FC = () => {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative text-white/40 hover:text-white transition-colors p-1"
+        className="relative text-white/40 hover:text-white transition-colors p-1 touch-target"
         aria-label="Notifications"
         aria-expanded={open ? 'true' : 'false'}
         aria-haspopup="menu"
@@ -112,6 +112,8 @@ export const NotificationDropdown: React.FC = () => {
                 visible.map((n) => (
                   <div
                     key={n.id}
+                    role="button"
+                    tabIndex={0}
                     className={`px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${n.read ? 'opacity-60' : ''}`}
                     onClick={() => {
                       if (!n.read) markAsRead(n.id);
@@ -123,6 +125,22 @@ export const NotificationDropdown: React.FC = () => {
                           }
                         } catch {
                           window.location.href = '/';
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (!n.read) markAsRead(n.id);
+                        if (n.actionUrl) {
+                          try {
+                            const url = new URL(n.actionUrl, window.location.origin);
+                            if (url.origin === window.location.origin || url.protocol === 'https:') {
+                              window.location.href = url.pathname + url.search + url.hash;
+                            }
+                          } catch {
+                            window.location.href = '/';
+                          }
                         }
                       }
                     }}
@@ -141,7 +159,7 @@ export const NotificationDropdown: React.FC = () => {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
-                        className="text-white/10 hover:text-red-400 transition-colors mt-0.5"
+                        className="text-white/10 hover:text-red-400 transition-colors mt-0.5 touch-target flex items-center justify-center"
                         aria-label="Supprimer la notification"
                         title="Supprimer"
                       >

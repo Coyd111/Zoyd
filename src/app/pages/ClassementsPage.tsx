@@ -284,7 +284,7 @@ const ClassementsPage: React.FC = () => {
       </header>
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 relative z-10">
-        <div role="tablist" className="flex flex-wrap flex-nowrap gap-2 mb-12 border-b border-white/5 pb-4 overflow-x-auto scrollbar-hide">
+        <div role="tablist" className="flex flex-nowrap gap-2 mb-12 border-b border-white/5 pb-4 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

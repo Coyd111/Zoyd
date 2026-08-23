@@ -76,6 +76,7 @@ const AdminDashboardPage: React.FC = () => {
   const [userFilter, setUserFilter] = useState<UserFilter>('critical');
   const [disputeFilter, setDisputeFilter] = useState<DisputeFilter>('escalated');
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
+  const [pendingResolve, setPendingResolve] = useState<{ matchId: string; type: 'alpha' | 'bravo' | 'none' } | null>(null);
 
   const players = useMemo(
     () =>
@@ -759,23 +760,56 @@ const AdminDashboardPage: React.FC = () => {
 
                       <div className="flex flex-wrap gap-3">
                         <button
-                          onClick={() => handleResolveWinner(match.id, 0)}
-                          className="bg-green-500 text-black px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-green-400 transition-colors touch-target"
+                          onClick={() => {
+                            if (pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha') {
+                              setPendingResolve(null);
+                              void handleResolveWinner(match.id, 0);
+                            } else {
+                              setPendingResolve({ matchId: match.id, type: 'alpha' });
+                            }
+                          }}
+                          className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
+                            pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha'
+                              ? 'bg-green-400 text-black'
+                              : 'bg-green-500 text-black hover:bg-green-400'
+                          }`}
                         >
                           <CheckCircle2 className="w-3 h-3 inline mr-2" />
-                          Valider Alpha
+                          {pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha' ? 'Confirmer Alpha' : 'Valider Alpha'}
                         </button>
                         <button
-                          onClick={() => handleResolveWinner(match.id, 1)}
-                          className="bg-white text-black px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-yellow transition-colors touch-target"
+                          onClick={() => {
+                            if (pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo') {
+                              setPendingResolve(null);
+                              void handleResolveWinner(match.id, 1);
+                            } else {
+                              setPendingResolve({ matchId: match.id, type: 'bravo' });
+                            }
+                          }}
+                          className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
+                            pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo'
+                              ? 'bg-zoyd-yellow text-black'
+                              : 'bg-white text-black hover:bg-zoyd-yellow'
+                          }`}
                         >
-                          Valider Bravo
+                          {pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo' ? 'Confirmer Bravo' : 'Valider Bravo'}
                         </button>
                         <button
-                          onClick={() => handleResolveDisputeOnly(match.id)}
-                          className="border border-zoyd-blue/30 text-zoyd-blue px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-zoyd-blue hover:text-black transition-colors touch-target"
+                          onClick={() => {
+                            if (pendingResolve?.matchId === match.id && pendingResolve.type === 'none') {
+                              setPendingResolve(null);
+                              void handleResolveDisputeOnly(match.id);
+                            } else {
+                              setPendingResolve({ matchId: match.id, type: 'none' });
+                            }
+                          }}
+                          className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
+                            pendingResolve?.matchId === match.id && pendingResolve.type === 'none'
+                              ? 'border-zoyd-blue bg-zoyd-blue text-black'
+                              : 'border border-zoyd-blue/30 text-zoyd-blue hover:bg-zoyd-blue hover:text-black'
+                          }`}
                         >
-                          Clore sans vainqueur
+                          {pendingResolve?.matchId === match.id && pendingResolve.type === 'none' ? 'Confirmer clore' : 'Clore sans vainqueur'}
                         </button>
                         <Link
                           to={`/mj/match/${match.id}`}
@@ -792,9 +826,6 @@ const AdminDashboardPage: React.FC = () => {
                             } else {
                               setPendingCancelId(match.id);
                             }
-                          }}
-                          onMouseLeave={() => {
-                            if (pendingCancelId === match.id) setPendingCancelId(null);
                           }}
                           className={`border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
                             pendingCancelId === match.id

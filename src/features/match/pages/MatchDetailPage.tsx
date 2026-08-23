@@ -740,6 +740,7 @@ const MatchDetailPage: React.FC = () => {
                       type="datetime-local"
                       value={scheduleValue}
                       onChange={(event) => setScheduleValue(event.target.value)}
+                      aria-label="Horaire du match"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <button onClick={handleSchedule} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic">
@@ -753,6 +754,7 @@ const MatchDetailPage: React.FC = () => {
                       value={roomName}
                       onChange={(event) => setRoomName(event.target.value)}
                       placeholder="Nom de la salle CODM"
+                      aria-label="Nom de la salle"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <input
@@ -760,6 +762,7 @@ const MatchDetailPage: React.FC = () => {
                       value={roomPassword}
                       onChange={(event) => setRoomPassword(event.target.value)}
                       placeholder="Mot de passe de la salle"
+                      aria-label="Mot de passe de la salle"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                   </div>
@@ -781,6 +784,7 @@ const MatchDetailPage: React.FC = () => {
                         value={scoreAlpha}
                         onChange={(event) => setScoreAlpha(event.target.value)}
                         placeholder="Score Alpha"
+                        aria-label="Score de l'équipe Alpha"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                       />
                       <input
@@ -788,6 +792,7 @@ const MatchDetailPage: React.FC = () => {
                         value={scoreBravo}
                         onChange={(event) => setScoreBravo(event.target.value)}
                         placeholder="Score Bravo"
+                        aria-label="Score de l'équipe Bravo"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                       />
                     </div>
@@ -795,6 +800,7 @@ const MatchDetailPage: React.FC = () => {
                       value={resultNotes}
                       onChange={(event) => setResultNotes(event.target.value)}
                       placeholder="Ce qu'il faut retenir de la fin de match"
+                      aria-label="Notes de fin de match"
                       className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <input
@@ -802,6 +808,7 @@ const MatchDetailPage: React.FC = () => {
                       value={scoreboardProofs}
                       onChange={(event) => setScoreboardProofs(event.target.value)}
                       placeholder="Screens scoreboard (liens ou refs, separes par des virgules)"
+                      aria-label="Liens des scores"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <input
@@ -809,6 +816,7 @@ const MatchDetailPage: React.FC = () => {
                       value={finalResultProofs}
                       onChange={(event) => setFinalResultProofs(event.target.value)}
                       placeholder="Ecran final / victoire (liens ou refs)"
+                      aria-label="Preuves du résultat final"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <input
@@ -816,6 +824,7 @@ const MatchDetailPage: React.FC = () => {
                       value={roomCaptureProofs}
                       onChange={(event) => setRoomCaptureProofs(event.target.value)}
                       placeholder="Capture de salle ou room setup (optionnel)"
+                      aria-label="Capture de salle"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <input
@@ -823,6 +832,7 @@ const MatchDetailPage: React.FC = () => {
                       value={extraResultProofs}
                       onChange={(event) => setExtraResultProofs(event.target.value)}
                       placeholder="Autres preuves utiles (clips, captures, etc.)"
+                      aria-label="Autres preuves"
                       className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <button 
@@ -926,6 +936,7 @@ const MatchDetailPage: React.FC = () => {
                               value={addEvidenceInput}
                               onChange={(e) => setAddEvidenceInput(e.target.value)}
                               placeholder="Liens ou refs séparés par des virgules"
+                              aria-label="Ajouter des preuves"
                               className="flex-1 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                             />
                             <button
@@ -968,6 +979,7 @@ const MatchDetailPage: React.FC = () => {
                                   value={scoreAlpha}
                                   onChange={(e) => setScoreAlpha(e.target.value)}
                                   placeholder="Score Alpha"
+                                  aria-label="Score Alpha (arbitre)"
                                   className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                                 />
                                 <input
@@ -975,6 +987,7 @@ const MatchDetailPage: React.FC = () => {
                                   value={scoreBravo}
                                   onChange={(e) => setScoreBravo(e.target.value)}
                                   placeholder="Score Bravo"
+                                  aria-label="Score Bravo (arbitre)"
                                   className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                                 />
                               </div>
@@ -982,6 +995,7 @@ const MatchDetailPage: React.FC = () => {
                                 value={resultNotes}
                                 onChange={(e) => setResultNotes(e.target.value)}
                                 placeholder="Notes d'arbitrage sur ce litige..."
+                                aria-label="Notes d'arbitrage"
                                 className="w-full min-h-20 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                               />
                               <button
@@ -1037,6 +1051,7 @@ const MatchDetailPage: React.FC = () => {
                     <select
                       value={disputeCategory}
                       onChange={(event) => setDisputeCategory(event.target.value as DisputeCategory)}
+                      aria-label="Catégorie du litige"
                       className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     >
                       {Object.entries(disputeCategoryLabels).map(([value, label]) => (
@@ -1050,12 +1065,14 @@ const MatchDetailPage: React.FC = () => {
                       value={disputeReason}
                       onChange={(event) => setDisputeReason(event.target.value)}
                       placeholder="Raison du litige"
+                      aria-label="Raison du litige"
                       className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <textarea
                       value={disputeEvidence}
                       onChange={(event) => setDisputeEvidence(event.target.value)}
                       placeholder="Screenshots, room logs ou preuves, séparés par des virgules"
+                      aria-label="Preuves du litige"
                       className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <button onClick={handleDispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">

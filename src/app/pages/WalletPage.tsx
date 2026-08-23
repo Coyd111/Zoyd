@@ -346,7 +346,7 @@ const WalletPage: React.FC = () => {
                 placeholder={`${MIN_WITHDRAWAL_ZC} ZC minimum (${MIN_WITHDRAWAL_ZC * 10} FCFA)`}
                 max={cashBalance}
               />
-              <p className="text-xs text-white-60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
+              <p className="text-xs text-white/60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
             </div>
 
             <Button
@@ -368,11 +368,11 @@ const WalletPage: React.FC = () => {
 const BalanceCard = ({ label, value, hint, accent = false }: { label: string; value: string; hint: string; accent?: boolean }) => (
   <Card className={accent ? 'bg-gradient-to-br from-zoyd-yellow/10 to-transparent border-zoyd-yellow' : ''}>
     <CardHeader>
-      <CardTitle className="text-white-60 text-sm">{label}</CardTitle>
+      <CardTitle className="text-white/60 text-sm">{label}</CardTitle>
     </CardHeader>
     <CardContent>
       <div className={`text-4xl font-display font-black mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</div>
-      <div className="text-sm text-white-60">{hint}</div>
+      <div className="text-sm text-white/60">{hint}</div>
     </CardContent>
   </Card>
 );

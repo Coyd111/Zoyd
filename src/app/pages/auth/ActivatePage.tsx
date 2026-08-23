@@ -35,7 +35,7 @@ const ActivatePage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black flex flex-col items-center justify-center p-5 relative font-ui scanline safe-top safe-bottom">
-      <img src="/assets/maps/shipment.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+      <img src="/assets/images/hero/warzone-05.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       
       <div className="w-full max-w-md relative z-10">

@@ -241,8 +241,8 @@ const ClassementsPage: React.FC = () => {
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden pt-16">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/illustrations/ranked_arena.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/maps/summit.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <img src="/assets/images/hero/warzone-05.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/images/backgrounds/tech-abstract-03.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         </div>
         <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 pb-12">

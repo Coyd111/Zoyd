@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
           className="absolute inset-0"
         >
           <img
-            src="/assets/illustrations/operator_ghost.jpg"
+            src="/assets/images/characters/tactical-mask-04.jpg"
             alt=""
             loading="lazy"
             className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
@@ -74,7 +74,7 @@ const LoginPage: React.FC = () => {
           className="absolute inset-0"
         >
           <img
-            src="/assets/maps/raid.jpg"
+            src="/assets/images/hero/warzone-10.jpg"
             alt=""
             loading="lazy"
             className="w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
@@ -140,7 +140,7 @@ const LoginPage: React.FC = () => {
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center px-5 py-10 sm:p-8 relative safe-bottom">
-        <img src="/assets/maps/crash.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/images/textures/dark-metal-02.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}

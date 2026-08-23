@@ -128,8 +128,8 @@ const EarningsDashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto relative z-10">
         <header className="mb-10 relative overflow-hidden border border-white/5">
-          <img src="/assets/illustrations/tournament_cup.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/maps/firing_range.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <img src="/assets/images/hero/military-night-02.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/images/backgrounds/dark-grid-01.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
                 <div className="relative z-10 p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 border border-zoyd-yellow/50 flex items-center justify-center text-zoyd-yellow bg-zoyd-yellow/5">

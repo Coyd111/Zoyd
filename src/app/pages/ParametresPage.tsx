@@ -167,8 +167,8 @@ const ParametresPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16 overflow-hidden">
-        <img src="/assets/maps/terminal.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
-        <img src="/assets/maps/takeoff.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+        <img src="/assets/images/hero/tactical-gear-03.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/images/backgrounds/tech-network-04.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
         <div className="relative z-10 max-w-[1240px] mx-auto px-4 sm:px-6 md:px-8 pb-12">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
             Parametres

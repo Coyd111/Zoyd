@@ -57,7 +57,7 @@ const ModeSelectionPage: React.FC = () => {
             className="group text-left h-full"
           >
             <div className="relative h-full min-h-[350px] sm:min-h-[420px] md:min-h-[520px] overflow-hidden border border-zoyd-blue/20 bg-black hover:border-zoyd-yellow transition-all duration-300 group/card">
-              <img src="/assets/maps/crossfire.jpg" alt="Multijoueur" className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity grayscale group-hover/card:scale-105 group-hover/card:grayscale-0 transition-all duration-700" />
+              <img src="/assets/images/hero/battlefield-06.jpg" alt="Multijoueur" className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity grayscale group-hover/card:scale-105 group-hover/card:grayscale-0 transition-all duration-700" />
               <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:opacity-40 transition-opacity duration-700 pointer-events-none">
                 <source src="/assets/codm/videos/ExecutionTutorial_Generic02.mp4" type="video/mp4" />
               </video>
@@ -106,7 +106,7 @@ const ModeSelectionPage: React.FC = () => {
             className="group text-left h-full mt-4 lg:mt-0"
           >
             <div className="relative h-full min-h-[350px] sm:min-h-[420px] md:min-h-[520px] overflow-hidden border border-zoyd-yellow/20 bg-black/80 hover:border-zoyd-yellow/40 transition-all duration-300 group/br">
-              <img src="/assets/maps/standby.jpg" alt="Battle Royale" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale group-hover/br:scale-105 group-hover/br:grayscale-0 transition-all duration-700" />
+              <img src="/assets/images/characters/tactical-mask-04.jpg" alt="Battle Royale" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale group-hover/br:scale-105 group-hover/br:grayscale-0 transition-all duration-700" />
               <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/br:opacity-24 transition-opacity duration-700 pointer-events-none">
                 <source src="/assets/codm/videos/AvatarView_Video.mp4" type="video/mp4" />
               </video>

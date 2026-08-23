@@ -147,7 +147,7 @@ const ChatPage: React.FC = () => {
           'border-r border-white/5 bg-zoyd-black/80 flex flex-col shrink-0 relative overflow-hidden',
           activeChannelId ? 'hidden sm:flex sm:w-64' : 'w-full sm:w-64'
         )}>
-          <img src="/assets/maps/rust.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/images/textures/matrix-green-01.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
           <div className="p-4 border-b border-white/5">
             <button
               onClick={() => {

@@ -89,8 +89,8 @@ const ProfilPage: React.FC = () => {
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/illustrations/profile_banner.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/maps/highrise.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <img src="/assets/images/hero/tactical-soldier-01.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/images/backgrounds/dark-grid-01.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-transparent to-transparent" />
         </div>
@@ -243,6 +243,7 @@ const ProfilPage: React.FC = () => {
             {summary.recentMatches.length === 0 ? (
               <EmptyPanel
                 icon={<Swords className="w-8 h-8 text-white/10" />}
+                image="/assets/images/characters/sniper-render-01.jpg"
                 title="Aucun match recent"
                 body="Tes prochaines parties terminees apparaitront ici, avec leur resultat et ce qu'elles t'ont rapporte."
               />
@@ -293,6 +294,7 @@ const ProfilPage: React.FC = () => {
             {summary.tournamentPlacements.length === 0 ? (
               <EmptyPanel
                 icon={<Trophy className="w-8 h-8 text-white/10" />}
+                image="/assets/images/hero/military-action-07.jpg"
                 title="Aucun tournoi recent"
                 body="Tes participations et tes podiums apparaitront ici des que tu auras boucle tes premiers tournois."
               />
@@ -354,11 +356,16 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const EmptyPanel = ({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) => (
-  <div className="hud-panel p-8 text-center bg-zoyd-surface/20">
-    <div className="mx-auto mb-4 flex w-12 h-12 items-center justify-center">{icon}</div>
-    <p className="font-display font-black uppercase italic text-white mb-2">{title}</p>
-    <p className="text-sm text-white/30 max-w-xl mx-auto">{body}</p>
+const EmptyPanel = ({ icon, image, title, body }: { icon: React.ReactNode; image?: string; title: string; body: string }) => (
+  <div className="hud-panel p-8 text-center bg-zoyd-surface/20 overflow-hidden relative">
+    {image && (
+      <div className="absolute inset-0 opacity-[0.06]">
+        <img src={image} alt="" className="w-full h-full object-cover" />
+      </div>
+    )}
+    <div className="relative mx-auto mb-4 flex w-12 h-12 items-center justify-center">{icon}</div>
+    <p className="relative font-display font-black uppercase italic text-white mb-2">{title}</p>
+    <p className="relative text-sm text-white/30 max-w-xl mx-auto">{body}</p>
   </div>
 );
 

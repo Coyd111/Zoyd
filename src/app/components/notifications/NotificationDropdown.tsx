@@ -40,7 +40,7 @@ export const NotificationDropdown: React.FC = () => {
     const handle = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', handle);
+    document.addEventListener('mousedown', handle, { passive: true });
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 

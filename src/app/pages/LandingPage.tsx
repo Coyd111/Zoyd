@@ -65,7 +65,7 @@ export default function LandingPage() {
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="none"
               poster="/logo.png"
               className="h-full w-full object-cover opacity-24"
             >

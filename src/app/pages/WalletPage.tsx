@@ -279,7 +279,7 @@ const WalletPage: React.FC = () => {
               ) : (
                 <div className="py-12 text-center relative overflow-hidden">
                   <div className="absolute inset-0 opacity-[0.04]">
-                    <img src="/assets/images/textures/dark-metal-02.jpg" alt="" className="w-full h-full object-cover" />
+                    <img src="/assets/images/textures/dark-metal-02.jpg" alt="" loading="lazy" className="w-full h-full object-cover" />
                   </div>
                   <Clock className="relative w-12 h-12 text-white/10 mx-auto mb-4" />
                   <p className="relative text-white/20 font-mono text-sm uppercase tracking-widest">Ton solde n'a pas encore bouge</p>

@@ -6,7 +6,7 @@ dist-proof-check
 .env.server
 .DS_Store
 build.log
-public/assets/codm/
+public/assets/codm/raw_unity/
 *.db
 *.db-journal
 

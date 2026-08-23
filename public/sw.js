@@ -91,8 +91,8 @@ self.addEventListener('push', (event) => {
   const data = event.data.json();
   const options = {
     body: data.body || 'Notification ZOYD',
-    icon: '/codm/codm_app_icon.png',
-    badge: '/codm/codm_app_icon.png',
+    icon: '/logo icone.png',
+    badge: '/logo icone.png',
     tag: data.tag || 'zoyd-default',
     requireInteraction: data.requireInteraction || false,
     data: data.url ? { url: data.url } : undefined,

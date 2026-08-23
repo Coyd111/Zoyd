@@ -158,7 +158,7 @@ const CreateMatchPage: React.FC = () => {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 relative z-10">
         <header className="mb-12 relative overflow-hidden border border-white/5">
-          <img src="/assets/images/hero/combat-urban-11.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/images/codm-4.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
           <div className="relative z-10 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 border border-zoyd-blue flex items-center justify-center text-zoyd-blue">

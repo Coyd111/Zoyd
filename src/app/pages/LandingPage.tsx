@@ -69,7 +69,7 @@ export default function LandingPage() {
               poster="/logo.png"
               className="h-full w-full object-cover opacity-24"
             >
-              <source src="/assets/codm/videos/StartVideo.mp4" type="video/mp4" />
+              <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
             </video>
           </div>
 

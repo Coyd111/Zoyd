@@ -149,8 +149,8 @@ const PublicProfilPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 overflow-hidden">
-        <img src="/assets/images/characters/sniper-render-01.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
-        <img src="/assets/images/backgrounds/tech-abstract-03.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+        <img src="/assets/images/codm-2.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/images/codm-4.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
         <div className="relative z-10 max-w-[1450px] mx-auto px-4 sm:px-6 py-12">
           <div className="flex items-center gap-3 mb-6">
             <Link to="/profil" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
@@ -299,7 +299,7 @@ const PublicProfilPage: React.FC = () => {
             {summary.recentMatches.length === 0 ? (
               <EmptyPanel
                 icon={<Swords className="w-8 h-8 text-white/10" />}
-                image="/assets/images/characters/soldier-action-03.jpg"
+                image="/assets/images/codm-2.jpg"
                 title="Aucune activite match"
                 body="Ce joueur n'a pas encore de match assez avance sur ZOYD pour afficher un historique ici."
               />
@@ -344,7 +344,7 @@ const PublicProfilPage: React.FC = () => {
             {summary.tournamentPlacements.length === 0 ? (
               <EmptyPanel
                 icon={<Trophy className="w-8 h-8 text-white/10" />}
-                image="/assets/images/hero/battlefield-06.jpg"
+                image="/assets/images/codm-3.jpg"
                 title="Aucun tournoi visible"
                 body="Ses participations et ses podiums apparaitront ici a mesure que ses tournois se termineront."
               />

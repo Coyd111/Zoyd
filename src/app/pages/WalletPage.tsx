@@ -159,8 +159,8 @@ const WalletPage: React.FC = () => {
       <div className="max-w-6xl mx-auto">
             <div className="relative mb-8 p-5 sm:p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
           <div className="absolute inset-0 z-0">
-            <img src="/assets/images/hero/night-ops-09.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-            <img src="/assets/images/backgrounds/tech-dark-02.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+            <img src="/assets/images/codm-8.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+            <img src="/assets/images/codm-1.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
             <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
             <div className="absolute inset-0 tactical-grid opacity-10" />
           </div>
@@ -279,7 +279,7 @@ const WalletPage: React.FC = () => {
               ) : (
                 <div className="py-12 text-center relative overflow-hidden">
                   <div className="absolute inset-0 opacity-[0.04]">
-                    <img src="/assets/images/textures/dark-metal-02.jpg" alt="" loading="lazy" className="w-full h-full object-cover" />
+                    <img src="/assets/images/codm-3.jpg" alt="" loading="lazy" className="w-full h-full object-cover" />
                   </div>
                   <Clock className="relative w-12 h-12 text-white/10 mx-auto mb-4" />
                   <p className="relative text-white/20 font-mono text-sm uppercase tracking-widest">Ton solde n'a pas encore bouge</p>

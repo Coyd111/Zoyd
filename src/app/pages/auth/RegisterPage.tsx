@@ -181,7 +181,7 @@ const RegisterPage: React.FC = () => {
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.3 }} className="absolute inset-0">
           <img
-            src="/assets/images/hero/combat-scene-04.jpg"
+            src="/assets/images/codm-6.jpg"
             alt=""
             loading="lazy"
             className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
@@ -195,7 +195,7 @@ const RegisterPage: React.FC = () => {
           className="absolute inset-0"
         >
           <img
-            src="/assets/images/backgrounds/tech-network-04.jpg"
+            src="/assets/images/codm-7.jpg"
             alt=""
             loading="lazy"
             className="w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
@@ -242,7 +242,7 @@ const RegisterPage: React.FC = () => {
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center px-5 py-10 sm:p-8 relative safe-bottom">
-        <img src="/assets/images/textures/hex-pattern-01.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/images/codm-8.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
         <div className="w-full max-w-[560px]">
           <header className="mb-10">
             <div className="flex items-center justify-between mb-8">
@@ -510,7 +510,7 @@ const RegisterPage: React.FC = () => {
                     playsInline
                     className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
                   >
-                    <source src="/assets/codm/videos/CLY_Master.mp4" type="video/mp4" />
+                    <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
                   </video>
                 </div>
 

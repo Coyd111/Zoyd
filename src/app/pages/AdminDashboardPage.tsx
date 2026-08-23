@@ -271,8 +271,8 @@ const AdminDashboardPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative overflow-hidden border-b border-white/5">
-        <img src="/assets/images/hero/combat-urban-11.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
-        <img src="/assets/images/backgrounds/tech-dark-02.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+        <img src="/assets/images/codm-8.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+        <img src="/assets/images/codm-1.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
             <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-4 md:px-8 py-10">
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-8">
             <div>

@@ -6,8 +6,8 @@ const NotFoundPage: React.FC = () => {
   return (
     <div className="min-h-dvh bg-zoyd-black flex items-center justify-center p-5 relative font-ui scanline safe-top safe-bottom">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
-      <img src="/assets/images/hero/explosion-08.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
-      <img src="/assets/images/textures/matrix-green-01.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+      <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+      <img src="/assets/images/codm-7.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

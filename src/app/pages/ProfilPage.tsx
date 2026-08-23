@@ -89,8 +89,8 @@ const ProfilPage: React.FC = () => {
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/images/hero/tactical-soldier-01.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/images/backgrounds/dark-grid-01.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <img src="/assets/images/codm-2.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+          <img src="/assets/images/codm-3.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-transparent to-transparent" />
         </div>
@@ -243,7 +243,7 @@ const ProfilPage: React.FC = () => {
             {summary.recentMatches.length === 0 ? (
               <EmptyPanel
                 icon={<Swords className="w-8 h-8 text-white/10" />}
-                image="/assets/images/characters/sniper-render-01.jpg"
+                image="/assets/images/codm-8.jpg"
                 title="Aucun match recent"
                 body="Tes prochaines parties terminees apparaitront ici, avec leur resultat et ce qu'elles t'ont rapporte."
               />
@@ -294,7 +294,7 @@ const ProfilPage: React.FC = () => {
             {summary.tournamentPlacements.length === 0 ? (
               <EmptyPanel
                 icon={<Trophy className="w-8 h-8 text-white/10" />}
-                image="/assets/images/hero/military-action-07.jpg"
+                image="/assets/images/codm-1.jpg"
                 title="Aucun tournoi recent"
                 body="Tes participations et tes podiums apparaitront ici des que tu auras boucle tes premiers tournois."
               />

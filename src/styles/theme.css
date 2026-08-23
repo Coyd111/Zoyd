@@ -91,7 +91,7 @@
     background-image: 
       linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px),
-      url('/assets/images/textures/hex-pattern-01.jpg');
+      url('/assets/images/codm-5.jpg');
     background-size: 20px 20px, 20px 20px, 400px 400px;
     background-blend-mode: overlay;
   }

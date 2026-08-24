@@ -22,6 +22,8 @@ import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { useMatchStore } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
+import { useSocketStore } from '../stores/socketStore';
+import { Skeleton } from '../components/ui/Skeleton';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import EmptyPanel from '../components/EmptyPanel';
@@ -45,6 +47,7 @@ const PublicProfilPage: React.FC = () => {
   const { friends, sendRequest, blockUser, reportUser, isBlocked, isFriend } = useFriendsStore();
   const { matches } = useMatchStore();
   const { tournaments } = useTournamentStore();
+  const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
 
   const friendRecord = friends.find((friend) => friend.id === id);
   const observedPlayer = id ? getObservedPlayerSnapshot(id, matches) : undefined;
@@ -78,6 +81,21 @@ const PublicProfilPage: React.FC = () => {
   }, [id, matches, publicProfile, tournaments]);
 
   if (!id) return null;
+
+  if (!bootstrapReady) {
+    return (
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center">
+        <div className="max-w-[1500px] w-full px-4 py-8 space-y-4">
+          <Skeleton className="h-48 w-full bg-white/5" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-24 bg-white/5" />
+            <Skeleton className="h-24 bg-white/5" />
+          </div>
+          <Skeleton className="h-64 w-full bg-white/5" />
+        </div>
+      </div>
+    );
+  }
 
   if (!publicProfile || !summary) {
     return (
@@ -160,7 +178,7 @@ const PublicProfilPage: React.FC = () => {
         <img src="/assets/images/codm-2.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
         <img src="/assets/images/codm-4.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent pointer-events-none" />
-        <div className="relative z-10 max-w-[1450px] mx-auto px-4 sm:px-6 py-12">
+        <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 py-12">
           <div className="flex items-center gap-3 mb-6">
             <Link to="/profil" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
               <ArrowLeft className="w-4 h-4" />
@@ -255,7 +273,7 @@ const PublicProfilPage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-[1450px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
+        className="max-w-[1500px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
       >
         <div className="space-y-6">
           <div className="space-y-4">

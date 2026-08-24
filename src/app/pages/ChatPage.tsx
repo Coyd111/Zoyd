@@ -114,7 +114,7 @@ const ChatPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-5 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 z-10 shrink-0">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Back button on mobile when channel is active */}
             {activeChannelId && (
@@ -141,7 +141,7 @@ const ChatPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex-1 max-w-[1400px] w-full mx-auto flex relative z-10 min-h-0 overflow-hidden">
+      <div className="flex-1 max-w-[1500px] w-full mx-auto flex relative z-10 min-h-0 overflow-hidden">
         {/* Channel sidebar — full width on mobile when no channel active, hidden when channel active */}
         <div className={cn(
           'border-r border-white/5 bg-zoyd-black/80 flex flex-col shrink-0 relative overflow-hidden',

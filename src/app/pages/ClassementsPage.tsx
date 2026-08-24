@@ -6,6 +6,8 @@ import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { useMatchStore } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
+import { useSocketStore } from '../stores/socketStore';
+import { Skeleton } from '../components/ui/Skeleton';
 import {
   buildCommunityPlayers,
   buildControllerRankings,
@@ -70,6 +72,7 @@ const ClassementsPage: React.FC = () => {
   const { friends, reports } = useFriendsStore();
   const { matches } = useMatchStore();
   const { tournaments } = useTournamentStore();
+  const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   const [activeTab, setActiveTab] = useState<RankingTab>('elo');
 
   const players = useMemo(
@@ -245,7 +248,7 @@ const ClassementsPage: React.FC = () => {
           <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         </div>
-        <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 pb-12">
+        <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 pb-12">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
               <Trophy className="w-5 h-5" />
@@ -283,7 +286,7 @@ const ClassementsPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 relative z-10">
+      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 relative z-10">
         <div role="tablist" className="flex flex-nowrap gap-2 mb-12 border-b border-white/5 pb-4 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -307,7 +310,13 @@ const ClassementsPage: React.FC = () => {
           })}
         </div>
 
-        {entries.length === 0 ? (
+        {!bootstrapReady ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16 bg-white/5" />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
           <div className="border border-white/5 bg-zoyd-surface/10 p-10 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-white/10 text-white/20">
               <Users className="w-6 h-6" />

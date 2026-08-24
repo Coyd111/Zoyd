@@ -64,6 +64,7 @@ interface SocketState {
   isConnected: boolean;
   serverConnected: boolean;
   connectionLabel: 'offline' | 'syncing' | 'live';
+  bootstrapReady: boolean;
   lastHeartbeatAt?: string;
   liveMatches: LiveMatchSnapshot[];
   remoteMatchSnapshots: Match[];
@@ -270,6 +271,7 @@ const applyServerTypingSnapshot = (
 export const useSocketStore = create<SocketState>((set, get) => ({
   isConnected: false,
   serverConnected: false,
+  bootstrapReady: false,
     connectionLabel: 'offline',
     lastHeartbeatAt: undefined,
   liveMatches: [],
@@ -536,6 +538,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         remoteMatchSnapshots: bootstrap.matches || [],
         remoteTournamentSnapshots: bootstrap.tournaments || [],
         lastHeartbeatAt: bootstrap.timestamp || getNow(),
+        bootstrapReady: true,
       }));
     } catch (error) {
       set((state) => ({

@@ -95,7 +95,7 @@ const ProfilPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-transparent to-transparent" />
         </div>
-        <div className="relative z-10 max-w-[1450px] mx-auto px-4 sm:px-6 py-12">
+        <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 py-12">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             <div className="relative">
               <div className="w-20 h-20 sm:w-28 sm:h-28 border-2 border-white/10 bg-zoyd-surface flex items-center justify-center">
@@ -179,7 +179,7 @@ const ProfilPage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-[1450px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
+        className="max-w-[1500px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
       >
         <div className="space-y-6">
           <div className="space-y-4">

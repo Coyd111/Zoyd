@@ -235,7 +235,7 @@ const LeaguePage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
-        <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-5 text-sm text-white/60">
             Chargement de la ligue BR...
           </div>
@@ -249,7 +249,7 @@ const LeaguePage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">
-        <div className="max-w-[1650px] mx-auto px-4 md:px-8 pb-10 md:pb-20 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 md:gap-12">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-10 md:pb-20 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 md:gap-12">
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-4 md:mb-6">
               <div className="w-8 h-8 md:w-10 md:h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
@@ -293,7 +293,7 @@ const LeaguePage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-[1650px] mx-auto px-4 md:px-8 relative z-10">
+      <main className="max-w-[1500px] mx-auto px-4 md:px-8 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-6 md:py-10 border-b border-white/5">
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[9px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Cycle en cours</div>

@@ -748,7 +748,7 @@ const LeagueSeasonPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
-        <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-5 text-sm text-white/60">
             Chargement de la saison...
           </div>
@@ -761,7 +761,7 @@ const LeagueSeasonPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
-        <div className="max-w-[1650px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
+        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/40 hover:text-white mb-6">
             <ArrowLeft className="w-4 h-4" />
             Retour aux ligues
@@ -780,7 +780,7 @@ const LeagueSeasonPage: React.FC = () => {
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div className="max-w-[1650px] mx-auto px-4 md:px-8 relative z-10">
+      <div className="max-w-[1500px] mx-auto px-4 md:px-8 relative z-10">
         <div className="pt-8">
           <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/40 hover:text-white mb-6">
             <ArrowLeft className="w-4 h-4" />

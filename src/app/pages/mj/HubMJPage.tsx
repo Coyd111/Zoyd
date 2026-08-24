@@ -4,6 +4,8 @@ import { MatchCard } from '../../components/MatchCard';
 import { Link } from 'react-router';
 import FriendsWidget from '../../components/social/FriendsWidget';
 import { useMatchStore } from '../../stores/matchStore';
+import { useSocketStore } from '../../stores/socketStore';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'] as const;
 const STATUS_FILTERS = [
@@ -16,6 +18,7 @@ const STATUS_FILTERS = [
 
 const HubMJPage: React.FC = () => {
   const { filters, setFilters, getFilteredMatches } = useMatchStore();
+  const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   const [searchQuery, setSearchQuery] = useState('');
   const [needsArbiter, setNeedsArbiter] = useState(false);
 
@@ -157,7 +160,13 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
             </div>
           </div>
 
-          {filteredMatches.length > 0 ? (
+          {!bootstrapReady ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-48 bg-white/5" />
+              ))}
+            </div>
+          ) : filteredMatches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {filteredMatches.map((match) => {
                 const rules = typeof match.rules === 'string' ? {} : match.rules;

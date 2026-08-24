@@ -263,7 +263,7 @@ const CreateMatchPage: React.FC = () => {
                             key={map}
                             onClick={() => setSelectedMap(map)}
                             aria-label={`Sélectionner la carte ${map}`}
-                            className={`relative h-20 sm:h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-yellow shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'border-white/10 hover:border-white/30'}`}
+                            className={`relative h-20 sm:h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-blue shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-white/10 hover:border-white/30'}`}
                           >
                             {getMapImage(map) && (
                               <img 
@@ -273,7 +273,7 @@ const CreateMatchPage: React.FC = () => {
                               />
                             )}
                             <div className={`absolute inset-0 bg-gradient-to-t ${selectedMap === map ? 'from-black/90 to-transparent' : 'from-black/80 to-black/20'}`} />
-                            <span className={`relative z-10 flex h-full items-end p-3 text-xs font-display font-black italic uppercase tracking-wider ${selectedMap === map ? 'text-zoyd-yellow' : 'text-white'}`}>
+                            <span className={`relative z-10 flex h-full items-end p-3 text-xs font-display font-black italic uppercase tracking-wider ${selectedMap === map ? 'text-zoyd-blue' : 'text-white'}`}>
                               {map}
                             </span>
                           </button>
@@ -359,7 +359,7 @@ const CreateMatchPage: React.FC = () => {
                             type="button"
                             onClick={() => setValue('passAmount', amount)}
                             aria-label={`Mise de ${amount} ZC`}
-                            className={`p-3 border font-display font-black italic text-sm transition-all ${selectedPass === amount ? 'border-zoyd-yellow bg-zoyd-yellow/10 text-zoyd-yellow' : 'border-white/5 hover:border-zoyd-yellow text-zoyd-yellow'}`}
+                            className={`p-3 border font-display font-black italic text-sm transition-all ${selectedPass === amount ? 'border-zoyd-blue bg-zoyd-blue/10 text-zoyd-blue' : 'border-white/5 hover:border-zoyd-blue text-zoyd-blue'}`}
                           >
                             {amount}
                           </button>

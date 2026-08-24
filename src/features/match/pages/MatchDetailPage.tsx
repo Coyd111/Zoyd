@@ -44,6 +44,7 @@ import { useAuthStore } from '../../../app/stores/authStore';
 import { useMatchStore, type DisputeCategory } from '../../../app/stores/matchStore';
 import { useChatStore } from '../../../app/stores/chatStore';
 import { useSocketStore } from '../../../app/stores/socketStore';
+import { Skeleton } from '../../../app/components/ui/Skeleton';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { getMapImage } from '../../../lib/competition';
@@ -98,6 +99,7 @@ const MatchDetailPage: React.FC = () => {
     markChannelSeen,
     setTyping,
     isChannelLive,
+    bootstrapReady,
   } = useSocketStore();
   const { getAvailableToSpend } = useWalletStore();
 
@@ -202,6 +204,22 @@ const MatchDetailPage: React.FC = () => {
 
   if (!id) {
     return null;
+  }
+
+  if (!bootstrapReady) {
+    return (
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
+        <div className="max-w-[1500px] w-full px-4 py-8 space-y-4">
+          <Skeleton className="h-8 w-48 bg-white/5" />
+          <Skeleton className="h-40 w-full bg-white/5" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-24 bg-white/5" />
+            <Skeleton className="h-24 bg-white/5" />
+          </div>
+          <Skeleton className="h-64 w-full bg-white/5" />
+        </div>
+      </div>
+    );
   }
 
   if (!match) {

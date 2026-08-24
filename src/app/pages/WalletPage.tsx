@@ -8,6 +8,8 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { useWalletStore } from '../stores/walletStore';
 import { useAuthStore } from '../stores/authStore';
+import { useSocketStore } from '../stores/socketStore';
+import { Skeleton } from '../components/ui/Skeleton';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
@@ -36,6 +38,7 @@ const WalletPage: React.FC = () => {
     getAvailableToSpend,
   } = useWalletStore();
   const { user } = useAuthStore();
+  const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
 
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -172,7 +175,16 @@ const WalletPage: React.FC = () => {
           </div>
         </div>
 
-        {fundingPrompt && fundingCopy ? (
+        {!bootstrapReady ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-28 bg-white/5" />
+              ))}
+            </div>
+            <Skeleton className="h-96 bg-white/5" />
+          </div>
+        ) : fundingPrompt && fundingCopy ? (
           <div
             className={`mb-8 border p-5 ${
               canResumeFundingFlow

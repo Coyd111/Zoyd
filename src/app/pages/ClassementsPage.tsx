@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Trophy, TrendingUp, Users, Flag, Gamepad2, Crown, Medal, Target } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
@@ -73,6 +73,7 @@ const ClassementsPage: React.FC = () => {
   const { matches } = useMatchStore();
   const { tournaments } = useTournamentStore();
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<RankingTab>('elo');
 
   const players = useMemo(
@@ -406,9 +407,9 @@ const ClassementsPage: React.FC = () => {
               return (
                 <motion.div
                   key={entry.key}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(index * 0.04, 0.4) }}
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  transition={prefersReducedMotion ? { duration: 0 } : { delay: Math.min(index * 0.04, 0.4) }}
                   className={`border transition-all ${
                     entry.isMe
                       ? 'border-zoyd-yellow/30 bg-zoyd-yellow/5'

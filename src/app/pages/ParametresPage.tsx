@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Bell, Gamepad2, Save, Shield, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore, type User as AuthUser } from '../stores/authStore';
@@ -44,6 +44,7 @@ type NotificationSettings = {
 const ParametresPage: React.FC = () => {
   const { user, updateUser } = useAuthStore();
   const { markAllAsRead } = useNotificationStore();
+  const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<ActiveTab>('account');
   const [isSaving, setIsSaving] = useState(false);
   const [notificationToggles, setNotificationToggles] = useState<NotificationSettings>({
@@ -221,9 +222,9 @@ const ParametresPage: React.FC = () => {
         <div className="lg:col-span-3">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: 10 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2 }}
             className="space-y-8"
           >
             {activeTab === 'account' ? (

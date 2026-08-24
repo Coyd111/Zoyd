@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ const channelIcons: Record<string, React.ReactNode> = {
 const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const prefersReducedMotion = useReducedMotion();
   const {
     channels,
     messages,
@@ -253,8 +254,8 @@ const ChatPage: React.FC = () => {
                 <AnimatePresence>
                   {currentMessages.length === 0 && (
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
+                      initial={prefersReducedMotion ? false : { opacity: 0 }}
+                      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1 }}
                       className="h-full flex flex-col items-center justify-center text-white/10"
                     >
                       <MessageSquare className="w-12 h-12 mb-4" />
@@ -270,8 +271,8 @@ const ChatPage: React.FC = () => {
                       return (
                         <motion.div
                           key={message.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
+                          initial={prefersReducedMotion ? false : { opacity: 0 }}
+                          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1 }}
                           className="w-full flex items-center gap-4 py-2"
                         >
                           <div className="flex-1 h-[1px] bg-white/5" />
@@ -286,8 +287,8 @@ const ChatPage: React.FC = () => {
                     return (
                       <motion.div
                         key={message.id}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={prefersReducedMotion ? false : { opacity: 0, y: 5 }}
+                        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
                         className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                       >
                         <div className="flex items-center gap-2 mb-1">

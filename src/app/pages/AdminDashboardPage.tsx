@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   Shield,
   Swords,
@@ -63,6 +63,7 @@ type DisputeFilter = 'all' | 'escalated' | 'level1';
 // recommended when match count exceeds ~500 for real-time accuracy.
 const AdminDashboardPage: React.FC = () => {
   const { user } = useAuthStore();
+  const prefersReducedMotion = useReducedMotion();
 
   if (!user || user.role !== 'admin') {
     return <Navigate to="/" replace />;
@@ -385,8 +386,8 @@ const AdminDashboardPage: React.FC = () => {
 
         {activeTab === 'overview' ? (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             className="space-y-8"
           >
             <div className="grid xl:grid-cols-[1.2fr_0.8fr] gap-6">

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -48,6 +48,7 @@ const PublicProfilPage: React.FC = () => {
   const { matches } = useMatchStore();
   const { tournaments } = useTournamentStore();
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  const prefersReducedMotion = useReducedMotion();
 
   const friendRecord = friends.find((friend) => friend.id === id);
   const observedPlayer = id ? getObservedPlayerSnapshot(id, matches) : undefined;
@@ -271,8 +272,8 @@ const PublicProfilPage: React.FC = () => {
       </header>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
         className="max-w-[1500px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
       >
         <div className="space-y-6">

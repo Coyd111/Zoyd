@@ -48,6 +48,7 @@ import { Skeleton } from '../../../app/components/ui/Skeleton';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { getMapImage } from '../../../lib/competition';
+import { formatZC } from '../../../lib/utils';
 import { adminCancelServerMatch, adminResolveServerDispute } from '../../../app/lib/matchApi';
 import { MatchChat } from '../components/MatchChat';
 

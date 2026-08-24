@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Gamepad2, Swords, Wallet } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import ZoydLogo from '../components/branding/ZoydLogo';
 
 const ModeSelectionPage: React.FC = () => {
   const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
 
   const handleMJClick = () => {
     navigate('/mj');
@@ -33,8 +34,8 @@ const ModeSelectionPage: React.FC = () => {
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
           className="max-w-4xl mb-8 md:mb-12"
         >
           <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black uppercase italic tracking-[-0.05em] leading-[0.88] mb-4 md:mb-5">
@@ -50,9 +51,9 @@ const ModeSelectionPage: React.FC = () => {
 
         <div className="grid lg:grid-cols-2 xl:grid-cols-[1.05fr_0.95fr] gap-6 md:gap-8">
           <motion.button
-            initial={{ opacity: 0, x: -18 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.08 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: -18 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.08 }}
             onClick={handleMJClick}
             className="group text-left h-full"
           >
@@ -99,9 +100,9 @@ const ModeSelectionPage: React.FC = () => {
           </motion.button>
 
           <motion.button
-            initial={{ opacity: 0, x: 18 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.14 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, x: 18 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.14 }}
             onClick={handleBRClick}
             className="group text-left h-full mt-4 lg:mt-0"
           >

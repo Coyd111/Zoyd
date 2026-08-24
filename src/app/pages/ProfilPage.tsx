@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   Award,
   Calendar,
@@ -50,6 +50,7 @@ const ProfilPage: React.FC = () => {
   const { user } = useAuthStore();
   const { matches } = useMatchStore();
   const { tournaments } = useTournamentStore();
+  const prefersReducedMotion = useReducedMotion();
 
   if (!user) {
     return (
@@ -177,8 +178,8 @@ const ProfilPage: React.FC = () => {
       </header>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
         className="max-w-[1500px] mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-8 relative z-10"
       >
         <div className="space-y-6">

@@ -80,6 +80,10 @@ export const lockEntryFee = (userId, amount, matchId) => {
   }
 
   return updateWalletSnapshot(userId, (wallet) => {
+    if (wallet.lockedEntries?.[matchId]) {
+      throw makeError('ALREADY_LOCKED', 'Un pass est deja bloque pour ce match.');
+    }
+
     const available = roundAmount(wallet.cashBalance + wallet.bonusBalance);
     if (safeAmount > available) {
       throw makeError('INSUFFICIENT_FUNDS', 'Solde insuffisant pour bloquer ce pass.');
@@ -171,8 +175,12 @@ export const settleMatchLossWallet = (userId, matchId, description) =>
     );
   }).wallet;
 
-export const releaseWalletWinnings = (userId, amount, matchId, type = 'prize_win', description) =>
-  updateWalletSnapshot(userId, (wallet) => {
+export const releaseWalletWinnings = (userId, amount, matchId, type = 'prize_win', description) => {
+  const safeAmount = roundAmount(amount);
+  if (safeAmount < 0) {
+    throw makeError('INVALID_AMOUNT', 'Le montant des gains ne peut pas etre negatif.');
+  }
+  return updateWalletSnapshot(userId, (wallet) => {
     const reservation = wallet.lockedEntries?.[matchId];
     const releasedAmount = reservation?.amount ?? 0;
     const nextLockedEntries = { ...wallet.lockedEntries };
@@ -196,6 +204,7 @@ export const releaseWalletWinnings = (userId, amount, matchId, type = 'prize_win
       }
     );
   }).wallet;
+};
 
 export const debitFromWallet = (userId, amount, description = 'Debit') => {
   const safeAmount = roundAmount(amount);

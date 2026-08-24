@@ -1,12 +1,15 @@
 import { getUserById, updateUserAccount } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount } from './utils.mjs';
+import { createLogger } from './logger.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
   releaseWalletWinnings,
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
+
+const log = createLogger('tournament');
 
 const getNow = () => new Date().toISOString();
 const getTeamSize = (format) => parseInt(`${format || '1VS1'}`.split('VS')[0], 10) || 1;
@@ -39,9 +42,10 @@ const addXpToProgression = (progression, amount) => {
     nextLevelXp: Number(progression?.nextLevelXp || 1000),
   };
 
-  const currentIdx = progressionLevels.indexOf(next.level);
+  let currentIdx = progressionLevels.indexOf(next.level);
   while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
-    next.level = progressionLevels[currentIdx + 1];
+    currentIdx++;
+    next.level = progressionLevels[currentIdx];
   }
   next.nextLevelXp = levelThresholds[next.level];
   return next;
@@ -575,29 +579,33 @@ const applyTournamentSettlement = async (tournament) => {
   for (const entry of tournament.entries) {
     const payout = roundAmount(getPlacementPayout(tournament, entry.finalPlacement));
 
-    await withWalletMutex(entry.captainId, async () => {
-      if (payout > 0) {
-        releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
-      } else {
-        settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
-      }
+    try {
+      await withWalletMutex(entry.captainId, async () => {
+        if (payout > 0) {
+          releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
+        } else {
+          settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
+        }
 
-      const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
-      for (const userId of memberUserIds) {
-        patchUserForTournamentOutcome(userId, (user) => {
-          const isCaptain = userId === entry.captainId;
-          const nextStats = {
-            ...user.stats,
-            tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
-            tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
-            totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (isCaptain ? payout : 0)),
-          };
-          user.stats = nextStats;
-          user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
-          return user;
-        });
-      }
-    });
+        const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
+        for (const userId of memberUserIds) {
+          patchUserForTournamentOutcome(userId, (user) => {
+            const isCaptain = userId === entry.captainId;
+            const nextStats = {
+              ...user.stats,
+              tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
+              tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
+              totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (isCaptain ? payout : 0)),
+            };
+            user.stats = nextStats;
+            user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
+            return user;
+          });
+        }
+      });
+    } catch (err) {
+      log.error('Tournament settlement failed for entry', { tournamentId: tournament.id, captainId: entry.captainId, placement: entry.finalPlacement, error: err.message });
+    }
   }
 
   const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbitersNeeded);

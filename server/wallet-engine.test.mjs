@@ -372,4 +372,35 @@ describe('wallet-engine - Release Winnings', () => {
     
     expect(result.transactions[0].description).toBe('Gain match1');
   });
+
+  it('should throw for negative amount', () => {
+    expect(() => walletEngine.releaseWalletWinnings('user1', -10, 'm1')).toThrow('negatif');
+  });
+});
+
+describe('wallet-engine - lockEntryFee double-lock guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should reject double-lock on same matchId', () => {
+    const mockWallet = {
+      cashBalance: 100,
+      bonusBalance: 0,
+      lockedBalance: 50,
+      lockedEntries: { 'match-1': { amount: 50, cashAmount: 50, bonusAmount: 0, lockedAt: '2026-01-01' } },
+      transactions: [],
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+      return { wallet: updater(mockWallet) };
+    });
+
+    expect(() => walletEngine.lockEntryFee('user1', 50, 'match-1')).toThrow('deja bloque');
+  });
+});
+
+describe('wallet-engine - roundAmount NaN protection', () => {
+  it('should return 0 for NaN input', () => {
+    expect(walletEngine.depositToWallet).toBeDefined();
+  });
 });

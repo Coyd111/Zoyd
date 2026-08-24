@@ -269,6 +269,15 @@ describe('persistence - Round Amount', () => {
     expect(persistence.roundAmount(undefined)).toBe(0);
     expect(persistence.roundAmount('100.456')).toBe(100.46);
   });
+
+  it('should return 0 for NaN', () => {
+    expect(persistence.roundAmount(NaN)).toBe(0);
+  });
+
+  it('should return 0 for Infinity', () => {
+    expect(persistence.roundAmount(Infinity)).toBe(0);
+    expect(persistence.roundAmount(-Infinity)).toBe(0);
+  });
 });
 
 describe('persistence - User Payload Building', () => {

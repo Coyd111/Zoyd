@@ -1072,12 +1072,6 @@ const server = http.createServer(async (req, res) => {
       const body = await parseRequestBody(req);
       const friend = acceptFriendRequest(body.requestId, session.user.id);
       
-      const requests = getFriendRequestsForUser(session.user.id);
-      const reqInfo = requests.find(r => r.id === body.requestId);
-      // Wait, `reqInfo` may not be available if it was just accepted (it's no longer 'pending').
-      // Let's rely on the `friend` output from acceptFriendRequest which returns the new friend record.
-      // `friend` has `{ id, pseudo }` of the user.
-      
       deliverNotification(io, friend.id, {
         type: 'friend_online',
         title: 'Demande acceptée',

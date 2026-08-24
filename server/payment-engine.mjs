@@ -77,7 +77,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     const updatedUser = depositToWallet(
       user.id,
       amountZC,
-      `Recharge FedaPay (${transactionId})`
+      'FedaPay'
     );
 
     // 6. Marquer comme traitée APRÈS crédit réussi

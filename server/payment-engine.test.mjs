@@ -45,7 +45,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
     expect(depositToWallet).toHaveBeenCalledWith(
       'user-1',
       500,
-      expect.stringContaining('TX-123')
+      'FedaPay'
     );
     expect(markTransactionAsProcessed).toHaveBeenCalledWith(
       'TX-123',

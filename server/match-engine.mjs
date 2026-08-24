@@ -513,7 +513,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   if (match.arbiter?.userId !== actorUser.id && actorUser.role !== 'admin') {
     throw makeError('FORBIDDEN', 'Seul l arbitre ou un admin peut valider le score.');
   }
-  if (match.result) throw makeError('RESULT_NOT_FOUND', 'Ce match a deja un resultat valide.');
+  if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
 
   const normalizedProofs = resultPayload.proofs
     ? {

@@ -58,9 +58,10 @@ const addXpToProgression = (progression, amount) => {
     xp: Number(progression?.xp || 0) + amount,
     nextLevelXp: Number(progression?.nextLevelXp || 1000),
   };
-  const currentIdx = progressionLevels.indexOf(next.level);
+  let currentIdx = progressionLevels.indexOf(next.level);
   while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
-    next.level = progressionLevels[currentIdx + 1];
+    currentIdx++;
+    next.level = progressionLevels[currentIdx];
   }
   next.nextLevelXp = levelThresholds[next.level];
   return next;

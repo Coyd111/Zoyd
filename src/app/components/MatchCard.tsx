@@ -39,7 +39,7 @@ const statusCopy: Record<MatchCardProps['status'], { label: string; accent: stri
   cancelled: { label: 'Match annule', accent: 'text-red-300' },
 };
 
-const MatchCard: React.FC<MatchCardProps> = ({
+const MatchCard: React.FC<MatchCardProps> = React.memo(({
   id,
   map,
   format,
@@ -172,6 +172,6 @@ const MatchCard: React.FC<MatchCardProps> = ({
       </div>
     </motion.div>
   );
-};
+});
 
 export { MatchCard };

@@ -1,8 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';
-import DashboardLayout from './layouts/DashboardLayout';
-import AdminLayout from './layouts/AdminLayout';
+import AppLayout from './layouts/AppLayout';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 // Critical pages loaded synchronously (landing + auth)
@@ -65,7 +64,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'mj',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [
           {
             index: true,
@@ -96,7 +95,7 @@ export const router = createBrowserRouter([
       // Other top-level routes
       {
         path: 'wallet',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [
           {
             index: true,
@@ -106,22 +105,22 @@ export const router = createBrowserRouter([
       },
       {
         path: 'earnings',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [{ index: true, lazy: earningsLoader }],
       },
       {
         path: 'classements',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [{ index: true, lazy: classementsLoader }],
       },
       {
         path: 'chat',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [{ index: true, lazy: chatLoader }],
       },
       {
         path: 'profil',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [
           { index: true, lazy: profilLoader },
           { path: ':id', lazy: publicProfilLoader },
@@ -129,12 +128,12 @@ export const router = createBrowserRouter([
       },
       {
         path: 'parametres',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [{ index: true, lazy: parametresLoader }],
       },
       {
         path: 'br-league',
-        Component: DashboardLayout,
+        element: <AppLayout />,
         children: [
           { index: true, lazy: leagueLoader },
           { path: ':seasonId', lazy: leagueSeasonLoader },
@@ -142,7 +141,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin',
-        Component: AdminLayout,
+        element: <AppLayout requireAdmin />,
         children: [{ index: true, lazy: adminLoader }],
         // Note: Server-side role validation should be implemented in the API
         // This is client-side protection only as defense in depth

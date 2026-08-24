@@ -5,22 +5,33 @@ import { BottomNav } from '../components/layout/BottomNav';
 import { useRealtimeHeartbeat } from '../hooks/useRealtimeHeartbeat';
 import { useAuthStore } from '../stores/authStore';
 
-const DashboardLayout = () => {
+interface AppLayoutProps {
+  requireAdmin?: boolean;
+}
+
+const AppLayout = ({ requireAdmin = false }: AppLayoutProps) => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const user = useAuthStore((s) => s.user);
+
+  const isAdmin = user?.role === 'admin';
 
   useRealtimeHeartbeat(isAuthenticated);
 
   if (isLoading) {
     return (
       <div className="min-h-dvh bg-zoyd-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-zoyd-blue border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-white/20 border-t-zoyd-yellow rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" replace />;
+  }
+
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to="/mj" replace />;
   }
 
   return (
@@ -40,4 +51,4 @@ const DashboardLayout = () => {
   );
 };
 
-export default DashboardLayout;
+export default AppLayout;

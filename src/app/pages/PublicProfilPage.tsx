@@ -77,11 +77,11 @@ const PublicProfilPage = () => {
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center">
         <div className="text-center max-w-lg px-6">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Profil public indisponible</h2>
-          <p className="text-white/35 mb-6">
+          <p className="text-white/40 mb-6">
             Ce joueur n&apos;a pas encore assez d&apos;activite sur ZOYD pour afficher un profil public complet.
           </p>
           <Button variant="primary" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
             Retour
           </Button>
         </div>
@@ -167,27 +167,27 @@ const PublicProfilPage = () => {
       codmTitle="Infos visibles"
       backLink={
         <Link to="/profil" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           Retour profil
         </Link>
       }
       headerActions={
         !ownProfile ? (
           <div className="flex flex-col gap-2 min-w-[220px]">
-            <Button variant="primary" size="sm" onClick={handleAddFriend} disabled={alreadyFriend || blocked} className="touch-target">
-              <UserPlus className="w-4 h-4 mr-2" />
+            <Button variant="primary" size="sm" onClick={handleAddFriend} disabled={alreadyFriend || blocked} className="touch-target" aria-label={alreadyFriend ? 'Déjà ami' : blocked ? 'Joueur bloqué' : `Ajouter ${publicProfile.pseudo} en ami`}>
+              <UserPlus className="w-4 h-4 mr-2" aria-hidden="true" />
               {alreadyFriend ? 'Deja ami' : blocked ? 'Bloque' : 'Ajouter en ami'}
             </Button>
-            <Button variant="secondary" size="sm" onClick={handleInviteMatch} className="touch-target">
-              <Swords className="w-4 h-4 mr-2" />
+            <Button variant="secondary" size="sm" onClick={handleInviteMatch} className="touch-target" aria-label={`Inviter ${publicProfile.pseudo} en match`}>
+              <Swords className="w-4 h-4 mr-2" aria-hidden="true" />
               Inviter en match
             </Button>
-            <Button variant="danger" size="sm" onClick={handleBlock} className="touch-target">
-              <UserX className="w-4 h-4 mr-2" />
+            <Button variant="danger" size="sm" onClick={handleBlock} className="touch-target" aria-label={`Bloquer ${publicProfile.pseudo}`}>
+              <UserX className="w-4 h-4 mr-2" aria-hidden="true" />
               Bloquer
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleReport} className={`touch-target ${confirmReport ? 'border-red-400 text-red-300' : 'text-red-300 hover:text-red-200'}`}>
-              <AlertTriangle className="w-4 h-4 mr-2" />
+            <Button variant="ghost" size="sm" onClick={handleReport} className={`touch-target ${confirmReport ? 'border-red-400 text-red-300' : 'text-red-300 hover:text-red-200'}`} aria-label={confirmReport ? 'Confirmer le signalement' : `Signaler ${publicProfile.pseudo}`}>
+              <AlertTriangle className="w-4 h-4 mr-2" aria-hidden="true" />
               {confirmReport ? 'Confirmer le signalement' : 'Signaler'}
             </Button>
             {confirmReport && (

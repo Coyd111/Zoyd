@@ -288,7 +288,7 @@ const ClassementsPage: React.FC = () => {
       </header>
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 relative z-10">
-        <div role="tablist" className="flex flex-nowrap gap-2 mb-12 border-b border-white/5 pb-4 overflow-x-auto scrollbar-hide">
+        <div role="tablist" aria-label="Types de classements" className="flex flex-nowrap gap-2 mb-12 border-b border-white/5 pb-4 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -325,7 +325,7 @@ const ClassementsPage: React.FC = () => {
             <h2 className="font-display font-black text-xl uppercase italic text-white mb-2">
               Aucun classement pour le moment
             </h2>
-            <p className="text-sm text-white/35 max-w-xl mx-auto">
+            <p className="text-sm text-white/40 max-w-xl mx-auto">
               Cette vue se remplira des que suffisamment de matchs, d&apos;equipes ou de joueurs auront ete vus par ZOYD.
             </p>
           </div>

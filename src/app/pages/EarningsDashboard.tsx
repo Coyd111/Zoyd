@@ -85,7 +85,7 @@ const EarningsDashboard: React.FC = () => {
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center pt-safe-top">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase italic">Vue des gains indisponible</h2>
-          <p className="mt-3 text-white/35">Connecte-toi pour retrouver ce que tes matchs et tournois t'ont rapporte.</p>
+          <p className="mt-3 text-white/40">Connecte-toi pour retrouver ce que tes matchs et tournois t'ont rapporte.</p>
         </div>
       </div>
     );
@@ -198,7 +198,7 @@ const EarningsDashboard: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-[350px] w-full mt-4">
+              <div className="h-[350px] w-full mt-4" role="img" aria-label="Graphique d'evolution des gains sur 30 jours">
                 <Suspense fallback={<ChartFallback />}>
                   <LazyEarningsAreaChart data={walletInsights.trend} />
                 </Suspense>
@@ -220,7 +220,7 @@ const EarningsDashboard: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="h-[200px] w-full">
+                    <div className="h-[200px] w-full" role="img" aria-label="Graphique de repartition des matchs joues et arbitres">
                       <Suspense fallback={<ChartFallback />}>
                         <LazyMatchResultsBarChart data={matchResultsData} />
                       </Suspense>
@@ -338,14 +338,14 @@ const EarningsDashboard: React.FC = () => {
   );
 };
 
-const MetricTile = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
+const MetricTile = React.memo(({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
   <div className="border border-white/5 bg-black/30 p-3">
-    <div className="flex items-center gap-2 text-[9px] font-mono uppercase tracking-widest text-white/30 mb-2">
+    <div className="flex items-center gap-2 text-[9px] font-mono uppercase tracking-widest text-white/40 mb-2">
       {icon}
       {label}
     </div>
     <div className="font-display font-black italic text-white">{value}</div>
   </div>
-);
+));
 
 export default EarningsDashboard;

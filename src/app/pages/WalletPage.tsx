@@ -255,15 +255,15 @@ const WalletPage: React.FC = () => {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4 text-sm">
               <div className="border border-white/5 p-4 bg-black/40">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Gains en attente</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Gains en attente</div>
                 <div className="text-2xl font-display font-black text-white">{formatZC(pendingWinnings)}</div>
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Frais de retrait</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Frais de retrait</div>
                 <div className="text-2xl font-display font-black text-zoyd-yellow">2%</div>
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Retrait minimum</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Retrait minimum</div>
                 <div className="text-2xl font-display font-black text-white">150 ZC</div>
               </div>
             </div>
@@ -304,7 +304,7 @@ const WalletPage: React.FC = () => {
         <Modal isOpen={showDepositModal} onClose={() => setShowDepositModal(false)} title="Ajouter des ZC" size="md">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-white mb-3">Montant a ajouter</label>
+              <label htmlFor="deposit-amount" className="block text-sm font-medium text-white mb-3">Montant a ajouter</label>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {presetAmounts.map((preset) => (
                     <button
@@ -317,11 +317,11 @@ const WalletPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Montant personnalise" />
+              <Input id="deposit-amount" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Montant personnalise" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-3">Operateur Mobile Money</label>
+              <label htmlFor="operator-select" className="block text-sm font-medium text-white mb-3">Operateur Mobile Money</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {operators.map((operator) => (
                     <button
@@ -350,8 +350,9 @@ const WalletPage: React.FC = () => {
         <Modal isOpen={showWithdrawModal} onClose={() => setShowWithdrawModal(false)} title="Retirer mes ZC" size="md">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-white mb-3">Montant a retirer</label>
+              <label htmlFor="withdraw-amount" className="block text-sm font-medium text-white mb-3">Montant a retirer</label>
               <Input
+                id="withdraw-amount"
                 type="number"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
@@ -377,7 +378,7 @@ const WalletPage: React.FC = () => {
   );
 };
 
-const BalanceCard = ({ label, value, hint, accent = false }: { label: string; value: string; hint: string; accent?: boolean }) => (
+const BalanceCard = React.memo(({ label, value, hint, accent = false }: { label: string; value: string; hint: string; accent?: boolean }) => (
   <Card className={accent ? 'bg-gradient-to-br from-zoyd-yellow/10 to-transparent border-zoyd-yellow' : ''}>
     <CardHeader>
       <CardTitle className="text-white/60 text-sm">{label}</CardTitle>
@@ -387,9 +388,9 @@ const BalanceCard = ({ label, value, hint, accent = false }: { label: string; va
       <div className="text-sm text-white/60">{hint}</div>
     </CardContent>
   </Card>
-);
+));
 
-const WalletFilter = ({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
+const WalletFilter = React.memo(({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
     <button
     onClick={onClick}
     aria-label={`Filtrer par ${label}`}
@@ -399,14 +400,14 @@ const WalletFilter = ({ active, onClick, label }: { active: boolean; onClick: ()
   >
     {label}
   </button>
-);
+));
 
-const FundingMetric = ({ label, value }: { label: string; value: string }) => (
+const FundingMetric = React.memo(({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/10 bg-black/40 px-4 py-3">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1">{label}</div>
     <div className="font-display font-black text-lg text-white italic">{value}</div>
   </div>
-);
+));
 
 interface TransactionRowProps {
   type: string;
@@ -417,7 +418,7 @@ interface TransactionRowProps {
   metadata?: Record<string, unknown>;
 }
 
-const TransactionRow = ({ type, amount, description, status, timestamp, metadata }: TransactionRowProps) => {
+const TransactionRow = React.memo(({ type, amount, description, status, timestamp, metadata }: TransactionRowProps) => {
   const isPositive = amount >= 0;
   const typeLabel =
     type === 'deposit'
@@ -469,6 +470,6 @@ const TransactionRow = ({ type, amount, description, status, timestamp, metadata
       </div>
     </div>
   );
-};
+});
 
 export default WalletPage;

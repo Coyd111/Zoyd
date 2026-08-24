@@ -44,7 +44,7 @@ const SeasonCard: React.FC<{
   onJoin: (seasonId: string) => void;
   onLeave: (seasonId: string) => void;
   isActionLoading: boolean;
-}> = ({ season, currentUserId, onJoin, onLeave, isActionLoading }) => {
+}> = React.memo(({ season, currentUserId, onJoin, onLeave, isActionLoading }) => {
   const isRegistered = season.registeredPlayers.some((p) => p.userId === currentUserId);
   const slotsLeft = season.maxPlayers - season.registeredPlayers.length;
   const badge = STATUS_BADGES[season.status];
@@ -98,6 +98,7 @@ const SeasonCard: React.FC<{
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLeave(season.id); }}
                 disabled={isActionLoading}
                 className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50 touch-target"
+                aria-label="Se désinscrire de la saison"
               >
                 Se desinscrire
               </button>
@@ -106,6 +107,7 @@ const SeasonCard: React.FC<{
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onJoin(season.id); }}
                 disabled={isActionLoading || slotsLeft <= 0}
                 className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
+                aria-label="S'inscrire à la saison"
               >
                 S'inscrire
               </button>
@@ -137,7 +139,7 @@ const SeasonCard: React.FC<{
 
       {season.status === 'completed' && season.podium.first && (
         <div className="border-t border-white/5 pt-3 flex items-center gap-2">
-          <Crown className="w-4 h-4 text-zoyd-yellow" />
+          <Crown className="w-4 h-4 text-zoyd-yellow" aria-hidden="true" />
           <span className="text-xs text-white/60">
             Vainqueur : <span className="text-white font-bold">{season.registeredPlayers.find((p) => p.userId === season.podium.first)?.pseudo || '—'}</span>
           </span>
@@ -145,7 +147,9 @@ const SeasonCard: React.FC<{
       )}
     </Link>
   );
-};
+});
+
+SeasonCard.displayName = 'SeasonCard';
 
 const LeaguePage: React.FC = () => {
   const { user } = useAuthStore();
@@ -253,7 +257,7 @@ const LeaguePage: React.FC = () => {
           <div className="max-w-3xl">
             <div className="flex items-center gap-3 mb-4 md:mb-6">
               <div className="w-8 h-8 md:w-10 md:h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
-                <Zap className="w-4 h-4 md:w-5 md:h-5" />
+                <Zap className="w-4 h-4 md:w-5 md:h-5" aria-hidden="true" />
               </div>
               <span className="text-[9px] md:text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
                 Battle Royale League
@@ -273,10 +277,11 @@ const LeaguePage: React.FC = () => {
               <Link
                 to={`/br-league/${activeSeason.id}`}
                 className="flex items-center gap-2 border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors touch-target"
+                aria-label={`Voir la saison active cycle ${activeSeason.cycleNumber}`}
               >
-                <Trophy className="w-3.5 h-3.5" />
+                <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
                 Saison active — Cycle #{activeSeason.cycleNumber}
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3 h-3" aria-hidden="true" />
               </Link>
             )}
             {user?.role === 'admin' && (
@@ -284,8 +289,9 @@ const LeaguePage: React.FC = () => {
                 onClick={handleCreateSeason}
                 disabled={actionLoading}
                 className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50 touch-target"
+                aria-label="Créer une nouvelle saison de ligue"
               >
-                <Calendar className="w-3.5 h-3.5" />
+                <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                 Créer une saison
               </button>
             )}
@@ -345,7 +351,7 @@ const LeaguePage: React.FC = () => {
           <TabsContent value={filters.status}>
             {seasons.length === 0 ? (
               <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-16 text-center">
-                <Zap className="w-8 h-8 text-white/40 mx-auto mb-3" />
+                <Zap className="w-8 h-8 text-white/40 mx-auto mb-3" aria-hidden="true" />
                 <p className="text-sm text-white/40">
                   {filters.status === 'all'
                     ? 'Aucune saison de ligue pour le moment.'

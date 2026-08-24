@@ -112,6 +112,9 @@ const ChatPage: React.FC = () => {
 
   return (
     <div className="safe-top flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
+      <a href="#chat-main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
+        Aller au contenu principal
+      </a>
       <div className="fixed inset-0 tactical-grid opacity-5 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 z-10 shrink-0">
@@ -243,7 +246,7 @@ const ChatPage: React.FC = () => {
                   onClick={() =>
                     activeChannel.isMuted ? unmuteChannel(activeChannel.id) : muteChannel(activeChannel.id)
                   }
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="touch-target text-white/40 hover:text-white transition-colors"
                   aria-label={activeChannel.isMuted ? 'Activer les notifications' : 'Couper les notifications'}
                 >
                   {activeChannel.isMuted ? <BellOff className="w-4 h-4" /> : <MoreVertical className="w-4 h-4" />}
@@ -256,7 +259,7 @@ const ChatPage: React.FC = () => {
                     <motion.div
                       initial={prefersReducedMotion ? false : { opacity: 0 }}
                       animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1 }}
-                      className="h-full flex flex-col items-center justify-center text-white/10"
+                      className="h-full flex flex-col items-center justify-center text-white/40"
                     >
                       <MessageSquare className="w-12 h-12 mb-4" />
                       <span className="font-mono text-[10px] uppercase font-black tracking-widest">
@@ -336,7 +339,7 @@ const ChatPage: React.FC = () => {
               </form>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-white/10">
+            <div id="chat-main" className="flex-1 flex items-center justify-center text-white/40">
               <div className="text-center">
                 <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
                 <span className="font-mono text-[10px] uppercase font-black tracking-widest">

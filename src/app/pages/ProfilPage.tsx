@@ -67,7 +67,7 @@ const ProfilPage = () => {
       headerActions={
         <div className="flex flex-col gap-3">
           <Link to="/parametres" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-white touch-target">
-            Modifier le profil <ChevronRight className="w-3 h-3" />
+            Modifier le profil <ChevronRight className="w-3 h-3" aria-hidden="true" />
           </Link>
           <button
             onClick={() => useAuthStore.getState().logout()}

@@ -189,7 +189,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/24">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/40">
             <span className="text-[10px] font-mono uppercase tracking-[0.26em]">Scroll</span>
             <ChevronDown className="w-5 h-5 animate-bounce" />
           </div>
@@ -415,13 +415,13 @@ export default function LandingPage() {
       <footer className="bg-black">
           <div className="max-w-[1600px] mx-auto px-5 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <ZoydLogo compact />
-          <div className="flex flex-wrap gap-8 text-[10px] font-mono uppercase tracking-[0.28em] text-white/28">
+          <div className="flex flex-wrap gap-8 text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
             <Link to="/auth/register" className="hover:text-white/60 transition-colors">Inscription</Link>
             <Link to="/auth/login" className="hover:text-white/60 transition-colors">Connexion</Link>
             <Link to="/mode" className="hover:text-white/60 transition-colors">MJ + BR</Link>
             <Link to="/classements" className="hover:text-white/60 transition-colors">Classements</Link>
           </div>
-          <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/16">
+          <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/40">
             © 2026 ZOYD Platform
           </div>
         </div>
@@ -514,20 +514,20 @@ function LandingNav() {
   );
 }
 
-function SignalStrip({ label, value }: { label: string; value: string }) {
+const SignalStrip = React.memo(function SignalStrip({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-4 py-3">
-      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/24 mb-1">{label}</div>
+      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/40 mb-1">{label}</div>
       <div className="font-display font-black uppercase italic tracking-tight text-white">{value}</div>
     </div>
   );
-}
+});
 
-function StatBlock({ number, label }: { number: string; label: string }) {
+const StatBlock = React.memo(function StatBlock({ number, label }: { number: string; label: string }) {
   return (
     <div className="text-center md:text-left">
       <div className="text-3xl md:text-4xl font-display font-black text-zoyd-yellow italic mb-1">{number}</div>
       <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/40">{label}</div>
     </div>
   );
-}
+});

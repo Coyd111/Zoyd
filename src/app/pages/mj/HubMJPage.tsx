@@ -123,6 +123,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               <div className="w-px h-10 bg-white/5 mx-2" />
               <button
                 onClick={() => setNeedsArbiter(!needsArbiter)}
+                aria-label={needsArbiter ? "Masquer les matchs sans arbitre" : "Afficher uniquement les matchs sans arbitre"}
                 className={`px-3 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
                   needsArbiter
                     ? 'bg-zoyd-yellow text-black border-zoyd-yellow'
@@ -153,10 +154,11 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Chercher une carte, un mode ou un joueur..."
+                  aria-label="Rechercher un match par carte, mode ou joueur"
                   className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:outline-none focus:border-zoyd-blue transition-colors"
                 />
               </div>
-              <Link to="/mj/creer" className="bg-zoyd-yellow text-black px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
+              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
                 <Activity className="w-4 h-4" /> CRÉER UN WAGER
               </Link>
             </div>
@@ -248,7 +250,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
 
 const Metric = ({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
-    <span className="text-[9px] font-mono font-bold text-white/30 uppercase tracking-widest mb-3 italic">{label}</span>
+    <span className="text-[9px] font-mono font-bold text-white/40 uppercase tracking-widest mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>

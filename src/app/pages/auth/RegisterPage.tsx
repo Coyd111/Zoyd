@@ -371,7 +371,8 @@ const RegisterPage: React.FC = () => {
                           key={device.id}
                           type="button"
                           onClick={() => setSelectedDevice(device.id)}
-                          className={`p-4 border transition-all flex flex-col items-center gap-2 ${
+                          aria-label={`Appareil: ${device.label}`}
+                          className={`p-4 min-h-[44px] border transition-all flex flex-col items-center gap-2 ${
                             selectedDevice === device.id
                               ? 'bg-white text-black border-white'
                               : 'bg-zoyd-surface/20 border-white/5 text-white/40 hover:border-white/20'
@@ -397,7 +398,8 @@ const RegisterPage: React.FC = () => {
                           key={option.id}
                           type="button"
                           onClick={() => setValue('controllerType', option.id)}
-                          className={`p-4 border text-left transition-all ${
+                          aria-label={`Contrôle: ${option.label}`}
+                          className={`p-4 min-h-[44px] border text-left transition-all ${
                             selectedController === option.id
                               ? 'bg-white text-black border-white'
                               : 'bg-zoyd-surface/20 border-white/5 text-white/40 hover:border-white/20'
@@ -428,8 +430,8 @@ const RegisterPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade MJ</label>
-                    <select {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <label htmlFor="rankMJ" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade MJ</label>
+                    <select id="rankMJ" {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -438,8 +440,8 @@ const RegisterPage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade BR</label>
-                    <select {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <label htmlFor="rankBR" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade BR</label>
+                    <select id="rankBR" {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -451,8 +453,8 @@ const RegisterPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Pays</label>
-                    <select {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <label htmlFor="country" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Pays</label>
+                    <select id="country" {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
                       {COUNTRY_OPTIONS.map((country) => (
                         <option key={country} value={country} className="bg-zoyd-black">
                           {country}
@@ -476,7 +478,7 @@ const RegisterPage: React.FC = () => {
                   />
                 )}
 
-                <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">
+                <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
                   Ces informations servent à personnaliser ton expérience de jeu, sans être exposées publiquement.
                 </p>
 
@@ -484,7 +486,8 @@ const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => { trigger(); setCurrentStep(1); }}
-                    className="flex-1 border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
+                    aria-label="Retour à l'étape précédente"
+                    className="flex-1 min-h-[44px] border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" /> RETOUR
                   </button>
@@ -563,7 +566,8 @@ const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => { trigger(); setCurrentStep(2); }}
-                    className="flex-1 border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
+                    aria-label="Retour aux réglages"
+                    className="flex-1 min-h-[44px] border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
                     REGLAGES
                   </button>

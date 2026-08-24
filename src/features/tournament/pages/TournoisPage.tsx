@@ -141,18 +141,21 @@ const TournoisPage: React.FC = () => {
               <TabsList className="bg-white/5 p-1 border border-white/5 flex flex-wrap sm:flex-nowrap h-auto w-full xl:w-auto">
                 <TabsTrigger
                   value="upcoming"
+                  aria-label="Tournois à rejoindre"
                   className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic data-[state=active]:bg-white data-[state=active]:text-black transition-all rounded-none"
                 >
                   A rejoindre
                 </TabsTrigger>
                 <TabsTrigger
                   value="live"
+                  aria-label="Tournois en cours"
                   className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-blue data-[state=active]:text-black transition-all rounded-none"
                 >
                   En cours
                 </TabsTrigger>
                 <TabsTrigger
                   value="history"
+                  aria-label="Historique des tournois terminés"
                   className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
                 >
                   Termines
@@ -167,6 +170,7 @@ const TournoisPage: React.FC = () => {
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Chercher un tournoi, un mode ou une carte..."
+                    aria-label="Rechercher un tournoi par nom, mode ou carte"
                     className="w-full bg-black border border-white/5 p-4 pl-12 text-[10px] font-mono font-black uppercase tracking-widest text-white focus:outline-none focus:border-zoyd-yellow transition-all"
                   />
                 </div>
@@ -278,7 +282,7 @@ const TournamentGrid = ({
 
 const Metric = ({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
-    <span className="text-[8px] md:text-[9px] font-mono font-bold text-white/30 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
+    <span className="text-[8px] md:text-[9px] font-mono font-bold text-white/40 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-3xl sm:text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>

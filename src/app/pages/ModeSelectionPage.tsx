@@ -18,10 +18,13 @@ const ModeSelectionPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">
+    <main className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">
+      <a href="#mode-selection" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
+        Aller au contenu principal
+      </a>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div className="relative max-w-[1500px] mx-auto px-5 md:px-8 py-8 md:py-14 safe-bottom">
+      <div id="mode-selection" className="relative max-w-[1500px] mx-auto px-5 md:px-8 py-8 md:py-14 safe-bottom">
         <div className="flex items-center justify-between gap-4 mb-12">
           <Link
             to="/"
@@ -151,7 +154,7 @@ const ModeSelectionPage: React.FC = () => {
 
         <div className="mt-8 md:mt-10 border border-white/8 bg-zoyd-surface/20 px-5 md:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/28 mb-1.5 md:mb-2">Compte ZOYD</div>
+            <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/40 mb-1.5 md:mb-2">Compte ZOYD</div>
             <div className="text-base sm:text-lg font-display font-black italic text-white">
               Un seul profil pour tes modes, tes matchs et ton wallet.
             </div>
@@ -162,13 +165,13 @@ const ModeSelectionPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
 const InfoChip = ({ label, value, className = '' }: { label: string; value: string; className?: string }) => (
   <div className={`border border-white/8 bg-black/35 px-3 md:px-4 py-2.5 md:py-3 ${className}`}>
-    <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.22em] text-white/24 mb-1">{label}</div>
+    <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.22em] text-white/40 mb-1">{label}</div>
     <div className="text-sm md:text-base font-display font-black uppercase italic text-white leading-tight">{value}</div>
   </div>
 );

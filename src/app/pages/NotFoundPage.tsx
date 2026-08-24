@@ -20,7 +20,7 @@ const NotFoundPage: React.FC = () => {
         <p className="text-white/40 mb-8">
           Cette page n'existe pas ou a été déplacée. Retourne au hub pour continuer à compétitionner.
         </p>
-        <Link to="/mj" className="inline-block bg-zoyd-yellow text-black px-8 py-4 touch-target font-display font-black text-[11px] tracking-[0.2em] uppercase italic hover:bg-white transition-colors">
+        <Link to="/mj" className="inline-block bg-zoyd-yellow text-black px-8 py-4 touch-target font-display font-black text-[11px] tracking-[0.2em] uppercase italic hover:bg-white transition-colors" aria-label="Retourner au hub multijoueur">
           RETOUR AU HUB
         </Link>
       </motion.div>

@@ -27,9 +27,16 @@ export const incCounter = (name, labels = {}, amount = 1) => {
 
 // ─── Gauges ──────────────────────────────────────────────────────────────────
 const gauges = new Map();
+const MAX_GAUGE_ENTRIES = 5000;
 
 export const setGauge = (name, value, labels = {}) => {
   const key = name + '|' + JSON.stringify(labels);
+  if (!gauges.has(key)) {
+    if (gauges.size >= MAX_GAUGE_ENTRIES) {
+      const first = gauges.keys().next().value;
+      gauges.delete(first);
+    }
+  }
   gauges.set(key, { name, labels, value });
 };
 
@@ -47,10 +54,15 @@ export const decGauge = (name, labels = {}, amount = 1) => {
 // ─── Histograms (buckets in seconds) ─────────────────────────────────────────
 const DEFAULT_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 const histograms = new Map();
+const MAX_HISTOGRAM_ENTRIES = 500;
 
 const getHistogram = (name, labels = {}, buckets = DEFAULT_BUCKETS) => {
   const key = name + '|' + JSON.stringify(labels);
   if (!histograms.has(key)) {
+    if (histograms.size >= MAX_HISTOGRAM_ENTRIES) {
+      const first = histograms.keys().next().value;
+      histograms.delete(first);
+    }
     histograms.set(key, {
       name, labels, buckets,
       observations: [],

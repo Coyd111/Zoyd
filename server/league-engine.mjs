@@ -211,7 +211,7 @@ const shuffleArray = (arr) => {
   return shuffled;
 };
 
-const assignPlayersToDays = (playerIds) => {
+export const assignPlayersToDays = (playerIds) => {
   const shuffled = shuffleArray(playerIds);
   const groups = {};
   for (const day of DAY_KEYS) groups[day] = [];

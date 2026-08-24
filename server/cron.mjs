@@ -1,6 +1,7 @@
 import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex } from './mutex.mjs';
+import { assignPlayersToDays } from './league-engine.mjs';
 
 const log = createLogger('cron');
 const getNow = () => new Date().toISOString();
@@ -66,16 +67,29 @@ export const initCronJobs = () => {
           if (now >= closesAt && season.registeredPlayers.length >= 10) {
             changed = true;
             const playerIds = season.registeredPlayers.map((p) => p.userId || p.id || p);
-            const DAY_KEYS = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const groups = {};
-            for (const day of DAY_KEYS) groups[day] = { players: [], standings: [], currentDay: 1, status: 'pending' };
-            for (let i = 0; i < playerIds.length; i++) {
-              groups[DAY_KEYS[i % DAY_KEYS.length]].players.push(playerIds[i]);
+            const groups = assignPlayersToDays(playerIds);
+            const qualificationGroups = {};
+            for (const day of Object.keys(groups)) {
+              qualificationGroups[day] = {
+                players: groups[day],
+                matchId: null,
+                results: [],
+                status: 'scheduled',
+              };
             }
+            const standings = season.registeredPlayers.map((p) => ({
+              userId: p.userId || p.id || p,
+              pseudo: p.pseudo,
+              totalPoints: 0,
+              bestPlacement: 0,
+              matchesPlayed: 0,
+              placements: [],
+            }));
             return {
               ...season,
               status: 'qualifying',
-              qualificationGroups: groups,
+              qualificationGroups,
+              standings,
               schedule: {
                 ...season.schedule,
                 qualifyingStarts: getNow(),

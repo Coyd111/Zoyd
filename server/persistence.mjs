@@ -24,6 +24,7 @@ const MAX_CHAT_CHANNELS = 1000;
 const memoryChatMessages = new Map(); // channelId -> message[]
 const memoryChatReads = new Map();    // `${channelId}:${userId}` -> readAt
 const memoryStateSnapshots = new Map(); // `${kind}:${entityId}` -> payload
+const memoryAdminIds = new Set();     // fast admin lookup (avoids getAllUsers scan)
 const memoryFriendRequests = new Map();
 const memoryFriendships = new Set();   // `${uid1}:${uid2}`
 const memoryUserBlocks = new Set();    // `${blocker}:${blocked}`
@@ -180,6 +181,7 @@ export const loadFromSupabase = async () => {
     if (users) {
       for (const row of users) {
         memoryUsers.set(row.id, sanitizeUserPayload(row.payload));
+        if (row.role === 'admin') memoryAdminIds.add(row.id);
         if (row.password_hash) {
           storePasswordHash(row.id, row.password_hash, row.payload?.pseudo, row.payload?.email, row.payload?.phone);
         }
@@ -358,6 +360,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
 
     // Write to memory
     memoryUsers.set(id, payload);
+    if (role === 'admin') memoryAdminIds.add(id);
     storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
 
     // Write to Supabase
@@ -413,12 +416,52 @@ export const getAllUsers = () => {
   return Array.from(memoryUsers.values()).map(sanitizeUserPayload);
 };
 
+export const getAdminIds = () => {
+  return [...memoryAdminIds];
+};
+
+// ─── Leaderboard cache (refreshes every 60s) ────────────────────────────────
+let leaderboardCache = null;
+let leaderboardCacheAt = 0;
+const LEADERBOARD_CACHE_TTL = 60_000;
+
+export const getLeaderboard = () => {
+  const now = Date.now();
+  if (leaderboardCache && now - leaderboardCacheAt < LEADERBOARD_CACHE_TTL) {
+    return leaderboardCache;
+  }
+  const allUsers = Array.from(memoryUsers.values()).map(sanitizeUserPayload);
+  leaderboardCache = allUsers
+    .filter((u) => u.stats && (u.stats.totalMatches > 0 || u.stats.totalEarnings > 0))
+    .map((u) => ({
+      id: u.id,
+      pseudo: u.pseudo,
+      country: u.country,
+      elo: u.stats?.elo || 1200,
+      winRate: u.stats?.winRate || 0,
+      totalMatches: u.stats?.totalMatches || 0,
+      totalEarnings: u.stats?.totalEarnings || 0,
+      wins: u.stats?.wins || 0,
+      trustScore: u.trustScore || 0,
+      controllerType: u.controllerType,
+      rankMJ: u.rankMJ,
+      isOnline: u.isOnline || false,
+    }))
+    .sort((a, b) => b.elo - a.elo || b.winRate - a.winRate || b.totalMatches - a.totalMatches);
+  leaderboardCacheAt = now;
+  return leaderboardCache;
+};
+
 export const updateUserAccount = (userId, updater) => {
   const current = memoryUsers.get(userId);
   if (!current) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
 
   const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
   memoryUsers.set(userId, next);
+
+  // Track admin role changes
+  if (next.role === 'admin') memoryAdminIds.add(userId);
+  else memoryAdminIds.delete(userId);
 
   // Clean up old password hash lookup entries when pseudo/email/phone change
   const oldPseudoKey = normalizePseudoKey(current.pseudo);

@@ -47,6 +47,8 @@ import {
   ensureGlobalChatChannel,
   generateActivationCode,
   getAllUsers,
+  getAdminIds,
+  getLeaderboard,
   getRawUserById,
   getUserById,
   getPushSubscriptionsForUser,
@@ -146,10 +148,10 @@ const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
 const API_KEY_ROTATION_DAYS = Number(process.env.ZOYD_API_KEY_ROTATION_DAYS || 90);
 
 const notifyAllAdmins = async (io, payload) => {
-  const admins = getAllUsers().filter((u) => u.role === 'admin');
-  for (const admin of admins) {
+  const adminIds = getAdminIds();
+  for (const adminId of adminIds) {
     try {
-      await deliverNotification(io, admin.id, payload);
+      await deliverNotification(io, adminId, payload);
     } catch { /* best effort */ }
   }
 };
@@ -1276,24 +1278,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/leaderboard') {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
-      const allUsers = getAllUsers();
-      const leaderboard = allUsers
-        .filter((u) => u.stats && (u.stats.totalMatches > 0 || u.stats.totalEarnings > 0))
-        .map((u) => ({
-          id: u.id,
-          pseudo: u.pseudo,
-          country: u.country,
-          elo: u.stats?.elo || 1200,
-          winRate: u.stats?.winRate || 0,
-          totalMatches: u.stats?.totalMatches || 0,
-          totalEarnings: u.stats?.totalEarnings || 0,
-          wins: u.stats?.wins || 0,
-          trustScore: u.trustScore || 0,
-          controllerType: u.controllerType,
-          rankMJ: u.rankMJ,
-          isOnline: u.isOnline || false,
-        }))
-        .sort((a, b) => b.elo - a.elo || b.winRate - a.winRate || b.totalMatches - a.totalMatches);
+      const leaderboard = getLeaderboard();
       const { limit, offset } = parseQueryParams(req.url);
       respondJson(res, 200, { ok: true, players: paginate(leaderboard, { limit, offset }), total: leaderboard.length });
     } catch (error) {

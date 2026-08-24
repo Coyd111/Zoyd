@@ -51,8 +51,11 @@ const cleanupIdleWalletMutexes = () => {
   const now = Date.now();
   for (const [userId, timestamp] of walletMutexTimestamps) {
     if (now - timestamp > WALLET_MUTEX_MAX_AGE) {
-      walletMutex.delete(userId);
-      walletMutexTimestamps.delete(userId);
+      const mutex = walletMutex.get(userId);
+      if (mutex && !mutex.isLocked()) {
+        walletMutex.delete(userId);
+        walletMutexTimestamps.delete(userId);
+      }
     }
   }
 };

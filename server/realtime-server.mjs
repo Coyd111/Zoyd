@@ -727,6 +727,44 @@ const rateLimitGuard = (res, ip, group) => {
   return true;
 };
 
+// ─── Security Helpers ──────────────────────────────────────────────────────
+/**
+ * SEC-S7: Centralized admin role check — replaces duplicated role checks
+ * across 15+ admin endpoints. Returns false and sends 403 if not admin.
+ */
+const requireAdmin = (req, res) => {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
+    return null;
+  }
+  if (session.user.role !== 'admin') {
+    log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id });
+    respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
+    return null;
+  }
+  return session;
+};
+
+/**
+ * SEC-S10: Sanitize error messages before sending to clients.
+ * Prevents internal error details, stack traces, or DB errors from leaking.
+ */
+const sanitizeError = (error) => {
+  if (error?.code === 'PAYLOAD_TOO_LARGE' || error?.code === 'INVALID_JSON') {
+    return error.message;
+  }
+  if (error?.code?.startsWith('DUPLICATE_') || error?.code === 'INVALID_REGISTRATION' ||
+      error?.code === 'INVALID_AMOUNT' || error?.code === 'INSUFFICIENT_FUNDS' ||
+      error?.code === 'WITHDRAWAL_MIN' || error?.code === 'CHANNEL_NOT_FOUND' ||
+      error?.code === 'USER_NOT_FOUND' || error?.code === 'INVALID_REQUEST' ||
+      error?.code === 'INVALID_CREDENTIALS') {
+    return error.message;
+  }
+  // Generic message for unexpected errors — never expose internals
+  return 'Une erreur interne est survenue.';
+};
+
 // ─── TOTP 2FA (RFC 6238) ──────────────────────────────────────────────────
 const TOTP_DIGITS = 6;
 const TOTP_PERIOD = 30;
@@ -1321,6 +1359,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/matches') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const token = readBearerToken(req);
     const matchSession = token ? getAuthSession(token) : null;
     const matchCurrentUser = matchSession?.user ? getUserById(matchSession.user.id) : null;
@@ -1351,6 +1390,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/users/search') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     const url = new URL(req.url, `http://${req.headers.host}`);
     const q = url.searchParams.get('q') || '';
     const { limit, offset } = parseQueryParams(req.url);
@@ -1368,6 +1408,7 @@ const server = http.createServer(async (req, res) => {
 
   const tournamentDetail = pathname.match(/^\/api\/tournaments\/([^/]+)$/);
   if (req.method === 'GET' && tournamentDetail) {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const tournament = getStoredTournaments().find((entry) => entry.id === tournamentDetail[1]);
     if (!tournament) {
       respondJson(res, 404, { ok: false, error: 'Tournoi introuvable.' });
@@ -1581,6 +1622,7 @@ const server = http.createServer(async (req, res) => {
 
   const leagueGetOne = pathname.match(/^\/api\/leagues\/([^/]+)$/);
   if (req.method === 'GET' && leagueGetOne) {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const seasons = getStoredLeagues();
     const season = seasons.find((s) => s.id === leagueGetOne[1]);
     if (!season) {
@@ -1763,6 +1805,7 @@ const server = http.createServer(async (req, res) => {
 
   const leagueLeaderboard = pathname.match(/^\/api\/leagues\/([^/]+)\/leaderboard$/);
   if (req.method === 'GET' && leagueLeaderboard) {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const standings = getLeagueLeaderboard(getStoredLeagues(), leagueLeaderboard[1]);
       respondJson(res, 200, { ok: true, standings });

@@ -24,6 +24,20 @@ const getFedaPayConfig = () => {
 // Lock in-memory pour éviter le TOCTOU race condition sur les transactions
 const processingTransactions = new Set();
 
+// SEC-R4: Safety cleanup — if server crashed mid-transaction, the finally block
+// may not have run. Clean stale entries every 5 minutes (>10min old).
+const PROCESSING_TX_MAX_AGE_MS = 10 * 60 * 1000;
+const processingTxTimestamps = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [txId, ts] of processingTxTimestamps) {
+    if (now - ts > PROCESSING_TX_MAX_AGE_MS) {
+      processingTransactions.delete(txId);
+      processingTxTimestamps.delete(txId);
+    }
+  }
+}, 5 * 60 * 1000);
+
 export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => {
   const FEDAPAY_SECRET_KEY = getFedaPayConfig();
   if (!FEDAPAY_SECRET_KEY) {
@@ -40,6 +54,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     throw new Error('Cette transaction est en cours de traitement.');
   }
   processingTransactions.add(transactionId);
+  processingTxTimestamps.set(transactionId, Date.now());
 
   try {
     // 1. Récupérer la transaction directement depuis FedaPay (évite la falsification côté frontend)
@@ -93,5 +108,6 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     throw new Error('Erreur lors de la vérification de la transaction FedaPay.');
   } finally {
     processingTransactions.delete(transactionId);
+    processingTxTimestamps.delete(transactionId);
   }
 };

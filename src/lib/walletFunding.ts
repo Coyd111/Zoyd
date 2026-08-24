@@ -9,6 +9,15 @@ export interface FundingPrompt {
 
 const roundAmount = (value: number) => Math.round(value * 100) / 100;
 
+const ALLOWED_RETURN_TO_PREFIXES = ['/mj', '/br-league'];
+
+const sanitizeReturnTo = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  if (!value.startsWith('/') || value.startsWith('//')) return undefined;
+  if (!ALLOWED_RETURN_TO_PREFIXES.some((prefix) => value === prefix || value.startsWith(prefix + '/'))) return undefined;
+  return value;
+};
+
 export const getRequiredTopUp = (requiredAmount: number, availableAmount: number) =>
   roundAmount(Math.max(0, requiredAmount - availableAmount));
 
@@ -43,7 +52,7 @@ export const parseFundingPrompt = (searchParams: URLSearchParams): FundingPrompt
   const context = searchParams.get('context');
   const requiredAmount = Number(searchParams.get('required'));
   const neededAmount = Number(searchParams.get('needed'));
-  const returnTo = searchParams.get('returnTo') || undefined;
+  const returnTo = sanitizeReturnTo(searchParams.get('returnTo') || undefined);
 
   if (
     (context !== 'match-join' && context !== 'match-create' && context !== 'tournament-entry') ||

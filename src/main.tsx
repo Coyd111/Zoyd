@@ -29,7 +29,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
             >
               Recharger
             </button>
-            {this.state.error && (
+            {this.state.error && import.meta.env.DEV && (
               <pre style={{ marginTop: '1.5rem', fontSize: '0.75rem', color: '#fff4', textAlign: 'left', overflow: 'auto', maxHeight: 200 }}>
                 {this.state.error.message}
               </pre>

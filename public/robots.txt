@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /wallet
+Disallow: /parametres
+
+Sitemap: https://zoyd.vercel.app/sitemap.xml

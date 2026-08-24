@@ -72,17 +72,27 @@ export const readJson = async <T>(response: Response): Promise<T> => {
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
-const authorizedRequest = async <T>(method: HttpMethod, path: string, body?: unknown) =>
-  readJson<T>(
-    await fetch(getApiUrl(path), {
-      method,
-      headers: {
-        ...getAuthHeaders(),
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  );
+const FETCH_TIMEOUT_MS = 30_000;
+
+const authorizedRequest = async <T>(method: HttpMethod, path: string, body?: unknown) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await readJson<T>(
+      await fetch(getApiUrl(path), {
+        method,
+        headers: {
+          ...getAuthHeaders(),
+          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: controller.signal,
+      })
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
 
 export const authorizedGet = <T>(path: string) => authorizedRequest<T>('GET', path);
 export const authorizedPost = <T>(path: string, body?: unknown) => authorizedRequest<T>('POST', path, body);

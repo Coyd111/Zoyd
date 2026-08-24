@@ -20,7 +20,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return { hasError: true, error };
   }
 
-  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[ErrorBoundary]', error.message, errorInfo.componentStack);
   }
 
   render() {
@@ -31,7 +32,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <div className="text-center max-w-md">
               <h2 className="text-xl font-display font-black uppercase mb-4">Une erreur est survenue</h2>
               <p className="text-white/40 text-sm mb-6">
-                {this.state.error?.message || 'Erreur inconnue. Recharge la page.'}
+                {import.meta.env.DEV ? (this.state.error?.message || 'Erreur inconnue.') : 'Une erreur inattendue s\'est produite.'}
               </p>
               <button
                 onClick={() => window.location.reload()}

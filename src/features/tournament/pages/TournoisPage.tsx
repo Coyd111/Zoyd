@@ -7,12 +7,14 @@ import { useTournamentStore } from '../../../app/stores/tournamentStore';
 import type { MatchFormat } from '../../../app/stores/matchStore';
 import { fetchServerTournaments } from '../../../app/lib/tournamentApi';
 import { formatZC } from '../../../lib/utils';
+import { useDebounce } from '../../../app/hooks/useDebounce';
 
 const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'];
 
 const TournoisPage: React.FC = () => {
   const { filters, setFilters, getFilteredTournaments, replaceFromServer } = useTournamentStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedQuery = useDebounce(searchQuery, 300);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -44,7 +46,7 @@ const TournoisPage: React.FC = () => {
   }, [replaceFromServer]);
 
   const tournaments = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = debouncedQuery.trim().toLowerCase();
     return getFilteredTournaments().filter((tournament) => {
       if (!query) return true;
       return (
@@ -53,7 +55,7 @@ const TournoisPage: React.FC = () => {
         tournament.rules.mapPool.some((map) => map.toLowerCase().includes(query))
       );
     });
-  }, [getFilteredTournaments, searchQuery]);
+  }, [getFilteredTournaments, debouncedQuery]);
 
   const recruiting = tournaments.filter((tournament) => tournament.status === 'recruiting');
   const live = tournaments.filter((tournament) => tournament.status === 'live');

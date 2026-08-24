@@ -120,7 +120,7 @@ export const NotificationDropdown: React.FC = () => {
                       if (n.actionUrl) {
                         try {
                           const url = new URL(n.actionUrl, window.location.origin);
-                          if (url.origin === window.location.origin || url.protocol === 'https:') {
+                          if (url.origin === window.location.origin) {
                             window.location.href = url.pathname + url.search + url.hash;
                           }
                         } catch {

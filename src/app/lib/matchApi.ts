@@ -53,7 +53,6 @@ export const fetchAllMatchesFromDb = async (): Promise<Match[]> => {
     const res = await authorizedGet<MatchListResponse>('/api/matches');
     return res.matches || [];
   } catch (error) {
-    console.error('Erreur chargement matchs:', error instanceof Error ? error.message : 'Erreur inconnue');
     return [];
   }
 };

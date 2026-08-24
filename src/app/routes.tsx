@@ -3,6 +3,7 @@ import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import AdminLayout from './layouts/AdminLayout';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 // Critical pages loaded synchronously (landing + auth)
 import LandingPage from './pages/LandingPage';
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     Component: RootLayout,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,

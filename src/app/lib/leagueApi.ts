@@ -17,7 +17,6 @@ export const fetchServerLeagues = async (): Promise<LeagueListResponse> => {
   try {
     return await authorizedGet<LeagueListResponse>('/api/leagues');
   } catch (error) {
-    console.error('Erreur chargement ligues:', error instanceof Error ? error.message : 'Erreur inconnue');
     return { ok: false, seasons: [] };
   }
 };

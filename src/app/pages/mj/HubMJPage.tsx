@@ -6,6 +6,7 @@ import FriendsWidget from '../../components/social/FriendsWidget';
 import { useMatchStore } from '../../stores/matchStore';
 import { useSocketStore } from '../../stores/socketStore';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'] as const;
 const STATUS_FILTERS = [
@@ -20,6 +21,7 @@ const HubMJPage: React.FC = () => {
   const { filters, setFilters, getFilteredMatches } = useMatchStore();
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedQuery = useDebounce(searchQuery, 300);
   const [needsArbiter, setNeedsArbiter] = useState(false);
 
   const filteredMatches = useMemo(() => {
@@ -28,7 +30,7 @@ const HubMJPage: React.FC = () => {
       baseMatches = baseMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited');
     }
     return baseMatches.filter((match) => {
-      const query = searchQuery.trim().toLowerCase();
+      const query = debouncedQuery.trim().toLowerCase();
       if (!query) return true;
       const rules = typeof match.rules === 'string' ? {} : match.rules;
       return (

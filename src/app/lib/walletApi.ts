@@ -30,7 +30,6 @@ export const fetchWalletSnapshot = async (): Promise<WalletResponse> => {
   try {
     return await authorizedGet<WalletResponse>('/api/wallet/me');
   } catch (error) {
-    console.error('Erreur chargement wallet:', error instanceof Error ? error.message : 'Erreur inconnue');
     throw error;
   }
 };
@@ -39,7 +38,6 @@ export const depositWalletBalance = async (amount: number, method: string): Prom
   try {
     return await authorizedPost<WalletResponse>('/api/wallet/deposit', { amount, method });
   } catch (error) {
-    console.error('Erreur depot wallet:', error instanceof Error ? error.message : 'Erreur inconnue');
     throw error;
   }
 };
@@ -48,7 +46,6 @@ export const withdrawWalletBalance = async (amount: number, method: string, phon
   try {
     return await authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone });
   } catch (error) {
-    console.error('Erreur retrait wallet:', error instanceof Error ? error.message : 'Erreur inconnue');
     throw error;
   }
 };
@@ -57,7 +54,6 @@ export const verifyFedaPayTransaction = async (transactionId: number | string): 
   try {
     return await authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });
   } catch (error) {
-    console.error('Erreur verification FedaPay:', error instanceof Error ? error.message : 'Erreur inconnue');
     throw error;
   }
 };

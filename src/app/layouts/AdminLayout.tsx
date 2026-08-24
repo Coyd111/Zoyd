@@ -1,4 +1,3 @@
-import React from 'react';
 import { Navigate, Outlet } from 'react-router';
 import { BottomNav } from '../components/layout/BottomNav';
 import { Navbar } from '../components/layout/Navbar';
@@ -6,10 +5,11 @@ import { Sidebar } from '../components/layout/Sidebar';
 import { useRealtimeHeartbeat } from '../hooks/useRealtimeHeartbeat';
 import { useAuthStore } from '../stores/authStore';
 
-const AdminLayout: React.FC = () => {
+const AdminLayout = () => {
   const { isAuthenticated, user, isLoading } = useAuthStore();
-  
   const isAdmin = isAuthenticated && user?.role === 'admin';
+
+  useRealtimeHeartbeat(isAdmin);
 
   if (isLoading) {
     return (
@@ -26,8 +26,6 @@ const AdminLayout: React.FC = () => {
   if (!isAdmin) {
     return <Navigate to="/mj" replace />;
   }
-
-  useRealtimeHeartbeat(isAdmin);
 
   return (
     <div className="min-h-dvh bg-zoyd-black safe-top">

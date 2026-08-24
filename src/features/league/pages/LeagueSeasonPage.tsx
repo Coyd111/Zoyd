@@ -119,7 +119,7 @@ const QualificationPanel: React.FC<{
   season: LeagueSeason;
   currentUserId?: string;
   isAdmin: boolean;
-  onAdminAction: (action: string, payload?: any) => void;
+  onAdminAction: (action: string, payload?: Record<string, unknown>) => void;
   isActionLoading: boolean;
 }> = ({ season, currentUserId, isAdmin, onAdminAction, isActionLoading }) => {
   return (
@@ -242,7 +242,7 @@ interface PaymentInfo {
 
 const AdminPanel: React.FC<{
   season: LeagueSeason;
-  onAdminAction: (action: string, payload?: any) => void;
+  onAdminAction: (action: string, payload?: Record<string, unknown>) => void;
   isActionLoading: boolean;
 }> = ({ season, onAdminAction, isActionLoading }) => {
   const [settingsTab, setSettingsTab] = useState<'settings' | 'reassign' | 'payments'>('settings');
@@ -604,7 +604,7 @@ const LeagueSeasonPage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('standings');
   const [actionLoading, setActionLoading] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: any; message: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: Record<string, unknown>; message: string } | null>(null);
 
   useEffect(() => {
     if (!seasonId) return;
@@ -669,7 +669,7 @@ const LeagueSeasonPage: React.FC = () => {
     }
   };
 
-  const handleAdminAction = async (action: string, payload?: any) => {
+  const handleAdminAction = async (action: string, payload?: Record<string, unknown>) => {
     if (!seasonId || actionLoading || user?.role !== 'admin') return;
 
     // Show confirmation dialog for destructive actions
@@ -698,7 +698,7 @@ const LeagueSeasonPage: React.FC = () => {
     executeAdminAction(action, payload);
   };
 
-  const executeAdminAction = async (action: string, payload?: any) => {
+  const executeAdminAction = async (action: string, payload?: Record<string, unknown>) => {
     if (!seasonId || actionLoading || user?.role !== 'admin') return;
     try {
       setActionLoading(true);

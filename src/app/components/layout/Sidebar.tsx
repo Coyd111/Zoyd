@@ -1,21 +1,19 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { BarChart3, LayoutGrid, MessageCircle, Plus, Settings, ShieldCheck, Trophy, Users, Wallet, Zap } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useChatStore } from '../../stores/chatStore';
-import { useSocketStore } from '../../stores/socketStore';
-import { logoutFromBackend } from '../../lib/authApi';
-import { unsubscribeFromRealtimePush } from '../../lib/realtimeClient';
 import { cn, formatZC } from '../../../lib/utils';
 import ZoydLogo from '../branding/ZoydLogo';
+import { useLogout } from '../../hooks/useLogout';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { getTotalBalance } = useWalletStore();
   const { getUnreadTotal } = useChatStore();
+  const handleLogout = useLogout();
   const safeUser = user || { pseudo: 'ShadowX' };
   const totalBalance = getTotalBalance();
   const unreadMessages = getUnreadTotal();
@@ -113,18 +111,7 @@ const Sidebar: React.FC = () => {
           Parametres
         </Link>
         <button
-          onClick={() => {
-            const user = useAuthStore.getState().user;
-            logoutFromBackend().catch(() => undefined);
-            if (user && 'serviceWorker' in navigator) {
-              navigator.serviceWorker.ready
-                .then((reg) => unsubscribeFromRealtimePush(user, reg))
-                .catch(() => undefined);
-            }
-            useSocketStore.getState().disconnect();
-            useAuthStore.getState().logout();
-            navigate('/auth/login');
-          }}
+          onClick={handleLogout}
           className="flex w-full items-center gap-3 px-3 py-2.5 touch-target text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
         >
           <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>

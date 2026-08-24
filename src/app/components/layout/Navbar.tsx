@@ -2,17 +2,16 @@ import React, { useState } from 'react';
 import { Link } from 'react-router';
 import { Settings, Wallet, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
-import { useSocketStore } from '../../stores/socketStore';
-import { logoutFromBackend } from '../../lib/authApi';
-import { unsubscribeFromRealtimePush } from '../../lib/realtimeClient';
 import { useWalletStore } from '../../stores/walletStore';
 import { formatZC } from '../../../lib/utils';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import NotificationSettingsModal from '../notifications/NotificationSettingsModal';
+import { useLogout } from '../../hooks/useLogout';
 
 const Navbar: React.FC = () => {
   const { user } = useAuthStore();
   const { getTotalBalance } = useWalletStore();
+  const handleLogout = useLogout();
   const { isConnected, serverConnected, liveMatches } = useSocketStore();
   const safeUser = user || { pseudo: 'ShadowX' };
   const totalBalance = getTotalBalance();
@@ -80,17 +79,7 @@ const Navbar: React.FC = () => {
           </Link>
 
           <button
-            onClick={() => {
-              const u = useAuthStore.getState().user;
-              logoutFromBackend().catch(() => undefined);
-              if (u && 'serviceWorker' in navigator) {
-                navigator.serviceWorker.ready
-                  .then((reg) => unsubscribeFromRealtimePush(u, reg))
-                  .catch(() => undefined);
-              }
-              useSocketStore.getState().disconnect();
-              useAuthStore.getState().logout();
-            }}
+            onClick={handleLogout}
             title="Se deconnecter"
             className="touch-target flex items-center justify-center text-white/30 hover:text-red-400 transition-colors"
           >

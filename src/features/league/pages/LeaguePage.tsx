@@ -328,7 +328,10 @@ const LeaguePage: React.FC = () => {
         )}
 
         <Tabs value={filters.status} onValueChange={(v) => setFilters({ status: v as LeagueSeasonStatus | 'all' })}>
-          <div className="flex items-center gap-3 md:gap-4 py-4 md:py-6 overflow-x-auto">
+          <div className="relative">
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-zoyd-black to-transparent z-10" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-zoyd-black to-transparent z-10" />
+            <div className="flex items-center gap-3 md:gap-4 py-4 md:py-6 overflow-x-auto scrollbar-hide">
             <TabsList>
               {STATUS_TABS.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value}>
@@ -336,6 +339,7 @@ const LeaguePage: React.FC = () => {
                 </TabsTrigger>
               ))}
             </TabsList>
+          </div>
           </div>
 
           <TabsContent value={filters.status}>

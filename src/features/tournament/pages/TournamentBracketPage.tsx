@@ -680,7 +680,10 @@ const TournamentBracketPage: React.FC = () => {
                 ) : null}
               </div>
 
-              <div className="flex gap-8 overflow-x-auto pb-4">
+              <div className="relative">
+                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-zoyd-black to-transparent z-10" />
+                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zoyd-black to-transparent z-10" />
+                <div className="flex gap-8 overflow-x-auto pb-4 scrollbar-hide">
                 {bracketRounds.map((round) => (
                   <div key={round} className="min-w-[280px] flex flex-col gap-5">
                     <div className="text-center">
@@ -721,6 +724,7 @@ const TournamentBracketPage: React.FC = () => {
                     />
                   </div>
                 ) : null}
+              </div>
               </div>
             </div>
 

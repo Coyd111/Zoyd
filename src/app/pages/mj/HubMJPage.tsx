@@ -71,7 +71,7 @@ const HubMJPage: React.FC = () => {
               <span className="text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-blue uppercase">Mode multijoueur</span>
             </div>
             <h1 className="text-3xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
-              L'Arène <br /><span className="text-white/20 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
+              L'Arène <br /><span className="text-white/40 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
             </h1>
             <p className="text-white/40 text-lg md:text-xl font-light max-w-xl">
               Crée un wager, défie des adversaires de ton niveau, ou postule pour arbitrer les matchs en attente.
@@ -147,7 +147,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
 
             <div className="flex gap-4 w-full lg:w-[420px]">
               <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                 <input
                   type="text"
                   value={searchQuery}

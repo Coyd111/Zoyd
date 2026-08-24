@@ -387,13 +387,13 @@ const TournamentBracketPage: React.FC = () => {
 
           <div className="flex items-center gap-8">
             <div className="flex flex-col items-end">
-              <span className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Cagnotte joueurs</span>
+              <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Cagnotte joueurs</span>
               <span className="text-2xl font-display font-black text-zoyd-yellow italic">
                 {formatZC(tournament.payout.playerPool)}
               </span>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Inscrits</span>
+              <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Inscrits</span>
               <span className="text-2xl font-display font-black text-white italic">
                 {tournament.entries.length}/{tournament.maxEntries}
               </span>
@@ -620,7 +620,7 @@ const TournamentBracketPage: React.FC = () => {
                         <div className="font-display font-black text-sm uppercase italic text-white">
                           #{entry.seed} - {entry.squadName}
                         </div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-white/20">
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-white/40">
                           {entry.captainPseudo}
                           {entry.finalPlacement ? ` - Top ${entry.finalPlacement}` : ''}
                         </div>
@@ -687,7 +687,7 @@ const TournamentBracketPage: React.FC = () => {
                 {bracketRounds.map((round) => (
                   <div key={round} className="min-w-[280px] flex flex-col gap-5">
                     <div className="text-center">
-                      <span className="text-[10px] font-mono font-black text-white/20 uppercase tracking-[0.35em] italic">
+                      <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-[0.35em] italic">
                         {getRoundLabel(round, tournament.mainRounds)}
                       </span>
                     </div>
@@ -710,7 +710,7 @@ const TournamentBracketPage: React.FC = () => {
                 {bronzeMatch ? (
                   <div className="min-w-[280px] flex flex-col gap-5">
                     <div className="text-center">
-                      <span className="text-[10px] font-mono font-black text-white/20 uppercase tracking-[0.35em] italic">
+                      <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-[0.35em] italic">
                         Bronze
                       </span>
                     </div>
@@ -953,7 +953,7 @@ const BracketMatchCard = ({
         ? 'text-white/30'
         : match.status === 'ready'
           ? 'text-zoyd-yellow'
-          : 'text-white/20';
+          : 'text-white/40';
 
   return (
     <button
@@ -965,7 +965,7 @@ const BracketMatchCard = ({
       aria-label={`Ouvrir le match ${match.id} de ${tournamentName}`}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[9px] font-mono text-white/20 uppercase tracking-widest">
+        <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">
           {match.bracketType === 'third_place' ? 'Bronze' : `Match ${match.position}`}
         </span>
         <span className={`text-[9px] font-mono uppercase tracking-widest ${statusTone}`}>{matchStatusLabels[match.status]}</span>
@@ -974,7 +974,7 @@ const BracketMatchCard = ({
       <PlayerLine label={entryALabel} active={match.winnerEntryId === match.entryAId} score={match.scoreA} />
       <PlayerLine label={entryBLabel} active={match.winnerEntryId === match.entryBId} score={match.scoreB} />
 
-      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[9px] font-mono uppercase tracking-widest text-white/20">
+      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[9px] font-mono uppercase tracking-widest text-white/40">
         <span>
           {match.scheduledAt
             ? new Date(match.scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })

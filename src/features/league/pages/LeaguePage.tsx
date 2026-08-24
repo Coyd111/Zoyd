@@ -345,7 +345,7 @@ const LeaguePage: React.FC = () => {
           <TabsContent value={filters.status}>
             {seasons.length === 0 ? (
               <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-16 text-center">
-                <Zap className="w-8 h-8 text-white/20 mx-auto mb-3" />
+                <Zap className="w-8 h-8 text-white/40 mx-auto mb-3" />
                 <p className="text-sm text-white/40">
                   {filters.status === 'all'
                     ? 'Aucune saison de ligue pour le moment.'

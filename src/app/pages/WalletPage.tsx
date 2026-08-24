@@ -294,7 +294,7 @@ const WalletPage: React.FC = () => {
                     <img src="/assets/images/codm-3.jpg" alt="" loading="lazy" className="w-full h-full object-cover" />
                   </div>
                   <Clock className="relative w-12 h-12 text-white/10 mx-auto mb-4" />
-                  <p className="relative text-white/20 font-mono text-sm uppercase tracking-widest">Ton solde n'a pas encore bouge</p>
+                  <p className="relative text-white/40 font-mono text-sm uppercase tracking-widest">Ton solde n'a pas encore bouge</p>
                 </div>
               )}
             </div>
@@ -453,7 +453,7 @@ const TransactionRow = ({ type, amount, description, status, timestamp, metadata
         {statusIcon}
         <div>
           <div className="font-display font-black text-sm uppercase italic text-white">{description}</div>
-          <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest">
+          <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
             {typeLabel} / {getRelativeTime(timestamp)}
             {metadata?.feeAmount ? ` / frais ${metadata.feeAmount.toFixed(1)} ZC` : ''}
           </div>

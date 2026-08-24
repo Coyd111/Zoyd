@@ -153,7 +153,7 @@ export default function LandingPage() {
                           </div>
                           <span className="font-display font-black text-sm tracking-wide">GHOST_229</span>
                         </div>
-                        <div className="text-3xl font-display font-black text-white/20 italic">VS</div>
+                        <div className="text-3xl font-display font-black text-white/40 italic">VS</div>
                         <div className="flex flex-col items-center gap-2">
                           <div className="w-14 h-14 flex items-center justify-center bg-zoyd-yellow/10 border border-zoyd-yellow/20">
                             <span className="font-display font-black text-sm text-zoyd-yellow">SD</span>
@@ -440,7 +440,7 @@ function LandingNav() {
           <img src="/logo.png" alt="ZOYD" className="h-8 w-auto object-contain" />
         </Link>
 
-        <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/20">
+        <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
           <a href="#platform" className="hover:text-white transition-colors">
             Plateforme
           </a>
@@ -527,7 +527,7 @@ function StatBlock({ number, label }: { number: string; label: string }) {
   return (
     <div className="text-center md:text-left">
       <div className="text-3xl md:text-4xl font-display font-black text-zoyd-yellow italic mb-1">{number}</div>
-      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/20">{label}</div>
+      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/40">{label}</div>
     </div>
   );
 }

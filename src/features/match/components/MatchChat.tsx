@@ -124,13 +124,13 @@ export const MatchChat: React.FC<MatchChatProps> = ({
             </div>
           </div>
 
-          <ShieldCheck className="w-4 h-4 text-white/20 shrink-0" title="Canal securise" />
+          <ShieldCheck className="w-4 h-4 text-white/40 shrink-0" title="Canal securise" />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar font-ui text-sm">
         {!isConnected ? (
-          <div className="h-full flex flex-col items-center justify-center text-white/20 text-center">
+          <div className="h-full flex flex-col items-center justify-center text-white/40 text-center">
             <Terminal className="w-8 h-8 mb-4 opacity-10" />
             <span className="font-mono text-[10px] uppercase font-bold tracking-widest">
               Etablissement de la connexion securisee...

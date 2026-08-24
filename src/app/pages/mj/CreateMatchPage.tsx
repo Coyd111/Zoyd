@@ -182,7 +182,7 @@ const CreateMatchPage: React.FC = () => {
           {[1, 2, 3, 4].map((step) => (
             <div key={step} className="flex-1 flex flex-col gap-2">
               <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} />
-              <span className={`text-[8px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/20'}`}>
+              <span className={`text-[8px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/40'}`}>
                 Etape 0{step}
               </span>
             </div>
@@ -202,7 +202,7 @@ const CreateMatchPage: React.FC = () => {
                       aria-label={`Sélectionner le format ${format}`}
                       className={`group relative p-5 sm:p-6 md:p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
                     >
-                      <p className={`text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/20 group-hover:text-white transition-colors'}`}>
+                      <p className={`text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/40 group-hover:text-white transition-colors'}`}>
                         {format}
                       </p>
                       {selectedFormat === format && (
@@ -495,7 +495,7 @@ const CreateMatchPage: React.FC = () => {
 
 const SummaryBox = ({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) => (
   <div className="bg-black border border-white/5 p-6 flex flex-col items-center text-center">
-    <span className="text-[9px] font-mono font-black text-white/20 uppercase tracking-[0.2em] mb-3 italic">{label}</span>
+    <span className="text-[9px] font-mono font-black text-white/40 uppercase tracking-[0.2em] mb-3 italic">{label}</span>
     <span className={`font-display font-black text-xl italic uppercase ${highlight ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</span>
   </div>
 );

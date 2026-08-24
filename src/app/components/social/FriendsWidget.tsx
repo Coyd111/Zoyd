@@ -71,7 +71,7 @@ const FriendsWidget: React.FC = () => {
           <span className="font-display font-black text-xs tracking-widest uppercase italic text-white">
             Amis ZOYD
           </span>
-          <span className="text-[10px] font-mono font-black text-white/20 uppercase">
+          <span className="text-[10px] font-mono font-black text-white/40 uppercase">
             {onlineFriends.length}/{friends.length} en ligne
           </span>
         </div>
@@ -114,7 +114,7 @@ const FriendsWidget: React.FC = () => {
             <div className="p-3 border-b border-white/5">
               <div className="flex gap-2">
                 <div className="flex-1 relative">
-                  <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+                  <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
                     type="text"
                     value={tab === 'friends' ? search : invitePseudo}
@@ -136,7 +136,7 @@ const FriendsWidget: React.FC = () => {
               {tab === 'friends' && (
                 <div className="divide-y divide-white/5">
                   {filteredFriends.length === 0 && (
-                    <div className="p-4 text-center text-[10px] font-mono text-white/20 uppercase">
+                    <div className="p-4 text-center text-[10px] font-mono text-white/40 uppercase">
                       Aucun ami trouve
                     </div>
                   )}
@@ -152,7 +152,7 @@ const FriendsWidget: React.FC = () => {
                         <div className="font-display font-black text-xs text-white uppercase italic truncate">
                           {friend.pseudo}
                         </div>
-                        <div className="text-[9px] font-mono text-white/20 uppercase">
+                        <div className="text-[9px] font-mono text-white/40 uppercase">
                           {friend.status === 'online'
                             ? 'En ligne'
                             : friend.status === 'in_match'
@@ -163,12 +163,12 @@ const FriendsWidget: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1.5 text-white/20 hover:text-zoyd-blue transition-colors" title="Message" aria-label={`Envoyer un message à ${friend.pseudo}`}>
+                        <button className="p-1.5 text-white/40 hover:text-zoyd-blue transition-colors" title="Message" aria-label={`Envoyer un message à ${friend.pseudo}`}>
                           <MessageCircle className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => removeFriend(friend.id)}
-                          className="p-1.5 text-white/20 hover:text-red-400 transition-colors"
+                          className="p-1.5 text-white/40 hover:text-red-400 transition-colors"
                           title="Supprimer"
                           aria-label={`Supprimer ${friend.pseudo} des amis`}
                         >
@@ -183,7 +183,7 @@ const FriendsWidget: React.FC = () => {
               {tab === 'requests' && (
                 <div className="divide-y divide-white/5">
                   {pendingRequests.length === 0 && (
-                    <div className="p-4 text-center text-[10px] font-mono text-white/20 uppercase">
+                    <div className="p-4 text-center text-[10px] font-mono text-white/40 uppercase">
                       Aucune demande en attente
                     </div>
                   )}
@@ -196,7 +196,7 @@ const FriendsWidget: React.FC = () => {
                         <div className="font-display font-black text-xs text-white uppercase italic truncate">
                           {request.senderPseudo}
                         </div>
-                        <div className="text-[9px] font-mono text-white/20 uppercase">
+                        <div className="text-[9px] font-mono text-white/40 uppercase">
                           Demande d'ami
                         </div>
                       </div>
@@ -211,7 +211,7 @@ const FriendsWidget: React.FC = () => {
                         </button>
                         <button
                           onClick={() => declineRequest(request.id)}
-                          className="p-1.5 text-white/20 hover:text-red-400 transition-colors"
+                          className="p-1.5 text-white/40 hover:text-red-400 transition-colors"
                           title="Refuser"
                           aria-label={`Refuser la demande de ${request.senderPseudo}`}
                         >
@@ -226,7 +226,7 @@ const FriendsWidget: React.FC = () => {
               {tab === 'blocked' && (
                 <div className="divide-y divide-white/5">
                   {blockedIds.length === 0 && (
-                    <div className="p-4 text-center text-[10px] font-mono text-white/20 uppercase">
+                    <div className="p-4 text-center text-[10px] font-mono text-white/40 uppercase">
                       Aucun joueur bloque
                     </div>
                   )}
@@ -237,7 +237,7 @@ const FriendsWidget: React.FC = () => {
                         <div className="font-display font-black text-xs text-white uppercase italic truncate">
                           {blockedId}
                         </div>
-                        <div className="text-[9px] font-mono text-white/20 uppercase">
+                        <div className="text-[9px] font-mono text-white/40 uppercase">
                           Blocage actif
                         </div>
                       </div>

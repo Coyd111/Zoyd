@@ -104,7 +104,7 @@ const TournoisPage: React.FC = () => {
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
               Tournois <br className="hidden sm:block" />
-              <span className="text-white/20 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
+              <span className="text-white/40 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
             </h1>
             <p className="text-white/40 text-base md:text-xl font-light max-w-2xl mb-6">
               Retrouve les tournois ouverts, ceux qui se jouent deja et ceux qui viennent de se terminer.
@@ -161,7 +161,7 @@ const TournoisPage: React.FC = () => {
 
               <div className="flex gap-4 w-full xl:w-[420px]">
                 <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input
                     type="text"
                     value={searchQuery}

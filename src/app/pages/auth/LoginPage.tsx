@@ -115,11 +115,11 @@ const LoginPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/5">
               <div>
                 <div className="text-2xl font-display font-black text-white italic">Profil unique</div>
-                <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest mt-1">Compte centralise</div>
+                <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">Compte centralise</div>
               </div>
               <div>
                 <div className="text-2xl font-display font-black text-white italic">Wallet integre</div>
-                <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest mt-1">Gains et activite</div>
+                <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">Gains et activite</div>
               </div>
             </div>
 
@@ -131,7 +131,7 @@ const LoginPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div className="text-[10px] font-mono text-white/20">
+              <div className="text-[10px] font-mono text-white/40">
                 <span className="text-white/40 font-black">2,847</span> joueurs actifs
               </div>
             </div>
@@ -185,7 +185,7 @@ const LoginPage: React.FC = () => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                  className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/20 hover:text-white transition-colors"
+                  className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/40 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -214,7 +214,7 @@ const LoginPage: React.FC = () => {
                 <div className="w-full border-t border-white/5" />
               </div>
               <div className="relative flex justify-center">
-                <span className="px-4 bg-zoyd-black text-[9px] font-mono text-white/20 uppercase tracking-widest">
+                <span className="px-4 bg-zoyd-black text-[9px] font-mono text-white/40 uppercase tracking-widest">
                   Autres options
                 </span>
               </div>

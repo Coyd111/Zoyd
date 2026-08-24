@@ -23,7 +23,7 @@ const priorityBadge: Record<Notification['priority'], string> = {
   urgent: 'bg-red-500/20 text-red-400 border-red-500/30',
   high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   normal: 'bg-white/5 text-white/30 border-white/10',
-  low: 'bg-white/5 text-white/20 border-white/5',
+  low: 'bg-white/5 text-white/40 border-white/5',
 };
 
 export const NotificationDropdown: React.FC = () => {
@@ -85,7 +85,7 @@ export const NotificationDropdown: React.FC = () => {
                     <Check className="w-3 h-3" /> Tout lire
                   </button>
                 )}
-                <button onClick={() => setOpen(false)} className="text-white/20 hover:text-white transition-colors" aria-label="Fermer">
+                <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white transition-colors" aria-label="Fermer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -106,7 +106,7 @@ export const NotificationDropdown: React.FC = () => {
               {visible.length === 0 ? (
                 <div className="px-4 py-8 text-center">
                   <Bell className="w-8 h-8 text-white/10 mx-auto mb-3" />
-                  <p className="text-white/20 text-xs font-mono uppercase tracking-widest">Aucune notification</p>
+                  <p className="text-white/40 text-xs font-mono uppercase tracking-widest">Aucune notification</p>
                 </div>
               ) : (
                 visible.map((n) => (
@@ -152,7 +152,7 @@ export const NotificationDropdown: React.FC = () => {
                           <span className={`text-[9px] font-mono font-black uppercase tracking-wider px-1.5 py-0.5 border ${priorityBadge[n.priority]}`}>
                             {n.priority}
                           </span>
-                          <span className="text-[9px] font-mono text-white/20">{new Date(n.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[9px] font-mono text-white/40">{new Date(n.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <p className="text-xs font-display font-bold text-white uppercase tracking-tight truncate">{n.title}</p>
                         <p className="text-[10px] font-ui text-white/40 leading-relaxed line-clamp-2">{n.message}</p>

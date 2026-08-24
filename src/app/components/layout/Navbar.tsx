@@ -24,7 +24,7 @@ const Navbar: React.FC = () => {
           <img src="/logo.png?v=2" alt="ZOYD" className="h-8 w-auto object-contain group-hover:opacity-90 transition-opacity" />
         </Link>
 
-        <div className="hidden lg:flex items-center gap-12 font-mono text-[9px] uppercase tracking-[0.3em] text-white/20">
+        <div className="hidden lg:flex items-center gap-12 font-mono text-[9px] uppercase tracking-[0.3em] text-white/40">
           <div className="flex items-center gap-2">
             <span className={`w-1.5 h-1.5 rounded-full ${
               serverConnected

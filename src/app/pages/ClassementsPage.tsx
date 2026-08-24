@@ -59,7 +59,7 @@ const rankIcon = (rank: number) => {
   if (rank === 1) return <Crown className="w-5 h-5 text-zoyd-yellow" />;
   if (rank === 2) return <Medal className="w-5 h-5 text-white/60" />;
   if (rank === 3) return <Medal className="w-5 h-5 text-orange-400" />;
-  return <span className="text-sm font-display font-black text-white/20 w-5 text-center">{rank}</span>;
+  return <span className="text-sm font-display font-black text-white/40 w-5 text-center">{rank}</span>;
 };
 
 const sortWithRank = <T,>(items: T[], sorter: (left: T, right: T) => number) =>
@@ -261,7 +261,7 @@ const ClassementsPage: React.FC = () => {
           <h1 className="text-4xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9]">
             Les
             <br />
-            <span className="text-white/20 underline decoration-zoyd-yellow/50 underline-offset-8">
+            <span className="text-white/40 underline decoration-zoyd-yellow/50 underline-offset-8">
               meilleurs
             </span>
           </h1>
@@ -319,7 +319,7 @@ const ClassementsPage: React.FC = () => {
           </div>
         ) : entries.length === 0 ? (
           <div className="border border-white/5 bg-zoyd-surface/10 p-10 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-white/10 text-white/20">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-white/10 text-white/40">
               <Users className="w-6 h-6" />
             </div>
             <h2 className="font-display font-black text-xl uppercase italic text-white mb-2">
@@ -331,7 +331,7 @@ const ClassementsPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[9px] font-mono font-black uppercase tracking-widest text-white/20 italic">
+            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[9px] font-mono font-black uppercase tracking-widest text-white/40 italic">
               <div className="col-span-1">RANK</div>
               <div className="col-span-3">{activeColumns.primary}</div>
               <div className="col-span-1 text-center">PAYS</div>
@@ -371,7 +371,7 @@ const ClassementsPage: React.FC = () => {
                             : entry.trust >= 70
                               ? 'text-white/60'
                               : 'text-red-300'
-                          : 'text-white/20'
+                          : 'text-white/40'
                       }`}
                     >
                       {typeof entry.trust === 'number' ? entry.trust : '--'}

@@ -114,7 +114,7 @@ const ActivatePage: React.FC = () => {
             </Button>
           </form>
 
-          <p className="text-white/20 text-xs text-center mt-6">
+          <p className="text-white/40 text-xs text-center mt-6">
             Le code expire dans 15 minutes. Verifie tes spams.
           </p>
         </div>

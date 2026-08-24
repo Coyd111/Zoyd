@@ -36,7 +36,7 @@ const Sidebar: React.FC = () => {
     <aside className="hidden md:flex flex-col w-64 min-h-[calc(100dvh-3.5rem)] bg-zoyd-black border-r border-white/5 sticky top-14">
       <div className="flex-1 overflow-y-auto px-4 py-8 space-y-10">
         <div>
-          <div className="text-[9px] font-display font-black text-white/20 uppercase tracking-[0.3em] mb-4 px-3 italic">Navigation</div>
+          <div className="text-[9px] font-display font-black text-white/40 uppercase tracking-[0.3em] mb-4 px-3 italic">Navigation</div>
           <div className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -72,7 +72,7 @@ const Sidebar: React.FC = () => {
         </div>
 
         <div>
-          <div className="text-[9px] font-display font-black text-white/20 uppercase tracking-[0.3em] mb-4 px-3 italic">Communaute</div>
+          <div className="text-[9px] font-display font-black text-white/40 uppercase tracking-[0.3em] mb-4 px-3 italic">Communaute</div>
           <div className="space-y-1">
             {socialItems.map((item) => {
               const Icon = item.icon;

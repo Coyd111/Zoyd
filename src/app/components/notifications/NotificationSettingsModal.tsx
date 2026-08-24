@@ -103,7 +103,7 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
                 <Bell className="w-5 h-5 text-zoyd-yellow" />
                 <h2 className="text-sm font-display font-black uppercase tracking-tighter italic text-white">Notifications ZOYD</h2>
               </div>
-              <button onClick={onClose} className="text-white/20 hover:text-white transition-colors" aria-label="Fermer">
+              <button onClick={onClose} className="text-white/40 hover:text-white transition-colors" aria-label="Fermer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -121,7 +121,7 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
                       <p className="text-[10px] font-mono text-white/30">Matchs, check-in, résultats et litiges directement sur ton bureau.</p>
                     </div>
                     {notifyPerm === 'unsupported' ? (
-                      <span className="text-[9px] font-mono text-white/20 uppercase">Non supporté</span>
+                      <span className="text-[9px] font-mono text-white/40 uppercase">Non supporté</span>
                     ) : pushEnabled ? (
                       <span className="flex items-center gap-1.5 text-[9px] font-mono text-green-400 uppercase">
                         <CheckCircle className="w-3.5 h-3.5" /> Activé

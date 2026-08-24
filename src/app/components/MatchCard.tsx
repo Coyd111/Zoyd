@@ -106,7 +106,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
             <div className="flex flex-col">
               <span className="text-[9px] font-mono text-zoyd-yellow uppercase tracking-widest font-black mb-1">Carte choisie</span>
               <h3 className="text-3xl font-display font-black tracking-tighter italic leading-none">
-                {map} <span className="text-white/20">/</span> {format}
+                {map} <span className="text-white/40">/</span> {format}
               </h3>
             </div>
           </div>
@@ -116,14 +116,14 @@ const MatchCard: React.FC<MatchCardProps> = ({
           <div className="p-3">
             <div className="text-[9px] font-mono text-white/40 uppercase mb-1">A gagner</div>
             <div className="font-display font-black text-xl text-white tracking-tight">{formatZC(pot)}</div>
-            <div className="text-[9px] font-mono text-white/20 uppercase mt-1">Inscription: {formatZC(entryFee)}</div>
+            <div className="text-[9px] font-mono text-white/40 uppercase mt-1">Inscription: {formatZC(entryFee)}</div>
           </div>
           <div className="p-3">
             <div className="text-[9px] font-mono text-white/40 uppercase mb-1">Mode de jeu</div>
             <div className="font-display font-bold text-sm text-white uppercase truncate">
               {gameMode}
             </div>
-            <div className="text-[9px] font-mono text-white/20 uppercase mt-1">
+            <div className="text-[9px] font-mono text-white/40 uppercase mt-1">
               BO{rules.bestOf} / {rules.score} pts
             </div>
           </div>
@@ -135,7 +135,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
             {totalPlayers}/{maxPlayers} joueurs
           </div>
           <div className="flex items-center gap-2 text-white/40">
-            <ShieldCheck className={`w-3.5 h-3.5 ${arbitre ? 'text-zoyd-blue' : 'text-white/20'}`} />
+            <ShieldCheck className={`w-3.5 h-3.5 ${arbitre ? 'text-zoyd-blue' : 'text-white/40'}`} />
             {arbitre ? 'Arbitre confirme' : 'Arbitre a confirmer'}
           </div>
           <div className="flex items-center gap-2 text-white/30">

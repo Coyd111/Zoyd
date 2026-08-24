@@ -233,7 +233,7 @@ const RegisterPage: React.FC = () => {
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <div className="text-xl font-display font-black text-white italic">{stat.value}</div>
-                  <div className="text-[9px] font-mono text-white/20 uppercase tracking-widest mt-1">{stat.label}</div>
+                  <div className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -317,7 +317,7 @@ const RegisterPage: React.FC = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                    className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/20 hover:text-white transition-colors"
+                    className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/40 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -536,23 +536,23 @@ const RegisterPage: React.FC = () => {
 
                 <div className="relative z-10 hud-panel p-6 bg-zoyd-surface/20 border-white/5 text-left space-y-4">
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Identite</span>
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Identite</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.pseudo}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Appareil principal</span>
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Appareil principal</span>
                     <span className="text-xs font-display font-black text-zoyd-blue italic uppercase">{formData.device}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Controle</span>
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Controle</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.controllerType || 'touch'}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Pays</span>
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Pays</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.country || 'Benin'}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Mode streamer</span>
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Mode streamer</span>
                     <span className="text-xs font-display font-black text-zoyd-yellow italic uppercase">
                       {formData.streamerMode ? 'Active' : 'Desactive'}
                     </span>

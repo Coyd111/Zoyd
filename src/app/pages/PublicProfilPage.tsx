@@ -190,7 +190,7 @@ const PublicProfilPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             <div className="relative">
               <div className="w-20 h-20 sm:w-24 sm:h-24 border-2 border-white/10 bg-zoyd-surface flex items-center justify-center">
-                <span className="text-5xl font-display font-black text-white/20 italic">
+                <span className="text-5xl font-display font-black text-white/40 italic">
                   {publicProfile.pseudo.slice(0, 2).toUpperCase()}
                 </span>
               </div>
@@ -350,7 +350,7 @@ const PublicProfilPage: React.FC = () => {
                         <div className={`w-2 h-2 ${isWin ? 'bg-green-500' : 'bg-white/20'}`} />
                         <div>
                           <div className="font-display font-black text-white text-sm uppercase italic">
-                            {match.rules.map} <span className="text-white/20">///</span> {match.rules.mode}
+                            {match.rules.map} <span className="text-white/40">///</span> {match.rules.mode}
                           </div>
                           <div className="text-[10px] font-mono text-white/30 uppercase tracking-wider">
                             {match.format} / {new Date(match.finishedAt || match.createdAt).toLocaleDateString('fr-FR')}
@@ -361,7 +361,7 @@ const PublicProfilPage: React.FC = () => {
                         <div className={`font-display font-black italic text-sm ${isWin ? 'text-zoyd-yellow' : 'text-white/50'}`}>
                           {isWin ? `+${formatZC(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee))}` : formatZC(match.entryFee)}
                         </div>
-                        <div className="text-[10px] font-mono text-white/20 uppercase">
+                        <div className="text-[10px] font-mono text-white/40 uppercase">
                           {match.status === 'disputed' ? 'LITIGE' : match.status}
                         </div>
                       </div>
@@ -400,7 +400,7 @@ const PublicProfilPage: React.FC = () => {
                       <div className="font-display font-black text-zoyd-yellow italic text-sm">
                         Top {placement.placement}
                       </div>
-                      <div className="text-[10px] font-mono text-white/20 uppercase">
+                      <div className="text-[10px] font-mono text-white/40 uppercase">
                         {placement.payout > 0 ? formatZC(placement.payout) : 'Participation'}
                       </div>
                     </div>

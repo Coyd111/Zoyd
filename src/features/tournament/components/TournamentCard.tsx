@@ -55,7 +55,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
             {status.label}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-[9px] font-mono font-bold text-white/20 uppercase">
+        <div className="flex items-center gap-1.5 text-[9px] font-mono font-bold text-white/40 uppercase">
           <Users className="w-3 h-3" />
           {entryLabel}
         </div>
@@ -74,9 +74,9 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
 
       <div className="grid grid-cols-2 gap-4 border-y border-white/5 py-4 mb-8">
         <div className="flex items-center gap-3">
-          <Clock3 className="w-4 h-4 text-white/20" />
+          <Clock3 className="w-4 h-4 text-white/40" />
           <div>
-            <div className="text-[9px] font-mono uppercase tracking-widest text-white/20">Depart</div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-white/40">Depart</div>
             <div className="text-[10px] font-display font-black uppercase italic text-white">
               {tournament.status === 'completed'
                 ? `Termine ${getRelativeTime(tournament.finishedAt || tournament.startsAt)}`
@@ -92,7 +92,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
         <div className="flex items-center justify-end gap-3">
           <Trophy className="w-4 h-4 text-zoyd-yellow" />
           <div className="text-right">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-white/20">A gagner</div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-white/40">A gagner</div>
             <div className="text-[10px] font-display font-black uppercase italic text-zoyd-yellow">
               {formatZC(tournament.payout.playerPool)}
             </div>
@@ -118,7 +118,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
           </div>
         ) : (
           <div>
-            <div className="flex justify-between text-[9px] font-mono font-black text-white/20 uppercase tracking-widest mb-2">
+            <div className="flex justify-between text-[9px] font-mono font-black text-white/40 uppercase tracking-widest mb-2">
               <span>{slotLabel}</span>
               <span>
                 {tournament.entries.length} / {tournament.maxEntries}
@@ -144,7 +144,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
         )}
 
         <div className="flex items-center justify-between border-t border-white/5 pt-4">
-          <div className="text-[9px] font-mono uppercase tracking-widest text-white/20">
+          <div className="text-[9px] font-mono uppercase tracking-widest text-white/40">
             Inscription {formatZC(tournament.entryFee)} / joueur
           </div>
           <div className="inline-flex items-center gap-2 text-xs font-display font-black uppercase tracking-[0.18em] italic text-white group-hover:text-zoyd-yellow transition-colors">

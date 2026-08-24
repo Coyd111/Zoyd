@@ -197,7 +197,7 @@ const ChatPage: React.FC = () => {
                   <span className="truncate max-w-[120px]">{channel.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {channel.isMuted && <BellOff className="w-3 h-3 text-white/20" />}
+                  {channel.isMuted && <BellOff className="w-3 h-3 text-white/40" />}
                   {channel.unreadCount > 0 && !channel.isMuted && (
                     <span className="bg-zoyd-blue text-white text-[9px] px-1.5 py-0.5 font-mono font-bold">
                       {channel.unreadCount}
@@ -209,7 +209,7 @@ const ChatPage: React.FC = () => {
           </div>
 
           <div className="border-t border-white/5 p-4">
-            <div className="text-[9px] font-mono font-black uppercase tracking-widest text-white/20 mb-3 italic">
+            <div className="text-[9px] font-mono font-black uppercase tracking-widest text-white/40 mb-3 italic">
               Amis en ligne
             </div>
             <div className="space-y-2">
@@ -220,7 +220,7 @@ const ChatPage: React.FC = () => {
                 </div>
               ))}
               {onlineFriends.length === 0 && (
-                <div className="text-[10px] font-mono text-white/20">Aucun ami connecte</div>
+                <div className="text-[10px] font-mono text-white/40">Aucun ami connecte</div>
               )}
             </div>
           </div>
@@ -234,7 +234,7 @@ const ChatPage: React.FC = () => {
                   {channelIcons[activeChannel.type] || <Hash className="w-4 h-4 text-white/40" />}
                   <div>
                     <h2 className="font-display font-black text-white text-sm uppercase italic">{activeChannel.name}</h2>
-                    <span className="text-[9px] font-mono text-white/20 uppercase tracking-wider">
+                    <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider">
                       {activeChannel.participants.length} participant{activeChannel.participants.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -243,7 +243,7 @@ const ChatPage: React.FC = () => {
                   onClick={() =>
                     activeChannel.isMuted ? unmuteChannel(activeChannel.id) : muteChannel(activeChannel.id)
                   }
-                  className="text-white/20 hover:text-white transition-colors"
+                  className="text-white/40 hover:text-white transition-colors"
                   aria-label={activeChannel.isMuted ? 'Activer les notifications' : 'Couper les notifications'}
                 >
                   {activeChannel.isMuted ? <BellOff className="w-4 h-4" /> : <MoreVertical className="w-4 h-4" />}
@@ -296,7 +296,7 @@ const ChatPage: React.FC = () => {
                           <span className={`text-[10px] font-display font-black tracking-widest uppercase ${isMe ? 'text-white' : 'text-white/40'}`}>
                             {message.senderPseudo}
                           </span>
-                          <span className="text-[9px] font-mono text-white/20">{getRelativeTime(message.timestamp)}</span>
+                          <span className="text-[9px] font-mono text-white/40">{getRelativeTime(message.timestamp)}</span>
                           {isMe && <div className="w-1.5 h-1.5 bg-zoyd-yellow" />}
                         </div>
                         <div

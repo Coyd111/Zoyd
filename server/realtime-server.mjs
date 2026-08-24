@@ -748,25 +748,6 @@ const requireAdmin = (req, res) => {
   return session;
 };
 
-/**
- * SEC-S10: Sanitize error messages before sending to clients.
- * Prevents internal error details, stack traces, or DB errors from leaking.
- */
-const sanitizeError = (error) => {
-  if (error?.code === 'PAYLOAD_TOO_LARGE' || error?.code === 'INVALID_JSON') {
-    return error.message;
-  }
-  if (error?.code?.startsWith('DUPLICATE_') || error?.code === 'INVALID_REGISTRATION' ||
-      error?.code === 'INVALID_AMOUNT' || error?.code === 'INSUFFICIENT_FUNDS' ||
-      error?.code === 'WITHDRAWAL_MIN' || error?.code === 'CHANNEL_NOT_FOUND' ||
-      error?.code === 'USER_NOT_FOUND' || error?.code === 'INVALID_REQUEST' ||
-      error?.code === 'INVALID_CREDENTIALS') {
-    return error.message;
-  }
-  // Generic message for unexpected errors — never expose internals
-  return 'Une erreur interne est survenue.';
-};
-
 // ─── TOTP 2FA (RFC 6238) ──────────────────────────────────────────────────
 const TOTP_DIGITS = 6;
 const TOTP_PERIOD = 30;

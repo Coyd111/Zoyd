@@ -411,6 +411,16 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
     throw makeError('INVALID_RESULTS', 'Les resultats sont invalides.');
   }
 
+  const registeredIds = new Set(daySlot.players);
+  for (const r of results) {
+    if (!r.userId || !registeredIds.has(r.userId)) {
+      throw makeError('INVALID_RESULTS', 'Un resultats reference un joueur non inscrit a cette journee.');
+    }
+    if (Number(r.placement) < 1 || Number(r.placement) > 100) {
+      throw makeError('INVALID_RESULTS', 'Le classement doit etre entre 1 et 100.');
+    }
+  }
+
   const processedResults = results.map((r) => {
     const placement = Number(r.placement);
     const kills = Number(r.kills || 0);
@@ -495,6 +505,16 @@ export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId,
   if (season.status !== 'final') throw makeError('MATCH_CLOSED', 'La ligue n est pas en phase de finale.');
   if (!Array.isArray(finalResults) || finalResults.length === 0) {
     throw makeError('INVALID_RESULTS', 'Les resultats de la finale sont invalides.');
+  }
+
+  const finalistIds = new Set(season.finalists.map((f) => f.userId));
+  for (const r of finalResults) {
+    if (!r.userId || !finalistIds.has(r.userId)) {
+      throw makeError('INVALID_RESULTS', 'Un resultats reference un joueur non qualifie pour la finale.');
+    }
+    if (Number(r.placement) < 1 || Number(r.placement) > LEAGUE_FINAL_TABLE_SIZE) {
+      throw makeError('INVALID_RESULTS', `Le classement doit etre entre 1 et ${LEAGUE_FINAL_TABLE_SIZE}.`);
+    }
   }
 
   const processedFinal = finalResults.map((r) => ({

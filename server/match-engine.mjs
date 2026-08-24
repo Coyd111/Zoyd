@@ -15,7 +15,6 @@ export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 
 const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];
 const TERMINAL_STATUSES = ['finished', 'cancelled', 'forfeited'];
-export const roundAmount = (value) => Math.round(Number(value || 0) * 100) / 100;
 const getNow = () => new Date().toISOString();
 export const getTeamSize = (format) => parseInt(format.split('VS')[0], 10);
 export const getSquadLabel = (team) => (team === 0 ? 'Squad Alpha' : 'Squad Bravo');
@@ -237,15 +236,19 @@ const applyResultSettlement = async (match, result) => {
   }
 
   if (match.arbiter?.userId && match.arbiterFee > 0) {
-    await withWalletMutex(match.arbiter.userId, () => {
-      releaseWalletWinnings(
-        match.arbiter.userId,
-        match.arbiterFee,
-        match.id,
-        'arbitration_fee',
-        `Commission arbitre ${match.id}`
-      );
-    });
+    try {
+      await withWalletMutex(match.arbiter.userId, () => {
+        releaseWalletWinnings(
+          match.arbiter.userId,
+          match.arbiterFee,
+          match.id,
+          'arbitration_fee',
+          `Commission arbitre ${match.id}`
+        );
+      });
+    } catch (err) {
+      log.error('Arbiter payout error', { matchId: match.id, arbiterId: match.arbiter.userId, error: err.message });
+    }
   }
 };
 
@@ -510,6 +513,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   if (match.arbiter?.userId !== actorUser.id && actorUser.role !== 'admin') {
     throw makeError('FORBIDDEN', 'Seul l arbitre ou un admin peut valider le score.');
   }
+  if (match.result) throw makeError('RESULT_NOT_FOUND', 'Ce match a deja un resultat valide.');
 
   const normalizedProofs = resultPayload.proofs
     ? {

@@ -103,6 +103,10 @@ const ParametresPage: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (form.phone && !/^\+?[\d\s-]{7,15}$/.test(form.phone)) {
+      toast.error('Numero de telephone invalide.');
+      return;
+    }
     setIsSaving(true);
     try {
       const updates = {
@@ -122,6 +126,8 @@ const ParametresPage: React.FC = () => {
       if (response.ok) {
         updateUser(response.user);
         toast.success('Tes préférences ont bien été enregistrées.');
+      } else {
+        toast.error('Impossible d\'enregistrer tes paramètres. Réessaye plus tard.');
       }
     } catch {
       toast.error('Erreur lors de la sauvegarde de tes paramètres.');
@@ -183,26 +189,30 @@ const ParametresPage: React.FC = () => {
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
         <div className="lg:col-span-1 space-y-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-4 px-4 py-3.5 touch-target font-display font-black text-xs tracking-widest italic uppercase transition-all ${
-                  isActive
-                    ? 'bg-white text-black shadow-[4px_0_0_0_#FFE600]'
-                    : 'text-white/40 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+          <nav className="space-y-2" role="tablist" aria-label="Parametres">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  id={`tab-${tab.id}`}
+                  aria-selected={isActive}
+                  aria-controls={`panel-${tab.id}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-4 px-4 py-3.5 touch-target font-display font-black text-xs tracking-widest italic uppercase transition-all ${
+                    isActive
+                      ? 'bg-white text-black shadow-[4px_0_0_0_#FFE600]'
+                      : 'text-white/40 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
 
           <div className="hud-panel p-4 mt-6 bg-red-500/5 border-red-500/20">
             <div className="flex items-start gap-3">
@@ -211,7 +221,7 @@ const ParametresPage: React.FC = () => {
                 <h4 className="text-[10px] font-mono font-black uppercase tracking-widest text-red-400 mb-1">
                   A savoir
                 </h4>
-                <p className="text-[10px] font-mono text-white/30">
+                <p className="text-[10px] font-mono text-white/40">
                   Ce que tu changes ici peut modifier les matchs et tournois qui te sont proposes, ainsi que ce que les autres voient sur ton profil.
                 </p>
               </div>
@@ -228,7 +238,7 @@ const ParametresPage: React.FC = () => {
             className="space-y-8"
           >
             {activeTab === 'account' ? (
-              <>
+              <div role="tabpanel" id="panel-account" aria-labelledby="tab-account">
                 <SectionTitle title="Ton compte" />
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input label="Pseudo" value={user.pseudo} disabled helperText="Le nom qui t'identifie sur ZOYD." />
@@ -251,12 +261,14 @@ const ParametresPage: React.FC = () => {
 
                 <SectionTitle title="Profil public" />
                 <div className="space-y-4">
-                  <label className="block space-y-2">
+                  <label htmlFor="bio-field" className="block space-y-2">
                     <span className="block text-sm font-medium text-white">Bio</span>
                     <textarea
+                      id="bio-field"
                       value={form.bio}
                       onChange={(event) => updateForm('bio', event.target.value)}
                       rows={4}
+                      maxLength={500}
                       className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white/30 focus:outline-none focus:border-zoyd-yellow transition-all duration-200"
                       placeholder="Quelques lignes pour decrire ton style de jeu ou ton identite competitive."
                     />
@@ -265,7 +277,7 @@ const ParametresPage: React.FC = () => {
                   <div className="hud-panel p-4 bg-zoyd-surface/20 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                       <div className="font-display font-black text-white text-sm uppercase italic">Mode streamer</div>
-                      <div className="text-[10px] font-mono text-white/30 uppercase tracking-widest mt-1">
+                      <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">
                         Affiche un pseudo different quand tu veux jouer ou streamer plus discretement.
                       </div>
                     </div>
@@ -289,11 +301,11 @@ const ParametresPage: React.FC = () => {
                     />
                   ) : null}
                 </div>
-              </>
+              </div>
             ) : null}
 
             {activeTab === 'security' ? (
-              <>
+              <div role="tabpanel" id="panel-security" aria-labelledby="tab-security">
                 <SectionTitle title="Changer le mot de passe" />
                 <div className="space-y-4 max-w-md">
                   <Input
@@ -347,11 +359,11 @@ const ParametresPage: React.FC = () => {
                   <StatusCard label="Solde affiche" value={user.walletBalance.toFixed(1) + ' ZC'} accent="text-white" />
                   <StatusCard label="Connexion" value={user.isOnline ? 'Active' : 'Hors ligne'} accent={user.isOnline ? 'text-green-400' : 'text-white/50'} />
                 </div>
-              </>
+              </div>
             ) : null}
 
             {activeTab === 'gaming' ? (
-              <>
+              <div role="tabpanel" id="panel-gaming" aria-labelledby="tab-gaming">
                 <SectionTitle title="Ton compte CODM" />
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input label="Game ID" value={user.gameId} disabled helperText="Ton identifiant CODM deja lie a ce compte." />
@@ -403,11 +415,11 @@ const ParametresPage: React.FC = () => {
                     Ton appareil et ton type de controle servent seulement a mieux te proposer des matchs et tournois. Les autres joueurs ne les voient pas automatiquement.
                   </p>
                 </div>
-              </>
+              </div>
             ) : null}
 
             {activeTab === 'notifications' ? (
-              <>
+              <div role="tabpanel" id="panel-notifications" aria-labelledby="tab-notifications">
                 <SectionTitle title="Ce que tu veux recevoir" />
                 <div className="space-y-3">
                   <NotificationRow
@@ -454,15 +466,15 @@ const ParametresPage: React.FC = () => {
                     Tout marquer comme lu
                   </Button>
                 </div>
-              </>
+              </div>
             ) : null}
 
-              <div className="flex justify-end pt-4 border-t border-white/5">
-                <Button variant="primary" onClick={handleSave} disabled={isSaving}>
-                  <Save className="w-4 h-4 mr-2" />
-                  {isSaving ? 'SAUVEGARDE...' : 'ENREGISTRER LES MODIFICATIONS'}
-                </Button>
-              </div>
+            <div className="flex justify-end pt-4 border-t border-white/5">
+              <Button variant="primary" onClick={handleSave} disabled={isSaving}>
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? 'SAUVEGARDE...' : 'ENREGISTRER LES MODIFICATIONS'}
+              </Button>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -470,13 +482,13 @@ const ParametresPage: React.FC = () => {
   );
 };
 
-const SectionTitle = ({ title }: { title: string }) => (
+const SectionTitle = React.memo(({ title }: { title: string }) => (
   <h2 className="text-lg font-display font-black uppercase tracking-tighter italic border-b border-white/5 pb-2">
     {title}
   </h2>
-);
+));
 
-const SelectField = ({
+const SelectField = React.memo(({
   label,
   value,
   onChange,
@@ -501,16 +513,16 @@ const SelectField = ({
       ))}
     </select>
   </label>
-);
+));
 
-const StatusCard = ({ label, value, accent }: { label: string; value: string; accent: string }) => (
+const StatusCard = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="hud-panel p-5 bg-zoyd-surface/20">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">{label}</div>
     <div className={`font-display font-black italic ${accent}`}>{value}</div>
   </div>
-);
+));
 
-const NotificationRow = ({
+const NotificationRow = React.memo(({
   label,
   desc,
   value,
@@ -526,7 +538,7 @@ const NotificationRow = ({
     <div className="hud-panel p-4 bg-zoyd-surface/20 flex items-center justify-between gap-4">
       <label htmlFor={id} className="flex-1 cursor-pointer">
         <div className="font-display font-black text-white text-sm uppercase italic">{label}</div>
-        <div className="text-[10px] font-mono text-white/30 mt-1">{desc}</div>
+        <div className="text-[10px] font-mono text-white/40 mt-1">{desc}</div>
       </label>
       <input
         id={id}
@@ -537,6 +549,6 @@ const NotificationRow = ({
       />
     </div>
   );
-};
+});
 
 export default ParametresPage;

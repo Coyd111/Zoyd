@@ -250,26 +250,27 @@ const CreateTournamentPage: React.FC = () => {
 
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className="lg:col-span-2">
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="tournament-name" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Nom du tournoi
                   </label>
                   <input
+                    id="tournament-name"
                     {...register('name', { required: true, minLength: 4 })}
                     placeholder="Ex: Raid Solo Night Cup"
                     className="w-full bg-black border border-white/10 p-4 text-sm font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                   />
                   {errors.name ? (
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-2">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-2" role="alert">
                       Minimum 4 caracteres pour nommer le tournoi.
                     </p>
                   ) : null}
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="format-group" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Format du tournoi
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div id="format-group" role="radiogroup" aria-labelledby="format-group" className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {MJ_FORMATS.map((format) => {
                       const selected = selectedFormat === format;
                       const formatTeamSize = Number(format.split('VS')[0] || 1);
@@ -277,8 +278,11 @@ const CreateTournamentPage: React.FC = () => {
                         <button
                           key={format}
                           type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          aria-label={`Format ${format}, ${formatTeamSize === 1 ? 'solo' : `squad ${formatTeamSize} joueurs`}`}
                           onClick={() => setValue('format', format)}
-                          className={`border p-4 text-left transition-all ${
+                          className={`border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                             selected
                               ? 'border-zoyd-yellow bg-zoyd-yellow/10 text-zoyd-yellow'
                               : 'border-white/10 hover:border-white/30 text-white/40'
@@ -295,14 +299,20 @@ const CreateTournamentPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="starts-at" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Debut souhaite
                   </label>
                   <input
+                    id="starts-at"
                     type="datetime-local"
                     {...register('startsAt', { required: true })}
                     className="w-full bg-black border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                   />
+                  {errors.startsAt ? (
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-2" role="alert">
+                      La date de debut est requise.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -315,16 +325,19 @@ const CreateTournamentPage: React.FC = () => {
 
               <div className="space-y-8">
                 <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="mode-group" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Mode de jeu
                   </label>
-                  <div className="grid md:grid-cols-2 gap-3">
+                  <div id="mode-group" role="radiogroup" aria-labelledby="mode-group" className="grid md:grid-cols-2 gap-3">
                     {MJ_MODE_OPTIONS.map((mode) => (
                       <button
                         key={mode.id}
                         type="button"
+                        role="radio"
+                        aria-checked={selectedMode === mode.name}
+                        aria-label={`Mode ${mode.name}: ${mode.desc}`}
                         onClick={() => setValue('mode', mode.name)}
-                        className={`p-4 border text-left transition-all ${
+                        className={`p-4 border text-left transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                           selectedMode === mode.name
                             ? 'border-white bg-white/5'
                             : 'border-white/5 hover:border-white/20'
@@ -340,18 +353,21 @@ const CreateTournamentPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="map-pool" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Cartes au programme
                   </label>
-                  <div className="max-h-[300px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div id="map-pool" role="group" aria-label="Selection des cartes" className="max-h-[300px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-2">
                     {MJ_MAP_POOL.map((map) => {
                       const selected = selectedMapPool.includes(map);
                       return (
                         <button
                           key={map}
                           type="button"
+                          role="checkbox"
+                          aria-checked={selected}
+                          aria-label={`Carte ${map}`}
                           onClick={() => toggleMap(map)}
-                          className={`p-3 border text-xs font-display font-black italic uppercase transition-all ${
+                          className={`min-h-[44px] p-3 border text-xs font-display font-black italic uppercase transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                             selected
                               ? 'bg-white text-black border-white'
                               : 'border-white/5 hover:border-white/20 text-white/40'
@@ -366,12 +382,12 @@ const CreateTournamentPage: React.FC = () => {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                    <label htmlFor="weapon-restrictions" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                       Restriction d&apos;armes
                     </label>
                     <select
+                      id="weapon-restrictions"
                       {...register('weaponRestrictions')}
-                      aria-label="Restriction d'armes"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       {WEAPON_OPTIONS.map((weapon) => (
@@ -383,12 +399,12 @@ const CreateTournamentPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                    <label htmlFor="pointstreaks" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                       Point streaks
                     </label>
                     <select
+                      id="pointstreaks"
                       {...register('pointstreaks')}
-                      aria-label="Point streaks"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       <option value="restricted">Interdites</option>
@@ -397,40 +413,41 @@ const CreateTournamentPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                    <label htmlFor="score-target" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                       Score cible
                     </label>
                     <input
+                      id="score-target"
                       type="number"
                       min={1}
-                      {...register('scoreTarget', { valueAsNumber: true })}
-                      aria-label="Score cible"
+                      {...register('scoreTarget', { valueAsNumber: true, min: 1 })}
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                    <label htmlFor="best-of" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                       Best of
                     </label>
                     <input
+                      id="best-of"
                       type="number"
                       min={1}
-                      {...register('bestOf', { valueAsNumber: true })}
-                      aria-label="Best of"
+                      {...register('bestOf', { valueAsNumber: true, min: 1 })}
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     />
                   </div>
                 </div>
 
-                <label className="flex items-center gap-4 cursor-pointer group">
-                  <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
+                <label htmlFor="melee-allowed" className="flex items-center gap-4 cursor-pointer group">
+                  <div className="min-w-[44px] min-h-[44px] w-11 h-11 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
                     <input
+                      id="melee-allowed"
                       type="checkbox"
                       {...register('meleeAllowed')}
-                      className="opacity-0 absolute w-5 h-5 cursor-pointer peer"
+                      className="opacity-0 absolute w-11 h-11 cursor-pointer peer"
                     />
-                    <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
+                    <div className="w-3 h-3 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                   </div>
                   <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
                     Corps a corps autorise
@@ -438,10 +455,11 @@ const CreateTournamentPage: React.FC = () => {
                 </label>
 
                 <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="match-notes" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Notes de match
                   </label>
                   <textarea
+                    id="match-notes"
                     {...register('notes')}
                     className="w-full min-h-28 bg-black border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                   />
@@ -457,16 +475,19 @@ const CreateTournamentPage: React.FC = () => {
 
               <div className="space-y-8">
                 <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="entry-fee" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Pass par joueur
                   </label>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                  <div id="entry-fee" role="radiogroup" aria-labelledby="entry-fee" className="grid grid-cols-3 md:grid-cols-6 gap-2">
                     {ENTRY_OPTIONS.map((amount) => (
                       <button
                         key={amount}
                         type="button"
+                        role="radio"
+                        aria-checked={selectedEntryFee === amount}
+                        aria-label={`Frais d'entree ${amount} ZC`}
                         onClick={() => setValue('entryFee', amount)}
-                        className={`p-3 border font-display font-black italic text-sm transition-all ${
+                        className={`min-h-[44px] p-3 border font-display font-black italic text-sm transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                           selectedEntryFee === amount
                             ? 'border-zoyd-yellow bg-zoyd-yellow/10 text-zoyd-yellow'
                             : 'border-white/5 hover:border-zoyd-yellow text-zoyd-yellow'
@@ -479,16 +500,19 @@ const CreateTournamentPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                  <label htmlFor="max-entries" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Nombre de places
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div id="max-entries" role="radiogroup" aria-labelledby="max-entries" className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {MAX_ENTRY_OPTIONS.map((amount) => (
                       <button
                         key={amount}
                         type="button"
+                        role="radio"
+                        aria-checked={selectedMaxEntries === amount}
+                        aria-label={`${amount} places maximum`}
                         onClick={() => setValue('maxEntries', amount)}
-                        className={`p-4 border font-display font-black italic text-sm transition-all ${
+                        className={`min-h-[44px] p-4 border font-display font-black italic text-sm transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                           selectedMaxEntries === amount
                             ? 'bg-white text-black border-white'
                             : 'border-white/10 text-white/40 hover:border-white/30'
@@ -502,12 +526,12 @@ const CreateTournamentPage: React.FC = () => {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                    Appareils acceptes
-                  </label>
+                    <label htmlFor="device-restriction" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                      Appareils acceptes
+                    </label>
                     <select
+                      id="device-restriction"
                       {...register('deviceRestriction')}
-                      aria-label="Appareils acceptes"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       <option value="open">Ouvert</option>
@@ -520,12 +544,12 @@ const CreateTournamentPage: React.FC = () => {
                   </div>
 
                   <div>
-                  <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                    Type de controle accepte
-                  </label>
+                    <label htmlFor="controller-restriction" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                      Type de controle accepte
+                    </label>
                     <select
+                      id="controller-restriction"
                       {...register('controllerRestriction')}
-                      aria-label="Type de controle accepte"
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
                     >
                       <option value="open">Ouvert</option>
@@ -538,14 +562,15 @@ const CreateTournamentPage: React.FC = () => {
                   </div>
                 </div>
 
-                <label className="flex items-center gap-4 cursor-pointer group">
-                  <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
+                <label htmlFor="reserve-arbiter" className="flex items-center gap-4 cursor-pointer group">
+                  <div className="min-w-[44px] min-h-[44px] w-11 h-11 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
                     <input
+                      id="reserve-arbiter"
                       type="checkbox"
                       {...register('reserveCreatorAsArbiter')}
-                      className="opacity-0 absolute w-5 h-5 cursor-pointer peer"
+                      className="opacity-0 absolute w-11 h-11 cursor-pointer peer"
                     />
-                    <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
+                    <div className="w-3 h-3 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                   </div>
                   <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
                     Je veux tenir la premiere place d'arbitre
@@ -591,10 +616,10 @@ const CreateTournamentPage: React.FC = () => {
             </div>
 
             <div className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/40">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-4">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-4">
                 Publication
               </div>
-              <p className="text-sm text-white/45 mb-6">
+              <p className="text-sm text-white/60 mb-6">
                 Ton tournoi apparaitra d&apos;abord dans les inscriptions ouvertes. Les joueurs rejoignent ensuite
                 depuis leur profil, pendant que tu gardes la main sur l&apos;organisation.
               </p>
@@ -625,7 +650,7 @@ const CreateTournamentPage: React.FC = () => {
 
 const SummaryBox = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1">{label}</div>
     <div className="font-display font-black text-white italic">{value}</div>
   </div>
 );

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Check, ShieldCheck } from 'lucide-react';
@@ -61,6 +61,16 @@ const CreateMatchPage: React.FC = () => {
   const selectedCreatorTeam = Number(watch('creatorTeam') || 0);
   const availableSpend = getAvailableToSpend();
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && currentStep > 1 && !isSubmitting) {
+        setCurrentStep((prev) => prev - 1);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentStep, isSubmitting]);
+
   const playerSlots = useMemo(() => {
     return selectedFormat ? parseInt(selectedFormat.split('VS')[0], 10) * 2 : 2;
   }, [selectedFormat]);
@@ -96,6 +106,11 @@ const CreateMatchPage: React.FC = () => {
   };
 
   const onStep3Submit = (data: Partial<MatchFormData>) => {
+    if (!selectedPass || selectedPass <= 0) {
+      toast.error('Choisis une mise valide pour continuer.');
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, ...data }));
     setCurrentStep(4);
   };
@@ -178,16 +193,16 @@ const CreateMatchPage: React.FC = () => {
           </div>
         </header>
 
-        <div className="flex items-center gap-4 mb-16">
+        <nav aria-label="Progression des étapes" className="flex items-center gap-4 mb-16">
           {[1, 2, 3, 4].map((step) => (
-            <div key={step} className="flex-1 flex flex-col gap-2">
-              <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} />
+            <div key={step} className="flex-1 flex flex-col gap-2" aria-current={step === currentStep ? 'step' : undefined}>
+              <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} role="progressbar" aria-valuenow={step <= currentStep ? 100 : 0} aria-valuemin={0} aria-valuemax={100} />
               <span className={`text-[8px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/40'}`}>
                 Etape 0{step}
               </span>
             </div>
           ))}
-        </div>
+        </nav>
 
         <AnimatePresence mode="wait">
           {currentStep === 1 && (
@@ -215,7 +230,7 @@ const CreateMatchPage: React.FC = () => {
                 </div>
                 <button
                   onClick={onStep1Submit}
-                  className="bg-white text-black w-full py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow disabled:opacity-20 transition-all flex items-center justify-center gap-4"
+                  className="bg-white text-black w-full py-5 min-h-[44px] font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow disabled:opacity-20 transition-all flex items-center justify-center gap-4"
                   disabled={!selectedFormat}
                   aria-label="Continuer à l'étape suivante"
                 >
@@ -283,10 +298,10 @@ const CreateMatchPage: React.FC = () => {
 
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
+                        <label htmlFor="weapons" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Restriction d'armes
                         </label>
-                        <select {...register('weapons')} aria-label="Restriction d'armes" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                        <select id="weapons" {...register('weapons')} aria-label="Restriction d'armes" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
                           {WEAPON_OPTIONS.map((weapon) => (
                             <option key={weapon} value={weapon}>
                               {weapon}
@@ -295,31 +310,31 @@ const CreateMatchPage: React.FC = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
+                        <label htmlFor="pointstreaks" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Point streaks
                         </label>
-                        <select {...register('pointstreaks')} aria-label="Point streaks" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                        <select id="pointstreaks" {...register('pointstreaks')} aria-label="Point streaks" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
                           <option value="restricted">Interdites</option>
                           <option value="allowed">Permises</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
+                        <label htmlFor="score" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Score cible
                         </label>
-                        <input type="number" {...register('score')} placeholder="15" aria-label="Score cible" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
+                        <input id="score" type="number" {...register('score')} placeholder="15" aria-label="Score cible" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
+                        <label htmlFor="bestOf" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Best of
                         </label>
-                        <input type="number" {...register('bestOf')} placeholder="3" aria-label="Best of" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
+                        <input id="bestOf" type="number" {...register('bestOf')} placeholder="3" aria-label="Best of" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
                       </div>
                     </div>
 
-                    <label className="flex items-center gap-4 cursor-pointer group">
+                    <label htmlFor="meleeAllowed" className="flex items-center gap-4 cursor-pointer group">
                       <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
-                        <input type="checkbox" {...register('meleeAllowed')} aria-label="Autoriser le corps à corps" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
+                        <input id="meleeAllowed" type="checkbox" {...register('meleeAllowed')} aria-label="Autoriser le corps à corps" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
                         <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                       </div>
                       <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
@@ -365,7 +380,7 @@ const CreateMatchPage: React.FC = () => {
                           </button>
                         ))}
                       </div>
-                      <input {...register('passAmount')} type="number" inputMode="numeric" step="0.5" placeholder="Montant personnalise" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:outline-none focus:border-zoyd-yellow transition-all" />
+                      <input id="passAmount" {...register('passAmount')} type="number" inputMode="numeric" step="0.5" placeholder="Montant personnalise" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:outline-none focus:border-zoyd-yellow transition-all" />
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8 items-start">
@@ -390,10 +405,10 @@ const CreateMatchPage: React.FC = () => {
 
                       <div className="space-y-6">
                         <div>
-                          <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                          <label htmlFor="trustScoreMin" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                             Niveau de confiance minimum
                           </label>
-                          <select {...register('trustScoreMin')} aria-label="Niveau de confiance minimum" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                          <select id="trustScoreMin" {...register('trustScoreMin')} aria-label="Niveau de confiance minimum" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
                             <option value="0">Aucun (0+)</option>
                             <option value="30">30+</option>
                             <option value="50">50+</option>
@@ -421,9 +436,9 @@ const CreateMatchPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <label className="flex items-center gap-4 cursor-pointer group">
+                        <label htmlFor="isPrivate" className="flex items-center gap-4 cursor-pointer group">
                           <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
-                            <input type="checkbox" {...register('isPrivate')} aria-label="Partie privée sur invitation" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
+                            <input id="isPrivate" type="checkbox" {...register('isPrivate')} aria-label="Partie privée sur invitation" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
                             <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                           </div>
                           <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
@@ -435,10 +450,10 @@ const CreateMatchPage: React.FC = () => {
                   </div>
 
                   <div className="flex gap-4">
-                    <button type="button" onClick={() => setCurrentStep(2)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => setCurrentStep(2)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 min-h-[44px] font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </button>
-                    <button type="submit" aria-label="Passer au récapitulatif" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4">
+                    <button type="submit" aria-label="Passer au récapitulatif" className="flex-[2] bg-white text-black py-5 min-h-[44px] font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
                       Recapitulatif <ChevronRight className="w-6 h-6" />
                     </button>
                   </div>

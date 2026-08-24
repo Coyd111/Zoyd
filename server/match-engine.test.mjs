@@ -13,8 +13,8 @@ vi.mock('./wallet-engine.mjs', () => ({
   settleMatchLossWallet: vi.fn(),
 }));
 
-// Import after mocking
 import * as matchEngine from './match-engine.mjs';
+import { getUserById } from './persistence.mjs';
 
 describe('match-engine - XP Progression', () => {
   it('should add XP and stay at same level when below threshold', () => {
@@ -332,5 +332,57 @@ describe('match-engine - Winner Payout', () => {
       arbiterFee: 5,
     };
     expect(matchEngine.getWinnerPayout(match)).toBe(0);
+  });
+});
+
+describe('match-engine - submitMatchResultOnServer idempotency', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue({ id: 'arb-1', pseudo: 'Arbiter', role: 'arbiter', wallet: {} });
+  });
+
+  it('should reject if match already has a result', async () => {
+    const match = {
+      id: 'M-1',
+      arbiter: { userId: 'arb-1' },
+      status: 'in_progress',
+      result: { winnerTeam: 0, submittedAt: '2026-01-01T00:00:00Z' },
+      players: [],
+      disputes: [],
+      prizePool: 100,
+    };
+
+    await expect(
+      matchEngine.submitMatchResultOnServer([match], { id: 'arb-1' }, 'M-1', {
+        winnerTeam: 1,
+        scores: { team0: 100, team1: 50 },
+      })
+    ).rejects.toThrow();
+  });
+
+  it('should accept if match has no result', async () => {
+    const match = {
+      id: 'M-2',
+      arbiter: { userId: 'arb-1' },
+      status: 'in_progress',
+      players: [],
+      disputes: [],
+      prizePool: 100,
+      zoydFee: 5,
+      arbiterFee: 2,
+      entryFee: 50,
+      format: '1VS1',
+      teamSize: 1,
+    };
+
+    const result = await matchEngine.submitMatchResultOnServer([match], { id: 'arb-1' }, 'M-2', {
+      winnerTeam: 0,
+      scores: { team0: 100, team1: 50 },
+      resolutionType: 'forfeit',
+      submittedBy: 'admin-dashboard',
+    });
+
+    expect(result.match.result).toBeDefined();
+    expect(result.match.status).toBe('forfeited');
   });
 });

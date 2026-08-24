@@ -70,6 +70,7 @@ const CreateTournamentPage: React.FC = () => {
   const { user } = useAuthStore();
   const hydrateTournaments = useTournamentStore((state) => state.hydrateFromServer);
   const [selectedMapPool, setSelectedMapPool] = useState<string[]>(['Raid', 'Standoff', 'Crash']);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
@@ -155,6 +156,7 @@ const CreateTournamentPage: React.FC = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const response = await createServerTournament({
         creatorId: user.id,
@@ -186,6 +188,8 @@ const CreateTournamentPage: React.FC = () => {
       navigate(`/mj/tournois/${response.tournament.id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Impossible de publier ce tournoi.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -223,7 +227,7 @@ const CreateTournamentPage: React.FC = () => {
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
-              Creer un <span className="text-zoyd-yellow">tournoi</span>
+              Créer un <span className="text-zoyd-yellow">tournoi</span>
             </h1>
             <p className="text-white/60 mt-3 max-w-xl">
               Prepare une cup solo ou en equipe, choisis l'heure, les regles et le montant d'inscription.
@@ -606,9 +610,10 @@ const CreateTournamentPage: React.FC = () => {
               ) : null}
               <button
                 type="submit"
-                className="touch-target w-full bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all"
+                disabled={isSubmitting}
+                className={`touch-target w-full py-5 font-display font-black italic tracking-widest uppercase transition-all ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}
               >
-                Publier le tournoi
+                {isSubmitting ? 'Publication...' : 'Publier le tournoi'}
               </button>
             </div>
           </aside>

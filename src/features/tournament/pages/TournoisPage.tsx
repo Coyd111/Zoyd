@@ -114,7 +114,7 @@ const TournoisPage: React.FC = () => {
                 className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Creer un tournoi
+                Créer un tournoi
               </Link>
             </div>
           </div>
@@ -253,7 +253,7 @@ const TournamentGrid = ({
           className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Creer un tournoi
+          Créer un tournoi
         </Link>
       </div>
     );

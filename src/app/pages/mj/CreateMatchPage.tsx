@@ -38,6 +38,7 @@ const CreateMatchPage: React.FC = () => {
   const [selectedFormat, setSelectedFormat] = useState<MatchFormat | ''>('');
   const [selectedGameMode, setSelectedGameMode] = useState('');
   const [selectedMap, setSelectedMap] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
@@ -124,6 +125,7 @@ const CreateMatchPage: React.FC = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const response = await createServerMatch({
         creatorTeam: Number(getValues('creatorTeam') || 0) === 1 ? 1 : 0,
@@ -149,6 +151,8 @@ const CreateMatchPage: React.FC = () => {
       navigate(`/mj/match/${response.match.id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Impossible de publier cette partie.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -476,7 +480,7 @@ const CreateMatchPage: React.FC = () => {
                   <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={onFinalSubmit} aria-label="Verrouiller la mise et publier" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
+                  <button onClick={onFinalSubmit} disabled={isSubmitting} aria-label="Verrouiller la mise et publier" className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
                     <span className="text-xs sm:text-sm">VERROUILLER LA MISE & PUBLIER</span> <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>

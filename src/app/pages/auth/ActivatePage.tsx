@@ -59,7 +59,7 @@ const ActivatePage: React.FC = () => {
             Active ton compte
           </h1>
           <p className="text-white/40 text-center text-sm mb-8">
-            Entre le code d'activation envoye a ton email
+            Entre le code d'activation envoyé à ton email
           </p>
 
           <form onSubmit={handleActivate} className="space-y-4">

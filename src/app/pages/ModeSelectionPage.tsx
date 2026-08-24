@@ -80,7 +80,7 @@ const ModeSelectionPage: React.FC = () => {
                     Multijoueur
                   </h2>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
-                    Matchs publics, tournois, salons competitifs et progression joueur deja relies a ton compte.
+                    Matchs publics, tournois, salons competitifs et progression joueur déjà liés à ton compte.
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 md:mb-8">

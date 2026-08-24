@@ -329,7 +329,7 @@ const AdminPanel: React.FC<{
             </div>
             <div>
               <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 block mb-1.5">
-                Pass d'entree (ZC)
+                Pass d'entrée (ZC)
               </label>
               <input
                 type="number"

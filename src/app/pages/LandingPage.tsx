@@ -37,7 +37,7 @@ const platformCards = [
 
 const playerJourney = [
   {
-    title: 'Creer ton compte',
+    title: 'Créer ton compte',
     body: 'Inscris-toi, associe ton UID CODM et choisis ton rôle (Joueur ou Arbitre).',
   },
   {
@@ -352,7 +352,7 @@ export default function LandingPage() {
                   tu entres sur ZOYD.
                 </h2>
                 <p className="text-white/40 text-lg leading-relaxed">
-                  Le parcours d&apos;entree doit etre simple: creer ton compte, choisir ton mode, retrouver ton activite
+                  Le parcours d&apos;entrée doit être simple: créer ton compte, choisir ton mode, retrouver ton activite
                   au meme endroit a chaque connexion.
                 </p>
               </div>
@@ -389,7 +389,7 @@ export default function LandingPage() {
               et choisis ton <span className="text-zoyd-yellow">terrain</span>.
             </h2>
             <p className="text-white/40 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
-              Cree ton compte, configure ton profil CODM et retrouve une plateforme pensee pour la competition, la
+              Crée ton compte, configure ton profil CODM et retrouve une plateforme pensée pour la competition, la
               progression et tes gains.
             </p>
 
@@ -398,7 +398,7 @@ export default function LandingPage() {
                 to="/auth/register"
                 className="inline-flex items-center gap-3 bg-white text-black px-8 md:px-10 py-4 font-display font-black uppercase tracking-[0.22em] text-xs md:text-sm italic hover:bg-zoyd-yellow transition-colors"
               >
-                Creer mon compte
+                Créer mon compte
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link

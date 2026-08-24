@@ -124,7 +124,7 @@ const RegisterPage: React.FC = () => {
 
   const onStep2Submit = (data: Partial<RegisterPayload>) => {
     if (!selectedDevice) {
-      toast.error("Choisis ton appareil principal pour personnaliser ton experience ZOYD.");
+      toast.error("Choisis ton appareil principal pour personnaliser ton expérience ZOYD.");
       return;
     }
 
@@ -222,7 +222,7 @@ const RegisterPage: React.FC = () => {
               <span className="text-zoyd-blue underline decoration-zoyd-blue/30 underline-offset-8">la plateforme</span>.
             </h2>
             <p className="text-white/40 text-lg font-light">
-              Cree ton compte, configure ton profil CODM et prepare ton entree dans l'univers ZOYD.
+              Crée ton compte, configure ton profil CODM et prépare ton entrée dans l'univers ZOYD.
             </p>
 
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/5">
@@ -261,7 +261,7 @@ const RegisterPage: React.FC = () => {
               </div>
             </div>
             <h1 className="text-3xl font-display font-black text-white uppercase italic tracking-tighter">
-              {currentStep === 1 ? 'Creer un compte' : currentStep === 2 ? 'Configuration joueur' : 'Finalisation'}
+              {currentStep === 1 ? 'Créer un compte' : currentStep === 2 ? 'Configuration joueur' : 'Finalisation'}
             </h1>
             <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest mt-1">Etape 0{currentStep} / 03</p>
           </header>
@@ -477,7 +477,7 @@ const RegisterPage: React.FC = () => {
                 )}
 
                 <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">
-                  Ces informations servent a personnaliser ton experience de jeu, sans etre exposees publiquement.
+                  Ces informations servent à personnaliser ton expérience de jeu, sans être exposées publiquement.
                 </p>
 
                 <div className="flex gap-4">

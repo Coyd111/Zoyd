@@ -286,7 +286,7 @@ const LeaguePage: React.FC = () => {
                 className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50 touch-target"
               >
                 <Calendar className="w-3.5 h-3.5" />
-                Creer une saison
+                Créer une saison
               </button>
             )}
           </div>

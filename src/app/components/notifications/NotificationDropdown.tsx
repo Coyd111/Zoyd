@@ -1,9 +1,22 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Check, Trash2, X, Swords, Trophy, UserPlus, AlertTriangle, Wallet, ShieldCheck, Calendar, Clock } from 'lucide-react';
 import { useNotificationStore, type Notification, type NotificationType, selectUnreadCount } from '../../stores/notificationStore';
 import { useServiceWorker } from '../../hooks/useServiceWorker';
+
+const SAFE_PROTOCOLS = ['https:', 'http:'];
+
+const safeNavigate = (navigate: ReturnType<typeof useNavigate>, actionUrl: string) => {
+  try {
+    const url = new URL(actionUrl, window.location.origin);
+    if (SAFE_PROTOCOLS.includes(url.protocol) && url.origin === window.location.origin) {
+      navigate(url.pathname + url.search + url.hash);
+    }
+  } catch {
+    navigate('/');
+  }
+};
 
 const typeIcons: Record<NotificationType, React.ReactNode> = {
   match_start: <Swords className="w-3.5 h-3.5 text-zoyd-yellow" />,
@@ -29,6 +42,7 @@ const priorityBadge: Record<Notification['priority'], string> = {
 export const NotificationDropdown: React.FC = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const markAsRead = useNotificationStore((s) => s.markAsRead);
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
   const dismiss = useNotificationStore((s) => s.dismiss);
@@ -117,31 +131,13 @@ export const NotificationDropdown: React.FC = () => {
                     className={`px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${n.read ? 'opacity-60' : ''}`}
                     onClick={() => {
                       if (!n.read) markAsRead(n.id);
-                      if (n.actionUrl) {
-                        try {
-                          const url = new URL(n.actionUrl, window.location.origin);
-                          if (url.origin === window.location.origin) {
-                            window.location.href = url.pathname + url.search + url.hash;
-                          }
-                        } catch {
-                          window.location.href = '/';
-                        }
-                      }
+                      if (n.actionUrl) safeNavigate(navigate, n.actionUrl);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         if (!n.read) markAsRead(n.id);
-                        if (n.actionUrl) {
-                          try {
-                            const url = new URL(n.actionUrl, window.location.origin);
-                            if (url.origin === window.location.origin || url.protocol === 'https:') {
-                              window.location.href = url.pathname + url.search + url.hash;
-                            }
-                          } catch {
-                            window.location.href = '/';
-                          }
-                        }
+                        if (n.actionUrl) safeNavigate(navigate, n.actionUrl);
                       }
                     }}
                   >

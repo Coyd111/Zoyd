@@ -408,18 +408,27 @@ export const MatchActions: React.FC<MatchActionsProps> = ({
               </div>
               {openDisputeRecord.evidence.length > 0 ? (
                 <div className="space-y-1.5">
-                  {openDisputeRecord.evidence.map((item: string, i: number) => (
-                    <a
-                      key={i}
-                      href={item.startsWith('http') ? item : undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-xs text-zoyd-blue hover:text-white transition-colors font-mono break-all"
-                    >
-                      <ExternalLink className="w-3 h-3 shrink-0" />
-                      {item}
-                    </a>
-                  ))}
+                  {openDisputeRecord.evidence.map((item: string, i: number) => {
+                    let isSafe = false;
+                    try {
+                      const u = new URL(item);
+                      isSafe = u.protocol === 'https:';
+                    } catch {
+                      isSafe = item.startsWith('http');
+                    }
+                    return (
+                      <a
+                        key={i}
+                        href={isSafe ? item : undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 text-xs font-mono break-all transition-colors ${isSafe ? 'text-zoyd-blue hover:text-white' : 'text-white/30 cursor-default'}`}
+                      >
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                        {item}
+                      </a>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs text-white/30 italic">Aucune pièce jointe.</p>

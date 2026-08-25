@@ -877,6 +877,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/metrics') {
+    const metricsToken = process.env.METRICS_TOKEN;
+    if (metricsToken) {
+      const authHeader = req.headers.authorization || '';
+      const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+      if (provided !== metricsToken) {
+        respondJson(res, 401, { ok: false, error: 'Unauthorized.', code: 'UNAUTHORIZED' });
+        return;
+      }
+    }
     setGauge('zoyd_channels', channels.size);
     setGauge('zoyd_push_subscriptions', countPushSubscriptions());
     setGauge('zoyd_stored_matches', getStateCollection('matches').length);
@@ -1017,9 +1026,24 @@ const server = http.createServer(async (req, res) => {
       ];
       const safeUpdate = {};
       const STRING_FIELDS = ['pseudo', 'bio', 'avatar', 'streamerPseudo', 'country', 'phone'];
+      const ENUM_FIELDS = {
+        controllerType: ['touch', 'controller', 'emulator', 'pc', 'other'],
+        device: ['phone', 'tablet', 'pc', 'other'],
+      };
+      const RANK_VALUES = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Legendary', 'Rookie'];
       for (const field of ALLOWED_PROFILE_FIELDS) {
         if (field in body) {
-          safeUpdate[field] = STRING_FIELDS.includes(field) ? sanitizeText(body[field]) : body[field];
+          let value = STRING_FIELDS.includes(field) ? sanitizeText(body[field]) : body[field];
+          if (ENUM_FIELDS[field] && !ENUM_FIELDS[field].includes(value)) {
+            continue;
+          }
+          if ((field === 'rankMJ' || field === 'rankBR') && !RANK_VALUES.includes(value)) {
+            continue;
+          }
+          if (field === 'levelCODM' && (typeof value !== 'number' || value < 1 || value > 150 || !Number.isFinite(value))) {
+            continue;
+          }
+          safeUpdate[field] = value;
         }
       }
       const updatedUser = updateUserAccount(session.user.id, (user) => {
@@ -1217,7 +1241,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/auth/change-password') {
     const clientIp = getClientIp(req);
     if (!rateLimitGuard(res, clientIp, 'auth')) return;
-    const session = getAuthenticatedAppSession(req);
+    const token = readBearerToken(req);
+    const session = token ? getAuthSession(token) : null;
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
@@ -1244,6 +1269,16 @@ const server = http.createServer(async (req, res) => {
       }
       const newHash = await hashPassword(newPassword);
       updatePasswordHash(session.user.id, newHash);
+      deleteAuthSession(token);
+      deleteRealtimeSessionsForUser(session.user.id);
+      const cookieValue = serializeCookie('zoyd_auth', '', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 0,
+      });
+      res.setHeader('Set-Cookie', cookieValue);
       respondJson(res, 200, { ok: true });
     } catch (error) {
       respondMappedError(res, error);
@@ -2974,7 +3009,8 @@ process.on('unhandledRejection', (err) => {
   log.fatal('Unhandled promise rejection', err);
 });
 process.on('uncaughtException', (err) => {
-  log.fatal('Uncaught exception', err);
+  log.fatal('Uncaught exception — exiting to prevent corrupted state', err);
+  process.exit(1);
 });
 
 start();

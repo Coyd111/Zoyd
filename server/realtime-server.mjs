@@ -206,7 +206,7 @@ const cleanupChannelMaps = () => {
     }
   }
 };
-setInterval(cleanupChannelMaps, 30 * 60 * 1000);
+setInterval(cleanupChannelMaps, 10 * 60 * 1000);
 
 const getCorsOrigin = (req) => {
   const origin = req.headers.origin || '';
@@ -1174,7 +1174,7 @@ const server = http.createServer(async (req, res) => {
         reporterId: session.user.id,
         reporterPseudo: session.user.pseudo,
         targetId: body.targetId,
-        reason: body.reason,
+        reason: sanitizeText(body.reason),
         description: sanitizeText(body.description || ''),
         status: 'pending',
         createdAt: getNow(),
@@ -3009,7 +3009,7 @@ const start = async () => {
   syncMatchChatChannels(getStateCollection('matches'));
   initCronJobs();
 
-  setInterval(async () => {
+  const matchAutomationIntervalId = setInterval(async () => {
     try { await withMatchMutex(async () => {
       const outcome = await processMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.changed) {
@@ -3033,5 +3033,19 @@ process.on('uncaughtException', (err) => {
   log.fatal('Uncaught exception — exiting to prevent corrupted state', err);
   process.exit(1);
 });
+
+const gracefulShutdown = (signal) => {
+  log.info(`${signal} received — shutting down gracefully`);
+  clearInterval(matchAutomationIntervalId);
+  server.close(() => {
+    io.close(() => {
+      log.info('All connections closed');
+      process.exit(0);
+    });
+  });
+  setTimeout(() => process.exit(1), 10_000);
+};
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 start();

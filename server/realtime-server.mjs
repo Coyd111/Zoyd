@@ -456,9 +456,11 @@ const buildLeagueActionPayload = (season, userId) => {
 };
 
 const mapPersistenceError = (error) => {
-  switch (error?.code) {
+  const code = error?.code || 'UNKNOWN_ERROR';
+  const message = error?.message || 'Une erreur serveur est survenue.';
+  switch (code) {
     case 'INVALID_REGISTRATION':
-      return { status: 400, message: error.message };
+      return { status: 400, message, code };
     case 'INVALID_AMOUNT':
     case 'WITHDRAWAL_MIN':
     case 'MATCH_SEGMENT_MISMATCH':
@@ -469,11 +471,19 @@ const mapPersistenceError = (error) => {
     case 'MATCH_NOT_READY':
     case 'CHECKIN_REQUIRED':
     case 'INVALID_MATCH':
-      return { status: 400, message: error.message };
+    case 'NOT_ENOUGH_PLAYERS':
+    case 'QUALIFICATION_INCOMPLETE':
+    case 'REGISTRATION_CLOSED':
+    case 'NOT_JOINED':
+    case 'MATCH_ALREADY_LIVE':
+    case 'NO_PLAYERS':
+    case 'INVALID_DAY':
+    case 'INVALID_RESULTS':
+      return { status: 400, message, code };
     case 'INVALID_CREDENTIALS':
-      return { status: 401, message: error.message };
+      return { status: 401, message, code };
     case 'FORBIDDEN':
-      return { status: 403, message: error.message };
+      return { status: 403, message, code };
     case 'DUPLICATE_PSEUDO':
     case 'DUPLICATE_EMAIL':
     case 'DUPLICATE_PHONE':
@@ -486,26 +496,29 @@ const mapPersistenceError = (error) => {
     case 'NO_SLOT_AVAILABLE':
     case 'ARBITER_TAKEN':
     case 'RESULT_NOT_FOUND':
+    case 'RESULT_ALREADY_EXISTS':
     case 'DISPUTE_ALREADY_OPEN':
-      return { status: 409, message: error.message };
+    case 'DISPUTE_NOT_FOUND':
+    case 'DISPUTE_ALREADY_ESCALATED':
+    case 'ALREADY_FRIENDS':
+    case 'REQUEST_PENDING':
+    case 'INVALID_REQUEST':
+      return { status: 409, message, code };
     case 'MATCH_NOT_FOUND':
     case 'TOURNAMENT_NOT_FOUND':
     case 'LEAGUE_NOT_FOUND':
     case 'CHANNEL_NOT_FOUND':
     case 'PLAYER_NOT_FOUND':
     case 'USER_NOT_FOUND':
-      return { status: 404, message: error.message };
-    case 'NOT_ENOUGH_PLAYERS':
-    case 'QUALIFICATION_INCOMPLETE':
-    case 'REGISTRATION_CLOSED':
-    case 'NOT_JOINED':
-    case 'MATCH_ALREADY_LIVE':
-    case 'NO_PLAYERS':
-    case 'INVALID_DAY':
-    case 'INVALID_RESULTS':
+      return { status: 404, message, code };
     default:
-      return { status: 500, message: 'Une erreur serveur est survenue.' };
+      return { status: 500, message: 'Une erreur serveur est survenue.', code };
   }
+};
+
+const respondMappedError = (res, error) => {
+  const mapped = mapPersistenceError(error);
+  respondJson(res, mapped.status, { ok: false, error: mapped.message, code: mapped.code });
 };
 
 const getChannelMemberMap = (channelId) => {
@@ -819,7 +832,7 @@ const requireAdmin2fa = (req, res) => {
 
 const server = http.createServer(async (req, res) => {
   if (!req.url) {
-    respondJson(res, 404, { error: 'Not found' });
+    respondJson(res, 404, { ok: false, error: 'Not found', code: 'NOT_FOUND' });
     return;
   }
 
@@ -896,8 +909,7 @@ const server = http.createServer(async (req, res) => {
       });
     } catch (error) {
       log.error('register error', { message: error.message, code: error.code });
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -933,8 +945,7 @@ const server = http.createServer(async (req, res) => {
         expiresAt: session.expiresAt,
       });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -967,8 +978,7 @@ const server = http.createServer(async (req, res) => {
         message: 'Compte active avec succes. Vous pouvez maintenant vous connecter.',
       });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1015,8 +1025,7 @@ const server = http.createServer(async (req, res) => {
       });
       respondJson(res, 200, { ok: true, user: updatedUser }, req);
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1039,8 +1048,7 @@ const server = http.createServer(async (req, res) => {
 
       respondJson(res, 200, { ok: true, request });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1063,8 +1071,7 @@ const server = http.createServer(async (req, res) => {
 
       respondJson(res, 200, { ok: true, friend });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1078,8 +1085,7 @@ const server = http.createServer(async (req, res) => {
       declineFriendRequest(body.requestId, session.user.id);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1093,8 +1099,7 @@ const server = http.createServer(async (req, res) => {
       removeFriend(session.user.id, socialFriendMatch[1]);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1108,8 +1113,7 @@ const server = http.createServer(async (req, res) => {
       blockUser(session.user.id, body.targetId);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1123,8 +1127,7 @@ const server = http.createServer(async (req, res) => {
       unblockUser(session.user.id, body.targetId);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1152,8 +1155,7 @@ const server = http.createServer(async (req, res) => {
       sbUpsert('user_reports', { id: report.id, payload: report, created_at: getNow() });
       respondJson(res, 201, { ok: true, report });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1167,8 +1169,7 @@ const server = http.createServer(async (req, res) => {
       const success = markNotificationAsRead(session.user.id, body.notificationId);
       respondJson(res, 200, { ok: true, success });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1181,8 +1182,7 @@ const server = http.createServer(async (req, res) => {
       const changes = markAllNotificationsAsRead(session.user.id);
       respondJson(res, 200, { ok: true, changes });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1244,8 +1244,7 @@ const server = http.createServer(async (req, res) => {
       updatePasswordHash(session.user.id, newHash);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1292,8 +1291,7 @@ const server = http.createServer(async (req, res) => {
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1312,8 +1310,7 @@ const server = http.createServer(async (req, res) => {
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1395,8 +1392,7 @@ const server = http.createServer(async (req, res) => {
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 201, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1415,8 +1411,7 @@ const server = http.createServer(async (req, res) => {
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1434,8 +1429,7 @@ const server = http.createServer(async (req, res) => {
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1453,8 +1447,7 @@ const server = http.createServer(async (req, res) => {
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1487,8 +1480,7 @@ const server = http.createServer(async (req, res) => {
 
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1514,8 +1506,7 @@ const server = http.createServer(async (req, res) => {
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1538,8 +1529,7 @@ const server = http.createServer(async (req, res) => {
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1564,8 +1554,7 @@ const server = http.createServer(async (req, res) => {
       saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1605,8 +1594,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 201, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1623,8 +1611,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1641,8 +1628,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1659,8 +1645,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1690,8 +1675,7 @@ const server = http.createServer(async (req, res) => {
 
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1715,8 +1699,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1733,8 +1716,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1757,8 +1739,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1770,8 +1751,7 @@ const server = http.createServer(async (req, res) => {
       const standings = getLeagueLeaderboard(getStoredLeagues(), leagueLeaderboard[1]);
       respondJson(res, 200, { ok: true, standings });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1789,8 +1769,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1815,8 +1794,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1838,8 +1816,7 @@ const server = http.createServer(async (req, res) => {
       saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1859,8 +1836,7 @@ const server = http.createServer(async (req, res) => {
       const payments = getLeaguePayments(getStoredLeagues(), leaguePayments[1]);
       respondJson(res, 200, { ok: true, payments });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1914,8 +1890,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 201, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1937,8 +1912,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1966,8 +1940,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -1986,8 +1959,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2006,8 +1978,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2027,8 +1998,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2054,8 +2024,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2074,8 +2043,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2095,8 +2063,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2128,8 +2095,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2162,8 +2128,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2187,8 +2152,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2221,8 +2185,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2356,8 +2319,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2394,8 +2356,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2432,8 +2393,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2512,8 +2472,7 @@ const server = http.createServer(async (req, res) => {
         messages: [],
       });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }
@@ -2563,8 +2522,7 @@ const server = http.createServer(async (req, res) => {
         message,
       });
     } catch (error) {
-      const mapped = mapPersistenceError(error);
-      respondJson(res, mapped.status, { ok: false, error: mapped.message });
+      respondMappedError(res, error);
     }
     return;
   }

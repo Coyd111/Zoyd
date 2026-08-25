@@ -52,19 +52,60 @@ const handleAuthError = (status: number) => {
   }
 };
 
+export class ApiError extends Error {
+  code: string;
+  status: number;
+  constructor(message: string, code: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+const ERROR_MESSAGES: Record<string, string> = {
+  INSUFFICIENT_FUNDS: 'Solde insuffisant. Recharge ton portefeuille.',
+  MATCH_CLOSED: 'Ce match est deja ferme.',
+  ALREADY_JOINED: 'Tu es deja inscrit a ce match.',
+  MATCH_NOT_FOUND: 'Match introuvable.',
+  TOURNAMENT_NOT_FOUND: 'Tournoi introuvable.',
+  LEAGUE_NOT_FOUND: 'Ligue introuvable.',
+  PLAYER_NOT_FOUND: 'Joueur introuvable.',
+  NOT_ENOUGH_PLAYERS: 'Pas assez de joueurs pour commencer.',
+  REGISTRATION_CLOSED: 'Les inscriptions sont fermees.',
+  NOT_JOINED: 'Tu n\'es pas inscrit.',
+  MATCH_ALREADY_LIVE: 'Ce match est deja en cours.',
+  INVALID_DAY: 'Journee invalide.',
+  INVALID_RESULTS: 'Resultats invalides.',
+  DUPLICATE_PSEUDO: 'Ce pseudo est deja utilise.',
+  DUPLICATE_EMAIL: 'Cet email est deja utilise.',
+  DUPLICATE_PHONE: 'Ce numero est deja utilise.',
+  ARBITER_TAKEN: 'Un arbitre est deja assigne.',
+  ROLE_CONFLICT: 'Conflit de role.',
+  NO_SLOT_AVAILABLE: 'Aucune place disponible.',
+  TRUST_REQUIRED: 'Score de confiance insuffisant.',
+  DISPUTE_ALREADY_OPEN: 'Un dispute est deja ouvert.',
+  RESULT_NOT_FOUND: 'Resultat introuvable.',
+  RESULT_ALREADY_EXISTS: 'Un resultat a deja ete soumis.',
+};
+
 export const readJson = async <T>(response: Response): Promise<T> => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     handleAuthError(response.status);
     
     if (response.status === 401) {
-      throw new Error('Session expiree. Veuillez te reconnecter.');
+      throw new ApiError('Session expiree. Veuillez te reconnecter.', 'SESSION_EXPIRED', 401);
     }
     if (response.status === 403) {
-      throw new Error('Acces refuse. Tu n\'as pas les permissions necessaires.');
+      throw new ApiError('Acces refuse. Tu n\'as pas les permissions necessaires.', 'FORBIDDEN', 403);
     }
     
-    throw new Error(payload.error || 'Une erreur reseau est survenue.');
+    const code = payload.code || 'UNKNOWN_ERROR';
+    const message = payload.error || 'Une erreur reseau est survenue.';
+    const friendlyMessage = ERROR_MESSAGES[code] || message;
+    
+    throw new ApiError(friendlyMessage, code, response.status);
   }
 
   return payload as T;

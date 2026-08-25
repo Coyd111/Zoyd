@@ -704,11 +704,12 @@ const checkRateLimit = (ip, group = 'default') => {
   const record = rateLimitBuckets.get(key);
   if (!record || now - record.windowStart > config.windowMs) {
     rateLimitBuckets.set(key, { windowStart: now, attempts: 1 });
-    return { allowed: true, remaining: config.max - 1 };
+    return { allowed: true, remaining: config.max - 1, retryAfter: 0 };
   }
   record.attempts += 1;
   const allowed = record.attempts <= config.max;
-  return { allowed, remaining: Math.max(0, config.max - record.attempts) };
+  const retryAfter = allowed ? 0 : Math.ceil((record.windowStart + config.windowMs - now) / 1000);
+  return { allowed, remaining: Math.max(0, config.max - record.attempts), retryAfter };
 };
 
 const cleanupRateLimits = () => {
@@ -734,9 +735,10 @@ const getClientIp = (req) => {
 };
 
 const rateLimitGuard = (res, ip, group) => {
-  const { allowed, remaining } = checkRateLimit(ip, group);
+  const { allowed, retryAfter } = checkRateLimit(ip, group);
   if (!allowed) {
-    respondJson(res, 429, { ok: false, error: 'Trop de requetes. Reessayez plus tard.' });
+    res.setHeader('Retry-After', String(retryAfter));
+    respondJson(res, 429, { ok: false, error: 'Trop de requetes. Reessayez plus tard.', code: 'RATE_LIMITED' });
     return false;
   }
   return true;

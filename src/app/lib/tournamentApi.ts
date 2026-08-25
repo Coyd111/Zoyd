@@ -25,7 +25,7 @@ export const subscribeToTournaments = (onUpdate: () => void) => {
 export const fetchServerTournaments = async (): Promise<TournamentListResponse> => {
   try {
     return await authorizedGet<TournamentListResponse>('/api/tournaments');
-  } catch (error) {
+  } catch {
     return { ok: false, tournaments: [] };
   }
 };

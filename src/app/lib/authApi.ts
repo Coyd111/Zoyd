@@ -1,5 +1,5 @@
 import type { User } from '../stores/authStore';
-import { authorizedGet, authorizedPost, authorizedPatch, getApiUrl } from './apiClient';
+import { authorizedGet, authorizedPost, authorizedPatch } from './apiClient';
 
 interface AuthResponse {
   ok: boolean;
@@ -44,16 +44,14 @@ export const loginWithBackend = async (identifier: string, password: string): Pr
 
 export const fetchCurrentUser = async (token?: string) => {
   if (token) {
-    // Use the provided token directly for bootstrap
-    const response = await fetch(getApiUrl('/api/auth/me'), {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || `HTTP ${response.status}`);
+    const { useAuthStore } = await import('../stores/authStore');
+    const prev = useAuthStore.getState().sessionToken;
+    useAuthStore.setState({ sessionToken: token });
+    try {
+      return await authorizedGet<AuthResponse>('/api/auth/me');
+    } finally {
+      useAuthStore.setState({ sessionToken: prev });
     }
-    const data = await response.json();
-    return data;
   }
   return authorizedGet<AuthResponse>('/api/auth/me');
 };

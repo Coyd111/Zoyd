@@ -1,10 +1,12 @@
 import type { Match } from '../stores/matchStore';
+import type { User } from '../stores/authStore';
 import { authorizedGet, authorizedPost } from './apiClient';
 
 interface MatchResponse {
   ok: boolean;
   match: Match;
-  matches?: Match[];
+  user?: Pick<User, 'id' | 'pseudo' | 'wallet'>;
+  wallet?: { cashBalance: number; bonusBalance: number };
 }
 
 interface MatchListResponse {
@@ -39,6 +41,7 @@ export interface MatchResultPayload {
 
 export interface DisputePayload {
   reason: string;
+  category?: string;
   evidence?: string[];
 }
 
@@ -52,7 +55,7 @@ export const fetchAllMatchesFromDb = async (): Promise<Match[]> => {
   try {
     const res = await authorizedGet<MatchListResponse>('/api/matches');
     return res.matches || [];
-  } catch (error) {
+  } catch {
     return [];
   }
 };

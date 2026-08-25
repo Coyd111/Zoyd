@@ -160,14 +160,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         n.id === id ? { ...n, read: true } : n
       ),
     }));
-    void markServerNotificationRead(id).catch(() => undefined);
+    void markServerNotificationRead(id).catch(() => {
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: 'Marquage comme lu impossible.', duration: 3000 });
+    });
   },
 
   markAllAsRead: () => {
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
     }));
-    void markAllServerNotificationsRead().catch(() => undefined);
+    void markAllServerNotificationsRead().catch(() => {
+      useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: 'Marquage comme lu impossible.', duration: 3000 });
+    });
   },
 
   dismiss: (id) => {

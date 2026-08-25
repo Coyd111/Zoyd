@@ -27,33 +27,17 @@ interface WalletResponse {
 }
 
 export const fetchWalletSnapshot = async (): Promise<WalletResponse> => {
-  try {
-    return await authorizedGet<WalletResponse>('/api/wallet/me');
-  } catch (error) {
-    throw error;
-  }
+  return authorizedGet<WalletResponse>('/api/wallet/me');
 };
 
 export const depositWalletBalance = async (amount: number, method: string): Promise<WalletResponse> => {
-  try {
-    return await authorizedPost<WalletResponse>('/api/wallet/deposit', { amount, method });
-  } catch (error) {
-    throw error;
-  }
+  return authorizedPost<WalletResponse>('/api/wallet/deposit', { amount, method });
 };
 
 export const withdrawWalletBalance = async (amount: number, method: string, phone: string): Promise<WalletResponse> => {
-  try {
-    return await authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone });
-  } catch (error) {
-    throw error;
-  }
+  return authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone });
 };
 
 export const verifyFedaPayTransaction = async (transactionId: number | string): Promise<WalletResponse> => {
-  try {
-    return await authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });
-  } catch (error) {
-    throw error;
-  }
+  return authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });
 };

@@ -27,19 +27,11 @@ interface ChatReadResponse {
 }
 
 export const fetchChatBootstrap = async () => {
-  try {
-    return await authorizedGet<ChatBootstrapResponse>('/api/chat/bootstrap');
-  } catch (error) {
-    throw error;
-  }
+  return authorizedGet<ChatBootstrapResponse>('/api/chat/bootstrap');
 };
 
 export const fetchServerChatChannel = async (channelId: string) => {
-  try {
-    return await authorizedGet<ChatChannelResponse>(`/api/chat/channels/${channelId}`);
-  } catch (error) {
-    throw error;
-  }
+  return authorizedGet<ChatChannelResponse>(`/api/chat/channels/${channelId}`);
 };
 
 export const createServerChatChannel = async (payload: {
@@ -48,25 +40,13 @@ export const createServerChatChannel = async (payload: {
   name: string;
   participants: string[];
 }) => {
-  try {
-    return await authorizedPost<ChatChannelResponse>('/api/chat/channels', payload);
-  } catch (error) {
-    throw error;
-  }
+  return authorizedPost<ChatChannelResponse>('/api/chat/channels', payload);
 };
 
 export const sendServerChatMessage = async (channelId: string, text: string, replyTo?: string) => {
-  try {
-    return await authorizedPost<ChatMessageResponse>(`/api/chat/channels/${channelId}/messages`, { text, replyTo });
-  } catch (error) {
-    throw error;
-  }
+  return authorizedPost<ChatMessageResponse>(`/api/chat/channels/${channelId}/messages`, { text, replyTo });
 };
 
 export const markServerChatChannelRead = async (channelId: string) => {
-  try {
-    return await authorizedPost<ChatReadResponse>(`/api/chat/channels/${channelId}/read`);
-  } catch (error) {
-    throw error;
-  }
+  return authorizedPost<ChatReadResponse>(`/api/chat/channels/${channelId}/read`);
 };

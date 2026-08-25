@@ -16,7 +16,7 @@ interface LeagueResponse {
 export const fetchServerLeagues = async (): Promise<LeagueListResponse> => {
   try {
     return await authorizedGet<LeagueListResponse>('/api/leagues');
-  } catch (error) {
+  } catch {
     return { ok: false, seasons: [] };
   }
 };

@@ -19,7 +19,7 @@ export const searchUsers = async (query: string): Promise<SearchUser[]> => {
   try {
     const res = await authorizedGet<SearchResponse>(`/api/users/search?q=${encodeURIComponent(query)}`);
     return res.users || [];
-  } catch (error) {
+  } catch {
     return [];
   }
 };

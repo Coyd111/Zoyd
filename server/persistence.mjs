@@ -987,7 +987,7 @@ export const markNotificationAsRead = (userId, notificationId) => {
   if (!n || n.userId !== userId) return false;
   n.isRead = true;
   memoryNotifications.set(notificationId, n);
-  if (supabase) supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId).then(() => {}).catch((err) => log.error('Failed to mark notification read in DB', { notificationId, error: err.message }));
+  if (supabase) supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId).then(() => {}).catch((err) => log.warn('DB sync failed: mark notification read', { notificationId, error: err.message }));
   return true;
 };
 
@@ -996,7 +996,7 @@ export const markAllNotificationsAsRead = (userId) => {
   for (const [id, n] of memoryNotifications) {
     if (n.userId === userId && !n.isRead) { n.isRead = true; memoryNotifications.set(id, n); count++; }
   }
-  if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {}).catch((err) => log.error('Failed to mark all notifications read in DB', { userId, error: err.message }));
+  if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {}).catch((err) => log.warn('DB sync failed: mark all notifications read', { userId, error: err.message }));
   return count;
 };
 

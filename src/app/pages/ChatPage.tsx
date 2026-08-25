@@ -27,19 +27,17 @@ const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const prefersReducedMotion = useReducedMotion();
-  const {
-    channels,
-    messages,
-    activeChannelId,
-    setActiveChannel,
-    hydrateFromServer,
-    receiveServerMessage,
-    markAsRead,
-    muteChannel,
-    unmuteChannel,
-    getMessagesForChannel,
-    getUnreadTotal,
-  } = useChatStore();
+  const channels = useChatStore((s) => s.channels);
+  const messages = useChatStore((s) => s.messages);
+  const activeChannelId = useChatStore((s) => s.activeChannelId);
+  const setActiveChannel = useChatStore((s) => s.setActiveChannel);
+  const hydrateFromServer = useChatStore((s) => s.hydrateFromServer);
+  const receiveServerMessage = useChatStore((s) => s.receiveServerMessage);
+  const markAsRead = useChatStore((s) => s.markAsRead);
+  const muteChannel = useChatStore((s) => s.muteChannel);
+  const unmuteChannel = useChatStore((s) => s.unmuteChannel);
+  const getMessagesForChannel = useChatStore((s) => s.getMessagesForChannel);
+  const getUnreadTotal = useChatStore((s) => s.getUnreadTotal);
   const { friends } = useFriendsStore();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);

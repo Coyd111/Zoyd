@@ -27,16 +27,14 @@ declare const FedaPay: {
 } | undefined;
 
 const WalletPage: React.FC = () => {
-  const {
-    transactions,
-    deposit,
-    withdraw,
-    cashBalance,
-    bonusBalance,
-    lockedBalance,
-    pendingWinnings,
-    getAvailableToSpend,
-  } = useWalletStore();
+  const transactions = useWalletStore((s) => s.transactions);
+  const deposit = useWalletStore((s) => s.deposit);
+  const withdraw = useWalletStore((s) => s.withdraw);
+  const cashBalance = useWalletStore((s) => s.cashBalance);
+  const bonusBalance = useWalletStore((s) => s.bonusBalance);
+  const lockedBalance = useWalletStore((s) => s.lockedBalance);
+  const pendingWinnings = useWalletStore((s) => s.pendingWinnings);
+  const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
   const { user } = useAuthStore();
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
 

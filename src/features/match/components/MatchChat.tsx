@@ -15,7 +15,7 @@ interface MatchChatProps {
   readCount: number;
 }
 
-export const MatchChat: React.FC<MatchChatProps> = ({
+export const MatchChat: React.FC<MatchChatProps> = React.memo(({
   messages,
   onSendMessage,
   isConnected,
@@ -212,4 +212,4 @@ export const MatchChat: React.FC<MatchChatProps> = ({
       </div>
     </div>
   );
-};
+});

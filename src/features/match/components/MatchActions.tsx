@@ -93,7 +93,7 @@ interface MatchActionsProps {
   handleEscalate: () => void;
 }
 
-export const MatchActions: React.FC<MatchActionsProps> = ({
+export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
   match,
   user,
   currentPlayer,
@@ -596,4 +596,4 @@ export const MatchActions: React.FC<MatchActionsProps> = ({
       )}
     </div>
   </>
-);
+));

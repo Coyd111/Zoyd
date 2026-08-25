@@ -152,7 +152,9 @@ const notifyAllAdmins = async (io, payload) => {
   for (const adminId of adminIds) {
     try {
       await deliverNotification(io, adminId, payload);
-    } catch { /* best effort */ }
+    } catch (err) {
+      log.warn('Failed to notify admin', { adminId, error: err.message });
+    }
   }
 };
 const ALLOWED_ORIGINS = [
@@ -951,7 +953,6 @@ const server = http.createServer(async (req, res) => {
 
       respondJson(res, 200, {
         ok: true,
-        token: session.token,
         user: session.user,
         expiresAt: session.expiresAt,
       });
@@ -1321,9 +1322,19 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
+    let body;
+    try {
+      body = await parseRequestBody(req);
+    } catch {
+      respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
+      return;
+    }
+    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0) {
+      respondJson(res, 400, { ok: false, error: 'Montant invalide.', code: 'INVALID_AMOUNT' });
+      return;
+    }
 
     try { await withWalletMutex(session.user.id, async () => {
-      const body = await parseRequestBody(req);
       const wallet = depositToWallet(session.user.id, body.amount, body.method);
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });
@@ -1340,9 +1351,19 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
+    let body;
+    try {
+      body = await parseRequestBody(req);
+    } catch {
+      respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
+      return;
+    }
+    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0) {
+      respondJson(res, 400, { ok: false, error: 'Montant invalide.', code: 'INVALID_AMOUNT' });
+      return;
+    }
 
     try { await withWalletMutex(session.user.id, async () => {
-      const body = await parseRequestBody(req);
       const wallet = withdrawFromWallet(session.user.id, body.amount, body.method, body.phone);
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });

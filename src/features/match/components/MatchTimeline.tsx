@@ -1,11 +1,13 @@
 import React from 'react';
 import { MatchChat } from './MatchChat';
+import type { ChatMessage } from '../../stores/chatStore';
+import type { RoomPresenceMember, TypingMember } from '../../stores/presenceStore';
 
 interface MatchTimelineProps {
-  messages: any[];
+  messages: ChatMessage[];
   channelConnected: boolean;
-  channelPresence: any[];
-  typingUsers: any[];
+  channelPresence: RoomPresenceMember[];
+  typingUsers: TypingMember[];
   readCount: number;
   presenceSummary: {
     onlineCount: number;
@@ -19,7 +21,7 @@ interface MatchTimelineProps {
   onSendMessage: (text: string) => void;
 }
 
-export const MatchTimeline: React.FC<MatchTimelineProps> = ({
+export const MatchTimeline: React.FC<MatchTimelineProps> = React.memo(({
   messages,
   channelConnected,
   channelPresence,
@@ -57,4 +59,4 @@ export const MatchTimeline: React.FC<MatchTimelineProps> = ({
       onSendMessage={onSendMessage}
     />
   </div>
-);
+));

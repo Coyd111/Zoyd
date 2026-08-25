@@ -2,9 +2,9 @@ import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCod
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex } from './mutex.mjs';
 import { assignPlayersToDays } from './league-engine.mjs';
+import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
-const getNow = () => new Date().toISOString();
 
 export const initCronJobs = () => {
   log.info('Service de tâches planifiées initialisé.');

@@ -94,6 +94,7 @@ import {
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex } from './mutex.mjs';
 import { initCronJobs } from './cron.mjs';
+import { getNow } from './utils.mjs';
 import {
   MATCH_AUTOMATION_INTERVAL_MS,
   assignArbiterOnServer,
@@ -175,8 +176,6 @@ const channels = new Map();
 const channelsBySocket = new Map();
 const seenByChannel = new Map();
 const typingByChannel = new Map();
-
-const getNow = () => new Date().toISOString();
 
 // Nettoyage périodique des Maps de canaux orphelins (toutes les 30 min)
 const MAX_ACTIVE_CHANNELS = 500;

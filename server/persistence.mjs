@@ -8,11 +8,9 @@ import { promisify } from 'node:util';
 const scryptAsync = promisify(crypto.scrypt);
 import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
-import { roundAmount } from './utils.mjs';
+import { roundAmount, getNow, makeError } from './utils.mjs';
 
 const log = createLogger('persistence');
-
-const getNow = () => new Date().toISOString();
 
 // ─── In-memory caches ───────────────────────────────────────────────────────
 const memoryUsers = new Map();
@@ -33,8 +31,7 @@ const memoryProcessedTransactions = new Set();
 const MAX_PROCESSED_TX = 10000;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-export const makeError = (code, message) => Object.assign(new Error(message), { code });
-export { roundAmount };
+export { roundAmount, makeError };
 
 /**
  * Sanitize user input to prevent XSS attacks

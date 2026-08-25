@@ -8,21 +8,19 @@ import {
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
-import { roundAmount } from './utils.mjs';
+import { roundAmount, getNow, makeError } from './utils.mjs';
 
 const log = createLogger('match-engine');
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 
 const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];
 const TERMINAL_STATUSES = ['finished', 'cancelled', 'forfeited'];
-const getNow = () => new Date().toISOString();
 export const getTeamSize = (format) => parseInt(format.split('VS')[0], 10);
 export const getSquadLabel = (team) => (team === 0 ? 'Squad Alpha' : 'Squad Bravo');
 const getScheduledTimestamp = (match) => (match.scheduledAt ? new Date(match.scheduledAt).getTime() : null);
 const getTeamCheckInCount = (match, team) =>
   match.players.filter((player) => player.team === team && player.isCheckedIn).length;
 const isTeamReadyForLaunch = (match, team) => getTeamCheckInCount(match, team) >= match.teamSize;
-const makeError = (code, message) => Object.assign(new Error(message), { code });
 const normalizeProofRefs = (refs = []) => refs.map((ref) => `${ref}`.trim()).filter(Boolean);
 const flattenProofs = (proofs) =>
   proofs

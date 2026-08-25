@@ -7,12 +7,9 @@ import {
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
-import { roundAmount } from './utils.mjs';
+import { roundAmount, getNow, makeError } from './utils.mjs';
 
 const log = createLogger('league-engine');
-
-const getNow = () => new Date().toISOString();
-const makeError = (code, message) => Object.assign(new Error(message), { code });
 
 const LEAGUE_ENTRY_FEE = 50;
 const LEAGUE_MAX_PLAYERS = 500;

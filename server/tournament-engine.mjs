@@ -1,6 +1,6 @@
 import { getUserById, updateUserAccount } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
-import { roundAmount } from './utils.mjs';
+import { roundAmount, getNow, makeError } from './utils.mjs';
 import { createLogger } from './logger.mjs';
 import {
   lockEntryFee,
@@ -11,7 +11,6 @@ import {
 
 const log = createLogger('tournament');
 
-const getNow = () => new Date().toISOString();
 const getTeamSize = (format) => parseInt(`${format || '1VS1'}`.split('VS')[0], 10) || 1;
 const getBracketSize = (entriesCount) => {
   let size = 2;
@@ -23,7 +22,6 @@ const normalizeLabel = (value) => `${value || ''}`.trim().replace(/\s+/g, ' ');
 const toEntityKey = (value) =>
   normalizeLabel(value).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'ENTRY';
 const getSquadLockAmount = (entryFee, teamSize) => roundAmount(Number(entryFee || 0) * Number(teamSize || 1));
-const makeError = (code, message) => Object.assign(new Error(message), { code });
 
 const levelThresholds = {
   BEGINNER: 1000,

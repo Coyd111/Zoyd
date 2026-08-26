@@ -508,6 +508,8 @@ const mapPersistenceError = (error) => {
     case 'TRUST_REQUIRED':
     case 'NO_SLOT_AVAILABLE':
     case 'ARBITER_TAKEN':
+    case 'SELF_BLOCK':
+    case 'NOT_FOUND':
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':
     case 'DISPUTE_ALREADY_OPEN':

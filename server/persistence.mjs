@@ -948,6 +948,7 @@ export const removeFriend = (userId, friendId) => {
 };
 
 export const blockUser = (blockerId, blockedId) => {
+  if (blockerId === blockedId) throw makeError('SELF_BLOCK', 'Impossible de se bloquer soi-meme.');
   removeFriend(blockerId, blockedId);
   memoryUserBlocks.add(`${blockerId}:${blockedId}`);
   sbUpsert('user_blocks', { blocker_id: blockerId, blocked_id: blockedId, created_at: getNow() });

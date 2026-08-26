@@ -91,7 +91,6 @@ import {
   sbUpsert,
   getMemoryChatChannels,
   getPublicUserById,
-  getAllUsers,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex } from './mutex.mjs';

@@ -345,7 +345,19 @@ const buildChatBootstrapPayload = (userId) => {
     ...channel,
     unreadCount: getUnreadCountForUser(channel.id, userId),
   }));
-  const messages = channels.flatMap((channel) => getChatMessagesForChannel(channel.id, 120));
+
+  // Sort channels: unread first, then by most recent activity
+  const sorted = [...channels].sort((a, b) => {
+    if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+    if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+    return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+  });
+
+  // Load messages only from top 5 most active channels, max 20 each
+  const activeChannels = sorted.slice(0, 5);
+  const messages = activeChannels.flatMap((channel) =>
+    getChatMessagesForChannel(channel.id, 20)
+  );
 
   return {
     channels,

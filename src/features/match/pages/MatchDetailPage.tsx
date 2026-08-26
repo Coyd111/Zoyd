@@ -527,52 +527,62 @@ const MatchDetailPage: React.FC = () => {
               fundingPath={fundingPath}
               roomPublishWindow={roomPublishWindow}
               openDisputeRecord={openDisputeRecord}
-              scheduleValue={scheduleValue}
-              setScheduleValue={setScheduleValue}
-              roomName={roomName}
-              setRoomName={setRoomName}
-              roomPassword={roomPassword}
-              setRoomPassword={setRoomPassword}
-              scoreAlpha={scoreAlpha}
-              setScoreAlpha={setScoreAlpha}
-              scoreBravo={scoreBravo}
-              setScoreBravo={setScoreBravo}
-              resultNotes={resultNotes}
-              setResultNotes={setResultNotes}
-              scoreboardProofs={scoreboardProofs}
-              setScoreboardProofs={setScoreboardProofs}
-              finalResultProofs={finalResultProofs}
-              setFinalResultProofs={setFinalResultProofs}
-              roomCaptureProofs={roomCaptureProofs}
-              setRoomCaptureProofs={setRoomCaptureProofs}
-              extraResultProofs={extraResultProofs}
-              setExtraResultProofs={setExtraResultProofs}
-              disputeCategory={disputeCategory}
-              setDisputeCategory={setDisputeCategory}
-              disputeReason={disputeReason}
-              setDisputeReason={setDisputeReason}
-              disputeEvidence={disputeEvidence}
-              setDisputeEvidence={setDisputeEvidence}
-              addEvidenceInput={addEvidenceInput}
-              setAddEvidenceInput={setAddEvidenceInput}
-              showAddEvidenceForm={showAddEvidenceForm}
-              setShowAddEvidenceForm={setShowAddEvidenceForm}
               isEscalating={isEscalating}
-              showArbiterScore={showArbiterScore}
-              setShowArbiterScore={setShowArbiterScore}
               isSubmittingResult={isSubmittingResult}
               isProcessingAction={isProcessingAction}
-              handleJoin={handleJoin}
-              handleJoinAsArbiter={handleJoinAsArbiter}
-              handleSchedule={handleSchedule}
-              handleRoomSave={handleRoomSave}
-              handleResultSubmit={handleResultSubmit}
-              handleDispute={handleDispute}
-              handleCheckIn={handleCheckIn}
-              handleToggleReady={handleToggleReady}
-              handleLaunch={handleLaunch}
-              handleAddEvidence={handleAddEvidence}
-              handleEscalate={handleEscalate}
+              roomState={{
+                scheduleValue,
+                setScheduleValue,
+                roomName,
+                setRoomName,
+                roomPassword,
+                setRoomPassword,
+              }}
+              scoreState={{
+                scoreAlpha,
+                setScoreAlpha,
+                scoreBravo,
+                setScoreBravo,
+                resultNotes,
+                setResultNotes,
+              }}
+              proofsState={{
+                scoreboardProofs,
+                setScoreboardProofs,
+                finalResultProofs,
+                setFinalResultProofs,
+                roomCaptureProofs,
+                setRoomCaptureProofs,
+                extraResultProofs,
+                setExtraResultProofs,
+              }}
+              disputeState={{
+                category: disputeCategory,
+                setCategory: setDisputeCategory,
+                reason: disputeReason,
+                setReason: setDisputeReason,
+                evidence: disputeEvidence,
+                setEvidence: setDisputeEvidence,
+                addEvidenceInput,
+                setAddEvidenceInput,
+                showAddEvidenceForm,
+                setShowAddEvidenceForm,
+                showArbiterScore,
+                setShowArbiterScore,
+              }}
+              handlers={{
+                join: handleJoin,
+                joinAsArbiter: handleJoinAsArbiter,
+                schedule: handleSchedule,
+                roomSave: handleRoomSave,
+                resultSubmit: handleResultSubmit,
+                dispute: handleDispute,
+                checkIn: handleCheckIn,
+                toggleReady: handleToggleReady,
+                launch: handleLaunch,
+                addEvidence: handleAddEvidence,
+                escalate: handleEscalate,
+              }}
             />
             <MatchTimeline
               messages={messages}

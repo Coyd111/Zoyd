@@ -45,52 +45,62 @@ interface MatchActionsProps {
   fundingPath: string;
   roomPublishWindow: { canPublish: boolean; message: string };
   openDisputeRecord: Dispute | undefined;
-  scheduleValue: string;
-  setScheduleValue: (v: string) => void;
-  roomName: string;
-  setRoomName: (v: string) => void;
-  roomPassword: string;
-  setRoomPassword: (v: string) => void;
-  scoreAlpha: string;
-  setScoreAlpha: (v: string) => void;
-  scoreBravo: string;
-  setScoreBravo: (v: string) => void;
-  resultNotes: string;
-  setResultNotes: (v: string) => void;
-  scoreboardProofs: string;
-  setScoreboardProofs: (v: string) => void;
-  finalResultProofs: string;
-  setFinalResultProofs: (v: string) => void;
-  roomCaptureProofs: string;
-  setRoomCaptureProofs: (v: string) => void;
-  extraResultProofs: string;
-  setExtraResultProofs: (v: string) => void;
-  disputeCategory: DisputeCategory;
-  setDisputeCategory: (v: DisputeCategory) => void;
-  disputeReason: string;
-  setDisputeReason: (v: string) => void;
-  disputeEvidence: string;
-  setDisputeEvidence: (v: string) => void;
-  addEvidenceInput: string;
-  setAddEvidenceInput: (v: string) => void;
-  showAddEvidenceForm: boolean;
-  setShowAddEvidenceForm: (v: boolean) => void;
   isEscalating: boolean;
-  showArbiterScore: boolean;
-  setShowArbiterScore: (v: boolean) => void;
   isSubmittingResult: boolean;
   isProcessingAction: boolean;
-  handleJoin: (team?: 0 | 1) => void;
-  handleJoinAsArbiter: () => void;
-  handleSchedule: () => void;
-  handleRoomSave: () => void;
-  handleResultSubmit: () => void;
-  handleDispute: () => void;
-  handleCheckIn: () => void;
-  handleToggleReady: () => void;
-  handleLaunch: () => void;
-  handleAddEvidence: () => void;
-  handleEscalate: () => void;
+  roomState: {
+    scheduleValue: string;
+    setScheduleValue: (v: string) => void;
+    roomName: string;
+    setRoomName: (v: string) => void;
+    roomPassword: string;
+    setRoomPassword: (v: string) => void;
+  };
+  scoreState: {
+    scoreAlpha: string;
+    setScoreAlpha: (v: string) => void;
+    scoreBravo: string;
+    setScoreBravo: (v: string) => void;
+    resultNotes: string;
+    setResultNotes: (v: string) => void;
+  };
+  proofsState: {
+    scoreboardProofs: string;
+    setScoreboardProofs: (v: string) => void;
+    finalResultProofs: string;
+    setFinalResultProofs: (v: string) => void;
+    roomCaptureProofs: string;
+    setRoomCaptureProofs: (v: string) => void;
+    extraResultProofs: string;
+    setExtraResultProofs: (v: string) => void;
+  };
+  disputeState: {
+    category: DisputeCategory;
+    setCategory: (v: DisputeCategory) => void;
+    reason: string;
+    setReason: (v: string) => void;
+    evidence: string;
+    setEvidence: (v: string) => void;
+    addEvidenceInput: string;
+    setAddEvidenceInput: (v: string) => void;
+    showAddEvidenceForm: boolean;
+    setShowAddEvidenceForm: (v: boolean) => void;
+    showArbiterScore: boolean;
+    setShowArbiterScore: (v: boolean) => void;
+  };
+  handlers: {
+    join: (team?: 0 | 1) => void;
+    joinAsArbiter: () => void;
+    schedule: () => void;
+    roomSave: () => void;
+    resultSubmit: () => void;
+    dispute: () => void;
+    checkIn: () => void;
+    toggleReady: () => void;
+    launch: () => void;
+    addEvidence: () => void;
+    escalate: () => void;
+  };
 }
 
 export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
@@ -108,52 +118,14 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
   fundingPath,
   roomPublishWindow,
   openDisputeRecord,
-  scheduleValue,
-  setScheduleValue,
-  roomName,
-  setRoomName,
-  roomPassword,
-  setRoomPassword,
-  scoreAlpha,
-  setScoreAlpha,
-  scoreBravo,
-  setScoreBravo,
-  resultNotes,
-  setResultNotes,
-  scoreboardProofs,
-  setScoreboardProofs,
-  finalResultProofs,
-  setFinalResultProofs,
-  roomCaptureProofs,
-  setRoomCaptureProofs,
-  extraResultProofs,
-  setExtraResultProofs,
-  disputeCategory,
-  setDisputeCategory,
-  disputeReason,
-  setDisputeReason,
-  disputeEvidence,
-  setDisputeEvidence,
-  addEvidenceInput,
-  setAddEvidenceInput,
-  showAddEvidenceForm,
-  setShowAddEvidenceForm,
   isEscalating,
-  showArbiterScore,
-  setShowArbiterScore,
   isSubmittingResult,
   isProcessingAction,
-  handleJoin,
-  handleJoinAsArbiter,
-  handleSchedule,
-  handleRoomSave,
-  handleResultSubmit,
-  handleDispute,
-  handleCheckIn,
-  handleToggleReady,
-  handleLaunch,
-  handleAddEvidence,
-  handleEscalate,
+  roomState,
+  scoreState,
+  proofsState,
+  disputeState,
+  handlers,
 }) => (
   <>
     <div className="p-6">
@@ -191,13 +163,13 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </div>
           ) : null}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button onClick={() => handleJoin(0)} className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors">
+            <button onClick={() => handlers.join(0)} className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors">
               REJOINDRE ALPHA
             </button>
-            <button onClick={() => handleJoin(1)} className="border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-white transition-colors">
+            <button onClick={() => handlers.join(1)} className="border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-white transition-colors">
               REJOINDRE BRAVO
             </button>
-            <button onClick={() => handleJoin()} className="border border-zoyd-blue/30 text-zoyd-blue py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors">
+            <button onClick={() => handlers.join()} className="border border-zoyd-blue/30 text-zoyd-blue py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors">
               PLACEMENT AUTO
             </button>
           </div>
@@ -205,7 +177,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
       )}
 
       {user && canJoinArbiterSlot && (
-        <button onClick={handleJoinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
+        <button onClick={handlers.joinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
           POSTULER COMME ARBITRE (COMMISSION: {formatZC(match.arbiterFee)})
         </button>
       )}
@@ -214,14 +186,14 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
         <div className="space-y-4">
           <div className="grid md:grid-cols-2 gap-3">
             <button
-              onClick={handleCheckIn}
+              onClick={handlers.checkIn}
               disabled={!canCheckIn || currentPlayer.isCheckedIn}
               className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30"
             >
               {currentPlayer.isCheckedIn ? 'Presence confirmee' : 'Confirmer ma presence'}
             </button>
             <button
-              onClick={handleToggleReady}
+              onClick={handlers.toggleReady}
               disabled={!canToggleReady}
               className="border border-zoyd-yellow/30 text-zoyd-yellow py-4 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30"
             >
@@ -251,12 +223,12 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           <div className="grid md:grid-cols-2 gap-3">
             <input
               type="datetime-local"
-              value={scheduleValue}
-              onChange={(event) => setScheduleValue(event.target.value)}
+              value={roomState.scheduleValue}
+              onChange={(event) => roomState.setScheduleValue(event.target.value)}
               aria-label="Horaire du match"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
-            <button onClick={handleSchedule} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic">
+            <button onClick={handlers.schedule} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic">
               Valider l'horaire
             </button>
           </div>
@@ -264,16 +236,16 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           <div className="grid md:grid-cols-2 gap-3">
             <input
               type="text"
-              value={roomName}
-              onChange={(event) => setRoomName(event.target.value)}
+              value={roomState.roomName}
+              onChange={(event) => roomState.setRoomName(event.target.value)}
               placeholder="Nom de la salle CODM"
               aria-label="Nom de la salle"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
             <input
               type="text"
-              value={roomPassword}
-              onChange={(event) => setRoomPassword(event.target.value)}
+              value={roomState.roomPassword}
+              onChange={(event) => roomState.setRoomPassword(event.target.value)}
               placeholder="Mot de passe de la salle"
               aria-label="Mot de passe de la salle"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
@@ -281,10 +253,10 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           </div>
 
           <div className="grid md:grid-cols-2 gap-3">
-            <button onClick={handleRoomSave} disabled={!roomPublishWindow.canPublish} className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors disabled:opacity-30">
+            <button onClick={handlers.roomSave} disabled={!roomPublishWindow.canPublish} className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors disabled:opacity-30">
               Partager la salle
             </button>
-            <button onClick={handleLaunch} disabled={!canLaunch} className="bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30 hover:bg-white transition-colors">
+            <button onClick={handlers.launch} disabled={!canLaunch} className="bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30 hover:bg-white transition-colors">
               DÉMARRER LE MATCH
             </button>
           </div>
@@ -294,62 +266,62 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             <div className="grid md:grid-cols-2 gap-3">
               <input
                 type="number"
-                value={scoreAlpha}
-                onChange={(event) => setScoreAlpha(event.target.value)}
+                value={scoreState.scoreAlpha}
+                onChange={(event) => scoreState.setScoreAlpha(event.target.value)}
                 placeholder="Score Alpha"
                 aria-label="Score de l'équipe Alpha"
                 className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
               />
               <input
                 type="number"
-                value={scoreBravo}
-                onChange={(event) => setScoreBravo(event.target.value)}
+                value={scoreState.scoreBravo}
+                onChange={(event) => scoreState.setScoreBravo(event.target.value)}
                 placeholder="Score Bravo"
                 aria-label="Score de l'équipe Bravo"
                 className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
               />
             </div>
             <textarea
-              value={resultNotes}
-              onChange={(event) => setResultNotes(event.target.value)}
+              value={scoreState.resultNotes}
+              onChange={(event) => scoreState.setResultNotes(event.target.value)}
               placeholder="Ce qu'il faut retenir de la fin de match"
               aria-label="Notes de fin de match"
               className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
             <input
               type="text"
-              value={scoreboardProofs}
-              onChange={(event) => setScoreboardProofs(event.target.value)}
+              value={proofsState.scoreboardProofs}
+              onChange={(event) => proofsState.setScoreboardProofs(event.target.value)}
               placeholder="Screens scoreboard (liens ou refs, separes par des virgules)"
               aria-label="Liens des scores"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
             <input
               type="text"
-              value={finalResultProofs}
-              onChange={(event) => setFinalResultProofs(event.target.value)}
+              value={proofsState.finalResultProofs}
+              onChange={(event) => proofsState.setFinalResultProofs(event.target.value)}
               placeholder="Ecran final / victoire (liens ou refs)"
               aria-label="Preuves du résultat final"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
             <input
               type="text"
-              value={roomCaptureProofs}
-              onChange={(event) => setRoomCaptureProofs(event.target.value)}
+              value={proofsState.roomCaptureProofs}
+              onChange={(event) => proofsState.setRoomCaptureProofs(event.target.value)}
               placeholder="Capture de salle ou room setup (optionnel)"
               aria-label="Capture de salle"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
             <input
               type="text"
-              value={extraResultProofs}
-              onChange={(event) => setExtraResultProofs(event.target.value)}
+              value={proofsState.extraResultProofs}
+              onChange={(event) => proofsState.setExtraResultProofs(event.target.value)}
               placeholder="Autres preuves utiles (clips, captures, etc.)"
               aria-label="Autres preuves"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
             <button
-              onClick={handleResultSubmit}
+              onClick={handlers.resultSubmit}
               disabled={isSubmittingResult}
               className={`w-full py-4 font-display font-black uppercase tracking-widest text-xs italic ${
                 isSubmittingResult
@@ -438,26 +410,26 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             {(!!currentPlayer || isArbiter) && (
               <div className="border-t border-white/5 pt-4">
                 <button
-                  onClick={() => setShowAddEvidenceForm((v) => !v)}
+                  onClick={() => disputeState.setShowAddEvidenceForm((v) => !v)}
                   className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-zoyd-blue transition-colors"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   Ajouter une preuve au dossier
-                  {showAddEvidenceForm ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {disputeState.showAddEvidenceForm ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
 
-                {showAddEvidenceForm && (
+                {disputeState.showAddEvidenceForm && (
                   <div className="mt-3 flex gap-3">
                     <input
                       type="text"
-                      value={addEvidenceInput}
-                      onChange={(e) => setAddEvidenceInput(e.target.value)}
+                      value={disputeState.addEvidenceInput}
+                      onChange={(e) => disputeState.setAddEvidenceInput(e.target.value)}
                       placeholder="Liens ou refs séparés par des virgules"
                       aria-label="Ajouter des preuves"
                       className="flex-1 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                     />
                     <button
-                      onClick={handleAddEvidence}
+                      onClick={handlers.addEvidence}
                       className="px-5 py-3 border border-zoyd-blue/30 text-zoyd-blue text-[10px] font-display font-black uppercase tracking-widest hover:bg-zoyd-blue hover:text-black transition-colors"
                     >
                       Envoyer
@@ -476,45 +448,45 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
 
                 <div>
                   <button
-                    onClick={() => setShowArbiterScore((v) => !v)}
+                    onClick={() => disputeState.setShowArbiterScore((v) => !v)}
                     className="w-full flex items-center justify-between gap-3 border border-white/10 px-4 py-3 text-[10px] font-display font-black uppercase tracking-widest hover:border-white/30 transition-colors"
                   >
                     <span className="flex items-center gap-2">
                       <Trophy className="w-3.5 h-3.5 text-zoyd-yellow" />
                       Trancher le litige — Valider le score
                     </span>
-                    {showArbiterScore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {disputeState.showArbiterScore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   </button>
 
-                  {showArbiterScore && (
+                  {disputeState.showArbiterScore && (
                     <div className="mt-3 space-y-3 border border-white/5 p-4 bg-black/30">
                       <div className="grid md:grid-cols-2 gap-3">
                         <input
                           type="number"
-                          value={scoreAlpha}
-                          onChange={(e) => setScoreAlpha(e.target.value)}
+                          value={scoreState.scoreAlpha}
+                          onChange={(e) => scoreState.setScoreAlpha(e.target.value)}
                           placeholder="Score Alpha"
                           aria-label="Score Alpha (arbitre)"
                           className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                         />
                         <input
                           type="number"
-                          value={scoreBravo}
-                          onChange={(e) => setScoreBravo(e.target.value)}
+                          value={scoreState.scoreBravo}
+                          onChange={(e) => scoreState.setScoreBravo(e.target.value)}
                           placeholder="Score Bravo"
                           aria-label="Score Bravo (arbitre)"
                           className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                         />
                       </div>
                       <textarea
-                        value={resultNotes}
-                        onChange={(e) => setResultNotes(e.target.value)}
+                        value={scoreState.resultNotes}
+                        onChange={(e) => scoreState.setResultNotes(e.target.value)}
                         placeholder="Notes d'arbitrage sur ce litige..."
                         aria-label="Notes d'arbitrage"
                         className="w-full min-h-20 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
                       />
                       <button
-                        onClick={handleResultSubmit}
+                        onClick={handlers.resultSubmit}
                         disabled={isSubmittingResult}
                         className={`w-full py-3 font-display font-black uppercase tracking-widest text-xs italic transition-colors ${
                           isSubmittingResult
@@ -534,7 +506,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                       Impossible de trancher ? L'équipe d'administration ZOYD peut prendre le relais.
                     </p>
                     <button
-                      onClick={handleEscalate}
+                      onClick={handlers.escalate}
                       disabled={isEscalating}
                       className="flex items-center gap-2 border border-red-500/30 text-red-400 px-4 py-3 text-[10px] font-display font-black uppercase tracking-widest hover:bg-red-500/10 transition-colors disabled:opacity-40"
                     >
@@ -562,8 +534,8 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           </div>
           <div className="space-y-3">
             <select
-              value={disputeCategory}
-              onChange={(event) => setDisputeCategory(event.target.value as DisputeCategory)}
+              value={disputeState.category}
+              onChange={(event) => disputeState.setCategory(event.target.value as DisputeCategory)}
               aria-label="Catégorie du litige"
               className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             >
@@ -575,20 +547,20 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </select>
             <input
               type="text"
-              value={disputeReason}
-              onChange={(event) => setDisputeReason(event.target.value)}
+              value={disputeState.reason}
+              onChange={(event) => disputeState.setReason(event.target.value)}
               placeholder="Raison du litige"
               aria-label="Raison du litige"
               className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
             <textarea
-              value={disputeEvidence}
-              onChange={(event) => setDisputeEvidence(event.target.value)}
+              value={disputeState.evidence}
+              onChange={(event) => disputeState.setEvidence(event.target.value)}
               placeholder="Screenshots, room logs ou preuves, séparés par des virgules"
               aria-label="Preuves du litige"
               className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
             />
-            <button onClick={handleDispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">
+            <button onClick={handlers.dispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">
               Ouvrir un litige
             </button>
           </div>

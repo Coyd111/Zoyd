@@ -66,7 +66,6 @@ export default function LandingPage() {
               loop
               playsInline
               preload="none"
-              poster="/logo.png"
               className="h-full w-full object-cover opacity-24"
             >
               <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />

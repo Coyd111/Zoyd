@@ -59,20 +59,19 @@ export const getStatusFromMatch = (match) => {
 
   const allPlayersPresent = match.players.length >= match.maxPlayers;
   if (!allPlayersPresent) return 'recruiting';
-  if (!match.arbiter) return 'full';
 
   const everyoneCheckedIn = match.players.every((player) => player.isCheckedIn);
   const everyoneReady = match.players.every((player) => player.isReady);
 
   if (!everyoneCheckedIn || !everyoneReady) {
-    return 'check_in';
+    return match.arbiter ? 'check_in' : 'full';
   }
 
   if (match.status === 'in_progress') {
     return 'in_progress';
   }
 
-  return 'ready';
+  return match.arbiter ? 'ready' : 'ready';
 };
 
 const updateMatchSnapshot = (match, updates) => {
@@ -397,7 +396,18 @@ export const toggleReadyOnServer = (matches, actor, matchId) => {
   if (!player.isCheckedIn) throw makeError('CHECKIN_REQUIRED', "Confirme d'abord ta presence.");
 
   player.isReady = !player.isReady;
-  Object.assign(match, updateMatchSnapshot(match, {}));
+
+  const everyoneReady = match.players.length === match.maxPlayers &&
+    match.players.every((p) => p.isCheckedIn && p.isReady);
+
+  if (everyoneReady && !match.arbiter) {
+    match.status = 'in_progress';
+    match.startedAt = getNow();
+    match.updatedAt = getNow();
+  } else {
+    Object.assign(match, updateMatchSnapshot(match, {}));
+  }
+
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
@@ -483,8 +493,13 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
-  if (match.arbiter?.userId !== actorUser.id && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul l arbitre ou un admin peut valider le score.');
+  const isPlayer = match.players.some((p) => p.userId === actorUser.id);
+  const isArbiter = match.arbiter?.userId === actorUser.id;
+  if (!isArbiter && !isPlayer && actorUser.role !== 'admin') {
+    throw makeError('FORBIDDEN', 'Seul l arbitre, un admin ou un participant peut valider le score.');
+  }
+  if (match.arbiter && !isArbiter && actorUser.role !== 'admin') {
+    throw makeError('FORBIDDEN', 'Seul l arbitre peut valider le score quand un arbitre est assigne.');
   }
   if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
 
@@ -500,14 +515,18 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   const normalizedScreenshots = Array.isArray(resultPayload.screenshots) && resultPayload.screenshots.length
     ? normalizeProofRefs(resultPayload.screenshots)
     : flattenedProofs;
+  const isInstantNoArbiter = !match.arbiter && match.isInstant;
   const requiresMandatoryProofs =
-    resultPayload.resolutionType !== 'forfeit' && resultPayload.submittedBy !== 'admin-dashboard';
+    resultPayload.resolutionType !== 'forfeit' && resultPayload.submittedBy !== 'admin-dashboard' && !isInstantNoArbiter;
 
-  if (
-    requiresMandatoryProofs &&
+  if (requiresMandatoryProofs &&
     (!normalizedProofs || normalizedProofs.scoreboard.length === 0 || normalizedProofs.finalResult.length === 0)
   ) {
     throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un ecran final avant de valider le score.');
+  }
+
+  if (isInstantNoArbiter && !normalizedScreenshots.length) {
+    throw makeError('PROOFS_REQUIRED', 'Ajoute au moins une capture d\'ecran pour valider le score.');
   }
 
   const fullResult = {

@@ -285,13 +285,13 @@ const TournamentGrid = ({
   );
 };
 
-const Metric = ({ label, value, accent }: { label: string; value: string; accent: string }) => (
+const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
     <span className="text-[8px] md:text-[9px] font-mono font-bold text-white/40 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-3xl sm:text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>
   </div>
-);
+));
 
 export default TournoisPage;

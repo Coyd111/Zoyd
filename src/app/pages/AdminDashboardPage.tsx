@@ -122,10 +122,10 @@ const AdminDashboardPage: React.FC = () => {
         </div>
         <div role="tablist" className="flex flex-wrap gap-2 mb-8">
           {[
-            { id: 'overview', label: 'overview', count: priorityQueue.length },
-            { id: 'matches', label: 'matches', count: filteredMatches.length },
-            { id: 'disputes', label: 'disputes', count: adminInsights.openDisputes.length, urgent: escalatedDisputes.length },
-            { id: 'users', label: 'users', count: filteredUsers.length },
+            { id: 'overview', label: 'vue d\'ensemble', count: priorityQueue.length },
+            { id: 'matches', label: 'matchs', count: filteredMatches.length },
+            { id: 'disputes', label: 'litiges', count: adminInsights.openDisputes.length, urgent: escalatedDisputes.length },
+            { id: 'users', label: 'utilisateurs', count: filteredUsers.length },
           ].map((tab: { id: string; label: string; count: number; urgent?: number }) => (
             <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} aria-label={`${tab.label} (${tab.count}${tab.urgent ? `, ${tab.urgent} urgents` : ''})`} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${activeTab === tab.id ? 'bg-white text-black' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
               {tab.label} <span className="opacity-60">({tab.count})</span>

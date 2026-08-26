@@ -84,8 +84,8 @@ const showBrowserNotification = async (notification: Notification) => {
   const registration = await navigator.serviceWorker.ready;
   await registration.showNotification(notification.title, {
     body: notification.message,
-    icon: '/logo icone.png',
-    badge: '/logo icone.png',
+    icon: '/logo-icon.png',
+    badge: '/logo-icon.png',
     tag: notification.metadata?.browserTag || notification.metadata?.dedupeKey || notification.id,
     requireInteraction: notification.priority === 'urgent',
     data: notification.actionUrl ? { url: notification.actionUrl } : undefined,
@@ -225,3 +225,4 @@ export const selectActiveNotifications = (s: NotificationState) => {
     .filter((n) => !n.dismissed)
     .sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 };
+

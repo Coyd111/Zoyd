@@ -12,7 +12,8 @@ import {
   submitServerTournamentResult,
 } from '../../../app/lib/tournamentApi';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
-import { useAuthStore } from '../../../app/stores/authStore';
+import { useAuthStore, type User } from '../../../app/stores/authStore';
+import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { useTournamentStore } from '../../../app/stores/tournamentStore';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
@@ -169,7 +170,7 @@ const TournamentBracketPage: React.FC = () => {
     setTeammateInputs((current) => current.map((entry, entryIndex) => (entryIndex === index ? value : entry)));
   };
 
-  const applyTournamentResponse = (payload: { tournament: typeof tournament; user?: any; wallet?: any }) => {
+  const applyTournamentResponse = (payload: { tournament: typeof tournament; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
     hydrateTournaments([payload.tournament]);
     applyServerAccountState(payload);
   };

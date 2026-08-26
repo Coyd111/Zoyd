@@ -42,7 +42,8 @@ const WalletPage: React.FC = () => {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState('');
-  const [amount, setAmount] = useState('');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw' | 'prize_win'>('all');
   const [fundingPrefillKey, setFundingPrefillKey] = useState('');
   const [searchParams] = useSearchParams();
@@ -71,7 +72,7 @@ const WalletPage: React.FC = () => {
 
   useEffect(() => {
     if (fundingPrompt && fundingKey !== fundingPrefillKey) {
-      setAmount(fundingPrompt.neededAmount.toString());
+      setDepositAmount(fundingPrompt.neededAmount.toString());
       setFundingPrefillKey(fundingKey);
     }
   }, [fundingKey, fundingPrefillKey, fundingPrompt]);
@@ -82,10 +83,10 @@ const WalletPage: React.FC = () => {
   }, [filter, transactions]);
 
   const handleDeposit = async () => {
-    if (!amount) return;
-    const depositAmount = parseFloat(amount);
-    if (isNaN(depositAmount) || depositAmount <= 0) return;
-    const amountFCFA = depositAmount * 10; // 1 ZC = 10 FCFA
+    if (!depositAmount) return;
+    const depositAmountNum = parseFloat(depositAmount);
+    if (isNaN(depositAmountNum) || depositAmountNum <= 0) return;
+    const amountFCFA = depositAmountNum * 10; // 1 ZC = 10 FCFA
 
     const publicKey = import.meta.env.VITE_FEDAPAY_PUBLIC_KEY;
     
@@ -105,7 +106,7 @@ const WalletPage: React.FC = () => {
       public_key: publicKey,
       transaction: {
         amount: amountFCFA,
-        description: `Recharge de ${depositAmount} ZC (~ ${amountFCFA} FCFA)`,
+        description: `Recharge de ${depositAmountNum} ZC (~ ${amountFCFA} FCFA)`,
       },
       customer: {
         email: user?.email || 'joueur@zoyd.app',
@@ -143,14 +144,14 @@ const WalletPage: React.FC = () => {
   };
 
   const handleWithdraw = async () => {
-    if (!amount || !user) return;
+    if (!withdrawAmount || !user) return;
     try {
-      const withdrawAmount = parseFloat(amount);
-      if (isNaN(withdrawAmount) || withdrawAmount <= 0) return;
-      await withdraw(withdrawAmount, 'Mobile Money', user.phone || '');
-      toast.success(`Retrait lance pour ${formatZC(withdrawAmount)}.`);
+      const withdrawAmountNum = parseFloat(withdrawAmount);
+      if (isNaN(withdrawAmountNum) || withdrawAmountNum <= 0) return;
+      await withdraw(withdrawAmountNum, 'Mobile Money', user.phone || '');
+      toast.success(`Retrait lance pour ${formatZC(withdrawAmountNum)}.`);
       setShowWithdrawModal(false);
-      setAmount('');
+      setWithdrawAmount('');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur de retrait.');
     }
@@ -312,7 +313,7 @@ const WalletPage: React.FC = () => {
                 {presetAmounts.map((preset) => (
                     <button
                       key={preset}
-                      onClick={() => setAmount(preset.toString())}
+                      onClick={() => setDepositAmount(preset.toString())}
                       aria-label={`Ajouter ${preset} ZC`}
                       className="px-4 py-3 touch-target bg-white/5 border border-white/10 hover:border-zoyd-yellow text-zoyd-yellow font-display font-bold transition-all"
                   >
@@ -320,7 +321,7 @@ const WalletPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <Input id="deposit-amount" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Montant personnalise" />
+              <Input id="deposit-amount" type="number" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} placeholder="Montant personnalise" />
             </div>
 
             <div>
@@ -344,7 +345,7 @@ const WalletPage: React.FC = () => {
               </div>
             </div>
 
-            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={!selectedOperator || !amount} aria-label="Confirmer le dépôt">
+            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={!selectedOperator || !depositAmount} aria-label="Confirmer le dépôt">
               Ajouter ces ZC
             </Button>
           </div>
@@ -357,8 +358,8 @@ const WalletPage: React.FC = () => {
               <Input
                 id="withdraw-amount"
                 type="number"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                value={withdrawAmount}
+                onChange={(event) => setWithdrawAmount(event.target.value)}
                 placeholder={`${MIN_WITHDRAWAL_ZC} ZC minimum (${MIN_WITHDRAWAL_ZC * 10} FCFA)`}
                 max={cashBalance}
               />
@@ -369,7 +370,7 @@ const WalletPage: React.FC = () => {
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={!amount || parseFloat(amount) < MIN_WITHDRAWAL_ZC || parseFloat(amount) > cashBalance}
+              disabled={!withdrawAmount || parseFloat(withdrawAmount) < MIN_WITHDRAWAL_ZC || parseFloat(withdrawAmount) > cashBalance}
               aria-label="Confirmer le retrait"
             >
               Retirer mes gains

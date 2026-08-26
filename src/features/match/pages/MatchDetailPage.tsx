@@ -21,7 +21,8 @@ import {
   toggleServerReady,
 } from '../../../app/lib/matchApi';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
-import { useAuthStore } from '../../../app/stores/authStore';
+import { useAuthStore, type User } from '../../../app/stores/authStore';
+import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { useMatchStore, type DisputeCategory } from '../../../app/stores/matchStore';
 import { useChatStore } from '../../../app/stores/chatStore';
 import { useSocketStore } from '../../../app/stores/socketStore';
@@ -255,7 +256,7 @@ const MatchDetailPage: React.FC = () => {
     returnTo: `/mj/match/${match.id}`,
   });
 
-  const applyMatchResponse = (payload: { match: typeof match; user?: any; wallet?: any }) => {
+  const applyMatchResponse = (payload: { match: typeof match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
     hydrateMatches([payload.match]);
     applyServerAccountState(payload);
   };

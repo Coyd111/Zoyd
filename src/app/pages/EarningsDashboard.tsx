@@ -29,6 +29,15 @@ const ChartFallback = () => (
     <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 animate-pulse">Chargement...</div>
   </div>
 );
+
+class ChartErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return <div className="h-full w-full flex items-center justify-center text-[10px] font-mono text-red-400">Erreur de chargement du graphique.</div>;
+    return this.props.children;
+  }
+}
 import { useWalletStore } from '../stores/walletStore';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { buildWalletInsights } from '../../lib/communityInsights';
@@ -203,11 +212,13 @@ const EarningsDashboard: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-[350px] w-full mt-4" role="img" aria-label="Graphique d'evolution des gains sur 30 jours">
-                <Suspense fallback={<ChartFallback />}>
-                  <LazyEarningsAreaChart data={walletInsights.trend} />
-                </Suspense>
-              </div>
+                <div className="h-[350px] w-full mt-4" role="img" aria-label="Graphique d'evolution des gains sur 30 jours">
+                  <ChartErrorBoundary>
+                    <Suspense fallback={<ChartFallback />}>
+                      <LazyEarningsAreaChart data={walletInsights.trend} />
+                    </Suspense>
+                  </ChartErrorBoundary>
+                </div>
             </CardContent>
           </Card>
 
@@ -226,9 +237,11 @@ const EarningsDashboard: React.FC = () => {
                 ) : (
                   <>
                     <div className="h-[200px] w-full" role="img" aria-label="Graphique de repartition des matchs joues et arbitres">
-                      <Suspense fallback={<ChartFallback />}>
-                        <LazyMatchResultsBarChart data={matchResultsData} />
-                      </Suspense>
+                      <ChartErrorBoundary>
+                        <Suspense fallback={<ChartFallback />}>
+                          <LazyMatchResultsBarChart data={matchResultsData} />
+                        </Suspense>
+                      </ChartErrorBoundary>
                     </div>
                     <div className="flex justify-around mt-4">
                       <div className="text-center">

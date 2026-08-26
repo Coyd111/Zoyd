@@ -40,7 +40,7 @@ const HubMJPage: React.FC = () => {
         match.creatorPseudo.toLowerCase().includes(query)
       );
     });
-  }, [getFilteredMatches, searchQuery, needsArbiter]);
+  }, [getFilteredMatches, debouncedQuery, needsArbiter]);
 
   const metrics = useMemo(() => {
     const livePool = filteredMatches.reduce((sum, match) => sum + match.prizePool, 0);
@@ -253,13 +253,13 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
   );
 };
 
-const Metric = ({ label, value, accent }: { label: string; value: string; accent: string }) => (
+const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
     <span className="text-[9px] font-mono font-bold text-white/40 uppercase tracking-widest mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>
   </div>
-);
+));
 
 export default HubMJPage;

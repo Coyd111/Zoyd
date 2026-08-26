@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react';
 import { activateAccount } from '../../lib/authApi';
+import { Helmet } from 'react-helmet-async';
 
 const ActivatePage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,6 +36,10 @@ const ActivatePage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black flex flex-col items-center justify-center p-5 relative font-ui scanline safe-top safe-bottom">
+      <Helmet>
+        <title>Activation — ZOYD</title>
+        <meta name="description" content="Active ton compte ZOYD avec le code reçu par email." />
+      </Helmet>
       <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       

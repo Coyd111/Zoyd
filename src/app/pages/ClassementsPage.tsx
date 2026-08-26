@@ -15,6 +15,7 @@ import {
   buildTeamRankings,
 } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
+import { Helmet } from 'react-helmet-async';
 
 type RankingTab = 'elo' | 'earnings' | 'winrate' | 'activity' | 'teams' | 'country' | 'controller';
 
@@ -241,6 +242,10 @@ const ClassementsPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24">
+      <Helmet>
+        <title>Classements — ZOYD</title>
+        <meta name="description" content="Leaderboard des meilleurs joueurs et arbitres." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden pt-16">

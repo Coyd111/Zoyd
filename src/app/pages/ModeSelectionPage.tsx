@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Gamepad2, Swords, Wallet } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import ZoydLogo from '../components/branding/ZoydLogo';
+import { Helmet } from 'react-helmet-async';
 
 const ModeSelectionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +20,10 @@ const ModeSelectionPage: React.FC = () => {
 
   return (
     <main className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">
+      <Helmet>
+        <title>Mode de jeu — ZOYD</title>
+        <meta name="description" content="Choisis entre Multijoueur et Battle Royale." />
+      </Helmet>
       <a href="#mode-selection" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
         Aller au contenu principal
       </a>

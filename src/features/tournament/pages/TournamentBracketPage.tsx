@@ -20,6 +20,7 @@ import BracketHeader from '../components/BracketHeader';
 import BracketGrid from '../components/BracketGrid';
 import BracketSidebar from '../components/BracketSidebar';
 import BracketActions from '../components/BracketActions';
+import { Helmet } from 'react-helmet-async';
 
 const TournamentBracketPage: React.FC = () => {
   const { id } = useParams();
@@ -322,6 +323,10 @@ const TournamentBracketPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-24 lg:pb-0 safe-top">
+      <Helmet>
+        <title>Bracket du tournoi — ZOYD</title>
+        <meta name="description" content="Consulte le bracket d'un tournoi ZOYD." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <BracketHeader tournament={tournament} />

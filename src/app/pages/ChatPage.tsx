@@ -14,6 +14,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
 import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
+import { Helmet } from 'react-helmet-async';
 
 const channelIcons: Record<string, React.ReactNode> = {
   global: <Globe className="w-4 h-4" />,
@@ -110,6 +111,10 @@ const ChatPage: React.FC = () => {
 
   return (
     <div className="safe-top flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
+      <Helmet>
+        <title>Chat — ZOYD</title>
+        <meta name="description" content="Discute avec la communauté ZOYD en temps réel." />
+      </Helmet>
       <a href="#chat-main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
         Aller au contenu principal
       </a>
@@ -295,7 +300,7 @@ const ChatPage: React.FC = () => {
                         <div className="flex items-center gap-2 mb-1">
                           {!isMe && <div className="w-1.5 h-1.5 bg-zoyd-blue" />}
                           <span className={`text-[10px] font-display font-black tracking-widest uppercase ${isMe ? 'text-white' : 'text-white/40'}`}>
-                            {message.senderPseudo}
+                            {sanitizeText(message.senderPseudo)}
                           </span>
                           <span className="text-[9px] font-mono text-white/40">{getRelativeTime(message.timestamp)}</span>
                           {isMe && <div className="w-1.5 h-1.5 bg-zoyd-yellow" />}

@@ -17,6 +17,7 @@ import AdminMatchesTab from '../components/admin/AdminMatchesTab';
 import AdminUrgencyTab from '../components/admin/AdminUrgencyTab';
 import AdminUsersTab from '../components/admin/AdminUsersTab';
 import type { MatchFilter, UserFilter, DisputeFilter } from '../components/admin/AdminTabShared';
+import { Helmet } from 'react-helmet-async';
 
 const AdminDashboardPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -85,6 +86,10 @@ const AdminDashboardPage: React.FC = () => {
   const handleCancelMatch = async (matchId: string) => { try { const response = await adminCancelServerMatch(matchId, 'Match annule par moderation locale.'); applyAdminMatchResponse(response); toast.success('Match annule et rembourse cote serveur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Annulation admin impossible.'); } };
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline pt-safe-top">
+      <Helmet>
+        <title>Administration — ZOYD</title>
+        <meta name="description" content="Tableau de bord d'administration ZOYD." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       <header className="relative overflow-hidden border-b border-white/5">
         <img src="/assets/images/codm-8.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />

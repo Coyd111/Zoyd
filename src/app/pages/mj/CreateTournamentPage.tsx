@@ -20,6 +20,7 @@ import { useAuthStore } from '../../stores/authStore';
 import type { MatchFormat } from '../../stores/matchStore';
 import { createServerTournament } from '../../lib/tournamentApi';
 import { applyServerAccountState } from '../../lib/serverSync';
+import { Helmet } from 'react-helmet-async';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const MAX_ENTRY_OPTIONS = [4, 8, 16, 32];
@@ -195,6 +196,10 @@ const CreateTournamentPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
+      <Helmet>
+        <title>Créer un tournoi — ZOYD</title>
+        <meta name="description" content="Crée un tournoi avec brackets automatiques." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-8 relative z-10">

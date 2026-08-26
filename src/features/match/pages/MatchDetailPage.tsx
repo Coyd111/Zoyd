@@ -35,6 +35,7 @@ import { MatchRules } from '../components/MatchRules';
 import { MatchResults } from '../components/MatchResults';
 import { MatchActions } from '../components/MatchActions';
 import { MatchTimeline } from '../components/MatchTimeline';
+import { Helmet } from 'react-helmet-async';
 
 const statusLabels: Record<string, string> = {
   recruiting: 'Recrutement ouvert',
@@ -496,6 +497,10 @@ const MatchDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline safe-top">
+      <Helmet>
+        <title>Détails du match — ZOYD</title>
+        <meta name="description" content="Consulte les détails d'un match ZOYD." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 relative z-10">
         <MatchHeader match={match} statusLabel={statusLabel} />

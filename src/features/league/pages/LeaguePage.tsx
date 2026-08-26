@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import { formatZC, formatFCFA, getRelativeTime } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
+import { Helmet } from 'react-helmet-async';
 
 const STATUS_TABS: Array<{ value: LeagueSeasonStatus | 'all'; label: string }> = [
   { value: 'all', label: 'TOUT' },
@@ -250,6 +251,10 @@ const LeaguePage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
+      <Helmet>
+        <title>Battle Royale League — ZOYD</title>
+        <meta name="description" content="Classement et saisons de la ligue BR ZOYD." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">

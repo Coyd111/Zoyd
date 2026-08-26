@@ -8,6 +8,7 @@ import { useTournamentStore } from '../stores/tournamentStore';
 import { Button } from '../components/ui/Button';
 import ProfileView from '../components/profile/ProfileView';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
+import { Helmet } from 'react-helmet-async';
 
 const ProfilPage = () => {
   const { user } = useAuthStore();
@@ -42,6 +43,11 @@ const ProfilPage = () => {
   );
 
   return (
+    <>
+    <Helmet>
+      <title>Mon profil — ZOYD</title>
+      <meta name="description" content="Consulte et modifie ton profil ZOYD." />
+    </Helmet>
     <ProfileView
       userId={user.id}
       pseudo={user.pseudo}
@@ -79,6 +85,7 @@ const ProfilPage = () => {
         </div>
       }
     />
+    </>
   );
 };
 

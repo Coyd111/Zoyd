@@ -7,6 +7,7 @@ import { useMatchStore } from '../../stores/matchStore';
 import { useSocketStore } from '../../stores/socketStore';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useDebounce } from '../../hooks/useDebounce';
+import { Helmet } from 'react-helmet-async';
 
 const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'] as const;
 const STATUS_FILTERS = [
@@ -53,6 +54,10 @@ const HubMJPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui">
+      <Helmet>
+        <title>Hub Multijoueur — ZOYD</title>
+        <meta name="description" content="Trouve ou crée un match wager sur ZOYD." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-black pt-14 md:pt-16 overflow-hidden">

@@ -33,6 +33,7 @@ import { useWalletStore } from '../stores/walletStore';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { buildWalletInsights } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
+import { Helmet } from 'react-helmet-async';
 
 const getDeltaLabel = (current: number, previous: number, emptyLabel: string) => {
   if (current === 0 && previous === 0) return emptyLabel;
@@ -124,6 +125,10 @@ const EarningsDashboard: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black p-4 md:p-8 font-ui scanline relative overflow-hidden pt-safe-top">
+      <Helmet>
+        <title>Gains — ZOYD</title>
+        <meta name="description" content="Consulte tes gains et performances sur ZOYD." />
+      </Helmet>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">

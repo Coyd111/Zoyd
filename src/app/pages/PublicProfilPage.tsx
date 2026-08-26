@@ -13,6 +13,7 @@ import ProfileView from '../components/profile/ProfileView';
 import { buildCompetitiveSummary, createPublicProfile, getObservedPlayerSnapshot } from '../../lib/profileMetrics';
 import { sendServerFriendRequest, blockServerUser } from '../lib/socialApi';
 import { toast } from 'sonner';
+import { Helmet } from 'react-helmet-async';
 
 const PublicProfilPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -146,6 +147,11 @@ const PublicProfilPage = () => {
   };
 
   return (
+    <>
+    <Helmet>
+      <title>Profil — ZOYD</title>
+      <meta name="description" content="Profil public d'un joueur ZOYD." />
+    </Helmet>
     <ProfileView
       userId={id}
       pseudo={publicProfile.pseudo}
@@ -199,6 +205,7 @@ const PublicProfilPage = () => {
         ) : undefined
       }
     />
+    </>
   );
 };
 

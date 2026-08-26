@@ -28,7 +28,7 @@ const flattenProofs = (proofs) =>
     ? [...(proofs.scoreboard || []), ...(proofs.finalResult || []), ...(proofs.roomCapture || []), ...(proofs.extraEvidence || [])]
     : [];
 const buildProofHash = (matchId, winnerTeam, scores, refs) =>
-  [String(matchId).toLowerCase(), winnerTeam, scores.team0, scores.team1, ...refs.map((ref) => ref.toLowerCase())].join('|');
+  [String(matchId).toLowerCase(), winnerTeam, scores?.team0 ?? 0, scores?.team1 ?? 0, ...refs.map((ref) => ref.toLowerCase())].join('|');
 export const getWinnerPayout = (match) => Math.max(0, roundAmount(match.prizePool - match.zoydFee - match.arbiterFee));
 
 const cloneMatches = (matches) => matches.map((match) => structuredClone(match));

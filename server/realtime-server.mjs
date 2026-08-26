@@ -90,6 +90,8 @@ import {
   updatePasswordHash,
   sbUpsert,
   getMemoryChatChannels,
+  getPublicUserById,
+  getAllUsers,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex } from './mutex.mjs';
@@ -509,6 +511,10 @@ const mapPersistenceError = (error) => {
     case 'NO_SLOT_AVAILABLE':
     case 'ARBITER_TAKEN':
     case 'SELF_BLOCK':
+      return { status: 409, message, code };
+    case 'INVALID_JSON':
+    case 'PAYLOAD_TOO_LARGE':
+      return { status: 400, message, code };
     case 'NOT_FOUND':
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':
@@ -1221,6 +1227,44 @@ const server = http.createServer(async (req, res) => {
     try {
       const changes = markAllNotificationsAsRead(session.user.id);
       respondJson(res, 200, { ok: true, changes });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/notifications') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const unread = getUnreadNotificationsForUser(session.user.id);
+      respondJson(res, 200, { ok: true, notifications: unread, count: unread.length });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/wallet/history') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const wallet = getServerWallet(session.user.id);
+      respondJson(res, 200, { ok: true, transactions: wallet.transactions || [] });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  const userProfileMatch = pathname.match(/^\/api\/users\/([^/]+)$/);
+  if (req.method === 'GET' && userProfileMatch && pathname !== '/api/users/search') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    try {
+      const targetUser = getPublicUserById(userProfileMatch[1]);
+      if (!targetUser) return respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.' });
+      respondJson(res, 200, { ok: true, user: targetUser });
     } catch (error) {
       respondMappedError(res, error);
     }

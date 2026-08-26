@@ -8,7 +8,8 @@ import {
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
-import { roundAmount, getNow, makeError } from './utils.mjs';
+import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
+export { addXpToProgression };
 
 const log = createLogger('match-engine');
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
@@ -29,32 +30,6 @@ const flattenProofs = (proofs) =>
 const buildProofHash = (matchId, winnerTeam, scores, refs) =>
   [String(matchId).toLowerCase(), winnerTeam, scores.team0, scores.team1, ...refs.map((ref) => ref.toLowerCase())].join('|');
 export const getWinnerPayout = (match) => Math.max(0, roundAmount(match.prizePool - match.zoydFee - match.arbiterFee));
-
-const levelThresholds = {
-  BEGINNER: 1000,
-  COMPETITOR: 3000,
-  CHALLENGER: 7000,
-  ELITE: 15000,
-  PRO: Infinity,
-};
-
-const progressionLevels = ['BEGINNER', 'COMPETITOR', 'CHALLENGER', 'ELITE', 'PRO'];
-
-export const addXpToProgression = (progression, amount) => {
-  const next = {
-    level: progression?.level || 'BEGINNER',
-    xp: Number(progression?.xp || 0) + amount,
-    nextLevelXp: Number(progression?.nextLevelXp || 1000),
-  };
-
-  let currentIdx = progressionLevels.indexOf(next.level);
-  while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
-    next.level = progressionLevels[currentIdx + 1];
-    currentIdx++;
-  }
-  next.nextLevelXp = levelThresholds[next.level];
-  return next;
-};
 
 const cloneMatches = (matches) => matches.map((match) => structuredClone(match));
 

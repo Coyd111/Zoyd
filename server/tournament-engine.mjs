@@ -1,6 +1,6 @@
 import { getUserById, updateUserAccount } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
-import { roundAmount, getNow, makeError } from './utils.mjs';
+import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 import { createLogger } from './logger.mjs';
 import {
   lockEntryFee,
@@ -22,32 +22,6 @@ const normalizeLabel = (value) => `${value || ''}`.trim().replace(/\s+/g, ' ');
 const toEntityKey = (value) =>
   normalizeLabel(value).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'ENTRY';
 const getSquadLockAmount = (entryFee, teamSize) => roundAmount(Number(entryFee || 0) * Number(teamSize || 1));
-
-const levelThresholds = {
-  BEGINNER: 1000,
-  COMPETITOR: 3000,
-  CHALLENGER: 7000,
-  ELITE: 15000,
-  PRO: Infinity,
-};
-
-const progressionLevels = ['BEGINNER', 'COMPETITOR', 'CHALLENGER', 'ELITE', 'PRO'];
-
-const addXpToProgression = (progression, amount) => {
-  const next = {
-    level: progression?.level || 'BEGINNER',
-    xp: Number(progression?.xp || 0) + amount,
-    nextLevelXp: Number(progression?.nextLevelXp || 1000),
-  };
-
-  let currentIdx = progressionLevels.indexOf(next.level);
-  while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
-    currentIdx++;
-    next.level = progressionLevels[currentIdx];
-  }
-  next.nextLevelXp = levelThresholds[next.level];
-  return next;
-};
 
 const buildPayout = (entryFee, entriesCount, arbitersNeeded, teamSize = 1) => {
   const grossPool = roundAmount(Number(entryFee || 0) * Number(entriesCount || 0) * Number(teamSize || 1));

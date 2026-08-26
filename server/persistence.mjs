@@ -40,19 +40,22 @@ export { roundAmount, makeError };
 export const sanitizeText = (input) => {
   if (!input) return '';
   return String(input)
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '')      // Remove SVG tags and content
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '')       // Remove SVG tags and content
     .replace(/<svg[\s\S]*?\/>/gi, '')           // Remove self-closing SVG tags
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, '') // Remove iframe tags and content
     .replace(/<iframe[\s\S]*?\/>/gi, '')        // Remove self-closing iframe tags
     .replace(/<object[\s\S]*?<\/object>/gi, '') // Remove object tags and content
     .replace(/<object[\s\S]*?\/>/gi, '')        // Remove self-closing object tags
     .replace(/<embed[\s\S]*?\/?>/gi, '')        // Remove embed tags
-    .replace(/<[^>]*>/g, '')                     // Remove remaining HTML tags
-    .replace(/javascript:/gi, '')                // Remove javascript: protocol
+    .replace(/<script[\s\S]*?<\/script>/gi, '') // Remove script tags
+    .replace(/<style[\s\S]*?<\/style>/gi, '')   // Remove style tags
+    .replace(/<[^>]*>/g, '')                    // Remove remaining HTML tags
+    .replace(/javascript:/gi, '')               // Remove javascript: protocol
+    .replace(/vbscript:/gi, '')                 // Remove vbscript: protocol
+    .replace(/data:(?!image\/)/gi, '')          // Remove data: URIs except images
     .replace(/on\w+\s*=/gi, '')                 // Remove event handlers (e.g. onclick=)
-    .replace(/data:(?!image\/)/gi, '')           // Remove data: URIs except images
     .trim()
-    .slice(0, 5000);                             // Limit length
+    .slice(0, 5000);                            // Limit length
 };
 
 export const normalizePseudoKey = (value) => value.trim().toLowerCase();

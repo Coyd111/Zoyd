@@ -7,7 +7,7 @@ import {
   settleMatchLossWallet,
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
-import { roundAmount, getNow, makeError } from './utils.mjs';
+import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 
 const log = createLogger('league-engine');
 
@@ -38,31 +38,6 @@ const PLACEMENT_POINTS = (() => {
 const KILL_POINTS_PER_ELIMINATION = 2;
 
 const DAY_KEYS = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
-const levelThresholds = {
-  BEGINNER: 1000,
-  COMPETITOR: 3000,
-  CHALLENGER: 7000,
-  ELITE: 15000,
-  PRO: Infinity,
-};
-
-const progressionLevels = ['BEGINNER', 'COMPETITOR', 'CHALLENGER', 'ELITE', 'PRO'];
-
-const addXpToProgression = (progression, amount) => {
-  const next = {
-    level: progression?.level || 'BEGINNER',
-    xp: Number(progression?.xp || 0) + amount,
-    nextLevelXp: Number(progression?.nextLevelXp || 1000),
-  };
-  let currentIdx = progressionLevels.indexOf(next.level);
-  while (currentIdx >= 0 && currentIdx < progressionLevels.length - 1 && next.xp >= levelThresholds[next.level]) {
-    currentIdx++;
-    next.level = progressionLevels[currentIdx];
-  }
-  next.nextLevelXp = levelThresholds[next.level];
-  return next;
-};
 
 const buildLeaguePayout = (totalPool) => ({
   gross: roundAmount(totalPool),

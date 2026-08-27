@@ -166,6 +166,19 @@ const RegisterPage: React.FC = () => {
       // Show success and redirect to login
       toast.success('Compte cree avec succes. Connecte-toi maintenant.');
       
+      // Store pending welcome notification for after login
+      try {
+        const pending = JSON.parse(localStorage.getItem('zoyd_pending_notifs') || '[]');
+        pending.push({
+          type: 'system',
+          title: 'Bienvenue sur ZOYD !',
+          message: `Ton compte ${formData.pseudo} est pret. Commence par explorer la plateforme.`,
+          priority: 'high',
+          actionUrl: '/',
+        });
+        localStorage.setItem('zoyd_pending_notifs', JSON.stringify(pending));
+      } catch { /* ignore localStorage errors */ }
+      
       // Redirect to login page
       navigate('/auth/login');
     } catch (error) {

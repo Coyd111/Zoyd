@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { loginWithBackend } from '../../lib/authApi';
 import { useAuthStore } from '../../stores/authStore';
+import { useNotificationStore } from '../../stores/notificationStore';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { Helmet } from 'react-helmet-async';
 
@@ -40,6 +41,30 @@ const LoginPage: React.FC = () => {
       const auth = await loginWithBackend(data.emailOrPseudo, data.password);
       
       login(auth.user, auth.token, auth.expiresAt);
+
+      useNotificationStore.getState().addNotification({
+        type: 'system',
+        title: 'Connexion reussie',
+        message: `Content de te revoir, ${auth.user.pseudo} !`,
+        priority: 'normal',
+        actionUrl: '/',
+        metadata: { showToast: true, dedupeKey: 'login-welcome' },
+      });
+
+      // Pickup pending registration notifications
+      try {
+        const pending = JSON.parse(localStorage.getItem('zoyd_pending_notifs') || '[]');
+        if (Array.isArray(pending) && pending.length > 0) {
+          for (const n of pending) {
+            useNotificationStore.getState().addNotification({
+              ...n,
+              metadata: { showToast: true, dedupeKey: `pending-${n.title}` },
+            });
+          }
+          localStorage.removeItem('zoyd_pending_notifs');
+        }
+      } catch { /* ignore */ }
+
       navigate('/');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Connexion impossible.';

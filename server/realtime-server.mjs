@@ -36,6 +36,9 @@ import {
   getUnreadCountForUser,
   getStateCollection,
   loadFromSupabase,
+  loadFromSupabaseWithRetry,
+  forceReloadFromSupabase,
+  getHealthInfo,
   loadAdminTotpSecrets,
   markChatChannelRead,
   removePushSubscription,
@@ -145,9 +148,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/health') {
+    const health = getHealthInfo();
     respondJson(res, 200, {
       ok: true,
       service: 'zoyd-api',
+      persistence: health,
       timestamp: getNow(),
     });
     return;
@@ -1782,6 +1787,21 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Admin: force reload all data from Supabase
+  if (req.method === 'POST' && pathname === '/api/admin/reload') {
+    const session = requireAdmin(req, res);
+    if (!session) return;
+    log.info('Admin force reload from Supabase', { adminId: session.user.id });
+    try {
+      const ok = await forceReloadFromSupabase();
+      const health = getHealthInfo();
+      respondJson(res, 200, { ok, persistence: health });
+    } catch (err) {
+      respondJson(res, 500, { ok: false, error: err.message });
+    }
+    return;
+  }
+
   // SEC-R4: Admin 2FA setup — generate TOTP secret for admin
   if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     const session = requireAdmin(req, res);
@@ -2483,7 +2503,10 @@ io.on('connection', (socket) => {
 });
 
 const start = async () => {
-  await loadFromSupabase();
+  const loaded = await loadFromSupabaseWithRetry(3);
+  if (!loaded) {
+    log.error('CRITICAL: Failed to load data from Supabase after 3 attempts — users may not be available');
+  }
 
   // Load admin 2FA secrets from Supabase
   const loaded2fa = await loadAdminTotpSecrets();

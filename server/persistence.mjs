@@ -130,7 +130,11 @@ export const verifyPassword = async (password, passwordHash) => {
 export const sbUpsert = async (table, data) => {
   if (!supabase) return;
   const { error } = await supabase.from(table).upsert(data);
-  if (error) log.error(`${table} upsert error`, { message: error.message });
+  if (error) {
+    log.error(`${table} upsert error`, { message: error.message, code: error.code, detail: error.detail });
+    return false;
+  }
+  return true;
 };
 
 const sbDelete = async (table, filters) => {
@@ -169,7 +173,7 @@ export const loadFromSupabase = async () => {
     log.warn('No Supabase client — running from memory only');
     await ensureSeedAdmin();
     ensureGlobalChatChannel();
-    return;
+    return false;
   }
 
   log.info('Loading from Supabase...');
@@ -177,7 +181,11 @@ export const loadFromSupabase = async () => {
 
   try {
     // Users
-    const { data: users } = await supabase.from('app_users').select('*');
+    const { data: users, error: usersErr } = await supabase.from('app_users').select('*');
+    if (usersErr) {
+      log.error('Failed to load users from Supabase', { message: usersErr.message, code: usersErr.code });
+      throw usersErr;
+    }
     if (users) {
       for (const row of users) {
         memoryUsers.set(row.id, sanitizeUserPayload(row.payload));
@@ -187,6 +195,7 @@ export const loadFromSupabase = async () => {
         }
       }
     }
+    log.info('Users loaded', { count: memoryUsers.size });
 
     // Auth sessions
     const { data: authSessions } = await supabase.from('auth_sessions').select('*');
@@ -288,12 +297,56 @@ export const loadFromSupabase = async () => {
 
     log.info('Loaded from Supabase', { durationMs: Date.now() - t0, users: memoryUsers.size, channels: memoryChatChannels.size, snapshots: memoryStateSnapshots.size });
   } catch (err) {
-    log.error('Error loading from Supabase', err);
+    log.error('Error loading from Supabase', { message: err.message, stack: err.stack });
   }
 
   await ensureSeedAdmin();
   ensureGlobalChatChannel();
+  return memoryUsers.size > 0;
 };
+
+// Retry wrapper — retries up to 3 times with exponential backoff
+export const loadFromSupabaseWithRetry = async (maxRetries = 3) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const ok = await loadFromSupabase();
+    if (ok) return true;
+    if (attempt < maxRetries) {
+      const delay = attempt * 3000;
+      log.warn(`Load attempt ${attempt}/${maxRetries} failed — retrying in ${delay}ms`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  log.error(`All ${maxRetries} load attempts failed — running with empty state`);
+  return false;
+};
+
+// Force reload from Supabase (admin endpoint)
+export const forceReloadFromSupabase = async () => {
+  memoryUsers.clear();
+  memoryAdminIds.clear();
+  memoryPasswordHashes.clear();
+  memoryAuthSessions.clear();
+  memoryRealtimeSessions.clear();
+  memoryChatChannels.clear();
+  memoryChatMessages.clear();
+  memoryStateSnapshots.clear();
+  memoryFriendRequests.clear();
+  memoryFriendships.clear();
+  memoryUserBlocks.clear();
+  memoryNotifications.clear();
+  memoryProcessedTransactions.clear();
+  memoryPushSubscriptions.clear();
+  return await loadFromSupabase();
+};
+
+// Health check info
+export const getHealthInfo = () => ({
+  supabaseConnected: !!supabase,
+  usersInMemory: memoryUsers.size,
+  adminsInMemory: memoryAdminIds.size,
+  channelsInMemory: memoryChatChannels.size,
+  snapshotsInMemory: memoryStateSnapshots.size,
+});
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 export const buildUserPayload = (input, role = 'player') => {
@@ -369,7 +422,6 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
       email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
       game_id_key: normalizeGameIdKey(payload.gameId), role,
       password_hash: passwordHash, payload,
-      is_active: true,
       created_at: createdAt, updated_at: createdAt,
     });
 
@@ -608,8 +660,6 @@ export const activateUserAccount = (userId) => {
   // Update in Supabase
   sbUpsert('app_users', {
     id: userId,
-    is_active: true,
-    activated_at: getNow(),
     payload: user,
     updated_at: getNow(),
   });

@@ -364,7 +364,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
 
     // Write to Supabase
-    sbUpsert('app_users', {
+    await sbUpsert('app_users', {
       id, pseudo_key: normalizePseudoKey(payload.pseudo),
       email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
       game_id_key: normalizeGameIdKey(payload.gameId), role,
@@ -818,7 +818,7 @@ export const ensureGlobalChatChannel = () =>
   });
 
 // ─── State Snapshots (matches, tournaments) ─────────────────────────────────
-export const replaceStateCollection = (kind, items) => {
+export const replaceStateCollection = async (kind, items) => {
   const itemIds = new Set(items.map((item) => item.id));
 
   // Update memory
@@ -842,7 +842,7 @@ export const replaceStateCollection = (kind, items) => {
     const rows = items.map(item => ({ kind, entity_id: item.id, payload: item, updated_at: getNow() }));
     // Batch in chunks of 100
     for (let i = 0; i < rows.length; i += 100) {
-      sbUpsert('state_snapshots', rows.slice(i, i + 100));
+      await sbUpsert('state_snapshots', rows.slice(i, i + 100));
     }
   }
 };
@@ -1044,13 +1044,13 @@ export const hasTransactionBeenProcessed = async (transactionId) => {
   return false;
 };
 
-export const markTransactionAsProcessed = (transactionId, userId, amountZC) => {
+export const markTransactionAsProcessed = async (transactionId, userId, amountZC) => {
   memoryProcessedTransactions.add(transactionId);
   if (memoryProcessedTransactions.size > MAX_PROCESSED_TX) {
     const first = memoryProcessedTransactions.values().next().value;
     memoryProcessedTransactions.delete(first);
   }
-  sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
+  await sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
 };
 
 // ─── Admin 2FA Persistence ─────────────────────────────────────────────────

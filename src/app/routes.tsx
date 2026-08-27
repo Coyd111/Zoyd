@@ -27,6 +27,7 @@ const tournoisLoader = async () => { const { default: Component } = await import
 const bracketLoader = async () => { const { default: Component } = await import('../features/tournament/pages/TournamentBracketPage'); return { Component }; };
 const leagueLoader = async () => { const { default: Component } = await import('../features/league/pages/LeaguePage'); return { Component }; };
 const leagueSeasonLoader = async () => { const { default: Component } = await import('../features/league/pages/LeagueSeasonPage'); return { Component }; };
+const leaksLoader = async () => { const { default: Component } = await import('./pages/LeaksPage'); return { Component }; };
 const adminLoader = async () => { const { default: Component } = await import('./pages/AdminDashboardPage'); return { Component }; };
 const publicProfilLoader = async () => { const { default: Component } = await import('./pages/PublicProfilPage'); return { Component }; };
 
@@ -138,6 +139,11 @@ export const router = createBrowserRouter([
           { index: true, lazy: leagueLoader },
           { path: ':seasonId', lazy: leagueSeasonLoader },
         ],
+      },
+      {
+        path: 'infos',
+        element: <AppLayout />,
+        children: [{ index: true, lazy: leaksLoader }],
       },
       {
         path: 'admin',

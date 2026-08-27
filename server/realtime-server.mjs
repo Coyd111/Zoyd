@@ -5,35 +5,14 @@ import webpush from 'web-push';
 import { vapidKeys } from './vapid-keys.mjs';
 import { createLogger } from './logger.mjs';
 import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from './metrics.mjs';
+import { serializeCookie, ALLOWED_ORIGINS, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
+import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs';
+import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
+import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
+import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
+import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload } from './state-helpers.mjs';
+import { generateTotpSecret, verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
-// Simple cookie serialization function
-const serializeCookie = (name, value, options = {}) => {
-  const parts = [`${name}=${encodeURIComponent(value)}`];
-  
-  if (options.maxAge) {
-    parts.push(`Max-Age=${options.maxAge}`);
-  }
-  if (options.domain) {
-    parts.push(`Domain=${options.domain}`);
-  }
-  if (options.path) {
-    parts.push(`Path=${options.path}`);
-  }
-  if (options.expires) {
-    parts.push(`Expires=${options.expires.toUTCString()}`);
-  }
-  if (options.httpOnly) {
-    parts.push('HttpOnly');
-  }
-  if (options.secure) {
-    parts.push('Secure');
-  }
-  if (options.sameSite) {
-    parts.push(`SameSite=${options.sameSite}`);
-  }
-  
-  return parts.join('; ');
-};
 import {
   activateUserAccount,
   authenticateUserAccount,
@@ -45,18 +24,13 @@ import {
   deleteAuthSession,
   deleteRealtimeSessionsForUser,
   ensureGlobalChatChannel,
-  generateActivationCode,
-  getAllUsers,
-  getAdminIds,
+  getAuthSession,
   getLeaderboard,
   getRawUserById,
   getUserById,
-  getPushSubscriptionsForUser,
   verifyActivationCode,
   findUsersByPseudo,
-  getAuthSession,
   getChatChannelById,
-  getChatChannelsForUser,
   getChatMessagesForChannel,
   getRealtimeSession,
   getUnreadCountForUser,
@@ -65,7 +39,6 @@ import {
   loadAdminTotpSecrets,
   markChatChannelRead,
   removePushSubscription,
-  replaceStateCollection,
   saveAdminTotpSecret,
   upsertChatChannel,
   upsertPushSubscription,
@@ -81,7 +54,6 @@ import {
   removeFriend,
   blockUser,
   unblockUser,
-  createNotification,
   getUnreadNotificationsForUser,
   markNotificationAsRead,
   markAllNotificationsAsRead,
@@ -89,7 +61,6 @@ import {
   hashPassword,
   updatePasswordHash,
   sbUpsert,
-  getMemoryChatChannels,
   getPublicUserById,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
@@ -121,7 +92,6 @@ import {
   assignTournamentArbiterOnServer,
   createTournamentOnServer,
   leaveTournamentOnServer,
-  normalizeTournamentCollection,
   registerForTournamentOnServer,
   setTournamentMatchLiveOnServer,
   setTournamentMatchRoomDetailsOnServer,
@@ -129,7 +99,6 @@ import {
   submitTournamentMatchResultOnServer,
 } from './tournament-engine.mjs';
 import {
-  normalizeLeagueCollection,
   createLeagueSeasonOnServer,
   joinLeagueSeasonOnServer,
   leaveLeagueSeasonOnServer,
@@ -149,709 +118,9 @@ const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
 const API_KEY_ROTATION_DAYS = Number(process.env.ZOYD_API_KEY_ROTATION_DAYS || 90);
 
-const notifyAllAdmins = async (io, payload) => {
-  const adminIds = getAdminIds();
-  for (const adminId of adminIds) {
-    try {
-      await deliverNotification(io, adminId, payload);
-    } catch (err) {
-      log.warn('Failed to notify admin', { adminId, error: err.message });
-    }
-  }
-};
-const ALLOWED_ORIGINS = [
-  ...(process.env.ZOYD_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean),
-  'https://zoyd.vercel.app',
-  'https://zoyd.africa',
-  'https://www.zoyd.africa',
-];
-
 if (vapidKeys) {
   webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
 }
-
-const channels = new Map();
-const channelsBySocket = new Map();
-const seenByChannel = new Map();
-const typingByChannel = new Map();
-
-// Nettoyage périodique des Maps de canaux orphelins (toutes les 30 min)
-const MAX_ACTIVE_CHANNELS = 500;
-const cleanupChannelMaps = () => {
-  const channelIds = new Set(channels.keys());
-  // Remove empty channels (no members)
-  for (const [id, members] of channels) {
-    if (members.size === 0) channels.delete(id);
-  }
-  for (const [key] of seenByChannel) {
-    if (!channelIds.has(key)) seenByChannel.delete(key);
-  }
-  for (const [key] of typingByChannel) {
-    if (!channelIds.has(key)) typingByChannel.delete(key);
-  }
-
-  // Evict stale chat channels: 0 members AND last updated > 24h ago
-  const MAX_CHAT_CHANNEL_AGE_MS = 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const chatChannels = getMemoryChatChannels();
-  for (const [id, ch] of chatChannels) {
-    if (ch.id === 'global') continue;
-    const memberCount = channels.get(id)?.size ?? 0;
-    const updatedAt = ch.updatedAt ? new Date(ch.updatedAt).getTime() : 0;
-    if (memberCount === 0 && now - updatedAt > MAX_CHAT_CHANNEL_AGE_MS) {
-      chatChannels.delete(id);
-    }
-  }
-};
-setInterval(cleanupChannelMaps, 10 * 60 * 1000);
-
-const getCorsOrigin = (req) => {
-  const origin = req.headers.origin || '';
-  return ALLOWED_ORIGINS.includes(origin) ? origin : '';
-};
-
-const respondJson = (res, statusCode, payload, req = null) => {
-  const effectiveReq = req || res._req;
-  const origin = effectiveReq ? getCorsOrigin(effectiveReq) : ALLOWED_ORIGINS[0];
-  res.writeHead(statusCode, {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Vary': 'Origin',
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws: https: http:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; frame-ancestors 'none';",
-  });
-  res.end(JSON.stringify(payload));
-
-  if (effectiveReq && effectiveReq._metricsStart) {
-    const pathname = effectiveReq._metricsPathname || 'unknown';
-    const method = effectiveReq.method || 'UNKNOWN';
-    const labels = { method, status: String(statusCode) };
-    incCounter('zoyd_http_requests_total', labels);
-    endTimer('zoyd_http_request_duration_seconds', effectiveReq._metricsStart, { method, pathname });
-    if (statusCode >= 500) incCounter('zoyd_http_errors_total', { method, status: String(statusCode) });
-  }
-};
-
-const parseQueryParams = (url) => {
-  const params = new URL(url, 'http://localhost').searchParams;
-  return {
-    limit: Math.min(Math.max(parseInt(params.get('limit') || '100', 10) || 100, 1), 500),
-    offset: Math.max(parseInt(params.get('offset') || '0', 10) || 0, 0),
-  };
-};
-
-const paginate = (arr, { limit, offset }) => arr.slice(offset, offset + limit);
-
-const BODY_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB
-
-const parseRequestBody = async (req) => {
-  const chunks = [];
-  let totalSize = 0;
-  for await (const chunk of req) {
-    totalSize += chunk.length;
-    if (totalSize > BODY_SIZE_LIMIT) {
-      throw Object.assign(new Error('Payload trop volumineux (max 1MB).'), { code: 'PAYLOAD_TOO_LARGE' });
-    }
-    chunks.push(chunk);
-  }
-  const rawBody = Buffer.concat(chunks).toString('utf8');
-  if (!rawBody) return {};
-  try {
-    return JSON.parse(rawBody);
-  } catch {
-    throw Object.assign(new Error('Corps de requête JSON invalide.'), { code: 'INVALID_JSON' });
-  }
-};
-
-const readBearerToken = (req) => {
-  // First try to get token from HttpOnly cookie
-  const cookies = req.headers.cookie;
-  if (cookies) {
-    const cookieToken = cookies.split(';').find(c => c.trim().startsWith('zoyd_auth='));
-    if (cookieToken) {
-      const value = cookieToken.split('=').slice(1).join('=').trim();
-      try {
-        return decodeURIComponent(value);
-      } catch {
-        return value;
-      }
-    }
-  }
-  
-  // Fallback to Authorization header
-  const authorization = req.headers.authorization || '';
-  if (!authorization.startsWith('Bearer ')) return null;
-  return authorization.slice('Bearer '.length).trim();
-};
-
-const getAuthenticatedAppSession = (req) => {
-  const token = readBearerToken(req);
-  return token ? getAuthSession(token) : null;
-};
-
-const getAuthenticatedRealtimeSession = (req) => {
-  const token = readBearerToken(req);
-  return token ? getRealtimeSession(token) : null;
-};
-
-const getPathname = (req) => new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
-
-const normalizePathForMetrics = (pathname) =>
-  pathname
-    .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/*')
-    .replace(/\/M-[A-Za-z0-9]+/g, '/M/*')
-    .replace(/\/T-[A-Za-z0-9]+/g, '/T/*')
-    .replace(/\/FR-[A-Za-z0-9-]+/g, '/FR/*');
-
-const buildMatchChatChannel = (match) => {
-  const channelId = match.channelId || match.chatChannelId || `match-${match.id}`;
-  const existing = getChatChannelById(channelId);
-
-  return upsertChatChannel({
-    ...existing,
-    id: channelId,
-    type: 'match',
-    name: `Match MJ ${match.id}`,
-    participants: [
-      ...match.players.map((player) => player.userId),
-      ...(match.arbiter?.userId ? [match.arbiter.userId] : []),
-    ],
-    scope: match.visibility === 'public' ? 'public' : 'participants',
-    inbox: 'participants',
-    createdAt: existing?.createdAt || match.createdAt || getNow(),
-    updatedAt: match.updatedAt || getNow(),
-  });
-};
-
-const syncMatchChatChannels = (matches) => {
-  ensureGlobalChatChannel();
-  return matches.map((match) => buildMatchChatChannel(match));
-};
-
-const canAccessChatChannel = (channel, user) =>
-  !!channel && !!user && (user.role === 'admin' || channel.scope === 'public' || channel.participants.includes(user.id));
-
-const buildChatBootstrapPayload = (userId) => {
-  const channels = getChatChannelsForUser(userId).map((channel) => ({
-    ...channel,
-    unreadCount: getUnreadCountForUser(channel.id, userId),
-  }));
-
-  // Sort channels: unread first, then by most recent activity
-  const sorted = [...channels].sort((a, b) => {
-    if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
-    if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
-    return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
-  });
-
-  // Load messages only from top 5 most active channels, max 20 each
-  const activeChannels = sorted.slice(0, 5);
-  const messages = activeChannels.flatMap((channel) =>
-    getChatMessagesForChannel(channel.id, 20)
-  );
-
-  return {
-    channels,
-    messages,
-  };
-};
-
-const broadcastChatChannel = (io, channel) => {
-  if (!channel) return;
-
-  if (channel.inbox === 'all') {
-    io.emit('chat:channel', { channel });
-  }
-
-  for (const participantId of channel.participants || []) {
-    io.to(`user:${participantId}`).emit('chat:channel', { channel });
-  }
-};
-
-const broadcastChatMessage = (io, channel, message) => {
-  if (!channel || !message) return;
-  const payload = { channel, message };
-
-  if (channel.id === 'global') {
-    io.emit('chat:message', payload);
-    return;
-  }
-
-  if (channel.scope === 'public') {
-    io.to(channel.id).emit('chat:message', payload);
-  }
-
-  for (const participantId of channel.participants || []) {
-    io.to(`user:${participantId}`).emit('chat:message', payload);
-  }
-};
-
-const broadcastChatRead = (io, channelId, userId, readAt) => {
-  io.to(`user:${userId}`).emit('chat:read', { channelId, userId, readAt });
-};
-
-const saveMatches = (io, matches, changedMatch = null) => {
-  syncMatchChatChannels(matches);
-  replaceStateCollection('matches', matches);
-  const storedMatches = getStateCollection('matches');
-  const sanitizedMatches = storedMatches.map(sanitizeMatchForBroadcast);
-  broadcastStateSnapshot(io, 'matches', sanitizedMatches);
-  if (changedMatch) {
-    broadcastChatChannel(io, buildMatchChatChannel(changedMatch));
-  }
-  return storedMatches;
-};
-
-const getStoredTournaments = () => normalizeTournamentCollection(getStateCollection('tournaments'));
-
-const saveTournaments = (io, tournaments) => {
-  replaceStateCollection('tournaments', tournaments);
-  const storedTournaments = getStoredTournaments();
-  broadcastStateSnapshot(io, 'tournaments', storedTournaments);
-  return storedTournaments;
-};
-
-const buildMatchActionPayload = (match, userId) => {
-  const user = getUserById(userId);
-  return {
-    ok: true,
-    match: sanitizeMatchForBroadcast(match),
-    user,
-    wallet: user?.wallet || getServerWallet(userId),
-  };
-};
-
-const sanitizeMatchForBroadcast = (match) => {
-  const { roomPassword, ...safe } = match;
-  if (safe.arbiter) {
-    const { roomPassword: _ap, ...safeArbiter } = safe.arbiter;
-    safe.arbiter = safeArbiter;
-  }
-  return safe;
-};
-
-const buildTournamentActionPayload = (tournament, userId) => {
-  const user = getUserById(userId);
-  return {
-    ok: true,
-    tournament,
-    user,
-    wallet: user?.wallet || getServerWallet(userId),
-  };
-};
-
-const getStoredLeagues = () => normalizeLeagueCollection(getStateCollection('leagues'));
-
-const saveLeagues = (io, seasons) => {
-  replaceStateCollection('leagues', seasons);
-  const storedLeagues = getStoredLeagues();
-  broadcastStateSnapshot(io, 'leagues', storedLeagues);
-  return storedLeagues;
-};
-
-const buildLeagueActionPayload = (season, userId) => {
-  const user = getUserById(userId);
-  return {
-    ok: true,
-    season,
-    user,
-    wallet: user?.wallet || getServerWallet(userId),
-  };
-};
-
-const mapPersistenceError = (error) => {
-  const code = error?.code || 'UNKNOWN_ERROR';
-  const message = error?.message || 'Une erreur serveur est survenue.';
-  switch (code) {
-    case 'INVALID_REGISTRATION':
-      return { status: 400, message, code };
-    case 'INVALID_AMOUNT':
-    case 'WITHDRAWAL_MIN':
-    case 'MATCH_SEGMENT_MISMATCH':
-    case 'ROOM_INCOMPLETE':
-    case 'ROOM_TOO_EARLY':
-    case 'PROOFS_REQUIRED':
-    case 'DISPUTE_INCOMPLETE':
-    case 'MATCH_NOT_READY':
-    case 'CHECKIN_REQUIRED':
-    case 'INVALID_MATCH':
-    case 'NOT_ENOUGH_PLAYERS':
-    case 'QUALIFICATION_INCOMPLETE':
-    case 'REGISTRATION_CLOSED':
-    case 'NOT_JOINED':
-    case 'MATCH_ALREADY_LIVE':
-    case 'NO_PLAYERS':
-    case 'INVALID_DAY':
-    case 'INVALID_RESULTS':
-      return { status: 400, message, code };
-    case 'INVALID_CREDENTIALS':
-      return { status: 401, message, code };
-    case 'FORBIDDEN':
-      return { status: 403, message, code };
-    case 'DUPLICATE_PSEUDO':
-    case 'DUPLICATE_EMAIL':
-    case 'DUPLICATE_PHONE':
-    case 'DUPLICATE_GAME_ID':
-    case 'INSUFFICIENT_FUNDS':
-    case 'MATCH_CLOSED':
-    case 'ALREADY_JOINED':
-    case 'ROLE_CONFLICT':
-    case 'TRUST_REQUIRED':
-    case 'NO_SLOT_AVAILABLE':
-    case 'ARBITER_TAKEN':
-    case 'SELF_BLOCK':
-      return { status: 409, message, code };
-    case 'INVALID_JSON':
-    case 'PAYLOAD_TOO_LARGE':
-      return { status: 400, message, code };
-    case 'RESULT_NOT_FOUND':
-    case 'RESULT_ALREADY_EXISTS':
-    case 'DISPUTE_ALREADY_OPEN':
-    case 'DISPUTE_NOT_FOUND':
-    case 'DISPUTE_ALREADY_ESCALATED':
-    case 'ALREADY_FRIENDS':
-    case 'REQUEST_PENDING':
-    case 'ALREADY_CONFIRMED':
-    case 'INVALID_REQUEST':
-      return { status: 409, message, code };
-    case 'NOT_FOUND':
-    case 'MATCH_NOT_FOUND':
-    case 'TOURNAMENT_NOT_FOUND':
-    case 'LEAGUE_NOT_FOUND':
-    case 'CHANNEL_NOT_FOUND':
-    case 'PLAYER_NOT_FOUND':
-    case 'USER_NOT_FOUND':
-      return { status: 404, message, code };
-    default:
-      return { status: 500, message: 'Une erreur serveur est survenue.', code };
-  }
-};
-
-const respondMappedError = (res, error) => {
-  const mapped = mapPersistenceError(error);
-  respondJson(res, mapped.status, { ok: false, error: mapped.message, code: mapped.code });
-};
-
-const getChannelMemberMap = (channelId) => {
-  if (!channels.has(channelId)) {
-    if (channels.size >= MAX_ACTIVE_CHANNELS) return new Map();
-    channels.set(channelId, new Map());
-  }
-  return channels.get(channelId);
-};
-
-const getSeenMap = (channelId) => {
-  if (!seenByChannel.has(channelId)) {
-    seenByChannel.set(channelId, new Map());
-  }
-  return seenByChannel.get(channelId);
-};
-
-const getTypingMap = (channelId) => {
-  if (!typingByChannel.has(channelId)) {
-    typingByChannel.set(channelId, new Map());
-  }
-  return typingByChannel.get(channelId);
-};
-
-const publicMember = (member) => ({
-  userId: member.userId,
-  pseudo: member.pseudo,
-  role: member.role,
-  team: member.team,
-  isCheckedIn: member.isCheckedIn,
-  isReady: member.isReady,
-  isOnline: member.socketIds.size > 0,
-  lastActiveAt: member.lastActiveAt,
-});
-
-const emitChannelSnapshots = (io, channelId) => {
-  const members = [...getChannelMemberMap(channelId).values()].map(publicMember);
-  const seen = Object.fromEntries(getSeenMap(channelId).entries());
-  const typing = [...getTypingMap(channelId).values()].map((member) => ({
-    userId: member.userId,
-    pseudo: member.pseudo,
-    startedAt: member.startedAt,
-  }));
-
-  io.to(channelId).emit('presence:snapshot', { channelId, members, seen });
-  io.to(channelId).emit('typing:snapshot', { channelId, members: typing });
-};
-
-const trackSocketChannel = (socketId, channelId) => {
-  const currentChannels = channelsBySocket.get(socketId) || new Set();
-  currentChannels.add(channelId);
-  channelsBySocket.set(socketId, currentChannels);
-};
-
-const untrackSocketChannel = (socketId, channelId) => {
-  const currentChannels = channelsBySocket.get(socketId);
-  if (!currentChannels) return;
-  currentChannels.delete(channelId);
-  if (currentChannels.size === 0) {
-    channelsBySocket.delete(socketId);
-  }
-};
-
-const upsertChannelMember = (socket, payload) => {
-  const { channelId, userId, pseudo, role = 'spectator', team, isCheckedIn = false, isReady = false } = payload;
-  if (!channelId || !userId || !pseudo) return null;
-
-  const members = getChannelMemberMap(channelId);
-  const existingMember = members.get(userId);
-  const nextMember =
-    existingMember || {
-      userId,
-      pseudo,
-      role,
-      team,
-      isCheckedIn,
-      isReady,
-      socketIds: new Set(),
-      lastActiveAt: getNow(),
-    };
-
-  nextMember.pseudo = pseudo;
-  nextMember.role = role;
-  nextMember.team = typeof team === 'number' ? team : nextMember.team;
-  nextMember.isCheckedIn = Boolean(isCheckedIn);
-  nextMember.isReady = Boolean(isReady);
-  nextMember.lastActiveAt = getNow();
-  nextMember.socketIds.add(socket.id);
-
-  members.set(userId, nextMember);
-  trackSocketChannel(socket.id, channelId);
-  socket.join(channelId);
-  return nextMember;
-};
-
-const removeSocketFromChannel = (io, socket, channelId) => {
-  const members = getChannelMemberMap(channelId);
-  for (const [userId, member] of members.entries()) {
-    if (!member.socketIds.has(socket.id)) continue;
-
-    member.socketIds.delete(socket.id);
-    member.lastActiveAt = getNow();
-    if (member.socketIds.size === 0 && member.role === 'spectator') {
-      members.delete(userId);
-    } else {
-      members.set(userId, member);
-    }
-  }
-
-  const typing = getTypingMap(channelId);
-  for (const [userId, member] of typing.entries()) {
-    if (member.socketId === socket.id) {
-      typing.delete(userId);
-    }
-  }
-
-  socket.leave(channelId);
-  untrackSocketChannel(socket.id, channelId);
-  emitChannelSnapshots(io, channelId);
-};
-
-const sendPushToUser = async (userId, payload) => {
-  if (!vapidKeys) return { delivered: 0, attempted: 0 };
-  const subscriptions = getPushSubscriptionsForUser(userId);
-  if (subscriptions.length === 0) {
-    return { delivered: 0, attempted: 0 };
-  }
-
-  let delivered = 0;
-  await Promise.all(
-    subscriptions.map(async (subscription) => {
-      try {
-        await webpush.sendNotification(subscription, JSON.stringify(payload));
-        delivered += 1;
-      } catch (error) {
-        const statusCode = error?.statusCode;
-        if (statusCode === 404 || statusCode === 410) {
-          removePushSubscription(subscription.endpoint);
-        }
-      }
-    })
-  );
-
-  return { delivered, attempted: subscriptions.length };
-};
-
-const deliverNotification = async (io, targetUserId, payload) => {
-  const { title, body, url, tag, requireInteraction, type = 'system' } = payload;
-  const priority = requireInteraction ? 'urgent' : 'high';
-
-  const notification = createNotification(
-    targetUserId,
-    type,
-    title,
-    body || 'Notification ZOYD',
-    priority,
-    url,
-    { source: 'server-push', browserTag: tag }
-  );
-
-  io.to(`user:${targetUserId}`).emit('notification:deliver', notification);
-  await sendPushToUser(targetUserId, payload);
-};
-
-const broadcastStateSnapshot = (io, kind, items) => {
-  io.emit(`state:${kind}`, { items });
-};
-
-const rateLimitBuckets = new Map();
-const RATE_LIMIT_CONFIG = {
-  auth:    { max: 50,  windowMs: 15 * 60 * 1000 },  // 50 req / 15 min
-  social:  { max: 30,  windowMs: 60 * 1000 },        // 30 req / 1 min
-  wallet:  { max: 20,  windowMs: 10 * 60 * 1000 },   // 20 req / 10 min
-  chat:    { max: 60,  windowMs: 60 * 1000 },         // 60 req / 1 min
-  admin:   { max: 20,  windowMs: 5 * 60 * 1000 },    // 20 req / 5 min
-  default: { max: 60,  windowMs: 60 * 1000 },         // 60 req / 1 min
-};
-
-const checkRateLimit = (ip, group = 'default') => {
-  const config = RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default;
-  const key = `${ip}:${group}`;
-  const now = Date.now();
-  const record = rateLimitBuckets.get(key);
-  if (!record || now - record.windowStart > config.windowMs) {
-    rateLimitBuckets.set(key, { windowStart: now, attempts: 1 });
-    return { allowed: true, remaining: config.max - 1, retryAfter: 0 };
-  }
-  record.attempts += 1;
-  const allowed = record.attempts <= config.max;
-  const retryAfter = allowed ? 0 : Math.ceil((record.windowStart + config.windowMs - now) / 1000);
-  return { allowed, remaining: Math.max(0, config.max - record.attempts), retryAfter };
-};
-
-const cleanupRateLimits = () => {
-  const now = Date.now();
-  for (const [key, record] of rateLimitBuckets) {
-    const group = key.split(':').pop();
-    const config = RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default;
-    if (now - record.windowStart > config.windowMs) rateLimitBuckets.delete(key);
-  }
-};
-setInterval(cleanupRateLimits, 60 * 1000);
-
-// Use X-Forwarded-For (set by Render proxy) to get real client IP.
-// Validate format to prevent spoofing via arbitrary header values.
-const isValidIp = (ip) => /^[\d.:a-fA-F]+$/.test(ip);
-const getClientIp = (req) => {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const firstIp = forwarded.split(',')[0].trim();
-    if (isValidIp(firstIp)) return firstIp;
-  }
-  return req.socket.remoteAddress || '127.0.0.1';
-};
-
-const rateLimitGuard = (res, ip, group) => {
-  const { allowed, retryAfter } = checkRateLimit(ip, group);
-  if (!allowed) {
-    res.setHeader('Retry-After', String(retryAfter));
-    respondJson(res, 429, { ok: false, error: 'Trop de requetes. Reessayez plus tard.', code: 'RATE_LIMITED' });
-    return false;
-  }
-  return true;
-};
-
-// ─── Security Helpers ──────────────────────────────────────────────────────
-/**
- * SEC-S7: Centralized admin role check — replaces duplicated role checks
- * across 15+ admin endpoints. Returns false and sends 403 if not admin.
- */
-const requireAdmin = (req, res) => {
-  const session = getAuthenticatedAppSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
-    return null;
-  }
-  if (session.user.role !== 'admin') {
-    log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id });
-    respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
-    return null;
-  }
-  return session;
-};
-
-// ─── TOTP 2FA (RFC 6238) ──────────────────────────────────────────────────
-const TOTP_DIGITS = 6;
-const TOTP_PERIOD = 30;
-const TOTP_ALGORITHM = 'sha1';
-
-const generateTotpSecret = () => {
-  return crypto.randomBytes(20).toString('base64');
-};
-
-const base32Decode = (encoded) => {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let bits = '';
-  for (const char of encoded.toUpperCase()) {
-    const val = alphabet.indexOf(char);
-    if (val === -1) continue;
-    bits += val.toString(2).padStart(5, '0');
-  }
-  const bytes = new Uint8Array(Math.floor(bits.length / 8));
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
-  }
-  return Buffer.from(bytes);
-};
-
-const verifyTotp = (secret, code) => {
-  const key = base32Decode(secret);
-  const now = Math.floor(Date.now() / 1000 / TOTP_PERIOD);
-  for (const offset of [-1, 0, 1]) {
-    const counter = now + offset;
-    const counterBuffer = Buffer.alloc(8);
-    counterBuffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
-    counterBuffer.writeUInt32BE(counter & 0xFFFFFFFF, 4);
-    const hmac = crypto.createHmac(TOTP_ALGORITHM, key).update(counterBuffer).digest();
-    const offset2 = hmac[hmac.length - 1] & 0x0f;
-    const otp = ((hmac[offset2] & 0x7f) << 24) | (hmac[offset2 + 1] << 16) | (hmac[offset2 + 2] << 8) | hmac[offset2 + 3];
-    const expected = String(otp % Math.pow(10, TOTP_DIGITS)).padStart(TOTP_DIGITS, '0');
-    if (expected === code) return true;
-  }
-  return false;
-};
-
-const toBase32 = (buffer) => {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let bits = '';
-  for (const byte of buffer) {
-    bits += byte.toString(2).padStart(8, '0');
-  }
-  let result = '';
-  for (let i = 0; i < bits.length; i += 5) {
-    const chunk = bits.slice(i, i + 5).padEnd(5, '0');
-    result += alphabet[parseInt(chunk, 2)];
-  }
-  return result;
-};
-
-// ─── Admin 2FA secrets storage ─────────────────────────────────────────────
-const adminTotpSecrets = new Map(); // adminUserId -> { secret, enabled, verifiedAt }
-
-const requireAdmin2fa = (req, res) => {
-  const session = getAuthenticatedAppSession(req);
-  if (!session || session.user.role !== 'admin') return false;
-  const totpEntry = adminTotpSecrets.get(session.user.id);
-  if (totpEntry?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
-    respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
-    return false;
-  }
-  return true;
-};
 
 const server = http.createServer(async (req, res) => {
   if (!req.url) {
@@ -1718,7 +987,7 @@ const server = http.createServer(async (req, res) => {
     try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = createTournamentOnServer(getStoredTournaments(), session.user, body);
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
       respondJson(res, 201, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1737,7 +1006,7 @@ const server = http.createServer(async (req, res) => {
     try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = await registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1755,7 +1024,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const outcome = await leaveTournamentOnServer(getStoredTournaments(), session.user, tournamentLeave[1]);
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1773,7 +1042,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const outcome = assignTournamentArbiterOnServer(getStoredTournaments(), session.user, tournamentArbiter[1]);
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1791,7 +1060,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const outcome = startTournamentOnServer(getStoredTournaments(), session.user, tournamentStart[1]);
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
 
       const tournament = outcome.tournament;
       const participantIds = [...new Set(
@@ -1832,7 +1101,7 @@ const server = http.createServer(async (req, res) => {
         body.roomName,
         body.roomPassword
       );
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1855,7 +1124,7 @@ const server = http.createServer(async (req, res) => {
         tournamentLive[1],
         tournamentLive[2]
       );
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1880,7 +1149,7 @@ const server = http.createServer(async (req, res) => {
         tournamentResult[2],
         body
       );
-      saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1920,7 +1189,7 @@ const server = http.createServer(async (req, res) => {
     try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = createLeagueSeasonOnServer(getStoredLeagues(), session.user, body);
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 201, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1937,7 +1206,7 @@ const server = http.createServer(async (req, res) => {
     }
     try { await withLeagueMutex(async () => {
       const outcome = await joinLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueJoin[1]);
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1954,7 +1223,7 @@ const server = http.createServer(async (req, res) => {
     }
     try { await withLeagueMutex(async () => {
       const outcome = await leaveLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueLeave[1]);
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1971,7 +1240,7 @@ const server = http.createServer(async (req, res) => {
     }
     try { await withLeagueMutex(async () => {
       const outcome = startLeagueQualificationOnServer(getStoredLeagues(), session.user, leagueStartQualification[1]);
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1988,7 +1257,7 @@ const server = http.createServer(async (req, res) => {
     }
     try { await withLeagueMutex(async () => {
       const outcome = startLeagueDayOnServer(getStoredLeagues(), session.user, leagueStartDay[1], leagueStartDay[2]);
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
 
       const season = outcome.season;
       const participantIds = (season.registeredPlayers || []).map(p => p.userId);
@@ -2025,7 +1294,7 @@ const server = http.createServer(async (req, res) => {
         leagueDayResults[2],
         body.results
       );
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -2042,7 +1311,7 @@ const server = http.createServer(async (req, res) => {
     }
     try { await withLeagueMutex(async () => {
       const outcome = advanceToFinalOnServer(getStoredLeagues(), session.user, leagueAdvanceToFinal[1]);
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -2065,7 +1334,7 @@ const server = http.createServer(async (req, res) => {
         leagueFinalResults[1],
         body.results
       );
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -2095,7 +1364,7 @@ const server = http.createServer(async (req, res) => {
     try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = updateLeagueSettingsOnServer(getStoredLeagues(), session.user, leagueUpdateSettings[1], body);
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -2120,7 +1389,7 @@ const server = http.createServer(async (req, res) => {
         body.fromDay,
         body.toDay
       );
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -2142,7 +1411,7 @@ const server = http.createServer(async (req, res) => {
         leagueRefund[1],
         leagueRefund[2]
       );
-      saveLeagues(io, outcome.seasons);
+      await saveLeagues(io, outcome.seasons);
       respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -2152,15 +1421,9 @@ const server = http.createServer(async (req, res) => {
 
   const leaguePayments = pathname.match(/^\/api\/leagues\/([^/]+)\/payments$/);
   if (req.method === 'GET' && leaguePayments) {
-    const session = getAuthenticatedAppSession(req);
-    if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
-      return;
-    }
-    if (session.user.role !== 'admin') {
-      respondJson(res, 403, { ok: false, error: 'Acces admin requis.' });
-      return;
-    }
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
+    const session = requireAdmin(req, res);
+    if (!session) return;
     try {
       const payments = getLeaguePayments(getStoredLeagues(), leaguePayments[1]);
       respondJson(res, 200, { ok: true, payments });
@@ -2215,7 +1478,7 @@ const server = http.createServer(async (req, res) => {
       const outcome = await withWalletMutex(session.user.id, () =>
         createMatchOnServer(getStateCollection('matches'), session.user, body)
       );
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 201, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2237,7 +1500,7 @@ const server = http.createServer(async (req, res) => {
       const outcome = await withWalletMutex(session.user.id, () =>
         joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team)
       );
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2256,7 +1519,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const outcome = assignArbiterOnServer(getStateCollection('matches'), session.user, matchArbiter[1]);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
 
       deliverNotification(io, session.user.id, {
         type: 'arbiter_assigned',
@@ -2284,7 +1547,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const outcome = checkInMatchOnServer(getStateCollection('matches'), session.user, matchCheckIn[1]);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2303,7 +1566,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const outcome = toggleReadyOnServer(getStateCollection('matches'), session.user, matchReady[1]);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2323,7 +1586,7 @@ const server = http.createServer(async (req, res) => {
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = scheduleMatchOnServer(getStateCollection('matches'), session.user, matchSchedule[1], body.scheduledAt);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2349,7 +1612,7 @@ const server = http.createServer(async (req, res) => {
         body.roomName,
         body.roomPassword
       );
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2368,7 +1631,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const outcome = launchMatchOnServer(getStateCollection('matches'), session.user, matchLaunch[1]);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2388,7 +1651,7 @@ const server = http.createServer(async (req, res) => {
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = await submitMatchResultOnServer(getStateCollection('matches'), session.user, matchResult[1], body);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2407,7 +1670,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const outcome = confirmMatchResultOnServer(getStateCollection('matches'), session.user, matchConfirm[1]);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
 
       const match = outcome.match;
       const otherPlayerId = match.players?.find(p => p.userId !== session.user.id)?.userId;
@@ -2440,7 +1703,7 @@ const server = http.createServer(async (req, res) => {
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = openDisputeOnServer(getStateCollection('matches'), session.user, matchDisputes[1], body);
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
 
       const match = outcome.match;
       const otherPlayerId = match.players?.find(p => p.userId !== session.user.id)?.userId;
@@ -2477,7 +1740,7 @@ const server = http.createServer(async (req, res) => {
         matchDisputeEvidence[1],
         body.evidence
       );
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -2499,7 +1762,7 @@ const server = http.createServer(async (req, res) => {
         session.user,
         matchDisputeEscalate[1]
       );
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
 
       // Notify admins of escalation
       const match = outcome.match;
@@ -2521,11 +1784,8 @@ const server = http.createServer(async (req, res) => {
 
   // SEC-R4: Admin 2FA setup — generate TOTP secret for admin
   if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
-    const session = getAuthenticatedAppSession(req);
-    if (!session || session.user.role !== 'admin') {
-      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
-      return;
-    }
+    const session = requireAdmin(req, res);
+    if (!session) return;
     const secret = toBase32(crypto.randomBytes(20));
     adminTotpSecrets.set(session.user.id, { secret, enabled: false, verifiedAt: null });
     try {
@@ -2541,11 +1801,8 @@ const server = http.createServer(async (req, res) => {
 
   // SEC-R4: Admin 2FA enable — verify code and activate 2FA
   if (req.method === 'POST' && pathname === '/api/admin/2fa/enable') {
-    const session = getAuthenticatedAppSession(req);
-    if (!session || session.user.role !== 'admin') {
-      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
-      return;
-    }
+    const session = requireAdmin(req, res);
+    if (!session) return;
     const body = await parseRequestBody(req).catch(() => ({}));
     const { code } = body || {};
     if (!code || typeof code !== 'string') {
@@ -2583,11 +1840,8 @@ const server = http.createServer(async (req, res) => {
 
   // SEC-R4: Admin 2FA verify — verify TOTP code for financial operations
   if (req.method === 'POST' && pathname === '/api/admin/2fa/verify') {
-    const session = getAuthenticatedAppSession(req);
-    if (!session || session.user.role !== 'admin') {
-      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
-      return;
-    }
+    const session = requireAdmin(req, res);
+    if (!session) return;
     const body = await parseRequestBody(req).catch(() => ({}));
     const { code } = body || {};
     if (!code || typeof code !== 'string') {
@@ -2613,22 +1867,9 @@ const server = http.createServer(async (req, res) => {
 
   const adminMatchAward = pathname.match(/^\/api\/admin\/matches\/([^/]+)\/award$/);
   if (req.method === 'POST' && adminMatchAward) {
-    const session = getAuthenticatedAppSession(req);
-    if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
-      return;
-    }
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
-    if (session.user.role !== 'admin') {
-      log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `award match ${adminMatchAward[1]}` });
-      respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
-      return;
-    }
-    const totpEntryAward = adminTotpSecrets.get(session.user.id);
-    if (totpEntryAward?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
-      respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
-      return;
-    }
+    const session = requireAdmin2fa(req, res);
+    if (!session) return;
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
@@ -2643,7 +1884,7 @@ const server = http.createServer(async (req, res) => {
         arbiterNotes: body.arbiterNotes || 'Resolution admin depuis le command center.',
         submittedBy: 'admin-dashboard',
       });
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       log.info('Admin action: award match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
@@ -2655,22 +1896,9 @@ const server = http.createServer(async (req, res) => {
 
   const adminMatchResolve = pathname.match(/^\/api\/admin\/matches\/([^/]+)\/resolve-dispute$/);
   if (req.method === 'POST' && adminMatchResolve) {
-    const session = getAuthenticatedAppSession(req);
-    if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
-      return;
-    }
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
-    if (session.user.role !== 'admin') {
-      log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `resolve-dispute match ${adminMatchResolve[1]}` });
-      respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
-      return;
-    }
-    const totpEntryResolve = adminTotpSecrets.get(session.user.id);
-    if (totpEntryResolve?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
-      respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
-      return;
-    }
+    const session = requireAdmin2fa(req, res);
+    if (!session) return;
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
@@ -2680,7 +1908,7 @@ const server = http.createServer(async (req, res) => {
         adminMatchResolve[1],
         body.resolution || 'Litige clos par moderation.'
       );
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       log.info('Admin action: resolve dispute', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchResolve[1], resolution: body.resolution });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
@@ -2692,22 +1920,9 @@ const server = http.createServer(async (req, res) => {
 
   const adminMatchCancel = pathname.match(/^\/api\/admin\/matches\/([^/]+)\/cancel$/);
   if (req.method === 'POST' && adminMatchCancel) {
-    const session = getAuthenticatedAppSession(req);
-    if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
-      return;
-    }
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
-    if (session.user.role !== 'admin') {
-      log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id, target: `cancel match ${adminMatchCancel[1]}` });
-      respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
-      return;
-    }
-    const totpEntryCancel = adminTotpSecrets.get(session.user.id);
-    if (totpEntryCancel?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
-      respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
-      return;
-    }
+    const session = requireAdmin2fa(req, res);
+    if (!session) return;
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
@@ -2717,7 +1932,7 @@ const server = http.createServer(async (req, res) => {
         adminMatchCancel[1],
         body.reason || 'Match annule par moderation.'
       );
-      saveMatches(io, outcome.matches, outcome.match);
+      await saveMatches(io, outcome.matches, outcome.match);
       log.info('Admin action: cancel match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchCancel[1], reason: body.reason });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
@@ -3284,7 +2499,7 @@ const start = async () => {
     try { await withMatchMutex(async () => {
       const outcome = await processMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.changed) {
-        saveMatches(io, outcome.matches);
+        await saveMatches(io, outcome.matches);
       }
     });
     } catch (error) {

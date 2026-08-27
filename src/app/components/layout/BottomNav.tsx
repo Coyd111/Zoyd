@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X } from 'lucide-react';
+import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -15,6 +15,7 @@ const BottomNav: React.FC = () => {
     { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
     { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
     { icon: MessageCircle, label: 'CHAT', path: '/chat' },
+    { icon: Newspaper, label: 'INFOS', path: '/infos' },
   ];
 
   const menuItems = [

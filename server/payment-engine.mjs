@@ -82,7 +82,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
 
     // 6. Marquer comme traitée APRÈS crédit réussi
     try {
-      markTransactionAsProcessed(transactionId, user.id, amountZC);
+      await markTransactionAsProcessed(transactionId, user.id, amountZC);
     } catch (markErr) {
       // Rollback : annuler le crédit si l'enregistrement échoue
       log.error('Failed to mark transaction processed, rolling back wallet credit', { transactionId, error: markErr.message });

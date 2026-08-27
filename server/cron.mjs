@@ -41,7 +41,7 @@ export const initCronJobs = () => {
         });
 
         if (archivedCount > 0) {
-          replaceStateCollection('matches', updatedMatches);
+          await replaceStateCollection('matches', updatedMatches);
         }
 
         log.info(`Nettoyage terminé. ${archivedCount} matchs archivés.`);
@@ -101,7 +101,7 @@ export const initCronJobs = () => {
         });
 
         if (changed) {
-          replaceStateCollection('leagues', updatedSeasons);
+          await replaceStateCollection('leagues', updatedSeasons);
           log.info('Inscriptions ligue fermées automatiquement.');
         }
       });

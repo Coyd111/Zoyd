@@ -10,6 +10,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ActivatePage from './pages/auth/ActivatePage';
 import NotFoundPage from './pages/NotFoundPage';
+import RootIndexPage from './pages/RootIndexPage';
 
 // Lazy page loaders
 const modeLoader = async () => { const { default: Component } = await import('./pages/ModeSelectionPage'); return { Component }; };
@@ -39,7 +40,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        Component: LandingPage,
+        Component: RootIndexPage,
       },
       {
         path: 'auth',

@@ -67,23 +67,22 @@ const STORAGE_KEY_ZOYD_EXPIRES = 'zoyd_session_expires';
 
 function persistSession(token: string, expiresAt: string | null) {
   try {
-    sessionStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
-    if (expiresAt) sessionStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
+    localStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
+    if (expiresAt) localStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
   } catch { /* storage full or blocked */ }
 }
 
 function readPersistedSession(): { token: string | null; expiresAt: string | null } {
   try {
-    const token = sessionStorage.getItem(STORAGE_KEY_ZOYD_TOKEN);
-    const expiresAt = sessionStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
+    const token = localStorage.getItem(STORAGE_KEY_ZOYD_TOKEN);
+    const expiresAt = localStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
     if (!token) return { token: null, expiresAt: null };
-    
-    // Validate token format — accept any non-empty alphanumeric string
+
     if (typeof token !== 'string' || token.length < 10 || token.length > 512) {
       clearPersistedSession();
       return { token: null, expiresAt: null };
     }
-    
+
     if (expiresAt && new Date(expiresAt) < new Date()) {
       clearPersistedSession();
       return { token: null, expiresAt: null };
@@ -96,8 +95,6 @@ function readPersistedSession(): { token: string | null; expiresAt: string | nul
 
 function clearPersistedSession() {
   try {
-    sessionStorage.removeItem(STORAGE_KEY_ZOYD_TOKEN);
-    sessionStorage.removeItem(STORAGE_KEY_ZOYD_EXPIRES);
     localStorage.removeItem(STORAGE_KEY_ZOYD_TOKEN);
     localStorage.removeItem(STORAGE_KEY_ZOYD_EXPIRES);
   } catch { /* ok */ }

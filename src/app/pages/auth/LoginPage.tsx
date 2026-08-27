@@ -40,7 +40,7 @@ const LoginPage: React.FC = () => {
       const auth = await loginWithBackend(data.emailOrPseudo, data.password);
       
       login(auth.user, auth.token, auth.expiresAt);
-      navigate(auth.user.role === 'admin' ? '/admin' : '/mode');
+      navigate('/');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Connexion impossible.';
       toast.error(errorMessage);

@@ -50,6 +50,7 @@ export function useServiceWorker() {
         if (mounted) {
           setIsInstalled(false);
         }
+        console.warn('[SW] Registration failed:', err?.message || err);
       });
 
     const onControllerChange = () => window.location.reload();
@@ -69,7 +70,7 @@ export function useServiceWorker() {
 
     navigator.serviceWorker.ready
       .then((registration) => subscribeToRealtimePush(user, registration))
-      .catch(() => undefined);
+      .catch((err) => console.warn('[SW] Push subscription failed:', err?.message || err));
   }, [user]);
 
   const requestNotificationPermission = async () => {

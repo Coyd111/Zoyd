@@ -514,7 +514,6 @@ const mapPersistenceError = (error) => {
     case 'INVALID_JSON':
     case 'PAYLOAD_TOO_LARGE':
       return { status: 400, message, code };
-    case 'NOT_FOUND':
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':
     case 'DISPUTE_ALREADY_OPEN':
@@ -524,6 +523,7 @@ const mapPersistenceError = (error) => {
     case 'REQUEST_PENDING':
     case 'INVALID_REQUEST':
       return { status: 409, message, code };
+    case 'NOT_FOUND':
     case 'MATCH_NOT_FOUND':
     case 'TOURNAMENT_NOT_FOUND':
     case 'LEAGUE_NOT_FOUND':

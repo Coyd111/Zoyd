@@ -1,12 +1,30 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRight, BarChart3, CheckCircle2, Clock, MessageCircle, Plus, Swords, Trophy, Wallet, XCircle, Zap } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  Clock,
+  MessageCircle,
+  Plus,
+  Swords,
+  Trophy,
+  UserPlus,
+  Users,
+  Wallet,
+  XCircle,
+  Zap,
+} from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useMatchStore } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
 import { useChatStore } from '../stores/chatStore';
+import { useNotificationStore } from '../stores/notificationStore';
+import { useFriendsStore } from '../stores/friendsStore';
 import { formatZC, getRelativeTime } from '../../lib/utils';
 import { Helmet } from 'react-helmet-async';
 
@@ -40,6 +58,10 @@ const DashboardPage: React.FC = () => {
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   const getUnreadTotal = useChatStore((s) => s.getUnreadTotal);
+  const notifications = useNotificationStore((s) => s.notifications);
+  const getRecentNotifications = useNotificationStore((s) => s.getRecent);
+  const getUnreadNotifCount = useNotificationStore((s) => s.getUnreadCount);
+  const { friends, requests, getOnlineFriends } = useFriendsStore();
 
   const totalBalance = getTotalBalance();
   const unreadMessages = getUnreadTotal();
@@ -69,6 +91,18 @@ const DashboardPage: React.FC = () => {
         .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
         .slice(0, 3),
     [tournaments]
+  );
+
+  const recentNotifications = useMemo(
+    () => getRecentNotifications(4).filter((n) => !n.dismissed),
+    [notifications]
+  );
+  const unreadNotifCount = getUnreadNotifCount();
+
+  const onlineFriends = useMemo(() => getOnlineFriends(), [friends]);
+  const pendingRequests = useMemo(
+    () => requests.filter((r) => r.status === 'pending'),
+    [requests]
   );
 
   if (!user) return null;
@@ -293,6 +327,164 @@ const DashboardPage: React.FC = () => {
           </motion.div>
         </div>
 
+        {/* Notifications + Friends row */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-10 md:mb-14">
+          {/* Notifications — 2/3 */}
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.36, duration: 0.45 }}
+            className="lg:col-span-2"
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
+                  Notifications
+                </div>
+                {unreadNotifCount > 0 && (
+                  <span className="bg-zoyd-blue text-white text-[9px] px-1.5 py-0.5 font-mono font-bold">
+                    {unreadNotifCount}
+                  </span>
+                )}
+              </div>
+              {recentNotifications.length > 0 && (
+                <Link
+                  to="/notifications"
+                  className="text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
+                >
+                  Tout voir
+                </Link>
+              )}
+            </div>
+            {recentNotifications.length === 0 ? (
+              <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
+                <Bell className="w-8 h-8 text-white/20 mx-auto mb-3" />
+                <p className="text-white/40 text-sm">Aucune notification.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentNotifications.map((n) => (
+                  <Link
+                    key={n.id}
+                    to={n.actionUrl || '#'}
+                    className={`group flex items-start gap-3 p-3 border bg-zoyd-surface/20 hover:border-white/10 transition-all ${
+                      n.read ? 'border-white/5' : 'border-zoyd-blue/20'
+                    }`}
+                  >
+                    <NotifIcon type={n.type} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-display font-black text-xs text-white uppercase italic tracking-tight truncate">
+                          {n.title}
+                        </span>
+                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-zoyd-blue shrink-0" />}
+                      </div>
+                      <div className="text-[10px] font-mono text-white/40 truncate">{n.message}</div>
+                    </div>
+                    <div className="text-[9px] font-mono text-white/30 whitespace-nowrap shrink-0">
+                      {getRelativeTime(n.timestamp)}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Friends — 1/3 */}
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.42, duration: 0.45 }}
+          >
+            {/* Pending friend requests */}
+            {pendingRequests.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <UserPlus className="w-3.5 h-3.5 text-zoyd-yellow" />
+                  <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-yellow">
+                    Demandes ({pendingRequests.length})
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {pendingRequests.slice(0, 2).map((req) => (
+                    <div
+                      key={req.id}
+                      className="flex items-center justify-between p-3 border border-zoyd-yellow/10 bg-zoyd-surface/20"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 flex items-center justify-center font-display font-black text-[10px] text-white border border-white/10 shrink-0">
+                          {req.senderPseudo.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-xs text-white font-display font-black uppercase italic truncate">
+                          {req.senderPseudo}
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={() => useFriendsStore.getState().acceptRequest(req.id)}
+                          className="w-7 h-7 flex items-center justify-center border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 transition-colors"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                        </button>
+                        <button
+                          onClick={() => useFriendsStore.getState().declineRequest(req.id)}
+                          className="w-7 h-7 flex items-center justify-center border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5 text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Online friends */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-white/40" />
+                <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
+                  En ligne ({onlineFriends.length})
+                </div>
+              </div>
+              <Link
+                to="/amis"
+                className="text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
+              >
+                Voir tout
+              </Link>
+            </div>
+            {onlineFriends.length === 0 ? (
+              <div className="p-4 border border-white/5 bg-zoyd-surface/20 text-center">
+                <p className="text-white/40 text-xs">Aucun ami en ligne.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {onlineFriends.slice(0, 5).map((f) => (
+                  <Link
+                    key={f.id}
+                    to={`/profil/${f.id}`}
+                    className="flex items-center gap-2.5 p-2.5 border border-white/5 bg-zoyd-surface/20 hover:border-white/10 transition-all"
+                  >
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 flex items-center justify-center font-display font-black text-[10px] text-white border border-white/10">
+                        {f.pseudo.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-zoyd-black" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-white font-display font-black uppercase italic truncate">{f.pseudo}</div>
+                      <div className="text-[9px] font-mono text-white/30 uppercase">
+                        {f.status === 'in_match' ? 'En match' : f.status === 'in_lobby' ? 'Dans le lobby' : 'En ligne'}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </div>
+
         {/* Wallet + Profile row */}
         <div className="grid md:grid-cols-2 gap-4 mb-10 md:mb-14">
           {/* Wallet card */}
@@ -467,6 +659,44 @@ const DashboardPage: React.FC = () => {
     </div>
   );
 };
+
+const notifIconMap: Record<string, React.FC<{ className?: string }>> = {
+  match_start: Swords,
+  match_invite: UserPlus,
+  tournament_reminder: Trophy,
+  friend_request: UserPlus,
+  friend_online: Users,
+  result_ready: CheckCircle2,
+  dispute_update: AlertTriangle,
+  wallet_update: Wallet,
+  system: Bell,
+  arbitration_assigned: AlertTriangle,
+  check_in_required: Clock,
+};
+
+const notifColorMap: Record<string, string> = {
+  match_start: 'text-green-400 border-green-500/20 bg-green-500/10',
+  match_invite: 'text-zoyd-blue border-zoyd-blue/20 bg-zoyd-blue/10',
+  tournament_reminder: 'text-zoyd-yellow border-zoyd-yellow/20 bg-zoyd-yellow/10',
+  friend_request: 'text-zoyd-yellow border-zoyd-yellow/20 bg-zoyd-yellow/10',
+  friend_online: 'text-green-400 border-green-500/20 bg-green-500/10',
+  result_ready: 'text-zoyd-blue border-zoyd-blue/20 bg-zoyd-blue/10',
+  dispute_update: 'text-red-400 border-red-500/20 bg-red-500/10',
+  wallet_update: 'text-zoyd-yellow border-zoyd-yellow/20 bg-zoyd-yellow/10',
+  system: 'text-white/60 border-white/10 bg-white/5',
+  arbitration_assigned: 'text-zoyd-blue border-zoyd-blue/20 bg-zoyd-blue/10',
+  check_in_required: 'text-zoyd-yellow border-zoyd-yellow/20 bg-zoyd-yellow/10',
+};
+
+function NotifIcon({ type }: { type: string }) {
+  const Icon = notifIconMap[type] || Bell;
+  const colorClass = notifColorMap[type] || 'text-white/60 border-white/10 bg-white/5';
+  return (
+    <div className={`w-8 h-8 flex items-center justify-center border shrink-0 ${colorClass}`}>
+      <Icon className="w-4 h-4" />
+    </div>
+  );
+}
 
 const StatCard = React.memo(function StatCard({ label, value, accent, icon }: { label: string; value: string; accent?: boolean; icon?: 'win' }) {
   return (

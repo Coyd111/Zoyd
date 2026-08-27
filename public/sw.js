@@ -1,11 +1,11 @@
-const CACHE_NAME = 'zoyd-v4';
+const CACHE_NAME = 'zoyd-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
 ];
 
-const DYNAMIC_CACHE = 'zoyd-dynamic-v1';
+const DYNAMIC_CACHE = 'zoyd-dynamic-v2';
 
 // Install : cache shell
 self.addEventListener('install', (event) => {
@@ -39,12 +39,14 @@ self.addEventListener('fetch', (event) => {
   // Skip non-HTTP(S) requests
   if (!request.url.startsWith('http')) return;
 
-  // Skip external requests — let browser handle CDN resources natively
+  // Skip external requests
   const origin = self.location.origin;
   if (!request.url.startsWith(origin)) return;
 
+  const url = new URL(request.url);
+
   // API calls : network first, cache fallback
-  if (request.url.includes('/api/')) {
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -59,7 +61,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets : cache first, network fallback
+  // HTML pages: network first (avoid stale index.html with old hashes)
+  if (request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then(cached => cached || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  // Static assets (hashed JS/CSS): cache first, network fallback
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) {
@@ -77,8 +95,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
         }
         return response;
-      }).catch((error) => {
-        // Fallback response prevents Uncaught TypeError in console during dev server restarts
+      }).catch(() => {
         return new Response('Offline fallback', { status: 503, statusText: 'Service Unavailable' });
       });
     })
@@ -91,8 +108,8 @@ self.addEventListener('push', (event) => {
   const data = event.data.json();
   const options = {
     body: data.body || 'Notification ZOYD',
-    icon: '/logo icone.png',
-    badge: '/logo icone.png',
+    icon: '/logo-icon.png',
+    badge: '/logo-icon.png',
     tag: data.tag || 'zoyd-default',
     requireInteraction: data.requireInteraction || false,
     data: data.url ? { url: data.url } : undefined,
@@ -114,8 +131,8 @@ self.addEventListener('message', (event) => {
     event.waitUntil(
       self.registration.showNotification(payload.title || 'ZOYD', {
         body: payload.body || 'Notification ZOYD',
-        icon: '/logo icone.png',
-        badge: '/logo icone.png',
+        icon: '/logo-icon.png',
+        badge: '/logo-icon.png',
         tag: payload.tag || 'zoyd-local',
         requireInteraction: Boolean(payload.requireInteraction),
         data: payload.url ? { url: payload.url } : undefined,

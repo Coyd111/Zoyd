@@ -21,6 +21,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useNotificationStore } from '../../stores/notificationStore';
 import {
   CODM_RANKS,
   CONTROLLER_OPTIONS,
@@ -125,12 +126,28 @@ const RegisterPage: React.FC = () => {
 
   const onStep2Submit = (data: Partial<RegisterPayload>) => {
     if (!selectedDevice) {
-      toast.error("Choisis ton appareil principal pour personnaliser ton expérience ZOYD.");
+      const msg = "Choisis ton appareil principal pour personnaliser ton expérience ZOYD.";
+      toast.error(msg);
+      useNotificationStore.getState().addNotification({
+        type: 'system',
+        title: 'Appareil requis',
+        message: msg,
+        priority: 'normal',
+        metadata: { showToast: false, dedupeKey: 'register-no-device' },
+      });
       return;
     }
 
     if (!data.gameId?.trim()) {
-      toast.error('Renseigne ton UID CODM avant de continuer.');
+      const msg = 'Renseigne ton UID CODM avant de continuer.';
+      toast.error(msg);
+      useNotificationStore.getState().addNotification({
+        type: 'system',
+        title: 'UID requis',
+        message: msg,
+        priority: 'normal',
+        metadata: { showToast: false, dedupeKey: 'register-no-gameid' },
+      });
       return;
     }
 
@@ -182,7 +199,15 @@ const RegisterPage: React.FC = () => {
       // Redirect to login page
       navigate('/auth/login');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Inscription impossible.');
+      const msg = error instanceof Error ? error.message : 'Inscription impossible.';
+      toast.error(msg);
+      useNotificationStore.getState().addNotification({
+        type: 'system',
+        title: 'Echec d\'inscription',
+        message: msg,
+        priority: 'high',
+        metadata: { showToast: false, dedupeKey: `register-error-${msg}` },
+      });
     } finally {
       setIsLoading(false);
     }

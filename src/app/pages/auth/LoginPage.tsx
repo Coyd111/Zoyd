@@ -69,6 +69,13 @@ const LoginPage: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Connexion impossible.';
       toast.error(errorMessage);
+      useNotificationStore.getState().addNotification({
+        type: 'system',
+        title: 'Echec de connexion',
+        message: errorMessage,
+        priority: 'high',
+        metadata: { showToast: false, dedupeKey: `login-error-${errorMessage}` },
+      });
     } finally {
       setIsLoading(false);
     }

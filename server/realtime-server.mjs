@@ -521,6 +521,7 @@ const mapPersistenceError = (error) => {
     case 'DISPUTE_ALREADY_ESCALATED':
     case 'ALREADY_FRIENDS':
     case 'REQUEST_PENDING':
+    case 'ALREADY_CONFIRMED':
     case 'INVALID_REQUEST':
       return { status: 409, message, code };
     case 'NOT_FOUND':
@@ -896,6 +897,190 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ─── CODM STORE PROXY ────────────────────────────────────────────────────
+  // Proxies requests to the Codashop GraphQL API to avoid CORS issues.
+  // GET /api/codm/store?country=IN
+  if (req.method === 'GET' && pathname === '/api/codm/store') {
+    try {
+      const storeUrl = new URL(req.url, 'http://localhost');
+      const country = storeUrl.searchParams.get('country') || 'IN';
+      const deviceId = crypto.randomUUID();
+
+      const graphqlBody = {
+        operationName: 'GetDynamicSkuInfo',
+        variables: {
+          deviceId,
+          whitelabelId: 1,
+          userId: '',
+          serverId: '',
+          characterId: '',
+          worldId: '',
+          lvtId: 11347,
+          shopLang: 'en_in',
+        },
+        extensions: {
+          clientLibrary: { name: '@apollo/client', version: '4.0.9' },
+        },
+        query: `query GetDynamicSkuInfo($shopLang: String!, $lvtId: Int!, $serverId: String, $userId: String, $worldId: String, $characterId: String, $deviceId: String, $whitelabelId: Int) {
+  getDynamicSkuInfo(shopLang: $shopLang, serverId: $serverId, lvtId: $lvtId, userId: $userId, worldId: $worldId, characterId: $characterId, deviceId: $deviceId, whitelabelId: $whitelabelId) {
+    denominationGroups {
+      tags dynamicSkuToken denomCategoryId denomDetailsImageUrl denomDetailsTitle denomImageUrl bannerImageUrl isHighlighted displayId displayText skuTitle skuSubTitle hasStock isVariableDenom isPopular isLuckyDraw originalSku sortOrderId status strikethroughPrice voucherId webStoreExclusive isPackage
+      pricePoints { bestdeal hasDiscount discountAmount id isEnabled price { amount currency } pricingEngineToken }
+      pricingScheme endTime userLimit userLimitRemaining promoId statusSubtype
+    }
+    denominationCategories { title imageUrl description id name sortOrder }
+  }
+}`,
+      };
+
+      const upstream = await fetch('https://api-sa.codashop.com/spring/api/graphql', {
+        method: 'POST',
+        headers: {
+          accept: '*/*,application/json',
+          'content-type': 'application/json',
+        },
+        referrer: 'https://store.callofdutymobile.com/',
+        body: JSON.stringify(graphqlBody),
+      });
+
+      if (!upstream.ok) {
+        respondJson(res, 502, { ok: false, error: 'Upstream API error.', code: 'UPSTREAM_ERROR' }, req);
+        return;
+      }
+
+      const data = await upstream.json();
+      const groups = data?.data?.getDynamicSkuInfo?.denominationGroups || [];
+      const categories = data?.data?.getDynamicSkuInfo?.denominationCategories || [];
+
+      const bundles = groups.map((g) => {
+        const firstPrice = g.pricePoints?.[0];
+        const amount = firstPrice?.price?.amount ?? '0';
+        const currency = firstPrice?.price?.currency ?? 'USD';
+        return {
+          id: String(g.voucherId || g.dynamicSkuToken || ''),
+          title: String(g.skuTitle || g.denomDetailsTitle || ''),
+          subtitle: String(g.skuSubTitle || ''),
+          imageUrl: String(g.denomImageUrl || ''),
+          bannerUrl: String(g.bannerImageUrl || ''),
+          price: amount,
+          currency,
+          isFree: amount === '0.0' || amount === '0',
+          isPopular: Boolean(g.isPopular),
+          isLuckyDraw: Boolean(g.isLuckyDraw),
+          tags: Array.isArray(g.tags) ? g.tags.map(String) : [],
+          category: String(g.denomCategoryId || ''),
+        };
+      });
+
+      respondJson(res, 200, { ok: true, bundles, categories }, req);
+    } catch (err) {
+      log.error('codm store proxy error', { message: err.message });
+      respondJson(res, 500, { ok: false, error: 'Failed to fetch store data.', code: 'STORE_PROXY_ERROR' }, req);
+    }
+    return;
+  }
+
+  // ─── CODM PLAYER PROXY ───────────────────────────────────────────────────
+  // Proxies player lookup to the Codashop validation API.
+  // GET /api/codm/player/:id?country=IN
+  if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
+    try {
+      const userId = pathname.split('/api/codm/player/')[1];
+      if (!userId) {
+        respondJson(res, 400, { ok: false, error: 'Player ID required.', code: 'PLAYER_ID_REQUIRED' }, req);
+        return;
+      }
+
+      const storeUrl = new URL(req.url, 'http://localhost');
+      const country = storeUrl.searchParams.get('country') || 'IN';
+      const deviceId = crypto.randomUUID();
+
+      const upstream = await fetch('https://order-sg.codashop.com/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          country,
+          voucherTypeName: 'CALL_OF_DUTY_MOBILE_WL',
+          whiteLabelId: '1',
+          deviceId,
+          userId,
+        }),
+      });
+
+      if (!upstream.ok) {
+        respondJson(res, 502, { ok: false, error: 'Upstream API error.', code: 'UPSTREAM_ERROR' }, req);
+        return;
+      }
+
+      const data = await upstream.json();
+
+      // Handle country redirect
+      if (data.errorCode === -200 && data.homeBaseCountry2Name) {
+        const redirectUpstream = await fetch('https://order-sg.codashop.com/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            country: data.homeBaseCountry2Name,
+            voucherTypeName: 'CALL_OF_DUTY_MOBILE_WL',
+            whiteLabelId: '1',
+            deviceId,
+            userId,
+          }),
+        });
+        const redirectData = await redirectUpstream.json();
+        if (!redirectData.success || !redirectData.result) {
+          respondJson(res, 404, { ok: false, error: 'Player not found.', code: 'PLAYER_NOT_FOUND' }, req);
+          return;
+        }
+        const r = redirectData.result;
+        respondJson(res, 200, {
+          ok: true,
+          player: {
+            nickname: r.nickname,
+            picUrl: r.picUrl,
+            level: r.level,
+            levelImage: r.customLevelImageUrl,
+            rankClass: r.rankClass,
+            readableRank: r.customReadableMpRank,
+            rankImage: r.customMpRankImageUrl,
+            rating: r.rating,
+            shortId: r.shortId,
+            country: data.homeBaseCountry2Name,
+            countryId: r.countryId,
+          },
+        }, req);
+        return;
+      }
+
+      if (!data.success || !data.result) {
+        respondJson(res, 404, { ok: false, error: 'Player not found.', code: 'PLAYER_NOT_FOUND' }, req);
+        return;
+      }
+
+      const r = data.result;
+      respondJson(res, 200, {
+        ok: true,
+        player: {
+          nickname: r.nickname,
+          picUrl: r.picUrl,
+          level: r.level,
+          levelImage: r.customLevelImageUrl,
+          rankClass: r.rankClass,
+          readableRank: r.customReadableMpRank,
+          rankImage: r.customMpRankImageUrl,
+          rating: r.rating,
+          shortId: r.shortId,
+          country,
+          countryId: r.countryId,
+        },
+      }, req);
+    } catch (err) {
+      log.error('codm player proxy error', { message: err.message });
+      respondJson(res, 500, { ok: false, error: 'Failed to fetch player data.', code: 'PLAYER_PROXY_ERROR' }, req);
+    }
+    return;
+  }
+
   if (req.method === 'GET' && pathname === '/metrics') {
     const metricsToken = process.env.METRICS_TOKEN;
     if (metricsToken) {
@@ -1054,13 +1239,22 @@ const server = http.createServer(async (req, res) => {
         if (field in body) {
           let value = STRING_FIELDS.includes(field) ? sanitizeText(body[field]) : body[field];
           if (ENUM_FIELDS[field] && !ENUM_FIELDS[field].includes(value)) {
-            continue;
+            respondJson(res, 400, { ok: false, error: `Valeur invalide pour ${field}. Valeurs acceptees: ${ENUM_FIELDS[field].join(', ')}`, code: 'INVALID_ENUM' });
+            return;
           }
           if ((field === 'rankMJ' || field === 'rankBR') && !RANK_VALUES.includes(value)) {
-            continue;
+            respondJson(res, 400, { ok: false, error: `Rang invalide pour ${field}. Valeurs acceptees: ${RANK_VALUES.join(', ')}`, code: 'INVALID_ENUM' });
+            return;
           }
           if (field === 'levelCODM' && (typeof value !== 'number' || value < 1 || value > 150 || !Number.isFinite(value))) {
-            continue;
+            respondJson(res, 400, { ok: false, error: 'Level CODM invalide (1-150).', code: 'INVALID_ENUM' });
+            return;
+          }
+          if (field === 'bio' && typeof value === 'string' && value.length > 500) {
+            value = value.slice(0, 500);
+          }
+          if (field === 'pseudo' && typeof value === 'string' && value.length > 30) {
+            value = value.slice(0, 30);
           }
           safeUpdate[field] = value;
         }
@@ -1072,6 +1266,22 @@ const server = http.createServer(async (req, res) => {
     } catch (error) {
       respondMappedError(res, error);
     }
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/social/friends') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    const friends = getFriendsForUser(session.user.id);
+    respondJson(res, 200, { ok: true, friends });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/social/pending') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    const requests = getFriendRequestsForUser(session.user.id).filter((fr) => fr.status === 'pending');
+    respondJson(res, 200, { ok: true, requests });
     return;
   }
 

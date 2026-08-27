@@ -564,9 +564,11 @@ export const confirmMatchResultOnServer = (matches, actor, matchId) => {
   if (!match.players.some((player) => player.userId === actorUser.id)) {
     throw makeError('FORBIDDEN', 'Seuls les joueurs du match peuvent confirmer ce resultat.');
   }
-  if (!match.result.confirmedByTeams.includes(actorUser.id)) {
-    match.result.confirmedByTeams.push(actorUser.id);
+  if (match.status === 'finished') throw makeError('ALREADY_CONFIRMED', 'Ce match est deja termine.');
+  if (match.result.confirmedByTeams.includes(actorUser.id)) {
+    throw makeError('ALREADY_CONFIRMED', 'Tu as deja confirme ce resultat.');
   }
+  match.result.confirmedByTeams.push(actorUser.id);
   match.updatedAt = getNow();
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };

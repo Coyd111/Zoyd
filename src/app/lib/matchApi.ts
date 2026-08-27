@@ -15,13 +15,21 @@ interface MatchListResponse {
 }
 
 export interface CreateMatchPayload {
-  visibility?: 'public' | 'private';
+  creatorTeam?: 0 | 1;
   format?: string;
-  betAmount?: number;
-  gameMode?: string;
-  region?: string;
-  scheduledAt?: string;
-  description?: string;
+  entryFee?: number;
+  visibility?: 'public' | 'private';
+  trustScoreMin?: number;
+  isInstant?: boolean;
+  rules?: {
+    mode: string;
+    map: string;
+    weaponRestrictions?: string[];
+    scoreTarget?: number;
+    bestOf?: number;
+    pointstreaks?: 'allowed' | 'restricted';
+    meleeAllowed?: boolean;
+  };
 }
 
 export interface MatchResultPayload {

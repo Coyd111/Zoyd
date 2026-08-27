@@ -190,6 +190,17 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user ON wallet_transactions(user_id, created_at DESC);
 
 -- ============================================================
+-- 15. ADMIN 2FA SECRETS (TOTP)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS admin_2fa_secrets (
+  user_id TEXT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  secret TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================================
 -- RLS POLICIES
 -- ============================================================
 
@@ -207,6 +218,7 @@ ALTER TABLE user_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE processed_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_2fa_secrets ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses all RLS (le frontend n'utilise JAMAIS Supabase directement :
 -- tout passe par le serveur custom avec la service_role key). Les politiques
@@ -226,6 +238,7 @@ CREATE POLICY "Service role only" ON user_blocks FOR ALL USING (auth.role() = 's
 CREATE POLICY "Service role only" ON user_notifications FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Service role only" ON processed_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Service role only" ON wallet_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON admin_2fa_secrets FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 
 -- ============================================================
 -- UPDATED_AT TRIGGER

@@ -131,6 +131,15 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ─── 15. ADMIN 2FA SECRETS (TOTP) ────────────────────────
+CREATE TABLE IF NOT EXISTS admin_2fa_secrets (
+  user_id TEXT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  secret TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ─── 2. INDEXES (si manquants) ──────────────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_app_users_pseudo ON app_users(pseudo_key);
@@ -165,6 +174,7 @@ ALTER TABLE user_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE processed_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_2fa_secrets ENABLE ROW LEVEL SECURITY;
 
 -- ─── 4. RLS POLICIES (service_role only) ────────────────────
 -- Le frontend n'utilise JAMAIS Supabase directement :
@@ -252,6 +262,12 @@ END $$;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role only' AND tablename = 'wallet_transactions') THEN
     CREATE POLICY "Service role only" ON wallet_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role only' AND tablename = 'admin_2fa_secrets') THEN
+    CREATE POLICY "Service role only" ON admin_2fa_secrets FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
   END IF;
 END $$;
 

@@ -39,6 +39,7 @@ import {
   loadFromSupabaseWithRetry,
   forceReloadFromSupabase,
   getHealthInfo,
+  verifyDataIntegrity,
   loadAdminTotpSecrets,
   markChatChannelRead,
   removePushSubscription,
@@ -149,10 +150,12 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/api/health') {
     const health = getHealthInfo();
+    const integrity = await verifyDataIntegrity().catch(() => null);
     respondJson(res, 200, {
       ok: true,
       service: 'zoyd-api',
       persistence: health,
+      integrity,
       timestamp: getNow(),
     });
     return;
@@ -2512,6 +2515,12 @@ const start = async () => {
   const loaded2fa = await loadAdminTotpSecrets();
   for (const [userId, entry] of loaded2fa) {
     adminTotpSecrets.set(userId, entry);
+  }
+
+  // Verify data integrity after full load
+  const integrity = await verifyDataIntegrity();
+  if (!integrity.ok) {
+    log.error('DATA INTEGRITY CHECK FAILED at startup', integrity);
   }
 
   ensureGlobalChatChannel();

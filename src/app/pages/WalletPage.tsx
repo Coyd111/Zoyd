@@ -137,7 +137,7 @@ const WalletPage: React.FC = () => {
           toast.error('Transaction annulee ou echouee.');
         }
         setShowDepositModal(false);
-        setAmount('');
+        setDepositAmount('');
         setSelectedOperator('');
       }
     });

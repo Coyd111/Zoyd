@@ -348,6 +348,36 @@ export const getHealthInfo = () => ({
   snapshotsInMemory: memoryStateSnapshots.size,
 });
 
+// Verify data integrity — compares memory count vs Supabase count
+export const verifyDataIntegrity = async () => {
+  if (!supabase) return { ok: false, reason: 'No Supabase client' };
+
+  try {
+    const { count: dbUserCount, error } = await supabase
+      .from('app_users')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) return { ok: false, reason: error.message };
+
+    const memoryCount = memoryUsers.size;
+    const match = memoryCount === dbUserCount;
+
+    if (!match) {
+      log.error('DATA INTEGRITY MISMATCH', {
+        memoryUsers: memoryCount,
+        dbUsers: dbUserCount,
+        diff: dbUserCount - memoryCount,
+      });
+    } else {
+      log.info('Data integrity OK', { users: memoryCount });
+    }
+
+    return { ok: match, memoryUsers: memoryCount, dbUsers: dbUserCount };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+};
+
 // ─── Users ──────────────────────────────────────────────────────────────────
 export const buildUserPayload = (input, role = 'player') => {
   const now = getNow();

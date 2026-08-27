@@ -1261,7 +1261,12 @@ const server = http.createServer(async (req, res) => {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
     try {
-      const targetUser = getPublicUserById(userProfileMatch[1]);
+      const identifier = userProfileMatch[1];
+      let targetUser = getPublicUserById(identifier);
+      if (!targetUser) {
+        const byPseudo = findUsersByPseudo(identifier, 1);
+        if (byPseudo.length) targetUser = getPublicUserById(byPseudo[0].id);
+      }
       if (!targetUser) return respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.' });
       respondJson(res, 200, { ok: true, user: targetUser });
     } catch (error) {

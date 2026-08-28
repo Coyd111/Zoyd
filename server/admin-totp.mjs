@@ -71,7 +71,12 @@ export const verifyTotp = (secret, code) => {
     const offset2 = hmac[hmac.length - 1] & 0x0f;
     const otp = ((hmac[offset2] & 0x7f) << 24) | (hmac[offset2 + 1] << 16) | (hmac[offset2 + 2] << 8) | hmac[offset2 + 3];
     const expected = String(otp % Math.pow(10, TOTP_DIGITS)).padStart(TOTP_DIGITS, '0');
-    if (expected === code) return true;
+    // Timing-safe comparison to prevent timing side-channel attacks
+    try {
+      const expectedBuf = Buffer.from(expected, 'utf-8');
+      const codeBuf = Buffer.from(code, 'utf-8');
+      if (expectedBuf.length === codeBuf.length && crypto.timingSafeEqual(expectedBuf, codeBuf)) return true;
+    } catch { /* invalid code format */ }
   }
   return false;
 };

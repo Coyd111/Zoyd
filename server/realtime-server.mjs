@@ -121,6 +121,7 @@ import {
 const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
 const API_KEY_ROTATION_DAYS = Number(process.env.ZOYD_API_KEY_ROTATION_DAYS || 90);
+let matchAutomationIntervalId = null;
 
 if (vapidKeys) {
   webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
@@ -178,6 +179,7 @@ const server = http.createServer(async (req, res) => {
   // Proxies requests to the Codashop GraphQL API to avoid CORS issues.
   // GET /api/codm/store?country=IN
   if (req.method === 'GET' && pathname === '/api/codm/store') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const storeUrl = new URL(req.url, 'http://localhost');
       const country = storeUrl.searchParams.get('country') || 'IN';
@@ -261,6 +263,7 @@ const server = http.createServer(async (req, res) => {
   // Proxies player lookup to the Codashop validation API.
   // GET /api/codm/player/:id?country=IN
   if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const userId = pathname.split('/api/codm/player/')[1];
       if (!userId) {
@@ -910,9 +913,27 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 400, { ok: false, error: 'Montant invalide.', code: 'INVALID_AMOUNT' });
       return;
     }
+    // Idempotency: prevent double-withdrawal on retry/double-click
+    const idempotencyKey = body.idempotencyKey || req.headers['x-idempotency-key'];
+    if (idempotencyKey && typeof idempotencyKey === 'string') {
+      const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
+        .find((tx) => tx.metadata?.idempotencyKey === idempotencyKey && tx.type === 'withdraw');
+      if (existingTx) {
+        respondJson(res, 200, { ok: true, wallet: getWalletSnapshot(session.user.id), user: getUserById(session.user.id), duplicate: true });
+        return;
+      }
+    }
 
     try { await withWalletMutex(session.user.id, async () => {
       const wallet = withdrawFromWallet(session.user.id, body.amount, body.method, body.phone);
+      // Tag transaction with idempotency key for dedup on retry
+      if (idempotencyKey && typeof idempotencyKey === 'string') {
+        const user = getUserById(session.user.id);
+        const lastTx = user?.wallet?.transactions?.[0];
+        if (lastTx?.type === 'withdraw' && !lastTx.metadata?.idempotencyKey) {
+          lastTx.metadata = { ...lastTx.metadata, idempotencyKey };
+        }
+      }
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });
     }); } catch (error) {
@@ -1824,6 +1845,7 @@ const server = http.createServer(async (req, res) => {
 
   // SEC-R4: Admin 2FA enable — verify code and activate 2FA
   if (req.method === 'POST' && pathname === '/api/admin/2fa/enable') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     const session = requireAdmin(req, res);
     if (!session) return;
     const body = await parseRequestBody(req).catch(() => ({}));
@@ -1863,6 +1885,7 @@ const server = http.createServer(async (req, res) => {
 
   // SEC-R4: Admin 2FA verify — verify TOTP code for financial operations
   if (req.method === 'POST' && pathname === '/api/admin/2fa/verify') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     const session = requireAdmin(req, res);
     if (!session) return;
     const body = await parseRequestBody(req).catch(() => ({}));
@@ -2527,7 +2550,7 @@ const start = async () => {
   syncMatchChatChannels(getStateCollection('matches'));
   initCronJobs();
 
-  const matchAutomationIntervalId = setInterval(async () => {
+  matchAutomationIntervalId = setInterval(async () => {
     try { await withMatchMutex(async () => {
       const outcome = await processMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.changed) {

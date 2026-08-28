@@ -300,7 +300,6 @@ const normalizeStoredMatch = (match: StoredMatch): Match => ({
   deviceRestriction: match.deviceRestriction || 'open',
   controllerRestriction: match.controllerRestriction || 'open',
   status: match.status || 'recruiting',
-  stake: match.stake || 0,
   players: match.players || [],
   arbiter: match.arbiter,
   result: match?.result ? normalizeStoredResult(match.id || '', match.result) : undefined,

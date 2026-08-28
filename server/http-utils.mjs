@@ -1,5 +1,6 @@
 import { getAuthSession, getRealtimeSession } from './persistence.mjs';
 import { incCounter, endTimer } from './metrics.mjs';
+import { log } from './logger.mjs';
 
 /**
  * @param {string} name
@@ -280,5 +281,8 @@ export const mapPersistenceError = (error) => {
  */
 export const respondMappedError = (res, error) => {
   const mapped = mapPersistenceError(error);
+  if (mapped.status === 500) {
+    log.error('[HTTP] 500', { message: error?.message, code: mapped.code, stack: error?.stack?.split('\n').slice(0, 3).join(' | ') });
+  }
   respondJson(res, mapped.status, { ok: false, error: mapped.message, code: mapped.code });
 };

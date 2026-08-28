@@ -132,6 +132,11 @@ export const verifyPassword = async (password, passwordHash) => {
 };
 
 // ─── Supabase helpers ───────────────────────────────────────────────────────
+const sbCatch = (label, err) => { log.error(`[SB] ${label}`, { error: err?.message || String(err) }); };
+
+/** Fire-and-forget: sbUpsert that won't throw even if unawaited. */
+export const sbFire = (label, fn) => { fn().catch((e) => sbCatch(label, e)); };
+
 export const sbUpsert = async (table, data) => {
   if (!supabase) return;
   const { error } = await supabase.from(table).upsert(data);
@@ -598,7 +603,7 @@ export const updateUserAccount = async (userId, updater) => {
       game_id_key: normalizeGameIdKey(next.gameId), role: next.role,
       password_hash: passwordHash, payload: next,
       created_at: current.dateJoined, updated_at: getNow(),
-    });
+    }).catch((e) => sbCatch('updateUserAccount', e));
 
     return next;
   });
@@ -653,18 +658,18 @@ export const updatePasswordHash = (userId, newHash) => {
   // Store new hash
   storePasswordHash(userId, newHash, user.pseudo, user.email, user.phone);
   // Persist to Supabase
-  sbUpsert('app_users', {
-    id: userId,
-    pseudo_key: normalizePseudoKey(user.pseudo),
-    email_key: normalizeEmailKey(user.email),
-    phone_key: normalizePhoneKey(user.phone),
-    game_id_key: normalizeGameIdKey(user.gameId),
-    role: user.role,
-    password_hash: newHash,
-    payload: user,
-    created_at: user.dateJoined,
-    updated_at: getNow(),
-  });
+    sbFire('updatePasswordHash', () => sbUpsert('app_users', {
+      id: userId,
+      pseudo_key: normalizePseudoKey(user.pseudo),
+      email_key: normalizeEmailKey(user.email),
+      phone_key: normalizePhoneKey(user.phone),
+      game_id_key: normalizeGameIdKey(user.gameId),
+      role: user.role,
+      password_hash: newHash,
+      payload: user,
+      created_at: user.dateJoined,
+      updated_at: getNow(),
+    }));
 };
 
 // ─── Account Activation Codes ─────────────────────────────────────────────────
@@ -723,11 +728,11 @@ export const activateUserAccount = (userId) => {
   user.activatedAt = getNow();
   
   // Update in Supabase
-  sbUpsert('app_users', {
+  sbFire('activateUserAccount', () => sbUpsert('app_users', {
     id: userId,
     payload: user,
     updated_at: getNow(),
-  });
+  }));
   
   return user;
 };
@@ -741,10 +746,10 @@ const createTokenRecord = (type, userId, extra = {}) => {
 
   if (type === 'auth') {
     memoryAuthSessions.set(token, record);
-    sbUpsert('auth_sessions', { token, user_id: userId, issued_at: issuedAt, expires_at: expiresAt });
+    sbFire('createAuthSession', () => sbUpsert('auth_sessions', { token, user_id: userId, issued_at: issuedAt, expires_at: expiresAt }));
   } else {
     memoryRealtimeSessions.set(token, record);
-    sbUpsert('realtime_sessions', { token, user_id: userId, pseudo: extra.pseudo, role: extra.role, issued_at: issuedAt, expires_at: expiresAt });
+    sbFire('createRealtimeSession', () => sbUpsert('realtime_sessions', { token, user_id: userId, pseudo: extra.pseudo, role: extra.role, issued_at: issuedAt, expires_at: expiresAt }));
   }
 
   return record;
@@ -772,6 +777,10 @@ export const getAuthSession = (token) => {
   if (!token) return null;
   const session = memoryAuthSessions.get(token);
   if (!session) return null;
+  if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+    memoryAuthSessions.delete(token);
+    return null;
+  }
   const user = getUserById(session.userId);
   if (!user) { memoryAuthSessions.delete(token); return null; }
   return { ...session, user };
@@ -779,7 +788,7 @@ export const getAuthSession = (token) => {
 
 export const deleteAuthSession = (token) => {
   memoryAuthSessions.delete(token);
-  sbDelete('auth_sessions', { token });
+  sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token }));
 };
 
 export const createRealtimeSession = ({ userId, pseudo, role }) => {
@@ -792,7 +801,7 @@ export const getRealtimeSession = (token) => {
 
 export const deleteRealtimeSession = (token) => {
   memoryRealtimeSessions.delete(token);
-  sbDelete('realtime_sessions', { token });
+  sbFire('deleteRealtimeSession', () => sbDelete('realtime_sessions', { token }));
 };
 
 export const deleteRealtimeSessionsForUser = (userId) => {
@@ -803,18 +812,18 @@ export const deleteRealtimeSessionsForUser = (userId) => {
   for (const token of tokensToDelete) {
     memoryRealtimeSessions.delete(token);
   }
-  sbDelete('realtime_sessions', { user_id: userId });
+  sbFire('deleteRealtimeSessionsForUser', () => sbDelete('realtime_sessions', { user_id: userId }));
 };
 
 // ─── Push Subscriptions ─────────────────────────────────────────────────────
 export const upsertPushSubscription = (userId, subscription) => {
   memoryPushSubscriptions.set(subscription.endpoint, subscription);
-  sbUpsert('push_subscriptions', { user_id: userId, endpoint: subscription.endpoint, payload: subscription, updated_at: getNow() });
+  sbFire('upsertPushSubscription', () => sbUpsert('push_subscriptions', { user_id: userId, endpoint: subscription.endpoint, payload: subscription, updated_at: getNow() }));
 };
 
 export const removePushSubscription = (endpoint) => {
   memoryPushSubscriptions.delete(endpoint);
-  sbDelete('push_subscriptions', { endpoint });
+  sbFire('removePushSubscription', () => sbDelete('push_subscriptions', { endpoint }));
 };
 
 export const getPushSubscriptionsForUser = (userId) => {
@@ -887,7 +896,7 @@ export const upsertChatChannel = (channel) => {
     }
   }
 
-  sbUpsert('chat_channels', { id: next.id, type: next.type, payload: next, created_at: next.createdAt, updated_at: next.updatedAt });
+  sbFire('upsertChatChannel', () => sbUpsert('chat_channels', { id: next.id, type: next.type, payload: next, created_at: next.createdAt, updated_at: next.updatedAt }));
   return next;
 };
 
@@ -905,7 +914,7 @@ export const appendChatMessage = async (message) => {
     if (msgs.length > 500) msgs.splice(0, msgs.length - 500);
     memoryChatMessages.set(nextMessage.channelId, msgs);
 
-    sbUpsert('chat_messages', { id: nextMessage.id, channel_id: nextMessage.channelId, payload: nextMessage, created_at: nextMessage.timestamp });
+    sbFire('appendChatMessage', () => sbUpsert('chat_messages', { id: nextMessage.id, channel_id: nextMessage.channelId, payload: nextMessage, created_at: nextMessage.timestamp }));
     upsertChatChannel({ ...channel, lastMessageAt: nextMessage.timestamp, updatedAt: nextMessage.timestamp });
 
     return nextMessage;
@@ -917,10 +926,12 @@ export const getChatMessagesForChannel = (channelId, limit = 200) => {
   return msgs.slice(-Math.max(1, Number(limit || 200)));
 };
 
-export const markChatChannelRead = (channelId, userId, readAt = getNow()) => {
-  memoryChatReads.set(`${channelId}:${userId}`, readAt);
-  sbUpsert('chat_reads', { channel_id: channelId, user_id: userId, read_at: readAt });
-  return { channelId, userId, readAt };
+export const markChatChannelRead = async (channelId, userId, readAt = getNow()) => {
+  return withChannelMutex(channelId, () => {
+    memoryChatReads.set(`${channelId}:${userId}`, readAt);
+    sbFire('markChatChannelRead', () => sbUpsert('chat_reads', { channel_id: channelId, user_id: userId, read_at: readAt }));
+    return { channelId, userId, readAt };
+  });
 };
 
 export const getUnreadCountForUser = (channelId, userId) => {
@@ -1035,7 +1046,7 @@ export const sendFriendRequest = (senderId, targetId, message) => {
   const record = { id, sender_id: senderId, target_id: targetId, status: 'pending', message: message || null, created_at: now, updated_at: now };
 
   memoryFriendRequests.set(id, record);
-  sbUpsert('friend_requests', record);
+  sbFire('sendFriendRequest', () => sbUpsert('friend_requests', record));
   return { id, senderId, targetId, status: 'pending', message, timestamp: now };
 };
 
@@ -1056,9 +1067,9 @@ export const acceptFriendRequest = (requestId, userId) => {
   memoryFriendshipsByUser.get(req.sender_id).add(req.target_id);
   memoryFriendshipsByUser.get(req.target_id).add(req.sender_id);
 
-  sbUpsert('friend_requests', req);
-  sbUpsert('friendships', { user_id_1: req.sender_id, user_id_2: req.target_id, created_at: getNow() });
-  sbUpsert('friendships', { user_id_1: req.target_id, user_id_2: req.sender_id, created_at: getNow() });
+  sbFire('acceptFriendRequest', () => sbUpsert('friend_requests', req));
+  sbFire('acceptFriendRequest', () => sbUpsert('friendships', { user_id_1: req.sender_id, user_id_2: req.target_id, created_at: getNow() }));
+  sbFire('acceptFriendRequest', () => sbUpsert('friendships', { user_id_1: req.target_id, user_id_2: req.sender_id, created_at: getNow() }));
 
   return getUserById(req.sender_id);
 };
@@ -1070,7 +1081,7 @@ export const declineFriendRequest = (requestId, userId) => {
   req.status = 'declined';
   req.updated_at = getNow();
   memoryFriendRequests.set(requestId, req);
-  sbUpsert('friend_requests', req);
+  sbFire('declineFriendRequest', () => sbUpsert('friend_requests', req));
 };
 
 export const removeFriend = (userId, friendId) => {
@@ -1079,8 +1090,8 @@ export const removeFriend = (userId, friendId) => {
   // Update per-user friendship index
   memoryFriendshipsByUser.get(userId)?.delete(friendId);
   memoryFriendshipsByUser.get(friendId)?.delete(userId);
-  sbDelete('friendships', { user_id_1: userId, user_id_2: friendId });
-  sbDelete('friendships', { user_id_1: friendId, user_id_2: userId });
+  sbFire('removeFriend', () => sbDelete('friendships', { user_id_1: userId, user_id_2: friendId }));
+  sbFire('removeFriend', () => sbDelete('friendships', { user_id_1: friendId, user_id_2: userId }));
 
   for (const [id, fr] of memoryFriendRequests) {
     if ((fr.sender_id === userId && fr.target_id === friendId) || (fr.sender_id === friendId && fr.target_id === userId)) {
@@ -1096,13 +1107,13 @@ export const blockUser = (blockerId, blockedId) => {
   // Update per-user block index
   if (!memoryBlocksByUser.has(blockerId)) memoryBlocksByUser.set(blockerId, new Set());
   memoryBlocksByUser.get(blockerId).add(blockedId);
-  sbUpsert('user_blocks', { blocker_id: blockerId, blocked_id: blockedId, created_at: getNow() });
+  sbFire('blockUser', () => sbUpsert('user_blocks', { blocker_id: blockerId, blocked_id: blockedId, created_at: getNow() }));
 };
 
 export const unblockUser = (blockerId, blockedId) => {
   memoryUserBlocks.delete(`${blockerId}:${blockedId}`);
   memoryBlocksByUser.get(blockerId)?.delete(blockedId);
-  sbDelete('user_blocks', { blocker_id: blockerId, blocked_id: blockedId });
+  sbFire('unblockUser', () => sbDelete('user_blocks', { blocker_id: blockerId, blocked_id: blockedId }));
 };
 
 // ─── Notifications ──────────────────────────────────────────────────────────
@@ -1116,11 +1127,11 @@ export const createNotification = (userId, type, title, message, priority, actio
   if (!memoryUnreadByUser.has(userId)) memoryUnreadByUser.set(userId, new Set());
   memoryUnreadByUser.get(userId).add(id);
 
-  sbUpsert('user_notifications', {
+  sbFire('createNotification', () => sbUpsert('user_notifications', {
     id, user_id: userId, type, title, message, priority,
     action_url: actionUrl || null, metadata: metadata || null,
     is_read: false, created_at: now,
-  });
+  }));
 
   return notification;
 };

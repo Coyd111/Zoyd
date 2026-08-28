@@ -65,6 +65,7 @@ import {
   hashPassword,
   updatePasswordHash,
   sbUpsert,
+  sbFire,
   getPublicUserById,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
@@ -536,6 +537,19 @@ const server = http.createServer(async (req, res) => {
           if (field === 'pseudo' && typeof value === 'string' && value.length > 30) {
             value = value.slice(0, 30);
           }
+          if (field === 'email' && typeof value === 'string') {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+              respondJson(res, 400, { ok: false, error: 'Format email invalide.', code: 'INVALID_JSON' });
+              return;
+            }
+          }
+          if (field === 'gameId' && typeof value === 'string') {
+            value = value.trim().slice(0, 30);
+            if (value.length < 2) {
+              respondJson(res, 400, { ok: false, error: 'gameId trop court (2-30 caracteres).', code: 'INVALID_JSON' });
+              return;
+            }
+          }
           safeUpdate[field] = value;
         }
       }
@@ -687,7 +701,7 @@ const server = http.createServer(async (req, res) => {
         status: 'pending',
         createdAt: getNow(),
       };
-      sbUpsert('user_reports', { id: report.id, payload: report, created_at: getNow() });
+      sbFire('user_reports', () => sbUpsert('user_reports', { id: report.id, payload: report, created_at: getNow() }));
       respondJson(res, 201, { ok: true, report });
     } catch (error) {
       respondMappedError(res, error);
@@ -2133,7 +2147,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const receipt = markChatChannelRead(channel.id, session.user.id, getNow());
+      const receipt = await markChatChannelRead(channel.id, session.user.id, getNow());
       broadcastChatRead(io, receipt.channelId, receipt.userId, receipt.readAt);
       respondJson(res, 200, { ok: true, ...receipt });
     } catch (err) {

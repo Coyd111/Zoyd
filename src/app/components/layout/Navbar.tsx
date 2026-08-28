@@ -3,18 +3,18 @@ import { Link } from 'react-router';
 import { Settings, Wallet, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
+import { useSocketStore } from '../../stores/socketStore';
 import { formatZC } from '../../../lib/utils';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import NotificationSettingsModal from '../notifications/NotificationSettingsModal';
 import { useLogout } from '../../hooks/useLogout';
 
-const Navbar: React.FC = () => {
+const Navbar: React.FC = React.memo(() => {
   const { user } = useAuthStore();
-  const { getTotalBalance } = useWalletStore();
-  const handleLogout = useLogout();
+  const totalBalance = useWalletStore((s) => s.getTotalBalance());
   const { isConnected, serverConnected, liveMatches } = useSocketStore();
+  const handleLogout = useLogout();
   const safeUser = user || { pseudo: 'ShadowX' };
-  const totalBalance = getTotalBalance();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
@@ -91,6 +91,8 @@ const Navbar: React.FC = () => {
       </div>
     </nav>
   );
-};
+});
+
+Navbar.displayName = 'Navbar';
 
 export { Navbar };

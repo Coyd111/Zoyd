@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import LandingPage from './LandingPage';
-import DashboardPage from './DashboardPage';
+
+const DashboardPage = React.lazy(() => import('./DashboardPage'));
 
 const RootIndexPage: React.FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -15,7 +16,17 @@ const RootIndexPage: React.FC = () => {
     );
   }
 
-  return isAuthenticated ? <DashboardPage /> : <LandingPage />;
+  if (!isAuthenticated) return <LandingPage />;
+
+  return (
+    <Suspense fallback={
+      <div className="min-h-dvh bg-zoyd-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-zoyd-yellow rounded-full animate-spin" />
+      </div>
+    }>
+      <DashboardPage />
+    </Suspense>
+  );
 };
 
 export default RootIndexPage;

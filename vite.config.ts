@@ -59,6 +59,7 @@ export default defineConfig({
   },
   build: {
     emptyOutDir: true,
+    target: 'es2020',
     rollupOptions: {
       external: ['pg', 'socket.io', 'web-push', 'dotenv', 'fedapay'],
       output: {
@@ -66,8 +67,11 @@ export default defineConfig({
           if (/node_modules\/(react|react-dom|react-router)/.test(id)) {
             return 'vendor-react'
           }
-          if (/node_modules\/(zustand|motion|use-sync-external-store)/.test(id)) {
+          if (/node_modules\/zustand/.test(id)) {
             return 'vendor-state'
+          }
+          if (/node_modules\/(motion|framer)/.test(id)) {
+            return 'vendor-motion'
           }
           if (/node_modules\/lucide/.test(id)) {
             return 'vendor-icons'
@@ -78,7 +82,7 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 400,
   },
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })

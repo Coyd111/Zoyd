@@ -4,25 +4,25 @@ import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settin
 import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
-const BottomNav: React.FC = () => {
+const navItems = [
+  { icon: LayoutGrid, label: 'LOBBY', path: '/mj' },
+  { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
+  { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
+  { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
+  { icon: MessageCircle, label: 'CHAT', path: '/chat' },
+  { icon: Newspaper, label: 'INFOS', path: '/infos' },
+];
+
+const menuItems = [
+  { icon: Wallet, label: 'WALLET', path: '/wallet' },
+  { icon: User, label: 'PROFIL', path: '/profil' },
+  { icon: Settings, label: 'PARAMETRES', path: '/parametres' },
+];
+
+const BottomNav: React.FC = React.memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const navItems = [
-    { icon: LayoutGrid, label: 'LOBBY', path: '/mj' },
-    { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
-    { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
-    { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
-    { icon: MessageCircle, label: 'CHAT', path: '/chat' },
-    { icon: Newspaper, label: 'INFOS', path: '/infos' },
-  ];
-
-  const menuItems = [
-    { icon: Wallet, label: 'WALLET', path: '/wallet' },
-    { icon: User, label: 'PROFIL', path: '/profil' },
-    { icon: Settings, label: 'PARAMETRES', path: '/parametres' },
-  ];
 
   const handleNavigate = (path: string) => {
     setMenuOpen(false);
@@ -135,6 +135,8 @@ const BottomNav: React.FC = () => {
       </nav>
     </>
   );
-};
+});
+
+BottomNav.displayName = 'BottomNav';
 
 export { BottomNav };

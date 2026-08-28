@@ -8,30 +8,31 @@ import { cn, formatZC } from '../../../lib/utils';
 import ZoydLogo from '../branding/ZoydLogo';
 import { useLogout } from '../../hooks/useLogout';
 
-const Sidebar: React.FC = () => {
+const navItems = [
+  { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
+  { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
+  { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
+  { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
+  { icon: Newspaper, label: 'INFOS', path: '/infos' },
+];
+
+const adminNavItem = { icon: ShieldCheck, label: 'CONTROLE', path: '/admin' };
+
+const socialItems = [
+  { icon: MessageCircle, label: 'MESSAGES', path: '/chat' },
+  { icon: Users, label: 'AMIS', path: '/chat' },
+];
+
+const Sidebar: React.FC = React.memo(() => {
   const location = useLocation();
   const { user } = useAuthStore();
-  const { getTotalBalance } = useWalletStore();
-  const { getUnreadTotal } = useChatStore();
+  const totalBalance = useWalletStore((s) => s.getTotalBalance());
+  const unreadMessages = useChatStore((s) => s.getUnreadTotal());
   const handleLogout = useLogout();
   const safeUser = user || { pseudo: 'ShadowX' };
-  const totalBalance = getTotalBalance();
-  const unreadMessages = getUnreadTotal();
   const isAdmin = user?.role === 'admin';
 
-  const navItems = [
-    { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
-    { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
-    { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
-    { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
-    { icon: Newspaper, label: 'INFOS', path: '/infos' },
-    ...(isAdmin ? [{ icon: ShieldCheck, label: 'CONTROLE', path: '/admin' }] : []),
-  ];
-
-  const socialItems = [
-    { icon: MessageCircle, label: 'MESSAGES', path: '/chat', badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-    { icon: Users, label: 'AMIS', path: '/chat' },
-  ];
+  const items = isAdmin ? [...navItems, adminNavItem] : navItems;
 
   return (
     <aside className="hidden md:flex flex-col w-64 min-h-[calc(100dvh-3.5rem)] bg-zoyd-black border-r border-white/5 sticky top-14">
@@ -39,7 +40,7 @@ const Sidebar: React.FC = () => {
         <div>
           <div className="text-[9px] font-display font-black text-white/40 uppercase tracking-[0.3em] mb-4 px-3 italic">Navigation</div>
           <div className="space-y-1">
-            {navItems.map((item) => {
+            {items.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path || (item.path !== '/mj' && location.pathname.startsWith(item.path));
               return (
@@ -91,9 +92,9 @@ const Sidebar: React.FC = () => {
                     <Icon className="w-4 h-4" />
                     {item.label}
                   </div>
-                  {item.badge ? (
+                  {item.label === 'MESSAGES' && unreadMessages > 0 ? (
                     <span className="bg-zoyd-blue text-white text-[9px] px-1.5 py-0.5 font-bold tabular-nums">
-                      {item.badge}
+                      {unreadMessages}
                     </span>
                   ) : null}
                 </Link>
@@ -136,6 +137,8 @@ const Sidebar: React.FC = () => {
       </div>
     </aside>
   );
-};
+});
+
+Sidebar.displayName = 'Sidebar';
 
 export { Sidebar };

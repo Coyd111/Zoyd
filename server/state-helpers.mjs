@@ -7,21 +7,24 @@ import { getServerWallet } from './wallet-engine.mjs';
 
 /**
  * Persist matches to state storage, sync chat channels, sanitize for broadcast, and push snapshot.
+ * Now broadcasts only the changed match delta instead of full collection.
  * @param {object} io - Socket.IO server instance
  * @param {Array} matches - The matches to persist
- * @param {object|null} [changedMatch=null] - Optional match that changed, used to broadcast its chat channel
+ * @param {object|null} [changedMatch=null] - Optional match that changed, used for delta broadcast
  * @returns {Promise<Array>} The stored matches
  */
 const saveMatches = async (io, matches, changedMatch = null) => {
   syncMatchChatChannels(matches);
   await replaceStateCollection('matches', matches);
-  const storedMatches = getStateCollection('matches');
-  const sanitizedMatches = storedMatches.map(sanitizeMatchForBroadcast);
-  broadcastStateSnapshot(io, 'matches', sanitizedMatches);
+  // Broadcast only the changed match delta instead of full collection
   if (changedMatch) {
+    broadcastStateSnapshot(io, 'matches', [sanitizeMatchForBroadcast(changedMatch)]);
     broadcastChatChannel(io, buildMatchChatChannel(changedMatch));
+  } else {
+    const storedMatches = getStateCollection('matches');
+    broadcastStateSnapshot(io, 'matches', storedMatches.map(sanitizeMatchForBroadcast));
   }
-  return storedMatches;
+  return getStateCollection('matches');
 };
 
 /**

@@ -1,7 +1,8 @@
 import { respondJson } from './http-utils.mjs';
 
-/** @type {Map<string, { windowStart: number, attempts: number }>} */
+/** @type {Map<string, { windowStart: number, attempts: number, group: string }>} */
 const rateLimitBuckets = new Map();
+const MAX_RATE_LIMIT_BUCKETS = 50000;
 
 /** @type {{ auth: { max: number, windowMs: number }, social: { max: number, windowMs: number }, wallet: { max: number, windowMs: number }, chat: { max: number, windowMs: number }, admin: { max: number, windowMs: number }, default: { max: number, windowMs: number } }} */
 const RATE_LIMIT_CONFIG = {
@@ -21,11 +22,16 @@ const RATE_LIMIT_CONFIG = {
  */
 const checkRateLimit = (ip, group = 'default') => {
   const config = RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default;
-  const key = `${ip}:${group}`;
+  const key = `${ip}|${group}`;
   const now = Date.now();
   const record = rateLimitBuckets.get(key);
   if (!record || now - record.windowStart > config.windowMs) {
-    rateLimitBuckets.set(key, { windowStart: now, attempts: 1 });
+    // Evict oldest if at capacity
+    if (rateLimitBuckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+      const oldest = rateLimitBuckets.keys().next().value;
+      rateLimitBuckets.delete(oldest);
+    }
+    rateLimitBuckets.set(key, { windowStart: now, attempts: 1, group });
     return { allowed: true, remaining: config.max - 1, retryAfter: 0 };
   }
   record.attempts += 1;
@@ -38,8 +44,7 @@ const checkRateLimit = (ip, group = 'default') => {
 const cleanupRateLimits = () => {
   const now = Date.now();
   for (const [key, record] of rateLimitBuckets) {
-    const group = key.split(':').pop();
-    const config = RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default;
+    const config = RATE_LIMIT_CONFIG[record.group] || RATE_LIMIT_CONFIG.default;
     if (now - record.windowStart > config.windowMs) rateLimitBuckets.delete(key);
   }
 };

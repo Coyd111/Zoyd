@@ -78,7 +78,8 @@ const MAX_OBSERVATIONS = 1000;
 export const observeHistogram = (name, value, labels = {}) => {
   const h = getHistogram(name, labels);
   if (h.observations.length >= MAX_OBSERVATIONS) {
-    h.observations.shift();
+    // Use slice instead of shift (O(1) amortized vs O(n))
+    h.observations = h.observations.slice(-MAX_OBSERVATIONS + 1);
   }
   h.observations.push(value);
   h.sum += value;
@@ -131,18 +132,21 @@ export const metricsToPrometheus = () => {
   for (const h of histograms.values()) {
     const metricName = h.name;
     const baseLabels = formatLabels(h.labels);
-    const suffixes = { '_count': h.count, '_sum': h.sum };
     if (!seen.has(metricName)) {
       lines.push(`# TYPE ${metricName} histogram`);
       seen.add(metricName);
     }
-    // Buckets
+    // Sort observations once for efficient binary search per bucket
+    const sorted = [...h.observations].sort((a, b) => a - b);
     let cumulative = 0;
+    let searchIdx = 0;
     for (const b of h.buckets) {
-      cumulative += h.observations.filter(v => v <= b).length;
-      const bLabels = h.labels.bucket !== undefined
-        ? formatLabels({ ...h.labels, le: b })
-        : formatLabels({ ...h.labels, le: b });
+      // Advance pointer instead of filtering entire array
+      while (searchIdx < sorted.length && sorted[searchIdx] <= b) {
+        cumulative++;
+        searchIdx++;
+      }
+      const bLabels = formatLabels({ ...h.labels, le: b });
       lines.push(`${metricName}_bucket${bLabels} ${cumulative}`);
     }
     // +Inf bucket

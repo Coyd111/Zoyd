@@ -3,7 +3,7 @@ import { Badge } from './ui/Badge';
 import { useSocketStore } from '../stores/socketStore';
 import { formatZC } from '../../lib/utils';
 
-const LiveTicker: React.FC = () => {
+const LiveTicker: React.FC = React.memo(() => {
   const { liveMatches } = useSocketStore();
 
   if (liveMatches.length === 0) {
@@ -37,6 +37,8 @@ const LiveTicker: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+LiveTicker.displayName = 'LiveTicker';
 
 export { LiveTicker };

@@ -21,12 +21,16 @@ const memoryChatChannels = new Map();
 const MAX_CHAT_CHANNELS = 1000;
 const memoryChatMessages = new Map(); // channelId -> message[]
 const memoryChatReads = new Map();    // `${channelId}:${userId}` -> readAt
-const memoryStateSnapshots = new Map(); // `${kind}:${entityId}` -> payload
+const memoryStateSnapshots = new Map(); // `${kind}:${entityId}` -> payload (kept for compat)
+const memoryStateByKind = new Map();   // kind -> Map<entityId, payload> (O(1) lookups)
 const memoryAdminIds = new Set();     // fast admin lookup (avoids getAllUsers scan)
 const memoryFriendRequests = new Map();
 const memoryFriendships = new Set();   // `${uid1}:${uid2}`
+const memoryFriendshipsByUser = new Map(); // userId -> Set<friendId> (O(1) lookups)
 const memoryUserBlocks = new Set();    // `${blocker}:${blocked}`
+const memoryBlocksByUser = new Map();  // userId -> Set<blockedId> (O(1) lookups)
 const memoryNotifications = new Map(); // id -> notification
+const memoryUnreadByUser = new Map();  // userId -> Set<notificationId> (O(1) unread lookups)
 const memoryProcessedTransactions = new Set();
 const MAX_PROCESSED_TX = 10000;
 
@@ -235,11 +239,13 @@ export const loadFromSupabase = async () => {
       }
     }
 
-    // State snapshots
+    // State snapshots (populate both old flat map and new per-kind map)
     const { data: snapshots } = await supabase.from('state_snapshots').select('*');
     if (snapshots) {
       for (const snap of snapshots) {
         memoryStateSnapshots.set(`${snap.kind}:${snap.entity_id}`, snap.payload);
+        if (!memoryStateByKind.has(snap.kind)) memoryStateByKind.set(snap.kind, new Map());
+        memoryStateByKind.get(snap.kind).set(snap.entity_id, snap.payload);
       }
     }
 
@@ -251,23 +257,27 @@ export const loadFromSupabase = async () => {
       }
     }
 
-    // Friendships
+    // Friendships (populate both Set and per-user index)
     const { data: friendships } = await supabase.from('friendships').select('*');
     if (friendships) {
       for (const f of friendships) {
         memoryFriendships.add(`${f.user_id_1}:${f.user_id_2}`);
+        if (!memoryFriendshipsByUser.has(f.user_id_1)) memoryFriendshipsByUser.set(f.user_id_1, new Set());
+        memoryFriendshipsByUser.get(f.user_id_1).add(f.user_id_2);
       }
     }
 
-    // Blocks
+    // Blocks (populate both Set and per-user index)
     const { data: blocks } = await supabase.from('user_blocks').select('*');
     if (blocks) {
       for (const b of blocks) {
         memoryUserBlocks.add(`${b.blocker_id}:${b.blocked_id}`);
+        if (!memoryBlocksByUser.has(b.blocker_id)) memoryBlocksByUser.set(b.blocker_id, new Set());
+        memoryBlocksByUser.get(b.blocker_id).add(b.blocked_id);
       }
     }
 
-    // Notifications
+    // Notifications (populate both map and per-user unread index)
     const { data: notifs } = await supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5000);
     if (notifs) {
       for (const n of notifs) {
@@ -276,6 +286,10 @@ export const loadFromSupabase = async () => {
           message: n.message, priority: n.priority, actionUrl: n.action_url,
           metadata: n.metadata, isRead: n.is_read, createdAt: n.created_at,
         });
+        if (!n.is_read) {
+          if (!memoryUnreadByUser.has(n.user_id)) memoryUnreadByUser.set(n.user_id, new Set());
+          memoryUnreadByUser.get(n.user_id).add(n.id);
+        }
       }
     }
 
@@ -330,10 +344,14 @@ export const forceReloadFromSupabase = async () => {
   memoryChatChannels.clear();
   memoryChatMessages.clear();
   memoryStateSnapshots.clear();
+  memoryStateByKind.clear();
   memoryFriendRequests.clear();
   memoryFriendships.clear();
+  memoryFriendshipsByUser.clear();
   memoryUserBlocks.clear();
+  memoryBlocksByUser.clear();
   memoryNotifications.clear();
+  memoryUnreadByUser.clear();
   memoryProcessedTransactions.clear();
   memoryPushSubscriptions.clear();
   return await loadFromSupabase();
@@ -348,8 +366,17 @@ export const getHealthInfo = () => ({
   snapshotsInMemory: memoryStateSnapshots.size,
 });
 
-// Verify data integrity — compares memory count vs Supabase count
+// Verify data integrity — compares memory count vs Supabase count (cached 60s)
+let integrityCache = null;
+let integrityCacheAt = 0;
+const INTEGRITY_CACHE_TTL = 60_000;
+
 export const verifyDataIntegrity = async () => {
+  const now = Date.now();
+  if (integrityCache && now - integrityCacheAt < INTEGRITY_CACHE_TTL) {
+    return integrityCache;
+  }
+
   if (!supabase) return { ok: false, reason: 'No Supabase client' };
 
   try {
@@ -372,7 +399,9 @@ export const verifyDataIntegrity = async () => {
       log.info('Data integrity OK', { users: memoryCount });
     }
 
-    return { ok: match, memoryUsers: memoryCount, dbUsers: dbUserCount };
+    integrityCache = { ok: match, memoryUsers: memoryCount, dbUsers: dbUserCount };
+    integrityCacheAt = now;
+    return integrityCache;
   } catch (err) {
     return { ok: false, reason: err.message };
   }
@@ -416,10 +445,13 @@ const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   const phk = normalizePhoneKey(phone);
   const gk = normalizeGameIdKey(gameId);
 
+  // O(1) lookups via password hash index (keys are normalized identifiers)
+  if (memoryPasswordHashes.has(pk)) throw makeError('DUPLICATE_PSEUDO', 'Ce pseudo CODM est deja utilise sur ZOYD.');
+  if (memoryPasswordHashes.has(ek)) throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
+  if (memoryPasswordHashes.has(phk)) throw makeError('DUPLICATE_PHONE', 'Ce numero est deja rattache a un compte ZOYD.');
+
+  // gameId check still needs linear scan (not indexed in passwordHashes)
   for (const user of memoryUsers.values()) {
-    if (normalizePseudoKey(user.pseudo) === pk) throw makeError('DUPLICATE_PSEUDO', 'Ce pseudo CODM est deja utilise sur ZOYD.');
-    if (normalizeEmailKey(user.email) === ek) throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
-    if (normalizePhoneKey(user.phone) === phk) throw makeError('DUPLICATE_PHONE', 'Ce numero est deja rattache a un compte ZOYD.');
     if (normalizeGameIdKey(user.gameId) === gk) throw makeError('DUPLICATE_GAME_ID', 'Cet UID CODM est deja verifie sur la plateforme.');
   }
 };
@@ -722,14 +754,18 @@ const cleanupExpired = (map) => {
   }
 };
 
-export const createAuthSession = (userId) => {
+// Timer-based session cleanup (every 5 minutes instead of per-request)
+setInterval(() => {
   cleanupExpired(memoryAuthSessions);
+  cleanupExpired(memoryRealtimeSessions);
+}, 5 * 60 * 1000);
+
+export const createAuthSession = (userId) => {
   const session = createTokenRecord('auth', userId);
   return { ...session, user: getUserById(userId) };
 };
 
 export const getAuthSession = (token) => {
-  cleanupExpired(memoryAuthSessions);
   if (!token) return null;
   const session = memoryAuthSessions.get(token);
   if (!session) return null;
@@ -744,12 +780,10 @@ export const deleteAuthSession = (token) => {
 };
 
 export const createRealtimeSession = ({ userId, pseudo, role }) => {
-  cleanupExpired(memoryRealtimeSessions);
   return createTokenRecord('realtime', userId, { pseudo, role });
 };
 
 export const getRealtimeSession = (token) => {
-  cleanupExpired(memoryRealtimeSessions);
   return token ? memoryRealtimeSessions.get(token) || null : null;
 };
 
@@ -900,39 +934,56 @@ export const ensureGlobalChatChannel = () =>
 // ─── State Snapshots (matches, tournaments) ─────────────────────────────────
 export const replaceStateCollection = async (kind, items) => {
   const itemIds = new Set(items.map((item) => item.id));
+  if (!memoryStateByKind.has(kind)) memoryStateByKind.set(kind, new Map());
+  const kindMap = memoryStateByKind.get(kind);
 
-  // Update memory
+  // Update memory (both flat and per-kind maps)
   for (const item of items) {
     memoryStateSnapshots.set(`${kind}:${item.id}`, item);
+    kindMap.set(item.id, item);
   }
 
   // Remove stale
-  const keysToDelete = [];
-  for (const key of memoryStateSnapshots.keys()) {
-    if (key.startsWith(`${kind}:`) && !itemIds.has(key.split(':').slice(1).join(':'))) {
-      keysToDelete.push(key);
-    }
+  const idsToDelete = [];
+  for (const id of kindMap.keys()) {
+    if (!itemIds.has(id)) idsToDelete.push(id);
   }
-  for (const key of keysToDelete) {
-    memoryStateSnapshots.delete(key);
+  for (const id of idsToDelete) {
+    memoryStateSnapshots.delete(`${kind}:${id}`);
+    kindMap.delete(id);
   }
 
   // Sync to Supabase (batch upsert)
   if (items.length > 0 && supabase) {
     const rows = items.map(item => ({ kind, entity_id: item.id, payload: item, updated_at: getNow() }));
-    // Batch in chunks of 100
     for (let i = 0; i < rows.length; i += 100) {
       await sbUpsert('state_snapshots', rows.slice(i, i + 100));
     }
   }
 };
 
+// O(1) per-kind lookup — no full scan needed
 export const getStateCollection = (kind) => {
-  const results = [];
-  for (const [key, payload] of memoryStateSnapshots) {
-    if (key.startsWith(`${kind}:`)) results.push(payload);
+  const kindMap = memoryStateByKind.get(kind);
+  if (!kindMap) return [];
+  return Array.from(kindMap.values());
+};
+
+// O(1) single entity lookup
+export const getStateEntity = (kind, entityId) => {
+  const kindMap = memoryStateByKind.get(kind);
+  return kindMap ? kindMap.get(entityId) || null : null;
+};
+
+// Upsert a single entity (avoids full collection replacement)
+export const upsertStateEntity = async (kind, entity) => {
+  if (!memoryStateByKind.has(kind)) memoryStateByKind.set(kind, new Map());
+  memoryStateByKind.get(kind).set(entity.id, entity);
+  memoryStateSnapshots.set(`${kind}:${entity.id}`, entity);
+
+  if (supabase) {
+    await sbUpsert('state_snapshots', { kind, entity_id: entity.id, payload: entity, updated_at: getNow() });
   }
-  return results;
 };
 
 // ─── Social ─────────────────────────────────────────────────────────────────
@@ -944,25 +995,22 @@ export const getFriendRequestsForUser = (userId) => {
   return results;
 };
 
+// O(1) per-user friendship lookup via index
 export const getFriendsForUser = (userId) => {
+  const friendIds = memoryFriendshipsByUser.get(userId);
+  if (!friendIds) return [];
   const friends = [];
-  for (const key of memoryFriendships) {
-    const [u1, u2] = key.split(':');
-    const friendId = u1 === userId ? u2 : u2 === userId ? u1 : null;
-    if (friendId) {
-      const user = getPublicUserById(friendId);      if (user) friends.push(user);
-    }
+  for (const friendId of friendIds) {
+    const user = getPublicUserById(friendId);
+    if (user) friends.push(user);
   }
   return friends;
 };
 
+// O(1) per-user block lookup via index
 export const getBlockedUsers = (userId) => {
-  const blocked = [];
-  for (const key of memoryUserBlocks) {
-    const [blocker, blocked_id] = key.split(':');
-    if (blocker === userId) blocked.push(blocked_id);
-  }
-  return blocked;
+  const blockedIds = memoryBlocksByUser.get(userId);
+  return blockedIds ? [...blockedIds] : [];
 };
 
 export const sendFriendRequest = (senderId, targetId, message) => {
@@ -997,6 +1045,12 @@ export const acceptFriendRequest = (requestId, userId) => {
   memoryFriendships.add(`${req.sender_id}:${req.target_id}`);
   memoryFriendships.add(`${req.target_id}:${req.sender_id}`);
 
+  // Update per-user friendship index
+  if (!memoryFriendshipsByUser.has(req.sender_id)) memoryFriendshipsByUser.set(req.sender_id, new Set());
+  if (!memoryFriendshipsByUser.has(req.target_id)) memoryFriendshipsByUser.set(req.target_id, new Set());
+  memoryFriendshipsByUser.get(req.sender_id).add(req.target_id);
+  memoryFriendshipsByUser.get(req.target_id).add(req.sender_id);
+
   sbUpsert('friend_requests', req);
   sbUpsert('friendships', { user_id_1: req.sender_id, user_id_2: req.target_id, created_at: getNow() });
   sbUpsert('friendships', { user_id_1: req.target_id, user_id_2: req.sender_id, created_at: getNow() });
@@ -1017,6 +1071,9 @@ export const declineFriendRequest = (requestId, userId) => {
 export const removeFriend = (userId, friendId) => {
   memoryFriendships.delete(`${userId}:${friendId}`);
   memoryFriendships.delete(`${friendId}:${userId}`);
+  // Update per-user friendship index
+  memoryFriendshipsByUser.get(userId)?.delete(friendId);
+  memoryFriendshipsByUser.get(friendId)?.delete(userId);
   sbDelete('friendships', { user_id_1: userId, user_id_2: friendId });
   sbDelete('friendships', { user_id_1: friendId, user_id_2: userId });
 
@@ -1031,11 +1088,15 @@ export const blockUser = (blockerId, blockedId) => {
   if (blockerId === blockedId) throw makeError('SELF_BLOCK', 'Impossible de se bloquer soi-meme.');
   removeFriend(blockerId, blockedId);
   memoryUserBlocks.add(`${blockerId}:${blockedId}`);
+  // Update per-user block index
+  if (!memoryBlocksByUser.has(blockerId)) memoryBlocksByUser.set(blockerId, new Set());
+  memoryBlocksByUser.get(blockerId).add(blockedId);
   sbUpsert('user_blocks', { blocker_id: blockerId, blocked_id: blockedId, created_at: getNow() });
 };
 
 export const unblockUser = (blockerId, blockedId) => {
   memoryUserBlocks.delete(`${blockerId}:${blockedId}`);
+  memoryBlocksByUser.get(blockerId)?.delete(blockedId);
   sbDelete('user_blocks', { blocker_id: blockerId, blocked_id: blockedId });
 };
 
@@ -1046,6 +1107,10 @@ export const createNotification = (userId, type, title, message, priority, actio
   const notification = { id, userId, type, title, message, priority, actionUrl, metadata, isRead: false, createdAt: now };
 
   memoryNotifications.set(id, notification);
+  // Update per-user unread index
+  if (!memoryUnreadByUser.has(userId)) memoryUnreadByUser.set(userId, new Set());
+  memoryUnreadByUser.get(userId).add(id);
+
   sbUpsert('user_notifications', {
     id, user_id: userId, type, title, message, priority,
     action_url: actionUrl || null, metadata: metadata || null,
@@ -1055,10 +1120,14 @@ export const createNotification = (userId, type, title, message, priority, actio
   return notification;
 };
 
+// O(1) per-user unread lookup via index
 export const getUnreadNotificationsForUser = (userId) => {
+  const unreadIds = memoryUnreadByUser.get(userId);
+  if (!unreadIds) return [];
   const results = [];
-  for (const n of memoryNotifications.values()) {
-    if (n.userId === userId && !n.isRead) results.push(n);
+  for (const id of unreadIds) {
+    const n = memoryNotifications.get(id);
+    if (n && !n.isRead) results.push(n);
   }
   return results;
 };
@@ -1068,14 +1137,20 @@ export const markNotificationAsRead = (userId, notificationId) => {
   if (!n || n.userId !== userId) return false;
   n.isRead = true;
   memoryNotifications.set(notificationId, n);
+  memoryUnreadByUser.get(userId)?.delete(notificationId);
   if (supabase) supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId).then(() => {}).catch((err) => log.warn('DB sync failed: mark notification read', { notificationId, error: err.message }));
   return true;
 };
 
 export const markAllNotificationsAsRead = (userId) => {
   let count = 0;
-  for (const [id, n] of memoryNotifications) {
-    if (n.userId === userId && !n.isRead) { n.isRead = true; memoryNotifications.set(id, n); count++; }
+  const unreadIds = memoryUnreadByUser.get(userId);
+  if (unreadIds) {
+    for (const id of unreadIds) {
+      const n = memoryNotifications.get(id);
+      if (n && !n.isRead) { n.isRead = true; memoryNotifications.set(id, n); count++; }
+    }
+    unreadIds.clear();
   }
   if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {}).catch((err) => log.warn('DB sync failed: mark all notifications read', { userId, error: err.message }));
   return count;

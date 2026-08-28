@@ -107,7 +107,7 @@ const ChatPage: React.FC = () => {
   };
 
   const unreadTotal = getUnreadTotal();
-  const onlineFriends = friends.filter((friend) => friend.status === 'online');
+  const onlineFriends = useMemo(() => friends.filter((friend) => friend.status === 'online'), [friends]);
 
   return (
     <div className="safe-top flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>

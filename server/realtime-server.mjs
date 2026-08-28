@@ -142,7 +142,7 @@ const server = http.createServer(async (req, res) => {
   // INFRA-R2: Structured request logging (skip health checks and OPTIONS)
   if (req.method !== 'OPTIONS' && pathname !== '/api/health' && !pathname.startsWith('/metrics')) {
     const clientIp = getClientIp(req);
-    log.info('request', { method: req.method, path: pathname, ip: clientIp });
+    log.debug('request', { method: req.method, path: pathname, ip: clientIp });
   }
 
   if (req.method === 'OPTIONS') {

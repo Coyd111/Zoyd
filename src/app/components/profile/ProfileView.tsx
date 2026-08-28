@@ -68,7 +68,7 @@ interface ProfileViewProps {
   codmTitle?: string;
 }
 
-const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
+const StatCard = React.memo(({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
   <div className="hud-panel p-4 sm:p-5 bg-zoyd-surface/20 flex items-center gap-4">
     <div className="w-10 h-10 border border-white/10 flex items-center justify-center bg-black">{icon}</div>
     <div>
@@ -76,21 +76,21 @@ const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string
       <div className="text-xl font-display font-black text-white italic">{value}</div>
     </div>
   </div>
-);
+));
 
-const TrustCell = ({ label, value, accent }: { label: string; value: string; accent: string }) => (
+const TrustCell = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
     <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
     <div className={`font-display font-black italic ${accent}`}>{value}</div>
   </div>
-);
+));
 
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
+const InfoRow = React.memo(({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
     <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
     <div className="font-display font-black italic text-white">{value}</div>
   </div>
-);
+));
 
 export default function ProfileView({
   userId,

@@ -58,9 +58,9 @@ const TournoisPage: React.FC = () => {
     });
   }, [getFilteredTournaments, debouncedQuery]);
 
-  const recruiting = tournaments.filter((tournament) => tournament.status === 'recruiting');
-  const live = tournaments.filter((tournament) => tournament.status === 'live');
-  const archive = tournaments.filter((tournament) => tournament.status === 'completed' || tournament.status === 'cancelled');
+  const recruiting = useMemo(() => tournaments.filter((tournament) => tournament.status === 'recruiting'), [tournaments]);
+  const live = useMemo(() => tournaments.filter((tournament) => tournament.status === 'live'), [tournaments]);
+  const archive = useMemo(() => tournaments.filter((tournament) => tournament.status === 'completed' || tournament.status === 'cancelled'), [tournaments]);
 
   const metrics = useMemo(() => {
     const playerPool = tournaments.reduce((sum, tournament) => sum + tournament.payout.playerPool, 0);

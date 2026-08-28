@@ -34,7 +34,7 @@ const statusConfig: Record<Tournament['status'], { label: string; dot: string; t
   },
 };
 
-export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) => {
+export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tournament }) => {
   const status = statusConfig[tournament.status];
   const completion = Math.min(100, (tournament.entries.length / tournament.maxEntries) * 100);
   const winner = tournament.entries.find((entry) => entry.finalPlacement === 1);
@@ -155,4 +155,4 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({ tournament }) =>
       </div>
     </div>
   );
-};
+});

@@ -107,10 +107,10 @@ const DashboardPage: React.FC = () => {
 
   if (!user) return null;
 
-  const totalWins = recentFinished.filter((m) => {
+  const totalWins = useMemo(() => recentFinished.filter((m) => {
     const myPlayer = m.players.find((p) => p.userId === user.id);
     return myPlayer && m.result?.winnerTeam === myPlayer.team;
-  }).length;
+  }).length, [recentFinished, user.id]);
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">

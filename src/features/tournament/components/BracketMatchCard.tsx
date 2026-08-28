@@ -8,7 +8,7 @@ const matchStatusLabels: Record<TournamentMatch['status'], string> = {
   finished: 'Termine',
 };
 
-const PlayerLine = ({ label, active, score }: { label: string; active: boolean; score?: number }) => (
+const PlayerLine = React.memo(({ label, active, score }: { label: string; active: boolean; score?: number }) => (
   <div
     className={`flex items-center justify-between py-2 px-3 border border-white/5 mb-1 ${
       active ? 'bg-zoyd-yellow/10 border-zoyd-yellow/30' : 'bg-black/40'
@@ -19,9 +19,9 @@ const PlayerLine = ({ label, active, score }: { label: string; active: boolean; 
     </span>
     <span className="font-mono font-black text-sm text-white/60">{score ?? '-'}</span>
   </div>
-);
+));
 
-const BracketMatchCard = ({
+const BracketMatchCard = React.memo(({
   match,
   tournamentName,
   selected,
@@ -74,6 +74,6 @@ const BracketMatchCard = ({
       </div>
     </button>
   );
-};
+});
 
 export default BracketMatchCard;

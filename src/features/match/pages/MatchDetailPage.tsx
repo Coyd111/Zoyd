@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import {
@@ -258,12 +258,12 @@ const MatchDetailPage: React.FC = () => {
     returnTo: `/mj/match/${match.id}`,
   });
 
-  const applyMatchResponse = (payload: { match: typeof match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
+  const applyMatchResponse = useCallback((payload: { match: typeof match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
     hydrateMatches([payload.match]);
     applyServerAccountState(payload);
-  };
+  }, [hydrateMatches, applyServerAccountState]);
 
-  const handleJoin = async (team?: 0 | 1) => {
+  const handleJoin = useCallback(async (team?: 0 | 1) => {
     if (!user) {
       navigate('/auth/login');
       return;
@@ -291,9 +291,9 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsJoining(false);
     }
-  };
+  }, [user, navigate, availableSpend, match.entryFee, match.id, match.trustScoreMin, isJoining, applyMatchResponse]);
 
-  const handleJoinAsArbiter = async () => {
+  const handleJoinAsArbiter = useCallback(async () => {
     if (!user) {
       navigate('/auth/login');
       return;
@@ -306,7 +306,7 @@ const MatchDetailPage: React.FC = () => {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "La place d'arbitre n'est plus disponible.");
     }
-  };
+  }, [user, navigate, match.id, applyMatchResponse]);
 
   const handleSchedule = async () => {
     if (!scheduleValue) return;
@@ -410,7 +410,7 @@ const MatchDetailPage: React.FC = () => {
     }
   };
 
-  const handleCheckIn = async () => {
+  const handleCheckIn = useCallback(async () => {
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -422,9 +422,9 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  };
+  }, [isProcessingAction, match.id, applyMatchResponse]);
 
-  const handleToggleReady = async () => {
+  const handleToggleReady = useCallback(async () => {
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -435,9 +435,9 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  };
+  }, [isProcessingAction, match.id, applyMatchResponse]);
 
-  const handleLaunch = async () => {
+  const handleLaunch = useCallback(async () => {
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -449,9 +449,9 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  };
+  }, [isProcessingAction, match.id, applyMatchResponse]);
 
-  const handleConfirmResult = async () => {
+  const handleConfirmResult = useCallback(async () => {
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -463,7 +463,7 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  };
+  }, [isProcessingAction, match.id, applyMatchResponse]);
 
   const handleAddEvidence = async () => {
     const refs = addEvidenceInput
@@ -594,11 +594,11 @@ const MatchDetailPage: React.FC = () => {
               readCount={readCount}
               presenceSummary={presenceSummary}
               lastHeartbeatAt={lastHeartbeatAt}
-              onTypingChange={(isTyping) => {
+              onTypingChange={useCallback((isTyping: boolean) => {
                 if (!user) return;
                 setTyping(match.channelId, user.id, user.pseudo, isTyping);
-              }}
-              onSendMessage={(text) => {
+              }, [user, match.channelId, setTyping])}
+              onSendMessage={useCallback((text: string) => {
                 if (!user) {
                   navigate('/auth/login');
                   return;
@@ -614,7 +614,7 @@ const MatchDetailPage: React.FC = () => {
                   .catch((error) => {
                     toast.error(error instanceof Error ? error.message : "Impossible d'envoyer ce message.");
                   });
-              }}
+              }, [user, navigate, match.channelId, match.user?.pseudo, hydrateChat, receiveServerMessage, setTyping, markChannelSeen])}
             />
           </div>
         </div>

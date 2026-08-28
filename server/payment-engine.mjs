@@ -74,7 +74,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     const amountZC = transaction.amount / 10;
 
     // 5. Créditer le portefeuille EN PREMIER (si ça échoue, on ne marquera pas comme traité)
-    const updatedUser = depositToWallet(
+    const updatedUser = await depositToWallet(
       user.id,
       amountZC,
       'FedaPay'
@@ -87,7 +87,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       // Rollback : annuler le crédit si l'enregistrement échoue
       log.error('Failed to mark transaction processed, rolling back wallet credit', { transactionId, error: markErr.message });
       try {
-        debitFromWallet(user.id, amountZC, `Rollback FedaPay (${transactionId})`);
+        await debitFromWallet(user.id, amountZC, `Rollback FedaPay (${transactionId})`);
       } catch (rollbackErr) {
         log.error('CRITICAL: Rollback also failed', { transactionId, error: rollbackErr.message });
       }

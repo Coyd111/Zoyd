@@ -539,7 +539,7 @@ const server = http.createServer(async (req, res) => {
           safeUpdate[field] = value;
         }
       }
-      const updatedUser = updateUserAccount(session.user.id, (user) => {
+      const updatedUser = await updateUserAccount(session.user.id, (user) => {
         return { ...user, ...safeUpdate };
       });
       respondJson(res, 200, { ok: true, user: updatedUser }, req);
@@ -886,7 +886,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try { await withWalletMutex(session.user.id, async () => {
-      const wallet = depositToWallet(session.user.id, body.amount, body.method);
+      const wallet = await depositToWallet(session.user.id, body.amount, body.method);
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet, user });
     }); } catch (error) {
@@ -925,7 +925,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try { await withWalletMutex(session.user.id, async () => {
-      const wallet = withdrawFromWallet(session.user.id, body.amount, body.method, body.phone);
+      const wallet = await withdrawFromWallet(session.user.id, body.amount, body.method, body.phone);
       // Tag transaction with idempotency key for dedup on retry
       if (idempotencyKey && typeof idempotencyKey === 'string') {
         const user = getUserById(session.user.id);
@@ -1504,7 +1504,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = await withWalletMutex(session.user.id, () =>
+      const outcome = await withWalletMutex(session.user.id, async () =>
         createMatchOnServer(getStateCollection('matches'), session.user, body)
       );
       await saveMatches(io, outcome.matches, outcome.match);
@@ -1526,7 +1526,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = await withWalletMutex(session.user.id, () =>
+      const outcome = await withWalletMutex(session.user.id, async () =>
         joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team)
       );
       await saveMatches(io, outcome.matches, outcome.match);

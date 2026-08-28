@@ -4,8 +4,12 @@ const matchMutex = new Mutex();
 const tournamentMutex = new Mutex();
 const leagueMutex = new Mutex();
 const walletMutex = new Map();
+const userMutex = new Map();
+const channelMutex = new Map();
 const WALLET_MUTEX_MAX_AGE = 30 * 60 * 1000; // 30 minutes
 const walletMutexTimestamps = new Map();
+const userMutexTimestamps = new Map();
+const channelMutexTimestamps = new Map();
 
 export const withMatchMutex = async (fn) => {
   const release = await matchMutex.acquire();
@@ -46,8 +50,32 @@ export const withWalletMutex = async (userId, fn) => {
   }
 };
 
-// Periodic cleanup of idle wallet mutexes (runs every 5 minutes)
-const cleanupIdleWalletMutexes = () => {
+export const withUserMutex = async (userId, fn) => {
+  if (!userMutex.has(userId)) userMutex.set(userId, new Mutex());
+  const mutex = userMutex.get(userId);
+  const release = await mutex.acquire();
+  userMutexTimestamps.set(userId, Date.now());
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+};
+
+export const withChannelMutex = async (channelId, fn) => {
+  if (!channelMutex.has(channelId)) channelMutex.set(channelId, new Mutex());
+  const mutex = channelMutex.get(channelId);
+  const release = await mutex.acquire();
+  channelMutexTimestamps.set(channelId, Date.now());
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+};
+
+// Periodic cleanup of idle mutexes (runs every 5 minutes)
+const cleanupIdleMutexes = () => {
   const now = Date.now();
   for (const [userId, timestamp] of walletMutexTimestamps) {
     if (now - timestamp > WALLET_MUTEX_MAX_AGE) {
@@ -58,5 +86,23 @@ const cleanupIdleWalletMutexes = () => {
       }
     }
   }
+  for (const [userId, timestamp] of userMutexTimestamps) {
+    if (now - timestamp > WALLET_MUTEX_MAX_AGE) {
+      const mutex = userMutex.get(userId);
+      if (mutex && !mutex.isLocked()) {
+        userMutex.delete(userId);
+        userMutexTimestamps.delete(userId);
+      }
+    }
+  }
+  for (const [channelId, timestamp] of channelMutexTimestamps) {
+    if (now - timestamp > WALLET_MUTEX_MAX_AGE) {
+      const mutex = channelMutex.get(channelId);
+      if (mutex && !mutex.isLocked()) {
+        channelMutex.delete(channelId);
+        channelMutexTimestamps.delete(channelId);
+      }
+    }
+  }
 };
-setInterval(cleanupIdleWalletMutexes, 5 * 60 * 1000);
+setInterval(cleanupIdleMutexes, 5 * 60 * 1000);

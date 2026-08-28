@@ -18,13 +18,13 @@ const withTransaction = (wallet, tx) => ({
 
 export const getServerWallet = (userId) => getWalletSnapshot(userId);
 
-export const depositToWallet = (userId, amount, method = 'Mobile Money') => {
+export const depositToWallet = async (userId, amount, method = 'Mobile Money') => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
     throw makeError('INVALID_AMOUNT', 'Le montant du depot est invalide.');
   }
 
-  return updateWalletSnapshot(userId, (wallet) =>
+  return (await updateWalletSnapshot(userId, (wallet) =>
     withTransaction(
       {
         ...wallet,
@@ -38,16 +38,16 @@ export const depositToWallet = (userId, amount, method = 'Mobile Money') => {
         metadata: { method },
       }
     )
-  ).wallet;
+  )).wallet;
 };
 
-export const withdrawFromWallet = (userId, amount, method = 'Mobile Money', phone = '') => {
+export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money', phone = '') => {
   const safeAmount = roundAmount(amount);
   if (safeAmount < MIN_WITHDRAWAL_ZC) {
     throw makeError('WITHDRAWAL_MIN', `Retrait minimum: ${MIN_WITHDRAWAL_ZC} ZC.`);
   }
 
-  return updateWalletSnapshot(userId, (wallet) => {
+  return (await updateWalletSnapshot(userId, (wallet) => {
     if (safeAmount > wallet.cashBalance) {
       throw makeError('INSUFFICIENT_FUNDS', 'Solde cash insuffisant pour ce retrait.');
     }
@@ -68,16 +68,16 @@ export const withdrawFromWallet = (userId, amount, method = 'Mobile Money', phon
         metadata: { method, phone, feeAmount, netAmount },
       }
     );
-  }).wallet;
+  })).wallet;
 };
 
-export const lockEntryFee = (userId, amount, matchId) => {
+export const lockEntryFee = async (userId, amount, matchId) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
     throw makeError('INVALID_AMOUNT', 'Le montant du pass doit etre superieur a zero.');
   }
 
-  return updateWalletSnapshot(userId, (wallet) => {
+  return (await updateWalletSnapshot(userId, (wallet) => {
     if (wallet.lockedEntries?.[matchId]) {
       throw makeError('ALREADY_LOCKED', 'Un pass est deja bloque pour ce match.');
     }
@@ -115,11 +115,11 @@ export const lockEntryFee = (userId, amount, matchId) => {
         metadata: { cashDeduct, bonusDeduct },
       }
     );
-  }).wallet;
+  })).wallet;
 };
 
-export const refundLockedEntry = (userId, matchId, description) =>
-  updateWalletSnapshot(userId, (wallet) => {
+export const refundLockedEntry = async (userId, matchId, description) =>
+  (await updateWalletSnapshot(userId, (wallet) => {
     const reservation = wallet.lockedEntries?.[matchId];
     if (!reservation) {
       return wallet;
@@ -144,10 +144,10 @@ export const refundLockedEntry = (userId, matchId, description) =>
         matchId,
       }
     );
-  }).wallet;
+  })).wallet;
 
-export const settleMatchLossWallet = (userId, matchId, description) =>
-  updateWalletSnapshot(userId, (wallet) => {
+export const settleMatchLossWallet = async (userId, matchId, description) =>
+  (await updateWalletSnapshot(userId, (wallet) => {
     const reservation = wallet.lockedEntries?.[matchId];
     if (!reservation) {
       return wallet;
@@ -171,14 +171,14 @@ export const settleMatchLossWallet = (userId, matchId, description) =>
         metadata: { lockedAmount: reservation.amount },
       }
     );
-  }).wallet;
+  })).wallet;
 
-export const releaseWalletWinnings = (userId, amount, matchId, type = 'prize_win', description) => {
+export const releaseWalletWinnings = async (userId, amount, matchId, type = 'prize_win', description) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount < 0) {
     throw makeError('INVALID_AMOUNT', 'Le montant des gains ne peut pas etre negatif.');
   }
-  return updateWalletSnapshot(userId, (wallet) => {
+  return (await updateWalletSnapshot(userId, (wallet) => {
     const reservation = wallet.lockedEntries?.[matchId];
     const releasedAmount = reservation?.amount ?? 0;
     const nextLockedEntries = { ...wallet.lockedEntries };
@@ -201,16 +201,16 @@ export const releaseWalletWinnings = (userId, amount, matchId, type = 'prize_win
         matchId,
       }
     );
-  }).wallet;
+  })).wallet;
 };
 
-export const debitFromWallet = (userId, amount, description = 'Debit') => {
+export const debitFromWallet = async (userId, amount, description = 'Debit') => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
     throw makeError('INVALID_AMOUNT', 'Le montant du debit est invalide.');
   }
 
-  return updateWalletSnapshot(userId, (wallet) => {
+  return (await updateWalletSnapshot(userId, (wallet) => {
     if (safeAmount > wallet.cashBalance) {
       throw makeError('INSUFFICIENT_FUNDS', 'Solde insuffisant pour ce debit.');
     }
@@ -226,5 +226,5 @@ export const debitFromWallet = (userId, amount, description = 'Debit') => {
         status: 'completed',
       }
     );
-  }).wallet;
+  })).wallet;
 };

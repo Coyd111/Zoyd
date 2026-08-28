@@ -9,6 +9,7 @@ const scryptAsync = promisify(crypto.scrypt);
 import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
 import { roundAmount, getNow, makeError } from './utils.mjs';
+import { withUserMutex, withChannelMutex } from './mutex.mjs';
 
 const log = createLogger('persistence');
 
@@ -566,44 +567,46 @@ export const getLeaderboard = () => {
   return leaderboardCache;
 };
 
-export const updateUserAccount = (userId, updater) => {
-  const current = memoryUsers.get(userId);
-  if (!current) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
+export const updateUserAccount = async (userId, updater) => {
+  return withUserMutex(userId, async () => {
+    const current = memoryUsers.get(userId);
+    if (!current) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
 
-  const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
-  memoryUsers.set(userId, next);
+    const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
+    memoryUsers.set(userId, next);
 
-  // Track admin role changes
-  if (next.role === 'admin') memoryAdminIds.add(userId);
-  else memoryAdminIds.delete(userId);
+    // Track admin role changes
+    if (next.role === 'admin') memoryAdminIds.add(userId);
+    else memoryAdminIds.delete(userId);
 
-  // Clean up old password hash lookup entries when pseudo/email/phone change
-  const oldPseudoKey = normalizePseudoKey(current.pseudo);
-  const oldEmailKey = normalizeEmailKey(current.email);
-  const oldPhoneKey = normalizePhoneKey(current.phone);
-  const newPseudoKey = normalizePseudoKey(next.pseudo);
-  const newEmailKey = normalizeEmailKey(next.email);
-  const newPhoneKey = normalizePhoneKey(next.phone);
-  if (oldPseudoKey !== newPseudoKey) memoryPasswordHashes.delete(oldPseudoKey);
-  if (oldEmailKey !== newEmailKey) memoryPasswordHashes.delete(oldEmailKey);
-  if (oldPhoneKey !== newPhoneKey) memoryPasswordHashes.delete(oldPhoneKey);
+    // Clean up old password hash lookup entries when pseudo/email/phone change
+    const oldPseudoKey = normalizePseudoKey(current.pseudo);
+    const oldEmailKey = normalizeEmailKey(current.email);
+    const oldPhoneKey = normalizePhoneKey(current.phone);
+    const newPseudoKey = normalizePseudoKey(next.pseudo);
+    const newEmailKey = normalizeEmailKey(next.email);
+    const newPhoneKey = normalizePhoneKey(next.phone);
+    if (oldPseudoKey !== newPseudoKey) memoryPasswordHashes.delete(oldPseudoKey);
+    if (oldEmailKey !== newEmailKey) memoryPasswordHashes.delete(oldEmailKey);
+    if (oldPhoneKey !== newPhoneKey) memoryPasswordHashes.delete(oldPhoneKey);
 
-  const passwordHash = memoryPasswordHashes.get(userId)?.[1] || '';
+    const passwordHash = memoryPasswordHashes.get(userId)?.[1] || '';
 
-  sbUpsert('app_users', {
-    id: userId, pseudo_key: normalizePseudoKey(next.pseudo),
-    email_key: normalizeEmailKey(next.email), phone_key: normalizePhoneKey(next.phone),
-    game_id_key: normalizeGameIdKey(next.gameId), role: next.role,
-    password_hash: passwordHash, payload: next,
-    created_at: current.dateJoined, updated_at: getNow(),
+    sbUpsert('app_users', {
+      id: userId, pseudo_key: normalizePseudoKey(next.pseudo),
+      email_key: normalizeEmailKey(next.email), phone_key: normalizePhoneKey(next.phone),
+      game_id_key: normalizeGameIdKey(next.gameId), role: next.role,
+      password_hash: passwordHash, payload: next,
+      created_at: current.dateJoined, updated_at: getNow(),
+    });
+
+    return next;
   });
-
-  return next;
 };
 
 export const getWalletSnapshot = (userId) => getUserById(userId)?.wallet || normalizeWalletSnapshot(defaultWallet);
 
-export const updateWalletSnapshot = (userId, updater) =>
+export const updateWalletSnapshot = async (userId, updater) =>
   updateUserAccount(userId, (user) => {
     user.wallet = normalizeWalletSnapshot(updater(structuredClone(user.wallet || defaultWallet), structuredClone(user)));
     user.walletBalance = roundAmount(user.wallet.cashBalance + user.wallet.bonusBalance);
@@ -888,23 +891,25 @@ export const upsertChatChannel = (channel) => {
   return next;
 };
 
-export const appendChatMessage = (message) => {
-  const channel = getChatChannelById(message.channelId);
-  if (!channel) throw makeError('CHANNEL_NOT_FOUND', 'Canal de discussion introuvable.');
+export const appendChatMessage = async (message) => {
+  return withChannelMutex(message.channelId, async () => {
+    const channel = getChatChannelById(message.channelId);
+    if (!channel) throw makeError('CHANNEL_NOT_FOUND', 'Canal de discussion introuvable.');
 
-  const nextMessage = normalizeChatMessagePayload({
-    ...message, channelType: message.channelType || channel.type, timestamp: message.timestamp || getNow(),
+    const nextMessage = normalizeChatMessagePayload({
+      ...message, channelType: message.channelType || channel.type, timestamp: message.timestamp || getNow(),
+    });
+
+    const msgs = memoryChatMessages.get(nextMessage.channelId) || [];
+    msgs.push(nextMessage);
+    if (msgs.length > 500) msgs.splice(0, msgs.length - 500);
+    memoryChatMessages.set(nextMessage.channelId, msgs);
+
+    sbUpsert('chat_messages', { id: nextMessage.id, channel_id: nextMessage.channelId, payload: nextMessage, created_at: nextMessage.timestamp });
+    upsertChatChannel({ ...channel, lastMessageAt: nextMessage.timestamp, updatedAt: nextMessage.timestamp });
+
+    return nextMessage;
   });
-
-  const msgs = memoryChatMessages.get(nextMessage.channelId) || [];
-  msgs.push(nextMessage);
-  if (msgs.length > 500) msgs.splice(0, msgs.length - 500);
-  memoryChatMessages.set(nextMessage.channelId, msgs);
-
-  sbUpsert('chat_messages', { id: nextMessage.id, channel_id: nextMessage.channelId, payload: nextMessage, created_at: nextMessage.timestamp });
-  upsertChatChannel({ ...channel, lastMessageAt: nextMessage.timestamp, updatedAt: nextMessage.timestamp });
-
-  return nextMessage;
 };
 
 export const getChatMessagesForChannel = (channelId, limit = 200) => {

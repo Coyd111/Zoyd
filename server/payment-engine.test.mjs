@@ -36,7 +36,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
       status: 'approved',
       amount: 5000,
     });
-    depositToWallet.mockReturnValue(mockUser);
+    depositToWallet.mockResolvedValue(mockUser);
 
     const result = await verifyFedaPayTransactionAndCredit('TX-123', mockUser);
 
@@ -104,7 +104,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
       status: 'approved',
       amount: 15000,
     });
-    depositToWallet.mockReturnValue(mockUser);
+    depositToWallet.mockResolvedValue(mockUser);
 
     const result = await verifyFedaPayTransactionAndCredit('TX-BIG', mockUser);
     expect(result.amountZC).toBe(1500);

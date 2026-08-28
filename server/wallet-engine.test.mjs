@@ -15,23 +15,23 @@ describe('wallet-engine - Deposit', () => {
     vi.clearAllMocks();
   });
 
-  it('should throw error for zero amount', () => {
-    expect(() => walletEngine.depositToWallet('user1', 0)).toThrow('Le montant du depot est invalide.');
+  it('should throw error for zero amount', async () => {
+    await expect(walletEngine.depositToWallet('user1', 0)).rejects.toThrow('Le montant du depot est invalide.');
   });
 
-  it('should throw error with correct code', () => {
+  it('should throw error with correct code', async () => {
     try {
-      walletEngine.depositToWallet('user1', 0);
+      await walletEngine.depositToWallet('user1', 0);
     } catch (error) {
       expect(error.code).toBe('INVALID_AMOUNT');
     }
   });
 
-  it('should round amount correctly', () => {
+  it('should round amount correctly', async () => {
     const mockWallet = { cashBalance: 100, bonusBalance: 0, lockedBalance: 0, transactions: [] };
-    vi.mocked(updateWalletSnapshot).mockReturnValue({ wallet: mockWallet });
+    vi.mocked(updateWalletSnapshot).mockResolvedValue({ wallet: mockWallet });
 
-    walletEngine.depositToWallet('user1', 10.123);
+    await walletEngine.depositToWallet('user1', 10.123);
     
     expect(updateWalletSnapshot).toHaveBeenCalledWith(
       'user1',
@@ -45,51 +45,51 @@ describe('wallet-engine - Withdraw', () => {
     vi.clearAllMocks();
   });
 
-  it('should throw error for amount below minimum', () => {
-    expect(() => walletEngine.withdrawFromWallet('user1', 100)).toThrow('Retrait minimum: 150 ZC.');
-    expect(() => walletEngine.withdrawFromWallet('user1', 149.99)).toThrow('Retrait minimum: 150 ZC.');
+  it('should throw error for amount below minimum', async () => {
+    await expect(walletEngine.withdrawFromWallet('user1', 100)).rejects.toThrow('Retrait minimum: 150 ZC.');
+    await expect(walletEngine.withdrawFromWallet('user1', 149.99)).rejects.toThrow('Retrait minimum: 150 ZC.');
   });
 
-  it('should throw error with correct code for minimum withdrawal', () => {
+  it('should throw error with correct code for minimum withdrawal', async () => {
     try {
-      walletEngine.withdrawFromWallet('user1', 100);
+      await walletEngine.withdrawFromWallet('user1', 100);
     } catch (error) {
       expect(error.code).toBe('WITHDRAWAL_MIN');
     }
   });
 
-  it('should throw error for insufficient funds', () => {
+  it('should throw error for insufficient funds', async () => {
     const mockWallet = { cashBalance: 10, bonusBalance: 0, lockedBalance: 0, transactions: [] };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    expect(() => walletEngine.withdrawFromWallet('user1', 200)).toThrow('Solde cash insuffisant pour ce retrait.');
+    await expect(walletEngine.withdrawFromWallet('user1', 200)).rejects.toThrow('Solde cash insuffisant pour ce retrait.');
   });
 
-  it('should throw error with correct code for insufficient funds', () => {
+  it('should throw error with correct code for insufficient funds', async () => {
     const mockWallet = { cashBalance: 10, bonusBalance: 0, lockedBalance: 0, transactions: [] };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
     try {
-      walletEngine.withdrawFromWallet('user1', 200);
+      await walletEngine.withdrawFromWallet('user1', 200);
     } catch (error) {
       expect(error.code).toBe('INSUFFICIENT_FUNDS');
     }
   });
 
-  it('should calculate fee correctly (2%)', () => {
+  it('should calculate fee correctly (2%)', async () => {
     const mockWallet = { cashBalance: 200, bonusBalance: 0, lockedBalance: 0, transactions: [] };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.withdrawFromWallet('user1', 150);
+    await walletEngine.withdrawFromWallet('user1', 150);
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -108,38 +108,38 @@ describe('wallet-engine - Lock Entry Fee', () => {
     vi.clearAllMocks();
   });
 
-  it('should throw error for insufficient funds', () => {
+  it('should throw error for insufficient funds', async () => {
     const mockWallet = { cashBalance: 5, bonusBalance: 0, lockedBalance: 0, transactions: [], lockedEntries: {} };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    expect(() => walletEngine.lockEntryFee('user1', 10, 'match1')).toThrow('Solde insuffisant pour bloquer ce pass.');
+    await expect(walletEngine.lockEntryFee('user1', 10, 'match1')).rejects.toThrow('Solde insuffisant pour bloquer ce pass.');
   });
 
-  it('should throw error with correct code for insufficient funds', () => {
+  it('should throw error with correct code for insufficient funds', async () => {
     const mockWallet = { cashBalance: 5, bonusBalance: 0, lockedBalance: 0, transactions: [], lockedEntries: {} };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
     try {
-      walletEngine.lockEntryFee('user1', 10, 'match1');
+      await walletEngine.lockEntryFee('user1', 10, 'match1');
     } catch (error) {
       expect(error.code).toBe('INSUFFICIENT_FUNDS');
     }
   });
 
-  it('should deduct from cash balance when sufficient', () => {
+  it('should deduct from cash balance when sufficient', async () => {
     const mockWallet = { cashBalance: 50, bonusBalance: 0, lockedBalance: 0, transactions: [], lockedEntries: {} };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.lockEntryFee('user1', 10, 'match1');
+    await walletEngine.lockEntryFee('user1', 10, 'match1');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -153,14 +153,14 @@ describe('wallet-engine - Lock Entry Fee', () => {
     expect(result.lockedEntries['match1'].bonusAmount).toBe(0);
   });
 
-  it('should deduct from bonus balance when cash insufficient', () => {
+  it('should deduct from bonus balance when cash insufficient', async () => {
     const mockWallet = { cashBalance: 5, bonusBalance: 10, lockedBalance: 0, transactions: [], lockedEntries: {} };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.lockEntryFee('user1', 10, 'match1');
+    await walletEngine.lockEntryFee('user1', 10, 'match1');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -172,14 +172,14 @@ describe('wallet-engine - Lock Entry Fee', () => {
     expect(result.lockedEntries['match1'].bonusAmount).toBe(5);
   });
 
-  it('should split deduction between cash and bonus', () => {
+  it('should split deduction between cash and bonus', async () => {
     const mockWallet = { cashBalance: 7, bonusBalance: 5, lockedBalance: 0, transactions: [], lockedEntries: {} };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.lockEntryFee('user1', 10, 'match1');
+    await walletEngine.lockEntryFee('user1', 10, 'match1');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -197,14 +197,14 @@ describe('wallet-engine - Refund Locked Entry', () => {
     vi.clearAllMocks();
   });
 
-  it('should return wallet unchanged when no reservation exists', () => {
+  it('should return wallet unchanged when no reservation exists', async () => {
     const mockWallet = { cashBalance: 50, bonusBalance: 10, lockedBalance: 10, transactions: [], lockedEntries: {} };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.refundLockedEntry('user1', 'match1', 'Test refund');
+    await walletEngine.refundLockedEntry('user1', 'match1', 'Test refund');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -212,7 +212,7 @@ describe('wallet-engine - Refund Locked Entry', () => {
     expect(result).toBe(mockWallet);
   });
 
-  it('should refund cash and bonus correctly', () => {
+  it('should refund cash and bonus correctly', async () => {
     const mockWallet = { 
       cashBalance: 40, 
       bonusBalance: 5, 
@@ -222,12 +222,12 @@ describe('wallet-engine - Refund Locked Entry', () => {
         'match1': { amount: 10, cashAmount: 7, bonusAmount: 3, lockedAt: '2024-01-01' }
       }
     };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.refundLockedEntry('user1', 'match1', 'Test refund');
+    await walletEngine.refundLockedEntry('user1', 'match1', 'Test refund');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -246,14 +246,14 @@ describe('wallet-engine - Settle Match Loss', () => {
     vi.clearAllMocks();
   });
 
-  it('should return wallet unchanged when no reservation exists', () => {
+  it('should return wallet unchanged when no reservation exists', async () => {
     const mockWallet = { cashBalance: 50, bonusBalance: 10, lockedBalance: 10, transactions: [], lockedEntries: {} };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.settleMatchLossWallet('user1', 'match1', 'Loss settlement');
+    await walletEngine.settleMatchLossWallet('user1', 'match1', 'Loss settlement');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -261,7 +261,7 @@ describe('wallet-engine - Settle Match Loss', () => {
     expect(result).toBe(mockWallet);
   });
 
-  it('should consume locked funds without refund', () => {
+  it('should consume locked funds without refund', async () => {
     const mockWallet = { 
       cashBalance: 40, 
       bonusBalance: 5, 
@@ -271,12 +271,12 @@ describe('wallet-engine - Settle Match Loss', () => {
         'match1': { amount: 10, cashAmount: 7, bonusAmount: 3, lockedAt: '2024-01-01' }
       }
     };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.settleMatchLossWallet('user1', 'match1', 'Loss settlement');
+    await walletEngine.settleMatchLossWallet('user1', 'match1', 'Loss settlement');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -296,7 +296,7 @@ describe('wallet-engine - Release Winnings', () => {
     vi.clearAllMocks();
   });
 
-  it('should add winnings to cash balance', () => {
+  it('should add winnings to cash balance', async () => {
     const mockWallet = { 
       cashBalance: 50, 
       bonusBalance: 10, 
@@ -307,12 +307,12 @@ describe('wallet-engine - Release Winnings', () => {
         'match1': { amount: 10, cashAmount: 7, bonusAmount: 3, lockedAt: '2024-01-01' }
       }
     };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'prize_win', 'Match win');
+    await walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'prize_win', 'Match win');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -325,7 +325,7 @@ describe('wallet-engine - Release Winnings', () => {
     expect(result.transactions[0].amount).toBe(25);
   });
 
-  it('should handle winnings without existing reservation', () => {
+  it('should handle winnings without existing reservation', async () => {
     const mockWallet = { 
       cashBalance: 50, 
       bonusBalance: 10, 
@@ -334,12 +334,12 @@ describe('wallet-engine - Release Winnings', () => {
       transactions: [], 
       lockedEntries: {}
     };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'arbitration_fee', 'Arbitration commission');
+    await walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'arbitration_fee', 'Arbitration commission');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -351,7 +351,7 @@ describe('wallet-engine - Release Winnings', () => {
     expect(result.transactions[0].amount).toBe(25);
   });
 
-  it('should use default description when not provided', () => {
+  it('should use default description when not provided', async () => {
     const mockWallet = { 
       cashBalance: 50, 
       bonusBalance: 10, 
@@ -360,12 +360,12 @@ describe('wallet-engine - Release Winnings', () => {
       transactions: [], 
       lockedEntries: {}
     };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       const updated = updater(mockWallet);
       return { wallet: updated };
     });
 
-    walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'prize_win');
+    await walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'prize_win');
     
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
@@ -373,8 +373,8 @@ describe('wallet-engine - Release Winnings', () => {
     expect(result.transactions[0].description).toBe('Gain match1');
   });
 
-  it('should throw for negative amount', () => {
-    expect(() => walletEngine.releaseWalletWinnings('user1', -10, 'm1')).toThrow('negatif');
+  it('should throw for negative amount', async () => {
+    await expect(walletEngine.releaseWalletWinnings('user1', -10, 'm1')).rejects.toThrow('negatif');
   });
 });
 
@@ -383,7 +383,7 @@ describe('wallet-engine - lockEntryFee double-lock guard', () => {
     vi.clearAllMocks();
   });
 
-  it('should reject double-lock on same matchId', () => {
+  it('should reject double-lock on same matchId', async () => {
     const mockWallet = {
       cashBalance: 100,
       bonusBalance: 0,
@@ -391,11 +391,11 @@ describe('wallet-engine - lockEntryFee double-lock guard', () => {
       lockedEntries: { 'match-1': { amount: 50, cashAmount: 50, bonusAmount: 0, lockedAt: '2026-01-01' } },
       transactions: [],
     };
-    vi.mocked(updateWalletSnapshot).mockImplementation((userId, updater) => {
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
       return { wallet: updater(mockWallet) };
     });
 
-    expect(() => walletEngine.lockEntryFee('user1', 50, 'match-1')).toThrow('deja bloque');
+    await expect(walletEngine.lockEntryFee('user1', 50, 'match-1')).rejects.toThrow('deja bloque');
   });
 });
 

@@ -97,8 +97,8 @@ const requireActorUser = (actor) => {
   return user;
 };
 
-const patchUserForMatchOutcome = (userId, updater) =>
-  updateUserAccount(userId, (user) => {
+const patchUserForMatchOutcome = async (userId, updater) =>
+  await updateUserAccount(userId, (user) => {
     const next = updater(structuredClone(user));
     next.lastSeen = getNow();
     return next;
@@ -151,8 +151,8 @@ const applyResultSettlement = async (match, result) => {
       const deltaElo = eloDeltaByTeam[player.team] || 0;
 
       if (isWinner) {
-        await withWalletMutex(player.userId, () => {
-          releaseWalletWinnings(
+        await withWalletMutex(player.userId, async () => {
+          await releaseWalletWinnings(
             player.userId,
             payout,
             match.id,
@@ -160,7 +160,7 @@ const applyResultSettlement = async (match, result) => {
             `Gain du match ${match.rules.mode} / ${match.rules.map}`
           );
 
-          patchUserForMatchOutcome(player.userId, (user) => {
+          await patchUserForMatchOutcome(player.userId, (user) => {
             const nextStats = {
               ...user.stats,
               wins: Number(user.stats?.wins || 0) + 1,
@@ -182,9 +182,9 @@ const applyResultSettlement = async (match, result) => {
         continue;
       }
 
-      await withWalletMutex(player.userId, () => {
-        settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
-        patchUserForMatchOutcome(player.userId, (user) => {
+      await withWalletMutex(player.userId, async () => {
+        await settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
+        await patchUserForMatchOutcome(player.userId, (user) => {
           const nextStats = {
             ...user.stats,
             losses: Number(user.stats?.losses || 0) + 1,
@@ -209,8 +209,8 @@ const applyResultSettlement = async (match, result) => {
 
   if (match.arbiter?.userId && match.arbiterFee > 0) {
     try {
-      await withWalletMutex(match.arbiter.userId, () => {
-        releaseWalletWinnings(
+      await withWalletMutex(match.arbiter.userId, async () => {
+        await releaseWalletWinnings(
           match.arbiter.userId,
           match.arbiterFee,
           match.id,
@@ -231,7 +231,7 @@ const resolveOpenDisputes = (match, resolution) =>
       : dispute
   );
 
-export const createMatchOnServer = (matches, actor, input) => {
+export const createMatchOnServer = async (matches, actor, input) => {
   const actorUser = requireActorUser(actor);
 
   if (!input.format || typeof input.format !== 'string') {
@@ -247,7 +247,7 @@ export const createMatchOnServer = (matches, actor, input) => {
   const prizePool = roundAmount(input.entryFee * maxPlayers);
   const creatorTeam = input.creatorTeam ?? 0;
 
-  lockEntryFee(actorUser.id, input.entryFee, matchId);
+  await lockEntryFee(actorUser.id, input.entryFee, matchId);
 
   const match = {
     id: matchId,
@@ -298,7 +298,7 @@ export const createMatchOnServer = (matches, actor, input) => {
   };
 };
 
-export const joinMatchOnServer = (matches, actor, matchId, preferredTeam) => {
+export const joinMatchOnServer = async (matches, actor, matchId, preferredTeam) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
@@ -319,7 +319,7 @@ export const joinMatchOnServer = (matches, actor, matchId, preferredTeam) => {
   const assignedTeam = getPreferredTeam(match, preferredTeam);
   if (assignedTeam === null) throw makeError('NO_SLOT_AVAILABLE', 'Les deux squads sont deja complets.');
 
-  lockEntryFee(actorUser.id, match.entryFee, match.id);
+  await lockEntryFee(actorUser.id, match.entryFee, match.id);
 
   const teamCount = match.players.filter((player) => player.team === assignedTeam).length;
   match.players.push({
@@ -644,7 +644,7 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
 
   for (const player of match.players) {
     await withWalletMutex(player.userId, async () => {
-      refundLockedEntry(player.userId, match.id, `Remboursement moderation ${match.id}`);
+      await refundLockedEntry(player.userId, match.id, `Remboursement moderation ${match.id}`);
     });
   }
 
@@ -689,7 +689,7 @@ const resolveForfeit = async (match, winnerTeam, losingTeam, reason) => {
 const cancelForAutomation = async (match, reason) => {
   for (const player of match.players) {
     await withWalletMutex(player.userId, async () => {
-      refundLockedEntry(player.userId, match.id, `Remboursement automatique ${match.id}`);
+      await refundLockedEntry(player.userId, match.id, `Remboursement automatique ${match.id}`);
     });
   }
 

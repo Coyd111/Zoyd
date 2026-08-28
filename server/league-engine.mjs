@@ -134,9 +134,9 @@ const requireActorUser = (actor) => {
   return user;
 };
 
-const patchUserForLeagueOutcome = (userId, updater) => {
+const patchUserForLeagueOutcome = async (userId, updater) => {
   if (!userId || !getUserById(userId)) return null;
-  return updateUserAccount(userId, (user) => {
+  return await updateUserAccount(userId, (user) => {
     const next = updater(structuredClone(user));
     next.lastSeen = getNow();
     return next;
@@ -249,7 +249,7 @@ export const joinLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
   }
 
   await withWalletMutex(actorUser.id, async () => {
-    lockEntryFee(actorUser.id, season.entryFee, seasonId);
+    await lockEntryFee(actorUser.id, season.entryFee, seasonId);
   });
 
   season.registeredPlayers.push({
@@ -280,7 +280,7 @@ export const leaveLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
   if (playerIndex === -1) throw makeError('NOT_JOINED', 'Tu n es pas inscrit a cette ligue.');
 
   await withWalletMutex(actorUser.id, async () => {
-    refundLockedEntry(actorUser.id, seasonId, 'Remboursement inscription ligue');
+    await refundLockedEntry(actorUser.id, seasonId, 'Remboursement inscription ligue');
   });
 
   season.registeredPlayers.splice(playerIndex, 1);
@@ -544,8 +544,8 @@ const applyLeagueSettlement = async (season) => {
   if (podium.first) {
     try {
       await withWalletMutex(podium.first, async () => {
-        releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
-        patchUserForLeagueOutcome(podium.first, (user) => {
+        await releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
+        await patchUserForLeagueOutcome(podium.first, (user) => {
           user.stats = {
             ...user.stats,
             leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
@@ -564,8 +564,8 @@ const applyLeagueSettlement = async (season) => {
   if (podium.second) {
     try {
       await withWalletMutex(podium.second, async () => {
-        releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
-        patchUserForLeagueOutcome(podium.second, (user) => {
+        await releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
+        await patchUserForLeagueOutcome(podium.second, (user) => {
           user.stats = {
             ...user.stats,
             leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
@@ -583,8 +583,8 @@ const applyLeagueSettlement = async (season) => {
   if (podium.third) {
     try {
       await withWalletMutex(podium.third, async () => {
-        releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
-        patchUserForLeagueOutcome(podium.third, (user) => {
+        await releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
+        await patchUserForLeagueOutcome(podium.third, (user) => {
           user.stats = {
             ...user.stats,
             leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
@@ -604,8 +604,8 @@ const applyLeagueSettlement = async (season) => {
       const isPodium = [podium.first, podium.second, podium.third].includes(player.userId);
       if (!isPodium) {
         await withWalletMutex(player.userId, async () => {
-          settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
-          patchUserForLeagueOutcome(player.userId, (user) => {
+          await settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
+          await patchUserForLeagueOutcome(player.userId, (user) => {
             user.stats = {
               ...user.stats,
               leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
@@ -725,7 +725,7 @@ export const refundLeaguePlayerOnServer = async (seasons, actor, seasonId, userI
   if (playerIndex === -1) throw makeError('NOT_JOINED', 'Ce joueur n est pas inscrit a cette ligue.');
 
   await withWalletMutex(userId, async () => {
-    refundLockedEntry(userId, seasonId, `Remboursement admin ligue cycle ${season.cycleNumber}`);
+    await refundLockedEntry(userId, seasonId, `Remboursement admin ligue cycle ${season.cycleNumber}`);
   });
 
   season.registeredPlayers.splice(playerIndex, 1);

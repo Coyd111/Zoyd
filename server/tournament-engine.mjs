@@ -141,9 +141,9 @@ const requireActorUser = (actor) => {
   return user;
 };
 
-const patchUserForTournamentOutcome = (userId, updater) => {
+const patchUserForTournamentOutcome = async (userId, updater) => {
   if (!userId || !getUserById(userId)) return null;
-  return updateUserAccount(userId, (user) => {
+  return await updateUserAccount(userId, (user) => {
     const next = updater(structuredClone(user));
     next.lastSeen = getNow();
     return next;
@@ -554,14 +554,14 @@ const applyTournamentSettlement = async (tournament) => {
     try {
       await withWalletMutex(entry.captainId, async () => {
         if (payout > 0) {
-          releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
+          await releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
         } else {
-          settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
+          await settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
         }
 
         const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
         for (const userId of memberUserIds) {
-          patchUserForTournamentOutcome(userId, (user) => {
+          await patchUserForTournamentOutcome(userId, (user) => {
             const isCaptain = userId === entry.captainId;
             const nextStats = {
               ...user.stats,
@@ -584,8 +584,8 @@ const applyTournamentSettlement = async (tournament) => {
   if (arbiterShare > 0) {
     for (const arbiter of tournament.arbiters) {
       if (!arbiter.userId) continue;
-      await withWalletMutex(arbiter.userId, () => {
-        releaseWalletWinnings(
+      await withWalletMutex(arbiter.userId, async () => {
+        await releaseWalletWinnings(
           arbiter.userId,
           arbiterShare,
           `${tournament.id}-ARB-${arbiter.slot}`,
@@ -703,7 +703,7 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   }
 
   await withWalletMutex(actorUser.id, async () => {
-    lockEntryFee(actorUser.id, getSquadLockAmount(tournament.entryFee, tournament.teamSize), tournament.id);
+    await lockEntryFee(actorUser.id, getSquadLockAmount(tournament.entryFee, tournament.teamSize), tournament.id);
   });
 
   const nextEntry = createRegisteredEntry({
@@ -745,7 +745,7 @@ export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) 
   }
 
   await withWalletMutex(actorUser.id, async () => {
-    refundLockedEntry(actorUser.id, tournament.id, `Remboursement du pass ${tournament.name}`);
+    await refundLockedEntry(actorUser.id, tournament.id, `Remboursement du pass ${tournament.name}`);
   });
 
   tournament.entries = tournament.entries

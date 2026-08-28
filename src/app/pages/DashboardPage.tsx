@@ -347,14 +347,6 @@ const DashboardPage: React.FC = () => {
                   </span>
                 )}
               </div>
-              {recentNotifications.length > 0 && (
-                <Link
-                  to="/notifications"
-                  className="text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
-                >
-                  Tout voir
-                </Link>
-              )}
             </div>
             {recentNotifications.length === 0 ? (
               <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
@@ -448,7 +440,7 @@ const DashboardPage: React.FC = () => {
                 </div>
               </div>
               <Link
-                to="/amis"
+                to="/chat"
                 className="text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
               >
                 Voir tout

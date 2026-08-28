@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   Newspaper, Zap, Swords, Bug, Trophy, ChevronRight,
@@ -556,7 +557,7 @@ const LeaksPage: React.FC = () => {
               <h3 className="font-display font-black text-lg uppercase tracking-tighter italic text-white mb-1">Ne rate plus rien</h3>
               <p className="text-sm text-white/40">Rejoins ZOYD pour recevoir les leaks et infos CODM en premier. Chat en direct, alerts meta et event notifications.</p>
             </div>
-            <a href="/auth/register" className="shrink-0 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors touch-target">REJOINDRE</a>
+            <Link to="/auth/register" className="shrink-0 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors touch-target">REJOINDRE</Link>
           </div>
         </div>
 

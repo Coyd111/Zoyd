@@ -2,6 +2,7 @@ import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import type { User } from '../stores/authStore';
 import { useAuthStore } from '../stores/authStore';
+import { getApiUrl } from './apiClient';
 import type { ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import type { Match } from '../stores/matchStore';
 import type { Tournament } from '../stores/tournamentStore';
@@ -67,16 +68,6 @@ let boundHandlers: RealtimeHandlers | null = null;
 let identifiedUser: Pick<User, 'id' | 'pseudo' | 'role'> | null = null;
 let activeSession: RealtimeSession | null = null;
 let sessionPromise: Promise<RealtimeSession> | null = null;
-
-const getBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_REALTIME_URL;
-  if (typeof envUrl === 'string' && envUrl.length > 0) {
-    return envUrl;
-  }
-  return window.location.origin;
-};
-
-const getApiUrl = (path: string) => `${getBaseUrl()}${path}`;
 
 const isSessionValid = (session: RealtimeSession | null, user: User) => {
   if (!session) return false;

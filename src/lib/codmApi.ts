@@ -3,7 +3,7 @@
  * The backend handles CORS and upstream requests to Codashop.
  */
 
-import { getBaseUrl } from '../app/lib/apiClient';
+import { getApiUrl } from '../app/lib/apiClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,8 +44,7 @@ export interface CodashopBundle {
 
 export async function fetchCODMPlayer(userId: string, country = 'IN'): Promise<CodashopPlayer | null> {
   try {
-    const base = getBaseUrl();
-    const response = await fetch(`${base}/api/codm/player/${encodeURIComponent(userId)}?country=${country}`);
+    const response = await fetch(getApiUrl(`/api/codm/player/${encodeURIComponent(userId)}?country=${country}`));
     if (!response.ok) return null;
     const data = await response.json();
     return data.ok ? data.player : null;
@@ -60,8 +59,7 @@ export async function fetchCODMPlayer(userId: string, country = 'IN'): Promise<C
 
 export async function fetchCODMStoreBundles(country = 'IN'): Promise<CodashopBundle[]> {
   try {
-    const base = getBaseUrl();
-    const response = await fetch(`${base}/api/codm/store?country=${country}`);
+    const response = await fetch(getApiUrl(`/api/codm/store?country=${country}`));
     if (!response.ok) return [];
     const data = await response.json();
     return data.ok ? data.bundles : [];

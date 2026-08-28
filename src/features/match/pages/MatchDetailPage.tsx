@@ -25,7 +25,7 @@ import { useAuthStore, type User } from '../../../app/stores/authStore';
 import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { useMatchStore, type DisputeCategory } from '../../../app/stores/matchStore';
 import { useChatStore } from '../../../app/stores/chatStore';
-import { useSocketStore } from '../../../app/stores/socketStore';
+import { useSocketStore, usePresenceStore } from '../../../app/stores/socketStore';
 import { Skeleton } from '../../../app/components/ui/Skeleton';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
@@ -69,6 +69,9 @@ const MatchDetailPage: React.FC = () => {
   const {
     isConnected: socketConnected,
     lastHeartbeatAt,
+    bootstrapReady,
+  } = useSocketStore();
+  const {
     seenByChannel,
     getChannelPresence,
     getPresenceSummary,
@@ -78,8 +81,7 @@ const MatchDetailPage: React.FC = () => {
     markChannelSeen,
     setTyping,
     isChannelLive,
-    bootstrapReady,
-  } = useSocketStore();
+  } = usePresenceStore();
   const { getAvailableToSpend } = useWalletStore();
 
   const [scheduleValue, setScheduleValue] = useState('');

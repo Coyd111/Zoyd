@@ -1,5 +1,5 @@
 import type { User } from '../stores/authStore';
-import { authorizedGet, authorizedPost, authorizedPatch } from './apiClient';
+import { authorizedGet, authorizedPost, authorizedPatch, getApiUrl } from './apiClient';
 
 interface AuthResponse {
   ok: boolean;

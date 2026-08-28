@@ -29,19 +29,7 @@
     <meta name="twitter:description" content="Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique." />
     <meta name="twitter:image" content="https://zoyd.vercel.app/og.png" />
     
-    <!-- Content Security Policy (frame-ancestors enforced via HTTP header in vercel.json) -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' https://cdn.fedapay.com;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src 'self' data: blob:;
-      connect-src 'self' wss://zoyd.onrender.com https://zoyd.onrender.com https://cdn.fedapay.com https://api.fedapay.com https://fonts.googleapis.com;
-      font-src 'self' data: https://fonts.gstatic.com;
-      media-src 'self' blob: data:;
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-    ">
+    <!-- CSP enforced via HTTP header in vercel.json (meta tags ignored for frame-ancestors) -->
     
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/logo-icon.png" />

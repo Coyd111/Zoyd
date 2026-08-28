@@ -24,7 +24,7 @@ const Navbar: React.FC = React.memo(() => {
           <img src="/logo.png?v=2" alt="ZOYD" className="h-8 w-auto object-contain group-hover:opacity-90 transition-opacity" />
         </Link>
 
-        <div className="hidden lg:flex items-center gap-12 font-mono text-[9px] uppercase tracking-[0.3em] text-white/40">
+        <div className="hidden lg:flex items-center gap-12 font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">
           <div className="flex items-center gap-2">
             <span className={`w-1.5 h-1.5 rounded-full ${
               serverConnected
@@ -43,7 +43,7 @@ const Navbar: React.FC = React.memo(() => {
           {user?.role === 'admin' ? (
             <Link
               to="/admin"
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 border border-zoyd-blue/20 bg-zoyd-blue/10 text-zoyd-blue hover:border-zoyd-blue/40 transition-all text-[9px] font-mono font-black uppercase tracking-[0.2em]"
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 border border-zoyd-blue/20 bg-zoyd-blue/10 text-zoyd-blue hover:border-zoyd-blue/40 transition-all text-[10px] font-mono font-black uppercase tracking-[0.2em]"
             >
               Control
             </Link>
@@ -55,7 +55,7 @@ const Navbar: React.FC = React.memo(() => {
           >
             <Wallet className="w-5 h-5 text-zoyd-yellow" />
             <span className="hidden sm:block text-right">
-              <span className="text-[8px] font-mono font-bold text-white/30 uppercase tracking-widest">Solde</span>
+              <span className="text-[10px] font-mono font-bold text-white/30 uppercase tracking-widest">Solde</span>
               <span className="block font-display font-black text-xs text-zoyd-yellow tracking-widest leading-none">
                 {formatZC(totalBalance)}
               </span>

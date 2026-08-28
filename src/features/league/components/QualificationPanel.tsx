@@ -59,7 +59,7 @@ export const QualificationPanel = ({
               </div>
               <div className="flex items-center gap-2">
                 {myGroup && status !== 'finished' && (
-                  <span className="text-[9px] font-mono font-bold tracking-wider uppercase px-2 py-1 border border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/10">
+                  <span className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-1 border border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/10">
                     TON GROUPE
                   </span>
                 )}

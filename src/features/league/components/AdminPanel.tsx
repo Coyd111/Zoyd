@@ -224,15 +224,15 @@ export const AdminPanel = ({
 
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="border border-green-400/20 bg-green-400/5 px-3 py-2">
-              <div className="text-[9px] font-mono text-green-400/60 uppercase tracking-wider">Payes</div>
+              <div className="text-[10px] font-mono text-green-400/60 uppercase tracking-wider">Payes</div>
               <div className="text-lg font-bold text-green-400">{paidCount}</div>
             </div>
             <div className="border border-red-400/20 bg-red-400/5 px-3 py-2">
-              <div className="text-[9px] font-mono text-red-400/60 uppercase tracking-wider">Impayes</div>
+              <div className="text-[10px] font-mono text-red-400/60 uppercase tracking-wider">Impayes</div>
               <div className="text-lg font-bold text-red-400">{unpaidCount}</div>
             </div>
             <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-3 py-2">
-              <div className="text-[9px] font-mono text-zoyd-yellow/60 uppercase tracking-wider">Total</div>
+              <div className="text-[10px] font-mono text-zoyd-yellow/60 uppercase tracking-wider">Total</div>
               <div className="text-lg font-bold text-zoyd-yellow">{formatZC(totalCollected)}</div>
             </div>
           </div>
@@ -246,10 +246,10 @@ export const AdminPanel = ({
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
-                    <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40">Statut</th>
-                    <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Montant</th>
-                    <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Action</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Statut</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Montant</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>

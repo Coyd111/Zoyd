@@ -82,13 +82,13 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
                     isConnected ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500 animate-pulse'
                   }`}
                 />
-                <span className="text-[9px] font-mono text-white/30 tracking-widest uppercase">
+                <span className="text-[10px] font-mono text-white/30 tracking-widest uppercase">
                   {isConnected ? 'Canal actif' : 'Hors-ligne'}
                 </span>
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[9px] font-mono uppercase tracking-widest text-white/25">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/25">
               <span className="inline-flex items-center gap-1.5 border border-white/10 px-2 py-1">
                 <Users className="w-3 h-3" />
                 {onlineMembers.length}/{presence.length} presents
@@ -103,7 +103,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
               {presence.map((member) => (
                 <div
                   key={`${member.userId}-${member.role}`}
-                  className={`px-2.5 py-1 border text-[9px] font-mono uppercase tracking-widest ${
+                  className={`px-2.5 py-1 border text-[10px] font-mono uppercase tracking-widest ${
                     member.isOnline
                       ? member.role === 'arbiter'
                         ? 'border-zoyd-blue/30 text-zoyd-blue bg-zoyd-blue/5'
@@ -146,7 +146,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
               return (
                 <div key={message.id} className="w-full flex items-center gap-4 py-2">
                   <div className="flex-1 h-[1px] bg-white/5" />
-                  <span className="text-zoyd-yellow text-[9px] uppercase font-black tracking-[0.2em] italic bg-zoyd-yellow/5 px-3 py-1 border border-zoyd-yellow/10">
+                  <span className="text-zoyd-yellow text-[10px] uppercase font-black tracking-[0.2em] italic bg-zoyd-yellow/5 px-3 py-1 border border-zoyd-yellow/10">
                     Avis : {sanitizeText(message.text)}
                   </span>
                   <div className="flex-1 h-[1px] bg-white/5" />

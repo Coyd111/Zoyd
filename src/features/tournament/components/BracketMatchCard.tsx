@@ -55,16 +55,16 @@ const BracketMatchCard = React.memo(({
       aria-label={`Ouvrir le match ${match.id} de ${tournamentName}`}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">
+        <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
           {match.bracketType === 'third_place' ? 'Bronze' : `Match ${match.position}`}
         </span>
-        <span className={`text-[9px] font-mono uppercase tracking-widest ${statusTone}`}>{matchStatusLabels[match.status]}</span>
+        <span className={`text-[10px] font-mono uppercase tracking-widest ${statusTone}`}>{matchStatusLabels[match.status]}</span>
       </div>
 
       <PlayerLine label={entryALabel} active={match.winnerEntryId === match.entryAId} score={match.scoreA} />
       <PlayerLine label={entryBLabel} active={match.winnerEntryId === match.entryBId} score={match.scoreB} />
 
-      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[9px] font-mono uppercase tracking-widest text-white/40">
+      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/40">
         <span>
           {match.scheduledAt
             ? new Date(match.scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })

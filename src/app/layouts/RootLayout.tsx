@@ -1,6 +1,13 @@
 import React, { useEffect } from 'react';
-import { Outlet } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 import ToastContainer from '../components/notifications/ToastContainer';
+
+/** Scroll to top on route change */
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+};
 import { useAuthStore, type AuthState } from '../stores/authStore';
 import { fetchAllMatchesFromDb, subscribeToMatches } from '../lib/matchApi';
 import { useMatchStore } from '../stores/matchStore';
@@ -64,6 +71,7 @@ const RootLayout: React.FC = () => {
 
   return (
     <>
+      <ScrollToTop />
       <Outlet />
       <ToastContainer />
     </>

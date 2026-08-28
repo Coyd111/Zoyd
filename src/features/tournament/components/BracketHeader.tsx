@@ -53,7 +53,7 @@ const BracketHeader: React.FC<{ tournament: Tournament }> = ({ tournament }) => 
                 ID: {tournament.id}
               </span>
               <span className="w-1 h-1 bg-white/20 rounded-full" />
-              <span className="text-[9px] font-mono font-black text-zoyd-blue uppercase tracking-widest border border-zoyd-blue/30 px-2 py-0.5">
+              <span className="text-[10px] font-mono font-black text-zoyd-blue uppercase tracking-widest border border-zoyd-blue/30 px-2 py-0.5">
                 {statusLabels[tournament.status]}
               </span>
             </div>
@@ -65,13 +65,13 @@ const BracketHeader: React.FC<{ tournament: Tournament }> = ({ tournament }) => 
 
         <div className="flex items-center gap-8">
           <div className="flex flex-col items-end">
-            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Cagnotte joueurs</span>
+            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Cagnotte joueurs</span>
             <span className="text-2xl font-display font-black text-zoyd-yellow italic">
               {formatZC(tournament.payout.playerPool)}
             </span>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Inscrits</span>
+            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Inscrits</span>
             <span className="text-2xl font-display font-black text-white italic">
               {tournament.entries.length}/{tournament.maxEntries}
             </span>

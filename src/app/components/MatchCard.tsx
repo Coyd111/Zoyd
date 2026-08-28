@@ -85,7 +85,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
             </span>
           </div>
           {trustScoreMin ? (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[9px] font-mono font-black uppercase tracking-wider text-zoyd-yellow">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider text-zoyd-yellow">
               <ShieldCheck className="w-3 h-3" />
               FIABILITE {trustScoreMin}+
             </div>
@@ -104,7 +104,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
           <div className="absolute inset-y-0 left-6 flex items-center z-10">
             <div className="flex flex-col">
-              <span className="text-[9px] font-mono text-zoyd-yellow uppercase tracking-widest font-black mb-1">Carte choisie</span>
+              <span className="text-[10px] font-mono text-zoyd-yellow uppercase tracking-widest font-black mb-1">Carte choisie</span>
               <h3 className="text-3xl font-display font-black tracking-tighter italic leading-none">
                 {map} <span className="text-white/40">/</span> {format}
               </h3>
@@ -114,16 +114,16 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="p-3">
-            <div className="text-[9px] font-mono text-white/40 uppercase mb-1">A gagner</div>
+            <div className="text-[10px] font-mono text-white/40 uppercase mb-1">A gagner</div>
             <div className="font-display font-black text-xl text-white tracking-tight">{formatZC(pot)}</div>
-            <div className="text-[9px] font-mono text-white/40 uppercase mt-1">Inscription: {formatZC(entryFee)}</div>
+            <div className="text-[10px] font-mono text-white/40 uppercase mt-1">Inscription: {formatZC(entryFee)}</div>
           </div>
           <div className="p-3">
-            <div className="text-[9px] font-mono text-white/40 uppercase mb-1">Mode de jeu</div>
+            <div className="text-[10px] font-mono text-white/40 uppercase mb-1">Mode de jeu</div>
             <div className="font-display font-bold text-sm text-white uppercase truncate">
               {gameMode}
             </div>
-            <div className="text-[9px] font-mono text-white/40 uppercase mt-1">
+            <div className="text-[10px] font-mono text-white/40 uppercase mt-1">
               BO{rules.bestOf} / {rules.score} pts
             </div>
           </div>

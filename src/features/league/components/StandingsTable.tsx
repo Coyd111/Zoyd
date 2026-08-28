@@ -41,7 +41,7 @@ export const StandingsTable = ({ standings, currentUserId }: { standings: League
                   <td className="px-4 py-3">
                     <span className={`text-sm ${isMe ? 'text-zoyd-yellow font-bold' : 'text-white'}`}>
                       {standing.pseudo}
-                      {isMe && <span className="text-[9px] ml-2 text-zoyd-yellow/60">(TOI)</span>}
+                      {isMe && <span className="text-[10px] ml-2 text-zoyd-yellow/60">(TOI)</span>}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">

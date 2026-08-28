@@ -255,7 +255,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
 
 const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
-    <span className="text-[9px] font-mono font-bold text-white/40 uppercase tracking-widest mb-3 italic">{label}</span>
+    <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-widest mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>

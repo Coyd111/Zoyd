@@ -250,7 +250,7 @@ const RegisterPage: React.FC = () => {
         <div className="absolute top-8 left-8 z-10">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-sm border border-white/10">
             <Zap className="w-3 h-3 text-zoyd-yellow" />
-            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Rejoins la zone</span>
+            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Rejoins la zone</span>
           </div>
         </div>
 
@@ -276,7 +276,7 @@ const RegisterPage: React.FC = () => {
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <div className="text-xl font-display font-black text-white italic">{stat.value}</div>
-                  <div className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-1">{stat.label}</div>
+                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -371,7 +371,7 @@ const RegisterPage: React.FC = () => {
                           <div key={index} className={`h-1 flex-1 rounded-full ${index <= passwordStrength ? 'bg-zoyd-blue' : 'bg-white/5'}`} />
                         ))}
                       </div>
-                      <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">
+                      <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
                         {strengthLabels[passwordStrength]}
                       </span>
                     </div>
@@ -422,7 +422,7 @@ const RegisterPage: React.FC = () => {
                           }`}
                         >
                           <Icon className="w-6 h-6" />
-                          <span className="text-[9px] font-mono font-black uppercase">{device.label}</span>
+                          <span className="text-[10px] font-mono font-black uppercase">{device.label}</span>
                         </button>
                       );
                     })}
@@ -451,7 +451,7 @@ const RegisterPage: React.FC = () => {
                           <div className="flex items-center gap-3">
                             <Icon className="w-5 h-5" />
                             <div>
-                              <div className="text-[9px] font-mono font-black uppercase tracking-widest">{option.id}</div>
+                              <div className="text-[10px] font-mono font-black uppercase tracking-widest">{option.id}</div>
                               <div className="text-xs font-display font-black italic uppercase">{option.label}</div>
                             </div>
                           </div>

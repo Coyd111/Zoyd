@@ -205,7 +205,7 @@ const ChatPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {channel.isMuted && <BellOff className="w-3 h-3 text-white/40" />}
                   {channel.unreadCount > 0 && !channel.isMuted && (
-                    <span className="bg-zoyd-blue text-white text-[9px] px-1.5 py-0.5 font-mono font-bold">
+                    <span className="bg-zoyd-blue text-white text-[10px] px-1.5 py-0.5 font-mono font-bold">
                       {channel.unreadCount}
                     </span>
                   )}
@@ -215,7 +215,7 @@ const ChatPage: React.FC = () => {
           </div>
 
           <div className="border-t border-white/5 p-4">
-            <div className="text-[9px] font-mono font-black uppercase tracking-widest text-white/40 mb-3 italic">
+            <div className="text-[10px] font-mono font-black uppercase tracking-widest text-white/40 mb-3 italic">
               Amis en ligne
             </div>
             <div className="space-y-2">
@@ -240,7 +240,7 @@ const ChatPage: React.FC = () => {
                   {channelIcons[activeChannel.type] || <Hash className="w-4 h-4 text-white/40" />}
                   <div>
                     <h2 className="font-display font-black text-white text-sm uppercase italic">{activeChannel.name}</h2>
-                    <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider">
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-wider">
                       {activeChannel.participants.length} participant{activeChannel.participants.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -282,7 +282,7 @@ const ChatPage: React.FC = () => {
                           className="w-full flex items-center gap-4 py-2"
                         >
                           <div className="flex-1 h-[1px] bg-white/5" />
-                          <span className="text-zoyd-yellow text-[9px] uppercase font-black tracking-[0.2em] italic bg-zoyd-yellow/5 px-3 py-1 border border-zoyd-yellow/10">
+                          <span className="text-zoyd-yellow text-[10px] uppercase font-black tracking-[0.2em] italic bg-zoyd-yellow/5 px-3 py-1 border border-zoyd-yellow/10">
                             Systeme: {sanitizeText(message.text)}
                           </span>
                           <div className="flex-1 h-[1px] bg-white/5" />
@@ -302,7 +302,7 @@ const ChatPage: React.FC = () => {
                           <span className={`text-[10px] font-display font-black tracking-widest uppercase ${isMe ? 'text-white' : 'text-white/40'}`}>
                             {sanitizeText(message.senderPseudo)}
                           </span>
-                          <span className="text-[9px] font-mono text-white/40">{getRelativeTime(message.timestamp)}</span>
+                          <span className="text-[10px] font-mono text-white/40">{getRelativeTime(message.timestamp)}</span>
                           {isMe && <div className="w-1.5 h-1.5 bg-zoyd-yellow" />}
                         </div>
                         <div

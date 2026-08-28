@@ -71,7 +71,7 @@ export const NotificationDropdown: React.FC = () => {
       >
         <Bell className="w-5 h-5" />
         {unread > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-zoyd-blue rounded-full flex items-center justify-center text-[8px] font-mono font-black text-white animate-pulse">
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-zoyd-blue rounded-full flex items-center justify-center text-[10px] font-mono font-black text-white animate-pulse">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -93,7 +93,7 @@ export const NotificationDropdown: React.FC = () => {
                 {unread > 0 && (
                   <button
                     onClick={() => markAllAsRead()}
-                    className="text-[9px] font-mono uppercase tracking-wider text-zoyd-blue hover:text-white transition-colors flex items-center gap-1"
+                    className="text-[10px] font-mono uppercase tracking-wider text-zoyd-blue hover:text-white transition-colors flex items-center gap-1"
                     aria-label="Tout marquer comme lu"
                   >
                     <Check className="w-3 h-3" /> Tout lire
@@ -145,10 +145,10 @@ export const NotificationDropdown: React.FC = () => {
                       <div className="mt-0.5">{typeIcons[n.type]}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className={`text-[9px] font-mono font-black uppercase tracking-wider px-1.5 py-0.5 border ${priorityBadge[n.priority]}`}>
+                          <span className={`text-[10px] font-mono font-black uppercase tracking-wider px-1.5 py-0.5 border ${priorityBadge[n.priority]}`}>
                             {n.priority}
                           </span>
-                          <span className="text-[9px] font-mono text-white/40">{new Date(n.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[10px] font-mono text-white/40">{new Date(n.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <p className="text-xs font-display font-bold text-white uppercase tracking-tight truncate">{n.title}</p>
                         <p className="text-[10px] font-ui text-white/40 leading-relaxed line-clamp-2">{n.message}</p>
@@ -171,7 +171,7 @@ export const NotificationDropdown: React.FC = () => {
             {/* FOOTER */}
             {visible.length > 0 && (
               <div className="px-4 py-2 border-t border-white/5 bg-zoyd-surface/20 text-center">
-                <Link to="/parametres" onClick={() => setOpen(false)} className="text-[9px] font-mono uppercase tracking-wider text-white/30 hover:text-zoyd-yellow transition-colors">
+                <Link to="/parametres" onClick={() => setOpen(false)} className="text-[10px] font-mono uppercase tracking-wider text-white/30 hover:text-zoyd-yellow transition-colors">
                   Paramètres de notification →
                 </Link>
               </div>

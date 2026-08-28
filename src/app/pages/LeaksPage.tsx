@@ -304,7 +304,7 @@ const LeaksPage: React.FC = () => {
                   <Icon className="w-4 h-4" />
                   {tab.label}
                   {tab.badge && (
-                    <span className="bg-zoyd-blue text-white text-[8px] px-1.5 py-0.5 font-bold ml-1">
+                    <span className="bg-zoyd-blue text-white text-[10px] px-1.5 py-0.5 font-bold ml-1">
                       {tab.badge}
                     </span>
                   )}
@@ -360,8 +360,8 @@ const LeaksPage: React.FC = () => {
                         <ShoppingBag className="w-8 h-8 text-white/10" />
                       )}
                       <div className="absolute pointer-events-none">
-                        {bundle.isFree && <div className="bg-green-500 text-black text-[8px] font-mono font-black px-1.5 py-0.5 uppercase">Gratuit</div>}
-                        {bundle.isLuckyDraw && <div className="bg-purple-500 text-white text-[8px] font-mono font-black px-1.5 py-0.5 uppercase">Lucky Draw</div>}
+                        {bundle.isFree && <div className="bg-green-500 text-black text-[10px] font-mono font-black px-1.5 py-0.5 uppercase">Gratuit</div>}
+                        {bundle.isLuckyDraw && <div className="bg-purple-500 text-white text-[10px] font-mono font-black px-1.5 py-0.5 uppercase">Lucky Draw</div>}
                       </div>
                     </div>
                     <div className="p-3">
@@ -393,7 +393,7 @@ const LeaksPage: React.FC = () => {
               <div className="flex flex-nowrap gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-2">
                 {WEAPON_CATEGORIES.map((cat) => (
                   <button key={cat} onClick={() => { setSelectedWeaponCategory(cat); setWeaponSearch(''); }}
-                    className={`px-3 py-1.5 font-display font-black text-[9px] tracking-wider italic uppercase whitespace-nowrap transition-all border ${
+                    className={`px-3 py-1.5 font-display font-black text-[10px] tracking-wider italic uppercase whitespace-nowrap transition-all border ${
                       selectedWeaponCategory === cat ? 'bg-white text-black border-white' : 'text-white/30 border-white/5 hover:border-white/20 hover:text-white/60'
                     }`}>{cat}</button>
                 ))}
@@ -408,7 +408,7 @@ const LeaksPage: React.FC = () => {
                       <Crosshair className="w-3 h-3 text-zoyd-yellow/50 group-hover:text-zoyd-yellow transition-colors" />
                       <span className="font-display font-black text-[10px] uppercase tracking-tight italic text-white truncate">{weapon}</span>
                     </div>
-                    <div className="text-[8px] font-mono text-white/20 uppercase">{selectedWeaponCategory}</div>
+                    <div className="text-[10px] font-mono text-white/20 uppercase">{selectedWeaponCategory}</div>
                   </motion.div>
                 ))}
               </div>
@@ -459,17 +459,17 @@ const LeaksPage: React.FC = () => {
                     </div>
                   </>
                 )}
-                {featured.tag && <div className="absolute top-3 left-3 z-20"><span className={`text-[8px] font-mono font-black tracking-widest uppercase px-2 py-1 border bg-black/80 ${categoryColors[featured.category]}`}>{featured.tag}</span></div>}
+                {featured.tag && <div className="absolute top-3 left-3 z-20"><span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border bg-black/80 ${categoryColors[featured.category]}`}>{featured.tag}</span></div>}
               </div>
               <div className="md:w-1/2 p-6 md:p-8 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className={`text-[9px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[featured.category]}`}>{featured.category}</span>
+                  <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[featured.category]}`}>{featured.category}</span>
                   <span className="text-[10px] font-mono text-white/30">{featured.date}</span>
                   <span className="text-[10px] font-mono text-white/30">{featured.readTime}</span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-display font-black uppercase tracking-tighter italic leading-tight mb-4 group-hover:text-zoyd-yellow transition-colors">{featured.title}</h2>
                 <p className="text-sm text-white/40 mb-4 line-clamp-3">{featured.excerpt}</p>
-                {featured.source && <p className="text-[9px] font-mono text-white/20 mb-4">Source: {featured.source}</p>}
+                {featured.source && <p className="text-[10px] font-mono text-white/20 mb-4">Source: {featured.source}</p>}
                 <button onClick={() => toggleArticle(featured.id)} aria-expanded={expandedArticles.has(featured.id)}
                   className="flex items-center gap-2 text-zoyd-yellow font-display font-black text-xs tracking-widest uppercase italic hover:gap-4 transition-all">
                   {expandedArticles.has(featured.id) ? 'REVOIR' : 'LIRE LA SUITE'}<ChevronRight className="w-4 h-4" />
@@ -512,18 +512,18 @@ const LeaksPage: React.FC = () => {
                 )}
                 {article.tag && (
                   <div className="absolute top-3 right-3 z-20">
-                    <span className={`text-[8px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[article.category]} bg-black/80`}>{article.tag}</span>
+                    <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[article.category]} bg-black/80`}>{article.tag}</span>
                   </div>
                 )}
               </div>
               <div className="p-5">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className={`text-[9px] font-mono font-black tracking-widest uppercase px-2 py-0.5 border ${categoryColors[article.category]}`}>{article.category}</span>
+                  <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-0.5 border ${categoryColors[article.category]}`}>{article.category}</span>
                   <span className="text-[10px] font-mono text-white/30">{article.date}</span>
                 </div>
                 <h3 className="text-sm font-display font-black uppercase tracking-tight italic leading-snug mb-2 group-hover:text-zoyd-yellow transition-colors line-clamp-2">{article.title}</h3>
                 <p className="text-xs text-white/30 line-clamp-2 mb-3">{article.excerpt}</p>
-                {article.source && <p className="text-[8px] font-mono text-white/15 mb-3">Source: {article.source}</p>}
+                {article.source && <p className="text-[10px] font-mono text-white/15 mb-3">Source: {article.source}</p>}
                 <button onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
                   className="flex items-center justify-between w-full">
                   <span className="text-[10px] font-mono text-white/20">{article.readTime}</span>
@@ -574,7 +574,7 @@ const LeaksPage: React.FC = () => {
               <div key={stat.label} className="border border-white/5 bg-zoyd-surface/10 p-4 text-center">
                 <Icon className="w-4 h-4 text-white/20 mx-auto mb-2" />
                 <div className="font-display font-black text-2xl text-zoyd-yellow italic">{stat.value}</div>
-                <div className="text-[9px] font-mono font-black tracking-widest text-white/30 uppercase">{stat.label}</div>
+                <div className="text-[10px] font-mono font-black tracking-widest text-white/30 uppercase">{stat.label}</div>
               </div>
             );
           })}

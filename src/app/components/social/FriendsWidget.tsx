@@ -77,7 +77,7 @@ const FriendsWidget: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           {pendingRequests.length > 0 && (
-            <span className="bg-zoyd-blue text-white text-[9px] px-2 py-0.5 font-mono font-bold">
+            <span className="bg-zoyd-blue text-white text-[10px] px-2 py-0.5 font-mono font-bold">
               {pendingRequests.length}
             </span>
           )}
@@ -100,7 +100,7 @@ const FriendsWidget: React.FC = () => {
                   onClick={() => setTab(value)}
                   aria-label={value === 'friends' ? 'Amis' : value === 'requests' ? 'Demandes d\'amis' : 'Joueurs bloqués'}
                   className={cn(
-                    'flex-1 py-2 text-[9px] font-display font-black uppercase tracking-widest italic transition-colors',
+                    'flex-1 py-2 text-[10px] font-display font-black uppercase tracking-widest italic transition-colors',
                     tab === value ? 'bg-white text-black' : 'text-white/30 hover:text-white/60'
                   )}
                 >
@@ -152,7 +152,7 @@ const FriendsWidget: React.FC = () => {
                         <div className="font-display font-black text-xs text-white uppercase italic truncate">
                           {friend.pseudo}
                         </div>
-                        <div className="text-[9px] font-mono text-white/40 uppercase">
+                        <div className="text-[10px] font-mono text-white/40 uppercase">
                           {friend.status === 'online'
                             ? 'En ligne'
                             : friend.status === 'in_match'
@@ -196,7 +196,7 @@ const FriendsWidget: React.FC = () => {
                         <div className="font-display font-black text-xs text-white uppercase italic truncate">
                           {request.senderPseudo}
                         </div>
-                        <div className="text-[9px] font-mono text-white/40 uppercase">
+                        <div className="text-[10px] font-mono text-white/40 uppercase">
                           Demande d'ami
                         </div>
                       </div>
@@ -237,13 +237,13 @@ const FriendsWidget: React.FC = () => {
                         <div className="font-display font-black text-xs text-white uppercase italic truncate">
                           {blockedId}
                         </div>
-                        <div className="text-[9px] font-mono text-white/40 uppercase">
+                        <div className="text-[10px] font-mono text-white/40 uppercase">
                           Blocage actif
                         </div>
                       </div>
                       <button
                         onClick={() => unblockUser(blockedId)}
-                        className="text-[9px] font-mono text-white/30 hover:text-white uppercase"
+                        className="text-[10px] font-mono text-white/30 hover:text-white uppercase"
                         aria-label={`Débloquer ${blockedId}`}
                       >
                         Debloquer

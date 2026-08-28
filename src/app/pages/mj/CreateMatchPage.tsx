@@ -202,7 +202,7 @@ const CreateMatchPage: React.FC = () => {
           {[1, 2, 3, 4].map((step) => (
             <div key={step} className="flex-1 flex flex-col gap-2" aria-current={step === currentStep ? 'step' : undefined}>
               <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} role="progressbar" aria-valuenow={step <= currentStep ? 100 : 0} aria-valuemin={0} aria-valuemax={100} />
-              <span className={`text-[8px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/40'}`}>
+              <span className={`text-[10px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/40'}`}>
                 Etape 0{step}
               </span>
             </div>
@@ -515,7 +515,7 @@ const CreateMatchPage: React.FC = () => {
 
 const SummaryBox = ({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) => (
   <div className="bg-black border border-white/5 p-6 flex flex-col items-center text-center">
-    <span className="text-[9px] font-mono font-black text-white/40 uppercase tracking-[0.2em] mb-3 italic">{label}</span>
+    <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-[0.2em] mb-3 italic">{label}</span>
     <span className={`font-display font-black text-xl italic uppercase ${highlight ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</span>
   </div>
 );

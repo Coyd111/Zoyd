@@ -91,14 +91,14 @@ export const StatusPill = ({ label, tone }: { label: string; tone: string }) => 
 
 export const MetaChip = ({ label, value }: { label: string; value: string }) => (
   <div className="px-3 py-2">
-    <div className="text-[9px] text-white/20 mb-1">{label}</div>
+    <div className="text-[10px] text-white/20 mb-1">{label}</div>
     <div className="text-white/65">{value}</div>
   </div>
 );
 
 export const DisputeStat = ({ label, value }: { label: string; value: string }) => (
   <div className="px-4 py-3">
-    <div className="text-[9px] uppercase tracking-widest text-white/20 mb-1">{label}</div>
+    <div className="text-[10px] uppercase tracking-widest text-white/20 mb-1">{label}</div>
     <div className="text-white">{value}</div>
   </div>
 );
@@ -131,7 +131,7 @@ export const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label:
   <div className="p-6 flex items-center gap-4">
     <div className="w-12 h-12 flex items-center justify-center">{icon}</div>
     <div>
-      <div className="text-[9px] font-mono text-white/20 uppercase tracking-widest mb-1">{label}</div>
+      <div className="text-[10px] font-mono text-white/20 uppercase tracking-widest mb-1">{label}</div>
       <div className="text-2xl font-display font-black italic">{value}</div>
     </div>
   </div>

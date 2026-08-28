@@ -129,7 +129,7 @@ const AdminDashboardPage: React.FC = () => {
           ].map((tab: { id: string; label: string; count: number; urgent?: number }) => (
             <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} aria-label={`${tab.label} (${tab.count}${tab.urgent ? `, ${tab.urgent} urgents` : ''})`} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${activeTab === tab.id ? 'bg-white text-black' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
               {tab.label} <span className="opacity-60">({tab.count})</span>
-              {'urgent' in tab && tab.urgent !== undefined && tab.urgent > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] font-mono font-black text-white flex items-center justify-center">{tab.urgent}</span>}
+              {'urgent' in tab && tab.urgent !== undefined && tab.urgent > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] font-mono font-black text-white flex items-center justify-center">{tab.urgent}</span>}
             </button>
           ))}
         </div>

@@ -336,7 +336,7 @@ const ClassementsPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[9px] font-mono font-black uppercase tracking-widest text-white/40 italic">
+            <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-mono font-black uppercase tracking-widest text-white/40 italic">
               <div className="col-span-1">RANK</div>
               <div className="col-span-3">{activeColumns.primary}</div>
               <div className="col-span-1 text-center">PAYS</div>
@@ -357,7 +357,7 @@ const ClassementsPage: React.FC = () => {
                     </div>
                       <div>
                         <div className="font-display font-black text-white text-sm uppercase italic">{entry.label}</div>
-                        {entry.isMe ? <div className="text-[8px] font-mono text-zoyd-yellow uppercase">TOI</div> : null}
+                        {entry.isMe ? <div className="text-[10px] font-mono text-zoyd-yellow uppercase">TOI</div> : null}
                       </div>
                     </div>
                   <div className="col-span-1 text-center font-display font-black text-white/40 text-xs">{entry.countryCode}</div>

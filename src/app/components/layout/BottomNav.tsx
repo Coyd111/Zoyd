@@ -5,18 +5,18 @@ import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 const navItems = [
-  { icon: LayoutGrid, label: 'LOBBY', path: '/mj' },
+  { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
   { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
   { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
   { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
-  { icon: MessageCircle, label: 'CHAT', path: '/chat' },
+  { icon: MessageCircle, label: 'MESSAGES', path: '/chat' },
   { icon: Newspaper, label: 'INFOS', path: '/infos' },
 ];
 
 const menuItems = [
   { icon: Wallet, label: 'WALLET', path: '/wallet' },
   { icon: User, label: 'PROFIL', path: '/profil' },
-  { icon: Settings, label: 'PARAMETRES', path: '/parametres' },
+  { icon: Settings, label: 'PARAMÈTRES', path: '/parametres' },
 ];
 
 const BottomNav: React.FC = React.memo(() => {
@@ -105,7 +105,7 @@ const BottomNav: React.FC = React.memo(() => {
                   />
                 )}
                 <Icon className={cn("w-5 h-5 mb-1 transition-transform", isActive ? "scale-110" : "")} />
-                <span className="text-[9px] font-display font-black uppercase tracking-widest italic">{item.label}</span>
+                <span className="text-[10px] font-display font-black uppercase tracking-widest italic">{item.label}</span>
               </Link>
             );
           })}
@@ -129,7 +129,7 @@ const BottomNav: React.FC = React.memo(() => {
               <span className="block w-3 h-[2px] bg-current rounded-full" />
               <span className="block w-4 h-[2px] bg-current rounded-full" />
             </div>
-            <span className="text-[9px] font-display font-black uppercase tracking-widest italic">PLUS</span>
+            <span className="text-[10px] font-display font-black uppercase tracking-widest italic">PLUS</span>
           </button>
         </div>
       </nav>

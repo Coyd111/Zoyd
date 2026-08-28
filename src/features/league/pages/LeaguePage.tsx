@@ -71,19 +71,19 @@ const SeasonCard: React.FC<{
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[9px] font-mono text-white/40 uppercase tracking-wider">Joueurs</div>
+          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Joueurs</div>
           <div className="text-sm font-bold text-white">{season.registeredPlayers.length}/{season.maxPlayers}</div>
         </div>
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[9px] font-mono text-white/40 uppercase tracking-wider">Pot</div>
+          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Pot</div>
           <div className="text-sm font-bold text-zoyd-yellow">{formatZC(season.payout.gross)}</div>
         </div>
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[9px] font-mono text-white/40 uppercase tracking-wider">1er</div>
+          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">1er</div>
           <div className="text-sm font-bold text-green-400">{formatZC(season.payout.first)}</div>
         </div>
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[9px] font-mono text-white/40 uppercase tracking-wider">Entree</div>
+          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Entree</div>
           <div className="text-sm font-bold text-white">{formatZC(season.entryFee)}</div>
         </div>
       </div>
@@ -123,7 +123,7 @@ const SeasonCard: React.FC<{
             {Object.entries(season.qualificationGroups).map(([day, slot]) => (
               <div
                 key={day}
-                className={`text-[9px] font-mono font-bold tracking-wider uppercase px-2 py-1 border ${
+                className={`text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-1 border ${
                   slot?.status === 'finished'
                     ? 'border-green-400/30 text-green-400 bg-green-400/10'
                     : slot?.status === 'live'
@@ -264,7 +264,7 @@ const LeaguePage: React.FC = () => {
               <div className="w-8 h-8 md:w-10 md:h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
                 <Zap className="w-4 h-4 md:w-5 md:h-5" aria-hidden="true" />
               </div>
-              <span className="text-[9px] md:text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
+              <span className="text-[10px] md:text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
                 Battle Royale League
               </span>
             </div>
@@ -307,25 +307,25 @@ const LeaguePage: React.FC = () => {
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-6 md:py-10 border-b border-white/5">
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[9px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Cycle en cours</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Cycle en cours</div>
             <div className="text-xl md:text-2xl font-black text-white">
               {activeSeason ? `#${activeSeason.cycleNumber}` : '—'}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[9px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Joueurs inscrits</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Joueurs inscrits</div>
             <div className="text-xl md:text-2xl font-black text-zoyd-yellow">
               {activeSeason?.registeredPlayers.length || 0}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[9px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Pot total</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Pot total</div>
             <div className="text-xl md:text-2xl font-black text-green-400">
               {activeSeason ? formatZC(activeSeason.payout.gross) : '—'}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[9px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Places restantes</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Places restantes</div>
             <div className="text-xl md:text-2xl font-black text-white">
               {activeSeason ? Math.max(0, activeSeason.maxPlayers - activeSeason.registeredPlayers.length) : '—'}
             </div>

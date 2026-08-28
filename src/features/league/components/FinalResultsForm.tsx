@@ -35,10 +35,10 @@ export const FinalResultsForm = ({
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-white/10">
-              <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
-              <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Points</th>
-              <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Placement</th>
-              <th className="px-3 py-2 text-[9px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Kills</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Points</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Placement</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Kills</th>
             </tr>
           </thead>
           <tbody>

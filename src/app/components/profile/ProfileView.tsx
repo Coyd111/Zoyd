@@ -72,7 +72,7 @@ const StatCard = React.memo(({ icon, label, value }: { icon: React.ReactNode; la
   <div className="hud-panel p-4 sm:p-5 bg-zoyd-surface/20 flex items-center gap-4">
     <div className="w-10 h-10 border border-white/10 flex items-center justify-center bg-black">{icon}</div>
     <div>
-      <div className="text-[9px] font-mono font-black uppercase tracking-widest text-white/30 mb-1">{label}</div>
+      <div className="text-[10px] font-mono font-black uppercase tracking-widest text-white/30 mb-1">{label}</div>
       <div className="text-xl font-display font-black text-white italic">{value}</div>
     </div>
   </div>
@@ -199,7 +199,7 @@ export default function ProfileView({
                   {lvl.label}
                 </div>
                 <div className="text-3xl font-display font-black text-white italic">{progression!.xp}</div>
-                <div className="text-[9px] font-mono text-white/40 mt-1 mb-3">/ {progression!.nextLevelXp} XP</div>
+                <div className="text-[10px] font-mono text-white/40 mt-1 mb-3">/ {progression!.nextLevelXp} XP</div>
                 <ProgressBar
                   value={progressPercent}
                   barClassName={

@@ -124,7 +124,7 @@ const LoginPage: React.FC = () => {
         <div className="absolute top-8 right-8 z-10">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-sm border border-white/10">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">En ligne</span>
+            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">En ligne</span>
           </div>
         </div>
 
@@ -164,7 +164,7 @@ const LoginPage: React.FC = () => {
               <div className="flex -space-x-2">
                 {['S1', 'X2', 'ZK'].map((tag, i) => (
                   <div key={tag} className="w-8 h-8 border-2 border-zoyd-black bg-zoyd-surface flex items-center justify-center">
-                    <span className="text-[8px] font-display font-black text-white/60 italic">{tag}</span>
+                    <span className="text-[10px] font-display font-black text-white/60 italic">{tag}</span>
                   </div>
                 ))}
               </div>
@@ -251,7 +251,7 @@ const LoginPage: React.FC = () => {
                 <div className="w-full border-t border-white/5" />
               </div>
               <div className="relative flex justify-center">
-                <span className="px-4 bg-zoyd-black text-[9px] font-mono text-white/40 uppercase tracking-widest">
+                <span className="px-4 bg-zoyd-black text-[10px] font-mono text-white/40 uppercase tracking-widest">
                   Autres options
                 </span>
               </div>

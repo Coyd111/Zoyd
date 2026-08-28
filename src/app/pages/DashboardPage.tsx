@@ -27,6 +27,7 @@ import { useNotificationStore } from '../stores/notificationStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { formatZC, getRelativeTime } from '../../lib/utils';
 import { Helmet } from 'react-helmet-async';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const quickActions = [
   { label: 'MJ Hub', desc: 'Matchs & wagers', icon: Swords, path: '/mj', color: 'text-zoyd-blue' },
@@ -105,7 +106,19 @@ const DashboardPage: React.FC = () => {
     [requests]
   );
 
-  if (!user) return null;
+  if (!user) return (
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">
+      <main className="max-w-[1600px] mx-auto px-5 md:px-8 pt-20 md:pt-28 pb-28 safe-bottom">
+        <div className="space-y-6">
+          <Skeleton className="h-28 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
+          </div>
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </main>
+    </div>
+  );
 
   const totalWins = useMemo(() => recentFinished.filter((m) => {
     const myPlayer = m.players.find((p) => p.userId === user.id);
@@ -302,7 +315,7 @@ const DashboardPage: React.FC = () => {
                       <div className="font-display font-black text-sm text-white uppercase italic tracking-tight truncate max-w-[70%]">
                         {t.name}
                       </div>
-                      <span className={`text-[9px] font-mono uppercase tracking-widest ${statusColor[t.status] || 'text-white/40'}`}>
+                      <span className={`text-[10px] font-mono uppercase tracking-widest ${statusColor[t.status] || 'text-white/40'}`}>
                         {statusLabel[t.status] || t.status}
                       </span>
                     </div>
@@ -315,7 +328,7 @@ const DashboardPage: React.FC = () => {
                       <span>{formatZC(t.entryFee)}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
-                      <div className="text-[9px] font-mono text-white/30">
+                      <div className="text-[10px] font-mono text-white/30">
                         {t.entries.length}/{t.maxEntries} inscrits
                       </div>
                       <ArrowRight className="w-3 h-3 text-white/20 group-hover:text-zoyd-yellow transition-colors" />
@@ -342,7 +355,7 @@ const DashboardPage: React.FC = () => {
                   Notifications
                 </div>
                 {unreadNotifCount > 0 && (
-                  <span className="bg-zoyd-blue text-white text-[9px] px-1.5 py-0.5 font-mono font-bold">
+                  <span className="bg-zoyd-blue text-white text-[10px] px-1.5 py-0.5 font-mono font-bold">
                     {unreadNotifCount}
                   </span>
                 )}
@@ -373,7 +386,7 @@ const DashboardPage: React.FC = () => {
                       </div>
                       <div className="text-[10px] font-mono text-white/40 truncate">{n.message}</div>
                     </div>
-                    <div className="text-[9px] font-mono text-white/30 whitespace-nowrap shrink-0">
+                    <div className="text-[10px] font-mono text-white/30 whitespace-nowrap shrink-0">
                       {getRelativeTime(n.timestamp)}
                     </div>
                   </Link>
@@ -466,7 +479,7 @@ const DashboardPage: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs text-white font-display font-black uppercase italic truncate">{f.pseudo}</div>
-                      <div className="text-[9px] font-mono text-white/30 uppercase">
+                      <div className="text-[10px] font-mono text-white/30 uppercase">
                         {f.status === 'in_match' ? 'En match' : f.status === 'in_lobby' ? 'Dans le lobby' : 'En ligne'}
                       </div>
                     </div>
@@ -495,11 +508,11 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1">Cash</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Cash</div>
                 <div className="font-display font-black text-sm text-white italic">{formatZC(getAvailableCash())}</div>
               </div>
               <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1">Disponible</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Disponible</div>
                 <div className="font-display font-black text-sm text-white italic">{formatZC(getAvailableToSpend())}</div>
               </div>
             </div>
@@ -537,27 +550,27 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1">Niveau</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Niveau</div>
                 <div className="font-display font-black text-sm text-white italic">{user.progression?.level || 'DEBUTANT'}</div>
               </div>
               <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1">Elo</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Elo</div>
                 <div className="font-display font-black text-sm text-zoyd-blue italic">{user.stats?.elo || 1000}</div>
               </div>
               <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1">Trust</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Trust</div>
                 <div className="font-display font-black text-sm text-white italic">{user.trustScore || 50}</div>
               </div>
               <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-1">Win rate</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Win rate</div>
                 <div className="font-display font-black text-sm text-white italic">{user.stats?.winRate || 0}%</div>
               </div>
             </div>
             {/* XP Progress bar */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[9px] font-mono uppercase tracking-widest text-white/30">Progression XP</div>
-                <div className="text-[9px] font-mono text-white/40">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">Progression XP</div>
+                <div className="text-[10px] font-mono text-white/40">
                   {user.progression?.xp || 0} / {user.progression?.nextLevelXp || 100}
                 </div>
               </div>
@@ -642,7 +655,7 @@ const DashboardPage: React.FC = () => {
             >
               <MessageCircle className="w-4 h-4" /> Messages
               {unreadMessages > 0 && (
-                <span className="bg-zoyd-blue text-white text-[9px] px-1.5 py-0.5 font-bold">{unreadMessages}</span>
+                <span className="bg-zoyd-blue text-white text-[10px] px-1.5 py-0.5 font-bold">{unreadMessages}</span>
               )}
             </Link>
           </div>
@@ -693,7 +706,7 @@ function NotifIcon({ type }: { type: string }) {
 const StatCard = React.memo(function StatCard({ label, value, accent, icon }: { label: string; value: string; accent?: boolean; icon?: 'win' }) {
   return (
     <div className="p-4 md:p-5 border border-white/5 bg-zoyd-surface/20">
-      <div className="text-[9px] font-mono uppercase tracking-widest text-white/30 mb-2">{label}</div>
+      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">{label}</div>
       <div className={`font-display font-black text-xl md:text-2xl italic ${
         accent ? 'text-zoyd-yellow' : icon === 'win' ? 'text-green-400' : 'text-white'
       }`}>

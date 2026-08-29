@@ -1,6 +1,6 @@
 import { getAuthSession, getRealtimeSession } from './persistence.mjs';
 import { incCounter, endTimer } from './metrics.mjs';
-import { log } from './logger.mjs';
+import log from './logger.mjs';
 
 /**
  * @param {string} name

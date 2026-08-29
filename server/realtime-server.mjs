@@ -932,8 +932,8 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
       return;
     }
-    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0) {
-      respondJson(res, 400, { ok: false, error: 'Montant invalide.', code: 'INVALID_AMOUNT' });
+    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0 || body.amount > 10_000_000) {
+      respondJson(res, 400, { ok: false, error: 'Montant invalide (max 10 000 000 FCFA).', code: 'INVALID_AMOUNT' });
       return;
     }
     // Idempotency: prevent double-withdrawal on retry/double-click
@@ -1551,6 +1551,10 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
+      if (body.tournamentId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.tournamentId)) {
+        respondJson(res, 400, { ok: false, error: 'tournamentId invalide.', code: 'INVALID_JSON' });
+        return;
+      }
       const outcome = await withWalletMutex(session.user.id, async () =>
         createMatchOnServer(getStateCollection('matches'), session.user, body)
       );
@@ -2092,6 +2096,12 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const body = await parseRequestBody(req);
+      const CHANNEL_TYPES = ['private', 'match', 'team', 'dm'];
+      const channelType = body.type || 'private';
+      if (!CHANNEL_TYPES.includes(channelType)) {
+        respondJson(res, 400, { ok: false, error: `Type de canal invalide. Valeurs acceptees: ${CHANNEL_TYPES.join(', ')}`, code: 'INVALID_ENUM' });
+        return;
+      }
       // Validate participants — only existing user IDs allowed
       const rawParticipants = Array.isArray(body.participants) ? body.participants.filter(Boolean) : [];
       const validParticipants = rawParticipants.filter((id) => getUserById(id));
@@ -2198,6 +2208,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/api/realtime/auth/session') {
+    if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });

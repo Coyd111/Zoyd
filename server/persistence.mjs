@@ -16,6 +16,7 @@ const log = createLogger('persistence');
 
 // ─── In-memory caches ───────────────────────────────────────────────────────
 const memoryUsers = new Map();
+const pseudoKeys = new Map(); // userId → normalized pseudo (avoids re-normalizing on search)
 const memoryAuthSessions = new Map();
 const memoryRealtimeSessions = new Map();
 const memoryPushSubscriptions = new Map();
@@ -199,7 +200,9 @@ export const loadFromSupabase = async () => {
     }
     if (users) {
       for (const row of users) {
-        memoryUsers.set(row.id, sanitizeUserPayload(row.payload));
+        const payload = sanitizeUserPayload(row.payload);
+        memoryUsers.set(row.id, payload);
+        pseudoKeys.set(row.id, normalizePseudoKey(payload.pseudo || ''));
         if (row.role === 'admin') memoryAdminIds.add(row.id);
         if (row.password_hash) {
           storePasswordHash(row.id, row.password_hash, row.payload?.pseudo, row.payload?.email, row.payload?.phone);
@@ -353,6 +356,7 @@ export const forceReloadFromSupabase = async () => {
   log.warn('Force reload started — all in-flight operations may see stale data');
   try {
     memoryUsers.clear();
+    pseudoKeys.clear();
     memoryAdminIds.clear();
     memoryPasswordHashes.clear();
     memoryAuthSessions.clear();
@@ -495,6 +499,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
 
     // Write to memory
     memoryUsers.set(id, payload);
+    pseudoKeys.set(id, normalizePseudoKey(payload.pseudo || ''));
     if (role === 'admin') memoryAdminIds.add(id);
     storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
 
@@ -537,8 +542,9 @@ export const findUsersByPseudo = (query, limit = 20) => {
   const q = normalizePseudoKey(query);
   if (!q) return [];
   const results = [];
-  for (const user of memoryUsers.values()) {
-    if (normalizePseudoKey(user.pseudo).includes(q)) {
+  for (const [userId, user] of memoryUsers) {
+    const key = pseudoKeys.get(userId) || normalizePseudoKey(user.pseudo || '');
+    if (key.includes(q)) {
       results.push(sanitizePublicUserPayload(user));
       if (results.length >= limit) break;
     }
@@ -593,6 +599,7 @@ export const updateUserAccount = async (userId, updater) => {
 
     const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
     memoryUsers.set(userId, next);
+    pseudoKeys.set(userId, normalizePseudoKey(next.pseudo || ''));
 
     // Track admin role changes
     if (next.role === 'admin') memoryAdminIds.add(userId);

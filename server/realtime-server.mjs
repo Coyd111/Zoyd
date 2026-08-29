@@ -10,7 +10,7 @@ import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs'
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
-import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload } from './state-helpers.mjs';
+import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload } from './state-helpers.mjs';
 import { generateTotpSecret, verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
 import {
@@ -979,7 +979,7 @@ const server = http.createServer(async (req, res) => {
     const all = getStoredTournaments();
     respondJson(res, 200, {
       ok: true,
-      tournaments: paginate(all, { limit, offset }),
+      tournaments: paginate(all.map(sanitizeTournamentForBroadcast), { limit, offset }),
       total: all.length,
     });
     return;
@@ -1015,7 +1015,7 @@ const server = http.createServer(async (req, res) => {
 
     respondJson(res, 200, {
       ok: true,
-      tournament,
+      tournament: sanitizeTournamentForBroadcast(tournament),
     });
     return;
   }
@@ -2196,7 +2196,7 @@ const server = http.createServer(async (req, res) => {
     respondJson(res, 200, {
       ok: true,
       matches: getStateCollection('matches').map(sanitizeMatchForBroadcast),
-      tournaments: getStoredTournaments(),
+      tournaments: getStoredTournaments().map(sanitizeTournamentForBroadcast),
       friends: getFriendsForUser(session.userId),
       friendRequests: getFriendRequestsForUser(session.userId),
       blockedIds: getBlockedUsers(session.userId),

@@ -42,7 +42,7 @@ const getStoredTournaments = () => normalizeTournamentCollection(getStateCollect
 const saveTournaments = async (io, tournaments) => {
   await replaceStateCollection('tournaments', tournaments);
   const storedTournaments = getStoredTournaments();
-  broadcastStateSnapshot(io, 'tournaments', storedTournaments);
+  broadcastStateSnapshot(io, 'tournaments', storedTournaments.map(sanitizeTournamentForBroadcast));
   return storedTournaments;
 };
 
@@ -72,6 +72,23 @@ const sanitizeMatchForBroadcast = (match) => {
   if (safe.arbiter) {
     const { roomPassword: _ap, ...safeArbiter } = safe.arbiter;
     safe.arbiter = safeArbiter;
+  }
+  return safe;
+};
+
+/**
+ * Sanitize a tournament: strip roomPassword from all embedded matches.
+ * Also strip admin internal IDs from public view.
+ * @param {object} tournament - The tournament to sanitize
+ * @returns {object} A sanitized copy safe for public broadcast
+ */
+const sanitizeTournamentForBroadcast = (tournament) => {
+  const safe = { ...tournament };
+  if (Array.isArray(safe.matches)) {
+    safe.matches = safe.matches.map(sanitizeMatchForBroadcast);
+  }
+  if (Array.isArray(safe.arbiters)) {
+    safe.arbiters = safe.arbiters.map(({ userId, ...rest }) => rest);
   }
   return safe;
 };
@@ -133,6 +150,7 @@ export {
   saveTournaments,
   buildMatchActionPayload,
   sanitizeMatchForBroadcast,
+  sanitizeTournamentForBroadcast,
   buildTournamentActionPayload,
   getStoredLeagues,
   saveLeagues,

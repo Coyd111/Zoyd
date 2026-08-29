@@ -500,6 +500,29 @@ const MatchDetailPage: React.FC = () => {
     }
   };
 
+  const onTypingChange = useCallback((isTyping: boolean) => {
+    if (!user) return;
+    setTyping(match.channelId, user.id, user.pseudo, isTyping);
+  }, [user, match.channelId, setTyping]);
+
+  const onSendMessage = useCallback((text: string) => {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+    void sendServerChatMessage(match.channelId, text)
+      .then((payload) => {
+        hydrateChat([payload.channel], [payload.message]);
+        receiveServerMessage(payload.message, user.id);
+        setTyping(match.channelId, user.id, user.pseudo, false);
+        markChannelSeen(match.channelId, user.id);
+        void markServerChatChannelRead(match.channelId).catch(() => undefined);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Impossible d'envoyer ce message.");
+      });
+  }, [user, navigate, match.channelId, match.user?.pseudo, hydrateChat, receiveServerMessage, setTyping, markChannelSeen]);
+
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline safe-top">
       <Helmet>
@@ -596,27 +619,8 @@ const MatchDetailPage: React.FC = () => {
               readCount={readCount}
               presenceSummary={presenceSummary}
               lastHeartbeatAt={lastHeartbeatAt}
-              onTypingChange={useCallback((isTyping: boolean) => {
-                if (!user) return;
-                setTyping(match.channelId, user.id, user.pseudo, isTyping);
-              }, [user, match.channelId, setTyping])}
-              onSendMessage={useCallback((text: string) => {
-                if (!user) {
-                  navigate('/auth/login');
-                  return;
-                }
-                void sendServerChatMessage(match.channelId, text)
-                  .then((payload) => {
-                    hydrateChat([payload.channel], [payload.message]);
-                    receiveServerMessage(payload.message, user.id);
-                    setTyping(match.channelId, user.id, user.pseudo, false);
-                    markChannelSeen(match.channelId, user.id);
-                    void markServerChatChannelRead(match.channelId).catch(() => undefined);
-                  })
-                  .catch((error) => {
-                    toast.error(error instanceof Error ? error.message : "Impossible d'envoyer ce message.");
-                  });
-              }, [user, navigate, match.channelId, match.user?.pseudo, hydrateChat, receiveServerMessage, setTyping, markChannelSeen])}
+              onTypingChange={onTypingChange}
+              onSendMessage={onSendMessage}
             />
           </div>
         </div>

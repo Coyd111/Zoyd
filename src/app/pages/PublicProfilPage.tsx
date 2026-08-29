@@ -11,7 +11,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import ProfileView from '../components/profile/ProfileView';
 import { buildCompetitiveSummary, createPublicProfile, getObservedPlayerSnapshot } from '../../lib/profileMetrics';
-import { sendServerFriendRequest, blockServerUser } from '../lib/socialApi';
+import { sendServerFriendRequest } from '../lib/socialApi';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet-async';
 
@@ -122,8 +122,7 @@ const PublicProfilPage = () => {
       return;
     }
     try {
-      await blockServerUser(id);
-      blockUser(id);
+      await blockUser(id);
       toast.success(`${publicProfile.pseudo} est maintenant bloque.`);
     } catch {
       toast.error('Erreur lors du blocage.');

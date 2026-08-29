@@ -44,6 +44,7 @@ const WalletPage: React.FC = () => {
   const [selectedOperator, setSelectedOperator] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw' | 'prize_win'>('all');
   const [fundingPrefillKey, setFundingPrefillKey] = useState('');
   const [searchParams] = useSearchParams();
@@ -145,6 +146,7 @@ const WalletPage: React.FC = () => {
 
   const handleWithdraw = async () => {
     if (!withdrawAmount || !user) return;
+    setIsWithdrawing(true);
     try {
       const withdrawAmountNum = parseFloat(withdrawAmount);
       if (isNaN(withdrawAmountNum) || withdrawAmountNum <= 0) return;
@@ -154,6 +156,8 @@ const WalletPage: React.FC = () => {
       setWithdrawAmount('');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur de retrait.');
+    } finally {
+      setIsWithdrawing(false);
     }
   };
 
@@ -370,7 +374,7 @@ const WalletPage: React.FC = () => {
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={!withdrawAmount || parseFloat(withdrawAmount) < MIN_WITHDRAWAL_ZC || parseFloat(withdrawAmount) > cashBalance}
+              disabled={isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) < MIN_WITHDRAWAL_ZC || parseFloat(withdrawAmount) > cashBalance}
               aria-label="Confirmer le retrait"
             >
               Retirer mes gains

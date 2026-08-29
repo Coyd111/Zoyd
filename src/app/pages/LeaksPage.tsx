@@ -218,10 +218,16 @@ const LeaksPage: React.FC = () => {
     let cancelled = false;
     (async () => {
       setBundlesLoading(true);
-      const data = await fetchCODMStoreBundles();
-      if (!cancelled) {
-        setBundles(data);
-        setBundlesLoading(false);
+      try {
+        const data = await fetchCODMStoreBundles();
+        if (!cancelled) {
+          setBundles(data);
+          setBundlesLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setBundlesLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };

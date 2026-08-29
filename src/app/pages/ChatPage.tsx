@@ -96,7 +96,6 @@ const ChatPage: React.FC = () => {
 
     try {
       const payload = await sendServerChatMessage(activeChannelId, input.trim());
-      hydrateFromServer([payload.channel], [payload.message]);
       receiveServerMessage(payload.message, user.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible d'envoyer ce message.");

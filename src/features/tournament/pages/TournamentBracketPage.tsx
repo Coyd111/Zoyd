@@ -89,6 +89,12 @@ const TournamentBracketPage: React.FC = () => {
   }, [actionableMatches, selectedMatchId]);
 
   useEffect(() => {
+    setScoreA('0');
+    setScoreB('0');
+    setNotes('');
+  }, [selectedMatchId]);
+
+  useEffect(() => {
     if (!tournament || tournament.teamSize <= 1) {
       setTeammateInputs([]);
       return;
@@ -296,11 +302,16 @@ const TournamentBracketPage: React.FC = () => {
 
   const handleSubmitResult = async () => {
     if (!selectedMatch || !selectedMatch.entryAId || !selectedMatch.entryBId) return;
-    const alpha = Number(scoreA);
-    const bravo = Number(scoreB);
+    const alpha = parseInt(scoreA, 10);
+    const bravo = parseInt(scoreB, 10);
+
+    if (isNaN(alpha) || isNaN(bravo) || alpha < 0 || bravo < 0) {
+      toast.error('Scores invalides.');
+      return;
+    }
 
     if (alpha === bravo) {
-      toast.error('Le score final doit donner un vainqueur.');
+      toast.error('Les scores ne peuvent pas être égaux.');
       return;
     }
 

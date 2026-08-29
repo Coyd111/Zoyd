@@ -21,7 +21,6 @@ import { Helmet } from 'react-helmet-async';
 
 const AdminDashboardPage: React.FC = () => {
   const { user } = useAuthStore();
-  if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
   const { friends, reports } = useFriendsStore();
   const { matches } = useMatchStore();
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
@@ -80,6 +79,9 @@ const AdminDashboardPage: React.FC = () => {
     if (userFilter === 'watch') return adminInsights.flaggedUsers.filter((u) => u.status !== 'clean');
     return adminInsights.flaggedUsers;
   }, [adminInsights.flaggedUsers, userFilter]);
+
+  if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
+
   const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => { hydrateMatches([payload.match]); applyServerAccountState(payload); };
   const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => { try { const response = await adminAwardServerMatch(matchId, winnerTeam, 'Résolution admin depuis le centre de commandement.'); applyAdminMatchResponse(response); toast.success('Résultat admin appliqué.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Résolution admin impossible.'); } };
   const handleResolveDisputeOnly = async (matchId: string) => { try { const response = await adminResolveServerDispute(matchId, 'Litige clos par modération ZOYD.'); applyAdminMatchResponse(response); toast.success('Litige clos sans modifier le vainqueur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.'); } };

@@ -234,10 +234,12 @@ const ClassementsPage: React.FC = () => {
 
   const entries = rowsByActiveTab;
   const activeColumns = tabColumns[activeTab];
-  const myRank = earningsRanking.find((entry) => entry.isMe)?.rank;
+  const myRank = useMemo(() => {
+    return entries.find((entry) => entry.isMe)?.rank ?? null;
+  }, [entries]);
   const topPercent =
-    myRank && earningsRanking.length > 0
-      ? Math.max(1, Math.round((myRank / earningsRanking.length) * 100))
+    myRank && entries.length > 0
+      ? Math.max(1, Math.round((myRank / entries.length) * 100))
       : undefined;
 
   return (

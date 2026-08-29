@@ -528,7 +528,14 @@ const RegisterPage: React.FC = () => {
                 <div className="flex gap-4">
                   <button
                     type="button"
-                    onClick={() => { trigger(); setCurrentStep(1); }}
+                    onClick={() => {
+                      if (formData.email) setValue('email', formData.email);
+                      if (formData.pseudo) setValue('pseudo', formData.pseudo);
+                      if (formData.password) setValue('password', formData.password);
+                      if (formData.phone) setValue('phone', formData.phone);
+                      if (formData.confirmPassword) setValue('confirmPassword', formData.confirmPassword);
+                      setCurrentStep(1);
+                    }}
                     aria-label="Retour à l'étape précédente"
                     className="flex-1 min-h-[44px] border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
@@ -608,7 +615,17 @@ const RegisterPage: React.FC = () => {
                 <div className="relative z-10 flex gap-4">
                   <button
                     type="button"
-                    onClick={() => { trigger(); setCurrentStep(2); }}
+                    onClick={() => {
+                      if (formData.gameId) setValue('gameId', formData.gameId);
+                      if (formData.levelCODM) setValue('levelCODM', formData.levelCODM);
+                      if (formData.rankMJ) setValue('rankMJ', formData.rankMJ);
+                      if (formData.rankBR) setValue('rankBR', formData.rankBR);
+                      if (formData.country) setValue('country', formData.country);
+                      if (formData.streamerPseudo) setValue('streamerPseudo', formData.streamerPseudo);
+                      if (formData.controllerType) setValue('controllerType', formData.controllerType);
+                      if (formData.streamerMode !== undefined) setValue('streamerMode', formData.streamerMode);
+                      setCurrentStep(2);
+                    }}
                     aria-label="Retour aux réglages"
                     className="flex-1 min-h-[44px] border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >

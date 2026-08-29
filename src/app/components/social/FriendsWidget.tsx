@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -40,6 +41,7 @@ const FriendsWidget: React.FC = () => {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'friends' | 'requests' | 'blocked'>('friends');
   const [invitePseudo, setInvitePseudo] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const onlineFriends = getOnlineFriends();
   const filteredFriends = useMemo(
@@ -52,11 +54,23 @@ const FriendsWidget: React.FC = () => {
   const handleInvite = async () => {
     const cleanPseudo = invitePseudo.trim();
     if (!cleanPseudo) return;
-    const results = await searchUsers(cleanPseudo);
-    const match = results[0];
-    if (!match) return;
-    await sendRequest(match.id, match.pseudo);
-    setInvitePseudo('');
+
+    setIsLoading(true);
+    try {
+      const results = await searchUsers(cleanPseudo);
+      const match = results[0];
+      if (!match) {
+        toast.error('Joueur introuvable.');
+        return;
+      }
+      await sendRequest(match.id, match.pseudo);
+      toast.success(`Demande envoyée à ${match.pseudo}`);
+      setInvitePseudo('');
+    } catch (e) {
+      toast.error('Erreur lors de l\'envoi.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -125,7 +139,7 @@ const FriendsWidget: React.FC = () => {
                   />
                 </div>
                 {tab === 'requests' && (
-                  <Button variant="primary" size="sm" onClick={handleInvite} className="px-3" aria-label="Ajouter un ami">
+                  <Button variant="primary" size="sm" onClick={handleInvite} disabled={isLoading || !invitePseudo.trim()} className="px-3" aria-label="Ajouter un ami">
                     <UserPlus className="w-3 h-3" />
                   </Button>
                 )}

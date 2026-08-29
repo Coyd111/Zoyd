@@ -55,7 +55,7 @@ export const FinalResultsForm = ({
                     max={100}
                     value={entry.placement || ''}
                     onChange={(e) => updateEntry(entry.userId, 'placement', Number(e.target.value))}
-                    className="w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 focus:outline-none"
+                    className="w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 "
                     placeholder="#"
                   />
                 </td>
@@ -65,7 +65,7 @@ export const FinalResultsForm = ({
                     min={0}
                     value={entry.kills || ''}
                     onChange={(e) => updateEntry(entry.userId, 'kills', Number(e.target.value))}
-                    className="w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 focus:outline-none"
+                    className="w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 "
                     placeholder="0"
                   />
                 </td>

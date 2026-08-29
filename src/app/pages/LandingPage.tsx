@@ -183,7 +183,7 @@ export default function LandingPage() {
                         </div>
                         <span className="text-[10px] text-green-400 font-mono flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                          Spectating
+                          Spectateur
                         </span>
                       </div>
                     </div>
@@ -356,8 +356,8 @@ export default function LandingPage() {
                   tu entres sur ZOYD.
                 </h2>
                 <p className="text-white/40 text-lg leading-relaxed">
-                  Le parcours d&apos;entrée doit être simple: créer ton compte, choisir ton mode, retrouver ton activite
-                  au meme endroit a chaque connexion.
+                  Le parcours d&apos;entrée doit être simple: créer ton compte, choisir ton mode, retrouver ton activité
+                  au même endroit à chaque connexion.
                 </p>
               </div>
 
@@ -426,7 +426,7 @@ export default function LandingPage() {
             <Link to="/classements" className="hover:text-white/60 transition-colors">Classements</Link>
           </div>
           <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/40">
-            © 2026 ZOYD Platform
+            © 2026 ZOYD Plateforme
           </div>
         </div>
       </footer>

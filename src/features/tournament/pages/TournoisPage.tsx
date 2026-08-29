@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Plus, Search, Swords, Trophy, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
@@ -19,32 +19,22 @@ const TournoisPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadTournaments = async () => {
-      try {
-        setIsLoading(true);
-        setLoadError(null);
-        const response = await fetchServerTournaments();
-        if (cancelled) return;
-        replaceFromServer(response.tournaments);
-      } catch (error) {
-        if (cancelled) return;
-        setLoadError(error instanceof Error ? error.message : 'Impossible de charger les tournois.');
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadTournaments();
-
-    return () => {
-      cancelled = true;
-    };
+  const loadTournaments = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const response = await fetchServerTournaments();
+      replaceFromServer(response.tournaments);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Impossible de charger les tournois.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [replaceFromServer]);
+
+  useEffect(() => {
+    void loadTournaments();
+  }, [loadTournaments]);
 
   const tournaments = useMemo(() => {
     const query = debouncedQuery.trim().toLowerCase();
@@ -112,8 +102,8 @@ const TournoisPage: React.FC = () => {
               <span className="text-white/40 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
             </h1>
             <p className="text-white/40 text-base md:text-xl font-light max-w-2xl mb-6">
-              Retrouve les tournois ouverts, ceux qui se jouent deja et ceux qui viennent de se terminer.
-              Ce que tu vois ici correspond deja a ton profil de jeu.
+              Retrouve les tournois ouverts, ceux qui se jouent déjà et ceux qui viennent de se terminer.
+              Ce que tu vois ici correspond déjà à ton profil de jeu.
             </p>
             <div className="mt-4 md:mt-6">
               <Link
@@ -138,6 +128,9 @@ const TournoisPage: React.FC = () => {
         {loadError ? (
           <div className="mb-8 border border-red-400/20 bg-red-400/5 px-5 py-4 text-sm text-red-200">
             {loadError}
+            <button onClick={() => void loadTournaments()} className="ml-4 underline hover:text-white">
+              Réessayer
+            </button>
           </div>
         ) : null}
         <Tabs defaultValue="upcoming" className="w-full">
@@ -176,7 +169,7 @@ const TournoisPage: React.FC = () => {
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Chercher un tournoi, un mode ou une carte..."
                     aria-label="Rechercher un tournoi par nom, mode ou carte"
-                    className="w-full bg-black border border-white/5 p-4 pl-12 text-[10px] font-mono font-black uppercase tracking-widest text-white focus:outline-none focus:border-zoyd-yellow transition-all"
+                    className="w-full bg-black border border-white/5 p-4 pl-12 text-[10px] font-mono font-black uppercase tracking-widest text-white focus:border-zoyd-yellow transition-all"
                   />
                 </div>
               </div>

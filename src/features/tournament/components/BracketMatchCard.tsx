@@ -5,7 +5,7 @@ const matchStatusLabels: Record<TournamentMatch['status'], string> = {
   pending: 'En attente',
   ready: 'Pret',
   live: 'En cours',
-  finished: 'Termine',
+  finished: 'Terminé',
 };
 
 const PlayerLine = React.memo(({ label, active, score }: { label: string; active: boolean; score?: number }) => (

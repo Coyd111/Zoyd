@@ -71,7 +71,7 @@ export const AdminPanel = ({
     <div className="space-y-4">
       <div className="flex gap-2 mb-4">
         {([
-          { key: 'settings', label: 'PARAMETRES', icon: Settings },
+          { key: 'settings', label: 'PARAMÈTRES', icon: Settings },
           { key: 'reassign', label: 'REASSIGNER', icon: RefreshCw },
           { key: 'payments', label: 'PAIEMENTS', icon: DollarSign },
         ] as const).map(({ key, label, icon: Icon }) => (
@@ -92,7 +92,7 @@ export const AdminPanel = ({
 
       {settingsTab === 'settings' && (
         <div className="border border-white/10 bg-zoyd-surface/20 p-5 space-y-4">
-          <h3 className="text-sm font-bold text-white mb-3">Parametres de la ligue</h3>
+          <h3 className="text-sm font-bold text-white mb-3">Paramètres de la ligue</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 block mb-1.5">
@@ -104,7 +104,7 @@ export const AdminPanel = ({
                 onChange={(e) => setMaxPlayers(Number(e.target.value))}
                 min={10}
                 max={1000}
-                className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 focus:outline-none"
+                className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 "
               />
             </div>
             <div>
@@ -117,7 +117,7 @@ export const AdminPanel = ({
                 onChange={(e) => setEntryFee(Number(e.target.value))}
                 min={0}
                 max={500}
-                className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 focus:outline-none"
+                className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 "
               />
             </div>
           </div>
@@ -150,7 +150,7 @@ export const AdminPanel = ({
                 <select
                   value={reassignUserId}
                   onChange={(e) => setReassignUserId(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 focus:outline-none"
+                  className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 "
                 >
                   <option value="">Selectionner un joueur</option>
                   {season.registeredPlayers.map((p) => {
@@ -173,7 +173,7 @@ export const AdminPanel = ({
                   <select
                     value={reassignFromDay}
                     onChange={(e) => setReassignFromDay(e.target.value as LeagueDayKey)}
-                    className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 focus:outline-none"
+                    className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 "
                   >
                     {DAY_KEYS.map((day) => (
                       <option key={day} value={day}>{DAY_LABELS[day]}</option>
@@ -187,7 +187,7 @@ export const AdminPanel = ({
                   <select
                     value={reassignToDay}
                     onChange={(e) => setReassignToDay(e.target.value as LeagueDayKey)}
-                    className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 focus:outline-none"
+                    className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 "
                   >
                     {DAY_KEYS.map((day) => (
                       <option key={day} value={day}>{DAY_LABELS[day]}</option>
@@ -224,11 +224,11 @@ export const AdminPanel = ({
 
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="border border-green-400/20 bg-green-400/5 px-3 py-2">
-              <div className="text-[10px] font-mono text-green-400/60 uppercase tracking-wider">Payes</div>
+              <div className="text-[10px] font-mono text-green-400/60 uppercase tracking-wider">Payés</div>
               <div className="text-lg font-bold text-green-400">{paidCount}</div>
             </div>
             <div className="border border-red-400/20 bg-red-400/5 px-3 py-2">
-              <div className="text-[10px] font-mono text-red-400/60 uppercase tracking-wider">Impayes</div>
+              <div className="text-[10px] font-mono text-red-400/60 uppercase tracking-wider">Impayés</div>
               <div className="text-lg font-bold text-red-400">{unpaidCount}</div>
             </div>
             <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-3 py-2">
@@ -240,7 +240,7 @@ export const AdminPanel = ({
           {loadingPayments ? (
             <div className="text-sm text-white/40 text-center py-4">Chargement...</div>
           ) : payments.length === 0 ? (
-            <div className="text-sm text-white/40 text-center py-4">Aucun paiement enregistre.</div>
+            <div className="text-sm text-white/40 text-center py-4">Aucun paiement enregistré.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -262,7 +262,7 @@ export const AdminPanel = ({
                             ? 'border-green-400/30 text-green-400 bg-green-400/10'
                             : 'border-red-400/30 text-red-400 bg-red-400/10'
                         }`}>
-                          {payment.paid ? 'Paye' : 'Impaye'}
+                           {payment.paid ? 'Payé' : 'Impayé'}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-sm text-white/60 text-right">{formatZC(payment.amount)}</td>

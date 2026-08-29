@@ -13,11 +13,9 @@ type AdminUrgencyTabProps = {
   totalCount: number;
   pendingResolve: { matchId: string; type: 'alpha' | 'bravo' | 'none' } | null;
   onSetPendingResolve: (val: { matchId: string; type: 'alpha' | 'bravo' | 'none' } | null) => void;
-  pendingCancelId: string | null;
-  onSetPendingCancelId: (val: string | null) => void;
+  onRequestCancel: (matchId: string) => void;
   onResolveWinner: (matchId: string, team: 0 | 1) => void;
   onResolveDisputeOnly: (matchId: string) => void;
-  onCancelMatch: (matchId: string) => void;
 };
 
 const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
@@ -28,11 +26,9 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
   totalCount,
   pendingResolve,
   onSetPendingResolve,
-  pendingCancelId,
-  onSetPendingCancelId,
+  onRequestCancel,
   onResolveWinner,
   onResolveDisputeOnly,
-  onCancelMatch,
 }) => (
   <div className="space-y-6">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -76,7 +72,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
 
     {filteredDisputes.length === 0 ? (
       <div className="p-8 text-center">
-        <p className="text-white/20 text-sm font-mono">
+        <p className="text-white/30 text-sm font-mono">
           {disputeFilter === 'escalated' ? 'Aucun litige escaladé. Bonne nouvelle !' : 'Aucun litige dans ce filtre.'}
         </p>
       </div>
@@ -159,7 +155,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   <div className="text-sm text-white/60">{activeDispute?.reason || 'Aucun motif fourni'}</div>
                   {activeDispute?.evidence && activeDispute.evidence.length > 0 && (
                     <div className="border-t border-white/5 pt-3">
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-white/20 mb-2">
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">
                         Pièces jointes ({activeDispute.evidence.length})
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -251,22 +247,11 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   Voir le match
                 </Link>
                 <button
-                  onClick={() => {
-                    if (pendingCancelId === match.id) {
-                      onSetPendingCancelId(null);
-                      void onCancelMatch(match.id);
-                    } else {
-                      onSetPendingCancelId(match.id);
-                    }
-                  }}
-                  className={`border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
-                    pendingCancelId === match.id
-                      ? 'border-red-500/50 bg-red-500/10 text-red-300'
-                      : 'border-white/10 text-white/30 hover:text-red-300 hover:border-red-500/30'
-                  }`}
+                  onClick={() => onRequestCancel(match.id)}
+                  className="border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target border-white/10 text-white/30 hover:text-red-300 hover:border-red-500/30"
                 >
                   <Ban className="w-3 h-3 inline mr-2" />
-                  {pendingCancelId === match.id ? 'Confirmer l\'annulation' : 'Annuler'}
+                  Annuler
                 </button>
               </div>
             </div>

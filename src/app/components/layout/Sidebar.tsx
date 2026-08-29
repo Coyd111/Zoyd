@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router';
-import { BarChart3, LayoutGrid, MessageCircle, Newspaper, Plus, Settings, ShieldCheck, Trophy, Users, Wallet, Zap } from 'lucide-react';
+import { BarChart3, LayoutGrid, MessageCircle, Newspaper, Plus, Settings, ShieldCheck, Trophy, Users, Wallet, Zap, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useChatStore } from '../../stores/chatStore';
@@ -13,6 +13,7 @@ const navItems = [
   { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
   { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
   { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
+  { icon: TrendingUp, label: 'GAINS', path: '/earnings' },
   { icon: Newspaper, label: 'INFOS', path: '/infos' },
 ];
 
@@ -74,7 +75,7 @@ const Sidebar: React.FC = React.memo(() => {
         </div>
 
         <div>
-          <div className="text-[10px] font-display font-black text-white/40 uppercase tracking-[0.3em] mb-4 px-3 italic">Communaute</div>
+          <div className="text-[10px] font-display font-black text-white/40 uppercase tracking-[0.3em] mb-4 px-3 italic">Communauté</div>
           <div className="space-y-1">
             {socialItems.map((item) => {
               const Icon = item.icon;
@@ -110,14 +111,14 @@ const Sidebar: React.FC = React.memo(() => {
           className="flex items-center gap-3 px-3 py-2.5 touch-target text-white/30 hover:text-white hover:bg-white/5 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
         >
           <Settings className="w-4 h-4" />
-          Parametres
+          Paramètres
         </Link>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 px-3 py-2.5 touch-target text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
         >
           <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          Se deconnecter
+          Se déconnecter
         </button>
       </div>
 

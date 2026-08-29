@@ -474,7 +474,7 @@ const RegisterPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="rankMJ" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade MJ</label>
-                    <select id="rankMJ" {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select id="rankMJ" {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -484,7 +484,7 @@ const RegisterPage: React.FC = () => {
                   </div>
                   <div>
                     <label htmlFor="rankBR" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade BR</label>
-                    <select id="rankBR" {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select id="rankBR" {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
@@ -497,7 +497,7 @@ const RegisterPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="country" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Pays</label>
-                    <select id="country" {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:outline-none focus:border-zoyd-blue">
+                    <select id="country" {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
                       {COUNTRY_OPTIONS.map((country) => (
                         <option key={country} value={country} className="bg-zoyd-black">
                           {country}
@@ -632,7 +632,7 @@ const RegisterPage: React.FC = () => {
 
           <footer className="mt-12 text-center border-t border-white/5 pt-8">
             <p className="text-white/40 text-[11px] font-mono uppercase tracking-widest">
-              Deja membre ?{' '}
+              Déjà membre ?{' '}
               <Link to="/auth/login" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2">
                 ME CONNECTER
               </Link>

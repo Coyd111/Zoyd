@@ -121,7 +121,7 @@ const FriendsWidget: React.FC = () => {
                     onChange={(event) => (tab === 'friends' ? setSearch(event.target.value) : setInvitePseudo(event.target.value))}
                     placeholder={tab === 'friends' ? 'Rechercher un ami...' : 'Pseudo a ajouter...'}
                     aria-label={tab === 'friends' ? 'Rechercher un ami' : 'Saisir un pseudo à ajouter'}
-                    className="w-full bg-black border border-white/10 pl-8 pr-3 py-2 text-[11px] font-display font-bold tracking-wider text-white focus:outline-none focus:border-zoyd-yellow transition-colors"
+                    className="w-full bg-black border border-white/10 pl-8 pr-3 py-2 text-[11px] font-display font-bold tracking-wider text-white focus:border-zoyd-yellow transition-colors"
                   />
                 </div>
                 {tab === 'requests' && (

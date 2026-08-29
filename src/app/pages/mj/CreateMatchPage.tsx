@@ -118,7 +118,7 @@ const CreateMatchPage: React.FC = () => {
 
   const onFinalSubmit = async () => {
     if (!user) {
-      toast.error('Connecte-toi avant de creer une partie.');
+      toast.error('Connecte-toi avant de créer une partie.');
       navigate('/auth/login');
       return;
     }
@@ -203,7 +203,7 @@ const CreateMatchPage: React.FC = () => {
             <div key={step} className="flex-1 flex flex-col gap-2" aria-current={step === currentStep ? 'step' : undefined}>
               <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} role="progressbar" aria-valuenow={step <= currentStep ? 100 : 0} aria-valuemin={0} aria-valuemax={100} />
               <span className={`text-[10px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/40'}`}>
-                Etape 0{step}
+                Étape 0{step}
               </span>
             </div>
           ))}
@@ -306,7 +306,7 @@ const CreateMatchPage: React.FC = () => {
                         <label htmlFor="weapons" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Restriction d'armes
                         </label>
-                        <select id="weapons" {...register('weapons')} aria-label="Restriction d'armes" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                        <select id="weapons" {...register('weapons')} aria-label="Restriction d'armes" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue">
                           {WEAPON_OPTIONS.map((weapon) => (
                             <option key={weapon} value={weapon}>
                               {weapon}
@@ -318,7 +318,7 @@ const CreateMatchPage: React.FC = () => {
                         <label htmlFor="pointstreaks" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Point streaks
                         </label>
-                        <select id="pointstreaks" {...register('pointstreaks')} aria-label="Point streaks" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                        <select id="pointstreaks" {...register('pointstreaks')} aria-label="Point streaks" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue">
                           <option value="restricted">Interdites</option>
                           <option value="allowed">Permises</option>
                         </select>
@@ -327,13 +327,13 @@ const CreateMatchPage: React.FC = () => {
                         <label htmlFor="score" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Score cible
                         </label>
-                        <input id="score" type="number" {...register('score')} placeholder="15" aria-label="Score cible" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
+                        <input id="score" type="number" {...register('score')} placeholder="15" aria-label="Score cible" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue" />
                       </div>
                       <div>
                         <label htmlFor="bestOf" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Best of
                         </label>
-                        <input id="bestOf" type="number" {...register('bestOf')} placeholder="3" aria-label="Best of" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue" />
+                        <input id="bestOf" type="number" {...register('bestOf')} placeholder="3" aria-label="Best of" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue" />
                       </div>
                     </div>
 
@@ -385,7 +385,7 @@ const CreateMatchPage: React.FC = () => {
                           </button>
                         ))}
                       </div>
-                      <input id="passAmount" {...register('passAmount')} type="number" inputMode="numeric" step="0.5" placeholder="Montant personnalise" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:outline-none focus:border-zoyd-yellow transition-all" />
+                      <input id="passAmount" {...register('passAmount')} type="number" inputMode="numeric" step="0.5" placeholder="Montant personnalisé" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:border-zoyd-yellow transition-all" />
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8 items-start">
@@ -394,7 +394,7 @@ const CreateMatchPage: React.FC = () => {
                         <h3 className="text-[10px] font-mono font-black text-zoyd-muted uppercase tracking-[0.2em] mb-4 relative z-10">Répartition du Prize Pool</h3>
                         <div className="space-y-4 relative z-10">
                           <div className="flex justify-between border-b border-white/10 pb-4">
-                            <span className="text-xs font-display font-black text-white/40 italic">Pot Total (Cash Prize)</span>
+                            <span className="text-xs font-display font-black text-white/40 italic">Pot Total (Cagnotte)</span>
                             <span className="font-display font-black text-2xl text-zoyd-yellow">{livePot.toLocaleString()} ZC</span>
                           </div>
                           <div className="flex justify-between">
@@ -413,7 +413,7 @@ const CreateMatchPage: React.FC = () => {
                           <label htmlFor="trustScoreMin" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                             Niveau de confiance minimum
                           </label>
-                          <select id="trustScoreMin" {...register('trustScoreMin')} aria-label="Niveau de confiance minimum" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue">
+                          <select id="trustScoreMin" {...register('trustScoreMin')} aria-label="Niveau de confiance minimum" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue">
                             <option value="0">Aucun (0+)</option>
                             <option value="30">30+</option>
                             <option value="50">50+</option>

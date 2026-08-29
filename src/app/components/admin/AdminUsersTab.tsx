@@ -46,7 +46,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     </div>
 
     {filteredUsers.length === 0 ? (
-      <p className="text-white/20 text-sm font-mono">Aucun compte remonte dans cette vue.</p>
+      <p className="text-white/30 text-sm font-mono">Aucun compte remonte dans cette vue.</p>
     ) : (
       <div className="grid gap-3">
         {filteredUsers.map((flaggedUser) => (

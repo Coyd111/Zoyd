@@ -36,7 +36,7 @@ const statusCopy: Record<MatchCardProps['status'], { label: string; accent: stri
   in_progress: { label: 'Partie en cours', accent: 'text-zoyd-blue' },
   finished: { label: 'Partie terminee', accent: 'text-white/40' },
   forfeited: { label: 'Victoire par forfait', accent: 'text-zoyd-yellow' },
-  cancelled: { label: 'Match annule', accent: 'text-red-300' },
+  cancelled: { label: 'Match annulé', accent: 'text-red-300' },
 };
 
 const MatchCard: React.FC<MatchCardProps> = React.memo(({

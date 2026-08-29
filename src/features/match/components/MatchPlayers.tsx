@@ -41,18 +41,18 @@ const TeamCard = ({
                 {player.pseudo}
                 {player.isCaptain ? ' / Capitaine' : ''}
               </div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/20">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
                 {player.isCheckedIn ? 'Presence confirmee' : 'En attente'}
               </div>
             </div>
           </div>
-          <div className={`text-[10px] font-mono uppercase tracking-widest ${player.isReady ? 'text-green-400' : 'text-white/20'}`}>
+          <div className={`text-[10px] font-mono uppercase tracking-widest ${player.isReady ? 'text-green-400' : 'text-white/30'}`}>
             {player.isReady ? 'Pret' : 'En attente'}
           </div>
         </div>
       ))}
       {Array.from({ length: Math.max(0, teamSize - players.length) }).map((_, index) => (
-        <div key={index} className="border border-dashed border-white/10 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-white/20">
+        <div key={index} className="border border-dashed border-white/10 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-white/30">
           Slot libre
         </div>
       ))}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Trophy, Users, Calendar, Crown, Zap, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
@@ -21,7 +21,7 @@ const STATUS_TABS: Array<{ value: LeagueSeasonStatus | 'all'; label: string }> =
   { value: 'registering', label: 'INSCRIPTIONS' },
   { value: 'qualifying', label: 'QUALIFICATION' },
   { value: 'final', label: 'FINALE' },
-  { value: 'completed', label: 'TERMINE' },
+  { value: 'completed', label: 'TERMINÉ' },
 ];
 
 const DAY_LABELS: Record<string, string> = {
@@ -36,7 +36,7 @@ const STATUS_BADGES: Record<LeagueSeasonStatus, { label: string; color: string }
   registering: { label: 'Inscriptions ouvertes', color: 'text-green-400 border-green-400/30 bg-green-400/10' },
   qualifying: { label: 'Qualification en cours', color: 'text-zoyd-yellow border-zoyd-yellow/30 bg-zoyd-yellow/10' },
   final: { label: 'Finale', color: 'text-orange-400 border-orange-400/30 bg-orange-400/10' },
-  completed: { label: 'Termine', color: 'text-white/40 border-white/10 bg-white/5' },
+  completed: { label: 'Terminé', color: 'text-white/40 border-white/10 bg-white/5' },
 };
 
 const SeasonCard: React.FC<{
@@ -159,25 +159,22 @@ const LeaguePage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        setLoadError(null);
-        const response = await fetchServerLeagues();
-        if (cancelled) return;
-        replaceFromServer(response.seasons);
-      } catch (error) {
-        if (cancelled) return;
-        setLoadError(error instanceof Error ? error.message : 'Erreur de chargement.');
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    void load();
-    return () => { cancelled = true; };
+  const loadLeagues = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const response = await fetchServerLeagues();
+      replaceFromServer(response.seasons);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Erreur de chargement.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [replaceFromServer]);
+
+  useEffect(() => {
+    void loadLeagues();
+  }, [loadLeagues]);
 
   const seasons = useMemo(() => getFilteredSeasons(), [getFilteredSeasons]);
   const activeSeason = getActiveSeason();
@@ -335,6 +332,9 @@ const LeaguePage: React.FC = () => {
         {loadError && (
           <div className="border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-6">
             {loadError}
+            <button onClick={() => void loadLeagues()} className="ml-4 underline hover:text-white">
+              Réessayer
+            </button>
           </div>
         )}
 

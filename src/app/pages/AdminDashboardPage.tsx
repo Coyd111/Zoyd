@@ -30,8 +30,8 @@ const AdminDashboardPage: React.FC = () => {
   const [matchFilter, setMatchFilter] = useState<MatchFilter>('priority');
   const [userFilter, setUserFilter] = useState<UserFilter>('critical');
   const [disputeFilter, setDisputeFilter] = useState<DisputeFilter>('escalated');
-  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [pendingResolve, setPendingResolve] = useState<{ matchId: string; type: 'alpha' | 'bravo' | 'none' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const players = useMemo(() => buildCommunityPlayers({ currentUser: user, friends, reports, matches, tournaments }), [friends, matches, reports, tournaments, user]);
   const adminInsights = useMemo(() => buildAdminInsights({ players, matches, reports }), [matches, players, reports]);
   const playerById = useMemo(() => {
@@ -72,7 +72,7 @@ const AdminDashboardPage: React.FC = () => {
       const targetPlayer = playerById.get(report.targetId);
       return { id: report.id, kind: 'signalement' as const, label: targetPlayer?.pseudo || report.targetId, body: report.description || report.reason, timestamp: report.timestamp, severity: 2, action: () => setActiveTab('users'), actionLabel: 'Voir la watchlist' };
     });
-    const operationalItems = matchQueues.ready.slice(0, 3).map((match) => ({ id: `ops-${match.id}`, kind: 'ops' as const, label: match.id, body: match.status === 'ready' ? 'Match pret a lancer' : 'Check-in incomplet a debloquer', timestamp: match.updatedAt || match.createdAt, severity: 1, action: () => setActiveTab('matches'), actionLabel: 'Ouvrir les matchs' }));
+    const operationalItems = matchQueues.ready.slice(0, 3).map((match) => ({ id: `ops-${match.id}`, kind: 'ops' as const, label: match.id, body: match.status === 'ready' ? 'Match prêt à lancer' : 'Check-in incomplet à débloquer', timestamp: match.updatedAt || match.createdAt, severity: 1, action: () => setActiveTab('matches'), actionLabel: 'Ouvrir les matchs' }));
     return [...disputeItems, ...reportItems, ...operationalItems].sort((a, b) => b.severity - a.severity || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 8);
   }, [adminInsights.openDisputes, pendingReports, playerById, matchQueues.ready]);
   const filteredUsers = useMemo(() => {
@@ -81,9 +81,9 @@ const AdminDashboardPage: React.FC = () => {
     return adminInsights.flaggedUsers;
   }, [adminInsights.flaggedUsers, userFilter]);
   const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => { hydrateMatches([payload.match]); applyServerAccountState(payload); };
-  const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => { try { const response = await adminAwardServerMatch(matchId, winnerTeam, 'Resolution admin depuis le command center.'); applyAdminMatchResponse(response); toast.success('Resultat admin applique.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Resolution admin impossible.'); } };
-  const handleResolveDisputeOnly = async (matchId: string) => { try { const response = await adminResolveServerDispute(matchId, 'Litige clos par moderation ZOYD.'); applyAdminMatchResponse(response); toast.success('Litige clos sans modifier le vainqueur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.'); } };
-  const handleCancelMatch = async (matchId: string) => { try { const response = await adminCancelServerMatch(matchId, 'Match annule par moderation locale.'); applyAdminMatchResponse(response); toast.success('Match annule et rembourse cote serveur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Annulation admin impossible.'); } };
+  const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => { try { const response = await adminAwardServerMatch(matchId, winnerTeam, 'Résolution admin depuis le centre de commandement.'); applyAdminMatchResponse(response); toast.success('Résultat admin appliqué.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Résolution admin impossible.'); } };
+  const handleResolveDisputeOnly = async (matchId: string) => { try { const response = await adminResolveServerDispute(matchId, 'Litige clos par modération ZOYD.'); applyAdminMatchResponse(response); toast.success('Litige clos sans modifier le vainqueur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.'); } };
+  const handleCancelMatch = async (matchId: string) => { try { const response = await adminCancelServerMatch(matchId, 'Match annulé par modération locale.'); applyAdminMatchResponse(response); toast.success('Match annulé et remboursé côté serveur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Annulation admin impossible.'); } };
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline pt-safe-top">
       <Helmet>
@@ -101,7 +101,7 @@ const AdminDashboardPage: React.FC = () => {
                 <div className="w-10 h-10 flex items-center justify-center text-zoyd-yellow"><Shield className="w-5 h-5" aria-hidden="true" /></div>
                 <span className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest italic">Administration</span>
               </div>
-              <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Command <span className="text-white/40">Center</span></h1>
+              <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Centre de <span className="text-white/40">commandement</span></h1>
               <p className="text-white/40 max-w-2xl mt-2">Vue operationnelle pour prioriser les litiges, garder un oeil sur les passes bloques et agir vite sur les comptes qui degringolent en trust.</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 xl:min-w-[650px]">
@@ -135,9 +135,43 @@ const AdminDashboardPage: React.FC = () => {
         </div>
         {activeTab === 'overview' && <AdminOverviewTab priorityQueue={priorityQueue} readyMatchesCount={matchQueues.ready.length} liveMatchesCount={matchQueues.live.length} pendingReportsCount={pendingReports.length} recentEvents={adminInsights.recentEvents} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
         {activeTab === 'matches' && <AdminMatchesTab filteredMatches={filteredMatches} matchFilter={matchFilter} onFilterChange={setMatchFilter} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
-        {activeTab === 'disputes' && <AdminUrgencyTab filteredDisputes={filteredDisputes} disputeFilter={disputeFilter} onFilterChange={setDisputeFilter} escalatedCount={escalatedDisputes.length} totalCount={adminInsights.openDisputes.length} pendingResolve={pendingResolve} onSetPendingResolve={setPendingResolve} pendingCancelId={pendingCancelId} onSetPendingCancelId={setPendingCancelId} onResolveWinner={handleResolveWinner} onResolveDisputeOnly={handleResolveDisputeOnly} onCancelMatch={handleCancelMatch} />}
+        {activeTab === 'disputes' && <AdminUrgencyTab filteredDisputes={filteredDisputes} disputeFilter={disputeFilter} onFilterChange={setDisputeFilter} escalatedCount={escalatedDisputes.length} totalCount={adminInsights.openDisputes.length} pendingResolve={pendingResolve} onSetPendingResolve={setPendingResolve} onRequestCancel={(matchId) => setConfirmAction(matchId)} onResolveWinner={handleResolveWinner} onResolveDisputeOnly={handleResolveDisputeOnly} />}
         {activeTab === 'users' && <AdminUsersTab filteredUsers={filteredUsers} userFilter={userFilter} onFilterChange={setUserFilter} />}
       </main>
+
+      {confirmAction && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
+                  Confirmer l&apos;annulation ?
+                </h3>
+                <p className="text-white/60 text-sm">
+                  Ce match sera annule et les joueurs seront rembourses. Cette action est irreversible.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => { const matchId = confirmAction; setConfirmAction(null); if (matchId) void handleCancelMatch(matchId); }}
+                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

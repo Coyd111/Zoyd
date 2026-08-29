@@ -321,7 +321,7 @@ const WalletPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <Input id="deposit-amount" type="number" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} placeholder="Montant personnalise" />
+              <Input id="deposit-amount" type="number" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} placeholder="Montant personnalisé" />
             </div>
 
             <div>

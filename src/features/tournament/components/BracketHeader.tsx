@@ -23,7 +23,7 @@ const statusLabels: Record<TournamentStatus, string> = {
   recruiting: 'Recrutement ouvert',
   live: 'Tournoi en cours',
   completed: 'Tournoi termine',
-  cancelled: 'Tournoi annule',
+  cancelled: 'Tournoi annulé',
 };
 
 const InfoCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (

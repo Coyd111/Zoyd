@@ -138,8 +138,8 @@ const articles: LeakArticle[] = [
     excerpt: 'Pour le 7eme anniversaire de CODM, un skin Urban Tracker gratuit sera distribue via un event login. Un event de vote pour une arme mythique est aussi prevu.',
     content: [
       'Le 7eme anniversaire de Call of Duty Mobile est prevu pour la Saison 9 (Octobre 2026). Les premiers leaks revelent des recompenses importantes :',
-      'SKIN GRATUIT : Un skin Urban Tracker gratuit sera distribue via un simple event login airdrop. C\'est l\'un des skins les plus demandes par la communaute.',
-      'VOTE MYTHIQUE : Un event de vote permettra aux joueurs de choisir quelle arme mythique sera ajoutee dans le futur. C\'est la premiere fois qu\'un tel event est organise.',
+      'SKIN GRATUIT : Un skin Urban Tracker gratuit sera distribué via un simple event login airdrop. C\'est l\'un des skins les plus demandés par la communauté.',
+      'VOTE MYTHIQUE : Un event de vote permettra aux joueurs de choisir quelle arme mythique sera ajoutée dans le futur. C\'est la première fois qu\'un tel event est organisé.',
       'BATTLE PASS VAULT : Trois Battle Pass passes seront ajoutes au Vault en S8/S9, incluant le Shadow Operatives (S8 2024), le Nightmare (S9 2021), et le To the Skies (S6 2022).',
     ],
     category: 'saison',
@@ -157,7 +157,7 @@ const articles: LeakArticle[] = [
       'Un nouveau systeme d\'evenement nomme "Ranked Festival" sera introduit en S8 pour recompenser les joueurs actifs en Ranked Play.',
       'COMMENT CA MARCHE : Chaque match Ranked joue (MP ou BR) te donne des points d\'event. Plus tu joues, plus tu debloques de recompenses. C\'est en PLUS des recompenses Ranked habituelles.',
       'RECOMPENSES : L\'ASM10 "Turbulent Mayhem" est la recompense principale. D\'autres items incluent des Calling Cards, Sprays, et Vault Coins.',
-      'CE QUE CA CHANGE : C\'est la premiere fois que CODM recompense specifiquement l\'activite en Ranked au-dela du classement. Ca devrait augmenter la player base Ranked.',
+      'CE QUE CA CHANGE : C\'est la première fois que CODM récompense spécifiquement l\'activité en Ranked au-delà du classement. Ca devrait augmenter la player base Ranked.',
     ],
     category: 'competition',
     date: '22 Aout 2026',
@@ -330,7 +330,7 @@ const LeaksPage: React.FC = () => {
                 )}
               </div>
               {!bundlesLoading && bundles.length === 0 && (
-                <div className="text-center py-8 text-white/20 text-sm">Donnees du store temporairement indisponibles.</div>
+                <div className="text-center py-8 text-white/30 text-sm">Donnees du store temporairement indisponibles.</div>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {bundlesLoading && Array.from({ length: 6 }).map((_, i) => (
@@ -387,7 +387,7 @@ const LeaksPage: React.FC = () => {
                 <div className="relative w-full md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                   <input type="text" placeholder="Rechercher une arme..." value={weaponSearch} onChange={(e) => setWeaponSearch(e.target.value)}
-                    className="w-full bg-zoyd-surface/50 border border-white/10 text-white text-xs font-mono pl-9 pr-4 py-2.5 placeholder:text-white/20 focus:outline-none focus:border-zoyd-yellow/50 transition-colors" />
+                    className="w-full bg-zoyd-surface/50 border border-white/10 text-white text-xs font-mono pl-9 pr-4 py-2.5 placeholder:text-white/30 focus:border-zoyd-yellow/50 transition-colors" />
                 </div>
               </div>
               <div className="flex flex-nowrap gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-2">
@@ -408,11 +408,11 @@ const LeaksPage: React.FC = () => {
                       <Crosshair className="w-3 h-3 text-zoyd-yellow/50 group-hover:text-zoyd-yellow transition-colors" />
                       <span className="font-display font-black text-[10px] uppercase tracking-tight italic text-white truncate">{weapon}</span>
                     </div>
-                    <div className="text-[10px] font-mono text-white/20 uppercase">{selectedWeaponCategory}</div>
+                    <div className="text-[10px] font-mono text-white/30 uppercase">{selectedWeaponCategory}</div>
                   </motion.div>
                 ))}
               </div>
-              {searchedWeapons.length === 0 && <div className="text-center py-6 text-white/20 text-sm">Aucune arme trouvée.</div>}
+              {searchedWeapons.length === 0 && <div className="text-center py-6 text-white/30 text-sm">Aucune arme trouvée.</div>}
             </div>
           )}
         </div>
@@ -469,7 +469,7 @@ const LeaksPage: React.FC = () => {
                 </div>
                 <h2 className="text-2xl md:text-3xl font-display font-black uppercase tracking-tighter italic leading-tight mb-4 group-hover:text-zoyd-yellow transition-colors">{featured.title}</h2>
                 <p className="text-sm text-white/40 mb-4 line-clamp-3">{featured.excerpt}</p>
-                {featured.source && <p className="text-[10px] font-mono text-white/20 mb-4">Source: {featured.source}</p>}
+                {featured.source && <p className="text-[10px] font-mono text-white/30 mb-4">Source: {featured.source}</p>}
                 <button onClick={() => toggleArticle(featured.id)} aria-expanded={expandedArticles.has(featured.id)}
                   className="flex items-center gap-2 text-zoyd-yellow font-display font-black text-xs tracking-widest uppercase italic hover:gap-4 transition-all">
                   {expandedArticles.has(featured.id) ? 'REVOIR' : 'LIRE LA SUITE'}<ChevronRight className="w-4 h-4" />
@@ -503,10 +503,10 @@ const LeaksPage: React.FC = () => {
                   <>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-white/[0.02]" />
                     <div className="relative z-10 flex items-center justify-center w-16 h-16 border border-white/10 group-hover:border-zoyd-yellow/30 transition-colors">
-                      {article.category === 'saison' && <Zap className="w-7 h-7 text-white/20 group-hover:text-zoyd-yellow/60 transition-colors" />}
-                      {article.category === 'armes' && <Swords className="w-7 h-7 text-white/20 group-hover:text-red-400/60 transition-colors" />}
-                      {article.category === 'competition' && <Trophy className="w-7 h-7 text-white/20 group-hover:text-zoyd-blue/60 transition-colors" />}
-                      {article.category === 'patches' && <Bug className="w-7 h-7 text-white/20 group-hover:text-orange-400/60 transition-colors" />}
+                      {article.category === 'saison' && <Zap className="w-7 h-7 text-white/30 group-hover:text-zoyd-yellow/60 transition-colors" />}
+                      {article.category === 'armes' && <Swords className="w-7 h-7 text-white/30 group-hover:text-red-400/60 transition-colors" />}
+                      {article.category === 'competition' && <Trophy className="w-7 h-7 text-white/30 group-hover:text-zoyd-blue/60 transition-colors" />}
+                      {article.category === 'patches' && <Bug className="w-7 h-7 text-white/30 group-hover:text-orange-400/60 transition-colors" />}
                     </div>
                   </>
                 )}
@@ -526,8 +526,8 @@ const LeaksPage: React.FC = () => {
                 {article.source && <p className="text-[10px] font-mono text-white/15 mb-3">Source: {article.source}</p>}
                 <button onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
                   className="flex items-center justify-between w-full">
-                  <span className="text-[10px] font-mono text-white/20">{article.readTime}</span>
-                  <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/20 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
+                  <span className="text-[10px] font-mono text-white/30">{article.readTime}</span>
+                  <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/30 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
                     {expandedArticles.has(article.id) ? 'Masquer' : 'Lire'}<ChevronRight className="w-3 h-3" />
                   </span>
                 </button>
@@ -572,7 +572,7 @@ const LeaksPage: React.FC = () => {
             const Icon = stat.icon;
             return (
               <div key={stat.label} className="border border-white/5 bg-zoyd-surface/10 p-4 text-center">
-                <Icon className="w-4 h-4 text-white/20 mx-auto mb-2" />
+                <Icon className="w-4 h-4 text-white/30 mx-auto mb-2" />
                 <div className="font-display font-black text-2xl text-zoyd-yellow italic">{stat.value}</div>
                 <div className="text-[10px] font-mono font-black tracking-widest text-white/30 uppercase">{stat.label}</div>
               </div>

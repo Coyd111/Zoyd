@@ -334,7 +334,7 @@ const ChatPage: React.FC = () => {
                   }}
                   placeholder="Envoyer un message..."
                   aria-label="Saisir un message"
-                  className="touch-target flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:outline-none focus:border-zoyd-blue transition-colors"
+                  className="touch-target flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors"
                 />
                 <Button type="submit" variant="primary" disabled={!input.trim()} className="touch-target px-6" aria-label="Envoyer le message">
                   <Send className="w-4 h-4" />

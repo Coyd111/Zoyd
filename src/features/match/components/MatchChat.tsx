@@ -197,7 +197,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             onChange={(event) => handleInputChange(event.target.value)}
             disabled={!isConnected}
             placeholder="Transmettre un message..."
-            className="flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:outline-none focus:border-zoyd-blue transition-colors disabled:opacity-50"
+            className="flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors disabled:opacity-50"
           />
           <button
             type="submit"

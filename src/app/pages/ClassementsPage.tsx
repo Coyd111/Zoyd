@@ -272,7 +272,7 @@ const ClassementsPage: React.FC = () => {
           </h1>
           <p className="mt-5 max-w-3xl text-sm text-white/40">
             Ces classements bougent avec les matchs et tournois deja joues sur ZOYD. Rien n&apos;est affiche tant
-            que l&apos;activite n&apos;existe pas encore.
+            que l&apos;activité n&apos;existe pas encore.
           </p>
           {user && myRank ? (
             <div className="mt-6 flex flex-wrap items-center gap-6 text-sm font-mono text-white/40 uppercase tracking-widest">

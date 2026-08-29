@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper } from 'lucide-react';
+import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper, Shield, TrendingUp } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuthStore } from '../../stores/authStore';
 
 const navItems = [
   { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
   { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
   { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
   { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
+  { icon: TrendingUp, label: 'GAINS', path: '/earnings' },
   { icon: MessageCircle, label: 'MESSAGES', path: '/chat' },
   { icon: Newspaper, label: 'INFOS', path: '/infos' },
 ];
@@ -23,6 +25,8 @@ const BottomNav: React.FC = React.memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === 'admin';
 
   const handleNavigate = (path: string) => {
     setMenuOpen(false);
@@ -77,6 +81,19 @@ const BottomNav: React.FC = React.memo(() => {
                   </button>
                 );
               })}
+              {isAdmin && (
+                <button
+                  onClick={() => handleNavigate('/admin')}
+                  aria-label="ADMIN"
+                  className={cn(
+                    'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
+                    location.pathname === '/admin' ? 'text-red-400 bg-white/5' : 'text-white/40 hover:text-white hover:bg-white/5'
+                  )}
+                >
+                  <Shield className="w-5 h-5" />
+                  ADMIN
+                </button>
+              )}
             </div>
           </motion.div>
         )}

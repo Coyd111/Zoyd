@@ -39,13 +39,13 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
               </div>
               <h2 className="text-xl font-display font-black uppercase italic">Ce qui doit bouger maintenant</h2>
             </div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-white/20">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
               {priorityQueue.length} cartes actives
             </div>
           </div>
 
           {priorityQueue.length === 0 ? (
-            <p className="text-white/20 text-sm font-mono">Aucune urgence locale remontee.</p>
+            <p className="text-white/30 text-sm font-mono">Aucune urgence locale remontee.</p>
           ) : (
             <div className="space-y-3">
               {priorityQueue.map((item) => (
@@ -124,7 +124,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
             </div>
 
             {recentEvents.length === 0 ? (
-              <p className="text-white/20 text-sm font-mono">Aucun evenement recent.</p>
+              <p className="text-white/30 text-sm font-mono">Aucun evenement recent.</p>
             ) : (
               <div className="space-y-3">
                 {recentEvents.slice(0, 5).map((event) => (

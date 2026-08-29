@@ -262,7 +262,7 @@ const CreateTournamentPage: React.FC = () => {
                     id="tournament-name"
                     {...register('name', { required: true, minLength: 4 })}
                     placeholder="Ex: Raid Solo Night Cup"
-                    className="w-full bg-black border border-white/10 p-4 text-sm font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
+                    className="w-full bg-black border border-white/10 p-4 text-sm font-display font-black italic uppercase focus:border-zoyd-blue"
                   />
                   {errors.name ? (
                     <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-2" role="alert">
@@ -287,7 +287,7 @@ const CreateTournamentPage: React.FC = () => {
                           aria-checked={selected}
                           aria-label={`Format ${format}, ${formatTeamSize === 1 ? 'solo' : `squad ${formatTeamSize} joueurs`}`}
                           onClick={() => setValue('format', format)}
-                          className={`border p-4 text-left transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
+                          className={`border p-4 text-left transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                             selected
                               ? 'border-zoyd-yellow bg-zoyd-yellow/10 text-zoyd-yellow'
                               : 'border-white/10 hover:border-white/30 text-white/40'
@@ -311,7 +311,7 @@ const CreateTournamentPage: React.FC = () => {
                     id="starts-at"
                     type="datetime-local"
                     {...register('startsAt', { required: true })}
-                    className="w-full bg-black border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                    className="w-full bg-black border border-white/10 p-4 text-sm text-white focus:border-zoyd-blue"
                   />
                   {errors.startsAt ? (
                     <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-2" role="alert">
@@ -342,7 +342,7 @@ const CreateTournamentPage: React.FC = () => {
                         aria-checked={selectedMode === mode.name}
                         aria-label={`Mode ${mode.name}: ${mode.desc}`}
                         onClick={() => setValue('mode', mode.name)}
-                        className={`p-4 border text-left transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
+                        className={`p-4 border text-left transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                           selectedMode === mode.name
                             ? 'border-white bg-white/5'
                             : 'border-white/5 hover:border-white/20'
@@ -372,7 +372,7 @@ const CreateTournamentPage: React.FC = () => {
                           aria-checked={selected}
                           aria-label={`Carte ${map}`}
                           onClick={() => toggleMap(map)}
-                          className={`min-h-[44px] p-3 border text-xs font-display font-black italic uppercase transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
+                          className={`min-h-[44px] p-3 border text-xs font-display font-black italic uppercase transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                             selected
                               ? 'bg-white text-black border-white'
                               : 'border-white/5 hover:border-white/20 text-white/40'
@@ -393,7 +393,7 @@ const CreateTournamentPage: React.FC = () => {
                     <select
                       id="weapon-restrictions"
                       {...register('weaponRestrictions')}
-                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
+                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     >
                       {WEAPON_OPTIONS.map((weapon) => (
                         <option key={weapon} value={weapon}>
@@ -410,7 +410,7 @@ const CreateTournamentPage: React.FC = () => {
                     <select
                       id="pointstreaks"
                       {...register('pointstreaks')}
-                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
+                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     >
                       <option value="restricted">Interdites</option>
                       <option value="allowed">Permises</option>
@@ -426,7 +426,7 @@ const CreateTournamentPage: React.FC = () => {
                       type="number"
                       min={1}
                       {...register('scoreTarget', { valueAsNumber: true, min: 1 })}
-                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
+                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     />
                   </div>
 
@@ -439,7 +439,7 @@ const CreateTournamentPage: React.FC = () => {
                       type="number"
                       min={1}
                       {...register('bestOf', { valueAsNumber: true, min: 1 })}
-                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
+                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     />
                   </div>
                 </div>
@@ -466,7 +466,7 @@ const CreateTournamentPage: React.FC = () => {
                   <textarea
                     id="match-notes"
                     {...register('notes')}
-                    className="w-full min-h-28 bg-black border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                    className="w-full min-h-28 bg-black border border-white/10 p-4 text-sm text-white focus:border-zoyd-blue"
                   />
                 </div>
               </div>
@@ -492,7 +492,7 @@ const CreateTournamentPage: React.FC = () => {
                         aria-checked={selectedEntryFee === amount}
                         aria-label={`Frais d'entree ${amount} ZC`}
                         onClick={() => setValue('entryFee', amount)}
-                        className={`min-h-[44px] p-3 border font-display font-black italic text-sm transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
+                        className={`min-h-[44px] p-3 border font-display font-black italic text-sm transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                           selectedEntryFee === amount
                             ? 'border-zoyd-yellow bg-zoyd-yellow/10 text-zoyd-yellow'
                             : 'border-white/5 hover:border-zoyd-yellow text-zoyd-yellow'
@@ -517,7 +517,7 @@ const CreateTournamentPage: React.FC = () => {
                         aria-checked={selectedMaxEntries === amount}
                         aria-label={`${amount} places maximum`}
                         onClick={() => setValue('maxEntries', amount)}
-                        className={`min-h-[44px] p-4 border font-display font-black italic text-sm transition-all focus:outline-none focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
+                        className={`min-h-[44px] p-4 border font-display font-black italic text-sm transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                           selectedMaxEntries === amount
                             ? 'bg-white text-black border-white'
                             : 'border-white/10 text-white/40 hover:border-white/30'
@@ -537,7 +537,7 @@ const CreateTournamentPage: React.FC = () => {
                     <select
                       id="device-restriction"
                       {...register('deviceRestriction')}
-                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
+                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     >
                       <option value="open">Ouvert</option>
                       {DEVICE_OPTIONS.map((option) => (
@@ -555,7 +555,7 @@ const CreateTournamentPage: React.FC = () => {
                     <select
                       id="controller-restriction"
                       {...register('controllerRestriction')}
-                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:outline-none focus:border-zoyd-blue"
+                      className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     >
                       <option value="open">Ouvert</option>
                       {CONTROLLER_OPTIONS.map((option) => (

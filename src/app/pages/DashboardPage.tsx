@@ -211,7 +211,7 @@ const DashboardPage: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-5">
               <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
-                Activite recente
+                Activité récente
               </div>
               {recentFinished.length > 0 && (
                 <Link
@@ -224,8 +224,8 @@ const DashboardPage: React.FC = () => {
             </div>
             {recentFinished.length === 0 ? (
               <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
-                <Swords className="w-8 h-8 text-white/20 mx-auto mb-3" />
-                <p className="text-white/40 text-sm">Aucun match termine pour l&apos;instant.</p>
+                <Swords className="w-8 h-8 text-white/30 mx-auto mb-3" />
+                <p className="text-white/40 text-sm">Aucun match terminé pour l&apos;instant.</p>
                 <Link
                   to="/mj"
                   className="inline-flex items-center gap-2 mt-4 text-[10px] font-display font-black uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
@@ -272,7 +272,7 @@ const DashboardPage: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-white/40 transition-colors" />
+                      <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white/40 transition-colors" />
                     </Link>
                   );
                 })}
@@ -300,7 +300,7 @@ const DashboardPage: React.FC = () => {
             </div>
             {upcomingTournaments.length === 0 ? (
               <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
-                <Trophy className="w-8 h-8 text-white/20 mx-auto mb-3" />
+                <Trophy className="w-8 h-8 text-white/30 mx-auto mb-3" />
                 <p className="text-white/40 text-sm">Pas de tournoi programmé.</p>
               </div>
             ) : (
@@ -331,7 +331,7 @@ const DashboardPage: React.FC = () => {
                       <div className="text-[10px] font-mono text-white/30">
                         {t.entries.length}/{t.maxEntries} inscrits
                       </div>
-                      <ArrowRight className="w-3 h-3 text-white/20 group-hover:text-zoyd-yellow transition-colors" />
+                      <ArrowRight className="w-3 h-3 text-white/30 group-hover:text-zoyd-yellow transition-colors" />
                     </div>
                   </Link>
                 ))}
@@ -363,7 +363,7 @@ const DashboardPage: React.FC = () => {
             </div>
             {recentNotifications.length === 0 ? (
               <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
-                <Bell className="w-8 h-8 text-white/20 mx-auto mb-3" />
+                <Bell className="w-8 h-8 text-white/30 mx-auto mb-3" />
                 <p className="text-white/40 text-sm">Aucune notification.</p>
               </div>
             ) : (
@@ -637,17 +637,17 @@ const DashboardPage: React.FC = () => {
           className="mt-10 md:mt-14 p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 text-center"
         >
           <h2 className="text-xl md:text-2xl font-display font-black uppercase italic tracking-tight text-white mb-3">
-            Pret a jouer ?
+            Prêt à jouer ?
           </h2>
           <p className="text-white/40 text-sm mb-6 max-w-lg mx-auto">
-            Cree un match instantane ou rejoins un tournoi en cours.
+            Crée un match instantané ou rejoins un tournoi en cours.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
               to="/mj/creer"
               className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors"
             >
-              <Plus className="w-4 h-4" /> Creer un match
+              <Plus className="w-4 h-4" /> Créer un match
             </Link>
             <Link
               to="/chat"

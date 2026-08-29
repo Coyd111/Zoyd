@@ -108,7 +108,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
               value={squadName}
               onChange={(event) => onSquadNameChange(event.target.value)}
               placeholder="Nom de ton equipe"
-              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-yellow"
+              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-yellow"
             />
             <div className="grid gap-3">
               {teammateInputs.map((value, index) => (
@@ -118,7 +118,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
                   value={value}
                   onChange={(event) => onTeammateInputChange(index, event.target.value)}
                   placeholder={`Coequipier ${index + 2} / pseudo CODM`}
-                  className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-yellow"
+                  className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-yellow"
                 />
               ))}
             </div>

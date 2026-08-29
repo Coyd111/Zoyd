@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
+import { AlertTriangle } from 'lucide-react';
 import {
   assignServerTournamentArbiter,
   fetchServerTournament,
@@ -17,6 +18,7 @@ import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { useTournamentStore } from '../../../app/stores/tournamentStore';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
+import { formatZC } from '../../../lib/utils';
 import BracketHeader from '../components/BracketHeader';
 import BracketGrid from '../components/BracketGrid';
 import BracketSidebar from '../components/BracketSidebar';
@@ -41,37 +43,28 @@ const TournamentBracketPage: React.FC = () => {
   const [teammateInputs, setTeammateInputs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
   const tournament = id ? getTournamentById(id) : undefined;
   const availableSpend = getAvailableToSpend();
 
-  useEffect(() => {
+  const loadTournament = useCallback(async () => {
     if (!id) return;
-    let cancelled = false;
+    try {
+      setLoadError(null);
+      setIsLoading(true);
+      const response = await fetchServerTournament(id);
+      hydrateTournaments([response.tournament]);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Impossible de charger ce tournoi.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, hydrateTournaments]);
 
-    const loadTournament = async () => {
-      try {
-        setLoadError(null);
-        setIsLoading(true);
-        const response = await fetchServerTournament(id);
-        if (cancelled) return;
-        hydrateTournaments([response.tournament]);
-      } catch (error) {
-        if (cancelled) return;
-        setLoadError(error instanceof Error ? error.message : 'Impossible de charger ce tournoi.');
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
+  useEffect(() => {
     void loadTournament();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hydrateTournaments, id]);
+  }, [loadTournament]);
 
   const myEntry = useMemo(
     () => tournament?.entries.find((entry) => entry.members.some((member) => member.userId === user?.id)),
@@ -136,6 +129,11 @@ const TournamentBracketPage: React.FC = () => {
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Tournoi introuvable</h2>
           {loadError ? <p className="text-sm text-red-200 mb-4">{loadError}</p> : null}
+          {loadError ? (
+            <button onClick={() => void loadTournament()} className="underline hover:text-white text-sm text-red-200">
+              Réessayer
+            </button>
+          ) : null}
           <Link
             to="/mj/tournois"
             className="border border-white/10 px-6 py-3 uppercase text-sm font-display font-black tracking-widest"
@@ -336,6 +334,9 @@ const TournamentBracketPage: React.FC = () => {
         {loadError ? (
           <div className="border border-red-400/20 bg-red-400/5 px-5 py-4 text-sm text-red-200">
             {loadError}
+            <button onClick={() => void loadTournament()} className="ml-4 underline hover:text-white">
+              Réessayer
+            </button>
           </div>
         ) : null}
 
@@ -360,7 +361,7 @@ const TournamentBracketPage: React.FC = () => {
               onSquadNameChange={setSquadName}
               onTeammateInputChange={updateTeammateInput}
               onRegister={handleRegister}
-              onLeave={handleLeave}
+              onLeave={() => setConfirmAction('leave')}
               onJoinArbiter={handleJoinArbiter}
               onStartTournament={handleStartTournament}
             />
@@ -397,7 +398,7 @@ const TournamentBracketPage: React.FC = () => {
                     <select
                       value={selectedMatchId}
                       onChange={(event) => setSelectedMatchId(event.target.value)}
-                      className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                      className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                     >
                       {actionableMatches.map((match) => {
                         const entryA =
@@ -418,14 +419,14 @@ const TournamentBracketPage: React.FC = () => {
                         value={roomName}
                         onChange={(event) => setRoomName(event.target.value)}
                         placeholder="Nom de la salle CODM"
-                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                       <input
                         type="text"
                         value={roomPassword}
                         onChange={(event) => setRoomPassword(event.target.value)}
                         placeholder="Mot de passe de la salle"
-                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                     </div>
 
@@ -450,14 +451,14 @@ const TournamentBracketPage: React.FC = () => {
                         value={scoreA}
                         onChange={(event) => setScoreA(event.target.value)}
                         placeholder="Score equipe A"
-                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                       <input
                         type="number"
                         value={scoreB}
                         onChange={(event) => setScoreB(event.target.value)}
                         placeholder="Score equipe B"
-                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                        className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                     </div>
 
@@ -465,7 +466,7 @@ const TournamentBracketPage: React.FC = () => {
                       value={notes}
                       onChange={(event) => setNotes(event.target.value)}
                       placeholder="Ce qu'il faut retenir de ce duel"
-                      className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                      className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                     />
                     <button
                       onClick={handleSubmitResult}
@@ -484,6 +485,40 @@ const TournamentBracketPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {confirmAction === 'leave' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
+                  Confirmer le retrait ?
+                </h3>
+                <p className="text-white/60 text-sm">
+                  Tu vas quitter ce tournoi. Ton pass d&apos;inscription ({formatZC(registrationCost)}) sera rembourse.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => { setConfirmAction(null); void handleLeave(); }}
+                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

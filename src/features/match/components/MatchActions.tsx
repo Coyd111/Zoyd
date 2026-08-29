@@ -226,7 +226,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               value={roomState.scheduleValue}
               onChange={(event) => roomState.setScheduleValue(event.target.value)}
               aria-label="Horaire du match"
-              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <button onClick={handlers.schedule} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic">
               Valider l'horaire
@@ -240,7 +240,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => roomState.setRoomName(event.target.value)}
               placeholder="Nom de la salle CODM"
               aria-label="Nom de la salle"
-              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <input
               type="text"
@@ -248,7 +248,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => roomState.setRoomPassword(event.target.value)}
               placeholder="Mot de passe de la salle"
               aria-label="Mot de passe de la salle"
-              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
           </div>
 
@@ -270,7 +270,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                 onChange={(event) => scoreState.setScoreAlpha(event.target.value)}
                 placeholder="Score Alpha"
                 aria-label="Score de l'équipe Alpha"
-                className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
               />
               <input
                 type="number"
@@ -278,7 +278,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                 onChange={(event) => scoreState.setScoreBravo(event.target.value)}
                 placeholder="Score Bravo"
                 aria-label="Score de l'équipe Bravo"
-                className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
               />
             </div>
             <textarea
@@ -286,7 +286,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => scoreState.setResultNotes(event.target.value)}
               placeholder="Ce qu'il faut retenir de la fin de match"
               aria-label="Notes de fin de match"
-              className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <input
               type="text"
@@ -294,7 +294,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => proofsState.setScoreboardProofs(event.target.value)}
               placeholder="Screens scoreboard (liens ou refs, separes par des virgules)"
               aria-label="Liens des scores"
-              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <input
               type="text"
@@ -302,7 +302,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => proofsState.setFinalResultProofs(event.target.value)}
               placeholder="Ecran final / victoire (liens ou refs)"
               aria-label="Preuves du résultat final"
-              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <input
               type="text"
@@ -310,7 +310,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => proofsState.setRoomCaptureProofs(event.target.value)}
               placeholder="Capture de salle ou room setup (optionnel)"
               aria-label="Capture de salle"
-              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <input
               type="text"
@@ -318,7 +318,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => proofsState.setExtraResultProofs(event.target.value)}
               placeholder="Autres preuves utiles (clips, captures, etc.)"
               aria-label="Autres preuves"
-              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <button
               onClick={handlers.resultSubmit}
@@ -426,7 +426,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                       onChange={(e) => disputeState.setAddEvidenceInput(e.target.value)}
                       placeholder="Liens ou refs séparés par des virgules"
                       aria-label="Ajouter des preuves"
-                      className="flex-1 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                      className="flex-1 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                     />
                     <button
                       onClick={handlers.addEvidence}
@@ -467,7 +467,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                           onChange={(e) => scoreState.setScoreAlpha(e.target.value)}
                           placeholder="Score Alpha"
                           aria-label="Score Alpha (arbitre)"
-                          className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                          className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                         />
                         <input
                           type="number"
@@ -475,7 +475,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                           onChange={(e) => scoreState.setScoreBravo(e.target.value)}
                           placeholder="Score Bravo"
                           aria-label="Score Bravo (arbitre)"
-                          className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                          className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                         />
                       </div>
                       <textarea
@@ -483,7 +483,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                         onChange={(e) => scoreState.setResultNotes(e.target.value)}
                         placeholder="Notes d'arbitrage sur ce litige..."
                         aria-label="Notes d'arbitrage"
-                        className="w-full min-h-20 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+                        className="w-full min-h-20 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                       <button
                         onClick={handlers.resultSubmit}
@@ -537,7 +537,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               value={disputeState.category}
               onChange={(event) => disputeState.setCategory(event.target.value as DisputeCategory)}
               aria-label="Catégorie du litige"
-              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             >
               {Object.entries(disputeCategoryLabels).map(([value, label]) => (
                 <option key={value} value={value} className="bg-zoyd-black">
@@ -551,14 +551,14 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               onChange={(event) => disputeState.setReason(event.target.value)}
               placeholder="Raison du litige"
               aria-label="Raison du litige"
-              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <textarea
               value={disputeState.evidence}
               onChange={(event) => disputeState.setEvidence(event.target.value)}
               placeholder="Screenshots, room logs ou preuves, séparés par des virgules"
               aria-label="Preuves du litige"
-              className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-zoyd-blue"
+              className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
             <button onClick={handlers.dispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">
               Ouvrir un litige

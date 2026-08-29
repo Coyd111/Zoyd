@@ -79,7 +79,7 @@ const PublicProfilPage = () => {
         <div className="text-center max-w-lg px-6">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Profil public indisponible</h2>
           <p className="text-white/40 mb-6">
-            Ce joueur n&apos;a pas encore assez d&apos;activite sur ZOYD pour afficher un profil public complet.
+            Ce joueur n&apos;a pas encore assez d&apos;activité sur ZOYD pour afficher un profil public complet.
           </p>
           <Button variant="primary" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
@@ -130,6 +130,7 @@ const PublicProfilPage = () => {
     }
   };
 
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [confirmReport, setConfirmReport] = useState(false);
 
   const handleReport = () => {
@@ -182,16 +183,29 @@ const PublicProfilPage = () => {
           <div className="flex flex-col gap-2 min-w-[220px]">
             <Button variant="primary" size="sm" onClick={handleAddFriend} disabled={alreadyFriend || blocked} className="touch-target" aria-label={alreadyFriend ? 'Déjà ami' : blocked ? 'Joueur bloqué' : `Ajouter ${publicProfile.pseudo} en ami`}>
               <UserPlus className="w-4 h-4 mr-2" aria-hidden="true" />
-              {alreadyFriend ? 'Deja ami' : blocked ? 'Bloque' : 'Ajouter en ami'}
+              {alreadyFriend ? 'Déjà ami' : blocked ? 'Bloqué' : 'Ajouter en ami'}
             </Button>
             <Button variant="secondary" size="sm" onClick={handleInviteMatch} className="touch-target" aria-label={`Inviter ${publicProfile.pseudo} en match`}>
               <Swords className="w-4 h-4 mr-2" aria-hidden="true" />
               Inviter en match
             </Button>
-            <Button variant="danger" size="sm" onClick={handleBlock} className="touch-target" aria-label={`Bloquer ${publicProfile.pseudo}`}>
+            <Button variant="danger" size="sm" onClick={() => setConfirmAction('block')} className="touch-target" aria-label={`Bloquer ${publicProfile.pseudo}`}>
               <UserX className="w-4 h-4 mr-2" aria-hidden="true" />
               Bloquer
             </Button>
+            {confirmAction === 'block' && (
+              <div className="border border-red-500/30 bg-red-500/10 p-3 space-y-2">
+                <p className="text-xs text-red-300">Confirmer le blocage de {publicProfile.pseudo} ?</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setConfirmAction(null)} className="flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors">
+                    Annuler
+                  </button>
+                  <button onClick={() => { setConfirmAction(null); void handleBlock(); }} className="flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors">
+                    Confirmer
+                  </button>
+                </div>
+              </div>
+            )}
             <Button variant="ghost" size="sm" onClick={handleReport} className={`touch-target ${confirmReport ? 'border-red-400 text-red-300' : 'text-red-300 hover:text-red-200'}`} aria-label={confirmReport ? 'Confirmer le signalement' : `Signaler ${publicProfile.pseudo}`}>
               <AlertTriangle className="w-4 h-4 mr-2" aria-hidden="true" />
               {confirmReport ? 'Confirmer le signalement' : 'Signaler'}

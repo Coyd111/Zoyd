@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
+import { AlertTriangle } from 'lucide-react';
 import {
   fetchServerChatChannel,
   markServerChatChannelRead,
@@ -41,12 +42,12 @@ import { Helmet } from 'react-helmet-async';
 const statusLabels: Record<string, string> = {
   recruiting: 'Recrutement ouvert',
   full: 'Joueurs complets',
-  check_in: 'Confirmation de presence',
-  ready: 'Pret a jouer',
+  check_in: 'Confirmation de présence',
+  ready: 'Prêt à jouer',
   in_progress: 'Partie en cours',
-  finished: 'Partie terminee',
+  finished: 'Partie terminée',
   disputed: 'Litige ouvert',
-  cancelled: 'Annule',
+  cancelled: 'Annulé',
   forfeited: 'Forfait',
 };
 
@@ -104,6 +105,7 @@ const MatchDetailPage: React.FC = () => {
   const [showArbiterScore, setShowArbiterScore] = useState(false);
   const [isSubmittingResult, setIsSubmittingResult] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
   const match = id ? getMatchById(id) : undefined;
   const messages = match ? getMessagesForChannel(match.channelId) : [];
@@ -235,7 +237,7 @@ const MatchDetailPage: React.FC = () => {
     : minutesUntilMatch !== null && minutesUntilMatch > 10
       ? {
           canPublish: false,
-          message: `La salle pourra etre partagee dans ${Math.max(1, minutesUntilMatch - 10)} minute(s).`,
+          message: `La salle pourra être partagée dans ${Math.max(1, minutesUntilMatch - 10)} minute(s).`,
         }
       : {
           canPublish: true,
@@ -328,7 +330,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await setServerRoomDetails(match.id, roomName, roomPassword);
       applyMatchResponse(response);
-      toast.success('La salle privee a bien ete partagee.');
+      toast.success('La salle privée a bien été partagée.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : roomPublishWindow.message);
     }
@@ -336,7 +338,7 @@ const MatchDetailPage: React.FC = () => {
 
   const handleResultSubmit = async () => {
     if (isSubmittingResult) {
-      toast.error('Un resultat est deja en cours de soumission. Patientes...');
+      toast.error('Un résultat est déjà en cours de soumission. Patientez...');
       return;
     }
 
@@ -348,7 +350,7 @@ const MatchDetailPage: React.FC = () => {
     const extraRefs = parseRefs(extraResultProofs);
 
     if (alpha === bravo) {
-      toast.error('Le score final doit designer une equipe gagnante.');
+      toast.error('Le score final doit désigner une équipe gagnante.');
       return;
     }
 
@@ -373,7 +375,7 @@ const MatchDetailPage: React.FC = () => {
       setFinalResultProofs('');
       setRoomCaptureProofs('');
       setExtraResultProofs('');
-      toast.success('Resultat valide. Les gains sont en cours de distribution.');
+      toast.success('Résultat validé. Les gains sont en cours de distribution.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ajoute au moins un scoreboard et un ecran final avant de valider le score.");
     } finally {
@@ -416,7 +418,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await checkInServerMatch(match.id);
       applyMatchResponse(response);
-      toast.success('Presence confirmee.');
+      toast.success('Présence confirmée.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Check-in impossible.');
     } finally {
@@ -457,7 +459,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await confirmServerMatchResult(match.id);
       applyMatchResponse(response);
-      toast.success('Resultat confirme de ton cote.');
+      toast.success('Résultat confirmé de ton côté.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Confirmation impossible.');
     } finally {
@@ -578,12 +580,12 @@ const MatchDetailPage: React.FC = () => {
                 schedule: handleSchedule,
                 roomSave: handleRoomSave,
                 resultSubmit: handleResultSubmit,
-                dispute: handleDispute,
+                dispute: () => setConfirmAction('dispute'),
                 checkIn: handleCheckIn,
                 toggleReady: handleToggleReady,
                 launch: handleLaunch,
                 addEvidence: handleAddEvidence,
-                escalate: handleEscalate,
+                escalate: () => setConfirmAction('escalate'),
               }}
             />
             <MatchTimeline
@@ -619,6 +621,74 @@ const MatchDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {confirmAction === 'dispute' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
+                  Ouvrir un litige ?
+                </h3>
+                <p className="text-white/60 text-sm">
+                  Les gains restent bloques jusqu&apos;a resolution du litige. Assure-toi d&apos;avoir fourni sufifamment de preuves.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => { setConfirmAction(null); void handleDispute(); }}
+                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction === 'escalate' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
+                  Escalader a l&apos;administration ?
+                </h3>
+                <p className="text-white/60 text-sm">
+                  L&apos;equipe admin ZOYD prendra le relais pour trancher ce litige.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => { setConfirmAction(null); void handleEscalate(); }}
+                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

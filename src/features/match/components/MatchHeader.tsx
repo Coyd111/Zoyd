@@ -39,13 +39,13 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({ match, statusLabel }) 
           <div className="w-12 h-12 flex items-center justify-center text-zoyd-yellow">
             <Swords className="w-5 h-5" />
           </div>
-          <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">LOBBY DU WAGER</span>
+          <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">SALLE DU WAGER</span>
         </div>
         <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
-          {match.rules.map} <span className="text-white/20">/</span> {match.rules.mode}
+          {match.rules.map} <span className="text-white/30">/</span> {match.rules.mode}
         </h1>
         <p className="text-white/40 mt-3 max-w-3xl">
-          {match.format} / Wager: {formatZC(match.entryFee)} / Cash Prize: {formatZC(match.prizePool)} / Créé par {match.creatorPseudo}
+          {match.format} / Wager: {formatZC(match.entryFee)} / Cagnotte: {formatZC(match.prizePool)} / Créé par {match.creatorPseudo}
         </p>
       </div>
     </header>

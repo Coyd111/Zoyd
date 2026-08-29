@@ -70,7 +70,7 @@ export const QualificationPanel = ({
                       ? 'border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/10'
                       : 'border-white/10 text-white/30 bg-white/5'
                 }`}>
-                  {status === 'finished' ? 'Termine' : status === 'live' ? 'En cours' : status === 'scheduled' ? 'Planifie' : 'En attente'}
+                  {status === 'finished' ? 'Terminé' : status === 'live' ? 'En cours' : status === 'scheduled' ? 'Planifié' : 'En attente'}
                 </span>
                 {isAdmin && status === 'scheduled' && (
                   <button

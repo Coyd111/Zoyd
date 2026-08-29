@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Trophy, Crown, Medal, Zap, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
@@ -36,27 +36,25 @@ const LeagueSeasonPage = () => {
   const [activeTab, setActiveTab] = useState('standings');
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: Record<string, unknown>; message: string } | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+
+  const loadSeason = useCallback(async () => {
+    if (!seasonId) return;
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const response = await fetchServerLeagueSeason(seasonId);
+      replaceFromServer([response.season]);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Erreur de chargement.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [seasonId, replaceFromServer]);
 
   useEffect(() => {
-    if (!seasonId) return;
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        setLoadError(null);
-        const response = await fetchServerLeagueSeason(seasonId);
-        if (cancelled) return;
-        replaceFromServer([response.season]);
-      } catch (error) {
-        if (cancelled) return;
-        setLoadError(error instanceof Error ? error.message : 'Erreur de chargement.');
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    void load();
-    return () => { cancelled = true; };
-  }, [seasonId, replaceFromServer]);
+    void loadSeason();
+  }, [loadSeason]);
 
   const season = seasonId ? getSeasonById(seasonId) : undefined;
 
@@ -193,6 +191,11 @@ const LeagueSeasonPage = () => {
           </Link>
           <div className="border border-red-500/30 bg-red-500/10 px-6 py-5 text-sm text-red-400">
             {loadError || 'Saison introuvable.'}
+            {loadError ? (
+              <button onClick={() => void loadSeason()} className="ml-4 underline hover:text-white">
+                Réessayer
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -239,13 +242,28 @@ const LeagueSeasonPage = () => {
             <div className="flex items-center gap-3">
               {season.status === 'registering' && (
                 isRegistered ? (
+                  <>
                   <button
-                    onClick={handleLeave}
+                    onClick={() => setConfirmLeave(true)}
                     disabled={actionLoading}
                     className="border border-red-500/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
                   >
                     Se desinscrire
                   </button>
+                  {confirmLeave && (
+                    <div className="border border-red-500/30 bg-red-500/10 p-3 space-y-2 col-span-full">
+                      <p className="text-xs text-red-300">Confirmer le retrait de la saison ? Ton inscription ({formatZC(season.entryFee)}) sera remboursee.</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setConfirmLeave(false)} disabled={actionLoading} className="flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors disabled:opacity-50">
+                          Annuler
+                        </button>
+                        <button onClick={() => { setConfirmLeave(false); void handleLeave(); }} disabled={actionLoading} className="flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50">
+                          Confirmer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  </>
                 ) : (
                   <button
                     onClick={handleJoin}

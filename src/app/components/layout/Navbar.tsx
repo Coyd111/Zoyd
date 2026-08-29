@@ -67,7 +67,7 @@ const Navbar: React.FC = React.memo(() => {
           <button
             onClick={() => setSettingsOpen(true)}
             className="touch-target flex items-center justify-center text-white/30 hover:text-white transition-colors"
-            aria-label="Parametres de notifications"
+            aria-label="Paramètres de notifications"
           >
             <Settings className="w-5 h-5" />
           </button>
@@ -80,7 +80,7 @@ const Navbar: React.FC = React.memo(() => {
 
           <button
             onClick={handleLogout}
-            title="Se deconnecter"
+            title="Se déconnecter"
             className="touch-target flex items-center justify-center text-white/30 hover:text-red-400 transition-colors"
           >
             <LogOut className="w-5 h-5" />

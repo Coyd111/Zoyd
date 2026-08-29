@@ -160,7 +160,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Chercher une carte, un mode ou un joueur..."
                   aria-label="Rechercher un match par carte, mode ou joueur"
-                  className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:outline-none focus:border-zoyd-blue transition-colors"
+                  className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:border-zoyd-blue transition-colors"
                 />
               </div>
               <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">

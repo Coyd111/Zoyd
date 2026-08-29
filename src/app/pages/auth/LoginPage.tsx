@@ -156,7 +156,7 @@ const LoginPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-2xl font-display font-black text-white italic">Wallet integre</div>
-                <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">Gains et activite</div>
+                <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">Gains et activité</div>
               </div>
             </div>
 

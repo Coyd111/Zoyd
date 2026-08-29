@@ -21,13 +21,13 @@ const statusConfig: Record<Tournament['status'], { label: string; dot: string; t
     cta: 'Suivre le tournoi',
   },
   completed: {
-    label: 'Tournoi termine',
+    label: 'Tournoi terminé',
     dot: 'bg-white/20',
     tone: 'text-white/30',
     cta: 'Voir le resultat',
   },
   cancelled: {
-    label: 'Annule',
+    label: 'Annulé',
     dot: 'bg-red-400/70',
     tone: 'text-red-300',
     cta: 'Consulter',
@@ -39,7 +39,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
   const completion = Math.min(100, (tournament.entries.length / tournament.maxEntries) * 100);
   const winner = tournament.entries.find((entry) => entry.finalPlacement === 1);
   const slotLabel = tournament.teamSize > 1 ? 'Equipes inscrites' : 'Places prises';
-  const payoutLabel = tournament.teamSize > 1 ? 'Top 3 equipes recompensees' : 'Top 3 recompenses';
+  const payoutLabel = tournament.teamSize > 1 ? 'Top 3 équipes récompensées' : 'Top 3 récompenses';
   const entryLabel = tournament.teamSize > 1 ? `${tournament.entries.length}/${tournament.maxEntries} equipes` : `${tournament.entries.length}/${tournament.maxEntries} inscrits`;
 
   return (
@@ -79,7 +79,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
             <div className="text-[10px] font-mono uppercase tracking-widest text-white/40">Depart</div>
             <div className="text-[10px] font-display font-black uppercase italic text-white">
               {tournament.status === 'completed'
-                ? `Termine ${getRelativeTime(tournament.finishedAt || tournament.startsAt)}`
+                ? `Terminé ${getRelativeTime(tournament.finishedAt || tournament.startsAt)}`
                 : new Date(tournament.startsAt).toLocaleString('fr-FR', {
                     day: '2-digit',
                     month: 'short',

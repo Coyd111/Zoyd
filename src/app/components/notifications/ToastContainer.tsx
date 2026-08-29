@@ -78,7 +78,7 @@ const ToastContainer: React.FC = () => {
                 </div>
                 <button
                   onClick={() => removeToast(toast.id)}
-                  className="text-white/20 hover:text-white transition-colors shrink-0 -mt-0.5 touch-target"
+                  className="text-white/30 hover:text-white transition-colors shrink-0 -mt-0.5 touch-target"
                   aria-label="Fermer la notification"
                   title="Fermer"
                 >

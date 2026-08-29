@@ -93,7 +93,7 @@ const ParametresPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top">
         <div className="text-center">
-          <h2 className="text-2xl font-display font-black uppercase mb-4">Parametres indisponibles</h2>
+          <h2 className="text-2xl font-display font-black uppercase mb-4">Paramètres indisponibles</h2>
         </div>
       </div>
     );
@@ -143,7 +143,7 @@ const ParametresPage: React.FC = () => {
       return;
     }
     if (newPassword.length < 8) {
-      toast.error('Le nouveau mot de passe doit faire au moins 8 caracteres.');
+      toast.error('Le nouveau mot de passe doit faire au moins 8 caractères.');
       return;
     }
     if (newPassword !== confirmNewPassword) {
@@ -158,7 +158,7 @@ const ParametresPage: React.FC = () => {
         newPassword,
       });
       if (res.ok) {
-        toast.success('Mot de passe change avec succes.');
+        toast.success('Mot de passe changé avec succès.');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmNewPassword('');
@@ -184,7 +184,7 @@ const ParametresPage: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent pointer-events-none" />
         <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 pb-12">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
-            Parametres
+            Paramètres
           </h1>
           <p className="text-white/40 mt-4 max-w-2xl">
             Regle ton profil, ton compte CODM et ce que ZOYD doit prendre en compte pour te proposer les bonnes parties.
@@ -194,7 +194,7 @@ const ParametresPage: React.FC = () => {
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
         <div className="lg:col-span-1 space-y-2">
-          <nav className="space-y-2" role="tablist" aria-label="Parametres">
+          <nav className="space-y-2" role="tablist" aria-label="Paramètres">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -274,7 +274,7 @@ const ParametresPage: React.FC = () => {
                       onChange={(event) => updateForm('bio', event.target.value)}
                       rows={4}
                       maxLength={500}
-                      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white/30 focus:outline-none focus:border-zoyd-yellow transition-all duration-200"
+                      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white/30 focus:border-zoyd-yellow transition-all duration-200"
                       placeholder="Quelques lignes pour decrire ton style de jeu ou ton identite competitive."
                     />
                   </label>
@@ -441,7 +441,7 @@ const ParametresPage: React.FC = () => {
                   />
                   <NotificationRow
                     label="Messages"
-                    desc="Nouvelle activite dans tes discussions d'equipe, de match ou privees."
+                    desc="Nouvelle activité dans tes discussions d'equipe, de match ou privees."
                     value={notificationToggles.messages}
                     onChange={(value) => setNotificationToggles((prev) => ({ ...prev, messages: value }))}
                   />
@@ -509,7 +509,7 @@ const SelectField = React.memo(({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 focus:outline-none focus:border-zoyd-yellow transition-all duration-200"
+      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 focus:border-zoyd-yellow transition-all duration-200"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value} className="bg-zoyd-black text-white">

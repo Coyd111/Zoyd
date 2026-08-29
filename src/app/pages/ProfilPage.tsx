@@ -69,7 +69,7 @@ const ProfilPage = () => {
       showProgression
       matchesLink={{ to: '/mj', label: 'Hub MJ' }}
       tournamentsLink={{ to: '/mj/tournois', label: 'Voir les tournois' }}
-      trustDescription="Un bon Trust Score te permet d'acceder aux wagers High Rollers et de postuler comme Arbitre remunere sur ZOYD."
+      trustDescription="Un bon Trust Score te permet d'acceder aux wagers High Rollers et de postuler comme Arbitre rémunéré sur ZOYD."
       headerActions={
         <div className="flex flex-col gap-3">
           <Link to="/parametres" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-white touch-target">
@@ -80,7 +80,7 @@ const ProfilPage = () => {
             className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-red-400/50 hover:text-red-400 touch-target"
           >
             <LogOut className="w-3 h-3" aria-hidden="true" />
-            Se deconnecter
+            Se déconnecter
           </button>
         </div>
       }

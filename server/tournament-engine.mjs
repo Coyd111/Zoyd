@@ -1,4 +1,4 @@
-import { getUserById, updateUserAccount } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 import { createLogger } from './logger.mjs';
@@ -29,13 +29,17 @@ const buildPayout = (entryFee, entriesCount, arbitersNeeded, teamSize = 1) => {
   const arbiterPool = roundAmount(grossPool * arbiterRate);
   const playerPool = roundAmount(grossPool - arbiterPool);
 
+  const first = roundAmount(playerPool * 0.5);
+  const second = roundAmount(playerPool * 0.3);
+  const third = roundAmount(playerPool - first - second);
+
   return {
     grossPool,
     playerPool,
     arbiterPool,
-    first: roundAmount(playerPool * 0.5),
-    second: roundAmount(playerPool * 0.3),
-    third: roundAmount(playerPool * 0.2),
+    first,
+    second,
+    third,
   };
 };
 
@@ -907,8 +911,8 @@ export const setTournamentMatchRoomDetailsOnServer = (tournaments, actor, tourna
     matchId
   );
 
-  const safeRoomName = `${roomName || ''}`.trim();
-  const safeRoomPassword = `${roomPassword || ''}`.trim();
+  const safeRoomName = sanitizeText(`${roomName || ''}`.trim().slice(0, 100));
+  const safeRoomPassword = sanitizeText(`${roomPassword || ''}`.trim().slice(0, 50));
   if (!safeRoomName || !safeRoomPassword) {
     throw makeError('ROOM_INCOMPLETE', 'Entre un nom de salle et un mot de passe valides.');
   }

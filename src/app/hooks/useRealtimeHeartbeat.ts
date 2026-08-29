@@ -7,11 +7,10 @@ import { useTournamentStore } from '../stores/tournamentStore';
 export const REALTIME_HEARTBEAT_INTERVAL_MS = 15_000;
 
 export const useRealtimeHeartbeat = (enabled: boolean) => {
-  const { user, isAuthenticated } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const replaceMatches = useMatchStore((state) => state.replaceFromServer);
   const replaceTournaments = useTournamentStore((state) => state.replaceFromServer);
-  const remoteMatchSnapshots = useSocketStore((state) => state.remoteMatchSnapshots);
-  const remoteTournamentSnapshots = useSocketStore((state) => state.remoteTournamentSnapshots);
 
   const didBootstrapRef = useRef(false);
 
@@ -48,12 +47,14 @@ export const useRealtimeHeartbeat = (enabled: boolean) => {
   }, [enabled, isAuthenticated, user]);
 
   useEffect(() => {
-    if (!enabled || remoteMatchSnapshots.length === 0) return;
-    replaceMatches(remoteMatchSnapshots);
-  }, [enabled, remoteMatchSnapshots, replaceMatches]);
+    if (!enabled) return;
+    const snapshots = useSocketStore.getState().remoteMatchSnapshots;
+    if (snapshots.length > 0) replaceMatches(snapshots);
+  }, [enabled, replaceMatches]);
 
   useEffect(() => {
-    if (!enabled || remoteTournamentSnapshots.length === 0) return;
-    replaceTournaments(remoteTournamentSnapshots);
-  }, [enabled, remoteTournamentSnapshots, replaceTournaments]);
+    if (!enabled) return;
+    const snapshots = useSocketStore.getState().remoteTournamentSnapshots;
+    if (snapshots.length > 0) replaceTournaments(snapshots);
+  }, [enabled, replaceTournaments]);
 };

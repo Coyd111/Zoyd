@@ -44,7 +44,10 @@ export interface CodashopBundle {
 
 export async function fetchCODMPlayer(userId: string, country = 'IN'): Promise<CodashopPlayer | null> {
   try {
-    const response = await fetch(getApiUrl(`/api/codm/player/${encodeURIComponent(userId)}?country=${country}`));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(getApiUrl(`/api/codm/player/${encodeURIComponent(userId)}?country=${country}`), { signal: controller.signal });
+    clearTimeout(timeout);
     if (!response.ok) return null;
     const data = await response.json();
     return data.ok ? data.player : null;
@@ -59,7 +62,10 @@ export async function fetchCODMPlayer(userId: string, country = 'IN'): Promise<C
 
 export async function fetchCODMStoreBundles(country = 'IN'): Promise<CodashopBundle[]> {
   try {
-    const response = await fetch(getApiUrl(`/api/codm/store?country=${country}`));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(getApiUrl(`/api/codm/store?country=${country}`), { signal: controller.signal });
+    clearTimeout(timeout);
     if (!response.ok) return [];
     const data = await response.json();
     return data.ok ? data.bundles : [];

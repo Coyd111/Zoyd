@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { createLogger } from './logger.mjs';
-import { getUserById, updateUserAccount } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText } from './persistence.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
@@ -509,8 +509,8 @@ export const setRoomDetailsOnServer = (matches, actor, matchId, roomName, roomPa
     throw makeError('FORBIDDEN', "Seul l'arbitre confirme peut publier la salle.");
   }
 
-  const safeRoomName = `${roomName}`.trim().slice(0, 100);
-  const safeRoomPassword = `${roomPassword}`.trim().slice(0, 50);
+  const safeRoomName = sanitizeText(`${roomName}`.trim().slice(0, 100));
+  const safeRoomPassword = sanitizeText(`${roomPassword}`.trim().slice(0, 50));
   const scheduledAt = getScheduledTimestamp(match);
   if (!safeRoomName || !safeRoomPassword || !scheduledAt) {
     throw makeError('ROOM_INCOMPLETE', "Confirme d'abord l'heure du match puis renseigne la room.");
@@ -697,7 +697,7 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
     id: `DSP-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
     level: 1,
     category: payload.category || 'result',
-    reason: payload.reason.trim(),
+    reason: sanitizeText(payload.reason.trim()),
     evidence: normalizedEvidence,
     requestedBy: actorUser.id,
     openedByPseudo: actorUser.pseudo,

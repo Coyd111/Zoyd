@@ -430,6 +430,7 @@ const TournamentBracketPage: React.FC = () => {
                         value={roomName}
                         onChange={(event) => setRoomName(event.target.value)}
                         placeholder="Nom de la salle CODM"
+                        aria-label="Nom de la salle"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                       <input
@@ -437,6 +438,7 @@ const TournamentBracketPage: React.FC = () => {
                         value={roomPassword}
                         onChange={(event) => setRoomPassword(event.target.value)}
                         placeholder="Mot de passe de la salle"
+                        aria-label="Mot de passe de la salle"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                     </div>
@@ -462,6 +464,7 @@ const TournamentBracketPage: React.FC = () => {
                         value={scoreA}
                         onChange={(event) => setScoreA(event.target.value)}
                         placeholder="Score equipe A"
+                        aria-label="Score equipe A"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                       <input
@@ -469,6 +472,7 @@ const TournamentBracketPage: React.FC = () => {
                         value={scoreB}
                         onChange={(event) => setScoreB(event.target.value)}
                         placeholder="Score equipe B"
+                        aria-label="Score equipe B"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                     </div>
@@ -477,6 +481,7 @@ const TournamentBracketPage: React.FC = () => {
                       value={notes}
                       onChange={(event) => setNotes(event.target.value)}
                       placeholder="Ce qu'il faut retenir de ce duel"
+                      aria-label="Notes de l'arbitre"
                       className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                     />
                     <button

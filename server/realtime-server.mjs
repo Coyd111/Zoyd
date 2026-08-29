@@ -28,6 +28,7 @@ import {
   getLeaderboard,
   getRawUserById,
   getUserById,
+  verifyUserPassword,
   verifyActivationCode,
   generateActivationCode,
   findUsersByPseudo,
@@ -360,13 +361,15 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/metrics') {
     const metricsToken = process.env.METRICS_TOKEN;
-    if (metricsToken) {
-      const authHeader = req.headers.authorization || '';
-      const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-      if (provided !== metricsToken) {
-        respondJson(res, 401, { ok: false, error: 'Unauthorized.', code: 'UNAUTHORIZED' });
-        return;
-      }
+    if (!metricsToken) {
+      respondJson(res, 403, { ok: false, error: 'Metrics désactivé (METRICS_TOKEN non configuré).', code: 'METRICS_DISABLED' });
+      return;
+    }
+    const authHeader = req.headers.authorization || '';
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (provided !== metricsToken) {
+      respondJson(res, 401, { ok: false, error: 'Unauthorized.', code: 'UNAUTHORIZED' });
+      return;
     }
     setGauge('zoyd_channels', channels.size);
     setGauge('zoyd_push_subscriptions', countPushSubscriptions());
@@ -399,7 +402,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 201, {
         ok: true,
         user: sanitizeUserPayload(user),
-        activationCode,
+        ...(process.env.NODE_ENV !== 'production' && { activationCode }),
         message: 'Compte cree avec succes.',
       });
     } catch (error) {
@@ -420,7 +423,7 @@ const server = http.createServer(async (req, res) => {
         password: body.password || '',
       });
       
-      const session = createAuthSession(user.id);
+      const session = await createAuthSession(user.id);
 
       // Set HttpOnly cookie for enhanced security
       const cookieValue = serializeCookie('zoyd_auth', session.token, {
@@ -464,7 +467,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       
-      const activatedUser = activateUserAccount(verification.userId);
+      const activatedUser = await activateUserAccount(verification.userId);
       
       respondJson(res, 200, {
         ok: true,
@@ -565,8 +568,10 @@ const server = http.createServer(async (req, res) => {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
     try {
-      const friends = getFriendsForUser(session.user.id);
-      respondJson(res, 200, { ok: true, friends });
+      const { limit, offset } = parseQueryParams(req.url);
+      const all = getFriendsForUser(session.user.id);
+      const { items: friends, hasMore } = paginate(all, { limit, offset });
+      respondJson(res, 200, { ok: true, friends, hasMore });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des amis.' });
     }
@@ -577,8 +582,10 @@ const server = http.createServer(async (req, res) => {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
     try {
-      const requests = getFriendRequestsForUser(session.user.id).filter((fr) => fr.status === 'pending');
-      respondJson(res, 200, { ok: true, requests });
+      const { limit, offset } = parseQueryParams(req.url);
+      const all = getFriendRequestsForUser(session.user.id).filter((fr) => fr.status === 'pending');
+      const { items: requests, hasMore } = paginate(all, { limit, offset });
+      respondJson(res, 200, { ok: true, requests, hasMore });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des demandes.' });
     }
@@ -591,7 +598,9 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
-      const request = sendFriendRequest(session.user.id, body.targetId, body.message);
+      const request = await withUserMutex(session.user.id, async () =>
+        sendFriendRequest(session.user.id, body.targetId, body.message)
+      );
       
       deliverNotification(io, body.targetId, {
         type: 'friend_request',
@@ -761,11 +770,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === '/api/wallet/history') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
     try {
       const wallet = getServerWallet(session.user.id);
-      respondJson(res, 200, { ok: true, transactions: wallet.transactions || [] });
+      const { limit, offset } = parseQueryParams(req.url);
+      const all = wallet.transactions || [];
+      const { items: transactions, hasMore } = paginate(all, { limit: Math.min(limit, 200), offset });
+      respondJson(res, 200, { ok: true, transactions, hasMore });
     } catch (error) {
       respondMappedError(res, error);
     }
@@ -836,17 +849,17 @@ const server = http.createServer(async (req, res) => {
         respondJson(res, 400, { ok: false, error: 'Le nouveau mot de passe doit faire au moins 8 caracteres.' });
         return;
       }
-      const user = getRawUserById(session.user.id);
+      const user = getUserById(session.user.id);
       if (!user) {
         respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.' });
         return;
       }
-      if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      if (!(await verifyUserPassword(session.user.id, currentPassword))) {
         respondJson(res, 403, { ok: false, error: 'Mot de passe actuel incorrect.' });
         return;
       }
       const newHash = await hashPassword(newPassword);
-      updatePasswordHash(session.user.id, newHash);
+      await updatePasswordHash(session.user.id, newHash);
       deleteAuthSession(token);
       deleteRealtimeSessionsForUser(session.user.id);
       const cookieValue = serializeCookie('zoyd_auth', '', {
@@ -893,9 +906,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/api/wallet/deposit') {
-    const session = getAuthenticatedAppSession(req);
-    if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    // Deposit endpoint admin-only (deposits go through /api/wallet/verify-fedapay in production)
+    const adminSession = requireAdmin2fa(req);
+    if (!adminSession) {
+      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
@@ -906,14 +920,18 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
       return;
     }
-    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0) {
-      respondJson(res, 400, { ok: false, error: 'Montant invalide.', code: 'INVALID_AMOUNT' });
+    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0 || body.amount > 5_000_000) {
+      respondJson(res, 400, { ok: false, error: 'Montant invalide (max 5 000 000 ZC).', code: 'INVALID_AMOUNT' });
+      return;
+    }
+    if (!body.userId) {
+      respondJson(res, 400, { ok: false, error: 'userId requis.', code: 'INVALID_JSON' });
       return;
     }
 
-    try { await withWalletMutex(session.user.id, async () => {
-      const wallet = await depositToWallet(session.user.id, body.amount, body.method);
-      const user = getUserById(session.user.id);
+    try { await withWalletMutex(body.userId, async () => {
+      const wallet = await depositToWallet(body.userId, body.amount, body.method || 'admin-credit');
+      const user = getUserById(body.userId);
       respondJson(res, 200, { ok: true, wallet, user });
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1049,8 +1067,24 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
+      if (!body.name || typeof body.name !== 'string' || body.name.trim().length < 3) {
+        respondJson(res, 400, { ok: false, error: 'Nom du tournoi requis (3-100 caractères).', code: 'INVALID_TOURNAMENT_NAME' });
+        return;
+      }
+      if (!body.format || typeof body.format !== 'string') {
+        respondJson(res, 400, { ok: false, error: 'Format requis.', code: 'INVALID_FORMAT' });
+        return;
+      }
+      if (body.maxEntries && (typeof body.maxEntries !== 'number' || body.maxEntries < 2 || body.maxEntries > 256)) {
+        respondJson(res, 400, { ok: false, error: 'maxEntries doit être entre 2 et 256.', code: 'INVALID_MAX_ENTRIES' });
+        return;
+      }
+      if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || body.entryFee < 0)) {
+        respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
+        return;
+      }
       const outcome = createTournamentOnServer(getStoredTournaments(), session.user, body);
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
       respondJson(res, 201, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1069,7 +1103,7 @@ const server = http.createServer(async (req, res) => {
     try { await withTournamentMutex(async () => {
       const body = await parseRequestBody(req);
       const outcome = await registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1087,7 +1121,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const outcome = await leaveTournamentOnServer(getStoredTournaments(), session.user, tournamentLeave[1]);
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1105,7 +1139,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const outcome = assignTournamentArbiterOnServer(getStoredTournaments(), session.user, tournamentArbiter[1]);
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1123,7 +1157,7 @@ const server = http.createServer(async (req, res) => {
 
     try { await withTournamentMutex(async () => {
       const outcome = startTournamentOnServer(getStoredTournaments(), session.user, tournamentStart[1]);
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
 
       const tournament = outcome.tournament;
       const participantIds = [...new Set(
@@ -1164,7 +1198,7 @@ const server = http.createServer(async (req, res) => {
         body.roomName,
         body.roomPassword
       );
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1187,7 +1221,7 @@ const server = http.createServer(async (req, res) => {
         tournamentLive[1],
         tournamentLive[2]
       );
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1212,7 +1246,7 @@ const server = http.createServer(async (req, res) => {
         tournamentResult[2],
         body
       );
-      await saveTournaments(io, outcome.tournaments);
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
       respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
     }); } catch (error) {
       respondMappedError(res, error);
@@ -1267,6 +1301,18 @@ const server = http.createServer(async (req, res) => {
     }
     try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
+      if (!body.name || typeof body.name !== 'string' || body.name.trim().length < 3) {
+        respondJson(res, 400, { ok: false, error: 'Nom de la ligue requis (3-100 caractères).', code: 'INVALID_LEAGUE_NAME' });
+        return;
+      }
+      if (!body.format || typeof body.format !== 'string') {
+        respondJson(res, 400, { ok: false, error: 'Format requis.', code: 'INVALID_FORMAT' });
+        return;
+      }
+      if (body.teamSize !== undefined && (typeof body.teamSize !== 'number' || body.teamSize < 1 || body.teamSize > 5)) {
+        respondJson(res, 400, { ok: false, error: 'teamSize doit être entre 1 et 5.', code: 'INVALID_TEAM_SIZE' });
+        return;
+      }
       const outcome = createLeagueSeasonOnServer(getStoredLeagues(), session.user, body);
       await saveLeagues(io, outcome.seasons);
       respondJson(res, 201, buildLeagueActionPayload(outcome.season, session.user.id));
@@ -1556,6 +1602,14 @@ const server = http.createServer(async (req, res) => {
       const body = await parseRequestBody(req);
       if (body.tournamentId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.tournamentId)) {
         respondJson(res, 400, { ok: false, error: 'tournamentId invalide.', code: 'INVALID_JSON' });
+        return;
+      }
+      if (!body.format || !/^\d+VS\d+$/i.test(body.format)) {
+        respondJson(res, 400, { ok: false, error: 'format invalide (ex: 1VS1, 5VS5).', code: 'INVALID_FORMAT' });
+        return;
+      }
+      if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || body.entryFee < 0)) {
+        respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
         return;
       }
       const outcome = await withWalletMutex(session.user.id, async () =>
@@ -1976,6 +2030,10 @@ const server = http.createServer(async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
+      if (body.winnerTeam !== 0 && body.winnerTeam !== 1) {
+        respondJson(res, 400, { ok: false, error: 'winnerTeam doit être 0 ou 1.', code: 'INVALID_WINNER' });
+        return;
+      }
       const currentMatches = getStateCollection('matches');
       const targetMatch = currentMatches.find((entry) => entry.id === adminMatchAward[1]);
       const defaultScores = body.winnerTeam === 0 ? { team0: 1, team1: 0 } : { team0: 0, team1: 1 };
@@ -2219,7 +2277,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const realtimeSession = createRealtimeSession({
+      const realtimeSession = await createRealtimeSession({
         userId: session.user.id,
         pseudo: session.user.pseudo,
         role: session.user.role,
@@ -2248,10 +2306,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
+      const allMatches = getStateCollection('matches');
+      const recentMatches = allMatches.slice(-100).map(sanitizeMatchForBroadcast);
+      const allTournaments = getStoredTournaments();
+      const recentTournaments = allTournaments.slice(-50).map(sanitizeTournamentForBroadcast);
       respondJson(res, 200, {
         ok: true,
-        matches: getStateCollection('matches').map(sanitizeMatchForBroadcast),
-        tournaments: getStoredTournaments().map(sanitizeTournamentForBroadcast),
+        matches: recentMatches,
+        tournaments: recentTournaments,
         friends: getFriendsForUser(session.userId),
         friendRequests: getFriendRequestsForUser(session.userId),
         blockedIds: getBlockedUsers(session.userId),

@@ -12,6 +12,7 @@ vi.mock('./persistence.mjs', () => ({
 
 vi.mock('./wallet-engine.mjs', () => ({
   depositToWallet: vi.fn(),
+  debitFromWallet: vi.fn(),
 }));
 
 import { verifyFedaPayTransactionAndCredit } from './payment-engine.mjs';

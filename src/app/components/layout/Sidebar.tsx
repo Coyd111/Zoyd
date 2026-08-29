@@ -26,7 +26,7 @@ const socialItems = [
 
 const Sidebar: React.FC = React.memo(() => {
   const location = useLocation();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const totalBalance = useWalletStore((s) => s.getTotalBalance());
   const unreadMessages = useChatStore((s) => s.getUnreadTotal());
   const handleLogout = useLogout();

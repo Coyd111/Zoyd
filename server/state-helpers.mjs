@@ -39,11 +39,15 @@ const getStoredTournaments = () => normalizeTournamentCollection(getStateCollect
  * @param {Array} tournaments - The tournaments to persist
  * @returns {Promise<Array>} The stored tournaments
  */
-const saveTournaments = async (io, tournaments) => {
+const saveTournaments = async (io, tournaments, changedTournament = null) => {
   await replaceStateCollection('tournaments', tournaments);
-  const storedTournaments = getStoredTournaments();
-  broadcastStateSnapshot(io, 'tournaments', storedTournaments.map(sanitizeTournamentForBroadcast));
-  return storedTournaments;
+  if (changedTournament) {
+    broadcastStateSnapshot(io, 'tournaments', [sanitizeTournamentForBroadcast(changedTournament)]);
+  } else {
+    const storedTournaments = getStoredTournaments();
+    broadcastStateSnapshot(io, 'tournaments', storedTournaments.map(sanitizeTournamentForBroadcast));
+  }
+  return getStoredTournaments();
 };
 
 /**
@@ -78,6 +82,10 @@ const sanitizeMatchForBroadcast = (match) => {
   }
   if (safe.submittedBy === 'system-no-show' || safe.submittedBy === 'admin-dashboard') {
     safe.submittedBy = null;
+  }
+  if (safe.result) {
+    const { screenshots: _rs, proofs: _rp, ...safeResult } = safe.result;
+    safe.result = safeResult;
   }
   return safe;
 };

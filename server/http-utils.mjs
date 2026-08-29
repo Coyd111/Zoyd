@@ -78,7 +78,7 @@ export const respondJson = (res, statusCode, payload, req = null) => {
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Vary': 'Origin',
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws: https: http:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; frame-ancestors 'none';",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws: https://zoyd.onrender.com https://api.fedapay.com https://cdn.fedapay.com; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; frame-ancestors 'none';",
   });
   res.end(JSON.stringify(payload));
 

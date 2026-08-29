@@ -5,6 +5,7 @@ import {
   removePushSubscription,
   createNotification,
   getAdminIds,
+  sanitizeText,
 } from './persistence.mjs';
 
 if (vapidKeys) {
@@ -56,10 +57,10 @@ const deliverNotification = async (io, targetUserId, payload) => {
   const notification = createNotification(
     targetUserId,
     type,
-    title,
-    body || 'Notification ZOYD',
+    sanitizeText(title),
+    sanitizeText(body || 'Notification ZOYD'),
     priority,
-    url,
+    sanitizeText(url),
     { source: 'server-push', browserTag: tag }
   );
 

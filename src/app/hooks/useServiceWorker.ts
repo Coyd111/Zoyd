@@ -21,6 +21,7 @@ export function useServiceWorker() {
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
   const controllerChangeRef = useRef<(() => void) | null>(null);
+  const updateFoundRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -36,9 +37,9 @@ export function useServiceWorker() {
           setUpdateAvailable(true);
         }
 
-        registration.addEventListener('updatefound', () => {
-          setUpdateAvailable(true);
-        });
+        const onUpdateFound = () => setUpdateAvailable(true);
+        registration.addEventListener('updatefound', onUpdateFound);
+        updateFoundRef.current = () => registration.removeEventListener('updatefound', onUpdateFound);
 
         return navigator.serviceWorker.ready;
       })
@@ -60,6 +61,8 @@ export function useServiceWorker() {
 
     return () => {
       mounted = false;
+      updateFoundRef.current?.();
+      updateFoundRef.current = null;
       controllerChangeRef.current?.();
       controllerChangeRef.current = null;
     };

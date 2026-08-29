@@ -47,22 +47,25 @@ export { roundAmount, makeError };
 export const sanitizeText = (input) => {
   if (!input) return '';
   return String(input)
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '')       // Remove SVG tags and content
-    .replace(/<svg[\s\S]*?\/>/gi, '')           // Remove self-closing SVG tags
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '') // Remove iframe tags and content
-    .replace(/<iframe[\s\S]*?\/>/gi, '')        // Remove self-closing iframe tags
-    .replace(/<object[\s\S]*?<\/object>/gi, '') // Remove object tags and content
-    .replace(/<object[\s\S]*?\/>/gi, '')        // Remove self-closing object tags
-    .replace(/<embed[\s\S]*?\/?>/gi, '')        // Remove embed tags
-    .replace(/<script[\s\S]*?<\/script>/gi, '') // Remove script tags
-    .replace(/<style[\s\S]*?<\/style>/gi, '')   // Remove style tags
-    .replace(/<[^>]*>/g, '')                    // Remove remaining HTML tags
-    .replace(/javascript:/gi, '')               // Remove javascript: protocol
-    .replace(/vbscript:/gi, '')                 // Remove vbscript: protocol
-    .replace(/data:(?!image\/)/gi, '')          // Remove data: URIs except images
-    .replace(/on\w+\s*=/gi, '')                 // Remove event handlers (e.g. onclick=)
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
+    .replace(/<svg[\s\S]*?\/>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<iframe[\s\S]*?\/>/gi, '')
+    .replace(/<object[\s\S]*?<\/object>/gi, '')
+    .replace(/<object[\s\S]*?\/>/gi, '')
+    .replace(/<embed[\s\S]*?\/?>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/vbscript:/gi, '')
+    .replace(/data:(?!image\/)/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
     .trim()
-    .slice(0, 5000);                            // Limit length
+    .slice(0, 5000);
 };
 
 /**
@@ -396,6 +399,7 @@ export const forceReloadFromSupabase = async () => {
   reloadInProgress = true;
   log.warn('Force reload started — all in-flight operations may see stale data');
   try {
+    // Clear all in-memory state
     memoryUsers.clear();
     pseudoKeys.clear();
     memoryAdminIds.clear();
@@ -415,6 +419,7 @@ export const forceReloadFromSupabase = async () => {
     memoryUnreadByUser.clear();
     memoryProcessedTransactions.clear();
     memoryPushSubscriptions.clear();
+    loginAttempts.clear();
     const ok = await loadFromSupabase();
     return ok;
   } finally {
@@ -600,8 +605,19 @@ export const getRawUserById = (userId) => {
   if (!userId) return null;
   const user = memoryUsers.get(userId);
   if (!user) return null;
+  return { ...user };
+};
+
+/**
+ * Verify a user's password without exposing the hash.
+ * @param {string} userId
+ * @param {string} password
+ * @returns {Promise<boolean>}
+ */
+export const verifyUserPassword = async (userId, password) => {
   const hashEntry = memoryPasswordHashes.get(userId);
-  return { ...user, passwordHash: hashEntry?.[1] || '' };
+  if (!hashEntry) return false;
+  return verifyPassword(password, hashEntry[1]);
 };
 
 /**
@@ -681,7 +697,7 @@ export const getLeaderboard = () => {
  * @returns {Promise<object>} Updated sanitized user payload
  */
 export const updateUserAccount = async (userId, updater) => {
-  return withUserMutex(userId, async () => {
+  return await withUserMutex(userId, async () => {
     const current = memoryUsers.get(userId);
     if (!current) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
 
@@ -706,13 +722,13 @@ export const updateUserAccount = async (userId, updater) => {
 
     const passwordHash = memoryPasswordHashes.get(userId)?.[1] || '';
 
-    sbUpsert('app_users', {
+    await sbUpsert('app_users', {
       id: userId, pseudo_key: normalizePseudoKey(next.pseudo),
       email_key: normalizeEmailKey(next.email), phone_key: normalizePhoneKey(next.phone),
       game_id_key: normalizeGameIdKey(next.gameId), role: next.role,
       password_hash: passwordHash, payload: next,
       created_at: current.dateJoined, updated_at: getNow(),
-    }).catch((e) => sbCatch('updateUserAccount', e));
+    });
 
     return next;
   });
@@ -750,20 +766,47 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
   const pk = normalizePseudoKey(trimmed);
   const ek = normalizeEmailKey(trimmed);
   const phk = normalizePhoneKey(trimmed);
+  const lookupKey = pk || ek || phk;
+
+  // Check account lockout
+  const attempt = loginAttempts.get(lookupKey);
+  if (attempt?.lockedUntil && Date.now() < attempt.lockedUntil) {
+    throw makeError('ACCOUNT_LOCKED', 'Compte temporairement bloque. Reessayez dans 15 minutes.');
+  }
 
   const hash = memoryPasswordHashes.get(pk) || memoryPasswordHashes.get(ek) || memoryPasswordHashes.get(phk);
   if (!hash) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
 
   const [userId, passwordHash] = hash;
   if (!(await verifyPassword(password, passwordHash))) {
+    // Track failed attempt
+    const prev = loginAttempts.get(lookupKey) || { count: 0 };
+    const newCount = prev.count + 1;
+    if (newCount >= MAX_LOGIN_ATTEMPTS) {
+      loginAttempts.set(lookupKey, { count: 0, lockedUntil: Date.now() + LOCKOUT_DURATION_MS });
+    } else {
+      loginAttempts.set(lookupKey, { count: newCount, lockedUntil: null });
+    }
     throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
   }
 
-  return sanitizeUserPayload(memoryUsers.get(userId));
+  // Reset failed attempts on success
+  loginAttempts.delete(lookupKey);
+
+  const user = memoryUsers.get(userId);
+  if (!user) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
+  if (user.isActive === false) {
+    throw makeError('ACCOUNT_NOT_ACTIVATED', 'Activez votre compte via le code envoye par email.');
+  }
+
+  return sanitizeUserPayload(user);
 };
 
 // Password hash lookup: identifier -> [userId, hash]
 const memoryPasswordHashes = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const loginAttempts = new Map(); // identifier -> { count, lockedUntil }
 
 const storePasswordHash = (userId, passwordHash, pseudo, email, phone) => {
   memoryPasswordHashes.set(userId, [userId, passwordHash]);
@@ -772,7 +815,7 @@ const storePasswordHash = (userId, passwordHash, pseudo, email, phone) => {
   if (phone) memoryPasswordHashes.set(normalizePhoneKey(phone), [userId, passwordHash]);
 };
 
-export const updatePasswordHash = (userId, newHash) => {
+export const updatePasswordHash = async (userId, newHash) => {
   const user = memoryUsers.get(userId);
   if (!user) return;
   // Clear old hash entries
@@ -783,7 +826,7 @@ export const updatePasswordHash = (userId, newHash) => {
   // Store new hash
   storePasswordHash(userId, newHash, user.pseudo, user.email, user.phone);
   // Persist to Supabase
-    sbFire('updatePasswordHash', () => sbUpsert('app_users', {
+    await sbUpsert('app_users', {
       id: userId,
       pseudo_key: normalizePseudoKey(user.pseudo),
       email_key: normalizeEmailKey(user.email),
@@ -794,7 +837,7 @@ export const updatePasswordHash = (userId, newHash) => {
       payload: user,
       created_at: user.dateJoined,
       updated_at: getNow(),
-    }));
+    });
 };
 
 // ─── Account Activation Codes ─────────────────────────────────────────────────
@@ -864,7 +907,7 @@ export const cleanupExpiredActivationCodes = () => {
  * @returns {object} The updated user object
  * @throws {Error} If user not found
  */
-export const activateUserAccount = (userId) => {
+export const activateUserAccount = async (userId) => {
   const user = memoryUsers.get(userId);
   if (!user) throw new Error('Utilisateur introuvable.');
   
@@ -872,17 +915,17 @@ export const activateUserAccount = (userId) => {
   user.activatedAt = getNow();
   
   // Update in Supabase
-  sbFire('activateUserAccount', () => sbUpsert('app_users', {
+  await sbUpsert('app_users', {
     id: userId,
     payload: user,
     updated_at: getNow(),
-  }));
+  });
   
   return user;
 };
 
 // ─── Auth Sessions ──────────────────────────────────────────────────────────
-const createTokenRecord = (type, userId, extra = {}) => {
+const createTokenRecord = async (type, userId, extra = {}) => {
   const token = crypto.randomBytes(32).toString('hex');
   const issuedAt = getNow();
   const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
@@ -890,10 +933,10 @@ const createTokenRecord = (type, userId, extra = {}) => {
 
   if (type === 'auth') {
     memoryAuthSessions.set(token, record);
-    sbFire('createAuthSession', () => sbUpsert('auth_sessions', { token, user_id: userId, issued_at: issuedAt, expires_at: expiresAt }));
+    await sbUpsert('auth_sessions', { token, user_id: userId, issued_at: issuedAt, expires_at: expiresAt });
   } else {
     memoryRealtimeSessions.set(token, record);
-    sbFire('createRealtimeSession', () => sbUpsert('realtime_sessions', { token, user_id: userId, pseudo: extra.pseudo, role: extra.role, issued_at: issuedAt, expires_at: expiresAt }));
+    await sbUpsert('realtime_sessions', { token, user_id: userId, pseudo: extra.pseudo, role: extra.role, issued_at: issuedAt, expires_at: expiresAt });
   }
 
   return record;
@@ -934,8 +977,8 @@ setInterval(() => {
  * @param {string} userId - User UUID
  * @returns {{ token: string, userId: string, expiresAt: string, user: object }}
  */
-export const createAuthSession = (userId) => {
-  const session = createTokenRecord('auth', userId);
+export const createAuthSession = async (userId) => {
+  const session = await createTokenRecord('auth', userId);
   return { ...session, user: getUserById(userId) };
 };
 
@@ -954,7 +997,27 @@ export const getAuthSession = (token) => {
   }
   const user = getUserById(session.userId);
   if (!user) { memoryAuthSessions.delete(token); return null; }
+
+  // Session rotation: if session is older than 30 minutes, fire-and-forget rotation
+  const sessionAge = Date.now() - new Date(session.issuedAt).getTime();
+  if (sessionAge > 30 * 60 * 1000) {
+    rotateAuthSession(session, user).catch(err => log.error('Session rotation failed', err));
+  }
+
   return { ...session, user };
+};
+
+/**
+ * Rotate an auth session: create a new token, delete the old one.
+ * Called as fire-and-forget from getAuthSession.
+ */
+const rotateAuthSession = async (session, user) => {
+  const newSession = await createTokenRecord('auth', session.userId);
+  memoryAuthSessions.delete(session.token);
+  await sbDelete('auth_sessions', { token: session.token });
+  // Pre-populate the new session in memory so the caller's next request uses it
+  const entry = memoryAuthSessions.get(newSession.token);
+  if (entry) entry.user = user;
 };
 
 /**
@@ -971,8 +1034,8 @@ export const deleteAuthSession = (token) => {
  * @param {object} params - { userId, pseudo, role }
  * @returns {{ token: string, userId: string, pseudo: string, role: string, expiresAt: string }}
  */
-export const createRealtimeSession = ({ userId, pseudo, role }) => {
-  return createTokenRecord('realtime', userId, { pseudo, role });
+export const createRealtimeSession = async ({ userId, pseudo, role }) => {
+  return await createTokenRecord('realtime', userId, { pseudo, role });
 };
 
 export const getRealtimeSession = (token) => {
@@ -1109,6 +1172,10 @@ export const getChatMessagesForChannel = (channelId, limit = 200) => {
 export const markChatChannelRead = async (channelId, userId, readAt = getNow()) => {
   return withChannelMutex(channelId, () => {
     memoryChatReads.set(`${channelId}:${userId}`, readAt);
+    if (memoryChatReads.size > 50000) {
+      const oldest = memoryChatReads.keys().next().value;
+      memoryChatReads.delete(oldest);
+    }
     sbFire('markChatChannelRead', () => sbUpsert('chat_reads', { channel_id: channelId, user_id: userId, read_at: readAt }));
     return { channelId, userId, readAt };
   });
@@ -1430,19 +1497,24 @@ export const hasTransactionBeenProcessed = async (transactionId) => {
  * @returns {Promise<boolean>} True if newly claimed, false if already processed
  */
 export const claimTransaction = async (transactionId, userId, amountZC) => {
+  // Check memory cache first (fast path)
   if (memoryProcessedTransactions.has(transactionId)) return false;
-  memoryProcessedTransactions.add(transactionId);
-  if (memoryProcessedTransactions.size > MAX_PROCESSED_TX) {
-    const first = memoryProcessedTransactions.values().next().value;
-    memoryProcessedTransactions.delete(first);
-  }
+
+  // Check DB as source of truth BEFORE adding to memory
   try {
     const rows = await sbSelect('processed_transactions', { transaction_id: transactionId }, 'transaction_id');
     if (rows && rows.length > 0) {
       memoryProcessedTransactions.add(transactionId);
       return false;
     }
-  } catch { /* proceed — best effort dedup */ }
+  } catch { /* if DB check fails, proceed with memory-only dedup */ }
+
+  // Now safe to add to memory and persist
+  memoryProcessedTransactions.add(transactionId);
+  if (memoryProcessedTransactions.size > MAX_PROCESSED_TX) {
+    const first = memoryProcessedTransactions.values().next().value;
+    memoryProcessedTransactions.delete(first);
+  }
   await sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
   return true;
 };

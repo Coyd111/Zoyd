@@ -21,8 +21,8 @@ const getFedaPayConfig = () => {
   return key;
 };
 
-// Lock in-memory pour éviter le TOCTOU race condition sur les transactions
-const processingTransactions = new Set();
+// Atomic lock per transaction ID — Map<id, Promise> for true TOCTOU safety
+const processingTransactions = new Map();
 
 // SEC-R4: Safety cleanup — if server crashed mid-transaction, the finally block
 // may not have run. Clean stale entries every 5 minutes (>10min old).
@@ -49,11 +49,11 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     throw new Error('Cette transaction a déjà été traitée.');
   }
 
-  // Verrou atomique pour éviter le double-crediting concurrent
+  // Atomic lock: reject if already processing, otherwise set immediately
   if (processingTransactions.has(transactionId)) {
     throw new Error('Cette transaction est en cours de traitement.');
   }
-  processingTransactions.add(transactionId);
+  processingTransactions.set(transactionId, Promise.resolve());
   processingTxTimestamps.set(transactionId, Date.now());
 
   try {

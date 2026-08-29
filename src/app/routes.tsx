@@ -67,6 +67,7 @@ export const router = createBrowserRouter([
       {
         path: 'mj',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
           {
             index: true,
@@ -98,6 +99,7 @@ export const router = createBrowserRouter([
       {
         path: 'wallet',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
           {
             index: true,
@@ -108,21 +110,25 @@ export const router = createBrowserRouter([
       {
         path: 'earnings',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [{ index: true, lazy: earningsLoader }],
       },
       {
         path: 'classements',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [{ index: true, lazy: classementsLoader }],
       },
       {
         path: 'chat',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [{ index: true, lazy: chatLoader }],
       },
       {
         path: 'profil',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
           { index: true, lazy: profilLoader },
           { path: ':id', lazy: publicProfilLoader },
@@ -131,11 +137,13 @@ export const router = createBrowserRouter([
       {
         path: 'parametres',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [{ index: true, lazy: parametresLoader }],
       },
       {
         path: 'br-league',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
           { index: true, lazy: leagueLoader },
           { path: ':seasonId', lazy: leagueSeasonLoader },
@@ -144,14 +152,14 @@ export const router = createBrowserRouter([
       {
         path: 'infos',
         element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [{ index: true, lazy: leaksLoader }],
       },
       {
         path: 'admin',
         element: <AppLayout requireAdmin />,
+        errorElement: <RouteErrorBoundary />,
         children: [{ index: true, lazy: adminLoader }],
-        // Note: Server-side role validation should be implemented in the API
-        // This is client-side protection only as defense in depth
       },
       {
         path: '*',

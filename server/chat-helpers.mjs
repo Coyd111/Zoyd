@@ -71,13 +71,13 @@ export const buildChatBootstrapPayload = (userId) => {
     return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
   });
 
-  const activeChannels = sorted.slice(0, 5);
+  const activeChannels = sorted.slice(0, 10);
   const messages = activeChannels.flatMap((channel) =>
     getChatMessagesForChannel(channel.id, 20)
   );
 
   return {
-    channels,
+    channels: sorted.slice(0, 50),
     messages,
   };
 };

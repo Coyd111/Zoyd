@@ -172,7 +172,10 @@ const WalletPage: React.FC = () => {
     setIsWithdrawing(true);
     try {
       const withdrawAmountNum = parseFloat(withdrawAmount);
-      if (isNaN(withdrawAmountNum) || withdrawAmountNum <= 0) return;
+      if (isNaN(withdrawAmountNum) || withdrawAmountNum <= 0) {
+        toast.error('Montant invalide.');
+        return;
+      }
       await withdraw(withdrawAmountNum, 'Mobile Money', user.phone || '');
       toast.success(`Retrait lance pour ${formatZC(withdrawAmountNum)}.`);
       setShowWithdrawModal(false);

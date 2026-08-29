@@ -787,6 +787,23 @@ const cleanupExpired = (map) => {
 setInterval(() => {
   cleanupExpired(memoryAuthSessions);
   cleanupExpired(memoryRealtimeSessions);
+
+  // Purge old friend requests (>30 days)
+  const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  for (const [id, req] of memoryFriendRequests) {
+    if (req.timestamp && req.timestamp < cutoff30d && req.status !== 'pending') {
+      memoryFriendRequests.delete(id);
+    }
+  }
+
+  // Purge old notifications (>30 days, already read)
+  for (const [id, notif] of memoryNotifications) {
+    if (notif.createdAt && notif.createdAt < cutoff30d && notif.isRead) {
+      memoryNotifications.delete(id);
+      const userUnread = memoryUnreadByUser.get(notif.userId);
+      if (userUnread) userUnread.delete(id);
+    }
+  }
 }, 5 * 60 * 1000);
 
 export const createAuthSession = (userId) => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { subscribeToRealtimePush } from '../lib/realtimeClient';
+import { logWarning } from '../lib/logger';
 
 let registrationPromise: Promise<ServiceWorkerRegistration> | null = null;
 
@@ -50,7 +51,7 @@ export function useServiceWorker() {
         if (mounted) {
           setIsInstalled(false);
         }
-        console.warn('[SW] Registration failed:', err?.message || err);
+        logWarning('SW Registration failed', { component: 'useServiceWorker', message: err?.message || String(err) });
       });
 
     const onControllerChange = () => window.location.reload();
@@ -70,7 +71,7 @@ export function useServiceWorker() {
 
     navigator.serviceWorker.ready
       .then((registration) => subscribeToRealtimePush(user, registration))
-      .catch((err) => console.warn('[SW] Push subscription failed:', err?.message || err));
+      .catch((err) => logWarning('SW Push subscription failed', { component: 'useServiceWorker', message: err?.message || String(err) }));
   }, [user]);
 
   const requestNotificationPermission = async () => {

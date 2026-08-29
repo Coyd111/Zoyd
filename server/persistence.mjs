@@ -10,6 +10,7 @@ import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
 import { roundAmount, getNow, makeError } from './utils.mjs';
 import { withUserMutex, withChannelMutex } from './mutex.mjs';
+import { Mutex } from 'async-mutex';
 
 const log = createLogger('persistence');
 
@@ -341,26 +342,40 @@ export const loadFromSupabaseWithRetry = async (maxRetries = 3) => {
 };
 
 // Force reload from Supabase (admin endpoint)
+const reloadMutex = new Mutex();
+let reloadInProgress = false;
+
+export const isReloadInProgress = () => reloadInProgress;
+
 export const forceReloadFromSupabase = async () => {
-  memoryUsers.clear();
-  memoryAdminIds.clear();
-  memoryPasswordHashes.clear();
-  memoryAuthSessions.clear();
-  memoryRealtimeSessions.clear();
-  memoryChatChannels.clear();
-  memoryChatMessages.clear();
-  memoryStateSnapshots.clear();
-  memoryStateByKind.clear();
-  memoryFriendRequests.clear();
-  memoryFriendships.clear();
-  memoryFriendshipsByUser.clear();
-  memoryUserBlocks.clear();
-  memoryBlocksByUser.clear();
-  memoryNotifications.clear();
-  memoryUnreadByUser.clear();
-  memoryProcessedTransactions.clear();
-  memoryPushSubscriptions.clear();
-  return await loadFromSupabase();
+  const release = await reloadMutex.acquire();
+  reloadInProgress = true;
+  log.warn('Force reload started — all in-flight operations may see stale data');
+  try {
+    memoryUsers.clear();
+    memoryAdminIds.clear();
+    memoryPasswordHashes.clear();
+    memoryAuthSessions.clear();
+    memoryRealtimeSessions.clear();
+    memoryChatChannels.clear();
+    memoryChatMessages.clear();
+    memoryStateSnapshots.clear();
+    memoryStateByKind.clear();
+    memoryFriendRequests.clear();
+    memoryFriendships.clear();
+    memoryFriendshipsByUser.clear();
+    memoryUserBlocks.clear();
+    memoryBlocksByUser.clear();
+    memoryNotifications.clear();
+    memoryUnreadByUser.clear();
+    memoryProcessedTransactions.clear();
+    memoryPushSubscriptions.clear();
+    const ok = await loadFromSupabase();
+    return ok;
+  } finally {
+    reloadInProgress = false;
+    release();
+  }
 };
 
 // Health check info
@@ -949,6 +964,10 @@ export const ensureGlobalChatChannel = () =>
 
 // ─── State Snapshots (matches, tournaments) ─────────────────────────────────
 export const replaceStateCollection = async (kind, items) => {
+  if (reloadInProgress) {
+    log.warn(`replaceStateCollection(${kind}) deferred — reload in progress`);
+  }
+
   const itemIds = new Set(items.map((item) => item.id));
   if (!memoryStateByKind.has(kind)) memoryStateByKind.set(kind, new Map());
   const kindMap = memoryStateByKind.get(kind);
@@ -969,11 +988,23 @@ export const replaceStateCollection = async (kind, items) => {
     kindMap.delete(id);
   }
 
-  // Sync to Supabase (batch upsert)
-  if (items.length > 0 && supabase) {
+  // Sync to Supabase (batch upsert with retry)
+  if (items.length > 0 && supabase && !reloadInProgress) {
     const rows = items.map(item => ({ kind, entity_id: item.id, payload: item, updated_at: getNow() }));
     for (let i = 0; i < rows.length; i += 100) {
-      await sbUpsert('state_snapshots', rows.slice(i, i + 100));
+      const batch = rows.slice(i, i + 100);
+      let upserted = false;
+      for (let attempt = 1; attempt <= 3 && !upserted; attempt++) {
+        upserted = await sbUpsert('state_snapshots', batch);
+        if (!upserted && attempt < 3) {
+          const delay = attempt * 1000;
+          log.warn(`replaceStateCollection(${kind}) batch ${i} attempt ${attempt} failed — retrying in ${delay}ms`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+      }
+      if (!upserted) {
+        log.error(`replaceStateCollection(${kind}) batch ${i} failed after 3 attempts — memory and Supabase may diverge`, { batchIds: batch.map((r) => r.entity_id).slice(0, 5) });
+      }
     }
   }
 };

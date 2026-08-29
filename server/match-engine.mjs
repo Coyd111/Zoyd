@@ -115,6 +115,7 @@ export const getRankFromElo = (elo) => {
 
 const applyResultSettlement = async (match, result) => {
   const payout = getWinnerPayout(match);
+  const settlementErrors = [];
 
   // Elo Calculation
   const K = 32;
@@ -204,6 +205,7 @@ const applyResultSettlement = async (match, result) => {
       });
     } catch (err) {
       log.error('Settlement error for player', { matchId: match.id, playerId: player.userId, error: err.message });
+      settlementErrors.push({ playerId: player.userId, error: err.message });
     }
   }
 
@@ -220,8 +222,19 @@ const applyResultSettlement = async (match, result) => {
       });
     } catch (err) {
       log.error('Arbiter payout error', { matchId: match.id, arbiterId: match.arbiter.userId, error: err.message });
+      settlementErrors.push({ playerId: match.arbiter.userId, role: 'arbiter', error: err.message });
     }
   }
+
+  if (settlementErrors.length > 0) {
+    log.error('SETTLEMENT_PARTIAL_FAILURE', {
+      matchId: match.id,
+      failedCount: settlementErrors.length,
+      errors: settlementErrors,
+    });
+  }
+
+  return { success: settlementErrors.length === 0, errors: settlementErrors };
 };
 
 const resolveOpenDisputes = (match, resolution) =>
@@ -550,8 +563,8 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   match.finishedAt = getNow();
   match.updatedAt = getNow();
 
-  await applyResultSettlement(match, fullResult);
-  match.result.payoutDistributed = true;
+  const settlementResult = await applyResultSettlement(match, fullResult);
+  match.result.payoutDistributed = settlementResult.success;
 
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
@@ -684,8 +697,8 @@ const resolveForfeit = async (match, winnerTeam, losingTeam, reason) => {
   match.finishedAt = getNow();
   match.updatedAt = getNow();
 
-  await applyResultSettlement(match, fullResult);
-  match.result.payoutDistributed = true;
+  const settlementResult = await applyResultSettlement(match, fullResult);
+  match.result.payoutDistributed = settlementResult.success;
 };
 
 const cancelForAutomation = async (match, reason) => {

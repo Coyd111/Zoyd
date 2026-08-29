@@ -38,6 +38,7 @@ import {
   loadFromSupabase,
   loadFromSupabaseWithRetry,
   forceReloadFromSupabase,
+  isReloadInProgress,
   getHealthInfo,
   verifyDataIntegrity,
   loadAdminTotpSecrets,
@@ -156,7 +157,7 @@ const server = http.createServer(async (req, res) => {
     respondJson(res, 200, {
       ok: true,
       service: 'zoyd-api',
-      persistence: health,
+      persistence: { ...health, reloadInProgress: isReloadInProgress() },
       integrity,
       timestamp: getNow(),
     });

@@ -457,7 +457,6 @@ export const buildUserPayload = (input, role = 'player') => {
   };
 };
 
-import { Mutex } from 'async-mutex';
 const registrationMutex = new Mutex();
 
 const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {

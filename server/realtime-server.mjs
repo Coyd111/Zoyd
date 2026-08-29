@@ -567,16 +567,24 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/social/friends') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
-    const friends = getFriendsForUser(session.user.id);
-    respondJson(res, 200, { ok: true, friends });
+    try {
+      const friends = getFriendsForUser(session.user.id);
+      respondJson(res, 200, { ok: true, friends });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des amis.' });
+    }
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/social/pending') {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
-    const requests = getFriendRequestsForUser(session.user.id).filter((fr) => fr.status === 'pending');
-    respondJson(res, 200, { ok: true, requests });
+    try {
+      const requests = getFriendRequestsForUser(session.user.id).filter((fr) => fr.status === 'pending');
+      respondJson(res, 200, { ok: true, requests });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des demandes.' });
+    }
     return;
   }
 
@@ -872,13 +880,12 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
-
-    const user = getUserById(session.user.id);
-    respondJson(res, 200, {
-      ok: true,
-      wallet: user?.wallet || getServerWallet(session.user.id),
-      user,
-    });
+    try {
+      const user = getUserById(session.user.id);
+      respondJson(res, 200, { ok: true, wallet: user?.wallet || getServerWallet(session.user.id), user });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du wallet.' });
+    }
     return;
   }
 
@@ -935,7 +942,7 @@ const server = http.createServer(async (req, res) => {
       const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
         .find((tx) => tx.metadata?.idempotencyKey === idempotencyKey && tx.type === 'withdraw');
       if (existingTx) {
-        respondJson(res, 200, { ok: true, wallet: getWalletSnapshot(session.user.id), user: getUserById(session.user.id), duplicate: true });
+        respondJson(res, 200, { ok: true, wallet: getServerWallet(session.user.id), user: getUserById(session.user.id), duplicate: true });
         return;
       }
     }
@@ -960,34 +967,31 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/api/matches') {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
-    const token = readBearerToken(req);
-    const matchSession = token ? getAuthSession(token) : null;
-    const matchCurrentUser = matchSession?.user ? getUserById(matchSession.user.id) : null;
-    const allMatches = getStateCollection('matches');
-    const visibleMatches = getPublicMatchesForUser(allMatches, matchCurrentUser);
-    const { limit, offset } = parseQueryParams(req.url);
-    const { items: matches, hasMore } = paginate(visibleMatches.map(sanitizeMatchForBroadcast), { limit, offset });
-
-    respondJson(res, 200, {
-      ok: true,
-      matches,
-      total: visibleMatches.length,
-      hasMore,
-    });
+    try {
+      const token = readBearerToken(req);
+      const matchSession = token ? getAuthSession(token) : null;
+      const matchCurrentUser = matchSession?.user ? getUserById(matchSession.user.id) : null;
+      const allMatches = getStateCollection('matches');
+      const visibleMatches = getPublicMatchesForUser(allMatches, matchCurrentUser);
+      const { limit, offset } = parseQueryParams(req.url);
+      const { items: matches, hasMore } = paginate(visibleMatches.map(sanitizeMatchForBroadcast), { limit, offset });
+      respondJson(res, 200, { ok: true, matches, total: visibleMatches.length, hasMore });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des matchs.' });
+    }
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/tournaments') {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
-    const { limit, offset } = parseQueryParams(req.url);
-    const all = getStoredTournaments();
-    const { items: tournaments, hasMore } = paginate(all.map(sanitizeTournamentForBroadcast), { limit, offset });
-    respondJson(res, 200, {
-      ok: true,
-      tournaments,
-      total: all.length,
-      hasMore,
-    });
+    try {
+      const { limit, offset } = parseQueryParams(req.url);
+      const all = getStoredTournaments();
+      const { items: tournaments, hasMore } = paginate(all.map(sanitizeTournamentForBroadcast), { limit, offset });
+      respondJson(res, 200, { ok: true, tournaments, total: all.length, hasMore });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des tournois.' });
+    }
     return;
   }
 
@@ -995,36 +999,40 @@ const server = http.createServer(async (req, res) => {
     const session = getAuthenticatedAppSession(req);
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const q = url.searchParams.get('q') || '';
-    const { limit, offset } = parseQueryParams(req.url);
-    const allMatches = findUsersByPseudo(q).filter((u) => u.id !== session.user.id);
-    const { items: matches, hasMore } = paginate(allMatches, { limit: Math.min(limit, 50), offset });
-    respondJson(res, 200, {
-      ok: true,
-      users: matches.map((u) => ({
-        id: u.id, pseudo: u.pseudo, avatar: u.avatar, country: u.country,
-        trustScore: u.trustScore, controllerType: u.controllerType, isOnline: u.isOnline,
-      })),
-      total: allMatches.length,
-      hasMore,
-    });
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const q = url.searchParams.get('q') || '';
+      const { limit, offset } = parseQueryParams(req.url);
+      const allMatches = findUsersByPseudo(q).filter((u) => u.id !== session.user.id);
+      const { items: matches, hasMore } = paginate(allMatches, { limit: Math.min(limit, 50), offset });
+      respondJson(res, 200, {
+        ok: true,
+        users: matches.map((u) => ({
+          id: u.id, pseudo: u.pseudo, avatar: u.avatar, country: u.country,
+          trustScore: u.trustScore, controllerType: u.controllerType, isOnline: u.isOnline,
+        })),
+        total: allMatches.length,
+        hasMore,
+      });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la recherche.' });
+    }
     return;
   }
 
   const tournamentDetail = pathname.match(/^\/api\/tournaments\/([^/]+)$/);
   if (req.method === 'GET' && tournamentDetail) {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
-    const tournament = getStoredTournaments().find((entry) => entry.id === tournamentDetail[1]);
-    if (!tournament) {
-      respondJson(res, 404, { ok: false, error: 'Tournoi introuvable.' });
-      return;
+    try {
+      const tournament = getStoredTournaments().find((entry) => entry.id === tournamentDetail[1]);
+      if (!tournament) {
+        respondJson(res, 404, { ok: false, error: 'Tournoi introuvable.' });
+        return;
+      }
+      respondJson(res, 200, { ok: true, tournament: sanitizeTournamentForBroadcast(tournament) });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du tournoi.' });
     }
-
-    respondJson(res, 200, {
-      ok: true,
-      tournament: sanitizeTournamentForBroadcast(tournament),
-    });
     return;
   }
 
@@ -1212,23 +1220,31 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/api/leagues') {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
-    const { limit, offset } = parseQueryParams(req.url);
-    const all = getStoredLeagues();
-    const { items: seasons, hasMore } = paginate(all, { limit, offset });
-    respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore });
+    try {
+      const { limit, offset } = parseQueryParams(req.url);
+      const all = getStoredLeagues();
+      const { items: seasons, hasMore } = paginate(all, { limit, offset });
+      respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des ligues.' });
+    }
     return;
   }
 
   const leagueGetOne = pathname.match(/^\/api\/leagues\/([^/]+)$/);
   if (req.method === 'GET' && leagueGetOne) {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
-    const seasons = getStoredLeagues();
-    const season = seasons.find((s) => s.id === leagueGetOne[1]);
-    if (!season) {
-      respondJson(res, 404, { ok: false, error: 'Ligue introuvable.' });
-      return;
+    try {
+      const seasons = getStoredLeagues();
+      const season = seasons.find((s) => s.id === leagueGetOne[1]);
+      if (!season) {
+        respondJson(res, 404, { ok: false, error: 'Ligue introuvable.' });
+        return;
+      }
+      respondJson(res, 200, { ok: true, season });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement de la ligue.' });
     }
-    respondJson(res, 200, { ok: true, season });
     return;
   }
 
@@ -1844,7 +1860,8 @@ const server = http.createServer(async (req, res) => {
       const health = getHealthInfo();
       respondJson(res, 200, { ok, persistence: health });
     } catch (err) {
-      respondJson(res, 500, { ok: false, error: err.message });
+      log.error('Admin reload failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du rechargement des donnees.' });
     }
     return;
   }
@@ -2018,11 +2035,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
-
-    respondJson(res, 200, {
-      ok: true,
-      ...buildChatBootstrapPayload(session.user.id),
-    });
+    try {
+      respondJson(res, 200, { ok: true, ...buildChatBootstrapPayload(session.user.id) });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du chat.' });
+    }
     return;
   }
 
@@ -2040,14 +2057,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    respondJson(res, 200, {
-      ok: true,
-      channel: {
-        ...channel,
-        unreadCount: getUnreadCountForUser(channel.id, session.user.id),
-      },
-      messages: getChatMessagesForChannel(channel.id, 150),
-    });
+    try {
+      respondJson(res, 200, {
+        ok: true,
+        channel: {
+          ...channel,
+          unreadCount: getUnreadCountForUser(channel.id, session.user.id),
+        },
+        messages: getChatMessagesForChannel(channel.id, 150),
+      });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du canal.' });
+    }
     return;
   }
 
@@ -2202,16 +2223,20 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    respondJson(res, 200, {
-      ok: true,
-      matches: getStateCollection('matches').map(sanitizeMatchForBroadcast),
-      tournaments: getStoredTournaments().map(sanitizeTournamentForBroadcast),
-      friends: getFriendsForUser(session.userId),
-      friendRequests: getFriendRequestsForUser(session.userId),
-      blockedIds: getBlockedUsers(session.userId),
-      notifications: getUnreadNotificationsForUser(session.userId),
-      timestamp: getNow(),
-    });
+    try {
+      respondJson(res, 200, {
+        ok: true,
+        matches: getStateCollection('matches').map(sanitizeMatchForBroadcast),
+        tournaments: getStoredTournaments().map(sanitizeTournamentForBroadcast),
+        friends: getFriendsForUser(session.userId),
+        friendRequests: getFriendRequestsForUser(session.userId),
+        blockedIds: getBlockedUsers(session.userId),
+        notifications: getUnreadNotificationsForUser(session.userId),
+        timestamp: getNow(),
+      });
+    } catch (error) {
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement de l\'etat realtime.' });
+    }
     return;
   }
 

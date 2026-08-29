@@ -258,11 +258,11 @@ const LoginPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-3">
-              <Button type="button" variant="ghost" fullWidth className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest">
-                CONTINUER AVEC GOOGLE
+              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/30 font-mono text-[10px] tracking-widest cursor-not-allowed">
+                CONTINUER AVEC GOOGLE — BIENTOT DISPONIBLE
               </Button>
-              <Button type="button" variant="ghost" fullWidth className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest">
-                CONNEXION PAR NUMERO
+              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/30 font-mono text-[10px] tracking-widest cursor-not-allowed">
+                CONNEXION PAR NUMERO — BIENTOT DISPONIBLE
               </Button>
             </div>
           </form>

@@ -534,7 +534,7 @@ const MatchDetailPage: React.FC = () => {
       .catch((error) => {
         toast.error(error instanceof Error ? error.message : "Impossible d'envoyer ce message.");
       });
-  }, [user, navigate, match.channelId, match.user?.pseudo, hydrateChat, receiveServerMessage, setTyping, markChannelSeen]);
+  }, [user, navigate, match.channelId, hydrateChat, receiveServerMessage, setTyping, markChannelSeen]);
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline safe-top">

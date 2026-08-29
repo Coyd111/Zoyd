@@ -16,6 +16,7 @@ type AdminUrgencyTabProps = {
   onRequestCancel: (matchId: string) => void;
   onResolveWinner: (matchId: string, team: 0 | 1) => void;
   onResolveDisputeOnly: (matchId: string) => void;
+  loadingAction: boolean;
 };
 
 const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
@@ -29,6 +30,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
   onRequestCancel,
   onResolveWinner,
   onResolveDisputeOnly,
+  loadingAction,
 }) => (
   <div className="space-y-6">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -188,6 +190,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
 
               <div className="flex flex-wrap gap-3">
                 <button
+                  disabled={loadingAction}
                   onClick={() => {
                     if (pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha') {
                       onSetPendingResolve(null);
@@ -196,7 +199,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                       onSetPendingResolve({ matchId: match.id, type: 'alpha' });
                     }
                   }}
-                  className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
+                  className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target disabled:opacity-40 ${
                     pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha'
                       ? 'bg-green-400 text-black'
                       : 'bg-green-500 text-black hover:bg-green-400'
@@ -206,6 +209,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   {pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha' ? 'Confirmer Alpha' : 'Valider Alpha'}
                 </button>
                 <button
+                  disabled={loadingAction}
                   onClick={() => {
                     if (pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo') {
                       onSetPendingResolve(null);
@@ -214,7 +218,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                       onSetPendingResolve({ matchId: match.id, type: 'bravo' });
                     }
                   }}
-                  className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
+                  className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target disabled:opacity-40 ${
                     pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo'
                       ? 'bg-zoyd-yellow text-black'
                       : 'bg-white text-black hover:bg-zoyd-yellow'
@@ -223,6 +227,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   {pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo' ? 'Confirmer Bravo' : 'Valider Bravo'}
                 </button>
                 <button
+                  disabled={loadingAction}
                   onClick={() => {
                     if (pendingResolve?.matchId === match.id && pendingResolve.type === 'none') {
                       onSetPendingResolve(null);
@@ -231,7 +236,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                       onSetPendingResolve({ matchId: match.id, type: 'none' });
                     }
                   }}
-                  className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target ${
+                  className={`px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target disabled:opacity-40 ${
                     pendingResolve?.matchId === match.id && pendingResolve.type === 'none'
                       ? 'border-zoyd-blue bg-zoyd-blue text-black'
                       : 'border border-zoyd-blue/30 text-zoyd-blue hover:bg-zoyd-blue hover:text-black'

@@ -31,6 +31,7 @@ const AdminDashboardPage: React.FC = () => {
   const [disputeFilter, setDisputeFilter] = useState<DisputeFilter>('escalated');
   const [pendingResolve, setPendingResolve] = useState<{ matchId: string; type: 'alpha' | 'bravo' | 'none' } | null>(null);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState(false);
   const players = useMemo(() => buildCommunityPlayers({ currentUser: user, friends, reports, matches, tournaments }), [friends, matches, reports, tournaments, user]);
   const adminInsights = useMemo(() => buildAdminInsights({ players, matches, reports }), [matches, players, reports]);
   const playerById = useMemo(() => {
@@ -83,9 +84,45 @@ const AdminDashboardPage: React.FC = () => {
   if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
 
   const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => { hydrateMatches([payload.match]); applyServerAccountState(payload); };
-  const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => { try { const response = await adminAwardServerMatch(matchId, winnerTeam, 'Résolution admin depuis le centre de commandement.'); applyAdminMatchResponse(response); toast.success('Résultat admin appliqué.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Résolution admin impossible.'); } };
-  const handleResolveDisputeOnly = async (matchId: string) => { try { const response = await adminResolveServerDispute(matchId, 'Litige clos par modération ZOYD.'); applyAdminMatchResponse(response); toast.success('Litige clos sans modifier le vainqueur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.'); } };
-  const handleCancelMatch = async (matchId: string) => { try { const response = await adminCancelServerMatch(matchId, 'Match annulé par modération locale.'); applyAdminMatchResponse(response); toast.success('Match annulé et remboursé côté serveur.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Annulation admin impossible.'); } };
+  const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => {
+    if (loadingAction) return;
+    setLoadingAction(true);
+    try {
+      const response = await adminAwardServerMatch(matchId, winnerTeam, 'Résolution admin depuis le centre de commandement.');
+      applyAdminMatchResponse(response);
+      toast.success('Résultat admin appliqué.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Résolution admin impossible.');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+  const handleResolveDisputeOnly = async (matchId: string) => {
+    if (loadingAction) return;
+    setLoadingAction(true);
+    try {
+      const response = await adminResolveServerDispute(matchId, 'Litige clos par modération ZOYD.');
+      applyAdminMatchResponse(response);
+      toast.success('Litige clos sans modifier le vainqueur.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+  const handleCancelMatch = async (matchId: string) => {
+    if (loadingAction) return;
+    setLoadingAction(true);
+    try {
+      const response = await adminCancelServerMatch(matchId, 'Match annulé par modération locale.');
+      applyAdminMatchResponse(response);
+      toast.success('Match annulé et remboursé côté serveur.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Annulation admin impossible.');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline pt-safe-top">
       <Helmet>
@@ -137,7 +174,7 @@ const AdminDashboardPage: React.FC = () => {
         </div>
         {activeTab === 'overview' && <AdminOverviewTab priorityQueue={priorityQueue} readyMatchesCount={matchQueues.ready.length} liveMatchesCount={matchQueues.live.length} pendingReportsCount={pendingReports.length} recentEvents={adminInsights.recentEvents} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
         {activeTab === 'matches' && <AdminMatchesTab filteredMatches={filteredMatches} matchFilter={matchFilter} onFilterChange={setMatchFilter} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
-        {activeTab === 'disputes' && <AdminUrgencyTab filteredDisputes={filteredDisputes} disputeFilter={disputeFilter} onFilterChange={setDisputeFilter} escalatedCount={escalatedDisputes.length} totalCount={adminInsights.openDisputes.length} pendingResolve={pendingResolve} onSetPendingResolve={setPendingResolve} onRequestCancel={(matchId) => setConfirmAction(matchId)} onResolveWinner={handleResolveWinner} onResolveDisputeOnly={handleResolveDisputeOnly} />}
+        {activeTab === 'disputes' && <AdminUrgencyTab filteredDisputes={filteredDisputes} disputeFilter={disputeFilter} onFilterChange={setDisputeFilter} escalatedCount={escalatedDisputes.length} totalCount={adminInsights.openDisputes.length} pendingResolve={pendingResolve} onSetPendingResolve={setPendingResolve} onRequestCancel={(matchId) => setConfirmAction(matchId)} onResolveWinner={handleResolveWinner} onResolveDisputeOnly={handleResolveDisputeOnly} loadingAction={loadingAction} />}
         {activeTab === 'users' && <AdminUsersTab filteredUsers={filteredUsers} userFilter={userFilter} onFilterChange={setUserFilter} />}
       </main>
 
@@ -166,9 +203,10 @@ const AdminDashboardPage: React.FC = () => {
               </button>
               <button
                 onClick={() => { const matchId = confirmAction; setConfirmAction(null); if (matchId) void handleCancelMatch(matchId); }}
-                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
+                disabled={loadingAction}
+                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
               >
-                Confirmer
+                {loadingAction ? 'En cours...' : 'Confirmer'}
               </button>
             </div>
           </div>

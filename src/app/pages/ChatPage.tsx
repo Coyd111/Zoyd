@@ -9,12 +9,14 @@ import {
   markServerChatChannelRead,
   sendServerChatMessage,
 } from '../lib/chatApi';
-import { useChatStore } from '../stores/chatStore';
+import { useChatStore, type ChatMessage } from '../stores/chatStore';
 import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
 import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
 import { Helmet } from 'react-helmet-async';
+import { useSocketStore } from '../stores/socketStore';
+import { getApiUrl } from '../lib/apiClient';
 
 const channelIcons: Record<string, React.ReactNode> = {
   global: <Globe className="w-4 h-4" />,
@@ -73,6 +75,20 @@ const ChatPage: React.FC = () => {
       cancelled = true;
     };
   }, [activeChannelId, hydrateFromServer, user]);
+
+  useEffect(() => {
+    const socket = useSocketStore.getState().socket;
+    if (!socket) return;
+
+    const handleChatMessage = (payload: { channelId: string; message: ChatMessage }) => {
+      if (payload.channelId === activeChannelId && payload.message.senderId !== user?.id) {
+        receiveServerMessage(payload.message, payload.message.senderId);
+      }
+    };
+
+    socket.on('chat:message', handleChatMessage);
+    return () => { socket.off('chat:message', handleChatMessage); };
+  }, [activeChannelId, receiveServerMessage, user?.id]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -245,9 +261,24 @@ const ChatPage: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() =>
-                    activeChannel.isMuted ? unmuteChannel(activeChannel.id) : muteChannel(activeChannel.id)
-                  }
+                  onClick={() => {
+                    const newMuted = !activeChannel.isMuted;
+                    if (newMuted) {
+                      muteChannel(activeChannel.id);
+                      fetch(getApiUrl(`/api/chat/channels/${activeChannel.id}/mute`), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                      }).catch(() => {});
+                    } else {
+                      unmuteChannel(activeChannel.id);
+                      fetch(getApiUrl(`/api/chat/channels/${activeChannel.id}/unmute`), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                      }).catch(() => {});
+                    }
+                  }}
                   className="touch-target text-white/40 hover:text-white transition-colors"
                   aria-label={activeChannel.isMuted ? 'Activer les notifications' : 'Couper les notifications'}
                 >

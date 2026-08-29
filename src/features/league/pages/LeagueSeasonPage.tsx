@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Trophy, Crown, Medal, Zap, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
@@ -37,24 +37,35 @@ const LeagueSeasonPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: Record<string, unknown>; message: string } | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
-
-  const loadSeason = useCallback(async () => {
-    if (!seasonId) return;
-    try {
-      setIsLoading(true);
-      setLoadError(null);
-      const response = await fetchServerLeagueSeason(seasonId);
-      replaceFromServer([response.season]);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Erreur de chargement.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [seasonId, replaceFromServer]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    void loadSeason();
-  }, [loadSeason]);
+    const controller = new AbortController();
+
+    async function load() {
+      if (!seasonId) return;
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const response = await fetchServerLeagueSeason(seasonId);
+        if (!controller.signal.aborted) {
+          replaceFromServer([response.season]);
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (!controller.signal.aborted) {
+          setLoadError(e instanceof Error ? e.message : 'Erreur de chargement.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+  }, [seasonId, replaceFromServer, reloadKey]);
 
   const season = seasonId ? getSeasonById(seasonId) : undefined;
 
@@ -192,7 +203,7 @@ const LeagueSeasonPage = () => {
           <div className="border border-red-500/30 bg-red-500/10 px-6 py-5 text-sm text-red-400">
             {loadError || 'Saison introuvable.'}
             {loadError ? (
-              <button onClick={() => void loadSeason()} className="ml-4 underline hover:text-white">
+              <button onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
                 Réessayer
               </button>
             ) : null}

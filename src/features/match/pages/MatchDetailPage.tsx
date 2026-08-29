@@ -105,6 +105,9 @@ const MatchDetailPage: React.FC = () => {
   const [showArbiterScore, setShowArbiterScore] = useState(false);
   const [isSubmittingResult, setIsSubmittingResult] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [isSavingRoom, setIsSavingRoom] = useState(false);
+  const [isDisputing, setIsDisputing] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
   const match = id ? getMatchById(id) : undefined;
@@ -311,13 +314,16 @@ const MatchDetailPage: React.FC = () => {
   }, [user, navigate, match.id, applyMatchResponse]);
 
   const handleSchedule = async () => {
-    if (!scheduleValue) return;
+    if (!scheduleValue || isScheduling) return;
+    setIsScheduling(true);
     try {
       const response = await scheduleServerMatch(match.id, new Date(scheduleValue).toISOString());
       applyMatchResponse(response);
       toast.success('Horaire du match confirme.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Impossible de confirmer cet horaire.');
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -326,13 +332,16 @@ const MatchDetailPage: React.FC = () => {
       toast.error('Entre un nom de salle et un mot de passe.');
       return;
     }
-
+    if (isSavingRoom) return;
+    setIsSavingRoom(true);
     try {
       const response = await setServerRoomDetails(match.id, roomName, roomPassword);
       applyMatchResponse(response);
       toast.success('La salle privée a bien été partagée.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : roomPublishWindow.message);
+    } finally {
+      setIsSavingRoom(false);
     }
   };
 
@@ -397,6 +406,8 @@ const MatchDetailPage: React.FC = () => {
       toast.error('Ajoute au moins une preuve avant d ouvrir un litige.');
       return;
     }
+    if (isDisputing) return;
+    setIsDisputing(true);
     try {
       const response = await openServerMatchDispute(match.id, {
         reason: disputeReason.trim(),
@@ -409,6 +420,8 @@ const MatchDetailPage: React.FC = () => {
       setDisputeEvidence('');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Un litige est deja actif sur ce match ou les preuves sont insuffisantes.");
+    } finally {
+      setIsDisputing(false);
     }
   };
 
@@ -557,6 +570,8 @@ const MatchDetailPage: React.FC = () => {
               isEscalating={isEscalating}
               isSubmittingResult={isSubmittingResult}
               isProcessingAction={isProcessingAction}
+              isScheduling={isScheduling}
+              isSavingRoom={isSavingRoom}
               roomState={{
                 scheduleValue,
                 setScheduleValue,
@@ -650,10 +665,11 @@ const MatchDetailPage: React.FC = () => {
                 Annuler
               </button>
               <button
+                disabled={isDisputing}
                 onClick={() => { setConfirmAction(null); void handleDispute(); }}
-                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
+                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
               >
-                Confirmer
+                {isDisputing ? 'En cours...' : 'Confirmer'}
               </button>
             </div>
           </div>

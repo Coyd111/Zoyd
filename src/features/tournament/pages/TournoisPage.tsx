@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Plus, Search, Swords, Trophy, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
@@ -18,23 +18,34 @@ const TournoisPage: React.FC = () => {
   const debouncedQuery = useDebounce(searchQuery, 300);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const loadTournaments = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setLoadError(null);
-      const response = await fetchServerTournaments();
-      replaceFromServer(response.tournaments);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Impossible de charger les tournois.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [replaceFromServer]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    void loadTournaments();
-  }, [loadTournaments]);
+    const controller = new AbortController();
+
+    async function load() {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const response = await fetchServerTournaments();
+        if (!controller.signal.aborted) {
+          replaceFromServer(response.tournaments);
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (!controller.signal.aborted) {
+          setLoadError(e instanceof Error ? e.message : 'Impossible de charger les tournois.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+  }, [replaceFromServer, reloadKey]);
 
   const tournaments = useMemo(() => {
     const query = debouncedQuery.trim().toLowerCase();
@@ -128,7 +139,7 @@ const TournoisPage: React.FC = () => {
         {loadError ? (
           <div className="mb-8 border border-red-400/20 bg-red-400/5 px-5 py-4 text-sm text-red-200">
             {loadError}
-            <button onClick={() => void loadTournaments()} className="ml-4 underline hover:text-white">
+            <button onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
               Réessayer
             </button>
           </div>

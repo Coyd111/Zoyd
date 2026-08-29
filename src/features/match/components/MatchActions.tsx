@@ -48,6 +48,8 @@ interface MatchActionsProps {
   isEscalating: boolean;
   isSubmittingResult: boolean;
   isProcessingAction: boolean;
+  isScheduling: boolean;
+  isSavingRoom: boolean;
   roomState: {
     scheduleValue: string;
     setScheduleValue: (v: string) => void;
@@ -121,6 +123,8 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
   isEscalating,
   isSubmittingResult,
   isProcessingAction,
+  isScheduling,
+  isSavingRoom,
   roomState,
   scoreState,
   proofsState,
@@ -228,8 +232,8 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               aria-label="Horaire du match"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
-            <button onClick={handlers.schedule} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic">
-              Valider l'horaire
+            <button onClick={handlers.schedule} disabled={isScheduling} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-40">
+              {isScheduling ? 'En cours...' : "Valider l'horaire"}
             </button>
           </div>
 
@@ -253,8 +257,8 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           </div>
 
           <div className="grid md:grid-cols-2 gap-3">
-            <button onClick={handlers.roomSave} disabled={!roomPublishWindow.canPublish} className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors disabled:opacity-30">
-              Partager la salle
+            <button onClick={handlers.roomSave} disabled={!roomPublishWindow.canPublish || isSavingRoom} className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors disabled:opacity-30">
+              {isSavingRoom ? 'En cours...' : 'Partager la salle'}
             </button>
             <button onClick={handlers.launch} disabled={!canLaunch} className="bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30 hover:bg-white transition-colors">
               DÉMARRER LE MATCH

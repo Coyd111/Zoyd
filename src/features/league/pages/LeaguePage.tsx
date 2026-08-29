@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Trophy, Users, Calendar, Crown, Zap, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
@@ -158,23 +158,35 @@ const LeaguePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-
-  const loadLeagues = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setLoadError(null);
-      const response = await fetchServerLeagues();
-      replaceFromServer(response.seasons);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Erreur de chargement.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [replaceFromServer]);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    void loadLeagues();
-  }, [loadLeagues]);
+    const controller = new AbortController();
+
+    async function load() {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const response = await fetchServerLeagues();
+        if (!controller.signal.aborted) {
+          replaceFromServer(response.seasons);
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (!controller.signal.aborted) {
+          setLoadError(e instanceof Error ? e.message : 'Erreur de chargement.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+  }, [replaceFromServer, reloadKey]);
 
   const seasons = useMemo(() => getFilteredSeasons(), [getFilteredSeasons]);
   const activeSeason = getActiveSeason();
@@ -288,13 +300,24 @@ const LeaguePage: React.FC = () => {
             )}
             {user?.role === 'admin' && (
               <button
-                onClick={handleCreateSeason}
+                onClick={() => setConfirmAction('create-season')}
                 disabled={actionLoading}
                 className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50 touch-target"
                 aria-label="Créer une nouvelle saison de ligue"
               >
                 <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                 Créer une saison
+              </button>
+            )}
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => setConfirmAction('start-qualification')}
+                disabled={actionLoading}
+                className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50 touch-target"
+                aria-label="Démarrer les qualifications"
+              >
+                <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+                Démarrer les qualifications
               </button>
             )}
           </div>
@@ -332,7 +355,7 @@ const LeaguePage: React.FC = () => {
         {loadError && (
           <div className="border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-6">
             {loadError}
-            <button onClick={() => void loadLeagues()} className="ml-4 underline hover:text-white">
+            <button onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
               Réessayer
             </button>
           </div>
@@ -380,6 +403,30 @@ const LeaguePage: React.FC = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      {confirmAction === 'start-qualification' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
+            <p className="text-sm text-yellow-300">Démarrer les qualifications ? Cette action est irréversible.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
+              <button onClick={() => { setConfirmAction(null); void handleStartQualification(activeSeason?.id || ''); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction === 'create-season' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
+            <p className="text-sm text-yellow-300">Créer une nouvelle saison ? Cette action est irréversible.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
+              <button onClick={() => { setConfirmAction(null); void handleCreateSeason(); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

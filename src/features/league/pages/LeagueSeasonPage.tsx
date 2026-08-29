@@ -29,8 +29,9 @@ import { Helmet } from 'react-helmet-async';
 
 const LeagueSeasonPage = () => {
   const { seasonId } = useParams<{ seasonId: string }>();
-  const { user } = useAuthStore();
-  const { getSeasonById, replaceFromServer } = useLeagueStore();
+  const user = useAuthStore((s) => s.user);
+  const getSeasonById = useLeagueStore((s) => s.getSeasonById);
+  const replaceFromServer = useLeagueStore((s) => s.replaceFromServer);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('standings');

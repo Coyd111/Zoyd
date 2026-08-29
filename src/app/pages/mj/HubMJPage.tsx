@@ -19,7 +19,9 @@ const STATUS_FILTERS = [
 ] as const;
 
 const HubMJPage: React.FC = () => {
-  const { filters, setFilters, getFilteredMatches } = useMatchStore();
+  const filters = useMatchStore((s) => s.filters);
+  const setFilters = useMatchStore((s) => s.setFilters);
+  const getFilteredMatches = useMatchStore((s) => s.getFilteredMatches);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);

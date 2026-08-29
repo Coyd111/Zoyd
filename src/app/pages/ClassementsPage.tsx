@@ -69,10 +69,11 @@ const sortWithRank = <T,>(items: T[], sorter: (left: T, right: T) => number) =>
 // M-06: Rankings computed client-side for now. Server-side pagination recommended
 // when dataset exceeds ~1K players. Current approach works for community-scale.
 const ClassementsPage: React.FC = () => {
-  const { user } = useAuthStore();
-  const { friends, reports } = useFriendsStore();
-  const { matches } = useMatchStore();
-  const { tournaments } = useTournamentStore();
+  const user = useAuthStore((s) => s.user);
+  const friends = useFriendsStore((s) => s.friends);
+  const reports = useFriendsStore((s) => s.reports);
+  const matches = useMatchStore((s) => s.matches);
+  const tournaments = useTournamentStore((s) => s.tournaments);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<RankingTab>('elo');

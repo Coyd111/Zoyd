@@ -12,7 +12,9 @@ import { useLogout } from '../../hooks/useLogout';
 const Navbar: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const totalBalance = useWalletStore((s) => s.getTotalBalance());
-  const { isConnected, serverConnected, liveMatches } = useSocketStore();
+  const isConnected = useSocketStore((s) => s.isConnected);
+  const serverConnected = useSocketStore((s) => s.serverConnected);
+  const liveMatches = useSocketStore((s) => s.liveMatches);
   const handleLogout = useLogout();
   const safeUser = user || { pseudo: 'ShadowX' };
   const [settingsOpen, setSettingsOpen] = useState(false);

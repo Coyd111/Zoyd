@@ -11,9 +11,9 @@ import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { Helmet } from 'react-helmet-async';
 
 const ProfilPage = () => {
-  const { user } = useAuthStore();
-  const { matches } = useMatchStore();
-  const { tournaments } = useTournamentStore();
+  const user = useAuthStore((s) => s.user);
+  const matches = useMatchStore((s) => s.matches);
+  const tournaments = useTournamentStore((s) => s.tournaments);
   const prefersReducedMotion = useReducedMotion();
 
   if (!user) {

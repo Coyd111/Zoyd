@@ -13,7 +13,10 @@ import { Helmet } from 'react-helmet-async';
 const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'];
 
 const TournoisPage: React.FC = () => {
-  const { filters, setFilters, getFilteredTournaments, replaceFromServer } = useTournamentStore();
+  const filters = useTournamentStore((s) => s.filters);
+  const setFilters = useTournamentStore((s) => s.setFilters);
+  const getFilteredTournaments = useTournamentStore((s) => s.getFilteredTournaments);
+  const replaceFromServer = useTournamentStore((s) => s.replaceFromServer);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
   const [isLoading, setIsLoading] = useState(true);

@@ -4,7 +4,7 @@ import { useSocketStore } from '../stores/socketStore';
 import { formatZC } from '../../lib/utils';
 
 const LiveTicker: React.FC = React.memo(() => {
-  const { liveMatches } = useSocketStore();
+  const liveMatches = useSocketStore((s) => s.liveMatches);
 
   if (liveMatches.length === 0) {
     return null;

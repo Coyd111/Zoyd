@@ -62,9 +62,9 @@ const getTrustStatus = (trustScore?: number) => {
 };
 
 const EarningsDashboard: React.FC = () => {
-  const { user } = useAuthStore();
-  const { matches } = useMatchStore();
-  const { tournaments } = useTournamentStore();
+  const user = useAuthStore((s) => s.user);
+  const matches = useMatchStore((s) => s.matches);
+  const tournaments = useTournamentStore((s) => s.tournaments);
   const transactions = useWalletStore((s) => s.transactions);
   const lockedBalance = useWalletStore((s) => s.lockedBalance);
   const cashBalance = useWalletStore((s) => s.cashBalance);

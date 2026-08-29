@@ -60,7 +60,7 @@ const parseRefs = (value: string) =>
 const MatchDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const getMatchById = useMatchStore((s) => s.getMatchById);
   const canJoinAsArbiter = useMatchStore((s) => s.canJoinAsArbiter);
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);

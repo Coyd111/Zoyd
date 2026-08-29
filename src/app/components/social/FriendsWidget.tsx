@@ -25,17 +25,15 @@ const statusColors: Record<string, string> = {
 };
 
 const FriendsWidget: React.FC = () => {
-  const {
-    friends,
-    requests,
-    blockedIds,
-    sendRequest,
-    acceptRequest,
-    declineRequest,
-    removeFriend,
-    unblockUser,
-    getOnlineFriends,
-  } = useFriendsStore();
+  const friends = useFriendsStore((s) => s.friends);
+  const requests = useFriendsStore((s) => s.requests);
+  const blockedIds = useFriendsStore((s) => s.blockedIds);
+  const sendRequest = useFriendsStore((s) => s.sendRequest);
+  const acceptRequest = useFriendsStore((s) => s.acceptRequest);
+  const declineRequest = useFriendsStore((s) => s.declineRequest);
+  const removeFriend = useFriendsStore((s) => s.removeFriend);
+  const unblockUser = useFriendsStore((s) => s.unblockUser);
+  const getOnlineFriends = useFriendsStore((s) => s.getOnlineFriends);
 
   const [isOpen, setIsOpen] = useState(true);
   const [search, setSearch] = useState('');

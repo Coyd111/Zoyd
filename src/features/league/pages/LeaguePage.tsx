@@ -153,8 +153,12 @@ const SeasonCard: React.FC<{
 SeasonCard.displayName = 'SeasonCard';
 
 const LeaguePage: React.FC = () => {
-  const { user } = useAuthStore();
-  const { filters, setFilters, getFilteredSeasons, replaceFromServer, getActiveSeason } = useLeagueStore();
+  const user = useAuthStore((s) => s.user);
+  const filters = useLeagueStore((s) => s.filters);
+  const setFilters = useLeagueStore((s) => s.setFilters);
+  const getFilteredSeasons = useLeagueStore((s) => s.getFilteredSeasons);
+  const replaceFromServer = useLeagueStore((s) => s.replaceFromServer);
+  const getActiveSeason = useLeagueStore((s) => s.getActiveSeason);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);

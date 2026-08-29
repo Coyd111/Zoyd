@@ -28,8 +28,8 @@ import { Helmet } from 'react-helmet-async';
 const TournamentBracketPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const { getAvailableToSpend } = useWalletStore();
+  const user = useAuthStore((s) => s.user);
+  const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
   const getTournamentById = useTournamentStore((state) => state.getTournamentById);
   const hydrateTournaments = useTournamentStore((state) => state.hydrateFromServer);
 

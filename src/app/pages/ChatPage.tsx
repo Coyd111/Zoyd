@@ -41,7 +41,7 @@ const ChatPage: React.FC = () => {
   const unmuteChannel = useChatStore((s) => s.unmuteChannel);
   const getMessagesForChannel = useChatStore((s) => s.getMessagesForChannel);
   const getUnreadTotal = useChatStore((s) => s.getUnreadTotal);
-  const { friends } = useFriendsStore();
+  const friends = useFriendsStore((s) => s.friends);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -75,20 +75,6 @@ const ChatPage: React.FC = () => {
       cancelled = true;
     };
   }, [activeChannelId, hydrateFromServer, user]);
-
-  useEffect(() => {
-    const socket = useSocketStore.getState().socket;
-    if (!socket) return;
-
-    const handleChatMessage = (payload: { channelId: string; message: ChatMessage }) => {
-      if (payload.channelId === activeChannelId && payload.message.senderId !== user?.id) {
-        receiveServerMessage(payload.message, payload.message.senderId);
-      }
-    };
-
-    socket.on('chat:message', handleChatMessage);
-    return () => { socket.off('chat:message', handleChatMessage); };
-  }, [activeChannelId, receiveServerMessage, user?.id]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 

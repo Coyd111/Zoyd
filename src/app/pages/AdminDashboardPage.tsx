@@ -20,11 +20,12 @@ import type { MatchFilter, UserFilter, DisputeFilter } from '../components/admin
 import { Helmet } from 'react-helmet-async';
 
 const AdminDashboardPage: React.FC = () => {
-  const { user } = useAuthStore();
-  const { friends, reports } = useFriendsStore();
-  const { matches } = useMatchStore();
+  const user = useAuthStore((s) => s.user);
+  const friends = useFriendsStore((s) => s.friends);
+  const reports = useFriendsStore((s) => s.reports);
+  const matches = useMatchStore((s) => s.matches);
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
-  const { tournaments } = useTournamentStore();
+  const tournaments = useTournamentStore((s) => s.tournaments);
   const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'disputes' | 'users'>('overview');
   const [matchFilter, setMatchFilter] = useState<MatchFilter>('priority');
   const [userFilter, setUserFilter] = useState<UserFilter>('critical');

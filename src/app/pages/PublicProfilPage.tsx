@@ -19,9 +19,14 @@ const PublicProfilPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
-  const { friends, sendRequest, blockUser, reportUser, isBlocked, isFriend } = useFriendsStore();
-  const { matches } = useMatchStore();
-  const { tournaments } = useTournamentStore();
+  const friends = useFriendsStore((s) => s.friends);
+  const sendRequest = useFriendsStore((s) => s.sendRequest);
+  const blockUser = useFriendsStore((s) => s.blockUser);
+  const reportUser = useFriendsStore((s) => s.reportUser);
+  const isBlocked = useFriendsStore((s) => s.isBlocked);
+  const isFriend = useFriendsStore((s) => s.isFriend);
+  const matches = useMatchStore((s) => s.matches);
+  const tournaments = useTournamentStore((s) => s.tournaments);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   const prefersReducedMotion = useReducedMotion();
 

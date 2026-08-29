@@ -1,5 +1,7 @@
 import { useAuthStore } from '../stores/authStore';
 
+let logoutQueued = false;
+
 // M-01: Named VITE_REALTIME_URL because backend serves both REST API and Socket.io (realtime).
 // This is the single backend URL for all communication.
 export const getBaseUrl = () => {
@@ -27,7 +29,10 @@ export const getAuthHeaders = () => {
 
   // Check token expiration on client side — defer logout to avoid race conditions with parallel requests
   if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
-    queueMicrotask(() => useAuthStore.getState().logout());
+    if (!logoutQueued) {
+      logoutQueued = true;
+      queueMicrotask(() => { logoutQueued = false; useAuthStore.getState().logout(); });
+    }
     return {};
   }
 

@@ -43,8 +43,9 @@ type NotificationSettings = {
 };
 
 const ParametresPage: React.FC = () => {
-  const { user, updateUser } = useAuthStore();
-  const { markAllAsRead } = useNotificationStore();
+  const user = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
+  const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<ActiveTab>('account');
   const [isSaving, setIsSaving] = useState(false);

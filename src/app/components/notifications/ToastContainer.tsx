@@ -32,7 +32,8 @@ const toastConfig: Record<ToastType, { icon: React.ReactNode; border: string; bg
 };
 
 const ToastContainer: React.FC = () => {
-  const { toasts, removeToast } = useToastStore();
+  const toasts = useToastStore((s) => s.toasts);
+  const removeToast = useToastStore((s) => s.removeToast);
 
   return (
     <div

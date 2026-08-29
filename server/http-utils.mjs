@@ -107,9 +107,12 @@ export const parseQueryParams = (url) => {
 /**
  * @param {Array} arr
  * @param {{ limit: number, offset: number }} opts
- * @returns {Array}
+ * @returns {{ items: Array, hasMore: boolean }}
  */
-export const paginate = (arr, { limit, offset }) => arr.slice(offset, offset + limit);
+export const paginate = (arr, { limit, offset }) => {
+  const items = arr.slice(offset, offset + limit);
+  return { items, hasMore: offset + limit < arr.length };
+};
 
 /** @type {number} Max request body size in bytes (1 MB). */
 export const BODY_SIZE_LIMIT = 1 * 1024 * 1024;

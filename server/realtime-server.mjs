@@ -857,7 +857,8 @@ const server = http.createServer(async (req, res) => {
     try {
       const leaderboard = getLeaderboard();
       const { limit, offset } = parseQueryParams(req.url);
-      respondJson(res, 200, { ok: true, players: paginate(leaderboard, { limit, offset }), total: leaderboard.length });
+      const { items: players, hasMore } = paginate(leaderboard, { limit, offset });
+      respondJson(res, 200, { ok: true, players, total: leaderboard.length, hasMore });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du classement.' });
     }
@@ -964,11 +965,13 @@ const server = http.createServer(async (req, res) => {
     const allMatches = getStateCollection('matches');
     const visibleMatches = getPublicMatchesForUser(allMatches, matchCurrentUser);
     const { limit, offset } = parseQueryParams(req.url);
+    const { items: matches, hasMore } = paginate(visibleMatches.map(sanitizeMatchForBroadcast), { limit, offset });
 
     respondJson(res, 200, {
       ok: true,
-      matches: paginate(visibleMatches.map(sanitizeMatchForBroadcast), { limit, offset }),
+      matches,
       total: visibleMatches.length,
+      hasMore,
     });
     return;
   }
@@ -977,10 +980,12 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const { limit, offset } = parseQueryParams(req.url);
     const all = getStoredTournaments();
+    const { items: tournaments, hasMore } = paginate(all.map(sanitizeTournamentForBroadcast), { limit, offset });
     respondJson(res, 200, {
       ok: true,
-      tournaments: paginate(all.map(sanitizeTournamentForBroadcast), { limit, offset }),
+      tournaments,
       total: all.length,
+      hasMore,
     });
     return;
   }
@@ -993,13 +998,15 @@ const server = http.createServer(async (req, res) => {
     const q = url.searchParams.get('q') || '';
     const { limit, offset } = parseQueryParams(req.url);
     const allMatches = findUsersByPseudo(q).filter((u) => u.id !== session.user.id);
-    const matches = paginate(allMatches, { limit: Math.min(limit, 50), offset });
+    const { items: matches, hasMore } = paginate(allMatches, { limit: Math.min(limit, 50), offset });
     respondJson(res, 200, {
       ok: true,
       users: matches.map((u) => ({
         id: u.id, pseudo: u.pseudo, avatar: u.avatar, country: u.country,
         trustScore: u.trustScore, controllerType: u.controllerType, isOnline: u.isOnline,
       })),
+      total: allMatches.length,
+      hasMore,
     });
     return;
   }
@@ -1206,7 +1213,8 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const { limit, offset } = parseQueryParams(req.url);
     const all = getStoredLeagues();
-    respondJson(res, 200, { ok: true, seasons: paginate(all, { limit, offset }), total: all.length });
+    const { items: seasons, hasMore } = paginate(all, { limit, offset });
+    respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore });
     return;
   }
 

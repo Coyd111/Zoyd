@@ -63,22 +63,28 @@ const buildMatchActionPayload = (match, userId) => {
 };
 
 /**
- * Remove sensitive fields (e.g. roomPassword) from a match before broadcasting.
+ * Remove sensitive fields (e.g. roomPassword, screenshots, userId, system actor names) from a match before broadcasting.
  * @param {object} match - The match to sanitize
  * @returns {object} A shallow copy with sensitive fields stripped
  */
 const sanitizeMatchForBroadcast = (match) => {
-  const { roomPassword, ...safe } = match;
+  const { roomPassword, screenshots, ...safe } = match;
   if (safe.arbiter) {
     const { roomPassword: _ap, ...safeArbiter } = safe.arbiter;
     safe.arbiter = safeArbiter;
+  }
+  if (Array.isArray(safe.players)) {
+    safe.players = safe.players.map(({ userId, ...rest }) => rest);
+  }
+  if (safe.submittedBy === 'system-no-show' || safe.submittedBy === 'admin-dashboard') {
+    safe.submittedBy = null;
   }
   return safe;
 };
 
 /**
  * Sanitize a tournament: strip roomPassword from all embedded matches.
- * Also strip admin internal IDs from public view.
+ * Also strip admin internal IDs from public view, including entry members and captains.
  * @param {object} tournament - The tournament to sanitize
  * @returns {object} A sanitized copy safe for public broadcast
  */
@@ -89,6 +95,16 @@ const sanitizeTournamentForBroadcast = (tournament) => {
   }
   if (Array.isArray(safe.arbiters)) {
     safe.arbiters = safe.arbiters.map(({ userId, ...rest }) => rest);
+  }
+  if (Array.isArray(safe.entries)) {
+    safe.entries = safe.entries.map((entry) => {
+      const sanitized = { ...entry };
+      delete sanitized.captainId;
+      if (Array.isArray(sanitized.members)) {
+        sanitized.members = sanitized.members.map(({ userId, ...rest }) => rest);
+      }
+      return sanitized;
+    });
   }
   return safe;
 };

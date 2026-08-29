@@ -61,7 +61,7 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2020',
     rollupOptions: {
-      external: ['pg', 'socket.io', 'web-push', 'dotenv', 'fedapay'],
+      external: ['pg', 'socket.io', 'web-push', 'dotenv', 'fedapay', '@supabase/supabase-js'],
       output: {
         manualChunks(id: string) {
           if (/node_modules\/(react|react-dom|react-router)/.test(id)) {

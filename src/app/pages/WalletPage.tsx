@@ -18,6 +18,26 @@ import { Helmet } from 'react-helmet-async';
 
 const MIN_WITHDRAWAL_ZC = 150;
 
+const FEDAPAY_SCRIPT_URL = 'https://cdn.fedapay.com/checkout.js';
+let fedaPayLoadPromise: Promise<boolean> | null = null;
+
+const loadFedaPayScript = (): Promise<boolean> => {
+  if (typeof window !== 'undefined' && typeof (window as Record<string, unknown>).FedaPay !== 'undefined') {
+    return Promise.resolve(true);
+  }
+  if (!fedaPayLoadPromise) {
+    fedaPayLoadPromise = new Promise<boolean>((resolve) => {
+      const script = document.createElement('script');
+      script.src = FEDAPAY_SCRIPT_URL;
+      script.crossOrigin = 'anonymous';
+      script.onload = () => resolve(true);
+      script.onerror = () => { fedaPayLoadPromise = null; resolve(false); };
+      document.head.appendChild(script);
+    });
+  }
+  return fedaPayLoadPromise;
+};
+
 declare const FedaPay: {
   checkout: (config: {
     public_key: string;
@@ -98,8 +118,11 @@ const WalletPage: React.FC = () => {
 
     // Check if FedaPay is loaded
     if (typeof FedaPay === 'undefined') {
-      toast.error("Le service de paiement FedaPay n'est pas disponible. Recharge la page ou essaie plus tard.");
-      return;
+      const loaded = await loadFedaPayScript();
+      if (!loaded || typeof FedaPay === 'undefined') {
+        toast.error("Le service de paiement FedaPay n'est pas disponible. Recharge la page ou essaie plus tard.");
+        return;
+      }
     }
 
     // Using FedaPay Widget

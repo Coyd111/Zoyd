@@ -310,6 +310,7 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
       activeChannelIds: [],
       roomPresence: {},
       typingByChannel: {},
+      seenByChannel: {},
     });
   },
 

@@ -95,6 +95,7 @@ const ensureRealtimeSession = async (user: User) => {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${appSessionToken}`,
     },
+    signal: AbortSignal.timeout(15000),
   })
     .then(async (response) => {
       if (!response.ok) {
@@ -248,6 +249,7 @@ export const fetchRealtimeBootstrap = async (user: User) => {
   const headers = await buildAuthHeaders(user);
   const response = await fetch(getApiUrl('/api/realtime/state/bootstrap'), {
     headers,
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {
@@ -305,6 +307,7 @@ export const syncRealtimeState = async (
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ kind, items }),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {

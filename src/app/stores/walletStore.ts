@@ -148,7 +148,10 @@ export const useWalletStore = create<WalletState>()((set, get) => {
 
         addTransaction: (txData) => {
           const tx = buildTransaction(txData);
-          set((state) => ({ transactions: [tx, ...state.transactions] }));
+          set((state) => {
+            const next = [tx, ...state.transactions];
+            return { transactions: next.length > 100 ? next.slice(0, 100) : next };
+          });
         },
 
         // Optimistic-UI: lock funds immediately while the server confirms.

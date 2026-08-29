@@ -61,29 +61,26 @@ const MatchDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const {
-    getMatchById,
-    canJoinAsArbiter,
-  } = useMatchStore();
+  const getMatchById = useMatchStore((s) => s.getMatchById);
+  const canJoinAsArbiter = useMatchStore((s) => s.canJoinAsArbiter);
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
-  const { getMessagesForChannel, hydrateFromServer: hydrateChat, receiveServerMessage, markAsRead } = useChatStore();
-  const {
-    isConnected: socketConnected,
-    lastHeartbeatAt,
-    bootstrapReady,
-  } = useSocketStore();
-  const {
-    seenByChannel,
-    getChannelPresence,
-    getPresenceSummary,
-    getTypingUsers,
-    joinChannel,
-    leaveChannel,
-    markChannelSeen,
-    setTyping,
-    isChannelLive,
-  } = usePresenceStore();
-  const { getAvailableToSpend } = useWalletStore();
+  const getMessagesForChannel = useChatStore((s) => s.getMessagesForChannel);
+  const hydrateChat = useChatStore((s) => s.hydrateFromServer);
+  const receiveServerMessage = useChatStore((s) => s.receiveServerMessage);
+  const markAsRead = useChatStore((s) => s.markAsRead);
+  const socketConnected = useSocketStore((s) => s.isConnected);
+  const lastHeartbeatAt = useSocketStore((s) => s.lastHeartbeatAt);
+  const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  const seenByChannel = usePresenceStore((s) => s.seenByChannel);
+  const getChannelPresence = usePresenceStore((s) => s.getChannelPresence);
+  const getPresenceSummary = usePresenceStore((s) => s.getPresenceSummary);
+  const getTypingUsers = usePresenceStore((s) => s.getTypingUsers);
+  const joinChannel = usePresenceStore((s) => s.joinChannel);
+  const leaveChannel = usePresenceStore((s) => s.leaveChannel);
+  const markChannelSeen = usePresenceStore((s) => s.markChannelSeen);
+  const setTyping = usePresenceStore((s) => s.setTyping);
+  const isChannelLive = usePresenceStore((s) => s.isChannelLive);
+  const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
 
   const [scheduleValue, setScheduleValue] = useState('');
   const [roomName, setRoomName] = useState('');

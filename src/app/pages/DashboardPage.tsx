@@ -55,14 +55,18 @@ const statusColor: Record<string, string> = {
 const DashboardPage: React.FC = () => {
   const reduceMotion = useReducedMotion();
   const user = useAuthStore((s) => s.user);
-  const { getTotalBalance, getAvailableCash, getAvailableToSpend } = useWalletStore();
+  const cashBalance = useWalletStore((s) => s.cashBalance);
+  const bonusBalance = useWalletStore((s) => s.bonusBalance);
+  const getTotalBalance = useWalletStore((s) => s.getTotalBalance);
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   const getUnreadTotal = useChatStore((s) => s.getUnreadTotal);
   const notifications = useNotificationStore((s) => s.notifications);
   const getRecentNotifications = useNotificationStore((s) => s.getRecent);
   const getUnreadNotifCount = useNotificationStore((s) => s.getUnreadCount);
-  const { friends, requests, getOnlineFriends } = useFriendsStore();
+  const friends = useFriendsStore((s) => s.friends);
+  const requests = useFriendsStore((s) => s.requests);
+  const getOnlineFriends = useFriendsStore((s) => s.getOnlineFriends);
 
   const totalBalance = getTotalBalance();
   const unreadMessages = getUnreadTotal();

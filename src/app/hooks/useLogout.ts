@@ -11,6 +11,9 @@ import { useLeagueStore } from '../stores/leagueStore';
 import { useChatStore } from '../stores/chatStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { useNotificationStore } from '../stores/notificationStore';
+import { useTrustScoreStore } from '../stores/trustScoreStore';
+import { usePresenceStore } from '../stores/presenceStore';
+import { useToastStore, cleanupToastTimers } from '../stores/toastStore';
 
 export function useLogout() {
   const navigate = useNavigate();
@@ -32,6 +35,10 @@ export function useLogout() {
     useChatStore.getState().replaceFromServer([], []);
     useFriendsStore.setState({ friends: [], requests: [], blockedIds: [] });
     useNotificationStore.getState().clearAll();
+    useTrustScoreStore.setState({ score: { overall: 50, punctuality: 50, fairPlay: 50, results: 50, disputes: 50, seniority: 50 }, history: [] });
+    usePresenceStore.setState({ seenByChannel: {} });
+    cleanupToastTimers();
+    useToastStore.setState({ toasts: [], idCounter: 0 });
     navigate('/auth/login');
   }, [navigate]);
 }

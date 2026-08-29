@@ -451,8 +451,8 @@ export const setRoomDetailsOnServer = (matches, actor, matchId, roomName, roomPa
     throw makeError('FORBIDDEN', "Seul l'arbitre confirme peut publier la salle.");
   }
 
-  const safeRoomName = `${roomName}`.trim();
-  const safeRoomPassword = `${roomPassword}`.trim();
+  const safeRoomName = `${roomName}`.trim().slice(0, 100);
+  const safeRoomPassword = `${roomPassword}`.trim().slice(0, 50);
   const scheduledAt = getScheduledTimestamp(match);
   if (!safeRoomName || !safeRoomPassword || !scheduledAt) {
     throw makeError('ROOM_INCOMPLETE', "Confirme d'abord l'heure du match puis renseigne la room.");

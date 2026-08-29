@@ -70,7 +70,7 @@ import {
   getPublicUserById,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
-import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex } from './mutex.mjs';
+import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex } from './mutex.mjs';
 import { initCronJobs } from './cron.mjs';
 import { getNow } from './utils.mjs';
 import {
@@ -654,7 +654,9 @@ const server = http.createServer(async (req, res) => {
     if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
-      removeFriend(session.user.id, socialFriendMatch[1]);
+      await withUserMutex(session.user.id, async () => {
+        removeFriend(session.user.id, socialFriendMatch[1]);
+      });
       respondJson(res, 200, { ok: true });
     } catch (error) {
       respondMappedError(res, error);
@@ -668,7 +670,9 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
-      blockUser(session.user.id, body.targetId);
+      await withUserMutex(session.user.id, async () => {
+        blockUser(session.user.id, body.targetId);
+      });
       respondJson(res, 200, { ok: true });
     } catch (error) {
       respondMappedError(res, error);
@@ -682,7 +686,9 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
-      unblockUser(session.user.id, body.targetId);
+      await withUserMutex(session.user.id, async () => {
+        unblockUser(session.user.id, body.targetId);
+      });
       respondJson(res, 200, { ok: true });
     } catch (error) {
       respondMappedError(res, error);
@@ -938,16 +944,17 @@ const server = http.createServer(async (req, res) => {
     }
     // Idempotency: prevent double-withdrawal on retry/double-click
     const idempotencyKey = body.idempotencyKey || req.headers['x-idempotency-key'];
-    if (idempotencyKey && typeof idempotencyKey === 'string') {
-      const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
-        .find((tx) => tx.metadata?.idempotencyKey === idempotencyKey && tx.type === 'withdraw');
-      if (existingTx) {
-        respondJson(res, 200, { ok: true, wallet: getServerWallet(session.user.id), user: getUserById(session.user.id), duplicate: true });
-        return;
-      }
-    }
 
     try { await withWalletMutex(session.user.id, async () => {
+      // Check idempotency INSIDE mutex to prevent TOCTOU race
+      if (idempotencyKey && typeof idempotencyKey === 'string') {
+        const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
+          .find((tx) => tx.metadata?.idempotencyKey === idempotencyKey && tx.type === 'withdraw');
+        if (existingTx) {
+          respondJson(res, 200, { ok: true, wallet: getServerWallet(session.user.id), user: getUserById(session.user.id), duplicate: true });
+          return;
+        }
+      }
       const wallet = await withdrawFromWallet(session.user.id, body.amount, body.method, body.phone);
       // Tag transaction with idempotency key for dedup on retry
       if (idempotencyKey && typeof idempotencyKey === 'string') {
@@ -1852,6 +1859,7 @@ const server = http.createServer(async (req, res) => {
 
   // Admin: force reload all data from Supabase
   if (req.method === 'POST' && pathname === '/api/admin/reload') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     const session = requireAdmin(req, res);
     if (!session) return;
     log.info('Admin force reload from Supabase', { adminId: session.user.id });
@@ -1868,6 +1876,7 @@ const server = http.createServer(async (req, res) => {
 
   // SEC-R4: Admin 2FA setup — generate TOTP secret for admin
   if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     const session = requireAdmin(req, res);
     if (!session) return;
     const secret = toBase32(crypto.randomBytes(20));
@@ -2128,7 +2137,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const text = sanitizeText(body.text || '');
+      const text = sanitizeText(body.text || '').slice(0, 2000);
       if (!text) {
         respondJson(res, 400, { ok: false, error: 'Le message est vide.' });
         return;

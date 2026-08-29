@@ -10,6 +10,20 @@ export default defineConfig({
       'Content-Type': 'application/json',
     },
   },
+  webServer: [
+    {
+      command: 'node server/realtime-server.mjs',
+      port: 4001,
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+    {
+      command: 'npx vite --port 5173',
+      port: 5173,
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+  ],
   projects: [
     {
       name: 'api',

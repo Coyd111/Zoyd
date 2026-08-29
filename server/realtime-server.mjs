@@ -29,6 +29,7 @@ import {
   getRawUserById,
   getUserById,
   verifyActivationCode,
+  generateActivationCode,
   findUsersByPseudo,
   getChatChannelById,
   getChatMessagesForChannel,
@@ -393,10 +394,12 @@ const server = http.createServer(async (req, res) => {
         streamerPseudo: sanitizeText(rawBody.streamerPseudo || ''),
       };
       const user = await createUserAccount(safeBody);
+      const activationCode = generateActivationCode(user.email, user.id);
       
       respondJson(res, 201, {
         ok: true,
         user: sanitizeUserPayload(user),
+        activationCode,
         message: 'Compte cree avec succes.',
       });
     } catch (error) {

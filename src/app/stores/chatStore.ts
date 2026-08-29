@@ -264,11 +264,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set((state) => {
       const updatedChannels = state.channels.map((channel) =>
-        channel.id === channelId && channel.id !== state.activeChannelId
-          ? { ...channel, unreadCount: channel.unreadCount + 1, lastMessageAt: msg.timestamp }
-          : channel.id === channelId
-            ? { ...channel, lastMessageAt: msg.timestamp }
-            : channel
+        channel.id === channelId
+          ? { ...channel, lastMessageAt: msg.timestamp }
+          : channel
       );
 
       return {

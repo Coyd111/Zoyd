@@ -121,6 +121,18 @@ const trimTypingState = (typing: Record<string, TypingMember[]>) => {
   );
 };
 
+const MAX_PRESENCE_CHANNELS = 50;
+const MAX_SEEN_CHANNELS = 50;
+
+const capRecordKeys = <T>(record: Record<string, T>, max: number): Record<string, T> => {
+  const keys = Object.keys(record);
+  if (keys.length <= max) return record;
+  const trimmed: Record<string, T> = {};
+  const keysToKeep = keys.slice(keys.length - max);
+  for (const key of keysToKeep) trimmed[key] = record[key];
+  return trimmed;
+};
+
 export const buildCurrentUserPresencePayload = (match: Match, currentUser: { id: string; pseudo: string }) => {
   const player = match.players.find((entry) => entry.userId === currentUser.id);
   const isArbiter = match.arbiter?.userId === currentUser.id;
@@ -205,10 +217,10 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
         activeChannelIds: state.activeChannelIds.includes(channelId)
           ? state.activeChannelIds
           : [...state.activeChannelIds, channelId],
-        roomPresence: {
+        roomPresence: capRecordKeys({
           ...state.roomPresence,
           [channelId]: nextMembers,
-        },
+        }, MAX_PRESENCE_CHANNELS),
       };
     });
 
@@ -250,13 +262,13 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
 
   markChannelSeen: (channelId, userId) => {
     set((state) => ({
-      seenByChannel: {
+      seenByChannel: capRecordKeys({
         ...state.seenByChannel,
         [channelId]: {
           ...(state.seenByChannel[channelId] || {}),
           [userId]: getNow(),
         },
-      },
+      }, MAX_SEEN_CHANNELS),
       roomPresence: {
         ...state.roomPresence,
         [channelId]: (state.roomPresence[channelId] || []).map((member) =>
@@ -303,14 +315,14 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
 
   applyServerPresenceSnapshot: (snapshot) => {
     set((state) => ({
-      roomPresence: {
+      roomPresence: capRecordKeys({
         ...state.roomPresence,
         [snapshot.channelId]: snapshot.members.map(normalizePresenceMember),
-      },
-      seenByChannel: {
+      }, MAX_PRESENCE_CHANNELS),
+      seenByChannel: capRecordKeys({
         ...state.seenByChannel,
         [snapshot.channelId]: snapshot.seen,
-      },
+      }, MAX_SEEN_CHANNELS),
     }));
   },
 

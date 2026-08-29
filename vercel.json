@@ -40,6 +40,7 @@
     { "source": "/profil/(.*)", "destination": "/index.html" },
     { "source": "/parametres", "destination": "/index.html" },
     { "source": "/br-league/(.*)", "destination": "/index.html" },
+    { "source": "/infos", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" }
   ]
 }

@@ -244,6 +244,14 @@ const resolveOpenDisputes = (match, resolution) =>
       : dispute
   );
 
+/**
+ * Create a new match after validating format and entry fee.
+ * Locks the creator's entry fee in their wallet and returns the updated match list.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The user creating the match.
+ * @param {Object} input - Match config (format, entryFee, rules, visibility, etc.).
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object}>}
+ */
 export const createMatchOnServer = async (matches, actor, input) => {
   const actorUser = requireActorUser(actor);
 
@@ -311,6 +319,15 @@ export const createMatchOnServer = async (matches, actor, input) => {
   };
 };
 
+/**
+ * Join a match as a player, auto-assigning to an open team slot if needed.
+ * Validates device/controller restrictions, trust score, and locks the entry fee.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The user joining the match.
+ * @param {string} matchId - ID of the match to join.
+ * @param {number} [preferredTeam] - Preferred team (0 or 1), or auto-assigned.
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object}>}
+ */
 export const joinMatchOnServer = async (matches, actor, matchId, preferredTeam) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -357,6 +374,14 @@ export const joinMatchOnServer = async (matches, actor, matchId, preferredTeam) 
   };
 };
 
+/**
+ * Assign the acting user as arbiter for a match.
+ * Validates that no arbiter is already assigned and the actor is not a player.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The user to assign as arbiter.
+ * @param {string} matchId - ID of the match to arbitrate.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const assignArbiterOnServer = (matches, actor, matchId) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -382,6 +407,13 @@ export const assignArbiterOnServer = (matches, actor, matchId) => {
   };
 };
 
+/**
+ * Mark a player as checked-in for a match before it starts.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The player checking in.
+ * @param {string} matchId - ID of the match.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const checkInMatchOnServer = (matches, actor, matchId) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -398,6 +430,14 @@ export const checkInMatchOnServer = (matches, actor, matchId) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Toggle the ready state of a checked-in player.
+ * If all players are ready and no arbiter, the match starts automatically.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The player toggling ready.
+ * @param {string} matchId - ID of the match.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const toggleReadyOnServer = (matches, actor, matchId) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -424,6 +464,14 @@ export const toggleReadyOnServer = (matches, actor, matchId) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Set the scheduled date/time for a match (arbiter, creator, admin, or participant only).
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The user setting the schedule.
+ * @param {string} matchId - ID of the match.
+ * @param {string} scheduledAt - ISO date string for the match start time.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const scheduleMatchOnServer = (matches, actor, matchId, scheduledAt) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -442,6 +490,16 @@ export const scheduleMatchOnServer = (matches, actor, matchId, scheduledAt) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Set the game room name and password for a match (arbiter only).
+ * Can only be done within 10 minutes of the scheduled time.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The arbiter setting room details.
+ * @param {string} matchId - ID of the match.
+ * @param {string} roomName - Room name to publish.
+ * @param {string} roomPassword - Room password to publish.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const setRoomDetailsOnServer = (matches, actor, matchId, roomName, roomPassword) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -475,6 +533,14 @@ export const setRoomDetailsOnServer = (matches, actor, matchId, roomName, roomPa
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Transition a match to in_progress status (arbiter only).
+ * Requires all players checked-in, ready, and room details set.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The arbiter launching the match.
+ * @param {string} matchId - ID of the match.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const launchMatchOnServer = (matches, actor, matchId) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -501,6 +567,15 @@ export const launchMatchOnServer = (matches, actor, matchId) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Submit a match result with proof screenshots and scores.
+ * Validates permissions, processes settlement (payouts, ELO, XP), and closes disputes.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The user submitting the result (arbiter, player, or admin).
+ * @param {string} matchId - ID of the match.
+ * @param {Object} resultPayload - Result data (winnerTeam, scores, proofs, resolutionType).
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object}>}
+ */
 export const submitMatchResultOnServer = async (matches, actor, matchId, resultPayload) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -569,6 +644,14 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Confirm a submitted match result (player only).
+ * Adds the player's ID to confirmedByTeams; match finishes once all teams confirm.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The player confirming the result.
+ * @param {string} matchId - ID of the match.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const confirmMatchResultOnServer = (matches, actor, matchId) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -587,6 +670,15 @@ export const confirmMatchResultOnServer = (matches, actor, matchId) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Open a dispute on a match, freezing the prize pool.
+ * Requires a clear reason and at least one piece of evidence.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The user opening the dispute.
+ * @param {string} matchId - ID of the match.
+ * @param {Object} payload - Dispute data (reason, category, evidence).
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const openDisputeOnServer = (matches, actor, matchId, payload) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -623,6 +715,15 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Resolve all open disputes on a match (admin only).
+ * Unfreezes the prize pool and restores the match to its pre-dispute status.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The admin resolving the dispute.
+ * @param {string} matchId - ID of the match.
+ * @param {string} resolution - Resolution note describing the outcome.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const resolveDisputeOnServer = (matches, actor, matchId, resolution) => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') {
@@ -646,6 +747,15 @@ export const resolveDisputeOnServer = (matches, actor, matchId, resolution) => {
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Cancel a match and refund all players' locked entry fees (admin only).
+ * Resolves any open disputes and marks the match as cancelled.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The admin cancelling the match.
+ * @param {string} matchId - ID of the match.
+ * @param {string} [reason] - Cancellation reason.
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object}>}
+ */
 export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Match annule par moderation.') => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') {
@@ -730,6 +840,12 @@ const autoReadyCheckedInPlayers = (match) => {
   }
 };
 
+/**
+ * Run automated match lifecycle checks: expire old matches, auto-forfeit no-shows.
+ * Called periodically to handle matches that missed their scheduled window.
+ * @param {Array} matches - Current array of all matches.
+ * @returns {Promise<{matches: Array, changed: boolean}>}
+ */
 export const processMatchAutomationOnServer = async (matches) => {
   const now = Date.now();
   const nextMatches = cloneMatches(matches);
@@ -798,6 +914,12 @@ export const processMatchAutomationOnServer = async (matches) => {
   return { matches: nextMatches, changed };
 };
 
+/**
+ * Filter public matches visible to a given user based on device/controller restrictions.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object|null} currentUser - The user requesting matches, or null for anonymous.
+ * @returns {Array} Array of matching public matches.
+ */
 export const getPublicMatchesForUser = (matches, currentUser) =>
   matches.filter((match) => {
     if (match.visibility !== 'public') return false;
@@ -823,6 +945,15 @@ export const getMatchActivityForUser = (matches, userId) => ({
   ),
 });
 
+/**
+ * Add additional evidence to an active dispute on a match.
+ * Only players or the arbiter may add evidence.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The user adding evidence.
+ * @param {string} matchId - ID of the match.
+ * @param {Array|string} newEvidence - Evidence references (URLs or file IDs).
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const addEvidenceToDisputeOnServer = (matches, actor, matchId, newEvidence) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
@@ -862,6 +993,14 @@ export const addEvidenceToDisputeOnServer = (matches, actor, matchId, newEvidenc
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
+/**
+ * Escalate a dispute to admin review (arbiter only).
+ * Promotes the dispute level to 2 and sets status to under_review.
+ * @param {Array} matches - Current array of all matches.
+ * @param {Object} actor - The arbiter escalating the dispute.
+ * @param {string} matchId - ID of the match.
+ * @returns {{matches: Array, match: Object, actorUser: Object}}
+ */
 export const escalateDisputeOnServer = (matches, actor, matchId) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);

@@ -16,8 +16,20 @@ const withTransaction = (wallet, tx) => ({
   transactions: [buildTransaction(tx), ...(Array.isArray(wallet.transactions) ? wallet.transactions : [])].slice(0, 200),
 });
 
+/**
+ * Get the current wallet state for a user.
+ * @param {string} userId - ID of the user.
+ * @returns {Object} Wallet snapshot with balances and transaction history.
+ */
 export const getServerWallet = (userId) => getWalletSnapshot(userId);
 
+/**
+ * Deposit funds into a user's cash balance.
+ * @param {string} userId - ID of the user.
+ * @param {number} amount - Amount to deposit in ZC.
+ * @param {string} [method] - Payment method (e.g. 'Mobile Money').
+ * @returns {Promise<Object>} Updated wallet snapshot.
+ */
 export const depositToWallet = async (userId, amount, method = 'Mobile Money') => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
@@ -41,6 +53,14 @@ export const depositToWallet = async (userId, amount, method = 'Mobile Money') =
   )).wallet;
 };
 
+/**
+ * Withdraw funds from a user's cash balance (minimum 150 ZC, 2% fee).
+ * @param {string} userId - ID of the user.
+ * @param {number} amount - Amount to withdraw in ZC.
+ * @param {string} [method] - Withdrawal method (e.g. 'Mobile Money').
+ * @param {string} [phone] - Phone number for mobile money transfer.
+ * @returns {Promise<Object>} Updated wallet snapshot.
+ */
 export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money', phone = '') => {
   const safeAmount = roundAmount(amount);
   if (safeAmount < MIN_WITHDRAWAL_ZC) {
@@ -71,6 +91,13 @@ export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money'
   })).wallet;
 };
 
+/**
+ * Lock funds for a match entry fee (deducts from cash then bonus balance).
+ * @param {string} userId - ID of the user.
+ * @param {number} amount - Entry fee amount to lock.
+ * @param {string} matchId - ID of the match to lock funds for.
+ * @returns {Promise<Object>} Updated wallet snapshot.
+ */
 export const lockEntryFee = async (userId, amount, matchId) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
@@ -118,6 +145,14 @@ export const lockEntryFee = async (userId, amount, matchId) => {
   })).wallet;
 };
 
+/**
+ * Refund a locked entry fee back to the user's cash and bonus balances.
+ * Used when a match is cancelled or the user leaves before start.
+ * @param {string} userId - ID of the user.
+ * @param {string} matchId - ID of the match whose entry to refund.
+ * @param {string} [description] - Transaction description.
+ * @returns {Promise<Object>} Updated wallet snapshot.
+ */
 export const refundLockedEntry = async (userId, matchId, description) =>
   (await updateWalletSnapshot(userId, (wallet) => {
     const reservation = wallet.lockedEntries?.[matchId];
@@ -146,6 +181,14 @@ export const refundLockedEntry = async (userId, matchId, description) =>
     );
   })).wallet;
 
+/**
+ * Settle a match loss by consuming the locked entry fee (no refund).
+ * Moves funds from locked balance to consumed with no return.
+ * @param {string} userId - ID of the user.
+ * @param {string} matchId - ID of the match lost.
+ * @param {string} [description] - Transaction description.
+ * @returns {Promise<Object>} Updated wallet snapshot.
+ */
 export const settleMatchLossWallet = async (userId, matchId, description) =>
   (await updateWalletSnapshot(userId, (wallet) => {
     const reservation = wallet.lockedEntries?.[matchId];
@@ -173,6 +216,16 @@ export const settleMatchLossWallet = async (userId, matchId, description) =>
     );
   })).wallet;
 
+/**
+ * Release winnings (prize or arbiter fee) into the user's cash balance.
+ * Also unlocks any associated entry fee reservation for the match.
+ * @param {string} userId - ID of the user.
+ * @param {number} amount - Amount to release.
+ * @param {string} matchId - ID of the match or tournament.
+ * @param {string} [type] - Transaction type ('prize_win' or 'arbitration_fee').
+ * @param {string} [description] - Transaction description.
+ * @returns {Promise<Object>} Updated wallet snapshot.
+ */
 export const releaseWalletWinnings = async (userId, amount, matchId, type = 'prize_win', description) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount < 0) {
@@ -204,6 +257,13 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
   })).wallet;
 };
 
+/**
+ * Directly debit an amount from a user's cash balance.
+ * @param {string} userId - ID of the user.
+ * @param {number} amount - Amount to debit.
+ * @param {string} [description] - Transaction description.
+ * @returns {Promise<Object>} Updated wallet snapshot.
+ */
 export const debitFromWallet = async (userId, amount, description = 'Debit') => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {

@@ -65,8 +65,23 @@ export const sanitizeText = (input) => {
     .slice(0, 5000);                            // Limit length
 };
 
+/**
+ * Normalize a pseudo for case-insensitive, whitespace-insensitive lookup.
+ * @param {string} value - Raw pseudo string
+ * @returns {string} Trimmed, lowercased pseudo
+ */
 export const normalizePseudoKey = (value) => value.trim().toLowerCase();
+/**
+ * Normalize an email for case-insensitive lookup.
+ * @param {string} value - Raw email string
+ * @returns {string} Trimmed, lowercased email
+ */
 export const normalizeEmailKey = (value) => value.trim().toLowerCase();
+/**
+ * Normalize a phone number by stripping all non-digit characters.
+ * @param {string} value - Raw phone string
+ * @returns {string} Digits-only phone key
+ */
 export const normalizePhoneKey = (value) => value.replace(/\D/g, '');
 export const normalizeGameIdKey = (value) => value.trim();
 export const normalizeChatParticipants = (participants) =>
@@ -115,6 +130,11 @@ export const sanitizePublicUserPayload = (payload) => {
   };
 };
 
+/**
+ * Hash a password using scrypt with a random 16-byte salt.
+ * @param {string} password - Plaintext password
+ * @returns {Promise<string>} Hash string in "salt:digest" hex format
+ */
 export const hashPassword = async (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
   // NOTE: Salt is passed as hex string (UTF-8), not as Buffer.
@@ -123,6 +143,12 @@ export const hashPassword = async (password) => {
   return `${salt}:${digest}`;
 };
 
+/**
+ * Verify a password against a stored "salt:digest" hash using timing-safe comparison.
+ * @param {string} password - Plaintext password to verify
+ * @param {string} passwordHash - Stored hash in "salt:digest" format
+ * @returns {Promise<boolean>} True if password matches
+ */
 export const verifyPassword = async (password, passwordHash) => {
   if (!passwordHash?.includes(':')) return false;
   const [salt, expectedDigest] = passwordHash.split(':');
@@ -180,6 +206,11 @@ const sbSelect = async (table, filters = {}, columns = '*') => {
 };
 
 // ─── Load from Supabase on startup ──────────────────────────────────────────
+/**
+ * Load all data from Supabase into in-memory Maps on startup.
+ * Populates users, sessions, chat, state snapshots, friends, blocks, notifications, etc.
+ * @returns {Promise<boolean>} True if users were loaded successfully
+ */
 export const loadFromSupabase = async () => {
   if (!supabase) {
     log.warn('No Supabase client — running from memory only');
@@ -330,6 +361,11 @@ export const loadFromSupabase = async () => {
 };
 
 // Retry wrapper — retries up to 3 times with exponential backoff
+/**
+ * Load from Supabase with exponential backoff retry on failure.
+ * @param {number} maxRetries - Maximum number of attempts (default 3)
+ * @returns {Promise<boolean>} True if load succeeded within retries
+ */
 export const loadFromSupabaseWithRetry = async (maxRetries = 3) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const ok = await loadFromSupabase();
@@ -350,6 +386,11 @@ let reloadInProgress = false;
 
 export const isReloadInProgress = () => reloadInProgress;
 
+/**
+ * Force a full reload from Supabase, clearing all in-memory caches first.
+ * Mutex-protected: only one reload can run at a time.
+ * @returns {Promise<boolean>} True if reload succeeded
+ */
 export const forceReloadFromSupabase = async () => {
   const release = await reloadMutex.acquire();
   reloadInProgress = true;
@@ -383,6 +424,10 @@ export const forceReloadFromSupabase = async () => {
 };
 
 // Health check info
+/**
+ * Return health check info: Supabase connection status and in-memory collection sizes.
+ * @returns {{ supabaseConnected: boolean, usersInMemory: number, adminsInMemory: number, channelsInMemory: number, snapshotsInMemory: number }}
+ */
 export const getHealthInfo = () => ({
   supabaseConnected: !!supabase,
   usersInMemory: memoryUsers.size,
@@ -396,6 +441,11 @@ let integrityCache = null;
 let integrityCacheAt = 0;
 const INTEGRITY_CACHE_TTL = 60_000;
 
+/**
+ * Verify data integrity by comparing in-memory user count vs Supabase count.
+ * Results are cached for 60 seconds to avoid hammering the DB.
+ * @returns {Promise<{ ok: boolean, memoryUsers?: number, dbUsers?: number, reason?: string }>}
+ */
 export const verifyDataIntegrity = async () => {
   const now = Date.now();
   if (integrityCache && now - integrityCacheAt < INTEGRITY_CACHE_TTL) {
@@ -433,6 +483,12 @@ export const verifyDataIntegrity = async () => {
 };
 
 // ─── Users ──────────────────────────────────────────────────────────────────
+/**
+ * Build a normalized user payload from raw input, applying defaults and sanitization.
+ * @param {object} input - Raw user fields (pseudo, email, phone, gameId, etc.)
+ * @param {string} role - User role, defaults to 'player'
+ * @returns {object} Normalized user payload with wallet, stats, and progression defaults
+ */
 export const buildUserPayload = (input, role = 'player') => {
   const now = getNow();
   const streamerMode = Boolean(input.streamerMode);
@@ -518,12 +574,22 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
   }
 };
 
+/**
+ * Get a sanitized user from in-memory cache by ID.
+ * @param {string} userId - User UUID
+ * @returns {object|null} Sanitized user payload or null if not found
+ */
 export const getUserById = (userId) => {
   if (!userId) return null;
   const user = memoryUsers.get(userId);
   return user ? sanitizeUserPayload(user) : null;
 };
 
+/**
+ * Get a public user profile (no wallet, email, or phone) from memory.
+ * @param {string} userId - User UUID
+ * @returns {object|null} Public user payload or null if not found
+ */
 export const getPublicUserById = (userId) => {
   if (!userId) return null;
   const user = memoryUsers.get(userId);
@@ -538,6 +604,12 @@ export const getRawUserById = (userId) => {
   return { ...user, passwordHash: hashEntry?.[1] || '' };
 };
 
+/**
+ * Search users by pseudo substring (case-insensitive).
+ * @param {string} query - Partial pseudo to search for
+ * @param {number} limit - Max results to return (default 20)
+ * @returns {object[]} Array of public user payloads matching the query
+ */
 export const findUsersByPseudo = (query, limit = 20) => {
   const q = normalizePseudoKey(query);
   if (!q) return [];
@@ -552,6 +624,10 @@ export const findUsersByPseudo = (query, limit = 20) => {
   return results;
 };
 
+/**
+ * Get all users as an array of sanitized payloads.
+ * @returns {object[]} Array of all user payloads
+ */
 export const getAllUsers = () => {
   return Array.from(memoryUsers.values()).map(sanitizeUserPayload);
 };
@@ -565,6 +641,11 @@ let leaderboardCache = null;
 let leaderboardCacheAt = 0;
 const LEADERBOARD_CACHE_TTL = 60_000;
 
+/**
+ * Get the leaderboard: users with matches/earnings sorted by ELO, win rate, then matches.
+ * Cached for 60 seconds.
+ * @returns {object[]} Ranked leaderboard entries
+ */
 export const getLeaderboard = () => {
   const now = Date.now();
   if (leaderboardCache && now - leaderboardCacheAt < LEADERBOARD_CACHE_TTL) {
@@ -592,6 +673,13 @@ export const getLeaderboard = () => {
   return leaderboardCache;
 };
 
+/**
+ * Update a user account using an async updater function, protected by user-level mutex.
+ * Persists changes to both memory and Supabase.
+ * @param {string} userId - User UUID
+ * @param {Function} updater - Async function that receives current user and returns modified user
+ * @returns {Promise<object>} Updated sanitized user payload
+ */
 export const updateUserAccount = async (userId, updater) => {
   return withUserMutex(userId, async () => {
     const current = memoryUsers.get(userId);
@@ -630,6 +718,11 @@ export const updateUserAccount = async (userId, updater) => {
   });
 };
 
+/**
+ * Get a user's wallet state, returning defaults if not found.
+ * @param {string} userId - User UUID
+ * @returns {object} Wallet snapshot with cashBalance, bonusBalance, etc.
+ */
 export const getWalletSnapshot = (userId) => getUserById(userId)?.wallet || normalizeWalletSnapshot(defaultWallet);
 
 export const updateWalletSnapshot = async (userId, updater) =>
@@ -639,8 +732,19 @@ export const updateWalletSnapshot = async (userId, updater) =>
     return user;
   });
 
+/**
+ * Create a new user account. Mutex-protected to ensure uniqueness checks are atomic.
+ * @param {object} payload - Registration data including password, pseudo, email, phone, gameId
+ * @returns {Promise<object>} Sanitized created user payload
+ */
 export const createUserAccount = async (payload) => await insertUser(payload);
 
+/**
+ * Authenticate a user by pseudo, email, or phone + password.
+ * @param {object} params - { identifier: string, password: string }
+ * @returns {Promise<object>} Sanitized user payload on success
+ * @throws {Error} INVALID_CREDENTIALS if identifier or password is wrong
+ */
 export const authenticateUserAccount = async ({ identifier, password }) => {
   const trimmed = identifier.trim();
   const pk = normalizePseudoKey(trimmed);
@@ -699,6 +803,12 @@ const ACTIVATION_CODE_MAX_LENGTH = 8;
 const ACTIVATION_CODE_MAX_ATTEMPTS = 5;
 const ACTIVATION_CODE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 
+/**
+ * Generate an 8-digit activation code for email verification (15-minute TTL).
+ * @param {string} email - Email address to associate with the code
+ * @param {string} userId - User UUID to activate on verification
+ * @returns {string} The generated numeric code
+ */
 export const generateActivationCode = (email, userId) => {
   const max = Math.pow(10, ACTIVATION_CODE_MAX_LENGTH);
   const code = crypto.randomInt(0, max).toString().padStart(ACTIVATION_CODE_MAX_LENGTH, '0');
@@ -707,6 +817,13 @@ export const generateActivationCode = (email, userId) => {
   return code;
 };
 
+/**
+ * Verify an activation code using timing-safe comparison.
+ * Max 5 attempts before the code is invalidated.
+ * @param {string} email - Email the code was sent to
+ * @param {string} code - The code entered by the user
+ * @returns {{ valid: boolean, userId?: string, error?: string }}
+ */
 export const verifyActivationCode = (email, code) => {
   const record = memoryActivationCodes.get(email);
   if (!record) return { valid: false, error: 'Code invalide ou expire.' };
@@ -741,6 +858,12 @@ export const cleanupExpiredActivationCodes = () => {
   }
 };
 
+/**
+ * Activate a user account by setting isActive=true and persisting to Supabase.
+ * @param {string} userId - User UUID to activate
+ * @returns {object} The updated user object
+ * @throws {Error} If user not found
+ */
 export const activateUserAccount = (userId) => {
   const user = memoryUsers.get(userId);
   if (!user) throw new Error('Utilisateur introuvable.');
@@ -806,11 +929,21 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+/**
+ * Create an auth session with a 6-hour TTL. Persists to memory and Supabase.
+ * @param {string} userId - User UUID
+ * @returns {{ token: string, userId: string, expiresAt: string, user: object }}
+ */
 export const createAuthSession = (userId) => {
   const session = createTokenRecord('auth', userId);
   return { ...session, user: getUserById(userId) };
 };
 
+/**
+ * Get an auth session by token, auto-deleting if expired or user not found.
+ * @param {string} token - Session token
+ * @returns {{ token: string, userId: string, user: object }|null} Session with user or null
+ */
 export const getAuthSession = (token) => {
   if (!token) return null;
   const session = memoryAuthSessions.get(token);
@@ -824,11 +957,20 @@ export const getAuthSession = (token) => {
   return { ...session, user };
 };
 
+/**
+ * Delete an auth session from memory and Supabase.
+ * @param {string} token - Session token to delete
+ */
 export const deleteAuthSession = (token) => {
   memoryAuthSessions.delete(token);
   sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token }));
 };
 
+/**
+ * Create a realtime (WebSocket) session with a 6-hour TTL.
+ * @param {object} params - { userId, pseudo, role }
+ * @returns {{ token: string, userId: string, pseudo: string, role: string, expiresAt: string }}
+ */
 export const createRealtimeSession = ({ userId, pseudo, role }) => {
   return createTokenRecord('realtime', userId, { pseudo, role });
 };
@@ -986,6 +1128,12 @@ export const ensureGlobalChatChannel = () =>
   });
 
 // ─── State Snapshots (matches, tournaments) ─────────────────────────────────
+/**
+ * Replace an entire state collection (e.g. matches, tournaments) with retry.
+ * Updates memory and syncs to Supabase in batches of 100 with 3 retries each.
+ * @param {string} kind - Collection kind identifier
+ * @param {object[]} items - Full array of items to replace the collection with
+ */
 export const replaceStateCollection = async (kind, items) => {
   if (reloadInProgress) {
     log.warn(`replaceStateCollection(${kind}) deferred — reload in progress`);
@@ -1033,6 +1181,11 @@ export const replaceStateCollection = async (kind, items) => {
 };
 
 // O(1) per-kind lookup — no full scan needed
+/**
+ * Get all entities in a state collection by kind. O(1) lookup.
+ * @param {string} kind - Collection kind identifier (e.g. "match", "tournament")
+ * @returns {object[]} Array of state entities for that kind
+ */
 export const getStateCollection = (kind) => {
   const kindMap = memoryStateByKind.get(kind);
   if (!kindMap) return [];
@@ -1268,6 +1421,14 @@ export const hasTransactionBeenProcessed = async (transactionId) => {
   return false;
 };
 
+/**
+ * Atomically claim a transaction for idempotent processing.
+ * Checks memory first, then DB, and marks it as processed.
+ * @param {string} transactionId - FedaPay transaction ID
+ * @param {string} userId - User who initiated the transaction
+ * @param {number} amountZC - Transaction amount in ZC
+ * @returns {Promise<boolean>} True if newly claimed, false if already processed
+ */
 export const claimTransaction = async (transactionId, userId, amountZC) => {
   if (memoryProcessedTransactions.has(transactionId)) return false;
   memoryProcessedTransactions.add(transactionId);

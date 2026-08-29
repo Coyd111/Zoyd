@@ -119,6 +119,12 @@ const normalizeTournamentSnapshot = (tournament) => {
   };
 };
 
+/**
+ * Normalize and sort a collection of tournament objects from the database.
+ * Ensures all fields have safe defaults and entries are properly structured.
+ * @param {Array} tournaments - Raw tournament array from storage.
+ * @returns {Array} Normalized tournaments sorted by most recently updated.
+ */
 export const normalizeTournamentCollection = (tournaments) =>
   (Array.isArray(tournaments) ? tournaments : [])
     .map((tournament) => normalizeTournamentSnapshot(tournament))
@@ -597,6 +603,14 @@ const applyTournamentSettlement = async (tournament) => {
   }
 };
 
+/**
+ * Create a new tournament with validated dates, format, and rules.
+ * Optionally reserves the creator as the first arbiter.
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The user creating the tournament.
+ * @param {Object} input - Tournament config (name, format, maxEntries, entryFee, startsAt, rules).
+ * @returns {{tournaments: Array, tournament: Object, actorUser: Object}}
+ */
 export const createTournamentOnServer = (tournaments, actor, input) => {
   const actorUser = requireActorUser(actor);
   const tournamentId = `T-MJ-${Date.now().toString(36).toUpperCase()}`;
@@ -632,6 +646,15 @@ export const createTournamentOnServer = (tournaments, actor, input) => {
   };
 };
 
+/**
+ * Register a player (and teammates for team formats) for a tournament.
+ * Validates roster, device/controller restrictions, and locks the entry fee.
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The user registering.
+ * @param {string} tournamentId - ID of the tournament.
+ * @param {Object} [input] - Registration data (pseudo, teammates, squadName, rankMJ).
+ * @returns {Promise<{tournaments: Array, tournament: Object, actorUser: Object}>}
+ */
 export const registerForTournamentOnServer = async (tournaments, actor, tournamentId, input = {}) => {
   const actorUser = requireActorUser(actor);
   const nextTournaments = cloneTournaments(tournaments);
@@ -728,6 +751,14 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   };
 };
 
+/**
+ * Leave a tournament and refund the locked entry fee (captain only, before start).
+ * Recalculates payout pool and re-seeds remaining entries.
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The captain leaving the tournament.
+ * @param {string} tournamentId - ID of the tournament.
+ * @returns {Promise<{tournaments: Array, tournament: Object, actorUser: Object}>}
+ */
 export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) => {
   const actorUser = requireActorUser(actor);
   const nextTournaments = cloneTournaments(tournaments);
@@ -761,6 +792,14 @@ export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) 
   };
 };
 
+/**
+ * Assign a user as arbiter to an open slot in a tournament.
+ * Validates the actor is not already a participant or arbiter.
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The user to assign as arbiter.
+ * @param {string} tournamentId - ID of the tournament.
+ * @returns {{tournaments: Array, tournament: Object, actorUser: Object}}
+ */
 export const assignTournamentArbiterOnServer = (tournaments, actor, tournamentId) => {
   const actorUser = requireActorUser(actor);
   const nextTournaments = cloneTournaments(tournaments);
@@ -792,6 +831,14 @@ export const assignTournamentArbiterOnServer = (tournaments, actor, tournamentId
   };
 };
 
+/**
+ * Start a tournament by generating the bracket (arbiter or admin only).
+ * Validates minimum entries, arbiter slots, and transitions status to live.
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The arbiter starting the tournament.
+ * @param {string} tournamentId - ID of the tournament.
+ * @returns {{tournaments: Array, tournament: Object, actorUser: Object}}
+ */
 export const startTournamentOnServer = (tournaments, actor, tournamentId) => {
   const actorUser = requireActorUser(actor);
   const nextTournaments = cloneTournaments(tournaments);
@@ -842,6 +889,16 @@ const requireTournamentMatchAction = (tournaments, actor, tournamentId, matchId)
   return { actorUser, nextTournaments, tournament, match, assignedSlot };
 };
 
+/**
+ * Set room name and password for a specific tournament match (assigned arbiter only).
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The arbiter setting room details.
+ * @param {string} tournamentId - ID of the tournament.
+ * @param {string} matchId - ID of the tournament match.
+ * @param {string} roomName - Room name to publish.
+ * @param {string} roomPassword - Room password to publish.
+ * @returns {{tournaments: Array, tournament: Object, match: Object, actorUser: Object}}
+ */
 export const setTournamentMatchRoomDetailsOnServer = (tournaments, actor, tournamentId, matchId, roomName, roomPassword) => {
   const { actorUser, nextTournaments, tournament, match } = requireTournamentMatchAction(
     tournaments,
@@ -872,6 +929,15 @@ export const setTournamentMatchRoomDetailsOnServer = (tournaments, actor, tourna
   };
 };
 
+/**
+ * Mark a tournament match as live so players can join the room (arbiter only).
+ * Requires the match to have both participants and published room details.
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The arbiter starting the match.
+ * @param {string} tournamentId - ID of the tournament.
+ * @param {string} matchId - ID of the tournament match.
+ * @returns {{tournaments: Array, tournament: Object, match: Object, actorUser: Object}}
+ */
 export const setTournamentMatchLiveOnServer = (tournaments, actor, tournamentId, matchId) => {
   const { actorUser, nextTournaments, tournament, match } = requireTournamentMatchAction(
     tournaments,
@@ -899,6 +965,16 @@ export const setTournamentMatchLiveOnServer = (tournaments, actor, tournamentId,
   };
 };
 
+/**
+ * Submit the result of a tournament match (assigned arbiter only).
+ * Advances the winner in the bracket, handles eliminations, and settles payouts if tournament completes.
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The arbiter submitting the result.
+ * @param {string} tournamentId - ID of the tournament.
+ * @param {string} matchId - ID of the tournament match.
+ * @param {Object} payload - Result data (winnerEntryId, scoreA, scoreB, notes).
+ * @returns {Promise<{tournaments: Array, tournament: Object, match: Object, actorUser: Object}>}
+ */
 export const submitTournamentMatchResultOnServer = async (tournaments, actor, tournamentId, matchId, payload) => {
   const { actorUser, nextTournaments, assignedSlot } = requireTournamentMatchAction(
     tournaments,

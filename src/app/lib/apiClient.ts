@@ -53,7 +53,10 @@ const getCookie = (name: string): string | null => {
 
 const handleAuthError = (status: number) => {
   if (status === 401 || status === 403) {
-    useAuthStore.getState().logout();
+    if (!logoutQueued) {
+      logoutQueued = true;
+      queueMicrotask(() => { logoutQueued = false; useAuthStore.getState().logout(); });
+    }
   }
 };
 

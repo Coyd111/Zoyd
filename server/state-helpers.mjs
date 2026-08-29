@@ -68,9 +68,9 @@ const buildMatchActionPayload = (match, userId) => {
  * @returns {object} A shallow copy with sensitive fields stripped
  */
 const sanitizeMatchForBroadcast = (match) => {
-  const { roomPassword, screenshots, ...safe } = match;
+  const { roomPassword, roomName, screenshots, ...safe } = match;
   if (safe.arbiter) {
-    const { roomPassword: _ap, ...safeArbiter } = safe.arbiter;
+    const { roomPassword: _ap, roomName: _an, ...safeArbiter } = safe.arbiter;
     safe.arbiter = safeArbiter;
   }
   if (Array.isArray(safe.players)) {

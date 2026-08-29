@@ -49,6 +49,7 @@ export interface FriendsState {
   requests: FriendRequest[];
   blockedIds: string[];
   reports: Report[];
+  pendingId: string | null;
   // Actions
   hydrateFromServer: (friends: Friend[], requests: FriendRequest[], blockedIds: string[]) => void;
   sendRequest: (targetId: string, targetPseudo: string, message?: string) => void;
@@ -69,6 +70,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
   requests: [],
   blockedIds: [],
   reports: [],
+  pendingId: null,
 
   hydrateFromServer: (friends, requests, blockedIds) => {
     set({ friends, requests, blockedIds });
@@ -76,6 +78,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
 
   sendRequest: async (targetId, _targetPseudo, message) => {
     if (get().blockedIds.includes(targetId)) return;
+    if (get().pendingId) return;
+    set({ pendingId: targetId });
     try {
       const res = await sendServerFriendRequest(targetId, message);
       if (res.ok && res.request) {
@@ -83,10 +87,14 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       }
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'envoyer la demande d'ami.", duration: 4000 });
+    } finally {
+      set({ pendingId: null });
     }
   },
 
   acceptRequest: async (requestId) => {
+    if (get().pendingId) return;
+    set({ pendingId: requestId });
     try {
       const res = await acceptServerFriendRequest(requestId);
       if (res.ok && res.friend) {
@@ -97,10 +105,14 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       }
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'accepter la demande.", duration: 4000 });
+    } finally {
+      set({ pendingId: null });
     }
   },
 
   declineRequest: async (requestId) => {
+    if (get().pendingId) return;
+    set({ pendingId: requestId });
     try {
       await declineServerFriendRequest(requestId);
       set((state) => ({
@@ -108,10 +120,14 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       }));
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de refuser la demande.", duration: 4000 });
+    } finally {
+      set({ pendingId: null });
     }
   },
 
   removeFriend: async (friendId) => {
+    if (get().pendingId) return;
+    set({ pendingId: friendId });
     try {
       await removeServerFriend(friendId);
       set((state) => ({
@@ -119,10 +135,14 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       }));
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de retirer l'ami.", duration: 4000 });
+    } finally {
+      set({ pendingId: null });
     }
   },
 
   blockUser: async (userId) => {
+    if (get().pendingId) return;
+    set({ pendingId: userId });
     try {
       await blockServerUser(userId);
       set((state) => ({
@@ -132,10 +152,14 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       }));
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de bloquer l'utilisateur.", duration: 4000 });
+    } finally {
+      set({ pendingId: null });
     }
   },
 
   unblockUser: async (userId) => {
+    if (get().pendingId) return;
+    set({ pendingId: userId });
     try {
       await unblockServerUser(userId);
       set((state) => ({
@@ -143,10 +167,14 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       }));
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible de débloquer l'utilisateur.", duration: 4000 });
+    } finally {
+      set({ pendingId: null });
     }
   },
 
   reportUser: async (targetId, reason, description) => {
+    if (get().pendingId) return;
+    set({ pendingId: targetId });
     try {
       await reportServerUser(targetId, reason, description);
       const report: Report = {
@@ -161,6 +189,8 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       useToastStore.getState().addToast({ type: 'success', title: 'Signalement envoyé', message: "Merci pour votre signalement.", duration: 4000 });
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'envoyer le signalement.", duration: 4000 });
+    } finally {
+      set({ pendingId: null });
     }
   },
 

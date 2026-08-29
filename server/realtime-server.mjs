@@ -153,12 +153,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/api/health') {
     const health = getHealthInfo();
-    const integrity = await verifyDataIntegrity().catch(() => null);
     respondJson(res, 200, {
       ok: true,
       service: 'zoyd-api',
       persistence: { ...health, reloadInProgress: isReloadInProgress() },
-      integrity,
       timestamp: getNow(),
     });
     return;
@@ -168,10 +166,6 @@ const server = http.createServer(async (req, res) => {
     respondJson(res, 200, {
       ok: true,
       service: 'zoyd-realtime',
-      channels: channels.size,
-      subscriptions: countPushSubscriptions(),
-      storedMatches: getStateCollection('matches').length,
-      storedTournaments: getStoredTournaments().length,
       timestamp: getNow(),
     });
     return;
@@ -1230,7 +1224,14 @@ const server = http.createServer(async (req, res) => {
     try {
       const { limit, offset } = parseQueryParams(req.url);
       const all = getStoredLeagues();
-      const { items: seasons, hasMore } = paginate(all, { limit, offset });
+      const { items, hasMore } = paginate(all, { limit, offset });
+      const seasons = items.map((s) => {
+        const { members, ...safe } = s;
+        if (Array.isArray(members)) {
+          safe.members = members.map(({ playerId, ...rest }) => rest);
+        }
+        return safe;
+      });
       respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des ligues.' });

@@ -537,7 +537,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     resolutionType: resultPayload.resolutionType || 'played',
     submittedAt: getNow(),
     confirmedByTeams: [],
-    payoutDistributed: true,
+    payoutDistributed: false,
   };
 
   match.result = fullResult;
@@ -551,6 +551,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   match.updatedAt = getNow();
 
   await applyResultSettlement(match, fullResult);
+  match.result.payoutDistributed = true;
 
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
@@ -672,7 +673,7 @@ const resolveForfeit = async (match, winnerTeam, losingTeam, reason) => {
     submittedBy: 'system-no-show',
     submittedAt: getNow(),
     confirmedByTeams: [],
-    payoutDistributed: true,
+    payoutDistributed: false,
   };
 
   match.result = fullResult;
@@ -684,6 +685,7 @@ const resolveForfeit = async (match, winnerTeam, losingTeam, reason) => {
   match.updatedAt = getNow();
 
   await applyResultSettlement(match, fullResult);
+  match.result.payoutDistributed = true;
 };
 
 const cancelForAutomation = async (match, reason) => {

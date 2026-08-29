@@ -57,6 +57,8 @@ export interface NotificationState {
   hydrateFromServer: (serverNotifications: ServerNotification[]) => void;
 }
 
+const MAX_NOTIFICATIONS = 200;
+
 const toastTypeByPriority: Record<NotificationPriority, ToastType> = {
   urgent: 'warning',
   high: 'info',
@@ -114,15 +116,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             read: false,
             dismissed: false,
           };
-          const nextNotifications = [
-            refreshedNotification,
-            ...state.notifications.filter((notification) => notification.id !== existing.id),
-          ];
           createdNotification = refreshedNotification;
           shouldToast =
             Boolean(n.metadata?.showToast) &&
             (existing.message !== n.message || existing.title !== n.title || existing.priority !== n.priority);
-          return { notifications: nextNotifications };
+          const nextNotifications = [refreshedNotification, ...state.notifications.filter((notification) => notification.id !== existing.id)];
+          return { notifications: nextNotifications.length > MAX_NOTIFICATIONS ? nextNotifications.slice(0, MAX_NOTIFICATIONS) : nextNotifications };
         }
       }
 
@@ -135,7 +134,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       };
       createdNotification = notif;
       shouldToast = Boolean(n.metadata?.showToast) || n.priority === 'high' || n.priority === 'urgent';
-      return { notifications: [notif, ...state.notifications] };
+      const nextNotifications = [notif, ...state.notifications];
+      return { notifications: nextNotifications.length > MAX_NOTIFICATIONS ? nextNotifications.slice(0, MAX_NOTIFICATIONS) : nextNotifications };
     });
 
     if (createdNotification && shouldToast) {

@@ -1,6 +1,6 @@
 import { FedaPay, Transaction } from 'fedapay';
 import { depositToWallet, debitFromWallet } from './wallet-engine.mjs';
-import { hasTransactionBeenProcessed, markTransactionAsProcessed } from './persistence.mjs';
+import { hasTransactionBeenProcessed, claimTransaction } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 
 const log = createLogger('payment');
@@ -80,18 +80,17 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       'FedaPay'
     );
 
-    // 6. Marquer comme traitée APRÈS crédit réussi
-    try {
-      await markTransactionAsProcessed(transactionId, user.id, amountZC);
-    } catch (markErr) {
-      // Rollback : annuler le crédit si l'enregistrement échoue
-      log.error('Failed to mark transaction processed, rolling back wallet credit', { transactionId, error: markErr.message });
+    // 6. Marquer comme traitée APRÈS crédit réussi (atomique)
+    const claimed = await claimTransaction(transactionId, user.id, amountZC);
+    if (!claimed) {
+      // Rollback : annuler le crédit si un autre process a traité entre-temps
+      log.error('Transaction already claimed by concurrent process, rolling back wallet credit', { transactionId });
       try {
-        await debitFromWallet(user.id, amountZC, `Rollback FedaPay (${transactionId})`);
+        await debitFromWallet(user.id, amountZC, `Rollback FedaPay double (${transactionId})`);
       } catch (rollbackErr) {
         log.error('CRITICAL: Rollback also failed', { transactionId, error: rollbackErr.message });
       }
-      throw new PaymentRollbackError('Erreur interne lors de l\'enregistrement de la transaction.');
+      throw new Error('Cette transaction a déjà été traitée.');
     }
 
     return {

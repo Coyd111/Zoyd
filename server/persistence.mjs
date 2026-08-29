@@ -1204,7 +1204,6 @@ export const getMemoryChatChannels = () => memoryChatChannels;
 // ─── FedaPay Transaction Idempotency ────────────────────────────────────────
 export const hasTransactionBeenProcessed = async (transactionId) => {
   if (memoryProcessedTransactions.has(transactionId)) return true;
-  // Fallback: check Supabase in case entry was evicted from memory
   try {
     const rows = await sbSelect('processed_transactions', { transaction_id: transactionId }, 'transaction_id');
     if (rows && rows.length > 0) {
@@ -1215,13 +1214,22 @@ export const hasTransactionBeenProcessed = async (transactionId) => {
   return false;
 };
 
-export const markTransactionAsProcessed = async (transactionId, userId, amountZC) => {
+export const claimTransaction = async (transactionId, userId, amountZC) => {
+  if (memoryProcessedTransactions.has(transactionId)) return false;
   memoryProcessedTransactions.add(transactionId);
   if (memoryProcessedTransactions.size > MAX_PROCESSED_TX) {
     const first = memoryProcessedTransactions.values().next().value;
     memoryProcessedTransactions.delete(first);
   }
+  try {
+    const rows = await sbSelect('processed_transactions', { transaction_id: transactionId }, 'transaction_id');
+    if (rows && rows.length > 0) {
+      memoryProcessedTransactions.add(transactionId);
+      return false;
+    }
+  } catch { /* proceed — best effort dedup */ }
   await sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
+  return true;
 };
 
 // ─── Admin 2FA Persistence ─────────────────────────────────────────────────

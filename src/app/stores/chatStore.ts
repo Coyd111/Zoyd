@@ -52,6 +52,8 @@ export interface ChatState {
   getUnreadTotal: () => number;
 }
 
+const MAX_MESSAGES = 500;
+
 const normalizeChannel = (channel: ChatChannelDef): ChatChannelDef => ({
   ...channel,
   participants: [...new Set(Array.isArray(channel.participants) ? channel.participants : [])],
@@ -96,7 +98,8 @@ const mergeMessageCollections = (current: ChatMessage[], incoming: ChatMessage[]
   for (const incomingMessage of incoming) {
     merged.set(incomingMessage.id, normalizeMessage(incomingMessage));
   }
-  return sortMessages([...merged.values()]);
+  const sorted = sortMessages([...merged.values()]);
+  return sorted.length > MAX_MESSAGES ? sorted.slice(sorted.length - MAX_MESSAGES) : sorted;
 };
 
 const resolveActiveChannelId = (channels: ChatChannelDef[], preferredId: string | null) => {
@@ -116,9 +119,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   replaceFromServer: (channels, messages) => {
     set((state) => {
       const nextChannels = mergeChannelCollections([], channels);
+      const sorted = sortMessages(messages.map(normalizeMessage));
       return {
         channels: nextChannels,
-        messages: sortMessages(messages.map(normalizeMessage)),
+        messages: sorted.length > MAX_MESSAGES ? sorted.slice(sorted.length - MAX_MESSAGES) : sorted,
         activeChannelId: resolveActiveChannelId(nextChannels, state.activeChannelId),
       };
     });
@@ -191,7 +195,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       return {
         channels: nextChannels,
-        messages: sortMessages([...state.messages, normalizedMessage]),
+        messages: (() => {
+          const next = sortMessages([...state.messages, normalizedMessage]);
+          return next.length > MAX_MESSAGES ? next.slice(next.length - MAX_MESSAGES) : next;
+        })(),
         activeChannelId: resolveActiveChannelId(nextChannels, state.activeChannelId),
       };
     });
@@ -265,7 +272,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       );
 
       return {
-        messages: sortMessages([...state.messages, msg]),
+        messages: (() => {
+          const next = sortMessages([...state.messages, msg]);
+          return next.length > MAX_MESSAGES ? next.slice(next.length - MAX_MESSAGES) : next;
+        })(),
         channels: sortChannels(updatedChannels),
       };
     });

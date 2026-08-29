@@ -7,7 +7,7 @@ vi.mock('fedapay', () => ({
 
 vi.mock('./persistence.mjs', () => ({
   hasTransactionBeenProcessed: vi.fn(),
-  markTransactionAsProcessed: vi.fn(),
+  claimTransaction: vi.fn(),
 }));
 
 vi.mock('./wallet-engine.mjs', () => ({
@@ -18,7 +18,7 @@ import { verifyFedaPayTransactionAndCredit } from './payment-engine.mjs';
 import { Transaction } from 'fedapay';
 import {
   hasTransactionBeenProcessed,
-  markTransactionAsProcessed,
+  claimTransaction,
 } from './persistence.mjs';
 import { depositToWallet } from './wallet-engine.mjs';
 
@@ -29,6 +29,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
     vi.clearAllMocks();
     process.env.FEDAPAY_SECRET_KEY = 'sk_test_sandbox_abc';
     hasTransactionBeenProcessed.mockReturnValue(false);
+    claimTransaction.mockResolvedValue(true);
   });
 
   it('should credit ZC on approved transaction', async () => {
@@ -47,7 +48,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
       500,
       'FedaPay'
     );
-    expect(markTransactionAsProcessed).toHaveBeenCalledWith(
+    expect(claimTransaction).toHaveBeenCalledWith(
       'TX-123',
       'user-1',
       500
@@ -116,13 +117,11 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
       status: 'approved',
       amount: 1000,
     });
-    markTransactionAsProcessed.mockImplementation(() => {
-      const err = new Error('UNIQUE constraint failed');
-      throw err;
-    });
+    depositToWallet.mockResolvedValue(mockUser);
+    claimTransaction.mockResolvedValue(false);
 
     await expect(
       verifyFedaPayTransactionAndCredit('TX-RACE', mockUser)
-    ).rejects.toThrow(/enregistrement de la transaction/);
+    ).rejects.toThrow(/déjà été traitée/);
   });
 });

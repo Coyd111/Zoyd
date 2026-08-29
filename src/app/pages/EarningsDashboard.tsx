@@ -65,7 +65,11 @@ const EarningsDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const { matches } = useMatchStore();
   const { tournaments } = useTournamentStore();
-  const wallet = useWalletStore();
+  const transactions = useWalletStore((s) => s.transactions);
+  const lockedBalance = useWalletStore((s) => s.lockedBalance);
+  const cashBalance = useWalletStore((s) => s.cashBalance);
+  const pendingWinnings = useWalletStore((s) => s.pendingWinnings);
+  const bonusBalance = useWalletStore((s) => s.bonusBalance);
 
   const summary = useMemo(() => {
     if (!user) return null;
@@ -79,7 +83,7 @@ const EarningsDashboard: React.FC = () => {
     });
   }, [matches, tournaments, user]);
 
-  const walletInsights = useMemo(() => buildWalletInsights(wallet.transactions, 30), [wallet.transactions]);
+  const walletInsights = useMemo(() => buildWalletInsights(transactions, 30), [transactions]);
 
   const matchResultsData = useMemo(() => {
     const totalPlayed = summary?.stats.totalMatches || 0;
@@ -286,10 +290,10 @@ const EarningsDashboard: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <MetricTile icon={<Wallet className="w-4 h-4 text-zoyd-yellow" />} label="Disponible" value={formatZC(wallet.getAvailableToSpend())} />
-                  <MetricTile icon={<Lock className="w-4 h-4 text-zoyd-blue" />} label="En jeu" value={formatZC(wallet.lockedBalance)} />
-                  <MetricTile icon={<TrendingUp className="w-4 h-4 text-green-400" />} label="Retirable" value={formatZC(wallet.cashBalance)} />
-                  <MetricTile icon={<Clock className="w-4 h-4 text-white" />} label="En attente" value={formatZC(wallet.pendingWinnings)} />
+                  <MetricTile icon={<Wallet className="w-4 h-4 text-zoyd-yellow" />} label="Disponible" value={formatZC(cashBalance + bonusBalance)} />
+                  <MetricTile icon={<Lock className="w-4 h-4 text-zoyd-blue" />} label="En jeu" value={formatZC(lockedBalance)} />
+                  <MetricTile icon={<TrendingUp className="w-4 h-4 text-green-400" />} label="Retirable" value={formatZC(cashBalance)} />
+                  <MetricTile icon={<Clock className="w-4 h-4 text-white" />} label="En attente" value={formatZC(pendingWinnings)} />
                 </div>
               </CardContent>
             </Card>

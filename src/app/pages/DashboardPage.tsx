@@ -102,7 +102,7 @@ const DashboardPage: React.FC = () => {
 
   const recentNotifications = useMemo(
     () => getRecentNotifications(4).filter((n) => !n.dismissed),
-    [notifications]
+    [notifications, getRecentNotifications]
   );
   const unreadNotifCount = getUnreadNotifCount();
 

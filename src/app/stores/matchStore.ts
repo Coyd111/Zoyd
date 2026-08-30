@@ -330,8 +330,6 @@ const getPreferredTeam = (match: Match, preferredTeam?: number): MatchTeam | nul
   return null;
 };
 
-const isCurrentUser = (userId: string) => useAuthStore.getState().user?.id === userId;
-
 const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match[]) => {
   const merged = new Map<string, Match>();
 

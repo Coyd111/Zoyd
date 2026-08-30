@@ -32,13 +32,17 @@ const cleanupChannelMaps = () => {
   const MAX_CHAT_CHANNEL_AGE_MS = 24 * 60 * 60 * 1000;
   const now = Date.now();
   const chatChannels = getMemoryChatChannels();
+  const staleIds = [];
   for (const [id, ch] of chatChannels) {
     if (ch.id === 'global') continue;
     const memberCount = channels.get(id)?.size ?? 0;
     const updatedAt = ch.updatedAt ? new Date(ch.updatedAt).getTime() : 0;
     if (memberCount === 0 && now - updatedAt > MAX_CHAT_CHANNEL_AGE_MS) {
-      chatChannels.delete(id);
+      staleIds.push(id);
     }
+  }
+  for (const id of staleIds) {
+    chatChannels.delete(id);
   }
 };
 

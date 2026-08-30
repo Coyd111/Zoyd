@@ -65,14 +65,21 @@ export const updateServerAccount = async (updates: Partial<User>): Promise<{ ok:
 };
 
 export const activateAccount = async (email: string, code: string): Promise<ActivationResponse> => {
-  const response = await fetch(getApiUrl('/api/auth/activate'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, code }),
-  });
-  const data = await response.json();
-  if (!response.ok || !data.ok) {
-    throw new Error(data.error || `HTTP ${response.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(getApiUrl('/api/auth/activate'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+      signal: controller.signal,
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    return data;
+  } finally {
+    clearTimeout(timeout);
   }
-  return data;
 };

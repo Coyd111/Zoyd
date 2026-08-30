@@ -2436,12 +2436,23 @@ const io = new SocketIOServer(server, {
 const socketConnectionCounts = new Map();
 const SOCKET_CONNECTION_LIMIT = 10;
 const SOCKET_CONNECTION_WINDOW = 60 * 1000;
+const MAX_SOCKET_CONNECTION_ENTRIES = 10000;
 
 const cleanupSocketConnectionCounts = () => {
   const now = Date.now();
   for (const [ip, entry] of socketConnectionCounts) {
     if (now - entry.start > SOCKET_CONNECTION_WINDOW * 2) {
       socketConnectionCounts.delete(ip);
+    }
+  }
+  // Cap total entries to prevent memory leak
+  if (socketConnectionCounts.size > MAX_SOCKET_CONNECTION_ENTRIES) {
+    let evicted = 0;
+    const toEvict = socketConnectionCounts.size - MAX_SOCKET_CONNECTION_ENTRIES;
+    for (const key of socketConnectionCounts.keys()) {
+      if (evicted >= toEvict) break;
+      socketConnectionCounts.delete(key);
+      evicted++;
     }
   }
 };

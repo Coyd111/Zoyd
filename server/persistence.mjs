@@ -18,6 +18,7 @@ const log = createLogger('persistence');
 const memoryUsers = new Map();
 const MAX_USERS = 100000;
 const pseudoKeys = new Map(); // userId → normalized pseudo (avoids re-normalizing on search)
+const gameIdKeys = new Map(); // userId → normalized gameId (O(1) uniqueness check)
 const memoryAuthSessions = new Map();
 const MAX_AUTH_SESSIONS = 50000;
 const memoryRealtimeSessions = new Map();
@@ -262,6 +263,7 @@ export const loadFromSupabase = async () => {
         const payload = sanitizeUserPayload(row.payload);
         memoryUsers.set(row.id, payload);
         pseudoKeys.set(row.id, normalizePseudoKey(payload.pseudo || ''));
+        if (payload.gameId) gameIdKeys.set(row.id, normalizeGameIdKey(payload.gameId));
         if (row.role === 'admin') memoryAdminIds.add(row.id);
         if (row.password_hash) {
           storePasswordHash(row.id, row.password_hash, row.payload?.pseudo, row.payload?.email, row.payload?.phone);
@@ -427,6 +429,7 @@ export const forceReloadFromSupabase = async () => {
     // Clear all in-memory state
     memoryUsers.clear();
     pseudoKeys.clear();
+    gameIdKeys.clear();
     memoryAdminIds.clear();
     memoryPasswordHashes.clear();
     memoryAuthSessions.clear();
@@ -561,10 +564,8 @@ const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   if (memoryPasswordHashes.has(ek)) throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
   if (memoryPasswordHashes.has(phk)) throw makeError('DUPLICATE_PHONE', 'Ce numero est deja rattache a un compte ZOYD.');
 
-  // gameId check still needs linear scan (not indexed in passwordHashes)
-  for (const user of memoryUsers.values()) {
-    if (normalizeGameIdKey(user.gameId) === gk) throw makeError('DUPLICATE_GAME_ID', 'Cet UID CODM est deja verifie sur la plateforme.');
-  }
+  // gameId check via O(1) index
+  if (gameIdKeys.has(gk)) throw makeError('DUPLICATE_GAME_ID', 'Cet UID CODM est deja verifie sur la plateforme.');
 };
 
 const insertUser = async ({ password, role = 'player', ...input }) => {
@@ -588,6 +589,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     evictOldest(memoryUsers, MAX_USERS);
     memoryUsers.set(id, payload);
     pseudoKeys.set(id, normalizePseudoKey(payload.pseudo || ''));
+    if (payload.gameId) gameIdKeys.set(id, normalizeGameIdKey(payload.gameId));
     if (role === 'admin') memoryAdminIds.add(id);
     storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
 
@@ -731,6 +733,7 @@ export const updateUserAccount = async (userId, updater) => {
     const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
     memoryUsers.set(userId, next);
     pseudoKeys.set(userId, normalizePseudoKey(next.pseudo || ''));
+    if (next.gameId) gameIdKeys.set(userId, normalizeGameIdKey(next.gameId));
 
     // Track admin role changes
     if (next.role === 'admin') memoryAdminIds.add(userId);
@@ -1196,7 +1199,14 @@ export const appendChatMessage = async (message) => {
   });
 };
 
-export const getChatMessagesForChannel = (channelId, limit = 200) => {
+export const getChatMessagesForChannel = (channelId, limit = 200, userId) => {
+  if (userId) {
+    const channel = memoryChatChannels.get(channelId);
+    if (!channel) return [];
+    const members = channel.members || [];
+    const isMember = channel.type === 'global' || members.includes(userId);
+    if (!isMember) return [];
+  }
   const msgs = memoryChatMessages.get(channelId) || [];
   return msgs.slice(-Math.max(1, Number(limit || 200)));
 };

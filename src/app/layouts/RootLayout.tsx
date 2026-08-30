@@ -24,7 +24,9 @@ const RootLayout: React.FC = () => {
 
     fetchAllMatchesFromDb().then((matches) => {
       useMatchStore.getState().replaceFromServer(matches);
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('[RootLayout] Failed to fetch matches:', err?.message);
+    });
 
     return () => {
       useMatchStore.getState().replaceFromServer([]);
@@ -41,7 +43,9 @@ const RootLayout: React.FC = () => {
     const { unsubscribe } = subscribeToMatches(() => {
       fetchAllMatchesFromDb().then((matches) => {
         useMatchStore.getState().replaceFromServer(matches);
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn('[RootLayout] Failed to poll matches:', err?.message);
+      });
     });
 
     return () => unsubscribe();
@@ -54,7 +58,9 @@ const RootLayout: React.FC = () => {
       if (res.ok) {
         useTournamentStore.getState().replaceFromServer(res.tournaments);
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.warn('[RootLayout] Failed to fetch tournaments:', err?.message);
+    });
 
     if (isSocketConnected) return;
 
@@ -63,7 +69,9 @@ const RootLayout: React.FC = () => {
         if (res.ok) {
           useTournamentStore.getState().replaceFromServer(res.tournaments);
         }
-      }).catch(() => {});
+      }).catch((err) => {
+      console.warn('[RootLayout] Failed to fetch tournaments:', err?.message);
+    });
     });
 
     return () => unsubscribe();

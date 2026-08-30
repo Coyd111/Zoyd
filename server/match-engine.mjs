@@ -146,21 +146,21 @@ const applyResultSettlement = async (match, result) => {
 
   const eloDeltaByTeam = { 0: deltaA, 1: deltaB };
 
+  // Collect unique user IDs needing wallet ops, deduplicate
+  const winnerIds = new Set(match.players.filter(p => p.team === result.winnerTeam).map(p => p.userId));
+  const loserIds = new Set(match.players.filter(p => p.team !== result.winnerTeam).map(p => p.userId));
+
   for (const player of match.players) {
     try {
       const isWinner = player.team === result.winnerTeam;
       const deltaElo = eloDeltaByTeam[player.team] || 0;
 
-      if (isWinner) {
-        await withWalletMutex(player.userId, async () => {
+      await withWalletMutex(player.userId, async () => {
+        if (isWinner) {
           await releaseWalletWinnings(
-            player.userId,
-            payout,
-            match.id,
-            'prize_win',
+            player.userId, payout, match.id, 'prize_win',
             `Gain du match ${match.rules.mode} / ${match.rules.map}`
           );
-
           await patchUserForMatchOutcome(player.userId, (user) => {
             const nextStats = {
               ...user.stats,
@@ -179,29 +179,26 @@ const applyResultSettlement = async (match, result) => {
             }
             return user;
           });
-        });
-        continue;
-      }
-
-      await withWalletMutex(player.userId, async () => {
-        await settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
-        await patchUserForMatchOutcome(player.userId, (user) => {
-          const nextStats = {
-            ...user.stats,
-            losses: Number(user.stats?.losses || 0) + 1,
-            elo: Math.max(0, Math.round(Number(user.stats?.elo || 1200) + deltaElo)),
-          };
-          const total = Number(nextStats.wins || 0) + nextStats.losses + Number(nextStats.draws || 0);
-          nextStats.totalMatches = total;
-          nextStats.winRate = total > 0 ? Math.round((Number(nextStats.wins || 0) / total) * 1000) / 10 : 0;
-          user.stats = nextStats;
-          user.rankMJ = getRankFromElo(nextStats.elo);
-          user.progression = addXpToProgression(user.progression, 35);
-          if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
-            user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));
-          }
-          return user;
-        });
+        } else {
+          await settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
+          await patchUserForMatchOutcome(player.userId, (user) => {
+            const nextStats = {
+              ...user.stats,
+              losses: Number(user.stats?.losses || 0) + 1,
+              elo: Math.max(0, Math.round(Number(user.stats?.elo || 1200) + deltaElo)),
+            };
+            const total = Number(nextStats.wins || 0) + nextStats.losses + Number(nextStats.draws || 0);
+            nextStats.totalMatches = total;
+            nextStats.winRate = total > 0 ? Math.round((Number(nextStats.wins || 0) / total) * 1000) / 10 : 0;
+            user.stats = nextStats;
+            user.rankMJ = getRankFromElo(nextStats.elo);
+            user.progression = addXpToProgression(user.progression, 35);
+            if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
+              user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));
+            }
+            return user;
+          });
+        }
       });
     } catch (err) {
       log.error('Settlement error for player', { matchId: match.id, playerId: player.userId, error: err.message });

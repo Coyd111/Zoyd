@@ -248,21 +248,26 @@ const ChatPage: React.FC = () => {
                 <button
                   onClick={() => {
                     const newMuted = !activeChannel.isMuted;
+                    const channelId = activeChannel.id;
+                    const previousState = activeChannel.isMuted;
+                    // Optimistic update
                     if (newMuted) {
-                      muteChannel(activeChannel.id);
-                      fetch(getApiUrl(`/api/chat/channels/${activeChannel.id}/mute`), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                        credentials: 'include',
-                      }).catch(() => {});
+                      muteChannel(channelId);
                     } else {
-                      unmuteChannel(activeChannel.id);
-                      fetch(getApiUrl(`/api/chat/channels/${activeChannel.id}/unmute`), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                        credentials: 'include',
-                      }).catch(() => {});
+                      unmuteChannel(channelId);
                     }
+                    fetch(getApiUrl(`/api/chat/channels/${channelId}/${newMuted ? 'mute' : 'unmute'}`), {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                      credentials: 'include',
+                    }).catch(() => {
+                      // Rollback on failure
+                      if (previousState) {
+                        muteChannel(channelId);
+                      } else {
+                        unmuteChannel(channelId);
+                      }
+                    });
                   }}
                   className="touch-target text-white/40 hover:text-white transition-colors"
                   aria-label={activeChannel.isMuted ? 'Activer les notifications' : 'Couper les notifications'}

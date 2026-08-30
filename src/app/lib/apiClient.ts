@@ -31,7 +31,10 @@ export const getAuthHeaders = () => {
   if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
     if (!logoutQueued) {
       logoutQueued = true;
-      queueMicrotask(() => { logoutQueued = false; useAuthStore.getState().logout(); });
+      queueMicrotask(() => {
+        useAuthStore.getState().logout();
+        logoutQueued = false;
+      });
     }
     return {};
   }

@@ -65,33 +65,21 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       throw makeError('TRANSACTION_NOT_APPROVED', `La transaction n'est pas approuvée (Statut: ${transaction.status})`);
     }
 
-    // 3. Double-check idempotence après retrieve (deuxième filet de sécurité)
-    if (await hasTransactionBeenProcessed(transactionId)) {
+    // 3. Calculer les Zoyd Coins (1 ZC = 10 FCFA)
+    const amountZC = transaction.amount / 10;
+
+    // 4. Réserver atomiquement AVANT tout crédit — si un autre process passe entre-temps, claimTransaction renvoie false
+    const claimed = await claimTransaction(transactionId, user.id, amountZC);
+    if (!claimed) {
       throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
     }
 
-    // 4. Calculer les Zoyd Coins (1 ZC = 10 FCFA)
-    const amountZC = transaction.amount / 10;
-
-    // 5. Créditer le portefeuille EN PREMIER (si ça échoue, on ne marquera pas comme traité)
+    // 5. Créditer le portefeuille (le reservation est déjà garantie)
     const updatedUser = await depositToWallet(
       user.id,
       amountZC,
       'FedaPay'
     );
-
-    // 6. Marquer comme traitée APRÈS crédit réussi (atomique)
-    const claimed = await claimTransaction(transactionId, user.id, amountZC);
-    if (!claimed) {
-      // Rollback : annuler le crédit si un autre process a traité entre-temps
-      log.error('Transaction already claimed by concurrent process, rolling back wallet credit', { transactionId });
-      try {
-        await debitFromWallet(user.id, amountZC, `Rollback FedaPay double (${transactionId})`);
-      } catch (rollbackErr) {
-        log.error('CRITICAL: Rollback also failed', { transactionId, error: rollbackErr.message });
-      }
-      throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
-    }
 
     return {
       success: true,
@@ -101,7 +89,8 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
   } catch (error) {
     log.error('FedaPay verification error', { message: error.message });
     if (error instanceof PaymentRollbackError) throw error;
-    if (error.message.includes('déjà été traitée') || error.message.includes('UNIQUE')) {
+    if (error.code === 'TRANSACTION_ALREADY_PROCESSED' || error.code === 'TRANSACTION_IN_PROGRESS') throw error;
+    if (error.message.includes('UNIQUE')) {
       throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
     }
     throw makeError('FEDAPAY_API_ERROR', 'Erreur lors de la vérification de la transaction FedaPay.');

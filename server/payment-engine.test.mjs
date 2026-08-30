@@ -118,7 +118,6 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
   });
 
   it('should re-throw idempotence errors from DB constraint', async () => {
-    hasTransactionBeenProcessed.mockReturnValue(false);
     Transaction.retrieve.mockResolvedValue({
       status: 'approved',
       amount: 1000,

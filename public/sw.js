@@ -45,12 +45,17 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // API calls : network first, cache fallback
+  // API calls : network first, cache fallback (skip auth/sensitive endpoints)
   if (url.pathname.startsWith('/api/')) {
+    const safeToCache = !request.headers.has('authorization') &&
+      !url.pathname.includes('/auth/') &&
+      !url.pathname.includes('/wallet') &&
+      !url.pathname.includes('/earnings') &&
+      !url.pathname.includes('/chat');
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.status === 200) {
+          if (safeToCache && response.status === 200) {
             const clone = response.clone();
             caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
           }

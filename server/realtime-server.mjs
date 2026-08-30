@@ -262,13 +262,13 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const userId = pathname.split('/api/codm/player/')[1];
-      if (!userId) {
-        respondJson(res, 400, { ok: false, error: 'ID joueur requis.', code: 'PLAYER_ID_REQUIRED' }, req);
+      if (!userId || !/^\d{1,20}$/.test(userId)) {
+        respondJson(res, 400, { ok: false, error: 'ID joueur invalide.', code: 'INVALID_PLAYER_ID' }, req);
         return;
       }
 
       const storeUrl = new URL(req.url, 'http://localhost');
-      const country = storeUrl.searchParams.get('country') || 'IN';
+      const country = (storeUrl.searchParams.get('country') || 'IN').replace(/[^A-Z]/g, '').slice(0, 2);
       const deviceId = crypto.randomUUID();
 
       const upstream = await fetch('https://order-sg.codashop.com/validate', {
@@ -312,8 +312,8 @@ const server = http.createServer(async (req, res) => {
         respondJson(res, 200, {
           ok: true,
           player: {
-            nickname: r.nickname,
-            picUrl: r.picUrl,
+            nickname: sanitizeText(r.nickname),
+            picUrl: sanitizeText(r.picUrl),
             level: r.level,
             levelImage: r.customLevelImageUrl,
             rankClass: r.rankClass,
@@ -337,8 +337,8 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, {
         ok: true,
         player: {
-          nickname: r.nickname,
-          picUrl: r.picUrl,
+          nickname: sanitizeText(r.nickname),
+          picUrl: sanitizeText(r.picUrl),
           level: r.level,
           levelImage: r.customLevelImageUrl,
           rankClass: r.rankClass,
@@ -523,7 +523,7 @@ const server = http.createServer(async (req, res) => {
       for (const field of ALLOWED_PROFILE_FIELDS) {
         if (field in body) {
           let value = STRING_FIELDS.includes(field) ? sanitizeText(body[field]) : body[field];
-          if (ENUM_FIELDS[field] && !ENUM_FIELDS[field].includes(value)) {
+          if (ENUM_FIELDS[field] && (typeof value !== 'string' || !ENUM_FIELDS[field].includes(value))) {
             respondJson(res, 400, { ok: false, error: `Valeur invalide pour ${field}. Valeurs acceptees: ${ENUM_FIELDS[field].join(', ')}`, code: 'INVALID_ENUM' });
             return;
           }
@@ -540,19 +540,6 @@ const server = http.createServer(async (req, res) => {
           }
           if (field === 'pseudo' && typeof value === 'string' && value.length > 30) {
             value = value.slice(0, 30);
-          }
-          if (field === 'email' && typeof value === 'string') {
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-              respondJson(res, 400, { ok: false, error: 'Format email invalide.', code: 'INVALID_JSON' });
-              return;
-            }
-          }
-          if (field === 'gameId' && typeof value === 'string') {
-            value = value.trim().slice(0, 30);
-            if (value.length < 2) {
-              respondJson(res, 400, { ok: false, error: 'gameId trop court (2-30 caracteres).', code: 'INVALID_JSON' });
-              return;
-            }
           }
           safeUpdate[field] = value;
         }

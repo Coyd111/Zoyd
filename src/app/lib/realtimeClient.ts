@@ -2,7 +2,7 @@ import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import type { User } from '../stores/authStore';
 import { useAuthStore } from '../stores/authStore';
-import { getApiUrl } from './apiClient';
+import { getApiUrl, getBaseUrl } from './apiClient';
 import type { ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import type { Match } from '../stores/matchStore';
 import type { Tournament } from '../stores/tournamentStore';

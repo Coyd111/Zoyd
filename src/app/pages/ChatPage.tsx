@@ -16,7 +16,7 @@ import { Button } from '../components/ui/Button';
 import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
 import { SEOHead } from '../components/SEOHead';
 import { useSocketStore } from '../stores/socketStore';
-import { getApiUrl } from '../lib/apiClient';
+import { getApiUrl, getAuthHeaders } from '../lib/apiClient';
 
 const channelIcons: Record<string, React.ReactNode> = {
   global: <Globe className="w-4 h-4" />,
@@ -252,14 +252,14 @@ const ChatPage: React.FC = () => {
                       muteChannel(activeChannel.id);
                       fetch(getApiUrl(`/api/chat/channels/${activeChannel.id}/mute`), {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                         credentials: 'include',
                       }).catch(() => {});
                     } else {
                       unmuteChannel(activeChannel.id);
                       fetch(getApiUrl(`/api/chat/channels/${activeChannel.id}/unmute`), {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                         credentials: 'include',
                       }).catch(() => {});
                     }

@@ -433,6 +433,7 @@ export const forceReloadFromSupabase = async () => {
     memoryRealtimeSessions.clear();
     memoryChatChannels.clear();
     memoryChatMessages.clear();
+    memoryChatReads.clear();
     memoryStateSnapshots.clear();
     memoryStateByKind.clear();
     memoryFriendRequests.clear();
@@ -934,20 +935,22 @@ export const cleanupExpiredActivationCodes = () => {
  * @throws {Error} If user not found
  */
 export const activateUserAccount = async (userId) => {
-  const user = memoryUsers.get(userId);
-  if (!user) throw new Error('Utilisateur introuvable.');
-  
-  user.isActive = true;
-  user.activatedAt = getNow();
-  
-  // Update in Supabase
-  await sbUpsert('app_users', {
-    id: userId,
-    payload: user,
-    updated_at: getNow(),
+  return withUserMutex(userId, async () => {
+    const user = memoryUsers.get(userId);
+    if (!user) throw new Error('Utilisateur introuvable.');
+
+    user.isActive = true;
+    user.activatedAt = getNow();
+
+    // Update in Supabase
+    await sbUpsert('app_users', {
+      id: userId,
+      payload: user,
+      updated_at: getNow(),
+    });
+
+    return user;
   });
-  
-  return user;
 };
 
 // ─── Auth Sessions ──────────────────────────────────────────────────────────

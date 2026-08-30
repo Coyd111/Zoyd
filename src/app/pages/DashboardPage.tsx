@@ -58,6 +58,8 @@ const DashboardPage: React.FC = () => {
   const cashBalance = useWalletStore((s) => s.cashBalance);
   const bonusBalance = useWalletStore((s) => s.bonusBalance);
   const getTotalBalance = useWalletStore((s) => s.getTotalBalance);
+  const getAvailableCash = useWalletStore((s) => s.getAvailableCash);
+  const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   const getUnreadTotal = useChatStore((s) => s.getUnreadTotal);

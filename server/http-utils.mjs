@@ -11,7 +11,7 @@ import log from './logger.mjs';
 export const serializeCookie = (name, value, options = {}) => {
   const parts = [`${name}=${encodeURIComponent(value)}`];
 
-  if (options.maxAge) {
+  if (options.maxAge != null) {
     parts.push(`Max-Age=${options.maxAge}`);
   }
   if (options.domain) {
@@ -37,11 +37,11 @@ export const serializeCookie = (name, value, options = {}) => {
 };
 
 /** @type {string[]} */
+const devOrigins = process.env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 export const ALLOWED_ORIGINS = [
-  ...(process.env.ZOYD_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean),
+  ...(process.env.ZOYD_ALLOWED_ORIGINS
+    ? process.env.ZOYD_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : devOrigins),
   'https://zoyd.vercel.app',
   'https://zoyd.africa',
   'https://www.zoyd.africa',

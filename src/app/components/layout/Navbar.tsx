@@ -11,7 +11,11 @@ import { useLogout } from '../../hooks/useLogout';
 
 const Navbar: React.FC = React.memo(() => {
   const { user } = useAuthStore();
-  const totalBalance = useWalletStore((s) => s.getTotalBalance());
+  const cashBalance = useWalletStore((s) => s.cashBalance);
+  const bonusBalance = useWalletStore((s) => s.bonusBalance);
+  const lockedBalance = useWalletStore((s) => s.lockedBalance);
+  const pendingWinnings = useWalletStore((s) => s.pendingWinnings);
+  const totalBalance = cashBalance + bonusBalance + lockedBalance + pendingWinnings;
   const isConnected = useSocketStore((s) => s.isConnected);
   const serverConnected = useSocketStore((s) => s.serverConnected);
   const liveMatches = useSocketStore((s) => s.liveMatches);

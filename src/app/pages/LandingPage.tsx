@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { LANDING_TICKER_ITEMS } from '../../lib/competition';
 import ZoydLogo from '../components/branding/ZoydLogo';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../components/SEOHead';
 
 const platformCards = [
   {
@@ -56,10 +56,11 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline selection:bg-zoyd-yellow selection:text-black overflow-x-hidden safe-top">
-      <Helmet>
-        <title>ZOYD — Plateforme CODM Afrique</title>
-        <meta name="description" content="Wagers sécurisés, arbitrage rémunéré, gains Mobile Money." />
-      </Helmet>
+      <SEOHead
+        title="ZOYD — Plateforme CODM Afrique"
+        description="Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique."
+        path="/"
+      />
       <LandingNav />
 
       <main className="relative">

@@ -26,7 +26,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { formatZC, getRelativeTime } from '../../lib/utils';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../components/SEOHead';
 import { Skeleton } from '../components/ui/Skeleton';
 
 const quickActions = [
@@ -131,10 +131,7 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">
-      <Helmet>
-        <title>Tableau de bord — ZOYD</title>
-        <meta name="description" content="Ton espace ZOYD — matchs, wallet, progression." />
-      </Helmet>
+      <SEOHead title="Tableau de bord — ZOYD" description="Ton espace ZOYD — matchs, wallet, progression." path="/dashboard" noindex />
 
       <main className="max-w-[1600px] mx-auto px-5 md:px-8 pt-20 md:pt-28 pb-28 safe-bottom">
         {/* Hero greeting */}

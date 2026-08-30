@@ -12,7 +12,7 @@ import { loginWithBackend } from '../../lib/authApi';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import ZoydLogo from '../../components/branding/ZoydLogo';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../../components/SEOHead';
 
 const loginSchema = z.object({
   emailOrPseudo: z.string().min(1, 'Email ou pseudo requis'),
@@ -83,10 +83,12 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black flex flex-col lg:flex-row font-ui scanline safe-top">
-      <Helmet>
-        <title>Connexion — ZOYD</title>
-        <meta name="description" content="Connecte-toi à ZOYD, la plateforme compétitive CODM en Afrique." />
-      </Helmet>
+      <SEOHead
+        title="Connexion — ZOYD"
+        description="Connecte-toi à ZOYD, la plateforme compétitive CODM en Afrique."
+        path="/auth/login"
+        noindex
+      />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">

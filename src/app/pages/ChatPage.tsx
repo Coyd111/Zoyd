@@ -14,7 +14,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
 import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../components/SEOHead';
 import { useSocketStore } from '../stores/socketStore';
 import { getApiUrl } from '../lib/apiClient';
 
@@ -114,10 +114,7 @@ const ChatPage: React.FC = () => {
 
   return (
     <div className="safe-top flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
-      <Helmet>
-        <title>Chat — ZOYD</title>
-        <meta name="description" content="Discute avec la communauté ZOYD en temps réel." />
-      </Helmet>
+      <SEOHead title="Chat — ZOYD" description="Discute avec la communauté ZOYD en temps réel." path="/chat" noindex />
       <a href="#chat-main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
         Aller au contenu principal
       </a>

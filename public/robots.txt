@@ -2,6 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /wallet
+Disallow: /earnings
 Disallow: /parametres
+Disallow: /chat
 
 Sitemap: https://zoyd.vercel.app/sitemap.xml

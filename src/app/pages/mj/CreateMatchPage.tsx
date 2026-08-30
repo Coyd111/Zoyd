@@ -11,7 +11,7 @@ import { applyServerAccountState } from '../../lib/serverSync';
 import { useAuthStore } from '../../stores/authStore';
 import { useMatchStore, type MatchFormat } from '../../stores/matchStore';
 import { useWalletStore } from '../../stores/walletStore';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../../components/SEOHead';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const WEAPON_OPTIONS = ['Toutes permises', 'Sniper uniquement', 'Assaut / SMG', 'Corps a corps uniquement'];
@@ -174,10 +174,7 @@ const CreateMatchPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
-      <Helmet>
-        <title>Créer un match — ZOYD</title>
-        <meta name="description" content="Configure et lance un nouveau match wager." />
-      </Helmet>
+      <SEOHead title="Créer un match — ZOYD" description="Configure et lance un nouveau match wager." path="/mj/creer" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 relative z-10">

@@ -6,7 +6,7 @@ import {
   TrendingUp, Shield, ShoppingBag, Search,
   Crosshair, Star, AlertTriangle, Gamepad2, Clock,
 } from 'lucide-react';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../components/SEOHead';
 import { fetchCODMStoreBundles, type CodashopBundle } from '../../lib/codmApi';
 import {
   WEAPON_DATA, WEAPON_CATEGORIES, TOTAL_WEAPONS,
@@ -247,10 +247,11 @@ const LeaksPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24">
-      <Helmet>
-        <title>Leaks &amp; Infos CODM — ZOYD</title>
-        <meta name="description" content="Les dernieres leaks, nouveautes et infos de Call of Duty Mobile Septembre 2026. Honkai Impact collab, Saison 8 Twilight Heist, RAM-7 Mythic, balance changes." />
-      </Helmet>
+      <SEOHead
+        title="Leaks &amp; Infos CODM — ZOYD"
+        description="Les dernieres leaks, nouveautes et infos de Call of Duty Mobile 2026. Saison Twilight Heist, RAM-7 Mythic, balance changes."
+        path="/infos"
+      />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       {/* Header */}

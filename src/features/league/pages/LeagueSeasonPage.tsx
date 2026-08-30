@@ -25,7 +25,7 @@ import { QualificationPanel } from '../components/QualificationPanel';
 import { AdminPanel } from '../components/AdminPanel';
 import { FinalResultsForm } from '../components/FinalResultsForm';
 import { STATUS_LABELS } from '../components/leagueSeasonConstants';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../../../app/components/SEOHead';
 
 const LeagueSeasonPage = () => {
   const { seasonId } = useParams<{ seasonId: string }>();
@@ -218,10 +218,7 @@ const LeagueSeasonPage = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
-      <Helmet>
-        <title>Saison BR — ZOYD</title>
-        <meta name="description" content="Détails d'une saison de la ligue BR ZOYD." />
-      </Helmet>
+      <SEOHead title="Saison BR — ZOYD" description="Détails d'une saison de la ligue BR ZOYD." path="/br-league" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-[1500px] mx-auto px-4 md:px-8 relative z-10">

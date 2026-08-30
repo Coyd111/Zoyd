@@ -1,15 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../components/SEOHead';
 
 const NotFoundPage: React.FC = () => {
   return (
     <div className="min-h-dvh bg-zoyd-black flex items-center justify-center p-5 relative font-ui scanline safe-top safe-bottom">
-      <Helmet>
-        <title>404 — ZOYD</title>
-        <meta name="description" content="Page non trouvée." />
-      </Helmet>
+      <SEOHead
+        title="404 — ZOYD"
+        description="Page non trouvée."
+        path="/404"
+        noindex
+      />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
       <img src="/assets/images/codm-7.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />

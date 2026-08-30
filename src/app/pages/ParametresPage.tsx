@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { updateServerAccount } from '../lib/authApi';
 import { CODM_RANKS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../components/SEOHead';
 
 const tabs = [
   { id: 'account', label: 'COMPTE', icon: User },
@@ -173,10 +173,7 @@ const ParametresPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24 safe-top">
-      <Helmet>
-        <title>Paramètres — ZOYD</title>
-        <meta name="description" content="Configure ton compte et tes préférences." />
-      </Helmet>
+      <SEOHead title="Paramètres — ZOYD" description="Configure ton compte et tes préférences." path="/parametres" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16 overflow-hidden">

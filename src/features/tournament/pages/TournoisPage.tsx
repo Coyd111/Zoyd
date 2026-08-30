@@ -8,7 +8,7 @@ import type { MatchFormat } from '../../../app/stores/matchStore';
 import { fetchServerTournaments } from '../../../app/lib/tournamentApi';
 import { formatZC } from '../../../lib/utils';
 import { useDebounce } from '../../../app/hooks/useDebounce';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../../../app/components/SEOHead';
 
 const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'];
 
@@ -94,10 +94,11 @@ const TournoisPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 safe-top">
-      <Helmet>
-        <title>Tournois — ZOYD</title>
-        <meta name="description" content="Parcours les tournois disponibles sur ZOYD." />
-      </Helmet>
+      <SEOHead
+        title="Tournois — ZOYD"
+        description="Parcours les tournois disponibles sur ZOYD."
+        path="/mj/tournois"
+      />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <header className="relative border-b border-white/5 bg-zoyd-surface/40 pt-16">

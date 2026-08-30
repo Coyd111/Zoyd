@@ -30,7 +30,7 @@ import {
 } from '../../../lib/competition';
 import { registerWithBackend, type RegisterPayload } from '../../lib/authApi';
 import ZoydLogo from '../../components/branding/ZoydLogo';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../../components/SEOHead';
 
 const step1Schema = z
   .object({
@@ -215,10 +215,12 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black flex flex-col lg:flex-row font-ui scanline safe-top">
-      <Helmet>
-        <title>Inscription — ZOYD</title>
-        <meta name="description" content="Crée ton compte ZOYD et commence à jouer ou arbitrer." />
-      </Helmet>
+      <SEOHead
+        title="Inscription — ZOYD"
+        description="Crée ton compte ZOYD et commence à jouer ou arbitrer."
+        path="/auth/register"
+        noindex
+      />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">

@@ -14,7 +14,7 @@ import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFundin
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
-import { Helmet } from 'react-helmet-async';
+import { SEOHead } from '../components/SEOHead';
 
 const MIN_WITHDRAWAL_ZC = 150;
 
@@ -189,10 +189,7 @@ const WalletPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline p-4 md:p-8 safe-top safe-bottom">
-      <Helmet>
-        <title>Portefeuille — ZOYD</title>
-        <meta name="description" content="Gère tes dépôts, retraits et transactions ZC." />
-      </Helmet>
+      <SEOHead title="Portefeuille — ZOYD" description="Gère tes dépôts, retraits et transactions ZC." path="/wallet" noindex />
       <div className="max-w-6xl mx-auto">
             <div className="relative mb-8 p-5 sm:p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
           <div className="absolute inset-0 z-0">

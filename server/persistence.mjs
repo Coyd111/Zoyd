@@ -16,21 +16,30 @@ const log = createLogger('persistence');
 
 // ─── In-memory caches ───────────────────────────────────────────────────────
 const memoryUsers = new Map();
+const MAX_USERS = 100000;
 const pseudoKeys = new Map(); // userId → normalized pseudo (avoids re-normalizing on search)
 const memoryAuthSessions = new Map();
+const MAX_AUTH_SESSIONS = 50000;
 const memoryRealtimeSessions = new Map();
+const MAX_REALTIME_SESSIONS = 50000;
 const memoryPushSubscriptions = new Map();
+const MAX_PUSH_SUBSCRIPTIONS = 50000;
 const memoryChatChannels = new Map();
 const MAX_CHAT_CHANNELS = 1000;
 const memoryChatMessages = new Map(); // channelId -> message[]
 const memoryChatReads = new Map();    // `${channelId}:${userId}` -> readAt
+const MAX_CHAT_READS = 50000;
 const memoryStateSnapshots = new Map(); // `${kind}:${entityId}` -> payload (kept for compat)
 const memoryStateByKind = new Map();   // kind -> Map<entityId, payload> (O(1) lookups)
+const MAX_STATE_PER_KIND = 10000;
 const memoryAdminIds = new Set();     // fast admin lookup (avoids getAllUsers scan)
 const memoryFriendRequests = new Map();
+const MAX_FRIEND_REQUESTS = 50000;
 const memoryFriendships = new Set();   // `${uid1}:${uid2}`
+const MAX_FRIENDSHIPS = 200000;
 const memoryFriendshipsByUser = new Map(); // userId -> Set<friendId> (O(1) lookups)
 const memoryUserBlocks = new Set();    // `${blocker}:${blocked}`
+const MAX_USER_BLOCKS = 100000;
 const memoryBlocksByUser = new Map();  // userId -> Set<blockedId> (O(1) lookups)
 const memoryNotifications = new Map(); // id -> notification
 const memoryUnreadByUser = new Map();  // userId -> Set<notificationId> (O(1) unread lookups)
@@ -39,6 +48,22 @@ const MAX_PROCESSED_TX = 10000;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 export { roundAmount, makeError };
+
+/**
+ * Evict oldest entries from a Map if it exceeds the cap.
+ * @param {Map} map
+ * @param {number} cap
+ */
+const evictOldest = (map, cap) => {
+  if (map.size <= cap) return;
+  const toDelete = map.size - cap;
+  let deleted = 0;
+  for (const key of map.keys()) {
+    if (deleted >= toDelete) break;
+    map.delete(key);
+    deleted++;
+  }
+};
 
 /**
  * Sanitize user input to prevent XSS attacks
@@ -559,6 +584,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     const passwordHash = await hashPassword(password);
 
     // Write to memory
+    evictOldest(memoryUsers, MAX_USERS);
     memoryUsers.set(id, payload);
     pseudoKeys.set(id, normalizePseudoKey(payload.pseudo || ''));
     if (role === 'admin') memoryAdminIds.add(id);
@@ -932,9 +958,11 @@ const createTokenRecord = async (type, userId, extra = {}) => {
   const record = { token, userId, issuedAt, expiresAt, ...extra };
 
   if (type === 'auth') {
+    evictOldest(memoryAuthSessions, MAX_AUTH_SESSIONS);
     memoryAuthSessions.set(token, record);
     await sbUpsert('auth_sessions', { token, user_id: userId, issued_at: issuedAt, expires_at: expiresAt });
   } else {
+    evictOldest(memoryRealtimeSessions, MAX_REALTIME_SESSIONS);
     memoryRealtimeSessions.set(token, record);
     await sbUpsert('realtime_sessions', { token, user_id: userId, pseudo: extra.pseudo, role: extra.role, issued_at: issuedAt, expires_at: expiresAt });
   }
@@ -1060,6 +1088,7 @@ export const deleteRealtimeSessionsForUser = (userId) => {
 
 // ─── Push Subscriptions ─────────────────────────────────────────────────────
 export const upsertPushSubscription = (userId, subscription) => {
+  evictOldest(memoryPushSubscriptions, MAX_PUSH_SUBSCRIPTIONS);
   memoryPushSubscriptions.set(subscription.endpoint, subscription);
   sbFire('upsertPushSubscription', () => sbUpsert('push_subscriptions', { user_id: userId, endpoint: subscription.endpoint, payload: subscription, updated_at: getNow() }));
 };
@@ -1268,7 +1297,9 @@ export const getStateEntity = (kind, entityId) => {
 // Upsert a single entity (avoids full collection replacement)
 export const upsertStateEntity = async (kind, entity) => {
   if (!memoryStateByKind.has(kind)) memoryStateByKind.set(kind, new Map());
-  memoryStateByKind.get(kind).set(entity.id, entity);
+  const kindMap = memoryStateByKind.get(kind);
+  evictOldest(kindMap, MAX_STATE_PER_KIND);
+  kindMap.set(entity.id, entity);
   memoryStateSnapshots.set(`${kind}:${entity.id}`, entity);
 
   if (supabase) {
@@ -1320,6 +1351,7 @@ export const sendFriendRequest = (senderId, targetId, message) => {
   const record = { id, sender_id: senderId, target_id: targetId, status: 'pending', message: message || null, created_at: now, updated_at: now };
 
   memoryFriendRequests.set(id, record);
+  evictOldest(memoryFriendRequests, MAX_FRIEND_REQUESTS);
   sbFire('sendFriendRequest', () => sbUpsert('friend_requests', record));
   return { id, senderId, targetId, status: 'pending', message, timestamp: now };
 };

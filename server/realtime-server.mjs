@@ -26,7 +26,6 @@ import {
   ensureGlobalChatChannel,
   getAuthSession,
   getLeaderboard,
-  getRawUserById,
   getUserById,
   verifyUserPassword,
   verifyActivationCode,
@@ -64,7 +63,6 @@ import {
   getUnreadNotificationsForUser,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-  verifyPassword,
   hashPassword,
   updatePasswordHash,
   sbUpsert,
@@ -265,7 +263,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const userId = pathname.split('/api/codm/player/')[1];
       if (!userId) {
-        respondJson(res, 400, { ok: false, error: 'Player ID required.', code: 'PLAYER_ID_REQUIRED' }, req);
+        respondJson(res, 400, { ok: false, error: 'ID joueur requis.', code: 'PLAYER_ID_REQUIRED' }, req);
         return;
       }
 
@@ -307,7 +305,7 @@ const server = http.createServer(async (req, res) => {
         });
         const redirectData = await redirectUpstream.json();
         if (!redirectData.success || !redirectData.result) {
-          respondJson(res, 404, { ok: false, error: 'Player not found.', code: 'PLAYER_NOT_FOUND' }, req);
+          respondJson(res, 404, { ok: false, error: 'Joueur introuvable.', code: 'PLAYER_NOT_FOUND' }, req);
           return;
         }
         const r = redirectData.result;
@@ -331,7 +329,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (!data.success || !data.result) {
-        respondJson(res, 404, { ok: false, error: 'Player not found.', code: 'PLAYER_NOT_FOUND' }, req);
+        respondJson(res, 404, { ok: false, error: 'Joueur introuvable.', code: 'PLAYER_NOT_FOUND' }, req);
         return;
       }
 
@@ -389,6 +387,10 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const body = await parseRequestBody(req);
+      if (!body.email || typeof body.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+        respondJson(res, 400, { ok: false, error: 'Adresse email invalide.' });
+        return;
+      }
       const { role: _role, ...rawBody } = body;
       const safeBody = {
         ...rawBody,
@@ -501,6 +503,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
 
     try {
       const body = await parseRequestBody(req);
@@ -623,7 +626,9 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
-      const friend = acceptFriendRequest(body.requestId, session.user.id);
+      const friend = await withUserMutex(session.user.id, async () =>
+        acceptFriendRequest(body.requestId, session.user.id)
+      );
       
       deliverNotification(io, friend.id, {
         type: 'friend_online',
@@ -646,7 +651,9 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
-      declineFriendRequest(body.requestId, session.user.id);
+      await withUserMutex(session.user.id, async () =>
+        declineFriendRequest(body.requestId, session.user.id)
+      );
       respondJson(res, 200, { ok: true });
     } catch (error) {
       respondMappedError(res, error);
@@ -1570,8 +1577,8 @@ const server = http.createServer(async (req, res) => {
 
     try { await withWalletMutex(session.user.id, async () => {
       const body = await parseRequestBody(req);
-      if (!body.transactionId) {
-        respondJson(res, 400, { ok: false, error: 'transactionId manquant.' });
+      if (!body.transactionId || typeof body.transactionId !== 'string' || !/^\d{1,20}$/.test(body.transactionId)) {
+        respondJson(res, 400, { ok: false, error: 'transactionId invalide.' });
         return;
       }
 
@@ -2215,7 +2222,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const message = appendChatMessage({
+      const message = await appendChatMessage({
         id: `MSG-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
         channelId: channel.id,
         channelType: channel.type,
@@ -2301,7 +2308,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname.startsWith('/api/realtime/state/bootstrap')) {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Realtime session required.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
       return;
     }
 
@@ -2329,7 +2336,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/state/sync') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Realtime session required.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
       return;
     }
 
@@ -2350,7 +2357,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/push/subscribe') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Realtime session required.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
       return;
     }
 
@@ -2359,7 +2366,7 @@ const server = http.createServer(async (req, res) => {
       const { subscription } = body;
 
       if (!subscription?.endpoint) {
-        respondJson(res, 400, { ok: false, error: 'Missing subscription endpoint.' });
+        respondJson(res, 400, { ok: false, error: 'Point de souscription manquant.' });
         return;
       }
 
@@ -2374,7 +2381,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/push/unsubscribe') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Realtime session required.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
       return;
     }
 
@@ -2383,7 +2390,7 @@ const server = http.createServer(async (req, res) => {
       const { endpoint } = body;
 
       if (!endpoint) {
-        respondJson(res, 400, { ok: false, error: 'Missing endpoint.' });
+        respondJson(res, 400, { ok: false, error: 'Endpoint manquant.' });
         return;
       }
 
@@ -2398,7 +2405,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/push/test') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Realtime session required.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
       return;
     }
 
@@ -2422,7 +2429,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  respondJson(res, 404, { error: 'Not found' });
+  respondJson(res, 404, { ok: false, error: 'Route introuvable.', code: 'NOT_FOUND' });
 });
 
 const io = new SocketIOServer(server, {
@@ -2642,13 +2649,17 @@ io.on('connection', (socket) => {
       return;
     }
 
-    await deliverNotification(io, targetUserId, {
-      title,
-      body: notifBody || 'Notification ZOYD',
-      url: url || '/mj',
-      tag: tag || `zoyd-${Date.now()}`,
-      requireInteraction: Boolean(requireInteraction),
-    });
+    try {
+      await deliverNotification(io, targetUserId, {
+        title,
+        body: notifBody || 'Notification ZOYD',
+        url: url || '/mj',
+        tag: tag || `zoyd-${Date.now()}`,
+        requireInteraction: Boolean(requireInteraction),
+      });
+    } catch (err) {
+      log.warn('notification:push delivery failed', { targetUserId, error: err.message });
+    }
   });
 
   socket.on('disconnect', () => {

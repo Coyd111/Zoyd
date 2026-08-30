@@ -1,6 +1,6 @@
 import { FedaPay, Transaction } from 'fedapay';
 import { depositToWallet, debitFromWallet } from './wallet-engine.mjs';
-import { hasTransactionBeenProcessed, claimTransaction } from './persistence.mjs';
+import { hasTransactionBeenProcessed, claimTransaction, makeError } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 
 const log = createLogger('payment');
@@ -41,17 +41,17 @@ setInterval(() => {
 export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => {
   const FEDAPAY_SECRET_KEY = getFedaPayConfig();
   if (!FEDAPAY_SECRET_KEY) {
-    throw new Error("FedaPay n'est pas configuré sur le serveur.");
+    throw makeError('PAYMENT_NOT_CONFIGURED', "FedaPay n'est pas configuré sur le serveur.");
   }
 
   // Vérification d'idempotence en BDD (résiste aux redémarrages serveur)
   if (await hasTransactionBeenProcessed(transactionId)) {
-    throw new Error('Cette transaction a déjà été traitée.');
+    throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
   }
 
   // Atomic lock: reject if already processing, otherwise set immediately
   if (processingTransactions.has(transactionId)) {
-    throw new Error('Cette transaction est en cours de traitement.');
+    throw makeError('TRANSACTION_IN_PROGRESS', 'Cette transaction est en cours de traitement.');
   }
   processingTransactions.set(transactionId, Promise.resolve());
   processingTxTimestamps.set(transactionId, Date.now());
@@ -62,12 +62,12 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
 
     // 2. Vérifier que le paiement est bien approuvé
     if (transaction.status !== 'approved') {
-      throw new Error(`La transaction n'est pas approuvée (Statut: ${transaction.status})`);
+      throw makeError('TRANSACTION_NOT_APPROVED', `La transaction n'est pas approuvée (Statut: ${transaction.status})`);
     }
 
     // 3. Double-check idempotence après retrieve (deuxième filet de sécurité)
     if (await hasTransactionBeenProcessed(transactionId)) {
-      throw new Error('Cette transaction a déjà été traitée.');
+      throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
     }
 
     // 4. Calculer les Zoyd Coins (1 ZC = 10 FCFA)
@@ -90,7 +90,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       } catch (rollbackErr) {
         log.error('CRITICAL: Rollback also failed', { transactionId, error: rollbackErr.message });
       }
-      throw new Error('Cette transaction a déjà été traitée.');
+      throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
     }
 
     return {
@@ -102,9 +102,9 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     log.error('FedaPay verification error', { message: error.message });
     if (error instanceof PaymentRollbackError) throw error;
     if (error.message.includes('déjà été traitée') || error.message.includes('UNIQUE')) {
-      throw new Error('Cette transaction a déjà été traitée.');
+      throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
     }
-    throw new Error('Erreur lors de la vérification de la transaction FedaPay.');
+    throw makeError('FEDAPAY_API_ERROR', 'Erreur lors de la vérification de la transaction FedaPay.');
   } finally {
     processingTransactions.delete(transactionId);
     processingTxTimestamps.delete(transactionId);

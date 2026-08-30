@@ -3,16 +3,19 @@
   <!-- Landing / Marketing -->
   <url>
     <loc>https://zoyd.vercel.app/</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/mode</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/infos</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
@@ -20,11 +23,13 @@
   <!-- Auth -->
   <url>
     <loc>https://zoyd.vercel.app/auth/login</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/auth/register</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -32,21 +37,25 @@
   <!-- Multijoueur -->
   <url>
     <loc>https://zoyd.vercel.app/mj</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/mj/creer</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/mj/tournois</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/mj/tournois/creer</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -54,6 +63,7 @@
   <!-- Classements (public, SEO-critical) -->
   <url>
     <loc>https://zoyd.vercel.app/classements</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
@@ -61,14 +71,8 @@
   <!-- Battle Royale League -->
   <url>
     <loc>https://zoyd.vercel.app/br-league</loc>
+    <lastmod>2026-08-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-  </url>
-
-  <!-- Auth: activation (crawlable pour les redirections) -->
-  <url>
-    <loc>https://zoyd.vercel.app/auth/activate</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
   </url>
 </urlset>

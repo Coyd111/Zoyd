@@ -8,6 +8,11 @@ vi.mock('fedapay', () => ({
 vi.mock('./persistence.mjs', () => ({
   hasTransactionBeenProcessed: vi.fn(),
   claimTransaction: vi.fn(),
+  makeError: (code, message) => {
+    const err = new Error(message);
+    err.code = code;
+    return err;
+  },
 }));
 
 vi.mock('./wallet-engine.mjs', () => ({

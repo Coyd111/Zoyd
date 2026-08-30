@@ -250,9 +250,14 @@ export const mapPersistenceError = (error) => {
     case 'NO_SLOT_AVAILABLE':
     case 'ARBITER_TAKEN':
     case 'SELF_BLOCK':
+    case 'TRANSACTION_ALREADY_PROCESSED':
       return { status: 409, message, code };
     case 'INVALID_JSON':
     case 'PAYLOAD_TOO_LARGE':
+    case 'PAYMENT_NOT_CONFIGURED':
+    case 'TRANSACTION_IN_PROGRESS':
+    case 'TRANSACTION_NOT_APPROVED':
+    case 'FEDAPAY_API_ERROR':
       return { status: 400, message, code };
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':

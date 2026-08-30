@@ -1,5 +1,6 @@
 import webpush from 'web-push';
 import { vapidKeys } from './vapid-keys.mjs';
+import { createLogger } from './logger.mjs';
 import {
   getPushSubscriptionsForUser,
   removePushSubscription,
@@ -7,6 +8,8 @@ import {
   getAdminIds,
   sanitizeText,
 } from './persistence.mjs';
+
+const log = createLogger('push');
 
 if (vapidKeys) {
   webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);

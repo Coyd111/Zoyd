@@ -1,12 +1,30 @@
 {
   "short_name": "ZOYD",
   "name": "ZOYD — Plateforme CODM Afrique",
+  "id": "zoyd-platform",
   "description": "La plateforme de reference pour les competiteurs de Call of Duty Mobile en Afrique.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "portrait",
+  "categories": ["games", "entertainment"],
+  "screenshots": [
+    {
+      "src": "/screenshot-home.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Page d'accueil ZOYD"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Version mobile ZOYD"
+    }
+  ],
   "icons": [
     {
       "src": "/logo-icon.png",

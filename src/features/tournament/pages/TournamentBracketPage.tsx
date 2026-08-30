@@ -122,7 +122,7 @@ const TournamentBracketPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
-          <h2 className="text-2xl font-display font-black uppercase mb-4">Chargement du tournoi</h2>
+          <h2 className="text-xl font-display font-black uppercase mb-4">Chargement du tournoi</h2>
           <p className="text-white/40">Le bracket et les inscriptions se synchronisent avec le serveur.</p>
         </div>
       </div>
@@ -133,7 +133,7 @@ const TournamentBracketPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
-          <h2 className="text-2xl font-display font-black uppercase mb-4">Tournoi introuvable</h2>
+          <h2 className="text-xl font-display font-black uppercase mb-4">Tournoi introuvable</h2>
           {loadError ? <p className="text-sm text-red-200 mb-4">{loadError}</p> : null}
           {loadError ? (
             <button onClick={() => void loadTournament()} className="underline hover:text-white text-sm text-red-200">

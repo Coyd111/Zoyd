@@ -210,7 +210,7 @@ const CreateMatchPage: React.FC = () => {
           {currentStep === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
-                <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">Choisis le format</h2>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white mb-10 italic uppercase">Choisis le format</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
                   {MJ_FORMATS.map((format) => (
                     <button
@@ -219,7 +219,7 @@ const CreateMatchPage: React.FC = () => {
                       aria-label={`Sélectionner le format ${format}`}
                       className={`group relative p-5 sm:p-6 md:p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
                     >
-                      <p className={`text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/40 group-hover:text-white transition-colors'}`}>
+                      <p className={`text-2xl sm:text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/40 group-hover:text-white transition-colors'}`}>
                         {format}
                       </p>
                       {selectedFormat === format && (
@@ -246,7 +246,7 @@ const CreateMatchPage: React.FC = () => {
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <form onSubmit={handleSubmit(onStep2Submit)} className="space-y-8">
                 <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
-                  <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">Comment vous allez jouer</h2>
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white mb-10 italic uppercase">Comment vous allez jouer</h2>
 
                   <div className="space-y-12">
                     <div>
@@ -362,7 +362,7 @@ const CreateMatchPage: React.FC = () => {
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <form onSubmit={handleSubmit(onStep3Submit)}>
                 <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
-                  <h2 className="text-3xl font-display font-black text-white mb-10 italic uppercase">La Mise (Prize Pool)</h2>
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white mb-10 italic uppercase">La Mise (Prize Pool)</h2>
 
                   <div className="space-y-12 mb-12">
                     <div>
@@ -471,7 +471,7 @@ const CreateMatchPage: React.FC = () => {
                   <div className="inline-flex items-center gap-3 px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-500 font-display font-black text-[10px] tracking-widest uppercase mb-6 italic">
                     <ShieldCheck className="w-4 h-4" /> Pret a publier
                   </div>
-                  <h2 className="text-2xl sm:text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter">
+                  <h2 className="text-xl sm:text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter">
                     Récapitulatif du Wager
                   </h2>
                 </div>

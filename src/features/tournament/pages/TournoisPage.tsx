@@ -112,7 +112,7 @@ const TournoisPage: React.FC = () => {
                 Tournois competitifs
               </span>
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
               Tournois <br className="hidden sm:block" />
               <span className="text-white/40 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
             </h1>
@@ -123,7 +123,7 @@ const TournoisPage: React.FC = () => {
             <div className="mt-4 md:mt-6">
               <Link
                 to="/mj/tournois/creer"
-                className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
+                className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Créer un tournoi
@@ -269,7 +269,7 @@ const TournamentGrid = ({
         <p className="text-white/40 max-w-md font-light mb-6 md:mb-8 text-sm md:text-base">{emptyBody}</p>
         <Link
           to="/mj/tournois/creer"
-          className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-6 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
+          className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
         >
           <Plus className="w-4 h-4" />
           Créer un tournoi

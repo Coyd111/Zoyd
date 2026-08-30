@@ -192,7 +192,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           <header className="mb-10">
-            <h1 className="text-4xl font-display font-black text-white uppercase italic tracking-tighter mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-black text-white uppercase italic tracking-tighter mb-2">
               Identification
             </h1>
             <p className="text-white/40 font-mono text-[11px] uppercase tracking-widest flex items-center gap-2">
@@ -236,7 +236,7 @@ const LoginPage: React.FC = () => {
               variant="primary"
               fullWidth
               size="lg"
-              className="py-6 font-display font-black italic tracking-widest text-lg group overflow-hidden relative"
+              className="py-6 font-display font-black italic tracking-widest text-base md:text-lg group overflow-hidden relative"
               disabled={isLoading}
             >
               {isLoading ? (

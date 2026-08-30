@@ -277,7 +277,7 @@ const RegisterPage: React.FC = () => {
                 { label: 'Joueurs', value: '2.8K' },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
-                  <div className="text-xl font-display font-black text-white italic">{stat.value}</div>
+                   <div className="text-lg md:text-xl font-display font-black text-white italic">{stat.value}</div>
                   <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">{stat.label}</div>
                 </div>
               ))}
@@ -305,7 +305,7 @@ const RegisterPage: React.FC = () => {
                 ))}
               </div>
             </div>
-            <h1 className="text-3xl font-display font-black text-white uppercase italic tracking-tighter">
+            <h1 className="text-2xl sm:text-3xl font-display font-black text-white uppercase italic tracking-tighter">
               {currentStep === 1 ? 'Créer un compte' : currentStep === 2 ? 'Configuration joueur' : 'Finalisation'}
             </h1>
             <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest mt-1">Etape 0{currentStep} / 03</p>
@@ -582,7 +582,7 @@ const RegisterPage: React.FC = () => {
                   </div>
 
                   <div className="mt-6">
-                    <h2 className="text-3xl font-display font-black text-white uppercase italic tracking-tighter">Profil pret</h2>
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white uppercase italic tracking-tighter">Profil pret</h2>
                     <p className="text-white/40 font-mono text-[11px] uppercase tracking-widest mt-2">
                       Compte #{formData.pseudo || 'ZOYD'} pret pour ZOYD
                     </p>

@@ -252,7 +252,7 @@ const ClassementsPage: React.FC = () => {
       />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden pt-16">
+      <header className="relative border-b border-white/5 bg-zoyd-black pt-16">
         <div className="absolute inset-0 z-0">
           <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
           <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
@@ -327,7 +327,7 @@ const ClassementsPage: React.FC = () => {
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div className="border border-white/5 bg-zoyd-surface/10 p-10 text-center">
+          <div className="border border-white/5 bg-zoyd-surface/10 p-6 md:p-10 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-white/10 text-white/40">
               <Users className="w-6 h-6" />
             </div>

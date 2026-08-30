@@ -20,7 +20,7 @@ const ProfilPage = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top">
         <div className="text-center">
-          <h2 className="text-2xl font-display font-black uppercase mb-4">Profil non disponible</h2>
+          <h2 className="text-xl font-display font-black uppercase mb-4">Profil non disponible</h2>
           <Link to="/auth/login">
             <Button variant="primary">Connexion</Button>
           </Link>

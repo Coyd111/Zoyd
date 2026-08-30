@@ -209,8 +209,8 @@ const MatchDetailPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
-          <h2 className="text-2xl font-display font-black uppercase mb-4">Match introuvable</h2>
-          <Link to="/mj" className="border border-white/10 px-6 py-3 uppercase text-sm font-display font-black tracking-widest touch-target">
+          <h2 className="text-xl font-display font-black uppercase mb-4">Match introuvable</h2>
+          <Link to="/mj" className="border border-white/10 px-4 sm:px-6 py-3 uppercase text-sm font-display font-black tracking-widest touch-target">
             Retour aux matchs
           </Link>
         </div>

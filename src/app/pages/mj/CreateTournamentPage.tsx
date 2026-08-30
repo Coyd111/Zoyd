@@ -247,7 +247,7 @@ const CreateTournamentPage: React.FC = () => {
             <section className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/30">
               <div className="flex items-center gap-3 mb-6">
                 <Swords className="w-5 h-5 text-zoyd-blue" />
-                <h2 className="text-2xl font-display font-black uppercase italic">Ton tournoi</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-display font-black uppercase italic">Ton tournoi</h2>
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
@@ -290,7 +290,7 @@ const CreateTournamentPage: React.FC = () => {
                               : 'border-white/10 hover:border-white/30 text-white/40'
                           }`}
                         >
-                          <div className="font-display font-black text-2xl italic">{format}</div>
+                          <div className="font-display font-black text-xl sm:text-2xl italic">{format}</div>
                           <div className="text-[10px] font-mono uppercase tracking-widest mt-2">
                             {formatTeamSize === 1 ? 'Solo' : `${formatTeamSize} joueurs / squad`}
                           </div>
@@ -322,7 +322,7 @@ const CreateTournamentPage: React.FC = () => {
             <section className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/30">
               <div className="flex items-center gap-3 mb-6">
                 <ShieldCheck className="w-5 h-5 text-zoyd-blue" />
-                <h2 className="text-2xl font-display font-black uppercase italic">Comment il se joue</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-display font-black uppercase italic">Comment il se joue</h2>
               </div>
 
               <div className="space-y-8">
@@ -472,7 +472,7 @@ const CreateTournamentPage: React.FC = () => {
             <section className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/30">
               <div className="flex items-center gap-3 mb-6">
                 <Users className="w-5 h-5 text-zoyd-yellow" />
-                <h2 className="text-2xl font-display font-black uppercase italic">Inscriptions et recompenses</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-display font-black uppercase italic">Inscriptions et recompenses</h2>
               </div>
 
               <div className="space-y-8">

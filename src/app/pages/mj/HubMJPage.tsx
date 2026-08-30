@@ -78,10 +78,10 @@ const HubMJPage: React.FC = () => {
               </div>
               <span className="text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-blue uppercase">Mode multijoueur</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
+            <h1 className="text-2xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
               L'Arène <br /><span className="text-white/40 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
             </h1>
-            <p className="text-white/40 text-lg md:text-xl font-light max-w-xl">
+            <p className="text-white/40 text-base md:text-xl font-light max-w-xl">
               Crée un wager, défie des adversaires de ton niveau, ou postule pour arbitrer les matchs en attente.
             </p>
           </div>
@@ -166,7 +166,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:border-zoyd-blue transition-colors"
                 />
               </div>
-              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
+              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
                 <Activity className="w-4 h-4" /> CRÉER UN WAGER
               </Link>
             </div>
@@ -230,15 +230,15 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               <div className="w-16 h-16 border border-white/10 flex items-center justify-center mb-8 text-white/10 group-hover:border-zoyd-yellow transition-colors">
                 <Crosshair className="w-8 h-8" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">L'arène est calme.</h3>
+              <h3 className="text-xl sm:text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">L'arène est calme.</h3>
               <p className="text-white/40 max-w-md font-light mb-12">
                 Sois le premier à imposer le respect. Lance un Wager et attends que tes adversaires relèvent le défi.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link to="/mj/creer" className="hud-panel px-12 py-5 text-sm font-display font-black tracking-widest uppercase hover:bg-white hover:text-black transition-colors touch-target">
+                <Link to="/mj/creer" className="hud-panel px-6 sm:px-12 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:bg-white hover:text-black transition-colors touch-target">
                   Lancer un Wager
                 </Link>
-                <Link to="/wallet" className="border border-white/10 px-10 py-5 text-sm font-display font-black tracking-widest uppercase hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors touch-target">
+                <Link to="/wallet" className="border border-white/10 px-6 sm:px-10 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors touch-target">
                   Recharger Wallet
                 </Link>
               </div>

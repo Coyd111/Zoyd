@@ -146,7 +146,7 @@ const DashboardPage: React.FC = () => {
           <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-yellow mb-3">
             Tableau de bord
           </div>
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-3">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-3">
             Bonjour,{' '}
             <span className="text-zoyd-yellow">{user.pseudo}</span>
           </h1>
@@ -506,7 +506,7 @@ const DashboardPage: React.FC = () => {
               <Wallet className="w-5 h-5 text-zoyd-yellow" />
               <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-yellow">Mon wallet</div>
             </div>
-            <div className="text-4xl md:text-5xl font-display font-black text-zoyd-yellow italic mb-6">
+            <div className="text-2xl sm:text-3xl md:text-5xl font-display font-black text-zoyd-yellow italic mb-6">
               {formatZC(totalBalance)}
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -639,7 +639,7 @@ const DashboardPage: React.FC = () => {
           transition={{ delay: 0.6, duration: 0.45 }}
           className="mt-10 md:mt-14 p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 text-center"
         >
-          <h2 className="text-xl md:text-2xl font-display font-black uppercase italic tracking-tight text-white mb-3">
+          <h2 className="text-lg md:text-2xl font-display font-black uppercase italic tracking-tight text-white mb-3">
             Prêt à jouer ?
           </h2>
           <p className="text-white/40 text-sm mb-6 max-w-lg mx-auto">

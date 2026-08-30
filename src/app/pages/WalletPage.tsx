@@ -287,15 +287,15 @@ const WalletPage: React.FC = () => {
             <div className="grid md:grid-cols-3 gap-4 text-sm">
               <div className="border border-white/5 p-4 bg-black/40">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Gains en attente</div>
-                <div className="text-2xl font-display font-black text-white">{formatZC(pendingWinnings)}</div>
+                <div className="text-xl md:text-2xl font-display font-black text-white">{formatZC(pendingWinnings)}</div>
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Frais de retrait</div>
-                <div className="text-2xl font-display font-black text-zoyd-yellow">2%</div>
+                <div className="text-xl md:text-2xl font-display font-black text-zoyd-yellow">2%</div>
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Retrait minimum</div>
-                <div className="text-2xl font-display font-black text-white">150 ZC</div>
+                <div className="text-xl md:text-2xl font-display font-black text-white">150 ZC</div>
               </div>
             </div>
           </CardContent>
@@ -415,7 +415,7 @@ const BalanceCard = React.memo(({ label, value, hint, accent = false }: { label:
       <CardTitle className="text-white/60 text-sm">{label}</CardTitle>
     </CardHeader>
     <CardContent>
-      <div className={`text-4xl font-display font-black mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</div>
+      <div className={`text-2xl sm:text-3xl md:text-4xl font-display font-black mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</div>
       <div className="text-sm text-white/60">{hint}</div>
     </CardContent>
   </Card>

@@ -240,7 +240,7 @@ const LeagueSeasonPage = () => {
                   {badge.label}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-4xl font-black uppercase tracking-tight">
+              <h1 className="text-lg sm:text-2xl md:text-4xl font-black uppercase tracking-tight">
                 BR League — Saison {season.cycleNumber}
               </h1>
               <p className="text-xs text-white/40 mt-2">
@@ -290,21 +290,21 @@ const LeagueSeasonPage = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Joueurs</div>
-            <div className="text-xl font-black text-white">{season.registeredPlayers.length}/{season.maxPlayers}</div>
+            <div className="text-lg md:text-xl font-black text-white">{season.registeredPlayers.length}/{season.maxPlayers}</div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Pot</div>
-            <div className="text-xl font-black text-zoyd-yellow">{formatZC(season.payout.gross)}</div>
+            <div className="text-lg md:text-xl font-black text-zoyd-yellow">{formatZC(season.payout.gross)}</div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">1er</div>
-            <div className="text-xl font-black text-green-400">{formatZC(season.payout.first)}</div>
+            <div className="text-lg md:text-xl font-black text-green-400">{formatZC(season.payout.first)}</div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">
               {season.status === 'completed' ? 'Terminee' : myStanding ? 'Ta position' : 'Classement'}
             </div>
-            <div className="text-xl font-black text-white">
+            <div className="text-lg md:text-xl font-black text-white">
               {season.status === 'completed'
                 ? season.finishedAt ? getRelativeTime(season.finishedAt) : '—'
                 : myStanding

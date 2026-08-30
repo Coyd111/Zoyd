@@ -282,7 +282,7 @@ const LeaguePage: React.FC = () => {
                 Battle Royale League
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight leading-[0.9] mb-3 md:mb-5">
+            <h1 className="text-xl sm:text-3xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight leading-[0.9] mb-3 md:mb-5">
               BR<br />
               <span className="text-zoyd-yellow">League</span>
             </h1>
@@ -333,25 +333,25 @@ const LeaguePage: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-6 md:py-10 border-b border-white/5">
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Cycle en cours</div>
-            <div className="text-xl md:text-2xl font-black text-white">
+            <div className="text-lg md:text-2xl font-black text-white">
               {activeSeason ? `#${activeSeason.cycleNumber}` : '—'}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Joueurs inscrits</div>
-            <div className="text-xl md:text-2xl font-black text-zoyd-yellow">
+            <div className="text-lg md:text-2xl font-black text-zoyd-yellow">
               {activeSeason?.registeredPlayers.length || 0}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Pot total</div>
-            <div className="text-xl md:text-2xl font-black text-green-400">
+            <div className="text-lg md:text-2xl font-black text-green-400">
               {activeSeason ? formatZC(activeSeason.payout.gross) : '—'}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Places restantes</div>
-            <div className="text-xl md:text-2xl font-black text-white">
+            <div className="text-lg md:text-2xl font-black text-white">
               {activeSeason ? Math.max(0, activeSeason.maxPlayers - activeSeason.registeredPlayers.length) : '—'}
             </div>
           </div>

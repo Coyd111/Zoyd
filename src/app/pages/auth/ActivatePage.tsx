@@ -55,14 +55,14 @@ const ActivatePage: React.FC = () => {
           Retour
         </Button>
 
-        <div className="bg-zoyd-surface border border-white/10 p-8">
+        <div className="bg-zoyd-surface border border-white/10 p-5 sm:p-8">
           <div className="flex items-center justify-center mb-6">
             <div className="w-16 h-16 bg-zoyd-yellow/10 flex items-center justify-center">
               <ShieldCheck className="w-8 h-8 text-zoyd-yellow" />
             </div>
           </div>
 
-          <h1 className="text-3xl font-display font-black text-white text-center mb-2 uppercase italic">
+          <h1 className="text-2xl sm:text-3xl font-display font-black text-white text-center mb-2 uppercase italic">
             Active ton compte
           </h1>
           <p className="text-white/40 text-center text-sm mb-8">

@@ -94,7 +94,7 @@ const ParametresPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top">
         <div className="text-center">
-          <h2 className="text-2xl font-display font-black uppercase mb-4">Paramètres indisponibles</h2>
+          <h2 className="text-xl font-display font-black uppercase mb-4">Paramètres indisponibles</h2>
         </div>
       </div>
     );
@@ -181,7 +181,7 @@ const ParametresPage: React.FC = () => {
         <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent pointer-events-none" />
         <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 pb-12">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
             Paramètres
           </h1>
           <p className="text-white/40 mt-4 max-w-2xl">
@@ -346,7 +346,7 @@ const ParametresPage: React.FC = () => {
                 </div>
 
                 <SectionTitle title="Verification OTP" />
-                <div className="hud-panel p-6 bg-zoyd-surface/20">
+                <div className="hud-panel p-4 md:p-6 bg-zoyd-surface/20">
                   <div className="flex items-center justify-between gap-4 mb-3">
                     <div className="font-display font-black text-white uppercase italic">Verification par telephone</div>
                     <Badge variant="yellow">Bientot</Badge>

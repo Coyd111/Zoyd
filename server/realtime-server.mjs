@@ -388,7 +388,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseRequestBody(req);
       if (!body.email || typeof body.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
-        respondJson(res, 400, { ok: false, error: 'Adresse email invalide.' });
+        respondJson(res, 400, { ok: false, error: 'Adresse email invalide.', code: 'INVALID_EMAIL' });
         return;
       }
       const { role: _role, ...rawBody } = body;
@@ -458,14 +458,14 @@ const server = http.createServer(async (req, res) => {
       const { email, code } = body;
       
       if (!email || !code) {
-        respondJson(res, 400, { ok: false, error: 'Email et code requis.' });
+        respondJson(res, 400, { ok: false, error: 'Email et code requis.', code: 'MISSING_FIELDS' });
         return;
       }
       
       const verification = verifyActivationCode(email, code);
       
       if (!verification.valid) {
-        respondJson(res, 400, { ok: false, error: verification.error });
+        respondJson(res, 400, { ok: false, error: verification.error, code: 'ACTIVATION_FAILED' });
         return;
       }
       
@@ -485,7 +485,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/auth/me') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -500,7 +500,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'PATCH' && pathname === '/api/auth/me') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
@@ -569,35 +569,35 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/api/social/friends') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     try {
       const { limit, offset } = parseQueryParams(req.url);
       const all = getFriendsForUser(session.user.id);
       const { items: friends, hasMore } = paginate(all, { limit, offset });
       respondJson(res, 200, { ok: true, friends, hasMore });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des amis.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des amis.', code: 'LOAD_ERROR' });
     }
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/social/pending') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     try {
       const { limit, offset } = parseQueryParams(req.url);
       const all = getFriendRequestsForUser(session.user.id).filter((fr) => fr.status === 'pending');
       const { items: requests, hasMore } = paginate(all, { limit, offset });
       respondJson(res, 200, { ok: true, requests, hasMore });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des demandes.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des demandes.', code: 'LOAD_ERROR' });
     }
     return;
   }
 
   if (req.method === 'POST' && pathname === '/api/social/request') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
@@ -622,7 +622,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/social/accept') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
@@ -647,7 +647,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/social/decline') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
@@ -664,7 +664,7 @@ const server = http.createServer(async (req, res) => {
   const socialFriendMatch = pathname.match(/^\/api\/social\/friends\/(.+)$/);
   if (req.method === 'DELETE' && socialFriendMatch) {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       await withUserMutex(session.user.id, async () => {
@@ -679,7 +679,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/social/block') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
@@ -695,7 +695,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/social/unblock') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
@@ -711,12 +711,12 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/social/report') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const body = await parseRequestBody(req);
       if (!body.targetId || !body.reason) {
-        respondJson(res, 400, { ok: false, error: 'targetId et reason requis.' });
+        respondJson(res, 400, { ok: false, error: 'targetId et reason requis.', code: 'MISSING_FIELDS' });
         return;
       }
       const report = {
@@ -739,7 +739,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/notifications/read') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const body = await parseRequestBody(req);
@@ -753,7 +753,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/notifications/read-all') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const changes = markAllNotificationsAsRead(session.user.id);
@@ -766,7 +766,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/api/notifications') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     try {
       const unread = getUnreadNotificationsForUser(session.user.id);
       respondJson(res, 200, { ok: true, notifications: unread, count: unread.length });
@@ -779,7 +779,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/wallet/history') {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     try {
       const wallet = getServerWallet(session.user.id);
       const { limit, offset } = parseQueryParams(req.url);
@@ -795,7 +795,7 @@ const server = http.createServer(async (req, res) => {
   const userProfileMatch = pathname.match(/^\/api\/users\/([^/]+)$/);
   if (req.method === 'GET' && userProfileMatch && pathname !== '/api/users/search') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     try {
       const identifier = userProfileMatch[1];
       let targetUser = getPublicUserById(identifier);
@@ -803,7 +803,7 @@ const server = http.createServer(async (req, res) => {
         const byPseudo = findUsersByPseudo(identifier, 1);
         if (byPseudo.length) targetUser = getPublicUserById(byPseudo[0].id);
       }
-      if (!targetUser) return respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.' });
+      if (!targetUser) return respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.', code: 'USER_NOT_FOUND' });
       respondJson(res, 200, { ok: true, user: targetUser });
     } catch (error) {
       respondMappedError(res, error);
@@ -842,27 +842,27 @@ const server = http.createServer(async (req, res) => {
     const token = readBearerToken(req);
     const session = token ? getAuthSession(token) : null;
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try {
       const body = await parseRequestBody(req);
       const { currentPassword, newPassword } = body;
       if (!currentPassword || !newPassword) {
-        respondJson(res, 400, { ok: false, error: 'Les deux mots de passe sont requis.' });
+        respondJson(res, 400, { ok: false, error: 'Les deux mots de passe sont requis.', code: 'MISSING_FIELDS' });
         return;
       }
       if (newPassword.length < 8) {
-        respondJson(res, 400, { ok: false, error: 'Le nouveau mot de passe doit faire au moins 8 caracteres.' });
+        respondJson(res, 400, { ok: false, error: 'Le nouveau mot de passe doit faire au moins 8 caracteres.', code: 'WEAK_PASSWORD' });
         return;
       }
       const user = getUserById(session.user.id);
       if (!user) {
-        respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.' });
+        respondJson(res, 404, { ok: false, error: 'Utilisateur introuvable.', code: 'USER_NOT_FOUND' });
         return;
       }
       if (!(await verifyUserPassword(session.user.id, currentPassword))) {
-        respondJson(res, 403, { ok: false, error: 'Mot de passe actuel incorrect.' });
+        respondJson(res, 403, { ok: false, error: 'Mot de passe actuel incorrect.', code: 'WRONG_PASSWORD' });
         return;
       }
       const newHash = await hashPassword(newPassword);
@@ -892,7 +892,7 @@ const server = http.createServer(async (req, res) => {
       const { items: players, hasMore } = paginate(leaderboard, { limit, offset });
       respondJson(res, 200, { ok: true, players, total: leaderboard.length, hasMore });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du classement.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du classement.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -900,14 +900,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/wallet/me') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try {
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet: user?.wallet || getServerWallet(session.user.id), user });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du wallet.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du wallet.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -916,7 +916,7 @@ const server = http.createServer(async (req, res) => {
     // Deposit endpoint admin-only (deposits go through /api/wallet/verify-fedapay in production)
     const adminSession = requireAdmin2fa(req);
     if (!adminSession) {
-      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' });
+      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.', code: 'ADMIN_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
@@ -949,7 +949,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/wallet/withdraw') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
@@ -1006,7 +1006,7 @@ const server = http.createServer(async (req, res) => {
       const { items: matches, hasMore } = paginate(visibleMatches.map(sanitizeMatchForBroadcast), { limit, offset });
       respondJson(res, 200, { ok: true, matches, total: visibleMatches.length, hasMore });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des matchs.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des matchs.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -1019,14 +1019,14 @@ const server = http.createServer(async (req, res) => {
       const { items: tournaments, hasMore } = paginate(all.map(sanitizeTournamentForBroadcast), { limit, offset });
       respondJson(res, 200, { ok: true, tournaments, total: all.length, hasMore });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des tournois.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des tournois.', code: 'LOAD_ERROR' });
     }
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/users/search') {
     const session = getAuthenticatedAppSession(req);
-    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+    if (!session) return respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
@@ -1044,7 +1044,7 @@ const server = http.createServer(async (req, res) => {
         hasMore,
       });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors de la recherche.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la recherche.', code: 'SEARCH_ERROR' });
     }
     return;
   }
@@ -1055,12 +1055,12 @@ const server = http.createServer(async (req, res) => {
     try {
       const tournament = getStoredTournaments().find((entry) => entry.id === tournamentDetail[1]);
       if (!tournament) {
-        respondJson(res, 404, { ok: false, error: 'Tournoi introuvable.' });
+        respondJson(res, 404, { ok: false, error: 'Tournoi introuvable.', code: 'TOURNAMENT_NOT_FOUND' });
         return;
       }
       respondJson(res, 200, { ok: true, tournament: sanitizeTournamentForBroadcast(tournament) });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du tournoi.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du tournoi.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -1068,7 +1068,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/tournaments') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1103,7 +1103,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && tournamentRegister) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1122,7 +1122,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && tournamentLeave) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1140,7 +1140,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && tournamentArbiter) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1158,7 +1158,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && tournamentStart) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1191,7 +1191,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && tournamentRoom) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1217,7 +1217,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && tournamentLive) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1240,7 +1240,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && tournamentResult) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1278,7 +1278,7 @@ const server = http.createServer(async (req, res) => {
       });
       respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des ligues.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des ligues.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -1290,12 +1290,12 @@ const server = http.createServer(async (req, res) => {
       const seasons = getStoredLeagues();
       const season = seasons.find((s) => s.id === leagueGetOne[1]);
       if (!season) {
-        respondJson(res, 404, { ok: false, error: 'Ligue introuvable.' });
+        respondJson(res, 404, { ok: false, error: 'Ligue introuvable.', code: 'LEAGUE_NOT_FOUND' });
         return;
       }
       respondJson(res, 200, { ok: true, season });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement de la ligue.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement de la ligue.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -1303,7 +1303,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/leagues') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1333,7 +1333,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueJoin) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1350,7 +1350,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueLeave) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1367,7 +1367,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueStartQualification) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1384,7 +1384,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueStartDay) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1414,7 +1414,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueDayResults) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1438,7 +1438,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueAdvanceToFinal) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1455,7 +1455,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueFinalResults) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1490,7 +1490,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'PATCH' && leagueUpdateSettings) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1508,7 +1508,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueReassign) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1533,7 +1533,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && leagueRefund) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withLeagueMutex(async () => {
@@ -1570,7 +1570,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
@@ -1578,7 +1578,7 @@ const server = http.createServer(async (req, res) => {
     try { await withWalletMutex(session.user.id, async () => {
       const body = await parseRequestBody(req);
       if (!body.transactionId || typeof body.transactionId !== 'string' || !/^\d{1,20}$/.test(body.transactionId)) {
-        respondJson(res, 400, { ok: false, error: 'transactionId invalide.' });
+        respondJson(res, 400, { ok: false, error: 'transactionId invalide.', code: 'INVALID_TRANSACTION_ID' });
         return;
       }
 
@@ -1592,7 +1592,7 @@ const server = http.createServer(async (req, res) => {
       });
     }); } catch (error) {
       log.error('Payment verification failed', { message: error.message });
-      respondJson(res, 400, { ok: false, error: 'Verification du paiement echouee.' });
+      respondJson(res, 400, { ok: false, error: 'Verification du paiement echouee.', code: 'PAYMENT_FAILED' });
     }
     return;
   }
@@ -1600,7 +1600,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/matches') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
@@ -1635,7 +1635,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchJoin) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1657,7 +1657,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchArbiter) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1685,7 +1685,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchCheckIn) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1704,7 +1704,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchReady) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1723,7 +1723,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchSchedule) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1743,7 +1743,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchRoom) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1769,7 +1769,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchLaunch) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1788,7 +1788,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchResult) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1808,7 +1808,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchConfirm) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1840,7 +1840,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchDisputes) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -1873,7 +1873,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchDisputeEvidence) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withMatchMutex(async () => {
@@ -1897,7 +1897,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && matchDisputeEscalate) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     try { await withMatchMutex(async () => {
@@ -1938,7 +1938,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, { ok, persistence: health });
     } catch (err) {
       log.error('Admin reload failed', { adminId: session.user.id, error: err.message });
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du rechargement des donnees.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du rechargement des donnees.', code: 'RELOAD_ERROR' });
     }
     return;
   }
@@ -1969,7 +1969,7 @@ const server = http.createServer(async (req, res) => {
     const body = await parseRequestBody(req).catch(() => ({}));
     const { code } = body || {};
     if (!code || typeof code !== 'string') {
-      respondJson(res, 400, { ok: false, error: 'Code 2FA requis.' });
+      respondJson(res, 400, { ok: false, error: 'Code 2FA requis.', code: 'MFA_REQUIRED' });
       return;
     }
     const totpEntry = adminTotpSecrets.get(session.user.id);
@@ -1978,12 +1978,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (totpEntry.enabled) {
-      respondJson(res, 400, { ok: false, error: '2FA deja activee.' });
+      respondJson(res, 400, { ok: false, error: '2FA deja activee.', code: 'MFA_ALREADY_ACTIVE' });
       return;
     }
     if (!verifyTotp(totpEntry.secret, code)) {
       log.warn('Admin 2FA enable failed — invalid code', { adminId: session.user.id });
-      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.' });
+      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.', code: 'MFA_INVALID' });
       return;
     }
     totpEntry.enabled = true;
@@ -2009,17 +2009,17 @@ const server = http.createServer(async (req, res) => {
     const body = await parseRequestBody(req).catch(() => ({}));
     const { code } = body || {};
     if (!code || typeof code !== 'string') {
-      respondJson(res, 400, { ok: false, error: 'Code 2FA requis.' });
+      respondJson(res, 400, { ok: false, error: 'Code 2FA requis.', code: 'MFA_REQUIRED' });
       return;
     }
     const totpEntry = adminTotpSecrets.get(session.user.id);
     if (!totpEntry?.enabled) {
-      respondJson(res, 400, { ok: false, error: '2FA non active pour ce compte admin.' });
+      respondJson(res, 400, { ok: false, error: '2FA non active pour ce compte admin.', code: 'MFA_NOT_ACTIVE' });
       return;
     }
     if (!verifyTotp(totpEntry.secret, code)) {
       log.warn('Admin 2FA verify failed — invalid code', { adminId: session.user.id });
-      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.' });
+      respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.', code: 'MFA_INVALID' });
       return;
     }
     session.admin2faVerified = true;
@@ -2113,14 +2113,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/api/chat/bootstrap') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
     try {
       respondJson(res, 200, { ok: true, ...buildChatBootstrapPayload(session.user.id) });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du chat.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du chat.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -2129,13 +2129,13 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && chatChannelDetail) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
     const channel = getChatChannelById(chatChannelDetail[1]);
     if (!channel || !canAccessChatChannel(channel, session.user)) {
-      respondJson(res, 404, { ok: false, error: 'Canal de discussion introuvable.' });
+      respondJson(res, 404, { ok: false, error: 'Canal de discussion introuvable.', code: 'CHANNEL_NOT_FOUND' });
       return;
     }
 
@@ -2149,7 +2149,7 @@ const server = http.createServer(async (req, res) => {
         messages: getChatMessagesForChannel(channel.id, 150),
       });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du canal.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du canal.', code: 'LOAD_ERROR' });
     }
     return;
   }
@@ -2157,7 +2157,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/chat/channels') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
@@ -2203,7 +2203,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && chatChannelMessages) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
@@ -2212,13 +2212,13 @@ const server = http.createServer(async (req, res) => {
       const body = await parseRequestBody(req);
       const channel = getChatChannelById(chatChannelMessages[1]);
       if (!channel || !canAccessChatChannel(channel, session.user)) {
-        respondJson(res, 404, { ok: false, error: 'Canal de discussion introuvable.' });
+        respondJson(res, 404, { ok: false, error: 'Canal de discussion introuvable.', code: 'CHANNEL_NOT_FOUND' });
         return;
       }
 
       const text = sanitizeText(body.text || '').slice(0, 2000);
       if (!text) {
-        respondJson(res, 400, { ok: false, error: 'Le message est vide.' });
+        respondJson(res, 400, { ok: false, error: 'Le message est vide.', code: 'EMPTY_MESSAGE' });
         return;
       }
 
@@ -2253,14 +2253,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && chatChannelRead) {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!rateLimitGuard(res, getClientIp(req), 'chat')) return;
 
     const channel = getChatChannelById(chatChannelRead[1]);
     if (!channel || !canAccessChatChannel(channel, session.user)) {
-      respondJson(res, 404, { ok: false, error: 'Canal de discussion introuvable.' });
+      respondJson(res, 404, { ok: false, error: 'Canal de discussion introuvable.', code: 'CHANNEL_NOT_FOUND' });
       return;
     }
 
@@ -2270,7 +2270,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 200, { ok: true, ...receipt });
     } catch (err) {
       log.error('chat/channel read failed', { channelId: channel.id, userId: session.user.id, error: err.message });
-      respondJson(res, 500, { ok: false, error: 'Erreur lors de la marque de lecture.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la marque de lecture.', code: 'READ_ERROR' });
     }
     return;
   }
@@ -2279,7 +2279,7 @@ const server = http.createServer(async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -2291,14 +2291,14 @@ const server = http.createServer(async (req, res) => {
       });
       respondJson(res, 200, { ok: true, session: realtimeSession });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Unable to create realtime session.' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la creation de la session temps reel.', code: 'SESSION_ERROR' });
     }
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/realtime/push/public-key') {
     if (!vapidKeys) {
-      respondJson(res, 503, { ok: false, error: 'Push notifications not configured.' });
+      respondJson(res, 503, { ok: false, error: 'Notifications push non configurees.', code: 'PUSH_NOT_CONFIGURED' });
     } else {
       respondJson(res, 200, { publicKey: vapidKeys.publicKey });
     }
@@ -2308,7 +2308,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname.startsWith('/api/realtime/state/bootstrap')) {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -2336,20 +2336,20 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/state/sync') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
     try {
       const body = await parseRequestBody(req);
       if (body?.kind === 'tournaments') {
-        respondJson(res, 409, { ok: false, error: 'Tournament state is now managed by dedicated API routes.' });
+        respondJson(res, 409, { ok: false, error: 'Tournoi gere par les routes API dediees.', code: 'DEPRECATED_ROUTE' });
         return;
       }
 
-      respondJson(res, 400, { ok: false, error: 'Invalid state sync payload.' });
+      respondJson(res, 400, { ok: false, error: 'Payload de synchronisation invalide.', code: 'INVALID_PAYLOAD' });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Unable to validate server state sync.' });
+      respondJson(res, 500, { ok: false, error: 'Impossible de valider la synchronisation.', code: 'SYNC_ERROR' });
     }
     return;
   }
@@ -2357,7 +2357,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/push/subscribe') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -2366,14 +2366,14 @@ const server = http.createServer(async (req, res) => {
       const { subscription } = body;
 
       if (!subscription?.endpoint) {
-        respondJson(res, 400, { ok: false, error: 'Point de souscription manquant.' });
+        respondJson(res, 400, { ok: false, error: 'Point de souscription manquant.', code: 'MISSING_FIELDS' });
         return;
       }
 
       upsertPushSubscription(session.userId, subscription);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Unable to save subscription.' });
+      respondJson(res, 500, { ok: false, error: 'Impossible de sauvegarder la souscription.', code: 'SUBSCRIPTION_ERROR' });
     }
     return;
   }
@@ -2381,7 +2381,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/push/unsubscribe') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -2390,14 +2390,14 @@ const server = http.createServer(async (req, res) => {
       const { endpoint } = body;
 
       if (!endpoint) {
-        respondJson(res, 400, { ok: false, error: 'Endpoint manquant.' });
+        respondJson(res, 400, { ok: false, error: 'Endpoint manquant.', code: 'MISSING_FIELDS' });
         return;
       }
 
       removePushSubscription(endpoint);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Unable to remove subscription.' });
+      respondJson(res, 500, { ok: false, error: 'Impossible de supprimer la souscription.', code: 'SUBSCRIPTION_ERROR' });
     }
     return;
   }
@@ -2405,7 +2405,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/realtime/push/test') {
     const session = getAuthenticatedRealtimeSession(req);
     if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.' });
+      respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
       return;
     }
 
@@ -2424,7 +2424,7 @@ const server = http.createServer(async (req, res) => {
       await deliverNotification(io, session.userId, payload);
       respondJson(res, 200, { ok: true });
     } catch (error) {
-      respondJson(res, 500, { ok: false, error: 'Unable to send test notification.' });
+      respondJson(res, 500, { ok: false, error: "Impossible d'envoyer la notification test.", code: 'PUSH_ERROR' });
     }
     return;
   }

@@ -1,4 +1,4 @@
-import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests } from './persistence.mjs';
+import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex } from './mutex.mjs';
 import { assignPlayersToDays } from './league-engine.mjs';
@@ -114,6 +114,7 @@ export const initCronJobs = () => {
   setInterval(() => {
     try {
       cleanupExpiredActivationCodes();
+      cleanupExpiredPasswordResets();
       cleanupMemoryChatReads();
       cleanupMemoryNotifications();
       cleanupMemoryFriendRequests();

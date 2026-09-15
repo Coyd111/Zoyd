@@ -11,6 +11,7 @@ import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllA
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
 import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload } from './state-helpers.mjs';
+import { deliverAuthCode } from './code-delivery.mjs';
 import { generateTotpSecret, verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
 import {
@@ -30,6 +31,10 @@ import {
   verifyUserPassword,
   verifyActivationCode,
   generateActivationCode,
+  resendActivationCode,
+  changeActivationEmail,
+  requestPasswordReset,
+  resetPasswordWithCode,
   findUsersByPseudo,
   getChatChannelById,
   getChatMessagesForChannel,
@@ -475,6 +480,111 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         user: sanitizeUserPayload(activatedUser),
         message: 'Compte active avec succes. Vous pouvez maintenant vous connecter.',
+      });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/resend-code') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
+
+    try {
+      const body = await parseRequestBody(req);
+      const { email } = body;
+      if (!email || typeof email !== 'string') {
+        respondJson(res, 400, { ok: false, error: 'Email requis.', code: 'MISSING_FIELDS' });
+        return;
+      }
+      const { code } = resendActivationCode(email);
+      const delivery = await deliverAuthCode({ to: email, code, purpose: 'activation-resend' });
+      respondJson(res, 200, {
+        ok: true,
+        message: delivery.delivered
+          ? 'Nouveau code envoye. Verifie ta boite de reception.'
+          : "Nouveau code genere. L'envoi automatique n'est pas encore configure : contacte le support si tu ne le recois pas.",
+        delivery: delivery.delivered ? 'sent' : 'pending-provider',
+        ...(process.env.NODE_ENV !== 'production' && { activationCode: code }),
+      });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/activation-email') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
+
+    try {
+      const body = await parseRequestBody(req);
+      const { oldEmail, newEmail } = body;
+      if (!oldEmail || !newEmail) {
+        respondJson(res, 400, { ok: false, error: 'Ancien et nouvel email requis.', code: 'MISSING_FIELDS' });
+        return;
+      }
+      const { code } = await changeActivationEmail(oldEmail, newEmail);
+      const delivery = await deliverAuthCode({ to: newEmail, code, purpose: 'activation-email' });
+      respondJson(res, 200, {
+        ok: true,
+        message: delivery.delivered
+          ? 'Email mis a jour. Nouveau code envoye.'
+          : "Email mis a jour. L'envoi automatique n'est pas encore configure : contacte le support si tu ne recois pas le code.",
+        delivery: delivery.delivered ? 'sent' : 'pending-provider',
+        ...(process.env.NODE_ENV !== 'production' && { activationCode: code }),
+      });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/forgot-password') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
+
+    try {
+      const body = await parseRequestBody(req);
+      const { identifier } = body;
+      if (!identifier || typeof identifier !== 'string') {
+        respondJson(res, 400, { ok: false, error: 'Identifiant requis.', code: 'MISSING_FIELDS' });
+        return;
+      }
+      // Always 200: never reveal whether the identifier exists.
+      const result = requestPasswordReset(identifier);
+      let delivery = { delivered: false };
+      if (result.found) {
+        delivery = await deliverAuthCode({ to: identifier, code: result.code, purpose: 'password-reset' });
+      }
+      respondJson(res, 200, {
+        ok: true,
+        message: 'Si un compte existe pour cet identifiant, un code vient de lui etre adresse.',
+        ...(result.found && process.env.NODE_ENV !== 'production' && { resetCode: result.code }),
+        ...(result.found && !delivery.delivered && { delivery: 'pending-provider' }),
+      });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/reset-password') {
+    const clientIp = getClientIp(req);
+    if (!rateLimitGuard(res, clientIp, 'auth')) return;
+
+    try {
+      const body = await parseRequestBody(req);
+      const { identifier, code, newPassword } = body;
+      if (!identifier || !code || !newPassword) {
+        respondJson(res, 400, { ok: false, error: 'Identifiant, code et nouveau mot de passe requis.', code: 'MISSING_FIELDS' });
+        return;
+      }
+      await resetPasswordWithCode(identifier, code, newPassword);
+      respondJson(res, 200, {
+        ok: true,
+        message: 'Mot de passe reinitialise. Connecte-toi avec ton nouveau mot de passe.',
       });
     } catch (error) {
       respondMappedError(res, error);

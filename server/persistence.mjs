@@ -931,6 +931,187 @@ export const cleanupExpiredActivationCodes = () => {
   }
 };
 
+// ─── Auth Recovery (resend, email change, password reset) ────────────────────
+// NOTE: no email/SMS provider is configured yet (see server/code-delivery.mjs).
+// Codes are returned to routes, which expose them only outside production
+// (same pattern as register) until a delivery provider is wired.
+
+/**
+ * Find a user id from an email address via the O(1) identifier index.
+ * @param {string} email
+ * @returns {string|null} User UUID or null
+ */
+export const getUserIdByEmail = (email) => {
+  if (!email || typeof email !== 'string') return null;
+  const entry = memoryPasswordHashes.get(normalizeEmailKey(email));
+  return entry ? entry[0] : null;
+};
+
+/**
+ * Find a user id from any login identifier (pseudo, email or phone).
+ * @param {string} identifier
+ * @returns {string|null} User UUID or null
+ */
+export const getUserIdByIdentifier = (identifier) => {
+  if (!identifier || typeof identifier !== 'string') return null;
+  const trimmed = identifier.trim();
+  const entry =
+    memoryPasswordHashes.get(normalizePseudoKey(trimmed)) ||
+    memoryPasswordHashes.get(normalizeEmailKey(trimmed)) ||
+    memoryPasswordHashes.get(normalizePhoneKey(trimmed));
+  return entry ? entry[0] : null;
+};
+
+/**
+ * Regenerate an activation code for a not-yet-active account.
+ * @param {string} email
+ * @returns {{ userId: string, code: string }}
+ */
+export const resendActivationCode = (email) => {
+  const userId = getUserIdByEmail(email);
+  const user = userId ? memoryUsers.get(userId) : null;
+  if (!user) throw makeError('USER_NOT_FOUND', 'Aucun compte rattache a cet email.');
+  if (user.isActive !== false) {
+    throw makeError('ACCOUNT_ALREADY_ACTIVE', 'Ce compte est deja actif. Connecte-toi directement.');
+  }
+  return { userId, code: generateActivationCode(user.email, userId) };
+};
+
+/**
+ * Move a not-yet-active account to a corrected email address and issue a fresh code.
+ * @param {string} oldEmail - Currently registered email
+ * @param {string} newEmail - Corrected email address
+ * @returns {Promise<{ userId: string, code: string }>}
+ */
+export const changeActivationEmail = async (oldEmail, newEmail) => {
+  if (!newEmail || typeof newEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+    throw makeError('INVALID_EMAIL', 'Adresse email invalide.');
+  }
+  const userId = getUserIdByEmail(oldEmail);
+  const user = userId ? memoryUsers.get(userId) : null;
+  if (!user) throw makeError('USER_NOT_FOUND', 'Aucun compte rattache a cet email.');
+  if (user.isActive !== false) {
+    throw makeError('ACCOUNT_ALREADY_ACTIVE', 'Ce compte est deja actif. Modifie ton email depuis les parametres.');
+  }
+  const newKey = normalizeEmailKey(newEmail);
+  const takenBy = memoryPasswordHashes.get(newKey);
+  if (takenBy && takenBy[0] !== userId) {
+    throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
+  }
+  return withUserMutex(userId, async () => {
+    const current = memoryUsers.get(userId);
+    if (!current) throw makeError('USER_NOT_FOUND', 'Aucun compte rattache a cet email.');
+    const hashEntry = memoryPasswordHashes.get(userId);
+    const passwordHash = hashEntry ? hashEntry[1] : '';
+    memoryPasswordHashes.delete(normalizeEmailKey(current.email));
+    current.email = newEmail.trim();
+    if (passwordHash) storePasswordHash(userId, passwordHash, current.pseudo, current.email, current.phone);
+    memoryActivationCodes.delete(oldEmail);
+    const code = generateActivationCode(current.email, userId);
+    await sbUpsert('app_users', {
+      id: userId,
+      pseudo_key: normalizePseudoKey(current.pseudo),
+      email_key: normalizeEmailKey(current.email),
+      phone_key: normalizePhoneKey(current.phone),
+      game_id_key: normalizeGameIdKey(current.gameId),
+      role: current.role,
+      password_hash: passwordHash,
+      payload: current,
+      updated_at: getNow(),
+    });
+    return { userId, code };
+  });
+};
+
+// ─── Password Reset Codes ─────────────────────────────────────────────────────
+const memoryPasswordResetCodes = new Map(); // userId -> { code, expiresAt, attempts }
+const PASSWORD_RESET_CODE_LENGTH = 8;
+const PASSWORD_RESET_MAX_ATTEMPTS = 5;
+const PASSWORD_RESET_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+
+const isStrongPassword = (password) =>
+  typeof password === 'string' &&
+  password.length >= 8 &&
+  /[A-Z]/.test(password) &&
+  /[0-9]/.test(password) &&
+  /[^A-Za-z0-9]/.test(password);
+
+/**
+ * Issue a password-reset code for an identifier. Never reveals whether the
+ * account exists — routes always answer 200.
+ * @param {string} identifier - Pseudo, email or phone
+ * @returns {{ found: boolean, userId?: string, code?: string }}
+ */
+export const requestPasswordReset = (identifier) => {
+  const userId = getUserIdByIdentifier(identifier);
+  if (!userId || !memoryUsers.get(userId)) return { found: false };
+  const max = Math.pow(10, PASSWORD_RESET_CODE_LENGTH);
+  const code = crypto.randomInt(0, max).toString().padStart(PASSWORD_RESET_CODE_LENGTH, '0');
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS).toISOString();
+  memoryPasswordResetCodes.set(userId, { code, expiresAt, attempts: 0 });
+  return { found: true, userId, code };
+};
+
+/**
+ * Verify a reset code and set a new password, revoking all sessions.
+ * Uses the same generic error for unknown account / bad / expired code
+ * so identifiers cannot be enumerated.
+ * @param {string} identifier - Pseudo, email or phone
+ * @param {string} code - 8-digit code
+ * @param {string} newPassword - Must match registration strength rules
+ * @returns {Promise<{ userId: string }>}
+ */
+export const resetPasswordWithCode = async (identifier, code, newPassword) => {
+  const generic = () => makeError('RESET_FAILED', 'Code invalide ou expire. Demande un nouveau code.');
+  const userId = getUserIdByIdentifier(identifier);
+  const record = userId ? memoryPasswordResetCodes.get(userId) : null;
+  if (!userId || !record) throw generic();
+  const expected = Buffer.from(record.code, 'utf-8');
+  const actual = Buffer.from(String(code || ''), 'utf-8');
+  if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+    record.attempts = (record.attempts || 0) + 1;
+    if (record.attempts >= PASSWORD_RESET_MAX_ATTEMPTS) memoryPasswordResetCodes.delete(userId);
+    throw generic();
+  }
+  if (new Date(record.expiresAt) < new Date()) {
+    memoryPasswordResetCodes.delete(userId);
+    throw generic();
+  }
+  if (!isStrongPassword(newPassword)) {
+    throw makeError(
+      'WEAK_PASSWORD',
+      'Le mot de passe doit faire au moins 8 caracteres avec une majuscule, un chiffre et un caractere special.'
+    );
+  }
+  const newHash = await hashPassword(newPassword);
+  await updatePasswordHash(userId, newHash);
+  memoryPasswordResetCodes.delete(userId);
+  revokeAuthSessionsForUser(userId);
+  deleteRealtimeSessionsForUser(userId);
+  return { userId };
+};
+
+/**
+ * Revoke every auth (REST) session of a user, in memory and Supabase.
+ * @param {string} userId
+ */
+export const revokeAuthSessionsForUser = (userId) => {
+  if (!userId) return;
+  for (const [token, record] of memoryAuthSessions) {
+    if (record?.userId === userId) memoryAuthSessions.delete(token);
+  }
+  sbFire('revokeAuthSessionsForUser', () => sbDelete('auth_sessions', { user_id: userId }));
+};
+
+export const cleanupExpiredPasswordResets = () => {
+  const now = new Date();
+  for (const [userId, record] of memoryPasswordResetCodes) {
+    if (new Date(record.expiresAt) < now) {
+      memoryPasswordResetCodes.delete(userId);
+    }
+  }
+};
+
 /**
  * Activate a user account by setting isActive=true and persisting to Supabase.
  * @param {string} userId - User UUID to activate

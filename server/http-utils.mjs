@@ -236,6 +236,9 @@ export const mapPersistenceError = (error) => {
       return { status: 400, message, code };
     case 'INVALID_CREDENTIALS':
       return { status: 401, message, code };
+    case 'WEAK_PASSWORD':
+    case 'RESET_FAILED':
+      return { status: 400, message, code };
     case 'FORBIDDEN':
       return { status: 403, message, code };
     case 'DUPLICATE_PSEUDO':
@@ -265,6 +268,7 @@ export const mapPersistenceError = (error) => {
     case 'DISPUTE_NOT_FOUND':
     case 'DISPUTE_ALREADY_ESCALATED':
     case 'ALREADY_FRIENDS':
+    case 'ACCOUNT_ALREADY_ACTIVE':
     case 'REQUEST_PENDING':
     case 'ALREADY_CONFIRMED':
     case 'INVALID_REQUEST':

@@ -11,6 +11,8 @@
     "dev:realtime": "node server/realtime-server.mjs",
     "dev:full": "node server/dev-runner.mjs",
     "start": "node server/realtime-server.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "lint": "eslint src server --ext .ts,.tsx,.mjs",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -55,6 +57,8 @@
     "fedapay": "^1.2.5",
     "lucide-react": "^0.487.0",
     "motion": "^12.23.24",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-helmet-async": "^3.0.0",
     "react-hook-form": "^7.55.0",
     "react-router": "^7.18.2",
@@ -73,22 +77,16 @@
     "@tailwindcss/vite": "4.1.12",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
     "@vitejs/plugin-react": "4.7.0",
+    "eslint": "^8.57.1",
     "tailwindcss": "4.1.12",
+    "typescript": "~5.6.3",
     "vite": "6.3.5",
     "vitest": "^4.1.8"
-  },
-  "peerDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": false
-    },
-    "react-dom": {
-      "optional": false
-    }
   },
   "pnpm": {
     "overrides": {

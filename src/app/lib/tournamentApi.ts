@@ -15,6 +15,10 @@ interface TournamentResponse {
   tournament: Tournament;
   user?: { id: string; pseudo: string; wallet?: { cashBalance: number; bonusBalance: number } };
   wallet?: { cashBalance: number; bonusBalance: number };
+  /** Caller-scoped context (present on authenticated action responses, absent on public reads). */
+  myEntryId?: string | null;
+  myArbiterSlot?: 1 | 2 | null;
+  openArbiterSlots?: number;
 }
 
 export const subscribeToTournaments = (onUpdate: () => void) => {

@@ -85,7 +85,7 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
               <div className="mt-3 flex flex-wrap gap-2">
                 {entry.members.map((member) => (
                   <span
-                    key={member.userId}
+                    key={member.userId ?? member.pseudo}
                     className={`border px-2 py-1 text-[10px] font-mono uppercase tracking-widest ${
                       member.isCaptain
                         ? 'border-zoyd-yellow/20 text-zoyd-yellow'

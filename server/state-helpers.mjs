@@ -118,18 +118,33 @@ const sanitizeTournamentForBroadcast = (tournament) => {
 };
 
 /**
- * Build a tournament action response payload containing the tournament, user, and wallet info.
- * @param {object} tournament - The tournament object
+ * Build a tournament action response payload containing the sanitized tournament, user, and wallet info.
+ * The tournament is sanitized for broadcast (captainId/member userIds/room passwords stripped),
+ * while `user`/`wallet` intentionally describe the caller's own record.
+ * Caller-scoped helpers (`myEntryId`, `myArbiterSlot`, `openArbiterSlots`) let the client
+ * restore the caller's own position without exposing other users' internal IDs.
+ * @param {object} tournament - The tournament object (raw, pre-sanitization)
  * @param {string} userId - The user performing the action
- * @returns {{ ok: boolean, tournament: object, user: object|null, wallet: object }} Action payload
+ * @returns {{ ok: boolean, tournament: object, user: object|null, wallet: object, myEntryId: string|null, myArbiterSlot: number|null, openArbiterSlots: number }} Action payload
  */
 const buildTournamentActionPayload = (tournament, userId) => {
   const user = getUserById(userId);
+  const entries = Array.isArray(tournament?.entries) ? tournament.entries : [];
+  const myEntry = entries.find(
+    (entry) =>
+      entry?.captainId === userId ||
+      (Array.isArray(entry?.members) && entry.members.some((member) => member?.userId === userId))
+  ) || null;
+  const arbiters = Array.isArray(tournament?.arbiters) ? tournament.arbiters : [];
+  const myArbiter = arbiters.find((arbiter) => arbiter?.userId === userId) || null;
   return {
     ok: true,
-    tournament,
+    tournament: sanitizeTournamentForBroadcast(tournament),
     user,
     wallet: user?.wallet || getServerWallet(userId),
+    myEntryId: myEntry?.id || null,
+    myArbiterSlot: myArbiter?.slot || null,
+    openArbiterSlots: arbiters.filter((arbiter) => !arbiter?.userId).length,
   };
 };
 

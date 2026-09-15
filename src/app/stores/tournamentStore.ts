@@ -147,9 +147,17 @@ export interface TournamentRegistrationInput {
 export interface TournamentState {
   tournaments: Tournament[];
   filters: TournamentFilters;
+  /** Caller-scoped positions, keyed by tournament id (session memory only, never persisted). */
+  callerEntryByTournament: Record<string, string>;
+  callerArbiterSlotByTournament: Record<string, 1 | 2>;
+  openArbiterSlotsByTournament: Record<string, number>;
   hydrateFromServer: (tournaments: Tournament[]) => void;
   replaceFromServer: (tournaments: Tournament[]) => void;
   setFilters: (partial: Partial<TournamentFilters>) => void;
+  setCallerTournamentContext: (
+    tournamentId: string,
+    context: { myEntryId?: string | null; myArbiterSlot?: 1 | 2 | null; openArbiterSlots?: number }
+  ) => void;
   getFilteredTournaments: () => Tournament[];
   getTournamentById: (id: string) => Tournament | undefined;
 }
@@ -274,6 +282,9 @@ export const useTournamentStore = create<TournamentState>()((set, get) => {
           format: 'all',
           status: 'all',
         },
+        callerEntryByTournament: {},
+        callerArbiterSlotByTournament: {},
+        openArbiterSlotsByTournament: {},
 
         hydrateFromServer: (tournaments) => {
           set((state) => ({
@@ -294,6 +305,27 @@ export const useTournamentStore = create<TournamentState>()((set, get) => {
               ...partial,
             },
           })),
+
+        setCallerTournamentContext: (tournamentId, context) =>
+          set((state) => {
+            const callerEntryByTournament = { ...state.callerEntryByTournament };
+            const callerArbiterSlotByTournament = { ...state.callerArbiterSlotByTournament };
+            const openArbiterSlotsByTournament = { ...state.openArbiterSlotsByTournament };
+            if (context.myEntryId) {
+              callerEntryByTournament[tournamentId] = context.myEntryId;
+            } else {
+              delete callerEntryByTournament[tournamentId];
+            }
+            if (context.myArbiterSlot) {
+              callerArbiterSlotByTournament[tournamentId] = context.myArbiterSlot;
+            } else {
+              delete callerArbiterSlotByTournament[tournamentId];
+            }
+            if (typeof context.openArbiterSlots === 'number') {
+              openArbiterSlotsByTournament[tournamentId] = context.openArbiterSlots;
+            }
+            return { callerEntryByTournament, callerArbiterSlotByTournament, openArbiterSlotsByTournament };
+          }),
 
         getFilteredTournaments: () => {
           const { tournaments, filters } = get();

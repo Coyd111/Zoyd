@@ -32,6 +32,14 @@ const TournamentBracketPage: React.FC = () => {
   const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
   const getTournamentById = useTournamentStore((state) => state.getTournamentById);
   const hydrateTournaments = useTournamentStore((state) => state.hydrateFromServer);
+  const setCallerTournamentContext = useTournamentStore((state) => state.setCallerTournamentContext);
+  const callerEntryId = useTournamentStore((state) => (id ? state.callerEntryByTournament[id] : undefined));
+  const callerArbiterSlot = useTournamentStore((state) =>
+    id ? state.callerArbiterSlotByTournament[id] : undefined
+  );
+  const openArbiterSlotsCount = useTournamentStore((state) =>
+    id ? state.openArbiterSlotsByTournament[id] : undefined
+  );
 
   const [selectedMatchId, setSelectedMatchId] = useState('');
   const [roomName, setRoomName] = useState('');
@@ -66,14 +74,17 @@ const TournamentBracketPage: React.FC = () => {
     void loadTournament();
   }, [loadTournament]);
 
-  const myEntry = useMemo(
-    () => tournament?.entries.find((entry) => entry.members.some((member) => member.userId === user?.id)),
-    [tournament?.entries, user?.id]
-  );
-  const myArbiterSlot = useMemo(
-    () => tournament?.arbiters.find((arbiter) => arbiter.userId === user?.id),
-    [tournament?.arbiters, user?.id]
-  );
+  const myEntry = useMemo(() => {
+    if (!tournament?.entries) return undefined;
+    // Caller context from authenticated action responses (IDs are stripped from broadcast payloads).
+    if (callerEntryId) return tournament.entries.find((entry) => entry.id === callerEntryId);
+    return tournament.entries.find((entry) => entry.members.some((member) => member.userId === user?.id));
+  }, [tournament?.entries, callerEntryId, user?.id]);
+  const myArbiterSlot = useMemo(() => {
+    if (!tournament?.arbiters) return undefined;
+    if (callerArbiterSlot) return tournament.arbiters.find((arbiter) => arbiter.slot === callerArbiterSlot);
+    return tournament.arbiters.find((arbiter) => arbiter.userId === user?.id);
+  }, [tournament?.arbiters, callerArbiterSlot, user?.id]);
 
   const actionableMatches = useMemo(() => {
     if (!tournament || !myArbiterSlot) return [];
@@ -151,7 +162,10 @@ const TournamentBracketPage: React.FC = () => {
     );
   }
 
-  const hasOpenArbiterSlot = tournament.arbiters.some((arbiter) => !arbiter.userId);
+  const hasOpenArbiterSlot =
+    typeof openArbiterSlotsCount === 'number'
+      ? openArbiterSlotsCount > 0
+      : tournament.arbiters.some((arbiter) => !arbiter.userId);
   const registrationCost = tournament.entryFee * tournament.teamSize;
   const requiredTopUp = getRequiredTopUp(registrationCost, availableSpend);
   const fundingPath = buildFundingPath({
@@ -174,8 +188,22 @@ const TournamentBracketPage: React.FC = () => {
     setTeammateInputs((current) => current.map((entry, entryIndex) => (entryIndex === index ? value : entry)));
   };
 
-  const applyTournamentResponse = (payload: { tournament: typeof tournament; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
+  const applyTournamentResponse = (payload: {
+    tournament: typeof tournament;
+    user?: Partial<User>;
+    wallet?: WalletSnapshot | null;
+    myEntryId?: string | null;
+    myArbiterSlot?: 1 | 2 | null;
+    openArbiterSlots?: number;
+  }) => {
     hydrateTournaments([payload.tournament]);
+    if (payload.tournament?.id) {
+      setCallerTournamentContext(payload.tournament.id, {
+        myEntryId: payload.myEntryId,
+        myArbiterSlot: payload.myArbiterSlot,
+        openArbiterSlots: payload.openArbiterSlots,
+      });
+    }
     applyServerAccountState(payload);
   };
 

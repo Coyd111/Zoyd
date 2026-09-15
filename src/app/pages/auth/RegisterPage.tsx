@@ -180,8 +180,8 @@ const RegisterPage: React.FC = () => {
         streamerPseudo: formData.streamerMode ? formData.streamerPseudo : '',
       });
 
-      // Show success and redirect to login
-      toast.success('Compte cree avec succes. Connecte-toi maintenant.');
+      // Show success and redirect to activation (login requires an active code step)
+      toast.success('Compte cree avec succes. Active-le avec le code envoye.');
       
       // Store pending welcome notification for after login
       try {
@@ -196,8 +196,10 @@ const RegisterPage: React.FC = () => {
         localStorage.setItem('zoyd_pending_notifs', JSON.stringify(pending));
       } catch { /* ignore localStorage errors */ }
       
-      // Redirect to login page
-      navigate('/auth/login');
+      // Redirect to activation page with the account email (and dev code when provided)
+      navigate('/auth/activate', {
+        state: { email: formData.email, devCode: (auth as { activationCode?: string }).activationCode || '' },
+      });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Inscription impossible.';
       toast.error(msg);

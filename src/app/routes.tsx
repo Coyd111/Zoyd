@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ActivatePage from './pages/auth/ActivatePage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
 import RootIndexPage from './pages/RootIndexPage';
 
@@ -57,6 +58,10 @@ export const router = createBrowserRouter([
           {
             path: 'activate',
             Component: ActivatePage,
+          },
+          {
+            path: 'forgot',
+            Component: ForgotPasswordPage,
           },
         ],
       },

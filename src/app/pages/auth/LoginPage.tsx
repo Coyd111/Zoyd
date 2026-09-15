@@ -231,6 +231,15 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <Link
+                to="/auth/forgot"
+                className="text-xs text-white/60 hover:text-zoyd-yellow transition-colors touch-target py-2"
+              >
+                Mot de passe oublié ?
+              </Link>
+            </div>
+
             <Button
               type="submit"
               variant="primary"

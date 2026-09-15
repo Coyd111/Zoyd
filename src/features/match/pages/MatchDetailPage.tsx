@@ -28,6 +28,7 @@ import { useMatchStore, type DisputeCategory } from '../../../app/stores/matchSt
 import { useChatStore } from '../../../app/stores/chatStore';
 import { useSocketStore, usePresenceStore } from '../../../app/stores/socketStore';
 import { Skeleton } from '../../../app/components/ui/Skeleton';
+import { Modal } from '../../../app/components/ui/Modal';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { getCountdownDisplay, formatZC } from '../../../lib/utils';
@@ -105,6 +106,7 @@ const MatchDetailPage: React.FC = () => {
   const [isScheduling, setIsScheduling] = useState(false);
   const [isSavingRoom, setIsSavingRoom] = useState(false);
   const [isDisputing, setIsDisputing] = useState(false);
+  const [showResultConfirm, setShowResultConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
   const match = id ? getMatchById(id) : undefined;
@@ -342,6 +344,20 @@ const MatchDetailPage: React.FC = () => {
     }
   };
 
+  const openResultConfirm = () => {
+    if (isSubmittingResult) {
+      toast.error('Un résultat est déjà en cours de soumission. Patientez...');
+      return;
+    }
+    const alpha = Number(scoreAlpha);
+    const bravo = Number(scoreBravo);
+    if (alpha === bravo) {
+      toast.error('Le score final doit désigner une équipe gagnante.');
+      return;
+    }
+    setShowResultConfirm(true);
+  };
+
   const handleResultSubmit = async () => {
     if (isSubmittingResult) {
       toast.error('Un résultat est déjà en cours de soumission. Patientez...');
@@ -360,6 +376,7 @@ const MatchDetailPage: React.FC = () => {
       return;
     }
 
+    setShowResultConfirm(false);
     setIsSubmittingResult(true);
 
     try {
@@ -611,7 +628,7 @@ const MatchDetailPage: React.FC = () => {
                 joinAsArbiter: handleJoinAsArbiter,
                 schedule: handleSchedule,
                 roomSave: handleRoomSave,
-                resultSubmit: handleResultSubmit,
+                resultSubmit: openResultConfirm,
                 dispute: () => setConfirmAction('dispute'),
                 checkIn: handleCheckIn,
                 toggleReady: handleToggleReady,
@@ -635,6 +652,76 @@ const MatchDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {showResultConfirm && match && (() => {
+        const alpha = Number(scoreAlpha);
+        const bravo = Number(scoreBravo);
+        const winnerLabel = alpha > bravo ? 'Squad Alpha' : 'Squad Bravo';
+        const pot = Number(match.prizePool || 0);
+        const arbiterShare = pot * 0.02;
+        const winnerShare = Math.max(0, pot - arbiterShare);
+        const proofsCount =
+          parseRefs(scoreboardProofs).length +
+          parseRefs(finalResultProofs).length +
+          parseRefs(roomCaptureProofs).length +
+          parseRefs(extraResultProofs).length;
+        return (
+          <Modal
+            isOpen
+            onClose={() => { if (!isSubmittingResult) setShowResultConfirm(false); }}
+            title="Confirmer le score final"
+          >
+            <div className="space-y-5">
+              <p className="text-sm text-white/70">
+                Cette action distribue les gains et clot le match{openDisputeRecord ? ' ainsi que le litige ouvert' : ''}. Elle est irreversible.
+              </p>
+              <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <dt className="text-white/50">Score final</dt>
+                  <dd className="font-display font-black text-white">Alpha {alpha} — {bravo} Bravo</dd>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <dt className="text-white/50">Vainqueur</dt>
+                  <dd className="font-display font-black text-zoyd-yellow">{winnerLabel}</dd>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <dt className="text-white/50">Cagnotte totale</dt>
+                  <dd className="font-display font-black text-white">{formatZC(pot)}</dd>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <dt className="text-white/50">Part arbitre (2 %)</dt>
+                  <dd className="font-display font-black text-white">{formatZC(arbiterShare)}</dd>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <dt className="text-white/50">Part vainqueur</dt>
+                  <dd className="font-display font-black text-green-400">{formatZC(winnerShare)}</dd>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <dt className="text-white/50">Preuves jointes</dt>
+                  <dd className="font-display font-black text-white">{proofsCount}</dd>
+                </div>
+              </dl>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={() => setShowResultConfirm(false)}
+                  disabled={isSubmittingResult}
+                  className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => void handleResultSubmit()}
+                  disabled={isSubmittingResult}
+                  aria-label="Confirmer le score et distribuer les gains"
+                  className="bg-zoyd-yellow text-black px-4 py-4 text-xs font-display font-black uppercase tracking-widest italic hover:bg-white transition-colors disabled:opacity-50 touch-target"
+                >
+                  {isSubmittingResult ? 'Distribution...' : 'Confirmer et distribuer'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
       {confirmAction === 'dispute' && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
@@ -647,7 +734,7 @@ const MatchDetailPage: React.FC = () => {
                   Ouvrir un litige ?
                 </h3>
                 <p className="text-white/60 text-sm">
-                  Les gains restent bloques jusqu&apos;a resolution du litige. Assure-toi d&apos;avoir fourni sufifamment de preuves.
+                  Les gains restent bloques jusqu&apos;a resolution du litige. Assure-toi d&apos;avoir fourni suffisamment de preuves.
                 </p>
               </div>
             </div>

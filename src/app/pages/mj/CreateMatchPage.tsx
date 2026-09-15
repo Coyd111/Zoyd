@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useMatchStore, type MatchFormat } from '../../stores/matchStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { SEOHead } from '../../components/SEOHead';
+import { Modal } from '../../components/ui/Modal';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const WEAPON_OPTIONS = ['Toutes permises', 'Sniper uniquement', 'Assaut / SMG', 'Corps a corps uniquement'];
@@ -40,6 +41,7 @@ const CreateMatchPage: React.FC = () => {
   const [selectedGameMode, setSelectedGameMode] = useState('');
   const [selectedMap, setSelectedMap] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
@@ -64,13 +66,17 @@ const CreateMatchPage: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && currentStep > 1 && !isSubmitting) {
-        setCurrentStep((prev) => prev - 1);
+      if (e.key === 'Escape' && !isSubmitting) {
+        if (showPublishConfirm) {
+          setShowPublishConfirm(false);
+          return;
+        }
+        if (currentStep > 1) setCurrentStep((prev) => prev - 1);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentStep, isSubmitting]);
+  }, [currentStep, isSubmitting, showPublishConfirm]);
 
   const playerSlots = useMemo(() => {
     return selectedFormat ? parseInt(selectedFormat.split('VS')[0], 10) * 2 : 2;
@@ -116,7 +122,7 @@ const CreateMatchPage: React.FC = () => {
     setCurrentStep(4);
   };
 
-  const onFinalSubmit = async () => {
+  const openPublishConfirm = () => {
     if (!user) {
       toast.error('Connecte-toi avant de créer une partie.');
       navigate('/auth/login');
@@ -141,6 +147,11 @@ const CreateMatchPage: React.FC = () => {
       return;
     }
 
+    setShowPublishConfirm(true);
+  };
+
+  const onFinalSubmit = async () => {
+    setShowPublishConfirm(false);
     setIsSubmitting(true);
     try {
       const response = await createServerMatch({
@@ -497,7 +508,7 @@ const CreateMatchPage: React.FC = () => {
                   <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={onFinalSubmit} disabled={isSubmitting} aria-label="Verrouiller la mise et publier" className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
+                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label="Verrouiller la mise et publier" className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
                     <span className="text-xs sm:text-sm">VERROUILLER LA MISE & PUBLIER</span> <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>
@@ -505,6 +516,57 @@ const CreateMatchPage: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <Modal
+          isOpen={showPublishConfirm}
+          onClose={() => { if (!isSubmitting) setShowPublishConfirm(false); }}
+          title="Confirmer la publication"
+        >
+          <div className="space-y-5">
+            <p className="text-sm text-white/70">
+              Tu vas bloquer ton pass des la mise en ligne. Verifie les montants avant de publier.
+            </p>
+            <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
+              <div className="flex items-center justify-between px-4 py-3">
+                <dt className="text-white/50">Pass bloque</dt>
+                <dd className="font-display font-black text-zoyd-yellow">{selectedPass.toFixed(1)} ZC</dd>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <dt className="text-white/50">Cagnotte totale ({playerSlots} joueurs)</dt>
+                <dd className="font-display font-black text-white">{livePot.toFixed(1)} ZC</dd>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <dt className="text-white/50">Part arbitre (2 %)</dt>
+                <dd className="font-display font-black text-white">{arbiterShare.toFixed(1)} ZC</dd>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <dt className="text-white/50">Part vainqueur</dt>
+                <dd className="font-display font-black text-green-400">{winnerShare.toFixed(1)} ZC</dd>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <dt className="text-white/50">Solde apres blocage</dt>
+                <dd className="font-display font-black text-white">{(availableSpend - selectedPass).toFixed(1)} ZC</dd>
+              </div>
+            </dl>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => setShowPublishConfirm(false)}
+                disabled={isSubmitting}
+                className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => void onFinalSubmit()}
+                disabled={isSubmitting}
+                aria-label="Confirmer et publier la partie"
+                className="bg-zoyd-yellow text-black px-4 py-4 text-xs font-display font-black uppercase tracking-widest italic hover:bg-white transition-colors disabled:opacity-50 touch-target"
+              >
+                {isSubmitting ? 'Publication...' : 'Confirmer et publier'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </div>
   );

@@ -86,6 +86,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
             match.dispute ||
             match.disputes[0];
           const isEscalated = (activeDispute?.level || 1) >= 2;
+          const winnerShare = Math.max(0, Number(match.prizePool || 0) * 0.98);
 
           return (
             <div key={match.id} className="p-6">
@@ -206,7 +207,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   }`}
                 >
                   <CheckCircle2 className="w-3 h-3 inline mr-2" />
-                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha' ? 'Confirmer Alpha' : 'Valider Alpha'}
+                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha' ? `Confirmer Alpha — ${formatZC(winnerShare)}` : 'Valider Alpha'}
                 </button>
                 <button
                   disabled={loadingAction}
@@ -224,7 +225,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                       : 'bg-white text-black hover:bg-zoyd-yellow'
                   }`}
                 >
-                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo' ? 'Confirmer Bravo' : 'Valider Bravo'}
+                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo' ? `Confirmer Bravo — ${formatZC(winnerShare)}` : 'Valider Bravo'}
                 </button>
                 <button
                   disabled={loadingAction}

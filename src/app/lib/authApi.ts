@@ -18,6 +18,14 @@ interface ActivationResponse {
   message: string;
 }
 
+interface RecoveryResponse {
+  ok: boolean;
+  message: string;
+  activationCode?: string;
+  resetCode?: string;
+  delivery?: 'sent' | 'pending-provider';
+}
+
 export interface RegisterPayload {
   pseudo: string;
   email: string;
@@ -83,3 +91,32 @@ export const activateAccount = async (email: string, code: string): Promise<Acti
     clearTimeout(timeout);
   }
 };
+
+const postAuthRecovery = async (path: string, body: Record<string, string>): Promise<RecoveryResponse> => {
+  const response = await fetch(getApiUrl(path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  return data;
+};
+
+export const resendActivationCode = (email: string): Promise<RecoveryResponse> =>
+  postAuthRecovery('/api/auth/resend-code', { email });
+
+export const changeActivationEmail = (oldEmail: string, newEmail: string): Promise<RecoveryResponse> =>
+  postAuthRecovery('/api/auth/activation-email', { oldEmail, newEmail });
+
+export const requestPasswordReset = (identifier: string): Promise<RecoveryResponse> =>
+  postAuthRecovery('/api/auth/forgot-password', { identifier });
+
+export const resetPasswordWithCode = (
+  identifier: string,
+  code: string,
+  newPassword: string
+): Promise<RecoveryResponse> =>
+  postAuthRecovery('/api/auth/reset-password', { identifier, code, newPassword });

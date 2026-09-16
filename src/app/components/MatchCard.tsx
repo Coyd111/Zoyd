@@ -87,7 +87,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
           {trustScoreMin ? (
             <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider text-zoyd-yellow">
               <ShieldCheck className="w-3 h-3" />
-              FIABILITE {trustScoreMin}+
+              FIABILITÉ {trustScoreMin}+
             </div>
           ) : null}
         </div>
@@ -140,7 +140,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
           </div>
           <div className="flex items-center gap-2 text-white/60">
             <Clock className="w-3.5 h-3.5" />
-            Publie {getRelativeTime(createdAt)}
+            Publié {getRelativeTime(createdAt)}
           </div>
           <div className="flex items-center gap-2 text-white/60">
             <Radio className="w-3.5 h-3.5" />

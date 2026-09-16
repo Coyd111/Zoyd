@@ -11,7 +11,7 @@ import {
 import { useToastStore } from './toastStore';
 
 export type FriendStatus = 'online' | 'offline' | 'in_match' | 'in_lobby';
-export type FriendRequestStatus = 'pending' | 'accepted' | 'blocked' | 'declined';
+export type FriendRequestStatus = 'pending' | 'acceptéd' | 'blocked' | 'declined';
 
 export interface Friend {
   id: string;
@@ -186,7 +186,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         status: 'pending',
       };
       set((state) => ({ reports: [report, ...state.reports] }));
-      useToastStore.getState().addToast({ type: 'success', title: 'Signalement envoyé', message: "Merci pour votre signalement.", duration: 4000 });
+      useToastStore.getState().addToast({ type: 'success', title: 'Signalément envoyé', message: "Merci pour votre signalement.", duration: 4000 });
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'envoyer le signalement.", duration: 4000 });
     } finally {

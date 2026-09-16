@@ -191,7 +191,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             get().addTransaction({
               type: 'entry_fee',
               amount: -safeAmount,
-              description: `Mise bloquee (${entryKey})`,
+              description: `Mise bloquée (${entryKey})`,
               status: 'completed',
             });
 
@@ -230,7 +230,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           get().addTransaction({
             type: 'refund',
             amount: roundAmount(reservation.amount),
-            description: `Mise debloquee (${entryKey})`,
+            description: `Mise debloquée (${entryKey})`,
             status: 'completed',
           });
         },

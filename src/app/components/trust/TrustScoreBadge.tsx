@@ -29,7 +29,7 @@ const TrustScoreBadge: React.FC<Props> = ({ score, compact, detailed }) => {
             ? 'border-orange-500/30 text-orange-400 bg-orange-500/5'
             : 'border-red-500/30 text-red-400 bg-red-500/5'
         }`}
-        title={`Fiabilite: ${score.overall}/100`}
+        title={`Fiabilité: ${score.overall}/100`}
       >
         <ShieldCheck className="w-3 h-3" />
         {score.overall}
@@ -65,7 +65,7 @@ const TrustScoreBadge: React.FC<Props> = ({ score, compact, detailed }) => {
           </div>
           <div>
             <div className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70">
-              FIABILITE
+              FIABILITÉ
             </div>
             <div className={`text-sm font-display font-black uppercase tracking-tight ${getTrustColor(score.overall)}`}>
               {getTrustLabel(score.overall)}

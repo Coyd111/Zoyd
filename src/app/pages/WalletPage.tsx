@@ -139,7 +139,7 @@ const WalletPage: React.FC = () => {
       onComplete: async (resp: { reason?: string; transaction?: { id: number | string } }) => {
         if (resp.reason === 'CHECKOUT COMPLETE') {
           if (!resp.transaction?.id) {
-            toast.error('Transaction invalide.');
+            toast.error('Transaction invalidé.');
             return;
           }
           toast.loading('Vérification de la transaction...');
@@ -147,18 +147,18 @@ const WalletPage: React.FC = () => {
             const result = await verifyFedaPayTransaction(resp.transaction.id);
             toast.dismiss();
             if (result.ok) {
-              toast.success(`${formatZC(result.amount || 0)} ajoutées dans ton wallet.`);
+              toast.success(`${formatZC(result.amount || 0)} ajoutées dans ton portefeuille.`);
               // Update local state using hydrateFromServer
               useWalletStore.getState().hydrateFromServer(result.wallet);
             } else {
-              toast.error('Erreur lors de la verification.');
+              toast.error('Erreur lors de la vérification.');
             }
           } catch (err) {
             toast.dismiss();
             toast.error(err instanceof Error ? err.message : 'Erreur lors de la vérification de la transaction FedaPay.');
           }
         } else {
-          toast.error('Transaction annulee ou echouee.');
+          toast.error('Transaction annulée ou echouee.');
         }
         setShowDepositModal(false);
         setDepositAmount('');
@@ -173,7 +173,7 @@ const WalletPage: React.FC = () => {
     try {
       const withdrawAmountNum = parseFloat(withdrawAmount);
       if (isNaN(withdrawAmountNum) || withdrawAmountNum <= 0) {
-        toast.error('Montant invalide.');
+        toast.error('Montant invalidé.');
         return;
       }
       await withdraw(withdrawAmountNum, 'Mobile Money', user.phone || '');
@@ -202,7 +202,7 @@ const WalletPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter mb-2">
               LE COFFRE-FORT <span className="text-zoyd-yellow">(WALLET)</span>
             </h1>
-            <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouillé tes wagers et retire tes gains de manière securisee.</p>
+            <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouillé tes wagers et retiré tes gains de manière sécurisée.</p>
           </div>
         </div>
 
@@ -335,7 +335,7 @@ const WalletPage: React.FC = () => {
         <Modal isOpen={showDepositModal} onClose={() => setShowDepositModal(false)} title="Ajouter des ZC" size="md">
           <div className="space-y-6">
             <div>
-              <label htmlFor="deposit-amount" className="block text-sm font-medium text-white mb-3">Montant a ajouter</label>
+              <label htmlFor="deposit-amount" className="block text-sm font-medium text-white mb-3">Montant à ajouter</label>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {presetAmounts.map((preset) => (
                     <button
@@ -352,7 +352,7 @@ const WalletPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="operator-select" className="block text-sm font-medium text-white mb-3">Operateur Mobile Money</label>
+              <label htmlFor="operator-select" className="block text-sm font-medium text-white mb-3">Opérateur Mobile Money</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {operators.map((operator) => (
                     <button
@@ -381,7 +381,7 @@ const WalletPage: React.FC = () => {
         <Modal isOpen={showWithdrawModal} onClose={() => setShowWithdrawModal(false)} title="Retirer mes ZC" size="md">
           <div className="space-y-6">
             <div>
-              <label htmlFor="withdraw-amount" className="block text-sm font-medium text-white mb-3">Montant a retirer</label>
+              <label htmlFor="withdraw-amount" className="block text-sm font-medium text-white mb-3">Montant à retirer</label>
               <Input
                 id="withdraw-amount"
                 type="number"
@@ -461,7 +461,7 @@ const TransactionRow = React.memo(({ type, amount, description, status, timestam
           : type === 'entry_fee'
             ? 'Pass'
             : type === 'refund'
-              ? 'Remboursement'
+              ? 'Remboursément'
               : type === 'bonus'
                 ? 'Bonus'
                 : type === 'arbitration_fee'

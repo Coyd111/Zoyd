@@ -76,21 +76,21 @@ export class ApiError extends Error {
 
 const ERROR_MESSAGES: Record<string, string> = {
   INSUFFICIENT_FUNDS: 'Solde insuffisant. Recharge ton portefeuille.',
-  MATCH_CLOSED: 'Ce match est déjà ferme.',
+  MATCH_CLOSED: 'Ce match est déjà fermé.',
   ALREADY_JOINED: 'Tu es déjà inscrit a ce match.',
   MATCH_NOT_FOUND: 'Match introuvable.',
   TOURNAMENT_NOT_FOUND: 'Tournoi introuvable.',
   LEAGUE_NOT_FOUND: 'Ligue introuvable.',
   PLAYER_NOT_FOUND: 'Joueur introuvable.',
   NOT_ENOUGH_PLAYERS: 'Pas assez de joueurs pour commencer.',
-  REGISTRATION_CLOSED: 'Les inscriptions sont fermees.',
+  REGISTRATION_CLOSED: 'Les inscriptions sont fermées.',
   NOT_JOINED: 'Tu n\'es pas inscrit.',
   MATCH_ALREADY_LIVE: 'Ce match est déjà en cours.',
-  INVALID_DAY: 'Journee invalide.',
-  INVALID_RESULTS: 'Resultats invalides.',
-  DUPLICATE_PSEUDO: 'Ce pseudo est déjà utilise.',
-  DUPLICATE_EMAIL: 'Cet email est déjà utilise.',
-  DUPLICATE_PHONE: 'Ce numéro est déjà utilise.',
+  INVALID_DAY: 'Journee invalidé.',
+  INVALID_RESULTS: 'Résultats invalidés.',
+  DUPLICATE_PSEUDO: 'Ce pseudo est déjà utilisé.',
+  DUPLICATE_EMAIL: 'Cet email est déjà utilisé.',
+  DUPLICATE_PHONE: 'Ce numéro est déjà utilisé.',
   ARBITER_TAKEN: 'Un arbitre est déjà assigne.',
   ROLE_CONFLICT: 'Conflit de role.',
   NO_SLOT_AVAILABLE: 'Aucune place disponible.',
@@ -109,7 +109,7 @@ export const readJson = async <T>(response: Response): Promise<T> => {
       throw new ApiError('Session expiree. Veuillez te reconnecter.', 'SESSION_EXPIRED', 401);
     }
     if (response.status === 403) {
-      throw new ApiError('Acces refuse. Tu n\'as pas les permissions necessaires.', 'FORBIDDEN', 403);
+      throw new ApiError('Accès refuse. Tu n\'as pas les permissions necessaires.', 'FORBIDDEN', 403);
     }
     
     const code = payload.code || 'UNKNOWN_ERROR';

@@ -97,7 +97,7 @@ export const buildCompetitiveSummary = ({
   );
   const forfeits = playerMatches.filter((match) => {
     const participant = match.players.find((player) => player.userId === userId);
-    return !!participant && match.result?.resolutionType === 'forfeit' && match.result.forfeitTeam === participant.team;
+    return !!participant && match.result?.résolutionType === 'forfeit' && match.result.forfeitTeam === participant.team;
   }).length;
 
   let arbitratedMatches = 0;

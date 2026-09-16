@@ -152,8 +152,8 @@ const DashboardPage: React.FC = () => {
           </h1>
           <p className="text-white/70 text-base md:text-lg max-w-2xl">
             {user.role === 'admin'
-              ? 'Panel admin actif — tu as le controle total.'
-              : 'Ton espace de competition. Matchs, gains et progression au meme endroit.'}
+              ? 'Panel admin actif — tu as le contrôle total.'
+              : 'Ton espace de competition. Matchs, gains et progression au même endroit.'}
           </p>
         </motion.div>
 
@@ -173,7 +173,7 @@ const DashboardPage: React.FC = () => {
         {/* Quick actions */}
         <div className="mb-10 md:mb-14">
           <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70 mb-5">
-            Acces rapide
+            Accès rapide
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {quickActions.map((action, i) => (
@@ -292,7 +292,7 @@ const DashboardPage: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-5">
               <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">
-                Tournois a venir
+                Tournois à venir
               </div>
               <Link
                 to="/mj/tournois"
@@ -556,7 +556,7 @@ const DashboardPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Niveau</div>
-                <div className="font-display font-black text-sm text-white italic">{user.progression?.level || 'DEBUTANT'}</div>
+                <div className="font-display font-black text-sm text-white italic">{user.progression?.level || 'DÉBUTANT'}</div>
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Elo</div>
@@ -567,7 +567,7 @@ const DashboardPage: React.FC = () => {
                 <div className="font-display font-black text-sm text-white italic">{user.trustScore || 50}</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Win rate</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Taux de victoire</div>
                 <div className="font-display font-black text-sm text-white italic">{user.stats?.winRate || 0}%</div>
               </div>
             </div>
@@ -649,7 +649,7 @@ const DashboardPage: React.FC = () => {
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
-              to="/mj/creer"
+              to="/mj/créer"
               className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors"
             >
               <Plus className="w-4 h-4" /> Créer un match

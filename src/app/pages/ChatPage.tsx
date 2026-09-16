@@ -174,7 +174,7 @@ const ChatPage: React.FC = () => {
                   })
                   .catch((error) => {
                     toast.error(
-                      error instanceof Error ? error.message : 'Impossible de creer cette conversation.'
+                      error instanceof Error ? error.message : 'Impossible de créer cette conversation.'
                     );
                   });
               }}
@@ -226,7 +226,7 @@ const ChatPage: React.FC = () => {
                 </div>
               ))}
               {onlineFriends.length === 0 && (
-                <div className="text-[10px] font-mono text-white/70">Aucun ami connecte</div>
+                <div className="text-[10px] font-mono text-white/70">Aucun ami connecté</div>
               )}
             </div>
           </div>
@@ -303,7 +303,7 @@ const ChatPage: React.FC = () => {
                         >
                           <div className="flex-1 h-[1px] bg-white/5" />
                           <span className="text-zoyd-yellow text-[10px] uppercase font-black tracking-[0.2em] italic bg-zoyd-yellow/5 px-3 py-1 border border-zoyd-yellow/10">
-                            Systeme: {sanitizeText(message.text)}
+                            Système: {sanitizeText(message.text)}
                           </span>
                           <div className="flex-1 h-[1px] bg-white/5" />
                         </motion.div>
@@ -352,11 +352,11 @@ const ChatPage: React.FC = () => {
                       void handleSend(event);
                     }
                   }}
-                  placeholder="Envoyer un message..."
+                  placeholder="Envoyér un message..."
                   aria-label="Saisir un message"
                   className="touch-target flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors"
                 />
-                <Button type="submit" variant="primary" disabled={!input.trim() || isSending} className="touch-target px-6" aria-label="Envoyer le message">
+                <Button type="submit" variant="primary" disabled={!input.trim() || isSending} className="touch-target px-6" aria-label="Envoyér le message">
                   <Send className="w-4 h-4" />
                 </Button>
               </form>
@@ -366,7 +366,7 @@ const ChatPage: React.FC = () => {
               <div className="text-center">
                 <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
                 <span className="font-mono text-[10px] uppercase font-black tracking-widest">
-                  Selectionne une discussion
+                  Sélectionne une discussion
                 </span>
               </div>
             </div>

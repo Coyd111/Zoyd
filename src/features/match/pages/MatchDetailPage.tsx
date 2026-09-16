@@ -89,7 +89,7 @@ const MatchDetailPage: React.FC = () => {
   const [scoreAlpha, setScoreAlpha] = useState('0');
   const [scoreBravo, setScoreBravo] = useState('0');
   const [resultNotes, setResultNotes] = useState('');
-  const [scoreboardProofs, setScoreboardProofs] = useState('');
+  const [scoreboardProofs, setscoreboardProofs] = useState('');
   const [finalResultProofs, setFinalResultProofs] = useState('');
   const [roomCaptureProofs, setRoomCaptureProofs] = useState('');
   const [extraResultProofs, setExtraResultProofs] = useState('');
@@ -245,11 +245,11 @@ const MatchDetailPage: React.FC = () => {
           canPublish: true,
           message:
             minutesUntilMatch !== null && minutesUntilMatch >= 0
-              ? 'La salle peut maintenant etre partagée avec les joueurs confirms.'
-              : "L'heure est depassee: partage la salle tout de suite ou tranche le dossier.",
+              ? 'La salle peut maintenant etre partagée avec les joueurs confirmés.'
+              : "L'heure est dépassée: partage la salle tout de suite ou tranche le dossier.",
         };
   const forfeitLabel =
-    match.result?.resolutionType === 'forfeit'
+    match.result?.résolutionType === 'forfeit'
       ? match.result.forfeitTeam === 0
         ? 'Squad Alpha perd par forfait'
         : 'Squad Bravo perd par forfait'
@@ -274,7 +274,7 @@ const MatchDetailPage: React.FC = () => {
     }
 
     if (availableSpend < match.entryFee) {
-      toast.error("Solde insuffisant. Fais d'abord un depot avant de bloquer ton pass.");
+      toast.error("Solde insuffisant. Fais d'abord un dépôt avant de bloquer ton pass.");
       navigate(fundingPath);
       return;
     }
@@ -289,7 +289,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await joinServerMatch(match.id, team);
       applyMatchResponse(response);
-      toast.success(`Pass bloque. Tu rejoins ${team === 1 ? 'Squad Bravo' : team === 0 ? 'Squad Alpha' : 'l équipe disponible'}.`);
+      toast.success(`Pass bloqué. Tu rejoins ${team === 1 ? 'Squad Bravo' : team === 0 ? 'Squad Alpha' : 'l équipe disponible'}.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de rejoindre ce match avec ton profil actuel.");
     } finally {
@@ -306,7 +306,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await assignServerArbiter(match.id);
       applyMatchResponse(response);
-      toast.success("Place d'arbitre reservee. Tu peux maintenant gerer la salle du match.");
+      toast.success("Place d'arbitre réservée. Tu peux maintenant gérer la salle du match.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "La place d'arbitre n'est plus disponible.");
     }
@@ -336,7 +336,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await setServerRoomDetails(match.id, roomName, roomPassword);
       applyMatchResponse(response);
-      toast.success('La salle privée a bien été partagée.');
+      toast.success('La salle privée à bien été partagée.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : roomPublishWindow.message);
     } finally {
@@ -383,7 +383,7 @@ const MatchDetailPage: React.FC = () => {
       const response = await submitServerMatchResult(match.id, {
         winnerTeam: alpha > bravo ? 0 : 1,
         scores: { team0: alpha, team1: bravo },
-        screenshots: [...scoreboardRefs, ...finalRefs, ...roomRefs, ...extraRefs],
+        scréénshots: [...scoreboardRefs, ...finalRefs, ...roomRefs, ...extraRefs],
         proofs: {
           scoreboard: scoreboardRefs,
           finalResult: finalRefs,
@@ -394,13 +394,13 @@ const MatchDetailPage: React.FC = () => {
         submittedBy: user?.id || 'arbiter',
       });
       applyMatchResponse(response);
-      setScoreboardProofs('');
+      setscoreboardProofs('');
       setFinalResultProofs('');
       setRoomCaptureProofs('');
       setExtraResultProofs('');
       toast.success('Résultat validé. Les gains sont en cours de distribution.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Ajoute au moins un scoreboard et un ecran final avant de valider le score.");
+      toast.error(error instanceof Error ? error.message : "Ajouté au moins une capture de scoreboard et un écran final avant de valider le score.");
     } finally {
       setIsSubmittingResult(false);
     }
@@ -417,7 +417,7 @@ const MatchDetailPage: React.FC = () => {
     }
     const disputeRefs = parseRefs(disputeEvidence);
     if (disputeRefs.length === 0) {
-      toast.error('Ajoute au moins une preuve avant d ouvrir un litige.');
+      toast.error("Ajoute au moins une preuve avant d'ouvrir un litige.");
       return;
     }
     if (isDisputing) return;
@@ -460,7 +460,7 @@ const MatchDetailPage: React.FC = () => {
       const response = await toggleServerReady(match.id);
       applyMatchResponse(response);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Mise a jour ready impossible.');
+      toast.error(error instanceof Error ? error.message : 'Mise à jour du statut prêt impossible.');
     } finally {
       setIsProcessingAction(false);
     }
@@ -601,7 +601,7 @@ const MatchDetailPage: React.FC = () => {
               }}
               proofsState={{
                 scoreboardProofs,
-                setScoreboardProofs,
+                setscoreboardProofs,
                 finalResultProofs,
                 setFinalResultProofs,
                 roomCaptureProofs,
@@ -672,7 +672,7 @@ const MatchDetailPage: React.FC = () => {
           >
             <div className="space-y-5">
               <p className="text-sm text-white/70">
-                Cette action distribué les gains et clôt le match{openDisputeRecord ? ' ainsi que le litige ouvert' : ''}. Elle est irréversible.
+                Cette action distribue les gains et clôt le match{openDisputeRecord ? ' ainsi que le litige ouvert' : ''}. Elle est irréversible.
               </p>
               <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
                 <div className="flex items-center justify-between px-4 py-3">
@@ -706,7 +706,7 @@ const MatchDetailPage: React.FC = () => {
                   disabled={isSubmittingResult}
                   className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
                 >
-                  Annulér
+                  Annuler
                 </button>
                 <button
                   onClick={() => void handleResultSubmit()}
@@ -734,7 +734,7 @@ const MatchDetailPage: React.FC = () => {
                   Ouvrir un litige ?
                 </h3>
                 <p className="text-white/60 text-sm">
-                  Les gains restent bloqués jusqu&apos;a resolution du litige. Assure-toi d&apos;avoir fourni suffisamment de preuves.
+                  Les gains restent bloqués jusqu&apos;a résolution du litige. Assure-toi d&apos;avoir fourni suffisamment de preuves.
                 </p>
               </div>
             </div>
@@ -743,7 +743,7 @@ const MatchDetailPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annulér
+                Annuler
               </button>
               <button
                 disabled={isDisputing}
@@ -769,7 +769,7 @@ const MatchDetailPage: React.FC = () => {
                   Escalader a l&apos;administration ?
                 </h3>
                 <p className="text-white/60 text-sm">
-                  L&apos;equipe admin ZOYD prendra le relais pour trancher ce litige.
+                  L&apos;équipe admin ZOYD prendra le relais pour trancher ce litige.
                 </p>
               </div>
             </div>
@@ -778,7 +778,7 @@ const MatchDetailPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annulér
+                Annuler
               </button>
               <button
                 onClick={() => { setConfirmAction(null); void handleEscalate(); }}

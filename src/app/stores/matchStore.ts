@@ -56,11 +56,11 @@ export interface MatchProofBundle {
 export interface MatchResult {
   winnerTeam: MatchTeam;
   scores: { team0: number; team1: number };
-  screenshots: string[];
+  scréénshots: string[];
   proofs?: MatchProofBundle;
   proofHash?: string;
   arbiterNotes?: string;
-  resolutionType?: 'played' | 'forfeit';
+  résolutionType?: 'played' | 'forfeit';
   forfeitTeam?: MatchTeam;
   submittedBy: string;
   submittedAt: string;
@@ -80,7 +80,7 @@ export interface Dispute {
   openedByPseudo?: string;
   escalatedByPseudo?: string;
   status: 'open' | 'under_review' | 'resolved' | 'rejected';
-  resolution?: string;
+  résolution?: string;
   createdAt: string;
   openedAt?: string;
   escalatedAt?: string;
@@ -201,7 +201,7 @@ interface StoredDispute {
   evidence?: string[];
   requestedBy?: string;
   status?: string;
-  resolution?: string;
+  résolution?: string;
   createdAt?: string;
   openedAt?: string;
   resolvedAt?: string;
@@ -218,11 +218,11 @@ interface StoredProofs {
 interface StoredResult {
   winnerTeam?: MatchTeam;
   scores?: { team0: number; team1: number };
-  screenshots?: string[];
+  scréénshots?: string[];
   proofs?: StoredProofs;
   proofHash?: string;
   arbiterNotes?: string;
-  resolutionType?: 'played' | 'forfeit';
+  résolutionType?: 'played' | 'forfeit';
   forfeitTeam?: MatchTeam;
   submittedBy?: string;
   submittedAt?: string;
@@ -246,7 +246,7 @@ const normalizeStoredDispute = (dispute: StoredDispute): Dispute => ({
   evidence: Array.isArray(dispute?.evidence) ? dispute.evidence : [],
   requestedBy: dispute?.requestedBy || '',
   status: (dispute?.status as Dispute['status']) || 'open',
-  resolution: dispute?.resolution,
+  résolution: dispute?.résolution,
   createdAt: dispute?.createdAt || '',
   openedAt: dispute?.openedAt,
   resolvedAt: dispute?.resolvedAt,
@@ -260,21 +260,21 @@ const normalizeStoredProofs = (proofs: StoredProofs): MatchProofBundle => ({
 });
 const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResult => {
   const proofs = result?.proofs ? normalizeStoredProofs(result.proofs) : undefined;
-  const screenshots = Array.isArray(result?.screenshots) ? result.screenshots : flattenProofs(proofs);
+  const scréénshots = Array.isArray(result?.scréénshots) ? result.scréénshots : flattenProofs(proofs);
 
   return {
     winnerTeam: result?.winnerTeam ?? 0,
     scores: result?.scores || { team0: 0, team1: 0 },
-    screenshots,
+    scréénshots,
     proofs,
-    resolutionType: result?.resolutionType || 'played',
+    résolutionType: result?.résolutionType || 'played',
     proofHash:
       result?.proofHash ||
       buildProofHash(
         matchId,
         result?.winnerTeam ?? 0,
         result?.scores || { team0: 0, team1: 0 },
-        screenshots
+        scréénshots
       ),
     arbiterNotes: result?.arbiterNotes,
     forfeitTeam: result?.forfeitTeam,

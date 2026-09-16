@@ -211,7 +211,7 @@ const ActivatePage: React.FC = () => {
                     onClick={() => setShowEmailChange(false)}
                     className="border border-white/10 px-4 py-3 text-xs font-display font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors touch-target"
                   >
-                    Annulér
+                    Annuler
                   </button>
                   <button
                     type="submit"

@@ -117,12 +117,12 @@ const TournoisPage: React.FC = () => {
               <span className="text-white/70 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
             </h1>
             <p className="text-white/70 text-base md:text-xl font-light max-w-2xl mb-6">
-              Retrouve les tournois ouverts, ceux qui se jouent déjà et ceux qui viennent de se terminer.
+              Retrouve les tournois ouverts, ceux qui se jouent déjà et ceux qui viennent de se terminér.
               Ce que tu vois ici correspond déjà à ton profil de jeu.
             </p>
             <div className="mt-4 md:mt-6">
               <Link
-                to="/mj/tournois/creer"
+                to="/mj/tournois/créer"
                 className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -206,11 +206,11 @@ const TournoisPage: React.FC = () => {
               ))}
               <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <Users className="w-3.5 h-3.5" />
-                Solo et equipe
+                Solo et équipe
               </div>
               <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <Swords className="w-3.5 h-3.5" />
-                Elimination directe
+                Élimination directe
               </div>
               <div className="inline-flex items-center gap-2 border border-zoyd-yellow/20 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow/80">
                 <Trophy className="w-3.5 h-3.5" />
@@ -223,7 +223,7 @@ const TournoisPage: React.FC = () => {
             <TournamentGrid
               tournaments={recruiting}
               emptyTitle="Aucun tournoi ouvert"
-              emptyBody="Aucune inscription n'est ouverte pour tes filtres du moment. Le prochain tournoi disponible apparaitra ici."
+              emptyBody="Aucune inscription n'est ouverte pour tes filtres du moment. Le prochain tournoi disponible apparaîtra ici."
             />
           </TabsContent>
 
@@ -231,7 +231,7 @@ const TournoisPage: React.FC = () => {
             <TournamentGrid
               tournaments={live}
               emptyTitle="Aucun tournoi en cours"
-              emptyBody="Aucun tournoi n'est en train de se jouer pour tes filtres du moment. Les rencontres en cours apparaitront ici."
+              emptyBody="Aucun tournoi n'est en train de se jouer pour tes filtres du moment. Les rencontres en cours apparaîtront ici."
             />
           </TabsContent>
 
@@ -239,7 +239,7 @@ const TournoisPage: React.FC = () => {
             <TournamentGrid
               tournaments={archive}
               emptyTitle="Aucune archive disponible"
-              emptyBody="Les tournois termines et leurs resultats apparaitront ici."
+              emptyBody="Les tournois terminés et leurs résultats apparaîtront ici."
             />
           </TabsContent>
         </Tabs>
@@ -268,7 +268,7 @@ const TournamentGrid = ({
         </h3>
         <p className="text-white/70 max-w-md font-light mb-6 md:mb-8 text-sm md:text-base">{emptyBody}</p>
         <Link
-          to="/mj/tournois/creer"
+          to="/mj/tournois/créer"
           className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
         >
           <Plus className="w-4 h-4" />

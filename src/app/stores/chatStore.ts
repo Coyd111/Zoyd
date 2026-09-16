@@ -63,7 +63,7 @@ const normalizeChannel = (channel: ChatChannelDef): ChatChannelDef => ({
 
 const normalizeMessage = (message: ChatMessage): ChatMessage => ({
   ...message,
-  text: message.isDeleted ? '[Message supprime]' : message.text,
+  text: message.isDeleted ? '[Message supprimé]' : message.text,
 });
 
 const sortChannels = (channels: ChatChannelDef[]) =>
@@ -283,7 +283,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => ({
       messages: state.messages.map((message) =>
         message.id === messageId
-          ? { ...message, isDeleted: true, text: '[Message supprime]' }
+          ? { ...message, isDeleted: true, text: '[Message supprimé]' }
           : message
       ),
     }));

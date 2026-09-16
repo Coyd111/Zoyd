@@ -24,22 +24,22 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
   participantMatch,
   userPseudo,
 }) => {
-  const participantLabel = tournament.teamSize > 1 ? 'Equipes inscrites' : 'Joueurs inscrits';
-  const participantSlotLabel = tournament.teamSize > 1 ? 'equipes' : 'joueurs';
+  const participantLabel = tournament.teamSize > 1 ? 'Équipes inscrites' : 'Joueurs inscrits';
+  const participantSlotLabel = tournament.teamSize > 1 ? 'équipes' : 'joueurs';
 
   return (
     <div className="space-y-8">
       <div className="hud-panel p-6 bg-zoyd-surface/20">
         <div className="flex items-center gap-3 mb-4">
           <Gamepad2 className="w-5 h-5 text-zoyd-blue" />
-          <h2 className="text-lg font-display font-black uppercase italic">Regles officielles</h2>
+          <h2 className="text-lg font-display font-black uppercase italic">Règles officielles</h2>
         </div>
         <div className="grid md:grid-cols-2 gap-4 text-sm text-white/70">
           <RuleRow label="Mode" value={tournament.rules.mode} />
           <RuleRow label="Best of" value={`BO${tournament.rules.bestOf}`} />
           <RuleRow label="Score cible" value={`${tournament.rules.scoreTarget}`} />
           <RuleRow
-            label="Point streaks"
+            label="Séries de points"
             value={tournament.rules.pointstreaks === 'allowed' ? 'Permises' : 'Interdites'}
           />
           <RuleRow
@@ -110,11 +110,11 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <RuleRow
-              label={tournament.teamSize > 1 ? 'Equipe A' : 'Joueur A'}
+              label={tournament.teamSize > 1 ? 'Équipe A' : 'Joueur A'}
               value={tournament.entries.find((entry) => entry.id === participantMatch.entryAId)?.squadName || 'À confirmer'}
             />
             <RuleRow
-              label={tournament.teamSize > 1 ? 'Equipe B' : 'Joueur B'}
+              label={tournament.teamSize > 1 ? 'Équipe B' : 'Joueur B'}
               value={tournament.entries.find((entry) => entry.id === participantMatch.entryBId)?.squadName || 'À confirmer'}
             />
             <RuleRow
@@ -142,7 +142,7 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
             <h2 className="text-lg font-display font-black uppercase italic">Place d'arbitre</h2>
           </div>
           <div className="border border-zoyd-blue/20 bg-zoyd-blue/5 p-4 text-sm text-white/70">
-            Place d'arbitre #{myArbiterSlot.slot} active. Les duels que tu accompagnes apparaitront juste
+            Place d'arbitre #{myArbiterSlot.slot} active. Les duels que tu accompagnes apparaîtront juste
             en dessous.
           </div>
         </div>

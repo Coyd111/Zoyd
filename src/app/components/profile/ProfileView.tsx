@@ -163,7 +163,7 @@ export default function ProfileView({
                   <Badge variant="yellow">Streamer mode</Badge>
                 ) : null}
                 <Badge variant={trustScore >= 80 ? 'success' : trustScore >= 50 ? 'default' : 'disabled'}>
-                  FIABILITE {trustScore}
+                  FIABILITÉ {trustScore}
                 </Badge>
               </div>
 
@@ -232,9 +232,9 @@ export default function ProfileView({
             <div>
               <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-blue mb-3">Carriere Joueur</h3>
               <div className="grid sm:grid-cols-2 gap-4">
-                <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Cash Prize Gagne" value={formatZC(summary.stats.totalEarnings)} />
+                <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Cagnotte Gagné" value={formatZC(summary.stats.totalEarnings)} />
                 <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" />} label="Matchs joues" value={summary.stats.totalMatches.toString()} />
-                <StatCard icon={<Target className="w-5 h-5 text-green-400" />} label="Win rate" value={`${summary.stats.winRate}%`} />
+                <StatCard icon={<Target className="w-5 h-5 text-green-400" />} label="Taux de victoire" value={`${summary.stats.winRate}%`} />
                 <StatCard icon={<Award className="w-5 h-5 text-purple-400" />} label="Tournois" value={`${summary.stats.tournamentsWon} / ${summary.stats.tournamentsPlayed}`} />
               </div>
             </div>
@@ -294,7 +294,7 @@ export default function ProfileView({
                 icon={<Swords className="w-8 h-8 text-white/10" />}
                 image={emptyMatchesImage || '/assets/images/codm-8.jpg'}
                 title="Aucun match recent"
-                body="Les prochains matchs termines apparaitront ici, avec leur resultat et ce qu'ils ont rapporte."
+                body="Les prochains matchs terminés apparaîtront ici, avec leur resultat et ce qu'ils ont rapporte."
               />
             ) : (
               <div className="space-y-3">
@@ -347,7 +347,7 @@ export default function ProfileView({
                 icon={<Trophy className="w-8 h-8 text-white/10" />}
                 image={emptyTournamentsImage || '/assets/images/codm-1.jpg'}
                 title="Aucun tournoi recent"
-                body="Les participations et podiums apparaitront ici des que les tournois seront Terminés."
+                body="Les participations et podiums apparaîtront ici des que les tournois seront Terminés."
               />
             ) : (
               <div className="space-y-3">
@@ -361,7 +361,7 @@ export default function ProfileView({
                         {placement.name}
                       </div>
                       <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider">
-                        {placement.format} / {placement.finishedAt ? new Date(placement.finishedAt).toLocaleDateString('fr-FR') : 'Résultat valide'}
+                        {placement.format} / {placement.finishedAt ? new Date(placement.finishedAt).toLocaleDateString('fr-FR') : 'Résultat validé'}
                       </div>
                     </div>
                     <div className="text-right">

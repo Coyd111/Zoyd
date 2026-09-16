@@ -37,10 +37,10 @@ const tabs: { id: RankingTab; label: string; icon: React.ComponentType<{ classNa
   { id: 'elo', label: 'TOP ELO', icon: Trophy },
   { id: 'earnings', label: 'TOP GAINS', icon: Trophy },
   { id: 'winrate', label: 'VICTOIRES', icon: Target },
-  { id: 'activity', label: 'ACTIVITE', icon: TrendingUp },
+  { id: 'activity', label: 'ACTIVITÉ', icon: TrendingUp },
   { id: 'teams', label: 'EQUIPES', icon: Users },
   { id: 'country', label: 'PAR PAYS', icon: Flag },
-  { id: 'controller', label: 'PAR CONTROLE', icon: Gamepad2 },
+  { id: 'controller', label: 'PAR CONTRÔLE', icon: Gamepad2 },
 ];
 
 const tabColumns: Record<
@@ -50,7 +50,7 @@ const tabColumns: Record<
   elo: { primary: 'JOUEUR', detail: 'RANG', value: 'ELO', rate: 'WR%', trust: 'FIAB.' },
   earnings: { primary: 'JOUEUR', detail: 'SETUP', value: 'V', rate: 'WR%', trust: 'FIAB.' },
   winrate: { primary: 'JOUEUR', detail: 'SETUP', value: 'V', rate: 'WR%', trust: 'FIAB.' },
-  activity: { primary: 'JOUEUR', detail: 'ACTIVITE', value: 'MATCHS', rate: 'WR%', trust: 'FIAB.' },
+  activity: { primary: 'JOUEUR', detail: 'ACTIVITÉ', value: 'MATCHS', rate: 'WR%', trust: 'FIAB.' },
   teams: { primary: 'EQUIPE', detail: 'EFFECTIF', value: 'V', rate: 'WR%', trust: 'FIAB.' },
   country: { primary: 'ZONE', detail: 'VOLUME', value: 'V', rate: 'WR%', trust: 'FIAB.' },
   controller: { primary: 'SETUP', detail: 'VOLUME', value: 'V', rate: 'WR%', trust: 'FIAB.' },
@@ -335,13 +335,13 @@ const ClassementsPage: React.FC = () => {
               Aucun classement pour le moment
             </h2>
             <p className="text-sm text-white/70 max-w-xl mx-auto">
-              Cette vue se remplira des que suffisamment de matchs, d&apos;equipes ou de joueurs auront été vus par ZOYD.
+              Cette vue se remplira des que suffisamment de matchs, d&apos;équipes ou de joueurs auront été vus par ZOYD.
             </p>
           </div>
         ) : (
           <div className="space-y-2">
             <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-mono font-black uppercase tracking-widest text-white/70 italic">
-              <div className="col-span-1">RANK</div>
+              <div className="col-span-1">RANG</div>
               <div className="col-span-3">{activeColumns.primary}</div>
               <div className="col-span-1 text-center">PAYS</div>
               <div className="col-span-2">{activeColumns.detail}</div>

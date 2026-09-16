@@ -22,7 +22,7 @@ interface Tournament {
 const statusLabels: Record<TournamentStatus, string> = {
   recruiting: 'Recrutement ouvert',
   live: 'Tournoi en cours',
-  completed: 'Tournoi termine',
+  completed: 'Tournoi terminé',
   cancelled: 'Tournoi annulé',
 };
 
@@ -94,7 +94,7 @@ const BracketHeader: React.FC<{ tournament: Tournament }> = ({ tournament }) => 
       />
       <InfoCard
         icon={<Clock3 className="w-5 h-5 text-white/60" />}
-        label="Fenetre"
+        label="Fenêtre"
         value={new Date(tournament.startsAt).toLocaleString('fr-FR', {
           day: '2-digit',
           month: 'short',

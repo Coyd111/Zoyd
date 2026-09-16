@@ -46,11 +46,11 @@ import { SEOHead } from '../components/SEOHead';
 
 const getDeltaLabel = (current: number, previous: number, emptyLabel: string) => {
   if (current === 0 && previous === 0) return emptyLabel;
-  if (previous === 0) return 'Premiere periode comparee';
+  if (previous === 0) return 'Première période comparée';
 
   const delta = Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
-  if (delta === 0) return 'Stable par rapport a avant';
-  return `${delta > 0 ? '+' : ''}${delta}% par rapport a avant`;
+  if (delta === 0) return 'Stable par rapport à avant';
+  return `${delta > 0 ? '+' : ''}${delta}% par rapport à avant`;
 };
 
 const getTrustStatus = (trustScore?: number) => {
@@ -99,7 +99,7 @@ const EarningsDashboard: React.FC = () => {
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center pt-safe-top">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase italic">Vue des gains indisponible</h2>
-          <p className="mt-3 text-white/70">Connecte-toi pour retrouver ce que tes matchs et tournois t'ont rapporte.</p>
+          <p className="mt-3 text-white/70">Connecte-toi pour retrouver ce que tes matchs et tournois t'ont rapporté.</p>
         </div>
       </div>
     );
@@ -114,7 +114,7 @@ const EarningsDashboard: React.FC = () => {
       color: 'text-zoyd-yellow',
     },
     {
-      label: 'Cash Prize (Joueur)',
+      label: 'Cagnotte (Joueur)',
       value: formatZC(summary.stats.totalEarnings),
       subValue: '',
       icon: Trophy,
@@ -155,7 +155,7 @@ const EarningsDashboard: React.FC = () => {
                   TABLEAU DE BORD FINANCIER
                 </h1>
                 <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest">
-                  Suivi de tes Cash Prizes et de tes Commissions d'arbitrage
+                  Suivi de tes Cagnottes et de tes Commissions d'arbitrage
                 </p>
               </div>
             </div>
@@ -204,7 +204,7 @@ const EarningsDashboard: React.FC = () => {
                     Ton evolution sur 30 jours
                   </CardTitle>
                   <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">
-                    Gains, remboursements et mises déjà passes par ton compte
+                    Gains, rembourséments et mises déjà passes par ton compte
                   </p>
                 </div>
                 <div className="px-3 py-1 bg-white/5 text-white text-[10px] font-mono font-black uppercase">
@@ -275,7 +275,7 @@ const EarningsDashboard: React.FC = () => {
                   </div>
                   <div>
                     <div className="text-[10px] font-mono text-zoyd-blue uppercase font-black tracking-widest">
-                      Fiabilite
+                      Fiabilité
                     </div>
                     <div className="text-2xl font-display font-black text-white italic tracking-tighter">
                       {user.trustScore}/100
@@ -345,7 +345,7 @@ const EarningsDashboard: React.FC = () => {
                     <Clock className="w-6 h-6 text-white/10" />
                   </div>
                   <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest">
-                    Aucun mouvement recent enregistre
+                    Aucun mouvement récent enregistré
                   </p>
                 </div>
               ) : null}

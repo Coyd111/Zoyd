@@ -1,4 +1,4 @@
-export const CODM_RANKS = [
+export const CODM_RANGS = [
   'Rookie',
   'Veteran',
   'Elite',
@@ -8,10 +8,10 @@ export const CODM_RANKS = [
   'Legendary',
 ] as const;
 
-export const CODM_RANK_SHOWCASE = ['Rookie', 'Elite', 'Master', 'Legendary'] as const;
+export const CODM_RANG_SHOWCASE = ['Rookie', 'Elite', 'Master', 'Legendary'] as const;
 
 export const DEVICE_OPTIONS = [
-  { id: 'phone', label: 'Telephone' },
+  { id: 'phone', label: 'Téléphone' },
   { id: 'tablet', label: 'Tablette' },
   { id: 'pc', label: 'PC' },
   { id: 'other', label: 'Autre' },
@@ -43,7 +43,7 @@ export const MJ_FORMATS = ['1VS1', '2VS2', '3VS3', '5VS5'] as const;
 export const MJ_MODE_OPTIONS = [
   { id: 'snd', name: 'S&D', desc: 'Recherche et destruction' },
   { id: 'hp', name: 'HARDPOINT', desc: "Rotation d'objectif" },
-  { id: 'dom', name: 'DOMINATION', desc: 'Controle de zones' },
+  { id: 'dom', name: 'DOMINATION', desc: 'Contrôle de zones' },
   { id: 'fl', name: 'FRONTLINE', desc: 'Respawn competitif' },
 ] as const;
 

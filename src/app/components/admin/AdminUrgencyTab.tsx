@@ -257,7 +257,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   className="border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target border-white/10 text-white/60 hover:text-red-300 hover:border-red-500/30"
                 >
                   <Ban className="w-3 h-3 inline mr-2" />
-                  Annulér
+                  Annuler
                 </button>
               </div>
             </div>

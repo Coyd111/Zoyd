@@ -80,7 +80,7 @@ const BottomNav: React.FC = React.memo(() => {
             </div>
             <div className="p-2 pb-4">
               <button
-                onClick={() => handleNavigate('/mj/creer')}
+                onClick={() => handleNavigate('/mj/créer')}
                 aria-label="Créer un match"
                 className="flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all bg-zoyd-yellow text-black hover:bg-white mb-2"
               >

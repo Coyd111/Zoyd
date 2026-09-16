@@ -27,9 +27,9 @@ export const FinalResultsForm = ({
 
   return (
     <div className="border border-white/10 bg-zoyd-surface/20 p-5 space-y-4">
-      <h3 className="text-sm font-bold text-white mb-3">Soumettre les resultats de la finale</h3>
+      <h3 className="text-sm font-bold text-white mb-3">Soumettre les résultats de la finale</h3>
       <p className="text-[10px] text-white/70 mb-4">
-          Saisis le classement (placement) et les kills de chaque finaliste. Seuls les joueurs avec un placement {'>'} 0 seront enregistres.
+          Saisis le classement (placement) et les kills de chaque finaliste. Seuls les joueurs avec un placement {'>'} 0 seront enregistrés.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
@@ -85,7 +85,7 @@ export const FinalResultsForm = ({
           disabled={isLoading || entries.filter((e) => e.placement > 0).length === 0}
           className="touch-target text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
         >
-          {isLoading ? 'Envoi...' : 'Valider les resultats'}
+          {isLoading ? 'Envoi...' : 'Valider les résultats'}
         </button>
       </div>
     </div>

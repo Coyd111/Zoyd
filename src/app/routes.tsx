@@ -79,7 +79,7 @@ export const router = createBrowserRouter([
             lazy: hubLoader,
           },
           {
-            path: 'creer',
+            path: 'créer',
             lazy: createMatchLoader,
           },
           {
@@ -91,7 +91,7 @@ export const router = createBrowserRouter([
             lazy: tournoisLoader,
           },
           {
-            path: 'tournois/creer',
+            path: 'tournois/créer',
             lazy: createTournamentLoader,
           },
           {

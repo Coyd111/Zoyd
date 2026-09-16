@@ -139,13 +139,13 @@ const AdminDashboardPage: React.FC = () => {
                 <span className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest italic">Administration</span>
               </div>
               <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Centre de <span className="text-white/70">commandement</span></h1>
-              <p className="text-white/70 max-w-2xl mt-2">Vue operationnelle pour prioriser les litiges, garder un oeil sur les passes bloqués et agir vite sur les comptes qui degringolent en trust.</p>
+              <p className="text-white/70 max-w-2xl mt-2">Vue opérationnelle pour prioriser les litiges, garder un oeil sur les passes bloqués et agir vite sur les comptes qui degringolent en trust.</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 xl:min-w-[650px]">
               <FocusCard icon={<AlertTriangle className="w-4 h-4 text-red-300" aria-hidden="true" />} label="Litiges" value={adminInsights.openDisputes.length.toString()} detail="A trancher" tone="danger" />
               <FocusCard icon={<Users className="w-4 h-4 text-zoyd-yellow" aria-hidden="true" />} label="Reports" value={pendingReports.length.toString()} detail="En attente" tone="warning" />
               <FocusCard icon={<Swords className="w-4 h-4 text-green-400" aria-hidden="true" />} label="Salon live" value={matchQueues.live.length.toString()} detail="En cours" tone="success" />
-              <FocusCard icon={<Lock className="w-4 h-4 text-zoyd-blue" aria-hidden="true" />} label="Pools geles" value={frozenPools.toString()} detail="Sous hold" tone="neutral" />
+              <FocusCard icon={<Lock className="w-4 h-4 text-zoyd-blue" aria-hidden="true" />} label="Pools gelés" value={frozenPools.toString()} detail="Sous hold" tone="neutral" />
             </div>
           </div>
         </div>
@@ -188,7 +188,7 @@ const AdminDashboardPage: React.FC = () => {
                   Confirmer l&apos;annulation ?
                 </h3>
                 <p className="text-white/60 text-sm">
-                  Ce match sera annulé et les joueurs seront rembourses. Cette action est irréversible.
+                  Ce match sera annulé et les joueurs seront remboursés. Cette action est irréversible.
                 </p>
               </div>
             </div>
@@ -197,7 +197,7 @@ const AdminDashboardPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annulér
+                Annuler
               </button>
               <button
                 onClick={() => { const matchId = confirmAction; setConfirmAction(null); if (matchId) void handleCancelMatch(matchId); }}

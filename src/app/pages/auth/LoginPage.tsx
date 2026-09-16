@@ -16,7 +16,7 @@ import { SEOHead } from '../../components/SEOHead';
 
 const loginSchema = z.object({
   emailOrPseudo: z.string().min(1, 'Email ou pseudo requis'),
-  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caracteres'),
+  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
 
       useNotificationStore.getState().addNotification({
         type: 'system',
-        title: 'Connexion reussie',
+        title: 'Connexion réussie',
         message: `Content de te revoir, ${auth.user.pseudo} !`,
         priority: 'normal',
         actionUrl: '/',
@@ -71,7 +71,7 @@ const LoginPage: React.FC = () => {
       toast.error(errorMessage);
       useNotificationStore.getState().addNotification({
         type: 'system',
-        title: 'Echec de connexion',
+        title: 'Échec de connexion',
         message: errorMessage,
         priority: 'high',
         metadata: { showToast: false, dedupeKey: `login-error-${errorMessage}` },
@@ -139,7 +139,7 @@ const LoginPage: React.FC = () => {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-zoyd-blue/10 border border-zoyd-blue/20 text-zoyd-blue text-[10px] font-mono font-black uppercase tracking-[0.2em] italic">
               <ShieldCheck className="w-3.5 h-3.5" />
-              Acces sécurisé ZOYD
+              Accès sécurisé ZOYD
             </div>
 
             <h2 className="text-6xl font-display font-black text-white italic uppercase leading-[0.9] tracking-tighter">
@@ -148,16 +148,16 @@ const LoginPage: React.FC = () => {
             </h2>
 
             <p className="text-white/70 text-lg font-light leading-relaxed">
-              Retrouve ton profil joueur, ton wallet et tes modes de jeu dans le meme espace.
+              Retrouve ton profil joueur, ton portefeuille et tes modes de jeu dans le même espace.
             </p>
 
             <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/5">
               <div>
                 <div className="text-2xl font-display font-black text-white italic">Profil unique</div>
-                <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">Compte centralise</div>
+                <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">Compte centralisé</div>
               </div>
               <div>
-                <div className="text-2xl font-display font-black text-white italic">Wallet integre</div>
+                <div className="text-2xl font-display font-black text-white italic">Wallet intégré</div>
                 <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">Gains et activité</div>
               </div>
             </div>
@@ -196,7 +196,7 @@ const LoginPage: React.FC = () => {
               Identification
             </h1>
             <p className="text-white/70 font-mono text-[11px] uppercase tracking-widest flex items-center gap-2">
-              <Lock className="w-3 h-3" /> Acces joueur securise
+              <Lock className="w-3 h-3" /> Accès joueur sécurisé
             </p>
           </header>
 
@@ -270,10 +270,10 @@ const LoginPage: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-3">
               <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest cursor-not-allowed">
-                CONTINUER AVEC GOOGLE — BIENTOT DISPONIBLE
+                CONTINUER AVEC GOOGLE — BIENTÔT DISPONIBLE
               </Button>
               <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest cursor-not-allowed">
-                CONNEXION PAR NUMERO — BIENTOT DISPONIBLE
+                CONNEXION PAR NUMÉRO — BIENTÔT DISPONIBLE
               </Button>
             </div>
           </form>
@@ -282,7 +282,7 @@ const LoginPage: React.FC = () => {
             <p className="text-white/70 text-[11px] font-mono uppercase tracking-widest">
               Pas encore de compte ?{' '}
               <Link to="/auth/register" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2">
-                CREER MON COMPTE
+                CRÉER MON COMPTE
               </Link>
             </p>
           </footer>

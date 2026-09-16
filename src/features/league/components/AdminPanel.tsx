@@ -152,7 +152,7 @@ export const AdminPanel = ({
                   onChange={(e) => setReassignUserId(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:border-zoyd-yellow/50 "
                 >
-                  <option value="">Selectionner un joueur</option>
+                  <option value="">Sélectionner un joueur</option>
                   {season.registeredPlayers.map((p) => {
                     const currentDay = Object.entries(season.qualificationGroups).find(
                       ([, slot]) => slot?.players.includes(p.userId)

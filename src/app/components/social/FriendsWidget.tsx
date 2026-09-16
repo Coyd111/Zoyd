@@ -119,7 +119,7 @@ const FriendsWidget: React.FC = () => {
                 >
                   {value === 'friends' && 'Amis'}
                   {value === 'requests' && `Demandes ${pendingRequests.length > 0 ? `(${pendingRequests.length})` : ''}`}
-                  {value === 'blocked' && 'Bloques'}
+                  {value === 'blocked' && 'Bloqués'}
                 </button>
               ))}
             </div>
@@ -176,7 +176,7 @@ const FriendsWidget: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1.5 text-white/70 hover:text-zoyd-blue transition-colors" title="Message" aria-label={`Envoyer un message à ${friend.pseudo}`}>
+                        <button className="p-1.5 text-white/70 hover:text-zoyd-blue transition-colors" title="Message" aria-label={`Envoyér un message à ${friend.pseudo}`}>
                           <MessageCircle className="w-3.5 h-3.5" />
                         </button>
                         <button
@@ -240,7 +240,7 @@ const FriendsWidget: React.FC = () => {
                 <div className="divide-y divide-white/5">
                   {blockedIds.length === 0 && (
                     <div className="p-4 text-center text-[10px] font-mono text-white/70 uppercase">
-                      Aucun joueur bloque
+                      Aucun joueur bloqué
                     </div>
                   )}
                   {blockedIds.map((blockedId) => (

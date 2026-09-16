@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { useTrustScoreStore } from './trustScoreStore';
 
 export type ControllerType = 'touch' | 'controller' | 'emulator' | 'pc' | 'other';
-export type PlayerLevel = 'DEBUTANT' | 'COMPETITEUR' | 'CONFIRME' | 'VETERAN' | 'ELITE_ZOYD';
+export type PlayerLevel = 'DÉBUTANT' | 'COMPETITEUR' | 'CONFIRME' | 'VETERAN' | 'ELITE_ZOYD';
 export type ArbiterLevel = 'NOVICE' | 'PREMIER_MATCH' | 'ACTIF' | 'REGULIER' | 'VETERAN' | 'ELITE';
 export type UserRole = 'player' | 'arbiter' | 'organizer' | 'admin';
 

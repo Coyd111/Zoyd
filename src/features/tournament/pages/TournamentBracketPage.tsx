@@ -218,11 +218,11 @@ const TournamentBracketPage: React.FC = () => {
 
     if (tournament.teamSize > 1) {
       if (cleanedSquadName.length < 3) {
-        toast.error('Donne un nom clair a ton équipe avant de valider.');
+        toast.error('Donne un nom clair à ton équipe avant de valider.');
         return;
       }
       if (cleanedTeammates.some((entry) => entry.length < 2)) {
-        toast.error(`Ajoute les ${tournament.teamSize - 1} coéquipiers avant de confirmer ton equipe.`);
+        toast.error(`Ajouté les ${tournament.teamSize - 1} coéquipiers avant de confirmer ton équipe.`);
         return;
       }
 
@@ -238,7 +238,7 @@ const TournamentBracketPage: React.FC = () => {
     }
 
     if (availableSpend < registrationCost) {
-      toast.error("Solde insuffisant. Ajoute des ZC avant de confirmer ton inscription.");
+      toast.error("Solde insuffisant. Ajouté des ZC avant de confirmer ton inscription.");
       navigate(fundingPath);
       return;
     }
@@ -254,7 +254,7 @@ const TournamentBracketPage: React.FC = () => {
       toast.success(
         tournament.teamSize === 1
           ? `Ta place est réservée pour ${tournament.name}.`
-          : `${cleanedSquadName} est maintenant inscrite a ${tournament.name}.`
+          : `${cleanedSquadName} est maintenant inscrite à ${tournament.name}.`
       );
     } catch (error) {
       toast.error(
@@ -272,7 +272,7 @@ const TournamentBracketPage: React.FC = () => {
     try {
       const response = await leaveServerTournament(tournament.id);
       applyTournamentResponse(response);
-      toast.success('Inscription retiree et pass remboursé.');
+      toast.success('Inscription retirée et pass remboursé.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de retirer cette inscription.");
     }
@@ -287,7 +287,7 @@ const TournamentBracketPage: React.FC = () => {
     try {
       const response = await assignServerTournamentArbiter(tournament.id);
       applyTournamentResponse(response);
-      toast.success("Place d'arbitre reservee. Tu peux maintenant accompagner les duels.");
+      toast.success("Place d'arbitre réservée. Tu peux maintenant accompagner les duels.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "La place d'arbitre n'est plus disponible.");
     }
@@ -334,7 +334,7 @@ const TournamentBracketPage: React.FC = () => {
     const bravo = parseInt(scoreB, 10);
 
     if (isNaN(alpha) || isNaN(bravo) || alpha < 0 || bravo < 0) {
-      toast.error('Scores invalides.');
+      toast.error('Scores invalidés.');
       return;
     }
 
@@ -352,7 +352,7 @@ const TournamentBracketPage: React.FC = () => {
         notes,
       });
       applyTournamentResponse(response);
-      toast.success('Score valide. Le tableau avance.');
+      toast.success('Score validé. Le tableau avance.');
       setNotes('');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Impossible de valider ce score.');
@@ -518,7 +518,7 @@ const TournamentBracketPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="border border-white/10 bg-black/40 p-4 text-sm text-white/60">
-                    Aucun duel a suivre pour le moment.
+                    Aucun duel à suivre pour le moment.
                   </div>
                 )}
               </div>
@@ -539,7 +539,7 @@ const TournamentBracketPage: React.FC = () => {
                   Confirmer le retrait ?
                 </h3>
                 <p className="text-white/60 text-sm">
-                  Tu vas quitter ce tournoi. Ton pass d&apos;inscription ({formatZC(registrationCost)}) sera rembourse.
+                  Tu vas quitter ce tournoi. Ton pass d&apos;inscription ({formatZC(registrationCost)}) sera remboursé.
                 </p>
               </div>
             </div>
@@ -548,7 +548,7 @@ const TournamentBracketPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annulér
+                Annuler
               </button>
               <button
                 onClick={() => { setConfirmAction(null); void handleLeave(); }}

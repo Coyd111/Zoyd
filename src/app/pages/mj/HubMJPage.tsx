@@ -13,8 +13,8 @@ const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'] as const;
 const STATUS_FILTERS = [
   { label: 'TOUS', value: 'all' },
   { label: 'OUVERTS', value: 'recruiting' },
-  { label: 'PRESENCE', value: 'check_in' },
-  { label: 'PRETS', value: 'ready' },
+  { label: 'PRÉSENCE', value: 'check_in' },
+  { label: 'PRÊTS', value: 'ready' },
   { label: 'EN COURS', value: 'in_progress' },
 ] as const;
 
@@ -88,7 +88,7 @@ const HubMJPage: React.FC = () => {
 
           <div className="hidden md:flex gap-10 border-l border-white/10 pl-10 py-4">
             <Metric label="Matchs Actifs" value={metrics.active.toString()} accent="text-white" />
-            <Metric label="Prize Pool Global" value={`${metrics.livePool.toLocaleString()} ZC`} accent="text-zoyd-yellow" />
+            <Metric label="Cagnotte globale" value={`${metrics.livePool.toLocaleString()} ZC`} accent="text-zoyd-yellow" />
             <Metric label="Arbitres Demandés" value={metrics.arbitersNeeded.toString()} accent="text-zoyd-blue" />
           </div>
         </div>
@@ -149,7 +149,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                     : 'bg-black text-white/70 border-white/5 hover:border-white/20'
                 }`}
               >
-                FIABILITE 50+
+                FIABILITÉ 50+
               </button>
               </div>
             </div>
@@ -166,7 +166,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:border-zoyd-blue transition-colors"
                 />
               </div>
-              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
+              <Link to="/mj/créer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
                 <Activity className="w-4 h-4" /> CRÉER UN WAGER
               </Link>
             </div>
@@ -235,7 +235,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 Sois le premier à imposer le respect. Lance un Wager et attends que tes adversaires relèvent le défi.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link to="/mj/creer" className="hud-panel px-6 sm:px-12 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:bg-white hover:text-black transition-colors touch-target">
+                <Link to="/mj/créer" className="hud-panel px-6 sm:px-12 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:bg-white hover:text-black transition-colors touch-target">
                   Lancer un Wager
                 </Link>
                 <Link to="/wallet" className="border border-white/10 px-6 sm:px-10 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors touch-target">

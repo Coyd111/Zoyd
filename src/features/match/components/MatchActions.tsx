@@ -138,7 +138,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
       {!user && (
         <div className="space-y-4">
           <p className="text-white/70 text-sm">
-            Connecte-toi pour rejoindre une equipe, suivre la salle et discuter avec les autres joueurs.
+            Connecte-toi pour rejoindre une équipe, suivre la salle et discuter avec les autres joueurs.
           </p>
           <Link to="/auth/login" className="inline-flex items-center gap-2 bg-white text-black px-5 py-3 font-display font-black uppercase tracking-widest text-xs italic">
             Connexion joueur
@@ -205,7 +205,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </button>
           </div>
           <p className="text-xs text-white/70">
-            Une fois ton pass engage, ta place reste réservée jusqu'au score final.
+            Une fois ton pass engagé, ta place reste réservée jusqu'au score final.
           </p>
           {match.scheduledAt ? (
             <p className="text-xs text-white/70">
@@ -296,7 +296,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               type="text"
               value={proofsState.scoreboardProofs}
               onChange={(event) => proofsState.setScoreboardProofs(event.target.value)}
-              placeholder="Screens scoreboard (liens ou refs, separes par des virgules)"
+              placeholder="Captures d'écran (liens ou refs, séparés par des virgules)"
               aria-label="Liens des scores"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
@@ -436,7 +436,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                       onClick={handlers.addEvidence}
                       className="px-5 py-3 border border-zoyd-blue/30 text-zoyd-blue text-[10px] font-display font-black uppercase tracking-widest hover:bg-zoyd-blue hover:text-black transition-colors"
                     >
-                      Envoyer
+                      Envoyér
                     </button>
                   </div>
                 )}
@@ -560,7 +560,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             <textarea
               value={disputeState.evidence}
               onChange={(event) => disputeState.setEvidence(event.target.value)}
-              placeholder="Screenshots, room logs ou preuves, séparés par des virgules"
+              placeholder="Scréénshots, room logs ou preuves, séparés par des virgules"
               aria-label="Preuves du litige"
               className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />

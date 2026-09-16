@@ -47,7 +47,7 @@ const ForgotPasswordPage: React.FC = () => {
       toast.success(response.message);
       navigate('/auth/login');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Reinitialisation impossible.');
+      toast.error(error instanceof Error ? error.message : 'Réinitialisation impossible.');
     } finally {
       setIsResetting(false);
     }
@@ -57,7 +57,7 @@ const ForgotPasswordPage: React.FC = () => {
     <div className="min-h-dvh bg-zoyd-black flex flex-col items-center justify-center p-5 relative font-ui scanline safe-top safe-bottom">
       <SEOHead
         title="Mot de passe oublié — ZOYD"
-        description="Reinitialise ton mot de passe ZOYD avec un code de verification."
+        description="Réinitialise ton mot de passe ZOYD avec un code de vérification."
         path="/auth/forgot"
         noindex
       />
@@ -83,14 +83,14 @@ const ForgotPasswordPage: React.FC = () => {
           <p className="text-white/60 text-center text-sm mb-8">
             {codeSent
               ? 'Entre le code reçu puis choisis un nouveau mot de passe.'
-              : 'Indique ton pseudo, email ou numero. Tu recevras un code de verification.'}
+              : 'Indique ton pseudo, email ou numéro. Tu recevras un code de vérification.'}
           </p>
 
           {!codeSent ? (
             <form onSubmit={handleRequest} className="space-y-4">
               <div>
                 <label htmlFor="forgot-identifier" className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
-                  Pseudo, email ou numero
+                  Pseudo, email ou numéro
                 </label>
                 <Input
                   id="forgot-identifier"
@@ -136,7 +136,7 @@ const ForgotPasswordPage: React.FC = () => {
                 <Input
                   id="reset-password"
                   type="password"
-                  placeholder="8+ caracteres, majuscule, chiffre, special"
+                  placeholder="8+ caractères, majuscule, chiffre, special"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="bg-black border border-white/10 text-white"
@@ -151,7 +151,7 @@ const ForgotPasswordPage: React.FC = () => {
                 <Input
                   id="reset-confirm"
                   type="password"
-                  placeholder="Repete le mot de passe"
+                  placeholder="Répète le mot de passe"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="bg-black border border-white/10 text-white"
@@ -164,7 +164,7 @@ const ForgotPasswordPage: React.FC = () => {
                 disabled={isResetting || code.length !== 8 || !newPassword || newPassword !== confirmPassword}
                 className="w-full bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors disabled:opacity-50"
               >
-                {isResetting ? 'Reinitialisation...' : 'Reinitialiser'}
+                {isResetting ? 'Réinitialisation...' : 'Réinitialiser'}
               </Button>
               <button
                 type="button"

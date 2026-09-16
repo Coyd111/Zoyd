@@ -121,7 +121,7 @@ const trimTypingState = (typing: Record<string, TypingMember[]>) => {
   );
 };
 
-const MAX_PRESENCE_CHANNELS = 50;
+const MAX_PRÉSENCE_CHANNELS = 50;
 const MAX_SEEN_CHANNELS = 50;
 
 const capRecordKeys = <T>(record: Record<string, T>, max: number): Record<string, T> => {
@@ -220,7 +220,7 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
         roomPresence: capRecordKeys({
           ...state.roomPresence,
           [channelId]: nextMembers,
-        }, MAX_PRESENCE_CHANNELS),
+        }, MAX_PRÉSENCE_CHANNELS),
       };
     });
 
@@ -319,7 +319,7 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
       roomPresence: capRecordKeys({
         ...state.roomPresence,
         [snapshot.channelId]: snapshot.members.map(normalizePresenceMember),
-      }, MAX_PRESENCE_CHANNELS),
+      }, MAX_PRÉSENCE_CHANNELS),
       seenByChannel: capRecordKeys({
         ...state.seenByChannel,
         [snapshot.channelId]: snapshot.seen,

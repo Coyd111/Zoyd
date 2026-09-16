@@ -124,7 +124,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             </div>
           </div>
 
-          <ShieldCheck className="w-4 h-4 text-white/70 shrink-0" title="Canal securise" />
+          <ShieldCheck className="w-4 h-4 text-white/70 shrink-0" title="Canal sécurisé" />
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
           <div className="h-full flex flex-col items-center justify-center text-white/70 text-center">
             <Terminal className="w-8 h-8 mb-4 opacity-10" />
             <span className="font-mono text-[10px] uppercase font-bold tracking-widest">
-              Etablissement de la connexion securisee...
+              Etablissement de la connexion sécurisée...
             </span>
           </div>
         ) : null}
@@ -209,8 +209,8 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             type="submit"
             disabled={!inputValue.trim() || !isConnected}
             className="w-14 bg-white text-black hover:bg-zoyd-yellow transition-colors disabled:opacity-50 flex items-center justify-center border-none"
-            aria-label="Envoyer"
-            title="Envoyer le message"
+            aria-label="Envoyér"
+            title="Envoyér le message"
           >
             <Send className="w-5 h-5" />
           </button>

@@ -25,7 +25,7 @@ import { SEOHead } from '../../components/SEOHead';
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const MAX_ENTRY_OPTIONS = [4, 8, 16, 32];
 const WEAPON_OPTIONS = [
-  'Toutes armes selon reglement',
+  'Toutes armes selon règlement',
   'Snipers uniquement',
   'Assaut / SMG',
   'No scorestreak agressif',
@@ -136,7 +136,7 @@ const CreateTournamentPage: React.FC = () => {
 
   const onSubmit = async (data: FormValues) => {
     if (!user) {
-      toast.error('Connecte-toi avant de creer un tournoi.');
+      toast.error('Connecte-toi avant de créer un tournoi.');
       navigate('/auth/login');
       return;
     }
@@ -147,13 +147,13 @@ const CreateTournamentPage: React.FC = () => {
     }
 
     if (selectedMapPool.length === 0) {
-      toast.error('Selectionne au moins une carte dans le map pool.');
+      toast.error('Sélectionne au moins une carte dans le map pool.');
       return;
     }
 
     const startAt = new Date(data.startsAt);
     if (Number.isNaN(startAt.getTime()) || startAt.getTime() <= Date.now()) {
-      toast.error("Choisis une fenêtre de depart valide dans le futur.");
+      toast.error("Choisis une fenêtre de départ validé dans le futur.");
       return;
     }
 
@@ -185,7 +185,7 @@ const CreateTournamentPage: React.FC = () => {
 
       hydrateTournaments([response.tournament]);
       applyServerAccountState(response);
-      toast.success('Tournoi publie. Les inscriptions sont ouvertes.');
+      toast.success('Tournoi publié. Les inscriptions sont ouvertes.');
       navigate(`/mj/tournois/${response.tournament.id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Impossible de publier ce tournoi.');
@@ -196,7 +196,7 @@ const CreateTournamentPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
-      <SEOHead title="Créer un tournoi — ZOYD" description="Crée un tournoi avec brackets automatiques." path="/mj/tournois/creer" noindex />
+      <SEOHead title="Créer un tournoi — ZOYD" description="Crée un tournoi avec brackets automatiques." path="/mj/tournois/créer" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-8 relative z-10">
@@ -232,8 +232,8 @@ const CreateTournamentPage: React.FC = () => {
               Créer un <span className="text-zoyd-yellow">tournoi</span>
             </h1>
             <p className="text-white/60 mt-3 max-w-xl">
-              Prepare une cup solo ou en equipe, choisis l'heure, les règles et le montant d'inscription.
-              Une fois publie, les joueurs pourront te rejoindre directement.
+              Prépare une cup solo ou en équipe, choisis l'heure, les règles et le montant d'inscription.
+              Une fois publié, les joueurs pourront te rejoindre directement.
             </p>
           </div>
         </header>
@@ -263,7 +263,7 @@ const CreateTournamentPage: React.FC = () => {
                   />
                   {errors.name ? (
                     <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-2" role="alert">
-                      Minimum 4 caracteres pour nommer le tournoi.
+                      Minimum 4 caractères pour nommer le tournoi.
                     </p>
                   ) : null}
                 </div>
@@ -358,7 +358,7 @@ const CreateTournamentPage: React.FC = () => {
                   <label htmlFor="map-pool" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Cartes au programme
                   </label>
-                  <div id="map-pool" role="group" aria-label="Selection des cartes" className="max-h-[300px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div id="map-pool" role="group" aria-label="Sélection des cartes" className="max-h-[300px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-2">
                     {MJ_MAP_POOL.map((map) => {
                       const selected = selectedMapPool.includes(map);
                       return (
@@ -402,7 +402,7 @@ const CreateTournamentPage: React.FC = () => {
 
                   <div>
                     <label htmlFor="pointstreaks" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                      Point streaks
+                      Séries de points
                     </label>
                     <select
                       id="pointstreaks"
@@ -472,7 +472,7 @@ const CreateTournamentPage: React.FC = () => {
             <section className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/30">
               <div className="flex items-center gap-3 mb-6">
                 <Users className="w-5 h-5 text-zoyd-yellow" />
-                <h2 className="text-lg sm:text-xl md:text-2xl font-display font-black uppercase italic">Inscriptions et recompenses</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-display font-black uppercase italic">Inscriptions et récompenses</h2>
               </div>
 
               <div className="space-y-8">
@@ -529,7 +529,7 @@ const CreateTournamentPage: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="device-restriction" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                      Appareils acceptes
+                      Appareils acceptés
                     </label>
                     <select
                       id="device-restriction"
@@ -547,7 +547,7 @@ const CreateTournamentPage: React.FC = () => {
 
                   <div>
                     <label htmlFor="controller-restriction" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                      Type de controle accepte
+                      Type de contrôle accepté
                     </label>
                     <select
                       id="controller-restriction"
@@ -596,7 +596,7 @@ const CreateTournamentPage: React.FC = () => {
                 />
                 <SummaryBox label="Mode" value={selectedMode} />
                 <SummaryBox label="Cartes" value={selectedMapPool.join(' / ') || 'Aucune carte'} />
-                <SummaryBox label="Fenetre" value={watch('startsAt') || 'A definir'} />
+                <SummaryBox label="Fenêtre" value={watch('startsAt') || 'A definir'} />
                 <SummaryBox label="Restrictions" value={`${selectedDeviceRestriction} / ${selectedControllerRestriction}`} />
               </div>
             </div>
@@ -604,10 +604,10 @@ const CreateTournamentPage: React.FC = () => {
             <div className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/40">
               <h2 className="text-lg font-display font-black uppercase italic mb-6">Ce que les joueurs jouent</h2>
               <div className="space-y-4">
-                <ProjectionRow label="Places ouvertes" value={`${selectedMaxEntries} ${teamSize > 1 ? 'equipes' : 'joueurs'}`} />
+                <ProjectionRow label="Places ouvertes" value={`${selectedMaxEntries} ${teamSize > 1 ? 'équipes' : 'joueurs'}`} />
                 <ProjectionRow label="Joueurs au complet" value={`${projections.totalPlayers}`} />
                 <ProjectionRow label="Arbitres necessaires" value={`${projections.arbitersNeeded}`} />
-                <ProjectionRow label={teamSize > 1 ? 'Cout pour une equipe' : 'Cout pour un joueur'} value={formatZC(projections.squadCost)} />
+                <ProjectionRow label={teamSize > 1 ? 'Coût pour une équipe' : 'Coût pour un joueur'} value={formatZC(projections.squadCost)} />
                 <ProjectionRow label="Cagnotte totale" value={formatZC(projections.grossPool)} accent="text-zoyd-yellow" />
                 <ProjectionRow label="A gagner" value={formatZC(projections.playerPool)} />
                 <ProjectionRow label="Part arbitres" value={formatZC(projections.arbiterPool)} />
@@ -622,12 +622,12 @@ const CreateTournamentPage: React.FC = () => {
                 Publication
               </div>
               <p className="text-sm text-white/60 mb-6">
-                Ton tournoi apparaitra d&apos;abord dans les inscriptions ouvertes. Les joueurs rejoignent ensuite
+                Ton tournoi apparaîtra d&apos;abord dans les inscriptions ouvertes. Les joueurs rejoignent ensuite
                 depuis leur profil, pendant que tu gardès la main sur l&apos;organisation.
               </p>
               {teamSize > 1 ? (
                 <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 p-4 text-sm text-white/60 mb-6">
-                  Pour les formats en equipe, le capitaine inscrit tout son groupe d&apos;un coup.
+                  Pour les formats en équipe, le capitaine inscrit tout son groupe d&apos;un coup.
                 </div>
               ) : null}
               {reserveCreatorAsArbiter ? (
@@ -640,7 +640,7 @@ const CreateTournamentPage: React.FC = () => {
                 disabled={isSubmitting}
                 className={`touch-target w-full py-5 font-display font-black italic tracking-widest uppercase transition-all ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}
               >
-                {isSubmitting ? 'Publication...' : 'Publier le tournoi'}
+                {isSubmitting ? 'Publication...' : 'Publiér le tournoi'}
               </button>
             </div>
           </aside>

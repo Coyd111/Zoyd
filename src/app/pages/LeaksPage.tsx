@@ -53,7 +53,7 @@ const articles: LeakArticle[] = [
     excerpt: 'Officiellement annoncée le 7 Août lors du livestream S7, la collaboration historique avec Honkai Impact 3rd arrive en Septembre avec les skins Kiana, Raiden Mei et Bronya.',
     content: [
       'C\'est la première fois que Tencent (CODM) et miHoYo/HoYoverse collaborent sur un jeu mobile. Annoncee lors du livestream de l\'anniversaire S7 le 7 Août 2026, cette collaboration historique est confirmeee pour le lancement de la Saison 8.',
-      'Les trois Herrscher arriveront en tant que skins Operateur specialises : Kiana Kaslana (Herrscher of Flamescion) sur Siren, Raiden Mei (Herrscher of Thunder) sur Rin Yoshida, et Bronya Zaychik (Herrscher of Reason) sur Kestrel.',
+      'Les trois Herrscher arriveront en tant que skins Opérateur specialises : Kiana Kaslana (Herrscher of Flamescion) sur Siren, Raiden Mei (Herrscher of Thunder) sur Rin Yoshida, et Bronya Zaychik (Herrscher of Reason) sur Kestrel.',
       'Le teaser officiel montre l\'ascenseur de l\'Hyperion Bridge de Honkai Impact 3rd s\'ouvrant sur le logo conjoint. La date de sortie prevue est le 3 Septembre 2026.',
     ],
     category: 'saison',
@@ -84,7 +84,7 @@ const articles: LeakArticle[] = [
   {
     id: '3',
     title: 'Mythique RAM-7 "Nebula\'s Brush" — Le premier mythique de la S8',
-    excerpt: 'La Whorl of Midnight Mythic Draw propose la RAM-7 Mythique avec un design cosmique, accompagnee du skin Legendary Klepto Twilight Traitor.',
+    excerpt: 'La Whorl of Midnight Mythic Draw proposé la RAM-7 Mythique avec un design cosmique, accompagnee du skin Legendary Klepto Twilight Traitor.',
     content: [
       'La Whorl of Midnight Mythic Draw est la principale attraction du store en S8. Elle contient la RAM-7 Nebula\'s Brush, un weapon blueprint mythique avec un design cosmique/nebuleux.',
       'Le draw comprend egalement le skin Legendary Klepto "Twilight Traitor", une Smoke Grenade "Whorl of Midnight" tactical blueprint, et un melee "Streaked Shoveler" weapon blueprint.',
@@ -105,7 +105,7 @@ const articles: LeakArticle[] = [
       'Les changements de balance de la S8 sont déjà visibles sur le test server. Voici les principaux buffs :',
       'BUFFS : Lachmann 5.56 (bullet impact 1→1.2, STF -20%), Chopper (+15% ADS movement avec Heavy Handle), S36 (ADS 420→380ms, STF 180→150ms), Cronen Squall (improved ranges, tighter BSA), Fennec (improved range profile), Krig 6 (nouveau phase 31 dégâts a 10m), FFAR 1 (range initial 6.6→10m), LAPA (31/28/20/16 → 33/29/22/16), Arctic .50 (moins de recoil vertical).',
       'NERFS : FSS Hurricane (sprint speed 6.41→6.26m/s, -6% ADS movement avec FTac Coldforge), Hades (range 16-32m → 12-28m en BR).',
-      'BR CLASSES : Jet Boost (wall-running supprime), Defender (damage resistance a l\'activation supprimee), Shockwave (degats reduits), Rewind (ne reset plus la vie a l\'activation). Quick Strike (distance 15/20/35→5/10/10m, dégâts 50/80/150→100/150/250).',
+      'BR CLASSES : Jet Boost (wall-running supprimé), Defender (damage resistance a l\'activation supprimée), Shockwave (degats reduits), Rewind (ne reset plus la vie a l\'activation). Quick Strike (distance 15/20/35→5/10/10m, dégâts 50/80/150→100/150/250).',
     ],
     category: 'patches',
     date: '26 Août 2026',
@@ -152,7 +152,7 @@ const articles: LeakArticle[] = [
   {
     id: '7',
     title: 'Ranked Festival — Nouvel event cumulatif pour les joueurs Ranked',
-    excerpt: 'CODM ajoute un "Ranked Festival" : plus tu joues de matchs Ranked (MP et BR), plus tu gagnes de récompenses exclusives, dont l\'ASM10 Turbulent Mayhem.',
+    excerpt: 'CODM ajouté un "Ranked Festival" : plus tu joues de matchs Ranked (MP et BR), plus tu gagnés de récompenses exclusives, dont l\'ASM10 Turbulent Mayhem.',
     content: [
       'Un nouveau systeme d\'evenement nomme "Ranked Festival" sera introduit en S8 pour recompenser les joueurs actifs en Ranked Play.',
       'COMMENT CA MARCHE : Chaque match Ranked joue (MP ou BR) te donne des points d\'event. Plus tu joues, plus tu débloquées de recompenses. C\'est en PLUS des récompenses Ranked habituelles.',
@@ -168,10 +168,10 @@ const articles: LeakArticle[] = [
   },
   {
     id: '8',
-    title: 'Buffs Equipement S8 — Drill Charge 2x plus rapide, Sticky Grenade buff',
+    title: 'Buffs Équipement S8 — Drill Charge 2x plus rapide, Sticky Grenade buff',
     excerpt: 'Le patch S8 buff egalement les équipements : Drill Charge détonation 1.4→0.7s, Sticky Grenade radius et dégâts augmentes, plus de Flash Drone et Inflatable Decoy.',
     content: [
-      'Les changements d\'equipement de la S8 sont significatifs et pourraient changer la meta des tactical/lethal :',
+      'Les changements d\'équipement de la S8 sont significatifs et pourraient changer la meta des tactical/lethal :',
       'BUFFS MAJEURS : Drill Charge (detonation 1.4→0.7s, dégâts min 60→80), Sticky Grenade (radius 5→5.5m, dégâts min 55→80), Flash Drone (quantité 1→2), Inflatable Decoy (quantité 1→2), EMP (detonation 1.5→1.2s), Douser Grenade (radius 3→4m, quantité 2→3).',
       'SHOCK STICK : Ajout d\'une fonction quick-throw pour une vitesse de lancer plus rapide. C\'est un buff indirect significatif.',
       'IMPACT META : Le Drill Charge deviendra probablement le lethal meta pour les modes objectif (Hardpoint, Domination) grâce à sa vitesse de détonation réduite de moitie.',

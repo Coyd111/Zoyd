@@ -25,12 +25,12 @@ const ModeSelectionPage: React.FC = () => {
         description="Choisis entre Multijoueur et Battle Royale."
         path="/mode"
       />
-      <a href="#mode-selection" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
+      <a href="#mode-sélection" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
         Aller au contenu principal
       </a>
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
-      <div id="mode-selection" className="relative max-w-[1500px] mx-auto px-5 md:px-8 py-8 md:py-14 safe-bottom">
+      <div id="mode-sélection" className="relative max-w-[1500px] mx-auto px-5 md:px-8 py-8 md:py-14 safe-bottom">
         <div className="flex items-center justify-between gap-4 mb-12">
           <Link
             to="/"
@@ -53,7 +53,7 @@ const ModeSelectionPage: React.FC = () => {
             <span className="text-zoyd-yellow">terrain de jeu.</span>
           </h1>
           <p className="text-white/46 text-base sm:text-lg md:text-xl leading-relaxed max-w-3xl">
-            Ton profil, ton wallet et ta progression restent dans le meme espace. Tu entres dans le mode que tu
+            Ton profil, ton portefeuille et ta progression restent dans le même espace. Tu entres dans le mode que tu
             veux suivre maintenant, puis ZOYD garde tout relié autour de ton compte.
           </p>
         </motion.div>
@@ -95,7 +95,7 @@ const ModeSelectionPage: React.FC = () => {
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
                     <InfoChip label="Parties" value="Matchs + tournois" />
-                    <InfoChip label="Compte" value="Profil centralise" />
+                    <InfoChip label="Compte" value="Profil centralisé" />
                     <InfoChip label="Wallet" value="Actif" className="col-span-2 sm:col-span-1" />
                   </div>
 
@@ -162,12 +162,12 @@ const ModeSelectionPage: React.FC = () => {
           <div>
             <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/70 mb-1.5 md:mb-2">Compte ZOYD</div>
             <div className="text-base sm:text-lg font-display font-black italic text-white">
-              Un seul profil pour tes modes, tes matchs et ton wallet.
+              Un seul profil pour tes modes, tes matchs et ton portefeuille.
             </div>
           </div>
           <div className="inline-flex items-start md:items-center gap-2 md:gap-3 text-sm text-white/52">
             <Wallet className="w-4 h-4 text-zoyd-yellow shrink-0 mt-0.5 md:mt-0" />
-            Tout reste relié a ton espace joueur.
+            Tout reste relié à ton espace joueur.
           </div>
         </div>
       </div>

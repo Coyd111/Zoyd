@@ -38,9 +38,9 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
   const status = statusConfig[tournament.status];
   const completion = Math.min(100, (tournament.entries.length / tournament.maxEntries) * 100);
   const winner = tournament.entries.find((entry) => entry.finalPlacement === 1);
-  const slotLabel = tournament.teamSize > 1 ? 'Equipes inscrites' : 'Places prises';
+  const slotLabel = tournament.teamSize > 1 ? 'Équipes inscrites' : 'Places prises';
   const payoutLabel = tournament.teamSize > 1 ? 'Top 3 équipes récompensées' : 'Top 3 récompenses';
-  const entryLabel = tournament.teamSize > 1 ? `${tournament.entries.length}/${tournament.maxEntries} equipes` : `${tournament.entries.length}/${tournament.maxEntries} inscrits`;
+  const entryLabel = tournament.teamSize > 1 ? `${tournament.entries.length}/${tournament.maxEntries} équipes` : `${tournament.entries.length}/${tournament.maxEntries} inscrits`;
 
   return (
     <div
@@ -76,7 +76,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
         <div className="flex items-center gap-3">
           <Clock3 className="w-4 h-4 text-white/70" />
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-white/70">Depart</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-white/70">Départ</div>
             <div className="text-[10px] font-display font-black uppercase italic text-white">
               {tournament.status === 'completed'
                 ? `Terminé ${getRelativeTime(tournament.finishedAt || tournament.startsAt)}`

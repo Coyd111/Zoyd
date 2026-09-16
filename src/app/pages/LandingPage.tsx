@@ -19,7 +19,7 @@ const platformCards = [
   {
     title: 'Wagers Sécurisés',
     description:
-      'Mise sur ton talent en 1v1 ou 2v2. Un arbitre ZOYD est toujours présent en jeu pour garantir l\'équité. Zéro screenshot requis.',
+      'Mise sur ton talent en 1v1 ou 2v2. Un arbitre ZOYD est toujours présent en jeu pour garantir l\'équité. Zéro scréénshot requis.',
     icon: ShieldCheck,
   },
   {
@@ -31,7 +31,7 @@ const platformCards = [
   {
     title: 'Mobile Money Intégré',
     description:
-      'Gère tes dépôts et retire tes gains instantanément via MTN, Moov ou Celtiis directement depuis ton téléphone.',
+      'Gère tes dépôts et retiré tes gains instantanément via MTN, Moov ou Celtiis directement depuis ton téléphone.',
     icon: Wallet,
   },
 ];
@@ -55,7 +55,7 @@ export default function LandingPage() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline selection:bg-zoyd-yellow selection:text-black overflow-x-hidden safe-top">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline sélection:bg-zoyd-yellow sélection:text-black overflow-x-hidden safe-top">
       <SEOHead
         title="ZOYD — Plateforme CODM Afrique"
         description="Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique."
@@ -143,10 +143,10 @@ export default function LandingPage() {
                       <div className="flex items-center justify-between pb-4">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-xs font-mono uppercase tracking-widest text-white/75">Match Live</span>
+                          <span className="text-xs font-mono uppercase tracking-widest text-white/75">Match en direct</span>
                         </div>
                         <div className="text-zoyd-yellow text-[10px] font-mono uppercase tracking-widest">
-                          Wager 1v1
+                          Pari 1v1
                         </div>
                       </div>
 
@@ -167,9 +167,9 @@ export default function LandingPage() {
                         </div>
                       </div>
 
-                      {/* Cash Prize */}
+                      {/* Cagnotte */}
                       <div className="p-4 flex flex-col items-center justify-center gap-1 my-2 relative overflow-hidden">
-                        <span className="text-[10px] font-mono uppercase text-white/70 tracking-widest relative z-10">Cash Prize</span>
+                        <span className="text-[10px] font-mono uppercase text-white/70 tracking-widest relative z-10">Cagnotte</span>
                         <span className="text-3xl font-display font-black text-zoyd-yellow relative z-10">200 ZC</span>
                       </div>
 
@@ -290,7 +290,7 @@ export default function LandingPage() {
               >
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.28em] mb-5 text-zoyd-blue">
-                    PLAY & COMPETE
+                    JOUER & GAGNER
                   </div>
                   <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
                     Le Joueur
@@ -320,7 +320,7 @@ export default function LandingPage() {
               >
                 <div>
                   <div className="text-[10px] font-mono uppercase tracking-[0.28em] mb-5 text-zoyd-yellow">
-                    WATCH & EARN
+                    REGARDER & GAGNER
                   </div>
                   <h3 className="text-3xl md:text-4xl font-display font-black uppercase italic tracking-tight mb-4">
                     L'Arbitre
@@ -352,7 +352,7 @@ export default function LandingPage() {
             <div className="p-8 md:p-10">
               <div className="max-w-3xl mb-10">
                 <h2 className="text-4xl md:text-6xl font-display font-black uppercase italic tracking-[-0.04em] leading-[0.9] mb-5">
-                  En trois etapes,
+                  En trois étapes,
                   <br />
                   tu entres sur ZOYD.
                 </h2>
@@ -373,7 +373,7 @@ export default function LandingPage() {
                     className="p-6"
                   >
                     <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-zoyd-blue mb-5">
-                      Etape 0{index + 1}
+                      Étape 0{index + 1}
                     </div>
                     <h3 className="text-2xl font-display font-black uppercase italic tracking-tight mb-3">
                       {step.title}

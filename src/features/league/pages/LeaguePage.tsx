@@ -101,7 +101,7 @@ const SeasonCard: React.FC<{
                 className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50 touch-target"
                 aria-label="Se désinscrire de la saison"
               >
-                Se desinscrire
+                Se désinscrire
               </button>
             ) : (
               <button
@@ -414,7 +414,7 @@ const LeaguePage: React.FC = () => {
           <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
             <p className="text-sm text-yellow-300">Démarrer les qualifications ? Cette action est irréversible.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annulér</button>
+              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
               <button onClick={() => { setConfirmAction(null); void handleStartQualification(activeSeason?.id || ''); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
             </div>
           </div>
@@ -426,7 +426,7 @@ const LeaguePage: React.FC = () => {
           <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
             <p className="text-sm text-yellow-300">Créer une nouvelle saison ? Cette action est irréversible.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annulér</button>
+              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
               <button onClick={() => { setConfirmAction(null); void handleCreateSeason(); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
             </div>
           </div>

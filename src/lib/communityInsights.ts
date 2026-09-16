@@ -383,7 +383,7 @@ export const buildCommunityPlayers = ({
       }
 
       if (match.result) {
-        if (match.result.resolutionType === 'forfeit' && match.result.forfeitTeam === player.team) {
+        if (match.result.résolutionType === 'forfeit' && match.result.forfeitTeam === player.team) {
           record.forfeitedMatches.add(match.id);
         }
 
@@ -598,7 +598,7 @@ export const buildAdminInsights = ({
   const recentEvents: ModerationEvent[] = [
     ...reports.map((report) => ({
       id: report.id,
-      action: isReportOpen(report) ? 'Signalement recu' : 'Signalement traite',
+      action: isReportOpen(report) ? 'Signalément reçu' : 'Signalément traite',
       target: playerIndex.get(report.targetId)?.pseudo || report.targetId,
       timestamp: report.timestamp,
       tone: isReportOpen(report) ? 'warning' : 'neutral',
@@ -618,7 +618,7 @@ export const buildAdminInsights = ({
         if (dispute.resolvedAt) {
           events.push({
             id: `${dispute.id}-resolved`,
-            action: 'Litige resolu',
+            action: 'Litige résolu',
             target: match.id,
             timestamp: dispute.resolvedAt,
             tone: 'success',
@@ -632,7 +632,7 @@ export const buildAdminInsights = ({
       .filter((match) => match.status === 'cancelled' && match.finishedAt)
       .map((match) => ({
         id: `${match.id}-cancelled`,
-        action: 'Match annule',
+        action: 'Match annulé',
         target: match.id,
         timestamp: match.finishedAt || match.updatedAt,
         tone: 'warning',
@@ -641,7 +641,7 @@ export const buildAdminInsights = ({
       .filter((match) => match.result && match.finishedAt)
       .map((match) => ({
         id: `${match.id}-finished`,
-        action: 'Résultat valide',
+        action: 'Résultat validé',
         target: match.id,
         timestamp: match.finishedAt || match.updatedAt,
         tone: 'success',

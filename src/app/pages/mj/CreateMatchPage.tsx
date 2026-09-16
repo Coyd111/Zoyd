@@ -89,7 +89,7 @@ const CreateMatchPage: React.FC = () => {
 
   const onStep1Submit = () => {
     if (!selectedFormat) {
-      toast.error('Selectionne un format pour continuer.');
+      toast.error('Sélectionne un format pour continuer.');
       return;
     }
 
@@ -114,7 +114,7 @@ const CreateMatchPage: React.FC = () => {
 
   const onStep3Submit = (data: Partial<MatchFormData>) => {
     if (!selectedPass || selectedPass <= 0) {
-      toast.error('Choisis une mise valide pour continuer.');
+      toast.error('Choisis une mise validé pour continuer.');
       return;
     }
 
@@ -130,18 +130,18 @@ const CreateMatchPage: React.FC = () => {
     }
 
     if (!selectedFormat || !selectedGameMode || !selectedMap) {
-      toast.error('La configuration de la partie est incomplete.');
+      toast.error('La configuration de la partie est incomplète.');
       return;
     }
 
     if (selectedPass > availableSpend) {
-      toast.error("Solde insuffisant. Recharge d'abord ton wallet pour engager ton pass.");
+      toast.error("Solde insuffisant. Recharge d'abord ton portefeuille pour engager ton pass.");
       navigate(
         buildFundingPath({
           context: 'match-create',
           requiredAmount: selectedPass,
           availableAmount: availableSpend,
-          returnTo: '/mj/creer',
+          returnTo: '/mj/créer',
         })
       );
       return;
@@ -174,7 +174,7 @@ const CreateMatchPage: React.FC = () => {
 
       hydrateMatches([response.match]);
       applyServerAccountState(response);
-      toast.success('Partie publiee. Ta place est reservee.');
+      toast.success('Partie publiée. Ta place est réservée.');
       navigate(`/mj/match/${response.match.id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Impossible de publier cette partie.');
@@ -185,7 +185,7 @@ const CreateMatchPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
-      <SEOHead title="Créer un match — ZOYD" description="Configure et lance un nouveau match wager." path="/mj/creer" noindex />
+      <SEOHead title="Créer un match — ZOYD" description="Configure et lance un nouveau match wager." path="/mj/créer" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 relative z-10">
@@ -298,7 +298,7 @@ const CreateMatchPage: React.FC = () => {
                       <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                         02 / Carte choisie
                       </label>
-                      <div id="map-pool" role="group" aria-label="Selection de la carte" className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div id="map-pool" role="group" aria-label="Sélection de la carte" className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
                         {MJ_MAP_POOL.map((map) => (
                           <button
                             type="button"
@@ -340,9 +340,9 @@ const CreateMatchPage: React.FC = () => {
                       </div>
                       <div>
                         <label htmlFor="pointstreaks" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
-                          Point streaks
+                          Séries de points
                         </label>
-                        <select id="pointstreaks" {...register('pointstreaks')} aria-label="Point streaks" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue">
+                        <select id="pointstreaks" {...register('pointstreaks')} aria-label="Séries de points" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue">
                           <option value="restricted">Interdites</option>
                           <option value="allowed">Permises</option>
                         </select>
@@ -450,16 +450,16 @@ const CreateMatchPage: React.FC = () => {
 
                         <div>
                           <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                            Ton equipe
+                            Ton équipe
                           </label>
-                          <div id="team-group" role="radiogroup" aria-label="Selection de l'equipe" className="grid grid-cols-2 gap-2">
+                          <div id="team-group" role="radiogroup" aria-label="Sélection de l'équipe" className="grid grid-cols-2 gap-2">
                             {TEAM_OPTIONS.map((team) => (
                               <button
                                 key={team.value}
                                 type="button"
                                 role="radio"
                                 aria-checked={selectedCreatorTeam === team.value}
-                                aria-label={`Equipe ${team.label}`}
+                                aria-label={`Équipe ${team.label}`}
                                 onClick={() => setValue('creatorTeam', team.value)}
                                 className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
                               >
@@ -487,7 +487,7 @@ const CreateMatchPage: React.FC = () => {
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </button>
                     <button type="submit" aria-label="Passer au récapitulatif" className="flex-[2] bg-white text-black py-5 min-h-[44px] font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
-                      Recapitulatif <ChevronRight className="w-6 h-6" />
+                      Récapitulatif <ChevronRight className="w-6 h-6" />
                     </button>
                   </div>
                 </div>
@@ -513,14 +513,14 @@ const CreateMatchPage: React.FC = () => {
                   <SummaryBox label="Pass" value={`${selectedPass.toFixed(1)} ZC`} highlight />
                   <SummaryBox label="Solde dispo" value={`${availableSpend.toFixed(1)} ZC`} />
                   <SummaryBox label="Armes" value={getValues('weapons') || 'Toutes'} />
-                  <SummaryBox label="Ton equipe" value={selectedCreatorTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} />
-                  <SummaryBox label="Visibilite" value={getValues('isPrivate') ? 'Prive' : 'Public'} />
+                  <SummaryBox label="Ton équipe" value={selectedCreatorTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} />
+                  <SummaryBox label="Visibilité" value={getValues('isPrivate') ? 'Privé' : 'Public'} />
                 </div>
 
                 {requiredTopUp > 0 ? (
                   <div className="mb-8 border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-5 py-4 text-sm text-white/70">
                     Il te manque <span className="font-display font-black text-zoyd-yellow">{requiredTopUp.toFixed(1)} ZC</span> pour publier cette
-                    partie. Ton pass sera bloque dès la mise en ligne.
+                    partie. Ton pass sera bloqué dès la mise en ligne.
                   </div>
                 ) : null}
 
@@ -528,7 +528,7 @@ const CreateMatchPage: React.FC = () => {
                   <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label="Verrouiller la mise et publier" className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
+                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label="Verrouillér la mise et publier" className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
                     <span className="text-xs sm:text-sm">VERROUILLER LA MISE & PUBLIER</span> <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>
@@ -548,7 +548,7 @@ const CreateMatchPage: React.FC = () => {
             </p>
             <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/75">Pass bloque</dt>
+                <dt className="text-white/75">Pass bloqué</dt>
                 <dd className="font-display font-black text-zoyd-yellow">{selectedPass.toFixed(1)} ZC</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
@@ -564,7 +564,7 @@ const CreateMatchPage: React.FC = () => {
                 <dd className="font-display font-black text-green-400">{winnerShare.toFixed(1)} ZC</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/75">Solde apres blocage</dt>
+                <dt className="text-white/75">Solde après blocage</dt>
                 <dd className="font-display font-black text-white">{(availableSpend - selectedPass).toFixed(1)} ZC</dd>
               </div>
             </dl>
@@ -574,7 +574,7 @@ const CreateMatchPage: React.FC = () => {
                 disabled={isSubmitting}
                 className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
               >
-                Annulér
+                Annuler
               </button>
               <button
                 onClick={() => void onFinalSubmit()}

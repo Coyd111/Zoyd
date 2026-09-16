@@ -17,7 +17,7 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
   <>
     <div className="p-6">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <h2 className="text-lg font-display font-black uppercase italic">Format et regles</h2>
+        <h2 className="text-lg font-display font-black uppercase italic">Format et règles</h2>
         {match.trustScoreMin ? (
           <div className="text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow border border-zoyd-yellow/20 px-3 py-1">
             Fiabilité {match.trustScoreMin}+
@@ -29,7 +29,7 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
         <RuleRow label="Best of" value={`BO${match.rules.bestOf}`} />
         <RuleRow label="Score cible" value={`${match.rules.scoreTarget}`} />
         <RuleRow label="Armes" value={match.rules.weaponRestrictions || 'Toutes'} />
-        <RuleRow label="Point streaks" value={match.rules.pointstreaks === 'allowed' ? 'Permises' : 'Interdites'} />
+        <RuleRow label="Séries de points" value={match.rules.pointstreaks === 'allowed' ? 'Permises' : 'Interdites'} />
         <RuleRow label="Corps a corps" value={match.rules.meleeAllowed ? 'Autorise' : 'Interdit'} />
       </div>
     </div>

@@ -23,7 +23,7 @@ import {
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import {
-  CODM_RANKS,
+  CODM_RANGS,
   CONTROLLER_OPTIONS,
   COUNTRY_OPTIONS,
   DEVICE_OPTIONS,
@@ -34,15 +34,15 @@ import { SEOHead } from '../../components/SEOHead';
 
 const step1Schema = z
   .object({
-    pseudo: z.string().min(3, 'Minimum 3 caracteres').max(20, 'Maximum 20 caracteres'),
-    email: z.string().email('Email invalide'),
-    phone: z.string().min(8, 'Numéro invalide'),
+    pseudo: z.string().min(3, 'Minimum 3 caractères').max(20, 'Maximum 20 caractères'),
+    email: z.string().email('Email invalidé'),
+    phone: z.string().min(8, 'Numéro invalidé'),
     password: z
       .string()
-      .min(8, 'Minimum 8 caracteres')
+      .min(8, 'Minimum 8 caractères')
       .regex(/[A-Z]/, 'Doit contenir au moins une majuscule')
       .regex(/[0-9]/, 'Doit contenir au moins un chiffre')
-      .regex(/[^A-Za-z0-9]/, 'Doit contenir au moins un caractere special'),
+      .regex(/[^A-Za-z0-9]/, 'Doit contenir au moins un caractère spécial'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -52,7 +52,7 @@ const step1Schema = z
 
 const step2Schema = z.object({
   gameId: z.string().min(1, 'UID CODM requis'),
-  levelCODM: z.coerce.number().min(1, 'Niveau invalide').optional(),
+  levelCODM: z.coerce.number().min(1, 'Niveau invalidé').optional(),
   rankMJ: z.string().optional(),
   rankBR: z.string().optional(),
   country: z.string().optional(),
@@ -139,7 +139,7 @@ const RegisterPage: React.FC = () => {
     }
 
     if (!data.gameId?.trim()) {
-      const msg = 'Renseigne ton UID CODM avant de continuer.';
+      const msg = 'Renseigné ton UID CODM avant de continuer.';
       toast.error(msg);
       useNotificationStore.getState().addNotification({
         type: 'system',
@@ -181,7 +181,7 @@ const RegisterPage: React.FC = () => {
       });
 
       // Show success and redirect to activation (login requires an active code step)
-      toast.success('Compte cree avec succes. Active-le avec le code envoye.');
+      toast.success('Compte créé avec succès. Active-le avec le code envoyé.');
       
       // Store pending welcome notification for after login
       try {
@@ -205,7 +205,7 @@ const RegisterPage: React.FC = () => {
       toast.error(msg);
       useNotificationStore.getState().addNotification({
         type: 'system',
-        title: 'Echec d\'inscription',
+        title: 'Échec d\'inscription',
         message: msg,
         priority: 'high',
         metadata: { showToast: false, dedupeKey: `register-error-${msg}` },
@@ -296,7 +296,7 @@ const RegisterPage: React.FC = () => {
               <Link to="/" className="flex items-center gap-2 group">
                 <ZoydLogo compact className="group-hover:opacity-90 transition-opacity" />
               </Link>
-              <div className="flex gap-1.5" role="group" aria-label={`Etape ${currentStep} sur 3`}>
+              <div className="flex gap-1.5" role="group" aria-label={`Étape ${currentStep} sur 3`}>
                 {[1, 2, 3].map((step) => (
                   <div
                     key={step}
@@ -312,7 +312,7 @@ const RegisterPage: React.FC = () => {
               {currentStep === 1 ? 'Créer un compte' : currentStep === 2 ? 'Configuration joueur' : 'Finalisation'}
             </h1>
             <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest mt-1">
-              {currentStep === 1 ? 'Etape 01 / 03 — Identite' : currentStep === 2 ? 'Etape 02 / 03 — Profil' : 'Etape 03 / 03 — Confirmation'}
+              {currentStep === 1 ? 'Étape 01 / 03 — Identité' : currentStep === 2 ? 'Étape 02 / 03 — Profil' : 'Étape 03 / 03 — Confirmation'}
             </p>
           </header>
 
@@ -344,7 +344,7 @@ const RegisterPage: React.FC = () => {
                     placeholder="soldat@zoyd.com"
                   />
                   <Input
-                    label="Telephone"
+                    label="Téléphone"
                     type="tel"
                     autoComplete="tel"
                     inputMode="tel"
@@ -438,7 +438,7 @@ const RegisterPage: React.FC = () => {
 
                 <div>
                   <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
-                    02 / Type de controle
+                    02 / Type de contrôle
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {CONTROLLER_OPTIONS.map((option) => {
@@ -483,7 +483,7 @@ const RegisterPage: React.FC = () => {
                   <div>
                     <label htmlFor="rankMJ" className="text-[10px] font-mono font-black text-white/70 uppercase mb-2 block tracking-widest">Grade MJ</label>
                     <select id="rankMJ" {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
-                      {CODM_RANKS.map((rank) => (
+                      {CODM_RANGS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
                         </option>
@@ -493,7 +493,7 @@ const RegisterPage: React.FC = () => {
                   <div>
                     <label htmlFor="rankBR" className="text-[10px] font-mono font-black text-white/70 uppercase mb-2 block tracking-widest">Grade BR</label>
                     <select id="rankBR" {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
-                      {CODM_RANKS.map((rank) => (
+                      {CODM_RANGS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
                           {rank}
                         </option>
@@ -597,7 +597,7 @@ const RegisterPage: React.FC = () => {
 
                 <div className="relative z-10 hud-panel p-6 bg-zoyd-surface/20 border-white/5 text-left space-y-4">
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Identite</span>
+                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Identité</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.pseudo}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
@@ -605,7 +605,7 @@ const RegisterPage: React.FC = () => {
                     <span className="text-xs font-display font-black text-zoyd-blue italic uppercase">{formData.device}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Controle</span>
+                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Contrôle</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.controllerType || 'touch'}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
@@ -615,7 +615,7 @@ const RegisterPage: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Mode streamer</span>
                     <span className="text-xs font-display font-black text-zoyd-yellow italic uppercase">
-                      {formData.streamerMode ? 'Active' : 'Desactive'}
+                      {formData.streamerMode ? 'Active' : 'Désactivé'}
                     </span>
                   </div>
                 </div>
@@ -637,7 +637,7 @@ const RegisterPage: React.FC = () => {
                     aria-label="Retour aux réglages"
                     className="flex-1 min-h-[44px] border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
-                    REGLAGES
+                    RÉGLAGES
                   </button>
                   <Button
                     type="button"
@@ -648,7 +648,7 @@ const RegisterPage: React.FC = () => {
                     className="flex-[2] py-6"
                     disabled={isLoading}
                   >
-                    {isLoading ? <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'CREER MON COMPTE'}
+                    {isLoading ? <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'CRÉER MON COMPTE'}
                   </Button>
                 </div>
               </motion.div>

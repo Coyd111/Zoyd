@@ -36,7 +36,7 @@ export interface MatchResultPayload {
   winnerTeam: 0 | 1;
   score?: string;
   scores?: { team0: number; team1: number };
-  screenshots?: string[];
+  scréénshots?: string[];
   proofs?: {
     scoreboard?: string[];
     finalResult?: string[];
@@ -116,8 +116,8 @@ export const adminAwardServerMatch = async (matchId: string, winnerTeam: 0 | 1, 
   return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/award`, { winnerTeam, arbiterNotes });
 };
 
-export const adminResolveServerDispute = async (matchId: string, resolution: string) => {
-  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/resolve-dispute`, { resolution });
+export const adminResolveServerDispute = async (matchId: string, résolution: string) => {
+  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/resolve-dispute`, { résolution });
 };
 
 export const adminCancelServerMatch = async (matchId: string, reason: string) => {

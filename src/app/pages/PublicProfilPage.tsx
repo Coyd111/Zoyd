@@ -107,7 +107,7 @@ const PublicProfilPage = () => {
     try {
       await sendServerFriendRequest(id, 'Salut, jouons ensemble !');
       sendRequest(id, publicProfile.pseudo);
-      toast.success(`Demande envoyee a ${publicProfile.pseudo}.`);
+      toast.success(`Demande envoyée a ${publicProfile.pseudo}.`);
     } catch {
       toast.error("Impossible d'envoyer la demande.");
     }
@@ -118,7 +118,7 @@ const PublicProfilPage = () => {
       navigate('/auth/login');
       return;
     }
-    navigate(`/mj/creer?invite=${encodeURIComponent(id)}`);
+    navigate(`/mj/créer?invite=${encodeURIComponent(id)}`);
   };
 
   const handleBlock = async () => {
@@ -128,7 +128,7 @@ const PublicProfilPage = () => {
     }
     try {
       await blockUser(id);
-      toast.success(`${publicProfile.pseudo} est maintenant bloque.`);
+      toast.success(`${publicProfile.pseudo} est maintenant bloqué.`);
     } catch {
       toast.error('Erreur lors du blocage.');
     }
@@ -146,8 +146,8 @@ const PublicProfilPage = () => {
       setConfirmReport(true);
       return;
     }
-    reportUser(id, 'other', `Signalement manuel depuis le profil public de ${publicProfile.pseudo}.`);
-    toast.success(`Signalement enregistre pour ${publicProfile.pseudo}.`);
+    reportUser(id, 'other', `Signalément manuel depuis le profil public de ${publicProfile.pseudo}.`);
+    toast.success(`Signalément enregistré pour ${publicProfile.pseudo}.`);
     setConfirmReport(false);
   };
 
@@ -199,7 +199,7 @@ const PublicProfilPage = () => {
                 <p className="text-xs text-red-300">Confirmer le blocage de {publicProfile.pseudo} ?</p>
                 <div className="flex gap-2">
                   <button onClick={() => setConfirmAction(null)} className="flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors">
-                    Annulér
+                    Annuler
                   </button>
                   <button onClick={() => { setConfirmAction(null); void handleBlock(); }} className="flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors">
                     Confirmer
@@ -213,7 +213,7 @@ const PublicProfilPage = () => {
             </Button>
             {confirmReport && (
               <Button variant="ghost" size="sm" onClick={() => setConfirmReport(false)} className="touch-target text-white/70 hover:text-white">
-                Annulér
+                Annuler
               </Button>
             )}
           </div>

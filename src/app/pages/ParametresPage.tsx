@@ -8,12 +8,12 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { updateServerAccount } from '../lib/authApi';
-import { CODM_RANKS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
+import { CODM_RANGS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
 import { SEOHead } from '../components/SEOHead';
 
 const tabs = [
   { id: 'account', label: 'COMPTE', icon: User },
-  { id: 'security', label: 'SECURITE', icon: Shield },
+  { id: 'security', label: 'SÉCURITÉ', icon: Shield },
   { id: 'gaming', label: 'GAMING', icon: Gamepad2 },
   { id: 'notifications', label: 'NOTIFICATIONS', icon: Bell },
 ] as const;
@@ -106,7 +106,7 @@ const ParametresPage: React.FC = () => {
 
   const handleSave = async () => {
     if (form.phone && !/^\+?[\d\s-]{7,15}$/.test(form.phone)) {
-      toast.error('Numéro de téléphone invalide.');
+      toast.error('Numéro de téléphone invalidé.');
       return;
     }
     setIsSaving(true);
@@ -185,7 +185,7 @@ const ParametresPage: React.FC = () => {
             Paramètres
           </h1>
           <p className="text-white/70 mt-4 max-w-2xl">
-            Regle ton profil, ton compte CODM et ce que ZOYD doit prendre en compte pour te proposer les bonnes parties.
+            Règle ton profil, ton compte CODM et ce que ZOYD doit prendre en compte pour te proposer les bonnes parties.
           </p>
         </div>
       </header>
@@ -225,7 +225,7 @@ const ParametresPage: React.FC = () => {
                   A savoir
                 </h4>
                 <p className="text-[10px] font-mono text-white/70">
-                  Ce que tu changes ici peut modifier les matchs et tournois qui te sont proposes, ainsi que ce que les autres voient sur ton profil.
+                  Ce que tu changes ici peut modifier les matchs et tournois qui te sont proposés, ainsi que ce que les autres voient sur ton profil.
                 </p>
               </div>
             </div>
@@ -249,10 +249,10 @@ const ParametresPage: React.FC = () => {
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input
-                    label="Telephone"
+                    label="Téléphone"
                     value={form.phone}
                     onChange={(event) => updateForm('phone', event.target.value)}
-                    helperText="Utile pour verifier ton compte et recevoir tes retraits."
+                    helperText="Utile pour vérifier ton compte et recevoir tes retraits."
                   />
                   <SelectField
                     label="Pays"
@@ -273,7 +273,7 @@ const ParametresPage: React.FC = () => {
                       rows={4}
                       maxLength={500}
                       className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white/60 focus:border-zoyd-yellow transition-all duration-200"
-                      placeholder="Quelques lignes pour decrire ton style de jeu ou ton identite competitive."
+                      placeholder="Quelques lignes pour décrire ton style de jeu ou ton identité competitive."
                     />
                   </label>
 
@@ -325,7 +325,7 @@ const ParametresPage: React.FC = () => {
                     autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimum 8 caracteres"
+                    placeholder="Minimum 8 caractères"
                   />
                   <Input
                     label="Confirmer le nouveau mot de passe"
@@ -333,7 +333,7 @@ const ParametresPage: React.FC = () => {
                     autoComplete="new-password"
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    placeholder="Repete le nouveau mot de passe"
+                    placeholder="Répète le nouveau mot de passe"
                   />
                   <Button
                     variant="primary"
@@ -349,16 +349,16 @@ const ParametresPage: React.FC = () => {
                 <div className="hud-panel p-4 md:p-6 bg-zoyd-surface/20">
                   <div className="flex items-center justify-between gap-4 mb-3">
                     <div className="font-display font-black text-white uppercase italic">Vérification par telephone</div>
-                    <Badge variant="yellow">Bientot</Badge>
+                    <Badge variant="yellow">Bientôt</Badge>
                   </div>
                   <p className="text-sm text-white/70">
-                    Le numéro {user.phone || 'non renseigne'} servira à confirmer certains retraits et actions sensibles.
+                    Le numéro {user.phone || 'non renseigné'} servira à confirmer certains retraits et actions sensibles.
                   </p>
                 </div>
 
                 <SectionTitle title="En bref" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <StatusCard label="Fiabilite" value={`${user.trustScore}/100`} accent="text-zoyd-yellow" />
+                  <StatusCard label="Fiabilité" value={`${user.trustScore}/100`} accent="text-zoyd-yellow" />
                   <StatusCard label="Solde affiche" value={user.walletBalance.toFixed(1) + ' ZC'} accent="text-white" />
                   <StatusCard label="Connexion" value={user.isOnline ? 'Active' : 'Hors ligne'} accent={user.isOnline ? 'text-green-400' : 'text-white/75'} />
                 </div>
@@ -369,7 +369,7 @@ const ParametresPage: React.FC = () => {
               <div role="tabpanel" id="panel-gaming" aria-labelledby="tab-gaming">
                 <SectionTitle title="Ton compte CODM" />
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Input label="Game ID" value={user.gameId} disabled helperText="Ton identifiant CODM déjà lie a ce compte." />
+                  <Input label="Game ID" value={user.gameId} disabled helperText="Ton identifiant CODM déjà lié à ce compte." />
                   <Input
                     label="Niveau CODM"
                     type="number"
@@ -383,13 +383,13 @@ const ParametresPage: React.FC = () => {
                     label="Rank MJ"
                     value={form.rankMJ}
                     onChange={(value) => updateForm('rankMJ', value)}
-                    options={CODM_RANKS.map((rank) => ({ value: rank, label: rank }))}
+                    options={CODM_RANGS.map((rank) => ({ value: rank, label: rank }))}
                   />
                   <SelectField
                     label="Rank BR"
                     value={form.rankBR}
                     onChange={(value) => updateForm('rankBR', value)}
-                    options={CODM_RANKS.map((rank) => ({ value: rank, label: rank }))}
+                    options={CODM_RANGS.map((rank) => ({ value: rank, label: rank }))}
                   />
                 </div>
 
@@ -402,7 +402,7 @@ const ParametresPage: React.FC = () => {
                     options={DEVICE_OPTIONS.map((device) => ({ value: device.id, label: device.label }))}
                   />
                   <SelectField
-                    label="Type de controle"
+                    label="Type de contrôle"
                     value={form.controllerType}
                     onChange={(value) => updateForm('controllerType', value as SettingsForm['controllerType'])}
                     options={CONTROLLER_OPTIONS.map((controller) => ({ value: controller.id, label: controller.label }))}
@@ -411,11 +411,11 @@ const ParametresPage: React.FC = () => {
 
                 <div className="hud-panel p-5 bg-zoyd-surface/20">
                   <div className="flex items-center justify-between gap-4 mb-2">
-                    <div className="font-display font-black text-white uppercase italic">Infos gardees privees</div>
-                    <Badge variant="yellow">Prive</Badge>
+                    <div className="font-display font-black text-white uppercase italic">Infos gardees privées</div>
+                    <Badge variant="yellow">Privé</Badge>
                   </div>
                   <p className="text-sm text-white/70">
-                    Ton appareil et ton type de controle servent seulement a mieux te proposer des matchs et tournois. Les autres joueurs ne les voient pas automatiquement.
+                    Ton appareil et ton type de contrôle servent seulement à mieux te proposer des matchs et tournois. Les autres joueurs ne les voient pas automatiquement.
                   </p>
                 </div>
               </div>
@@ -432,14 +432,14 @@ const ParametresPage: React.FC = () => {
                     onChange={(value) => setNotificationToggles((prev) => ({ ...prev, matchStart: value }))}
                   />
                   <NotificationRow
-                    label="Resultats"
+                    label="Résultats"
                     desc="Quand un score est confirmé ou qu'un gain arrive sur ton compte."
                     value={notificationToggles.results}
                     onChange={(value) => setNotificationToggles((prev) => ({ ...prev, results: value }))}
                   />
                   <NotificationRow
                     label="Messages"
-                    desc="Nouvelle activité dans tes discussions d'equipe, de match ou privees."
+                    desc="Nouvelle activité dans tes discussions d'équipe, de match ou privées."
                     value={notificationToggles.messages}
                     onChange={(value) => setNotificationToggles((prev) => ({ ...prev, messages: value }))}
                   />

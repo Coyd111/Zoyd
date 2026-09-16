@@ -237,7 +237,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
         pushRealtimeReminder(
           'arbitration_assigned',
           'Salle disponible',
-          `${match.id}: la room CODM est prête pour les joueurs confirms.`,
+          `${match.id}: la room CODM est prête pour les joueurs confirmés.`,
           `/mj/match/${match.id}`,
           `rt-room-${match.id}-${currentUser.id}`,
           'high'
@@ -259,7 +259,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
         pushRealtimeReminder(
           'dispute_update',
           'Litige en cours',
-          `${match.id}: un dossier est ouvert et le prize pool reste gele.`,
+          `${match.id}: un dossier est ouvert et le prize pool reste gelé.`,
           `/mj/match/${match.id}`,
           `rt-dispute-${match.id}-${currentUser.id}`,
           'normal'
@@ -271,7 +271,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
         if (minutesUntilMatch <= 10 && minutesUntilMatch >= -5) {
           pushRealtimeReminder(
             'system',
-            'Publier la salle',
+            'Publiér la salle',
             `${match.id}: partage la room CODM maintenant pour lancer le match a l'heure.`,
             `/mj/match/${match.id}`,
             `rt-arbiter-room-${match.id}-${currentUser.id}`,

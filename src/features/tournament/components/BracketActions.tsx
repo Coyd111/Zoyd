@@ -77,7 +77,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
             <span className="text-zoyd-yellow font-display font-black">{formatZC(availableSpend)}</span>
           </div>
           <div className="border border-white/10 bg-black/40 p-4 text-sm text-white/60">
-            {teamSize > 1 ? 'Cout pour ton equipe:' : 'Cout inscription:'}{' '}
+            {teamSize > 1 ? 'Cout pour ton équipe:' : 'Cout inscription:'}{' '}
             <span className="text-white font-display font-black">{formatZC(registrationCost)}</span>
           </div>
         </div>
@@ -101,13 +101,13 @@ const BracketActions: React.FC<BracketActionsProps> = ({
         {canRegister && teamSize > 1 ? (
           <div className="border border-white/10 bg-black/40 p-4 space-y-4">
             <div className="text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow">
-              Ton equipe
+              Ton équipe
             </div>
             <input
               type="text"
               value={squadName}
               onChange={(event) => onSquadNameChange(event.target.value)}
-              placeholder="Nom de ton equipe"
+              placeholder="Nom de ton équipe"
               className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-yellow"
             />
             <div className="grid gap-3">
@@ -123,7 +123,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
               ))}
             </div>
             <p className="text-xs text-white/70">
-              Le capitaine confirmé l'inscription pour toute l'equipe de {teamSize} joueurs.
+              Le capitaine confirmé l'inscription pour toute l'équipe de {teamSize} joueurs.
             </p>
           </div>
         ) : null}
@@ -134,7 +134,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
             className="w-full bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors"
           >
             {teamSize > 1
-              ? "Confirmer mon equipe"
+              ? "Confirmer mon équipe"
               : "Confirmer mon inscription"}
           </button>
         ) : null}
@@ -177,7 +177,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
         {teamSize > 1 ? (
           <p className="text-xs text-white/70">
             Chaque inscription représente une équipe complete. Une fois tout le monde pret, le tableau se
-            lance équipe contre equipe.
+            lance équipe contre équipe.
           </p>
         ) : null}
       </div>

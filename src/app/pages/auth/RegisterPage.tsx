@@ -296,13 +296,14 @@ const RegisterPage: React.FC = () => {
               <Link to="/" className="flex items-center gap-2 group">
                 <ZoydLogo compact className="group-hover:opacity-90 transition-opacity" />
               </Link>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5" role="group" aria-label={`Etape ${currentStep} sur 3`}>
                 {[1, 2, 3].map((step) => (
                   <div
                     key={step}
                     className={`h-1 w-8 rounded-full transition-all duration-500 ${
                       step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow w-12' : 'bg-zoyd-blue') : 'bg-white/5'
                     }`}
+                    aria-hidden="true"
                   />
                 ))}
               </div>
@@ -310,7 +311,9 @@ const RegisterPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-display font-black text-white uppercase italic tracking-tighter">
               {currentStep === 1 ? 'Créer un compte' : currentStep === 2 ? 'Configuration joueur' : 'Finalisation'}
             </h1>
-            <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest mt-1">Etape 0{currentStep} / 03</p>
+            <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest mt-1">
+              {currentStep === 1 ? 'Etape 01 / 03 — Identite' : currentStep === 2 ? 'Etape 02 / 03 — Profil' : 'Etape 03 / 03 — Confirmation'}
+            </p>
           </header>
 
           <AnimatePresence mode="wait">
@@ -469,7 +472,8 @@ const RegisterPage: React.FC = () => {
                   <Input
                     label="ID CODM (UID obligatoire)"
                     inputMode="numeric"
-                    {...register('gameId')}
+                    {...register('gameId', { required: 'UID CODM requis' })}
+                    error={errors.gameId?.message}
                     placeholder="6742..."
                   />
                   <Input label="Niveau actuel du compte" type="number" inputMode="numeric" {...register('levelCODM')} placeholder="150" />

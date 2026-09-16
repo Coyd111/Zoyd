@@ -3,7 +3,7 @@ import { Send, ShieldCheck, Terminal, Users, Radio } from 'lucide-react';
 import type { ChatMessage } from '../../../app/stores/chatStore';
 import { useAuthStore } from '../../../app/stores/authStore';
 import type { RoomPresenceMember, TypingMember } from '../../../app/stores/socketStore';
-import { sanitizeText } from '../../../lib/utils';
+import { sanitizeText, getRelativeTime } from '../../../lib/utils';
 
 interface MatchChatProps {
   messages: ChatMessage[];
@@ -164,6 +164,12 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
                     }`}
                   >
                     {message.senderPseudo}
+                  </span>
+                  <span
+                    className="text-[10px] font-mono text-white/60"
+                    title={new Date(message.timestamp).toLocaleString('fr-FR')}
+                  >
+                    {getRelativeTime(message.timestamp)}
                   </span>
                   {isMe ? <div className="w-1.5 h-1.5 bg-zoyd-yellow" /> : null}
                 </div>

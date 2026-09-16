@@ -322,7 +322,7 @@ const ChatPage: React.FC = () => {
                           <span className={`text-[10px] font-display font-black tracking-widest uppercase ${isMe ? 'text-white' : 'text-white/70'}`}>
                             {sanitizeText(message.senderPseudo)}
                           </span>
-                          <span className="text-[10px] font-mono text-white/70">{getRelativeTime(message.timestamp)}</span>
+                          <span className="text-[10px] font-mono text-white/70" title={new Date(message.timestamp).toLocaleString('fr-FR')}>{getRelativeTime(message.timestamp)}</span>
                           {isMe && <div className="w-1.5 h-1.5 bg-zoyd-yellow" />}
                         </div>
                         <div

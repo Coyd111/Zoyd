@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Eye, Users } from 'lucide-react';
+import { Eye, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatusPill, SignalBadge } from './AdminTabShared';
 import type { FlaggedUser, UserFilter } from './AdminTabShared';
 
@@ -10,11 +10,22 @@ type AdminUsersTabProps = {
   onFilterChange: (filter: UserFilter) => void;
 };
 
+const PAGE_SIZE = 20;
+
 const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   filteredUsers,
   userFilter,
   onFilterChange,
-}) => (
+}) => {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedUsers = useMemo(
+    () => filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filteredUsers, safePage]
+  );
+
+  return (
   <div className="space-y-5">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
@@ -48,8 +59,9 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     {filteredUsers.length === 0 ? (
       <p className="text-white/60 text-sm font-mono">Aucun compte remonte dans cette vue.</p>
     ) : (
-      <div className="grid gap-3">
-        {filteredUsers.map((flaggedUser) => (
+      <>
+        <div className="grid gap-3">
+          {paginatedUsers.map((flaggedUser) => (
           <div
             key={flaggedUser.key}
             className="flex flex-col xl:flex-row xl:items-center justify-between p-4 gap-4"
@@ -107,9 +119,36 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             </div>
           </div>
         ))}
-      </div>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-white/5">
+            <span className="text-[10px] font-mono text-white/60 uppercase tracking-widest">
+              {filteredUsers.length} joueur(s) — page {safePage} / {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="touch-target px-3 py-2 border border-white/10 text-[10px] font-display font-black uppercase tracking-widest disabled:opacity-30 hover:border-white/30 transition-colors"
+                aria-label="Page precedente"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="touch-target px-3 py-2 border border-white/10 text-[10px] font-display font-black uppercase tracking-widest disabled:opacity-30 hover:border-white/30 transition-colors"
+                aria-label="Page suivante"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </>
     )}
   </div>
-);
+  );
+};
 
 export default AdminUsersTab;

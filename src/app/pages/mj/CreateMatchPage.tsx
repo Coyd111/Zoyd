@@ -207,11 +207,16 @@ const CreateMatchPage: React.FC = () => {
         </header>
 
         <nav aria-label="Progression des étapes" className="flex items-center gap-4 mb-16">
-          {[1, 2, 3, 4].map((step) => (
+          {[
+            { step: 1, name: 'Format' },
+            { step: 2, name: 'Config' },
+            { step: 3, name: 'Mise' },
+            { step: 4, name: 'Recap' },
+          ].map(({ step, name }) => (
             <div key={step} className="flex-1 flex flex-col gap-2" aria-current={step === currentStep ? 'step' : undefined}>
               <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} role="progressbar" aria-valuenow={step <= currentStep ? 100 : 0} aria-valuemin={0} aria-valuemax={100} />
               <span className={`text-[10px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/70'}`}>
-                Étape 0{step}
+                {step === currentStep ? name : `0${step} · ${name}`}
               </span>
             </div>
           ))}
@@ -222,24 +227,31 @@ const CreateMatchPage: React.FC = () => {
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white mb-10 italic uppercase">Choisis le format</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
-                  {MJ_FORMATS.map((format) => (
-                    <button
-                      key={format}
-                      onClick={() => setSelectedFormat(format)}
-                      aria-label={`Sélectionner le format ${format}`}
-                      className={`group relative p-5 sm:p-6 md:p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
-                    >
-                      <p className={`text-2xl sm:text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/70 group-hover:text-white transition-colors'}`}>
-                        {format}
-                      </p>
-                      {selectedFormat === format && (
-                        <div className="absolute top-2 right-2">
-                          <Check className="w-4 h-4" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                <div id="format-group" role="radiogroup" aria-labelledby="format-group" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
+                  {MJ_FORMATS.map((format) => {
+                    const selected = selectedFormat === format;
+                    const formatTeamSize = Number(format.split('VS')[0] || 1);
+                    return (
+                      <button
+                        key={format}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        aria-label={`Format ${format}, ${formatTeamSize === 1 ? 'solo' : `squad ${formatTeamSize} joueurs`}`}
+                        onClick={() => setSelectedFormat(format)}
+                        className={`group relative p-5 sm:p-6 md:p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
+                      >
+                        <p className={`text-2xl sm:text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/70 group-hover:text-white transition-colors'}`}>
+                          {format}
+                        </p>
+                        {selectedFormat === format && (
+                          <div className="absolute top-2 right-2">
+                            <Check className="w-4 h-4" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={onStep1Submit}
@@ -264,13 +276,15 @@ const CreateMatchPage: React.FC = () => {
                       <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                         01 / Mode de jeu
                       </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div id="gamemode-group" role="radiogroup" aria-labelledby="gamemode-group" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {MJ_MODE_OPTIONS.map((mode) => (
                           <button
                             type="button"
                             key={mode.id}
+                            role="radio"
+                            aria-checked={selectedGameMode === mode.name}
+                            aria-label={`Mode ${mode.name}: ${mode.desc}`}
                             onClick={() => setSelectedGameMode(mode.name)}
-                            aria-label={`Sélectionner le mode ${mode.name}`}
                             className={`p-4 border text-left transition-all ${selectedGameMode === mode.name ? 'border-white bg-white/5' : 'border-white/5 hover:border-white/20'}`}
                           >
                             <div className="font-display font-black text-lg italic text-white">{mode.name}</div>
@@ -284,13 +298,15 @@ const CreateMatchPage: React.FC = () => {
                       <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                         02 / Carte choisie
                       </label>
-                      <div className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div id="map-pool" role="group" aria-label="Selection de la carte" className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
                         {MJ_MAP_POOL.map((map) => (
                           <button
                             type="button"
                             key={map}
+                            role="radio"
+                            aria-checked={selectedMap === map}
+                            aria-label={`Carte ${map}`}
                             onClick={() => setSelectedMap(map)}
-                            aria-label={`Sélectionner la carte ${map}`}
                             className={`relative h-20 sm:h-24 overflow-hidden border transition-all ${selectedMap === map ? 'border-zoyd-blue shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-white/10 hover:border-white/30'}`}
                           >
                             {getMapImage(map) && (
@@ -380,13 +396,15 @@ const CreateMatchPage: React.FC = () => {
                       <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                         Mise par joueur
                       </label>
-                      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                      <div id="entry-amount-group" role="radiogroup" aria-label="Montant de la mise" className="grid grid-cols-3 md:grid-cols-6 gap-2">
                         {ENTRY_OPTIONS.map((amount) => (
                           <button
                             key={amount}
                             type="button"
-                            onClick={() => setValue('passAmount', amount)}
+                            role="radio"
+                            aria-checked={selectedPass === amount}
                             aria-label={`Mise de ${amount} ZC`}
+                            onClick={() => setValue('passAmount', amount)}
                             className={`p-3 border font-display font-black italic text-sm transition-all ${selectedPass === amount ? 'border-zoyd-blue bg-zoyd-blue/10 text-zoyd-blue' : 'border-white/5 hover:border-zoyd-blue text-zoyd-blue'}`}
                           >
                             {amount}
@@ -434,13 +452,15 @@ const CreateMatchPage: React.FC = () => {
                           <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                             Ton equipe
                           </label>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div id="team-group" role="radiogroup" aria-label="Selection de l'equipe" className="grid grid-cols-2 gap-2">
                             {TEAM_OPTIONS.map((team) => (
                               <button
                                 key={team.value}
                                 type="button"
+                                role="radio"
+                                aria-checked={selectedCreatorTeam === team.value}
+                                aria-label={`Equipe ${team.label}`}
                                 onClick={() => setValue('creatorTeam', team.value)}
-                                aria-label={`Sélectionner ${team.label}`}
                                 className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
                               >
                                 {team.label}

@@ -83,7 +83,7 @@ const PublicProfilPage = () => {
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center">
         <div className="text-center max-w-lg px-6">
           <h2 className="text-2xl font-display font-black uppercase mb-4">Profil public indisponible</h2>
-          <p className="text-white/40 mb-6">
+          <p className="text-white/70 mb-6">
             Ce joueur n&apos;a pas encore assez d&apos;activité sur ZOYD pour afficher un profil public complet.
           </p>
           <Button variant="primary" onClick={() => navigate(-1)}>
@@ -174,7 +174,7 @@ const PublicProfilPage = () => {
       trustDescription="Cette fiche rassemble ce que ZOYD a deja pu voir de ce joueur dans ses matchs, ses tournois et ses relations."
       codmTitle="Infos visibles"
       backLink={
-        <Link to="/profil" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
+        <Link to="/profil" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           Retour profil
         </Link>
@@ -212,7 +212,7 @@ const PublicProfilPage = () => {
               {confirmReport ? 'Confirmer le signalement' : 'Signaler'}
             </Button>
             {confirmReport && (
-              <Button variant="ghost" size="sm" onClick={() => setConfirmReport(false)} className="touch-target text-white/40 hover:text-white">
+              <Button variant="ghost" size="sm" onClick={() => setConfirmReport(false)} className="touch-target text-white/70 hover:text-white">
                 Annuler
               </Button>
             )}

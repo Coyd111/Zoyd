@@ -36,7 +36,7 @@ const STATUS_BADGES: Record<LeagueSeasonStatus, { label: string; color: string }
   registering: { label: 'Inscriptions ouvertes', color: 'text-green-400 border-green-400/30 bg-green-400/10' },
   qualifying: { label: 'Qualification en cours', color: 'text-zoyd-yellow border-zoyd-yellow/30 bg-zoyd-yellow/10' },
   final: { label: 'Finale', color: 'text-orange-400 border-orange-400/30 bg-orange-400/10' },
-  completed: { label: 'Terminé', color: 'text-white/40 border-white/10 bg-white/5' },
+  completed: { label: 'Terminé', color: 'text-white/70 border-white/10 bg-white/5' },
 };
 
 const SeasonCard: React.FC<{
@@ -71,26 +71,26 @@ const SeasonCard: React.FC<{
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Joueurs</div>
+          <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider">Joueurs</div>
           <div className="text-sm font-bold text-white">{season.registeredPlayers.length}/{season.maxPlayers}</div>
         </div>
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Pot</div>
+          <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider">Pot</div>
           <div className="text-sm font-bold text-zoyd-yellow">{formatZC(season.payout.gross)}</div>
         </div>
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">1er</div>
+          <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider">1er</div>
           <div className="text-sm font-bold text-green-400">{formatZC(season.payout.first)}</div>
         </div>
         <div className="border border-white/5 bg-white/5 px-3 py-2">
-          <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider">Entree</div>
+          <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider">Entree</div>
           <div className="text-sm font-bold text-white">{formatZC(season.entryFee)}</div>
         </div>
       </div>
 
       {season.status === 'registering' && (
         <div className="flex items-center justify-between border-t border-white/5 pt-3">
-          <div className="text-[10px] text-white/40">
+          <div className="text-[10px] text-white/70">
             {slotsLeft > 0 ? `${slotsLeft} place(s) restante(s)` : 'Complet'}
           </div>
           {currentUserId && (
@@ -128,7 +128,7 @@ const SeasonCard: React.FC<{
                     ? 'border-green-400/30 text-green-400 bg-green-400/10'
                     : slot?.status === 'live'
                       ? 'border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/10'
-                      : 'border-white/10 text-white/30 bg-white/5'
+                      : 'border-white/10 text-white/60 bg-white/5'
                 }`}
               >
                 {DAY_LABELS[day] || day.slice(0, 3)}
@@ -286,7 +286,7 @@ const LeaguePage: React.FC = () => {
               BR<br />
               <span className="text-zoyd-yellow">League</span>
             </h1>
-            <p className="text-xs md:text-sm text-white/50 max-w-lg leading-relaxed">
+            <p className="text-xs md:text-sm text-white/75 max-w-lg leading-relaxed">
               500 joueurs. 5 jours de qualification. 1 finale. Le meilleur joueur de la semaine remporte le pot.
             </p>
           </div>
@@ -332,25 +332,25 @@ const LeaguePage: React.FC = () => {
       <main className="max-w-[1500px] mx-auto px-4 md:px-8 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-6 md:py-10 border-b border-white/5">
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Cycle en cours</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">Cycle en cours</div>
             <div className="text-lg md:text-2xl font-black text-white">
               {activeSeason ? `#${activeSeason.cycleNumber}` : '—'}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Joueurs inscrits</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">Joueurs inscrits</div>
             <div className="text-lg md:text-2xl font-black text-zoyd-yellow">
               {activeSeason?.registeredPlayers.length || 0}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Pot total</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">Pot total</div>
             <div className="text-lg md:text-2xl font-black text-green-400">
               {activeSeason ? formatZC(activeSeason.payout.gross) : '—'}
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] md:text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Places restantes</div>
+            <div className="text-[10px] md:text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">Places restantes</div>
             <div className="text-lg md:text-2xl font-black text-white">
               {activeSeason ? Math.max(0, activeSeason.maxPlayers - activeSeason.registeredPlayers.length) : '—'}
             </div>
@@ -384,8 +384,8 @@ const LeaguePage: React.FC = () => {
           <TabsContent value={filters.status}>
             {seasons.length === 0 ? (
               <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-16 text-center">
-                <Zap className="w-8 h-8 text-white/40 mx-auto mb-3" aria-hidden="true" />
-                <p className="text-sm text-white/40">
+                <Zap className="w-8 h-8 text-white/70 mx-auto mb-3" aria-hidden="true" />
+                <p className="text-sm text-white/70">
                   {filters.status === 'all'
                     ? 'Aucune saison de ligue pour le moment.'
                     : 'Aucune saison dans cette categorie.'}

@@ -65,7 +65,7 @@ const ForgotPasswordPage: React.FC = () => {
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        <Button variant="ghost" onClick={() => navigate('/auth/login')} className="mb-6 text-white/40 hover:text-white">
+        <Button variant="ghost" onClick={() => navigate('/auth/login')} className="mb-6 text-white/70 hover:text-white">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Retour connexion
         </Button>
@@ -89,7 +89,7 @@ const ForgotPasswordPage: React.FC = () => {
           {!codeSent ? (
             <form onSubmit={handleRequest} className="space-y-4">
               <div>
-                <label htmlFor="forgot-identifier" className="text-[10px] font-mono text-white/40 uppercase mb-2 block">
+                <label htmlFor="forgot-identifier" className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
                   Pseudo, email ou numero
                 </label>
                 <Input
@@ -114,7 +114,7 @@ const ForgotPasswordPage: React.FC = () => {
           ) : (
             <form onSubmit={handleReset} className="space-y-4">
               <div>
-                <label htmlFor="reset-code" className="text-[10px] font-mono text-white/40 uppercase mb-2 block">
+                <label htmlFor="reset-code" className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
                   Code de verification (8 chiffres)
                 </label>
                 <Input
@@ -130,7 +130,7 @@ const ForgotPasswordPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="reset-password" className="text-[10px] font-mono text-white/40 uppercase mb-2 block">
+                <label htmlFor="reset-password" className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
                   Nouveau mot de passe
                 </label>
                 <Input
@@ -145,7 +145,7 @@ const ForgotPasswordPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="reset-confirm" className="text-[10px] font-mono text-white/40 uppercase mb-2 block">
+                <label htmlFor="reset-confirm" className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
                   Confirmer le mot de passe
                 </label>
                 <Input
@@ -169,7 +169,7 @@ const ForgotPasswordPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setCodeSent(false); setCode(''); setDevCode(''); }}
-                className="w-full text-sm text-white/40 hover:text-white transition-colors touch-target py-2"
+                className="w-full text-sm text-white/70 hover:text-white transition-colors touch-target py-2"
               >
                 Utiliser un autre identifiant
               </button>

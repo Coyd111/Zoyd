@@ -28,17 +28,17 @@ export const FinalResultsForm = ({
   return (
     <div className="border border-white/10 bg-zoyd-surface/20 p-5 space-y-4">
       <h3 className="text-sm font-bold text-white mb-3">Soumettre les resultats de la finale</h3>
-      <p className="text-[10px] text-white/40 mb-4">
+      <p className="text-[10px] text-white/70 mb-4">
           Saisis le classement (placement) et les kills de chaque finaliste. Seuls les joueurs avec un placement {'>'} 0 seront enregistres.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-white/10">
-              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
-              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Points</th>
-              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Placement</th>
-              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Kills</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70">Joueur</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Points</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Placement</th>
+              <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Kills</th>
             </tr>
           </thead>
           <tbody>
@@ -77,7 +77,7 @@ export const FinalResultsForm = ({
         </table>
       </div>
       <div className="flex items-center justify-between border-t border-white/5 pt-3">
-        <span className="text-[10px] text-white/40">
+        <span className="text-[10px] text-white/70">
           {entries.filter((e) => e.placement > 0).length} / {entries.length} joueurs classe(s)
         </span>
         <button

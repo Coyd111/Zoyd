@@ -30,7 +30,7 @@ const InfoCard = ({ icon, label, value }: { icon: React.ReactNode; label: string
   <div className="hud-panel p-5 bg-zoyd-surface/20">
     <div className="flex items-center gap-3 mb-3">
       {icon}
-      <span className="text-[10px] font-mono uppercase tracking-widest text-white/30">{label}</span>
+      <span className="text-[10px] font-mono uppercase tracking-widest text-white/60">{label}</span>
     </div>
     <div className="text-2xl font-display font-black italic text-white">{value}</div>
   </div>
@@ -65,13 +65,13 @@ const BracketHeader: React.FC<{ tournament: Tournament }> = ({ tournament }) => 
 
         <div className="flex items-center gap-8">
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Cagnotte joueurs</span>
+            <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Cagnotte joueurs</span>
             <span className="text-2xl font-display font-black text-zoyd-yellow italic">
               {formatZC(tournament.payout.playerPool)}
             </span>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Inscrits</span>
+            <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Inscrits</span>
             <span className="text-2xl font-display font-black text-white italic">
               {tournament.entries.length}/{tournament.maxEntries}
             </span>

@@ -197,7 +197,7 @@ const LeagueSeasonPage = () => {
       <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
         <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
-          <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/40 hover:text-white mb-6">
+          <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/70 hover:text-white mb-6">
             <ArrowLeft className="w-4 h-4" />
             Retour aux ligues
           </Link>
@@ -223,7 +223,7 @@ const LeagueSeasonPage = () => {
 
       <div className="max-w-[1500px] mx-auto px-4 md:px-8 relative z-10">
         <div className="pt-8">
-          <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/40 hover:text-white mb-6">
+          <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/70 hover:text-white mb-6">
             <ArrowLeft className="w-4 h-4" />
             Retour aux ligues
           </Link>
@@ -243,7 +243,7 @@ const LeagueSeasonPage = () => {
               <h1 className="text-lg sm:text-2xl md:text-4xl font-black uppercase tracking-tight">
                 BR League — Saison {season.cycleNumber}
               </h1>
-              <p className="text-xs text-white/40 mt-2">
+              <p className="text-xs text-white/70 mt-2">
                 Creee {getRelativeTime(season.createdAt)}
               </p>
             </div>
@@ -289,19 +289,19 @@ const LeagueSeasonPage = () => {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Joueurs</div>
+            <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">Joueurs</div>
             <div className="text-lg md:text-xl font-black text-white">{season.registeredPlayers.length}/{season.maxPlayers}</div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">Pot</div>
+            <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">Pot</div>
             <div className="text-lg md:text-xl font-black text-zoyd-yellow">{formatZC(season.payout.gross)}</div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">1er</div>
+            <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">1er</div>
             <div className="text-lg md:text-xl font-black text-green-400">{formatZC(season.payout.first)}</div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
-            <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider mb-1">
+            <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">
               {season.status === 'completed' ? 'Terminee' : myStanding ? 'Ta position' : 'Classement'}
             </div>
             <div className="text-lg md:text-xl font-black text-white">
@@ -338,20 +338,20 @@ const LeagueSeasonPage = () => {
               <div className="text-[10px] text-green-400 mt-1">{formatZC(season.payout.first)}</div>
             </div>
             <div className="border border-white/10 bg-white/5 px-4 py-4 text-center">
-              <Medal className="w-6 h-6 text-white/40 mx-auto mb-2" />
-              <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 mb-1">Vice-Champion</div>
+              <Medal className="w-6 h-6 text-white/70 mx-auto mb-2" />
+              <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 mb-1">Vice-Champion</div>
               <div className="text-sm font-bold text-white">
                 {season.registeredPlayers.find((p) => p.userId === season.podium.second)?.pseudo || '—'}
               </div>
-              <div className="text-[10px] text-white/40 mt-1">{formatZC(season.payout.second)}</div>
+              <div className="text-[10px] text-white/70 mt-1">{formatZC(season.payout.second)}</div>
             </div>
             <div className="border border-orange-400/20 bg-orange-400/5 px-4 py-4 text-center">
-              <Medal className="w-6 h-6 text-orange-400/60 mx-auto mb-2" />
-              <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-orange-400/60 mb-1">3eme</div>
+              <Medal className="w-6 h-6 text-orange-400/80 mx-auto mb-2" />
+              <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-orange-400/80 mb-1">3eme</div>
               <div className="text-sm font-bold text-white">
                 {season.registeredPlayers.find((p) => p.userId === season.podium.third)?.pseudo || '—'}
               </div>
-              <div className="text-[10px] text-orange-400/60 mt-1">{formatZC(season.payout.third)}</div>
+              <div className="text-[10px] text-orange-400/80 mt-1">{formatZC(season.payout.third)}</div>
             </div>
           </div>
         )}
@@ -386,9 +386,9 @@ const LeagueSeasonPage = () => {
                     <table className="w-full text-left">
                       <thead>
                         <tr className="border-b border-white/10">
-                          <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">#</th>
-                          <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
-                          <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Kills</th>
+                          <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70">#</th>
+                          <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70">Joueur</th>
+                          <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Kills</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -403,7 +403,7 @@ const LeagueSeasonPage = () => {
                             >
                               <td className="px-4 py-3">
                                 <span className={`text-sm font-bold ${
-                                  index === 0 ? 'text-zoyd-yellow' : index < 3 ? 'text-white/80' : 'text-white/40'
+                                  index === 0 ? 'text-zoyd-yellow' : index < 3 ? 'text-white/80' : 'text-white/70'
                                 }`}>
                                   {result.placement}
                                 </span>
@@ -428,7 +428,7 @@ const LeagueSeasonPage = () => {
                   isLoading={actionLoading}
                 />
               ) : (
-                <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-12 text-center text-sm text-white/40">
+                <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-12 text-center text-sm text-white/70">
                   La finale n&apos;a pas encore eu lieu.
                 </div>
               )}

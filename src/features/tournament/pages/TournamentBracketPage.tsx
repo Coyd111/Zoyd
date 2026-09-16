@@ -134,7 +134,7 @@ const TournamentBracketPage: React.FC = () => {
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
           <h2 className="text-xl font-display font-black uppercase mb-4">Chargement du tournoi</h2>
-          <p className="text-white/40">Le bracket et les inscriptions se synchronisent avec le serveur.</p>
+          <p className="text-white/70">Le bracket et les inscriptions se synchronisent avec le serveur.</p>
         </div>
       </div>
     );
@@ -424,7 +424,7 @@ const TournamentBracketPage: React.FC = () => {
               <div className="hud-panel p-6 bg-zoyd-surface/20">
                 <div className="flex items-center justify-between gap-4 mb-5">
                   <h2 className="text-lg font-display font-black uppercase italic">Espace arbitre</h2>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
                     Poste #{myArbiterSlot.slot}
                   </div>
                 </div>

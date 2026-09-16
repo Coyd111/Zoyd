@@ -254,7 +254,7 @@ const RegisterPage: React.FC = () => {
         <div className="absolute top-8 left-8 z-10">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-sm border border-white/10">
             <Zap className="w-3 h-3 text-zoyd-yellow" />
-            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Rejoins la zone</span>
+            <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Rejoins la zone</span>
           </div>
         </div>
 
@@ -268,7 +268,7 @@ const RegisterPage: React.FC = () => {
               Entre sur <br />
               <span className="text-zoyd-blue underline decoration-zoyd-blue/30 underline-offset-8">la plateforme</span>.
             </h2>
-            <p className="text-white/40 text-lg font-light">
+            <p className="text-white/70 text-lg font-light">
               Crée ton compte, configure ton profil CODM et prépare ton entrée dans l'univers ZOYD.
             </p>
 
@@ -280,7 +280,7 @@ const RegisterPage: React.FC = () => {
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                    <div className="text-lg md:text-xl font-display font-black text-white italic">{stat.value}</div>
-                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">{stat.label}</div>
+                  <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -310,7 +310,7 @@ const RegisterPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-display font-black text-white uppercase italic tracking-tighter">
               {currentStep === 1 ? 'Créer un compte' : currentStep === 2 ? 'Configuration joueur' : 'Finalisation'}
             </h1>
-            <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest mt-1">Etape 0{currentStep} / 03</p>
+            <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest mt-1">Etape 0{currentStep} / 03</p>
           </header>
 
           <AnimatePresence mode="wait">
@@ -364,7 +364,7 @@ const RegisterPage: React.FC = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                    className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                    className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/70 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -375,7 +375,7 @@ const RegisterPage: React.FC = () => {
                           <div key={index} className={`h-1 flex-1 rounded-full ${index <= passwordStrength ? 'bg-zoyd-blue' : 'bg-white/5'}`} />
                         ))}
                       </div>
-                      <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                      <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                         {strengthLabels[passwordStrength]}
                       </span>
                     </div>
@@ -422,7 +422,7 @@ const RegisterPage: React.FC = () => {
                           className={`p-4 min-h-[44px] border transition-all flex flex-col items-center gap-2 ${
                             selectedDevice === device.id
                               ? 'bg-white text-black border-white'
-                              : 'bg-zoyd-surface/20 border-white/5 text-white/40 hover:border-white/20'
+                              : 'bg-zoyd-surface/20 border-white/5 text-white/70 hover:border-white/20'
                           }`}
                         >
                           <Icon className="w-6 h-6" />
@@ -449,7 +449,7 @@ const RegisterPage: React.FC = () => {
                           className={`p-4 min-h-[44px] border text-left transition-all ${
                             selectedController === option.id
                               ? 'bg-white text-black border-white'
-                              : 'bg-zoyd-surface/20 border-white/5 text-white/40 hover:border-white/20'
+                              : 'bg-zoyd-surface/20 border-white/5 text-white/70 hover:border-white/20'
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -477,7 +477,7 @@ const RegisterPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="rankMJ" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade MJ</label>
+                    <label htmlFor="rankMJ" className="text-[10px] font-mono font-black text-white/70 uppercase mb-2 block tracking-widest">Grade MJ</label>
                     <select id="rankMJ" {...register('rankMJ')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
@@ -487,7 +487,7 @@ const RegisterPage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="rankBR" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Grade BR</label>
+                    <label htmlFor="rankBR" className="text-[10px] font-mono font-black text-white/70 uppercase mb-2 block tracking-widest">Grade BR</label>
                     <select id="rankBR" {...register('rankBR')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
                       {CODM_RANKS.map((rank) => (
                         <option key={rank} value={rank} className="bg-zoyd-black">
@@ -500,7 +500,7 @@ const RegisterPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="country" className="text-[10px] font-mono font-black text-white/40 uppercase mb-2 block tracking-widest">Pays</label>
+                    <label htmlFor="country" className="text-[10px] font-mono font-black text-white/70 uppercase mb-2 block tracking-widest">Pays</label>
                     <select id="country" {...register('country')} className="w-full bg-transparent border-0 border-b border-white/20 p-3 touch-target text-xs font-display font-black italic uppercase text-white focus:border-zoyd-blue">
                       {COUNTRY_OPTIONS.map((country) => (
                         <option key={country} value={country} className="bg-zoyd-black">
@@ -525,7 +525,7 @@ const RegisterPage: React.FC = () => {
                   />
                 )}
 
-                <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                   Ces informations servent à personnaliser ton expérience de jeu, sans être exposées publiquement.
                 </p>
 
@@ -585,7 +585,7 @@ const RegisterPage: React.FC = () => {
 
                   <div className="mt-6">
                     <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white uppercase italic tracking-tighter">Profil pret</h2>
-                    <p className="text-white/40 font-mono text-[11px] uppercase tracking-widest mt-2">
+                    <p className="text-white/70 font-mono text-[11px] uppercase tracking-widest mt-2">
                       Compte #{formData.pseudo || 'ZOYD'} pret pour ZOYD
                     </p>
                   </div>
@@ -593,23 +593,23 @@ const RegisterPage: React.FC = () => {
 
                 <div className="relative z-10 hud-panel p-6 bg-zoyd-surface/20 border-white/5 text-left space-y-4">
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Identite</span>
+                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Identite</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.pseudo}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Appareil principal</span>
+                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Appareil principal</span>
                     <span className="text-xs font-display font-black text-zoyd-blue italic uppercase">{formData.device}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Controle</span>
+                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Controle</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.controllerType || 'touch'}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-white/20 pb-2">
-                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Pays</span>
+                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Pays</span>
                     <span className="text-xs font-display font-black text-white italic uppercase">{formData.country || 'Benin'}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Mode streamer</span>
+                    <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">Mode streamer</span>
                     <span className="text-xs font-display font-black text-zoyd-yellow italic uppercase">
                       {formData.streamerMode ? 'Active' : 'Desactive'}
                     </span>
@@ -652,7 +652,7 @@ const RegisterPage: React.FC = () => {
           </AnimatePresence>
 
           <footer className="mt-12 text-center border-t border-white/5 pt-8">
-            <p className="text-white/40 text-[11px] font-mono uppercase tracking-widest">
+            <p className="text-white/70 text-[11px] font-mono uppercase tracking-widest">
               Déjà membre ?{' '}
               <Link to="/auth/login" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2">
                 ME CONNECTER

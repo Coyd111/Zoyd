@@ -39,7 +39,7 @@ const Sidebar: React.FC = React.memo(() => {
     <aside className="hidden md:flex flex-col w-64 min-h-[calc(100dvh-3.5rem)] bg-zoyd-black border-r border-white/5 sticky top-14">
       <div className="flex-1 overflow-y-auto px-4 py-4 md:py-8 space-y-10">
         <div>
-          <div className="text-[10px] font-display font-black text-white/40 uppercase tracking-[0.3em] mb-4 px-3 italic">Navigation</div>
+          <div className="text-[10px] font-display font-black text-white/70 uppercase tracking-[0.3em] mb-4 px-3 italic">Navigation</div>
           <div className="space-y-1">
             {items.map((item) => {
               const Icon = item.icon;
@@ -50,7 +50,7 @@ const Sidebar: React.FC = React.memo(() => {
                   to={item.path}
                   className={cn(
                     'flex items-center gap-4 px-4 py-3 touch-target transition-all font-display font-black text-xs tracking-widest italic uppercase',
-                    isActive ? 'bg-white text-black translate-x-1 shadow-[4px_0_0_0_#FFE600]' : 'text-white/40 hover:text-white hover:bg-white/5'
+                    isActive ? 'bg-white text-black translate-x-1 shadow-[4px_0_0_0_#FFE600]' : 'text-white/70 hover:text-white hover:bg-white/5'
                   )}
                 >
                   <Icon className="w-4 h-4" />
@@ -75,7 +75,7 @@ const Sidebar: React.FC = React.memo(() => {
         </div>
 
         <div>
-          <div className="text-[10px] font-display font-black text-white/40 uppercase tracking-[0.3em] mb-4 px-3 italic">Communauté</div>
+          <div className="text-[10px] font-display font-black text-white/70 uppercase tracking-[0.3em] mb-4 px-3 italic">Communauté</div>
           <div className="space-y-1">
             {socialItems.map((item) => {
               const Icon = item.icon;
@@ -86,7 +86,7 @@ const Sidebar: React.FC = React.memo(() => {
                   to={item.path}
                   className={cn(
                     'flex items-center justify-between px-4 py-3 touch-target transition-all font-display font-black text-xs tracking-widest italic uppercase',
-                    isActive ? 'bg-white/5 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'
+                    isActive ? 'bg-white/5 text-white' : 'text-white/70 hover:text-white hover:bg-white/5'
                   )}
                 >
                   <div className="flex items-center gap-4">
@@ -108,14 +108,14 @@ const Sidebar: React.FC = React.memo(() => {
       <div className="px-4 py-3 space-y-1 border-t border-white/5">
         <Link
           to="/parametres"
-          className="flex items-center gap-3 px-3 py-2.5 touch-target text-white/30 hover:text-white hover:bg-white/5 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
+          className="flex items-center gap-3 px-3 py-2.5 touch-target text-white/60 hover:text-white hover:bg-white/5 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
         >
           <Settings className="w-4 h-4" />
           Paramètres
         </Link>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 px-3 py-2.5 touch-target text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
+          className="flex w-full items-center gap-3 px-3 py-2.5 touch-target text-red-400 hover:text-red-400 hover:bg-red-400/10 transition-all font-display font-black text-[10px] tracking-widest uppercase italic"
         >
           <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           Se déconnecter

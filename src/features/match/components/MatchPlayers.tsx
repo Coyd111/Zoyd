@@ -7,7 +7,7 @@ const InfoCard = ({ icon, label, value }: { icon: React.ReactNode; label: string
   <div className="hud-panel p-5 bg-zoyd-surface/20">
     <div className="flex items-center gap-3 mb-3">
       {icon}
-      <span className="text-[10px] font-mono uppercase tracking-widest text-white/30">{label}</span>
+      <span className="text-[10px] font-mono uppercase tracking-widest text-white/60">{label}</span>
     </div>
     <div className="text-2xl font-display font-black italic text-white">{value}</div>
   </div>
@@ -27,7 +27,7 @@ const TeamCard = ({
   <div className="hud-panel p-6 bg-zoyd-surface/20">
     <div className="flex items-center justify-between mb-5">
       <h2 className="text-lg font-display font-black uppercase italic">{title}</h2>
-      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+      <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
         {players.length}/{teamSize} places
       </div>
     </div>
@@ -41,18 +41,18 @@ const TeamCard = ({
                 {player.pseudo}
                 {player.isCaptain ? ' / Capitaine' : ''}
               </div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
                 {player.isCheckedIn ? 'Presence confirmee' : 'En attente'}
               </div>
             </div>
           </div>
-          <div className={`text-[10px] font-mono uppercase tracking-widest ${player.isReady ? 'text-green-400' : 'text-white/30'}`}>
+          <div className={`text-[10px] font-mono uppercase tracking-widest ${player.isReady ? 'text-green-400' : 'text-white/60'}`}>
             {player.isReady ? 'Pret' : 'En attente'}
           </div>
         </div>
       ))}
       {Array.from({ length: Math.max(0, teamSize - players.length) }).map((_, index) => (
-        <div key={index} className="border border-dashed border-white/10 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-white/30">
+        <div key={index} className="border border-dashed border-white/10 px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-white/60">
           Slot libre
         </div>
       ))}
@@ -73,7 +73,7 @@ export const MatchPlayers: React.FC<MatchPlayersProps> = ({ match, teamAlpha, te
       <InfoCard icon={<CreditCard className="w-5 h-5 text-zoyd-yellow" />} label="Mise" value={formatZC(match.entryFee)} />
       <InfoCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Cash Prize" value={formatZC(match.prizePool)} />
       <InfoCard icon={<ShieldCheck className="w-5 h-5 text-zoyd-blue" />} label="Arbitre" value={match.arbiter ? match.arbiter.pseudo : 'Libre'} />
-      <InfoCard icon={<Clock3 className="w-5 h-5 text-white/50" />} label="Horaire" value={match.scheduledAt ? countdown || '00:00:00' : 'A fixer'} />
+      <InfoCard icon={<Clock3 className="w-5 h-5 text-white/75" />} label="Horaire" value={match.scheduledAt ? countdown || '00:00:00' : 'A fixer'} />
     </div>
 
     <div className="grid lg:grid-cols-2 gap-6">

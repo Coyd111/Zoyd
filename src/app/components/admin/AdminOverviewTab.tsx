@@ -34,18 +34,18 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
         <section className="p-6">
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">
                 PRIORITY QUEUE
               </div>
               <h2 className="text-xl font-display font-black uppercase italic">Ce qui doit bouger maintenant</h2>
             </div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
               {priorityQueue.length} cartes actives
             </div>
           </div>
 
           {priorityQueue.length === 0 ? (
-            <p className="text-white/30 text-sm font-mono">Aucune urgence locale remontee.</p>
+            <p className="text-white/60 text-sm font-mono">Aucune urgence locale remontee.</p>
           ) : (
             <div className="space-y-3">
               {priorityQueue.map((item) => (
@@ -62,10 +62,10 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                           {item.label}
                         </span>
                       </div>
-                      <div className="text-[11px] text-white/45">{item.body}</div>
+                      <div className="text-[11px] text-white/70">{item.body}</div>
                     </div>
                     <div className="flex items-center justify-between lg:justify-end gap-4 shrink-0">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-white/25">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-white/60">
                         {getRelativeTime(item.timestamp)}
                       </span>
                       <span className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow">
@@ -82,7 +82,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
 
         <section className="space-y-6">
           <div className="p-6">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-4">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-4">
               OPERATIONS HEALTH
             </div>
             <div className="space-y-3">
@@ -110,7 +110,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
           <div className="p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">
                   RECENT SIGNALS
                 </div>
                 <h2 className="text-lg font-display font-black uppercase italic">Journal moderation</h2>
@@ -124,7 +124,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
             </div>
 
             {recentEvents.length === 0 ? (
-              <p className="text-white/30 text-sm font-mono">Aucun evenement recent.</p>
+              <p className="text-white/60 text-sm font-mono">Aucun evenement recent.</p>
             ) : (
               <div className="space-y-3">
                 {recentEvents.slice(0, 5).map((event) => (
@@ -134,9 +134,9 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                   >
                     <div>
                       <div className="font-display font-black text-sm uppercase italic">{event.action}</div>
-                      <div className="text-[10px] font-mono text-white/30">{event.target}</div>
+                      <div className="text-[10px] font-mono text-white/60">{event.target}</div>
                     </div>
-                    <span className="text-[10px] font-mono text-white/25">
+                    <span className="text-[10px] font-mono text-white/60">
                       {getRelativeTime(event.timestamp)}
                     </span>
                   </div>

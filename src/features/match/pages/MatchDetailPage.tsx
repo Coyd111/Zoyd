@@ -676,27 +676,27 @@ const MatchDetailPage: React.FC = () => {
               </p>
               <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
                 <div className="flex items-center justify-between px-4 py-3">
-                  <dt className="text-white/50">Score final</dt>
+                  <dt className="text-white/75">Score final</dt>
                   <dd className="font-display font-black text-white">Alpha {alpha} — {bravo} Bravo</dd>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <dt className="text-white/50">Vainqueur</dt>
+                  <dt className="text-white/75">Vainqueur</dt>
                   <dd className="font-display font-black text-zoyd-yellow">{winnerLabel}</dd>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <dt className="text-white/50">Cagnotte totale</dt>
+                  <dt className="text-white/75">Cagnotte totale</dt>
                   <dd className="font-display font-black text-white">{formatZC(pot)}</dd>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <dt className="text-white/50">Part arbitre (2 %)</dt>
+                  <dt className="text-white/75">Part arbitre (2 %)</dt>
                   <dd className="font-display font-black text-white">{formatZC(arbiterShare)}</dd>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <dt className="text-white/50">Part vainqueur</dt>
+                  <dt className="text-white/75">Part vainqueur</dt>
                   <dd className="font-display font-black text-green-400">{formatZC(winnerShare)}</dd>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <dt className="text-white/50">Preuves jointes</dt>
+                  <dt className="text-white/75">Preuves jointes</dt>
                   <dd className="font-display font-black text-white">{proofsCount}</dd>
                 </div>
               </dl>

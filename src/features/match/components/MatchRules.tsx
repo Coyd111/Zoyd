@@ -3,7 +3,7 @@ import type { Match } from '../../../app/stores/matchStore';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">{label}</div>
     <div className="font-display font-black text-white italic">{value}</div>
   </div>
 );
@@ -43,12 +43,12 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
             <RuleRow label="Mot de passe" value={match.roomPassword} />
           </div>
         ) : (
-          <p className="text-white/40 text-sm">
+          <p className="text-white/70 text-sm">
             La salle sera partagee peu avant le debut du match.
           </p>
         )}
         {match.arbiter?.roomPublishedAt ? (
-          <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/30">
+          <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/60">
             Salle publiee {new Date(match.arbiter.roomPublishedAt).toLocaleString('fr-FR')}
           </div>
         ) : null}

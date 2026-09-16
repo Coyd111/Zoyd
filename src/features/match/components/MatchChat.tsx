@@ -82,13 +82,13 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
                     isConnected ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-red-500 animate-pulse'
                   }`}
                 />
-                <span className="text-[10px] font-mono text-white/30 tracking-widest uppercase">
+                <span className="text-[10px] font-mono text-white/60 tracking-widest uppercase">
                   {isConnected ? 'Canal actif' : 'Hors-ligne'}
                 </span>
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/25">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/60">
               <span className="inline-flex items-center gap-1.5 border border-white/10 px-2 py-1">
                 <Users className="w-3 h-3" />
                 {onlineMembers.length}/{presence.length} presents
@@ -108,7 +108,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
                       ? member.role === 'arbiter'
                         ? 'border-zoyd-blue/30 text-zoyd-blue bg-zoyd-blue/5'
                         : 'border-green-500/20 text-green-400 bg-green-500/5'
-                      : 'border-white/10 text-white/25 bg-black/20'
+                      : 'border-white/10 text-white/60 bg-black/20'
                   }`}
                 >
                   {member.role === 'arbiter'
@@ -124,13 +124,13 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             </div>
           </div>
 
-          <ShieldCheck className="w-4 h-4 text-white/40 shrink-0" title="Canal securise" />
+          <ShieldCheck className="w-4 h-4 text-white/70 shrink-0" title="Canal securise" />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar font-ui text-sm">
         {!isConnected ? (
-          <div className="h-full flex flex-col items-center justify-center text-white/40 text-center">
+          <div className="h-full flex flex-col items-center justify-center text-white/70 text-center">
             <Terminal className="w-8 h-8 mb-4 opacity-10" />
             <span className="font-mono text-[10px] uppercase font-bold tracking-widest">
               Etablissement de la connexion securisee...
@@ -160,7 +160,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
                   {!isMe ? <div className="w-1.5 h-1.5 bg-zoyd-blue" /> : null}
                   <span
                     className={`text-[10px] font-display font-black tracking-widest uppercase ${
-                      isMe ? 'text-white' : 'text-white/40'
+                      isMe ? 'text-white' : 'text-white/70'
                     }`}
                   >
                     {message.senderPseudo}
@@ -181,7 +181,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
           })}
 
         {isConnected && typingUsers.length > 0 ? (
-          <div className="text-[10px] font-mono uppercase tracking-widest text-white/25">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
             {typingUsers.map((member) => member.pseudo).join(', ')} ecrit...
           </div>
         ) : null}

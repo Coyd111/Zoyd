@@ -98,7 +98,7 @@ const ActivatePage: React.FC = () => {
         <Button
           variant="ghost"
           onClick={() => navigate(-1)}
-          className="mb-6 text-white/40 hover:text-white"
+          className="mb-6 text-white/70 hover:text-white"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Retour
@@ -114,7 +114,7 @@ const ActivatePage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-display font-black text-white text-center mb-2 uppercase italic">
             Active ton compte
           </h1>
-          <p className="text-white/40 text-center text-sm mb-8">
+          <p className="text-white/70 text-center text-sm mb-8">
             Entre le code d'activation envoyé à ton email
           </p>
 
@@ -123,13 +123,13 @@ const ActivatePage: React.FC = () => {
               <div className="bg-white/5 border border-white/10 p-4 flex items-center gap-3">
                 <Mail className="w-5 h-5 text-zoyd-yellow" />
                 <div>
-                  <p className="text-[10px] font-mono text-white/40 uppercase">Email</p>
+                  <p className="text-[10px] font-mono text-white/70 uppercase">Email</p>
                   <p className="text-white text-sm">{email}</p>
                 </div>
               </div>
             ) : (
               <div>
-                <label className="text-[10px] font-mono text-white/40 uppercase mb-2 block">
+                <label className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
                   Email
                 </label>
                 <Input
@@ -145,7 +145,7 @@ const ActivatePage: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="activation-code" className="text-[10px] font-mono text-white/40 uppercase mb-2 block">
+              <label htmlFor="activation-code" className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
                 Code d'activation (8 chiffres)
               </label>
               <Input
@@ -193,7 +193,7 @@ const ActivatePage: React.FC = () => {
             </button>
             {showEmailChange ? (
               <form onSubmit={handleChangeEmail} className="space-y-3">
-                <label htmlFor="new-email" className="text-[10px] font-mono text-white/40 uppercase block">
+                <label htmlFor="new-email" className="text-[10px] font-mono text-white/70 uppercase block">
                   Nouvel email
                 </label>
                 <Input
@@ -226,14 +226,14 @@ const ActivatePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowEmailChange(true)}
-                className="w-full text-sm text-white/40 hover:text-white transition-colors touch-target py-2"
+                className="w-full text-sm text-white/70 hover:text-white transition-colors touch-target py-2"
               >
                 Utiliser une autre adresse email
               </button>
             )}
           </div>
 
-          <p className="text-white/40 text-xs text-center mt-6">
+          <p className="text-white/70 text-xs text-center mt-6">
             Le code expire dans 15 minutes. Verifie tes spams.
           </p>
         </div>

@@ -36,7 +36,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
         <h2 className="text-xl font-display font-black uppercase italic">Litiges en Cours</h2>
-        <p className="text-white/35 text-sm">
+        <p className="text-white/70 text-sm">
           Chaque carte remonte le contexte utile pour décider vite sans chercher l&apos;info ailleurs.
         </p>
       </div>
@@ -61,7 +61,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
               className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
                 disputeFilter === f.id
                   ? 'bg-white text-black border-white'
-                  : 'border-white/10 text-white/35 hover:text-white hover:border-white/20'
+                  : 'border-white/10 text-white/70 hover:text-white hover:border-white/20'
               }`}
             >
               <Filter className="w-3 h-3 inline mr-2" />
@@ -74,7 +74,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
 
     {filteredDisputes.length === 0 ? (
       <div className="p-8 text-center">
-        <p className="text-white/30 text-sm font-mono">
+        <p className="text-white/60 text-sm font-mono">
           {disputeFilter === 'escalated' ? 'Aucun litige escaladé. Bonne nouvelle !' : 'Aucun litige dans ce filtre.'}
         </p>
       </div>
@@ -97,7 +97,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                     <div className="text-[10px] font-mono uppercase tracking-widest text-red-400">
                       Litige Escaladé — Niveau Admin
                     </div>
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-white/70">
                       Escaladé par {activeDispute?.escalatedByPseudo || 'l\'arbitre'}
                       {activeDispute?.escalatedAt ? ` · ${getRelativeTime(activeDispute.escalatedAt)}` : ''}
                     </div>
@@ -117,13 +117,13 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                       <StatusPill label="pool gelé" tone="text-zoyd-yellow border-zoyd-yellow/30" />
                     ) : null}
                   </div>
-                  <div className="text-[11px] text-white/45">
+                  <div className="text-[11px] text-white/70">
                     {match.format} / {match.rules.map} / {match.players.length} joueurs / ouvert{' '}
                     {getRelativeTime(activeDispute?.openedAt || activeDispute?.createdAt || match.createdAt)}
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-3 gap-3 text-sm font-mono text-white/40 min-w-0">
+                <div className="grid sm:grid-cols-3 gap-3 text-sm font-mono text-white/70 min-w-0">
                   <DisputeStat label="Ouvert par" value={activeDispute?.openedByPseudo || 'Inconnu'} />
                   <DisputeStat
                     label="Catégorie"
@@ -135,7 +135,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
 
               <div className="grid md:grid-cols-2 gap-4 mb-5">
                 <div className="p-4">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">ROSTER IMPACTÉ</div>
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-3">ROSTER IMPACTÉ</div>
                   <div className="flex flex-wrap gap-2">
                     {match.players.map((player) => (
                       <PlayerPill key={`${match.id}-${player.userId}`} label={player.pseudo} team={player.team} />
@@ -143,8 +143,8 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   </div>
                 </div>
                 <div className="border border-white/5 bg-black/30 p-4">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">CONTEXTE</div>
-                  <div className="space-y-2 text-sm text-white/45">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-3">CONTEXTE</div>
+                  <div className="space-y-2 text-sm text-white/70">
                     <div>Preuves: {activeDispute?.evidence?.length || 0} pièce(s)</div>
                     <div>Arbitre: {match.arbiter?.pseudo || 'Non assigné'}</div>
                     <div>Résolution existante: {match.result ? 'Oui, contestée' : 'Aucune'}</div>
@@ -153,12 +153,12 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
               </div>
 
               <div className="p-4 mb-5">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-3">DOSSIER</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-3">DOSSIER</div>
                 <div className="space-y-3">
                   <div className="text-sm text-white/60">{activeDispute?.reason || 'Aucun motif fourni'}</div>
                   {activeDispute?.evidence && activeDispute.evidence.length > 0 && (
                     <div className="border-t border-white/5 pt-3">
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">
                         Pièces jointes ({activeDispute.evidence.length})
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -247,14 +247,14 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                 </button>
                 <Link
                   to={`/mj/match/${match.id}`}
-                  className="border border-white/10 text-white/40 px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-white hover:border-white transition-colors flex items-center gap-2 touch-target"
+                  className="border border-white/10 text-white/70 px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-white hover:border-white transition-colors flex items-center gap-2 touch-target"
                 >
                   <Eye className="w-3 h-3" />
                   Voir le match
                 </Link>
                 <button
                   onClick={() => onRequestCancel(match.id)}
-                  className="border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target border-white/10 text-white/30 hover:text-red-300 hover:border-red-500/30"
+                  className="border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target border-white/10 text-white/60 hover:text-red-300 hover:border-red-500/30"
                 >
                   <Ban className="w-3 h-3 inline mr-2" />
                   Annuler

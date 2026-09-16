@@ -21,7 +21,7 @@ const PayoutCard = ({ title, rows }: { title: string; rows: Array<[string, strin
       {rows.map(([label, value]) => (
         <div key={label} className="flex items-center justify-between border border-white/5 bg-black/30 px-4 py-3">
           <span className="text-sm font-display font-black uppercase italic text-white">{label}</span>
-          <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">{value}</span>
+          <span className="text-[10px] font-mono uppercase tracking-widest text-white/70">{value}</span>
         </div>
       ))}
     </div>
@@ -64,7 +64,7 @@ const BracketGrid: React.FC<BracketGridProps> = ({
           {bracketRounds.map((round) => (
             <div key={round} className="min-w-[280px] flex flex-col gap-5">
               <div className="text-center">
-                <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-[0.35em] italic">
+                <span className="text-[10px] font-mono font-black text-white/70 uppercase tracking-[0.35em] italic">
                   {getRoundLabel(round, tournament.mainRounds)}
                 </span>
               </div>
@@ -87,7 +87,7 @@ const BracketGrid: React.FC<BracketGridProps> = ({
           {bronzeMatch ? (
             <div className="min-w-[280px] flex flex-col gap-5">
               <div className="text-center">
-                <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-[0.35em] italic">
+                <span className="text-[10px] font-mono font-black text-white/70 uppercase tracking-[0.35em] italic">
                   Bronze
                 </span>
               </div>
@@ -141,7 +141,7 @@ const BracketGrid: React.FC<BracketGridProps> = ({
                   <div className="font-display font-black text-sm uppercase italic text-white">
                     #{placement} {entry?.squadName || 'TBD'}
                   </div>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
                     {placement === 1
                       ? formatZC(tournament.payout.first)
                       : placement === 2

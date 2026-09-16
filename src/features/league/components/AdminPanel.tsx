@@ -81,7 +81,7 @@ export const AdminPanel = ({
             className={`flex items-center gap-2 text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-2 border transition-colors ${
               settingsTab === key
                 ? 'border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/10'
-                : 'border-white/10 text-white/40 hover:text-white/60'
+                : 'border-white/10 text-white/70 hover:text-white/60'
             }`}
           >
             <Icon className="w-3.5 h-3.5" />
@@ -95,7 +95,7 @@ export const AdminPanel = ({
           <h3 className="text-sm font-bold text-white mb-3">Paramètres de la ligue</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 block mb-1.5">
+              <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 block mb-1.5">
                 Nombre max de joueurs
               </label>
               <input
@@ -108,7 +108,7 @@ export const AdminPanel = ({
               />
             </div>
             <div>
-              <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 block mb-1.5">
+              <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 block mb-1.5">
                 Pass d&apos;entree (ZC)
               </label>
               <input
@@ -122,7 +122,7 @@ export const AdminPanel = ({
             </div>
           </div>
           <div className="flex items-center justify-between border-t border-white/5 pt-3">
-            <span className="text-[10px] text-white/40">
+            <span className="text-[10px] text-white/70">
               {season.registeredPlayers.length} inscrits — Pot: {formatZC(season.registeredPlayers.length * entryFee)}
             </span>
             <button
@@ -140,11 +140,11 @@ export const AdminPanel = ({
         <div className="border border-white/10 bg-zoyd-surface/20 p-5 space-y-4">
           <h3 className="text-sm font-bold text-white mb-3">Reassigner un joueur</h3>
           {season.status !== 'qualifying' ? (
-            <p className="text-sm text-white/40">La reassignment n est possible que pendant la qualification.</p>
+            <p className="text-sm text-white/70">La reassignment n est possible que pendant la qualification.</p>
           ) : (
             <>
               <div>
-                <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 block mb-1.5">
+                <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 block mb-1.5">
                   Joueur
                 </label>
                 <select
@@ -167,7 +167,7 @@ export const AdminPanel = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 block mb-1.5">
+                  <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 block mb-1.5">
                     Depuis
                   </label>
                   <select
@@ -181,7 +181,7 @@ export const AdminPanel = ({
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 block mb-1.5">
+                  <label className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 block mb-1.5">
                     Vers
                   </label>
                   <select
@@ -215,7 +215,7 @@ export const AdminPanel = ({
             <button
               onClick={loadPayments}
               disabled={loadingPayments}
-              className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-white/10 text-white/40 hover:text-white/60 transition-colors disabled:opacity-50"
+              className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-white/10 text-white/70 hover:text-white/60 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-3 h-3 inline mr-1 ${loadingPayments ? 'animate-spin' : ''}`} />
               Actualiser
@@ -224,11 +224,11 @@ export const AdminPanel = ({
 
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="border border-green-400/20 bg-green-400/5 px-3 py-2">
-              <div className="text-[10px] font-mono text-green-400/60 uppercase tracking-wider">Payés</div>
+              <div className="text-[10px] font-mono text-green-400/80 uppercase tracking-wider">Payés</div>
               <div className="text-lg font-bold text-green-400">{paidCount}</div>
             </div>
             <div className="border border-red-400/20 bg-red-400/5 px-3 py-2">
-              <div className="text-[10px] font-mono text-red-400/60 uppercase tracking-wider">Impayés</div>
+              <div className="text-[10px] font-mono text-red-400/80 uppercase tracking-wider">Impayés</div>
               <div className="text-lg font-bold text-red-400">{unpaidCount}</div>
             </div>
             <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-3 py-2">
@@ -238,18 +238,18 @@ export const AdminPanel = ({
           </div>
 
           {loadingPayments ? (
-            <div className="text-sm text-white/40 text-center py-4">Chargement...</div>
+            <div className="text-sm text-white/70 text-center py-4">Chargement...</div>
           ) : payments.length === 0 ? (
-            <div className="text-sm text-white/40 text-center py-4">Aucun paiement enregistré.</div>
+            <div className="text-sm text-white/70 text-center py-4">Aucun paiement enregistré.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
-                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Statut</th>
-                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Montant</th>
-                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Action</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70">Joueur</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70">Statut</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Montant</th>
+                    <th className="px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>

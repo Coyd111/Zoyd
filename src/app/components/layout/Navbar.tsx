@@ -30,7 +30,7 @@ const Navbar: React.FC = React.memo(() => {
           <img src="/logo.png?v=2" alt="ZOYD" className="h-8 w-auto object-contain group-hover:opacity-90 transition-opacity" />
         </Link>
 
-        <div className="hidden lg:flex items-center gap-12 font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">
+        <div className="hidden lg:flex items-center gap-12 font-mono text-[10px] uppercase tracking-[0.3em] text-white/70">
           <div className="flex items-center gap-2">
             <span className={`w-1.5 h-1.5 rounded-full ${
               serverConnected
@@ -61,7 +61,7 @@ const Navbar: React.FC = React.memo(() => {
           >
             <Wallet className="w-5 h-5 text-zoyd-yellow" />
             <span className="text-right">
-              <span className="text-[10px] font-mono font-bold text-white/30 uppercase tracking-widest">Solde</span>
+              <span className="text-[10px] font-mono font-bold text-white/60 uppercase tracking-widest">Solde</span>
               <span className="block font-display font-black text-xs text-zoyd-yellow tracking-widest leading-none">
                 {formatZC(totalBalance)}
               </span>
@@ -72,7 +72,7 @@ const Navbar: React.FC = React.memo(() => {
 
           <button
             onClick={() => setSettingsOpen(true)}
-            className="touch-target flex items-center justify-center text-white/30 hover:text-white transition-colors"
+            className="touch-target flex items-center justify-center text-white/60 hover:text-white transition-colors"
             aria-label="Paramètres de notifications"
           >
             <Settings className="w-5 h-5" />
@@ -87,7 +87,7 @@ const Navbar: React.FC = React.memo(() => {
           <button
             onClick={handleLogout}
             title="Se déconnecter"
-            className="touch-target flex items-center justify-center text-white/30 hover:text-red-400 transition-colors"
+            className="touch-target flex items-center justify-center text-white/60 hover:text-red-400 transition-colors"
           >
             <LogOut className="w-5 h-5" />
           </button>

@@ -62,7 +62,7 @@ const ToastContainer: React.FC = () => {
                     {toast.title}
                   </p>
                   {toast.message && (
-                    <p className="text-[11px] font-ui text-white/50 mt-1 leading-relaxed">{toast.message}</p>
+                    <p className="text-[11px] font-ui text-white/75 mt-1 leading-relaxed">{toast.message}</p>
                   )}
                   {toast.action && (
                     <button
@@ -70,7 +70,7 @@ const ToastContainer: React.FC = () => {
                         toast.action?.onClick?.();
                         removeToast(toast.id);
                       }}
-                      className="mt-2 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-white/40 hover:text-zoyd-yellow transition-colors"
+                      className="mt-2 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-white/70 hover:text-zoyd-yellow transition-colors"
                     >
                       <ExternalLink className="w-3 h-3" />
                       {toast.action.label}
@@ -79,7 +79,7 @@ const ToastContainer: React.FC = () => {
                 </div>
                 <button
                   onClick={() => removeToast(toast.id)}
-                  className="text-white/30 hover:text-white transition-colors shrink-0 -mt-0.5 touch-target"
+                  className="text-white/60 hover:text-white transition-colors shrink-0 -mt-0.5 touch-target"
                   aria-label="Fermer la notification"
                   title="Fermer"
                 >

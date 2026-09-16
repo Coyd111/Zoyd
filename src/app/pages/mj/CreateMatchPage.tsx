@@ -210,7 +210,7 @@ const CreateMatchPage: React.FC = () => {
           {[1, 2, 3, 4].map((step) => (
             <div key={step} className="flex-1 flex flex-col gap-2" aria-current={step === currentStep ? 'step' : undefined}>
               <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} role="progressbar" aria-valuenow={step <= currentStep ? 100 : 0} aria-valuemin={0} aria-valuemax={100} />
-              <span className={`text-[10px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/40'}`}>
+              <span className={`text-[10px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/70'}`}>
                 Étape 0{step}
               </span>
             </div>
@@ -230,7 +230,7 @@ const CreateMatchPage: React.FC = () => {
                       aria-label={`Sélectionner le format ${format}`}
                       className={`group relative p-5 sm:p-6 md:p-8 border transition-all ${selectedFormat === format ? 'bg-zoyd-blue border-zoyd-blue text-black' : 'bg-black border-white/5 hover:border-white/20'}`}
                     >
-                      <p className={`text-2xl sm:text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/40 group-hover:text-white transition-colors'}`}>
+                      <p className={`text-2xl sm:text-3xl font-display font-black italic ${selectedFormat === format ? 'text-black' : 'text-white/70 group-hover:text-white transition-colors'}`}>
                         {format}
                       </p>
                       {selectedFormat === format && (
@@ -274,7 +274,7 @@ const CreateMatchPage: React.FC = () => {
                             className={`p-4 border text-left transition-all ${selectedGameMode === mode.name ? 'border-white bg-white/5' : 'border-white/5 hover:border-white/20'}`}
                           >
                             <div className="font-display font-black text-lg italic text-white">{mode.name}</div>
-                            <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">{mode.desc}</div>
+                            <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">{mode.desc}</div>
                           </button>
                         ))}
                       </div>
@@ -350,7 +350,7 @@ const CreateMatchPage: React.FC = () => {
                         <input id="meleeAllowed" type="checkbox" {...register('meleeAllowed')} aria-label="Autoriser le corps à corps" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
                         <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                       </div>
-                      <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
+                      <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
                         Corps a corps autorise
                       </span>
                     </label>
@@ -402,15 +402,15 @@ const CreateMatchPage: React.FC = () => {
                         <h3 className="text-[10px] font-mono font-black text-zoyd-muted uppercase tracking-[0.2em] mb-4 relative z-10">Répartition du Prize Pool</h3>
                         <div className="space-y-4 relative z-10">
                           <div className="flex justify-between border-b border-white/10 pb-4">
-                            <span className="text-xs font-display font-black text-white/40 italic">Pot Total (Cagnotte)</span>
+                            <span className="text-xs font-display font-black text-white/70 italic">Pot Total (Cagnotte)</span>
                             <span className="font-display font-black text-2xl text-zoyd-yellow">{livePot.toLocaleString()} ZC</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-xs font-display font-black text-white/40 italic">Pour le gagnant</span>
+                            <span className="text-xs font-display font-black text-white/70 italic">Pour le gagnant</span>
                             <span className="font-display font-black text-xl text-white">{winnerShare.toLocaleString()} ZC</span>
                           </div>
                           <div className="flex justify-between pt-2">
-                            <span className="text-xs font-display font-black text-white/40 italic">Commission de l'arbitre</span>
+                            <span className="text-xs font-display font-black text-white/70 italic">Commission de l'arbitre</span>
                             <span className="font-display font-black text-lg text-white/70">{arbiterShare.toLocaleString()} ZC</span>
                           </div>
                         </div>
@@ -441,7 +441,7 @@ const CreateMatchPage: React.FC = () => {
                                 type="button"
                                 onClick={() => setValue('creatorTeam', team.value)}
                                 aria-label={`Sélectionner ${team.label}`}
-                                className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/40 hover:border-white/30'}`}
+                                className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
                               >
                                 {team.label}
                               </button>
@@ -454,7 +454,7 @@ const CreateMatchPage: React.FC = () => {
                             <input id="isPrivate" type="checkbox" {...register('isPrivate')} aria-label="Partie privée sur invitation" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
                             <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                           </div>
-                          <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
+                          <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
                             Partie privee (sur invitation)
                           </span>
                         </label>
@@ -528,23 +528,23 @@ const CreateMatchPage: React.FC = () => {
             </p>
             <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/50">Pass bloque</dt>
+                <dt className="text-white/75">Pass bloque</dt>
                 <dd className="font-display font-black text-zoyd-yellow">{selectedPass.toFixed(1)} ZC</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/50">Cagnotte totale ({playerSlots} joueurs)</dt>
+                <dt className="text-white/75">Cagnotte totale ({playerSlots} joueurs)</dt>
                 <dd className="font-display font-black text-white">{livePot.toFixed(1)} ZC</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/50">Part arbitre (2 %)</dt>
+                <dt className="text-white/75">Part arbitre (2 %)</dt>
                 <dd className="font-display font-black text-white">{arbiterShare.toFixed(1)} ZC</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/50">Part vainqueur</dt>
+                <dt className="text-white/75">Part vainqueur</dt>
                 <dd className="font-display font-black text-green-400">{winnerShare.toFixed(1)} ZC</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/50">Solde apres blocage</dt>
+                <dt className="text-white/75">Solde apres blocage</dt>
                 <dd className="font-display font-black text-white">{(availableSpend - selectedPass).toFixed(1)} ZC</dd>
               </div>
             </dl>
@@ -574,7 +574,7 @@ const CreateMatchPage: React.FC = () => {
 
 const SummaryBox = ({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) => (
   <div className="bg-black border border-white/5 p-6 flex flex-col items-center text-center">
-    <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-[0.2em] mb-3 italic">{label}</span>
+    <span className="text-[10px] font-mono font-black text-white/70 uppercase tracking-[0.2em] mb-3 italic">{label}</span>
     <span className={`font-display font-black text-xl italic uppercase ${highlight ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</span>
   </div>
 );

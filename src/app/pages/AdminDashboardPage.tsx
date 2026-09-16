@@ -138,8 +138,8 @@ const AdminDashboardPage: React.FC = () => {
                 <div className="w-10 h-10 flex items-center justify-center text-zoyd-yellow"><Shield className="w-5 h-5" aria-hidden="true" /></div>
                 <span className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest italic">Administration</span>
               </div>
-              <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Centre de <span className="text-white/40">commandement</span></h1>
-              <p className="text-white/40 max-w-2xl mt-2">Vue operationnelle pour prioriser les litiges, garder un oeil sur les passes bloques et agir vite sur les comptes qui degringolent en trust.</p>
+              <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Centre de <span className="text-white/70">commandement</span></h1>
+              <p className="text-white/70 max-w-2xl mt-2">Vue operationnelle pour prioriser les litiges, garder un oeil sur les passes bloques et agir vite sur les comptes qui degringolent en trust.</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 xl:min-w-[650px]">
               <FocusCard icon={<AlertTriangle className="w-4 h-4 text-red-300" aria-hidden="true" />} label="Litiges" value={adminInsights.openDisputes.length.toString()} detail="A trancher" tone="danger" />
@@ -164,7 +164,7 @@ const AdminDashboardPage: React.FC = () => {
             { id: 'disputes', label: 'litiges', count: adminInsights.openDisputes.length, urgent: escalatedDisputes.length },
             { id: 'users', label: 'utilisateurs', count: filteredUsers.length },
           ].map((tab: { id: string; label: string; count: number; urgent?: number }) => (
-            <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} aria-label={`${tab.label} (${tab.count}${tab.urgent ? `, ${tab.urgent} urgents` : ''})`} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${activeTab === tab.id ? 'bg-white text-black' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+            <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} aria-label={`${tab.label} (${tab.count}${tab.urgent ? `, ${tab.urgent} urgents` : ''})`} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${activeTab === tab.id ? 'bg-white text-black' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
               {tab.label} <span className="opacity-60">({tab.count})</span>
               {'urgent' in tab && tab.urgent !== undefined && tab.urgent > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] font-mono font-black text-white flex items-center justify-center">{tab.urgent}</span>}
             </button>

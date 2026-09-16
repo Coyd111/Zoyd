@@ -48,13 +48,13 @@ export const QualificationPanel = ({
                     ? 'border-green-400/30 text-green-400'
                     : status === 'live'
                       ? 'border-zoyd-yellow/30 text-zoyd-yellow'
-                      : 'border-white/10 text-white/40'
+                      : 'border-white/10 text-white/70'
                 }`}>
                   <Icon className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="text-sm font-bold text-white">{DAY_LABELS[day]}</div>
-                  <div className="text-[10px] text-white/40">{slot?.players.length || 0} joueurs</div>
+                  <div className="text-[10px] text-white/70">{slot?.players.length || 0} joueurs</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -68,7 +68,7 @@ export const QualificationPanel = ({
                     ? 'border-green-400/30 text-green-400 bg-green-400/10'
                     : status === 'live'
                       ? 'border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/10'
-                      : 'border-white/10 text-white/30 bg-white/5'
+                      : 'border-white/10 text-white/60 bg-white/5'
                 }`}>
                   {status === 'finished' ? 'Terminé' : status === 'live' ? 'En cours' : status === 'scheduled' ? 'Planifié' : 'En attente'}
                 </span>
@@ -86,7 +86,7 @@ export const QualificationPanel = ({
 
             {slot?.results && slot.results.length > 0 && (
               <div className="mt-3 border-t border-white/5 pt-3">
-                <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 mb-2">Top 10</div>
+                <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 mb-2">Top 10</div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5">
                   {slot.results.slice(0, 10).map((result, i) => (
                     <div
@@ -96,7 +96,7 @@ export const QualificationPanel = ({
                           ? 'border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/5'
                           : i < 3
                             ? 'border-white/10 text-white/70 bg-white/[0.02]'
-                            : 'border-white/5 text-white/40'
+                            : 'border-white/5 text-white/70'
                       }`}
                     >
                       #{result.placement} — {result.points}pts

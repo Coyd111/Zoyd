@@ -4,14 +4,14 @@ import type { Match, MatchPlayer } from '../../../app/stores/matchStore';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">{label}</div>
     <div className="font-display font-black text-white italic">{value}</div>
   </div>
 );
 
 const EvidencePanel = ({ title, items }: { title: string; items: string[] }) => (
   <div className="border border-white/5 bg-black/30 px-4 py-3">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">{title}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">{title}</div>
     {items.length > 0 ? (
       <div className="space-y-2">
         {items.map((item, index) => (
@@ -21,7 +21,7 @@ const EvidencePanel = ({ title, items }: { title: string; items: string[] }) => 
         ))}
       </div>
     ) : (
-      <div className="text-xs text-white/25">Aucune piece jointe.</div>
+      <div className="text-xs text-white/60">Aucune piece jointe.</div>
     )}
   </div>
 );
@@ -65,7 +65,7 @@ export const MatchResults: React.FC<MatchResultsProps> = ({ match, forfeitLabel,
         </div>
       ) : null}
       {match.result.proofHash ? (
-        <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/25">
+        <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/60">
           Proof hash: {match.result.proofHash}
         </div>
       ) : null}

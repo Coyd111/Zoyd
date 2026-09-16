@@ -14,7 +14,7 @@ const PlayerLine = React.memo(({ label, active, score }: { label: string; active
       active ? 'bg-zoyd-yellow/10 border-zoyd-yellow/30' : 'bg-black/40'
     }`}
   >
-    <span className={`font-display font-black text-sm uppercase italic ${active ? 'text-white' : 'text-white/40'}`}>
+    <span className={`font-display font-black text-sm uppercase italic ${active ? 'text-white' : 'text-white/70'}`}>
       {label}
     </span>
     <span className="font-mono font-black text-sm text-white/60">{score ?? '-'}</span>
@@ -40,10 +40,10 @@ const BracketMatchCard = React.memo(({
     match.status === 'live'
       ? 'text-zoyd-blue'
       : match.status === 'finished'
-        ? 'text-white/30'
+        ? 'text-white/60'
         : match.status === 'ready'
           ? 'text-zoyd-yellow'
-          : 'text-white/40';
+          : 'text-white/70';
 
   return (
     <button
@@ -55,7 +55,7 @@ const BracketMatchCard = React.memo(({
       aria-label={`Ouvrir le match ${match.id} de ${tournamentName}`}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+        <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
           {match.bracketType === 'third_place' ? 'Bronze' : `Match ${match.position}`}
         </span>
         <span className={`text-[10px] font-mono uppercase tracking-widest ${statusTone}`}>{matchStatusLabels[match.status]}</span>
@@ -64,7 +64,7 @@ const BracketMatchCard = React.memo(({
       <PlayerLine label={entryALabel} active={match.winnerEntryId === match.entryAId} score={match.scoreA} />
       <PlayerLine label={entryBLabel} active={match.winnerEntryId === match.entryBId} score={match.scoreB} />
 
-      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/40">
+      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/70">
         <span>
           {match.scheduledAt
             ? new Date(match.scheduledAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })

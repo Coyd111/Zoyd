@@ -15,7 +15,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <RouterProvider router={router} fallbackElement={<div className="min-h-dvh bg-zoyd-black flex items-center justify-center text-white/50 font-mono text-xs uppercase tracking-widest safe-top">Chargement...</div>} />
+        <RouterProvider router={router} fallbackElement={<div className="min-h-dvh bg-zoyd-black flex items-center justify-center text-white/75 font-mono text-xs uppercase tracking-widest safe-top">Chargement...</div>} />
       </HelmetProvider>
     </ErrorBoundary>
   );

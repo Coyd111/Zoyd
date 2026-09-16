@@ -11,7 +11,7 @@ const badgeVariants = cva(
         yellow: 'bg-zoyd-yellow/10 text-zoyd-yellow border border-zoyd-yellow',
         success: 'bg-zoyd-yellow/10 text-zoyd-yellow border border-zoyd-yellow',
         live: 'bg-zoyd-yellow text-zoyd-black animate-pulse-yellow',
-        disabled: 'bg-white/5 text-white/30 border border-white/10',
+        disabled: 'bg-white/5 text-white/60 border border-white/10',
       },
     },
     defaultVariants: {

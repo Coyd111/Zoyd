@@ -2,13 +2,13 @@ import React from 'react';
 import type { Match } from '../../stores/matchStore';
 
 export const statusToneMap: Record<string, string> = {
-  recruiting: 'text-white/50 border-white/10',
+  recruiting: 'text-white/75 border-white/10',
   full: 'text-zoyd-yellow border-zoyd-yellow/30',
   check_in: 'text-zoyd-blue border-zoyd-blue/30',
   ready: 'text-green-400 border-green-500/30',
   in_progress: 'text-green-400 border-green-500/30',
   disputed: 'text-red-400 border-red-500/30',
-  finished: 'text-white/30 border-white/10',
+  finished: 'text-white/60 border-white/10',
   cancelled: 'text-red-300 border-red-500/20',
   forfeited: 'text-red-300 border-red-500/20',
 };
@@ -17,7 +17,7 @@ export const moderationToneMap: Record<string, string> = {
   success: 'text-green-400 border-green-500/20 bg-green-500/5',
   warning: 'text-zoyd-yellow border-zoyd-yellow/20 bg-zoyd-yellow/5',
   danger: 'text-red-300 border-red-500/20 bg-red-500/5',
-  neutral: 'text-white/40 border-white/10 bg-black/40',
+  neutral: 'text-white/70 border-white/10 bg-black/40',
 };
 
 export const disputeCategoryLabels: Record<string, string> = {
@@ -91,14 +91,14 @@ export const StatusPill = ({ label, tone }: { label: string; tone: string }) => 
 
 export const MetaChip = ({ label, value }: { label: string; value: string }) => (
   <div className="px-3 py-2">
-    <div className="text-[10px] text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] text-white/60 mb-1">{label}</div>
     <div className="text-white/65">{value}</div>
   </div>
 );
 
 export const DisputeStat = ({ label, value }: { label: string; value: string }) => (
   <div className="px-4 py-3">
-    <div className="text-[10px] uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] uppercase tracking-widest text-white/60 mb-1">{label}</div>
     <div className="text-white">{value}</div>
   </div>
 );
@@ -114,7 +114,7 @@ export const PlayerPill = ({ label, team }: { label: string; team: 0 | 1 }) => (
 );
 
 export const SignalBadge = ({ label }: { label: string }) => (
-  <span className="px-2 py-1 text-white/50">{label}</span>
+  <span className="px-2 py-1 text-white/75">{label}</span>
 );
 
 export const PriorityBadge = ({ kind }: { kind: 'litige' | 'signalement' | 'ops' }) => {
@@ -131,7 +131,7 @@ export const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label:
   <div className="p-6 flex items-center gap-4">
     <div className="w-12 h-12 flex items-center justify-center">{icon}</div>
     <div>
-      <div className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-1">{label}</div>
+      <div className="text-[10px] font-mono text-white/60 uppercase tracking-widest mb-1">{label}</div>
       <div className="text-2xl font-display font-black italic">{value}</div>
     </div>
   </div>
@@ -156,7 +156,7 @@ export const FocusCard = ({
       {label}
     </div>
     <div className="text-2xl font-display font-black italic text-white">{value}</div>
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mt-1">{detail}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mt-1">{detail}</div>
   </div>
 );
 
@@ -179,6 +179,6 @@ export const StatusLane = ({
     <div className="h-1 bg-white/5 mb-3 overflow-hidden">
       <div className={`${accent} h-full`} style={{ width: `${Math.min(100, count * 18)}%` }} />
     </div>
-    <p className="text-[11px] text-white/40">{body}</p>
+    <p className="text-[11px] text-white/70">{body}</p>
   </div>
 );

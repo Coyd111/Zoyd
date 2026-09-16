@@ -79,9 +79,9 @@ const HubMJPage: React.FC = () => {
               <span className="text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-blue uppercase">Mode multijoueur</span>
             </div>
             <h1 className="text-2xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
-              L'Arène <br /><span className="text-white/40 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
+              L'Arène <br /><span className="text-white/70 underline decoration-zoyd-blue/50 underline-offset-8">ZOYD</span>
             </h1>
-            <p className="text-white/40 text-base md:text-xl font-light max-w-xl">
+            <p className="text-white/70 text-base md:text-xl font-light max-w-xl">
               Crée un wager, défie des adversaires de ton niveau, ou postule pour arbitrer les matchs en attente.
             </p>
           </div>
@@ -107,7 +107,7 @@ const HubMJPage: React.FC = () => {
                   className={`px-4 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
                     (format === 'TOUS' && (!filters.format || filters.format === 'all')) || filters.format === format
                       ? 'bg-white text-black border-white'
-                      : 'bg-black text-white/40 border-white/5 hover:border-white/20'
+                      : 'bg-black text-white/70 border-white/5 hover:border-white/20'
                   }`}
                 >
                   {format}
@@ -121,7 +121,7 @@ const HubMJPage: React.FC = () => {
 className={`px-3 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
                     ((!filters.status || filters.status === 'all') && status.value === 'all') || filters.status === status.value
                       ? 'bg-zoyd-blue text-black border-zoyd-blue'
-                      : 'bg-black text-white/40 border-white/5 hover:border-white/20'
+                      : 'bg-black text-white/70 border-white/5 hover:border-white/20'
                   }`}
                 >
                   <Radio className="w-3 h-3" />
@@ -135,7 +135,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 className={`px-3 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
                   needsArbiter
                     ? 'bg-zoyd-yellow text-black border-zoyd-yellow'
-                    : 'bg-black text-white/40 border-white/5 hover:border-white/20'
+                    : 'bg-black text-white/70 border-white/5 hover:border-white/20'
                 }`}
               >
                 <ShieldCheck className="w-3 h-3" />
@@ -146,7 +146,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 className={`px-3 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
                   filters.minTrustScore
                     ? 'bg-zoyd-blue text-black border-zoyd-blue'
-                    : 'bg-black text-white/40 border-white/5 hover:border-white/20'
+                    : 'bg-black text-white/70 border-white/5 hover:border-white/20'
                 }`}
               >
                 FIABILITE 50+
@@ -156,7 +156,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
 
             <div className="flex gap-4 w-full lg:w-[420px]">
               <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -231,7 +231,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 <Crosshair className="w-8 h-8" />
               </div>
               <h3 className="text-xl sm:text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">L'arène est calme.</h3>
-              <p className="text-white/40 max-w-md font-light mb-12">
+              <p className="text-white/70 max-w-md font-light mb-12">
                 Sois le premier à imposer le respect. Lance un Wager et attends que tes adversaires relèvent le défi.
               </p>
               <div className="flex flex-wrap gap-4">
@@ -258,7 +258,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
 
 const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
-    <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-widest mb-3 italic">{label}</span>
+    <span className="text-[10px] font-mono font-bold text-white/70 uppercase tracking-widest mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>

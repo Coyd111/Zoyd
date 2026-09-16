@@ -126,7 +126,7 @@ const LoginPage: React.FC = () => {
         <div className="absolute top-8 right-8 z-10">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-sm border border-white/10">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">En ligne</span>
+            <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">En ligne</span>
           </div>
         </div>
 
@@ -147,18 +147,18 @@ const LoginPage: React.FC = () => {
               <span className="text-zoyd-yellow underline decoration-zoyd-yellow/30 underline-offset-8">bataille</span> attend.
             </h2>
 
-            <p className="text-white/40 text-lg font-light leading-relaxed">
+            <p className="text-white/70 text-lg font-light leading-relaxed">
               Retrouve ton profil joueur, ton wallet et tes modes de jeu dans le meme espace.
             </p>
 
             <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/5">
               <div>
                 <div className="text-2xl font-display font-black text-white italic">Profil unique</div>
-                <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">Compte centralise</div>
+                <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">Compte centralise</div>
               </div>
               <div>
                 <div className="text-2xl font-display font-black text-white italic">Wallet integre</div>
-                <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">Gains et activité</div>
+                <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">Gains et activité</div>
               </div>
             </div>
 
@@ -170,8 +170,8 @@ const LoginPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div className="text-[10px] font-mono text-white/40">
-                <span className="text-white/40 font-black">2,847</span> joueurs actifs
+              <div className="text-[10px] font-mono text-white/70">
+                <span className="text-white/70 font-black">2,847</span> joueurs actifs
               </div>
             </div>
           </motion.div>
@@ -195,7 +195,7 @@ const LoginPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-black text-white uppercase italic tracking-tighter mb-2">
               Identification
             </h1>
-            <p className="text-white/40 font-mono text-[11px] uppercase tracking-widest flex items-center gap-2">
+            <p className="text-white/70 font-mono text-[11px] uppercase tracking-widest flex items-center gap-2">
               <Lock className="w-3 h-3" /> Acces joueur securise
             </p>
           </header>
@@ -224,7 +224,7 @@ const LoginPage: React.FC = () => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                  className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                  className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/70 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -262,24 +262,24 @@ const LoginPage: React.FC = () => {
                 <div className="w-full border-t border-white/5" />
               </div>
               <div className="relative flex justify-center">
-                <span className="px-4 bg-zoyd-black text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                <span className="px-4 bg-zoyd-black text-[10px] font-mono text-white/70 uppercase tracking-widest">
                   Autres options
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3">
-              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/30 font-mono text-[10px] tracking-widest cursor-not-allowed">
+              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest cursor-not-allowed">
                 CONTINUER AVEC GOOGLE — BIENTOT DISPONIBLE
               </Button>
-              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/30 font-mono text-[10px] tracking-widest cursor-not-allowed">
+              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest cursor-not-allowed">
                 CONNEXION PAR NUMERO — BIENTOT DISPONIBLE
               </Button>
             </div>
           </form>
 
           <footer className="mt-12 text-center border-t border-white/5 pt-8">
-            <p className="text-white/40 text-[11px] font-mono uppercase tracking-widest">
+            <p className="text-white/70 text-[11px] font-mono uppercase tracking-widest">
               Pas encore de compte ?{' '}
               <Link to="/auth/register" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2">
                 CREER MON COMPTE

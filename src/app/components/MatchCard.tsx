@@ -34,7 +34,7 @@ const statusCopy: Record<MatchCardProps['status'], { label: string; accent: stri
   check_in: { label: 'Presence a confirmer', accent: 'text-zoyd-blue' },
   ready: { label: 'Pret a jouer', accent: 'text-green-400' },
   in_progress: { label: 'Partie en cours', accent: 'text-zoyd-blue' },
-  finished: { label: 'Partie terminee', accent: 'text-white/40' },
+  finished: { label: 'Partie terminee', accent: 'text-white/70' },
   forfeited: { label: 'Victoire par forfait', accent: 'text-zoyd-yellow' },
   cancelled: { label: 'Match annulé', accent: 'text-red-300' },
 };
@@ -106,7 +106,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
             <div className="flex flex-col">
               <span className="text-[10px] font-mono text-zoyd-yellow uppercase tracking-widest font-black mb-1">Carte choisie</span>
               <h3 className="text-3xl font-display font-black tracking-tighter italic leading-none">
-                {map} <span className="text-white/40">/</span> {format}
+                {map} <span className="text-white/70">/</span> {format}
               </h3>
             </div>
           </div>
@@ -114,35 +114,35 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="p-3">
-            <div className="text-[10px] font-mono text-white/40 uppercase mb-1">A gagner</div>
+            <div className="text-[10px] font-mono text-white/70 uppercase mb-1">A gagner</div>
             <div className="font-display font-black text-xl text-white tracking-tight">{formatZC(pot)}</div>
-            <div className="text-[10px] font-mono text-white/40 uppercase mt-1">Inscription: {formatZC(entryFee)}</div>
+            <div className="text-[10px] font-mono text-white/70 uppercase mt-1">Inscription: {formatZC(entryFee)}</div>
           </div>
           <div className="p-3">
-            <div className="text-[10px] font-mono text-white/40 uppercase mb-1">Mode de jeu</div>
+            <div className="text-[10px] font-mono text-white/70 uppercase mb-1">Mode de jeu</div>
             <div className="font-display font-bold text-sm text-white uppercase truncate">
               {gameMode}
             </div>
-            <div className="text-[10px] font-mono text-white/40 uppercase mt-1">
+            <div className="text-[10px] font-mono text-white/70 uppercase mt-1">
               BO{rules.bestOf} / {rules.score} pts
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6 text-[10px] font-mono uppercase tracking-widest">
-          <div className="flex items-center gap-2 text-white/40">
+          <div className="flex items-center gap-2 text-white/70">
             <Users className="w-3.5 h-3.5" />
             {totalPlayers}/{maxPlayers} joueurs
           </div>
-          <div className="flex items-center gap-2 text-white/40">
-            <ShieldCheck className={`w-3.5 h-3.5 ${arbitre ? 'text-zoyd-blue' : 'text-white/40'}`} />
+          <div className="flex items-center gap-2 text-white/70">
+            <ShieldCheck className={`w-3.5 h-3.5 ${arbitre ? 'text-zoyd-blue' : 'text-white/70'}`} />
             {arbitre ? 'Arbitre confirme' : 'Arbitre a confirmer'}
           </div>
-          <div className="flex items-center gap-2 text-white/30">
+          <div className="flex items-center gap-2 text-white/60">
             <Clock className="w-3.5 h-3.5" />
             Publie {getRelativeTime(createdAt)}
           </div>
-          <div className="flex items-center gap-2 text-white/30">
+          <div className="flex items-center gap-2 text-white/60">
             <Radio className="w-3.5 h-3.5" />
             {scheduledAt ? new Date(scheduledAt).toLocaleString('fr-FR') : 'Horaire a fixer'}
           </div>
@@ -150,13 +150,13 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
         <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-widest">
+            <span className="text-[10px] font-mono font-black text-white/70 uppercase tracking-widest">
               Equipe Alpha
             </span>
             {renderSlots(teams.team1.filled, teams.team1.slots, 'bg-zoyd-blue')}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-widest">
+            <span className="text-[10px] font-mono font-black text-white/70 uppercase tracking-widest">
               Equipe Bravo
             </span>
             {renderSlots(teams.team2.filled, teams.team2.slots, 'bg-white')}

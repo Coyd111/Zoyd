@@ -3,7 +3,7 @@ import type { LeagueStanding } from '../../../app/stores/leagueStore';
 export const StandingsTable = ({ standings, currentUserId }: { standings: LeagueStanding[]; currentUserId?: string }) => {
   if (!standings.length) {
     return (
-      <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-12 text-center text-sm text-white/40">
+      <div className="border border-white/10 bg-zoyd-surface/20 px-6 py-12 text-center text-sm text-white/70">
         Aucun classement disponible.
       </div>
     );
@@ -15,11 +15,11 @@ export const StandingsTable = ({ standings, currentUserId }: { standings: League
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-white/10">
-              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">#</th>
-              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40">Joueur</th>
-              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Points</th>
-              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Meilleur</th>
-              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/40 text-right">Matchs</th>
+              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70">#</th>
+              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70">Joueur</th>
+              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Points</th>
+              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Meilleur</th>
+              <th className="px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 text-right">Matchs</th>
             </tr>
           </thead>
           <tbody>

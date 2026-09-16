@@ -184,7 +184,7 @@ const ParametresPage: React.FC = () => {
           <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-display font-black uppercase tracking-tighter italic leading-none">
             Paramètres
           </h1>
-          <p className="text-white/40 mt-4 max-w-2xl">
+          <p className="text-white/70 mt-4 max-w-2xl">
             Regle ton profil, ton compte CODM et ce que ZOYD doit prendre en compte pour te proposer les bonnes parties.
           </p>
         </div>
@@ -207,7 +207,7 @@ const ParametresPage: React.FC = () => {
                   className={`w-full flex items-center gap-4 px-4 py-3.5 touch-target font-display font-black text-xs tracking-widest italic uppercase transition-all ${
                     isActive
                       ? 'bg-white text-black shadow-[4px_0_0_0_#FFE600]'
-                      : 'text-white/40 hover:text-white hover:bg-white/5'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -224,7 +224,7 @@ const ParametresPage: React.FC = () => {
                 <h4 className="text-[10px] font-mono font-black uppercase tracking-widest text-red-400 mb-1">
                   A savoir
                 </h4>
-                <p className="text-[10px] font-mono text-white/40">
+                <p className="text-[10px] font-mono text-white/70">
                   Ce que tu changes ici peut modifier les matchs et tournois qui te sont proposes, ainsi que ce que les autres voient sur ton profil.
                 </p>
               </div>
@@ -272,7 +272,7 @@ const ParametresPage: React.FC = () => {
                       onChange={(event) => updateForm('bio', event.target.value)}
                       rows={4}
                       maxLength={500}
-                      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white/30 focus:border-zoyd-yellow transition-all duration-200"
+                      className="flex w-full border bg-white/5 px-4 py-3 text-base text-white border-white/20 placeholder:text-white/60 focus:border-zoyd-yellow transition-all duration-200"
                       placeholder="Quelques lignes pour decrire ton style de jeu ou ton identite competitive."
                     />
                   </label>
@@ -280,7 +280,7 @@ const ParametresPage: React.FC = () => {
                   <div className="hud-panel p-4 bg-zoyd-surface/20 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                       <div className="font-display font-black text-white text-sm uppercase italic">Mode streamer</div>
-                      <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">
+                      <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">
                         Affiche un pseudo different quand tu veux jouer ou streamer plus discretement.
                       </div>
                     </div>
@@ -351,7 +351,7 @@ const ParametresPage: React.FC = () => {
                     <div className="font-display font-black text-white uppercase italic">Verification par telephone</div>
                     <Badge variant="yellow">Bientot</Badge>
                   </div>
-                  <p className="text-sm text-white/40">
+                  <p className="text-sm text-white/70">
                     Le numero {user.phone || 'non renseigne'} servira a confirmer certains retraits et actions sensibles.
                   </p>
                 </div>
@@ -360,7 +360,7 @@ const ParametresPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <StatusCard label="Fiabilite" value={`${user.trustScore}/100`} accent="text-zoyd-yellow" />
                   <StatusCard label="Solde affiche" value={user.walletBalance.toFixed(1) + ' ZC'} accent="text-white" />
-                  <StatusCard label="Connexion" value={user.isOnline ? 'Active' : 'Hors ligne'} accent={user.isOnline ? 'text-green-400' : 'text-white/50'} />
+                  <StatusCard label="Connexion" value={user.isOnline ? 'Active' : 'Hors ligne'} accent={user.isOnline ? 'text-green-400' : 'text-white/75'} />
                 </div>
               </div>
             ) : null}
@@ -414,7 +414,7 @@ const ParametresPage: React.FC = () => {
                     <div className="font-display font-black text-white uppercase italic">Infos gardees privees</div>
                     <Badge variant="yellow">Prive</Badge>
                   </div>
-                  <p className="text-sm text-white/40">
+                  <p className="text-sm text-white/70">
                     Ton appareil et ton type de controle servent seulement a mieux te proposer des matchs et tournois. Les autres joueurs ne les voient pas automatiquement.
                   </p>
                 </div>
@@ -520,7 +520,7 @@ const SelectField = React.memo(({
 
 const StatusCard = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="hud-panel p-5 bg-zoyd-surface/20">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">{label}</div>
     <div className={`font-display font-black italic ${accent}`}>{value}</div>
   </div>
 ));
@@ -541,7 +541,7 @@ const NotificationRow = React.memo(({
     <div className="hud-panel p-4 bg-zoyd-surface/20 flex items-center justify-between gap-4">
       <label htmlFor={id} className="flex-1 cursor-pointer">
         <div className="font-display font-black text-white text-sm uppercase italic">{label}</div>
-        <div className="text-[10px] font-mono text-white/40 mt-1">{desc}</div>
+        <div className="text-[10px] font-mono text-white/70 mt-1">{desc}</div>
       </label>
       <input
         id={id}

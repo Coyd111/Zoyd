@@ -34,7 +34,7 @@ const ModeSelectionPage: React.FC = () => {
         <div className="flex items-center justify-between gap-4 mb-12">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 touch-target text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest"
+            className="inline-flex items-center gap-2 touch-target text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour
@@ -89,7 +89,7 @@ const ModeSelectionPage: React.FC = () => {
                   <h2 className="text-4xl sm:text-5xl md:text-6xl font-display font-black uppercase italic tracking-[-0.05em] leading-[0.88] mb-4 md:mb-5">
                     Multijoueur
                   </h2>
-                  <p className="text-white/50 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
+                  <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
                     Matchs publics, tournois, salons competitifs et progression joueur déjà liés à ton compte.
                   </p>
 
@@ -138,7 +138,7 @@ const ModeSelectionPage: React.FC = () => {
                   <h2 className="text-4xl sm:text-5xl md:text-6xl font-display font-black uppercase italic tracking-[-0.05em] leading-[0.88] mb-4 md:mb-5">
                     Battle Royale
                   </h2>
-                  <p className="text-white/50 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
+                  <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
                     500 joueurs, 5 jours de qualification, 1 finale. Le meilleur joueur de la semaine remporte le pot.
                   </p>
 
@@ -160,7 +160,7 @@ const ModeSelectionPage: React.FC = () => {
 
         <div className="mt-8 md:mt-10 border border-white/8 bg-zoyd-surface/20 px-5 md:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/40 mb-1.5 md:mb-2">Compte ZOYD</div>
+            <div className="text-[10px] font-mono uppercase tracking-[0.24em] text-white/70 mb-1.5 md:mb-2">Compte ZOYD</div>
             <div className="text-base sm:text-lg font-display font-black italic text-white">
               Un seul profil pour tes modes, tes matchs et ton wallet.
             </div>
@@ -177,7 +177,7 @@ const ModeSelectionPage: React.FC = () => {
 
 const InfoChip = ({ label, value, className = '' }: { label: string; value: string; className?: string }) => (
   <div className={`border border-white/8 bg-black/35 px-3 md:px-4 py-2.5 md:py-3 ${className}`}>
-    <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.22em] text-white/40 mb-1">{label}</div>
+    <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.22em] text-white/70 mb-1">{label}</div>
     <div className="text-sm md:text-base font-display font-black uppercase italic text-white leading-tight">{value}</div>
   </div>
 );

@@ -150,7 +150,7 @@ const DashboardPage: React.FC = () => {
             Bonjour,{' '}
             <span className="text-zoyd-yellow">{user.pseudo}</span>
           </h1>
-          <p className="text-white/40 text-base md:text-lg max-w-2xl">
+          <p className="text-white/70 text-base md:text-lg max-w-2xl">
             {user.role === 'admin'
               ? 'Panel admin actif — tu as le controle total.'
               : 'Ton espace de competition. Matchs, gains et progression au meme endroit.'}
@@ -172,7 +172,7 @@ const DashboardPage: React.FC = () => {
 
         {/* Quick actions */}
         <div className="mb-10 md:mb-14">
-          <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40 mb-5">
+          <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70 mb-5">
             Acces rapide
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -191,10 +191,10 @@ const DashboardPage: React.FC = () => {
                   <div className="font-display font-black text-sm md:text-base uppercase italic tracking-tight text-white mb-1">
                     {action.label}
                   </div>
-                  <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                  <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                     {action.desc}
                   </div>
-                  <div className="mt-4 flex items-center gap-1.5 text-[10px] font-display font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-zoyd-yellow transition-colors">
+                  <div className="mt-4 flex items-center gap-1.5 text-[10px] font-display font-black uppercase tracking-[0.2em] text-white/60 group-hover:text-zoyd-yellow transition-colors">
                     Entrer <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </Link>
@@ -213,7 +213,7 @@ const DashboardPage: React.FC = () => {
             className="lg:col-span-3"
           >
             <div className="flex items-center justify-between mb-5">
-              <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
+              <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">
                 Activité récente
               </div>
               {recentFinished.length > 0 && (
@@ -227,8 +227,8 @@ const DashboardPage: React.FC = () => {
             </div>
             {recentFinished.length === 0 ? (
               <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
-                <Swords className="w-8 h-8 text-white/30 mx-auto mb-3" />
-                <p className="text-white/40 text-sm">Aucun match terminé pour l&apos;instant.</p>
+                <Swords className="w-8 h-8 text-white/60 mx-auto mb-3" />
+                <p className="text-white/70 text-sm">Aucun match terminé pour l&apos;instant.</p>
                 <Link
                   to="/mj"
                   className="inline-flex items-center gap-2 mt-4 text-[10px] font-display font-black uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
@@ -266,16 +266,16 @@ const DashboardPage: React.FC = () => {
                             }`}>
                               {won ? 'Victoire' : 'Defaite'}
                             </span>
-                            <span className="text-[10px] font-mono text-white/30">
+                            <span className="text-[10px] font-mono text-white/60">
                               {match.format} • {match.rules.mode}
                             </span>
                           </div>
-                          <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">
+                          <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">
                             {scores ? `${scores.team0} - ${scores.team1}` : '—'} • {formatZC(match.entryFee)} • {getRelativeTime(match.finishedAt || match.updatedAt)}
                           </div>
                         </div>
                       </div>
-                      <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white/40 transition-colors" />
+                      <ArrowRight className="w-4 h-4 text-white/60 group-hover:text-white/70 transition-colors" />
                     </Link>
                   );
                 })}
@@ -291,7 +291,7 @@ const DashboardPage: React.FC = () => {
             className="lg:col-span-2"
           >
             <div className="flex items-center justify-between mb-5">
-              <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
+              <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">
                 Tournois a venir
               </div>
               <Link
@@ -303,8 +303,8 @@ const DashboardPage: React.FC = () => {
             </div>
             {upcomingTournaments.length === 0 ? (
               <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
-                <Trophy className="w-8 h-8 text-white/30 mx-auto mb-3" />
-                <p className="text-white/40 text-sm">Pas de tournoi programmé.</p>
+                <Trophy className="w-8 h-8 text-white/60 mx-auto mb-3" />
+                <p className="text-white/70 text-sm">Pas de tournoi programmé.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -318,11 +318,11 @@ const DashboardPage: React.FC = () => {
                       <div className="font-display font-black text-sm text-white uppercase italic tracking-tight truncate max-w-[70%]">
                         {t.name}
                       </div>
-                      <span className={`text-[10px] font-mono uppercase tracking-widest ${statusColor[t.status] || 'text-white/40'}`}>
+                      <span className={`text-[10px] font-mono uppercase tracking-widest ${statusColor[t.status] || 'text-white/70'}`}>
                         {statusLabel[t.status] || t.status}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] font-mono text-white/40">
+                    <div className="flex items-center gap-3 text-[10px] font-mono text-white/70">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {new Date(t.startsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
@@ -331,10 +331,10 @@ const DashboardPage: React.FC = () => {
                       <span>{formatZC(t.entryFee)}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
-                      <div className="text-[10px] font-mono text-white/30">
+                      <div className="text-[10px] font-mono text-white/60">
                         {t.entries.length}/{t.maxEntries} inscrits
                       </div>
-                      <ArrowRight className="w-3 h-3 text-white/30 group-hover:text-zoyd-yellow transition-colors" />
+                      <ArrowRight className="w-3 h-3 text-white/60 group-hover:text-zoyd-yellow transition-colors" />
                     </div>
                   </Link>
                 ))}
@@ -354,7 +354,7 @@ const DashboardPage: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
+                <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">
                   Notifications
                 </div>
                 {unreadNotifCount > 0 && (
@@ -366,8 +366,8 @@ const DashboardPage: React.FC = () => {
             </div>
             {recentNotifications.length === 0 ? (
               <div className="p-6 border border-white/5 bg-zoyd-surface/20 text-center">
-                <Bell className="w-8 h-8 text-white/30 mx-auto mb-3" />
-                <p className="text-white/40 text-sm">Aucune notification.</p>
+                <Bell className="w-8 h-8 text-white/60 mx-auto mb-3" />
+                <p className="text-white/70 text-sm">Aucune notification.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -387,9 +387,9 @@ const DashboardPage: React.FC = () => {
                         </span>
                         {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-zoyd-blue shrink-0" />}
                       </div>
-                      <div className="text-[10px] font-mono text-white/40 truncate">{n.message}</div>
+                      <div className="text-[10px] font-mono text-white/70 truncate">{n.message}</div>
                     </div>
-                    <div className="text-[10px] font-mono text-white/30 whitespace-nowrap shrink-0">
+                    <div className="text-[10px] font-mono text-white/60 whitespace-nowrap shrink-0">
                       {getRelativeTime(n.timestamp)}
                     </div>
                   </Link>
@@ -452,8 +452,8 @@ const DashboardPage: React.FC = () => {
             {/* Online friends */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Users className="w-3.5 h-3.5 text-white/40" />
-                <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40">
+                <Users className="w-3.5 h-3.5 text-white/70" />
+                <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">
                   En ligne ({onlineFriends.length})
                 </div>
               </div>
@@ -466,7 +466,7 @@ const DashboardPage: React.FC = () => {
             </div>
             {onlineFriends.length === 0 ? (
               <div className="p-4 border border-white/5 bg-zoyd-surface/20 text-center">
-                <p className="text-white/40 text-xs">Aucun ami en ligne.</p>
+                <p className="text-white/70 text-xs">Aucun ami en ligne.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -484,7 +484,7 @@ const DashboardPage: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs text-white font-display font-black uppercase italic truncate">{f.pseudo}</div>
-                      <div className="text-[10px] font-mono text-white/30 uppercase">
+                      <div className="text-[10px] font-mono text-white/60 uppercase">
                         {f.status === 'in_match' ? 'En match' : f.status === 'in_lobby' ? 'Dans le lobby' : 'En ligne'}
                       </div>
                     </div>
@@ -513,11 +513,11 @@ const DashboardPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Cash</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Cash</div>
                 <div className="font-display font-black text-sm text-white italic">{formatZC(getAvailableCash())}</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Disponible</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Disponible</div>
                 <div className="font-display font-black text-sm text-white italic">{formatZC(getAvailableToSpend())}</div>
               </div>
             </div>
@@ -550,32 +550,32 @@ const DashboardPage: React.FC = () => {
               </div>
               <div>
                 <div className="font-display font-black text-lg text-white uppercase italic tracking-tight">{user.pseudo}</div>
-                <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">{user.role}</div>
+                <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">{user.role}</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Niveau</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Niveau</div>
                 <div className="font-display font-black text-sm text-white italic">{user.progression?.level || 'DEBUTANT'}</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Elo</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Elo</div>
                 <div className="font-display font-black text-sm text-zoyd-blue italic">{user.stats?.elo || 1000}</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Trust</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Trust</div>
                 <div className="font-display font-black text-sm text-white italic">{user.trustScore || 50}</div>
               </div>
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">Win rate</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Win rate</div>
                 <div className="font-display font-black text-sm text-white italic">{user.stats?.winRate || 0}%</div>
               </div>
             </div>
             {/* XP Progress bar */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">Progression XP</div>
-                <div className="text-[10px] font-mono text-white/40">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">Progression XP</div>
+                <div className="text-[10px] font-mono text-white/70">
                   {user.progression?.xp || 0} / {user.progression?.nextLevelXp || 100}
                 </div>
               </div>
@@ -604,7 +604,7 @@ const DashboardPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.54, duration: 0.45 }}
           >
-            <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40 mb-5">
+            <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/70 mb-5">
               Matchs actifs ({myActiveMatches.length})
             </div>
             <div className="space-y-3">
@@ -622,12 +622,12 @@ const DashboardPage: React.FC = () => {
                       <div className="font-display font-black text-sm text-white uppercase italic tracking-tight">
                         {match.format} — {match.rules.mode}
                       </div>
-                      <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                      <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                         {match.entryFee} ZC • {match.players.length}/{match.maxPlayers} joueurs
                       </div>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-white/30" />
+                  <ArrowRight className="w-4 h-4 text-white/60" />
                 </Link>
               ))}
             </div>
@@ -644,7 +644,7 @@ const DashboardPage: React.FC = () => {
           <h2 className="text-lg md:text-2xl font-display font-black uppercase italic tracking-tight text-white mb-3">
             Prêt à jouer ?
           </h2>
-          <p className="text-white/40 text-sm mb-6 max-w-lg mx-auto">
+          <p className="text-white/70 text-sm mb-6 max-w-lg mx-auto">
             Crée un match instantané ou rejoins un tournoi en cours.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
@@ -711,7 +711,7 @@ function NotifIcon({ type }: { type: string }) {
 const StatCard = React.memo(function StatCard({ label, value, accent, icon }: { label: string; value: string; accent?: boolean; icon?: 'win' }) {
   return (
     <div className="p-4 md:p-5 border border-white/5 bg-zoyd-surface/20">
-      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">{label}</div>
+      <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">{label}</div>
       <div className={`font-display font-black text-xl md:text-2xl italic ${
         accent ? 'text-zoyd-yellow' : icon === 'win' ? 'text-green-400' : 'text-white'
       }`}>

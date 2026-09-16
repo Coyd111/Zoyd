@@ -22,7 +22,7 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
         <h2 className="text-xl font-display font-black uppercase italic">Operations Match</h2>
-        <p className="text-white/35 text-sm">
+        <p className="text-white/70 text-sm">
           Filtre les files pour voir rapidement ce qui attend une decision humaine.
         </p>
       </div>
@@ -39,7 +39,7 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
             className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
               matchFilter === filter.id
                 ? 'bg-white text-black border-white'
-                : 'border-white/10 text-white/35 hover:text-white hover:border-white/20'
+                : 'border-white/10 text-white/70 hover:text-white hover:border-white/20'
             }`}
           >
             <Filter className="w-3 h-3 inline mr-2" />
@@ -67,13 +67,13 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
                 <div className="font-display font-black text-lg uppercase italic">{match.id}</div>
                 <StatusPill label={match.status} tone={statusToneMap[match.status] || ''} />
               </div>
-              <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 text-[10px] font-mono uppercase tracking-widest text-white/30">
+              <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <MetaChip label="Format" value={match.format} />
                 <MetaChip label="Map" value={match.rules.map} />
                 <MetaChip label="Roster" value={`${match.players.length}/${match.maxPlayers}`} />
                 <MetaChip label="Arbitre" value={match.arbiter ? match.arbiter.pseudo : 'Non assigne'} />
               </div>
-              <div className="flex flex-wrap gap-4 text-[11px] text-white/45">
+              <div className="flex flex-wrap gap-4 text-[11px] text-white/70">
                 <span>Prizepool {formatZC(match.prizePool)}</span>
                 <span>Maj {getRelativeTime(match.updatedAt || match.createdAt)}</span>
                 <span>{match.roomName ? 'Room publiee' : 'Room non publiee'}</span>

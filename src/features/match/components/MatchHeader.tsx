@@ -13,11 +13,11 @@ interface MatchHeaderProps {
 export const MatchHeader: React.FC<MatchHeaderProps> = ({ match, statusLabel }) => (
   <>
     <div className="flex items-center justify-between gap-4 mb-8">
-      <Link to="/mj" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
+      <Link to="/mj" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
         <ArrowLeft className="w-4 h-4" />
         Retour aux matchs
       </Link>
-      <div className="inline-flex items-center gap-2 border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.25em] text-white/50">
+      <div className="inline-flex items-center gap-2 border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.25em] text-white/75">
         <Radio className="w-3.5 h-3.5 text-zoyd-blue" />
         {statusLabel}
       </div>
@@ -42,9 +42,9 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({ match, statusLabel }) 
           <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">SALLE DU WAGER</span>
         </div>
         <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
-          {match.rules.map} <span className="text-white/30">/</span> {match.rules.mode}
+          {match.rules.map} <span className="text-white/60">/</span> {match.rules.mode}
         </h1>
-        <p className="text-white/40 mt-3 max-w-3xl">
+        <p className="text-white/70 mt-3 max-w-3xl">
           {match.format} / Wager: {formatZC(match.entryFee)} / Cagnotte: {formatZC(match.prizePool)} / Créé par {match.creatorPseudo}
         </p>
       </div>

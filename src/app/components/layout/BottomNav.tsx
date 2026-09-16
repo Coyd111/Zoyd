@@ -73,8 +73,8 @@ const BottomNav: React.FC = React.memo(() => {
             aria-label="Plus d'options"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-              <span className="font-display font-black text-[10px] text-white/40 tracking-widest uppercase italic">Plus</span>
-              <button onClick={() => setMenuOpen(false)} className="touch-target flex items-center justify-center text-white/30 hover:text-white" aria-label="Fermer le menu">
+              <span className="font-display font-black text-[10px] text-white/70 tracking-widest uppercase italic">Plus</span>
+              <button onClick={() => setMenuOpen(false)} className="touch-target flex items-center justify-center text-white/60 hover:text-white" aria-label="Fermer le menu">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -97,7 +97,7 @@ const BottomNav: React.FC = React.memo(() => {
                     aria-label={item.label}
                     className={cn(
                       'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
-                      isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/40 hover:text-white hover:bg-white/5'
+                      isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     )}
                   >
                     <Icon className="w-5 h-5" />
@@ -115,7 +115,7 @@ const BottomNav: React.FC = React.memo(() => {
                     aria-label={item.label}
                     className={cn(
                       'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
-                      isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/40 hover:text-white hover:bg-white/5'
+                      isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     )}
                   >
                     <Icon className="w-5 h-5" />
@@ -129,7 +129,7 @@ const BottomNav: React.FC = React.memo(() => {
                   aria-label="ADMIN"
                   className={cn(
                     'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
-                    location.pathname === '/admin' ? 'text-red-400 bg-white/5' : 'text-white/40 hover:text-white hover:bg-white/5'
+                    location.pathname === '/admin' ? 'text-red-400 bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                   )}
                 >
                   <Shield className="w-5 h-5" />
@@ -154,7 +154,7 @@ const BottomNav: React.FC = React.memo(() => {
                 aria-label={item.label}
                 className={cn(
                   'relative flex flex-col items-center justify-center w-full h-full touch-target transition-all',
-                  isActive ? 'text-white' : 'text-white/30'
+                  isActive ? 'text-white' : 'text-white/60'
                 )}
               >
                 {isActive && (
@@ -175,7 +175,7 @@ const BottomNav: React.FC = React.memo(() => {
             aria-expanded={menuOpen}
             className={cn(
               'relative flex flex-col items-center justify-center w-full h-full touch-target transition-all',
-              menuOpen ? 'text-white' : 'text-white/30'
+              menuOpen ? 'text-white' : 'text-white/60'
             )}
           >
             {menuOpen && (

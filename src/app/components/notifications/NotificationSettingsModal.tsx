@@ -103,7 +103,7 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
                 <Bell className="w-5 h-5 text-zoyd-yellow" />
                 <h2 className="text-sm font-display font-black uppercase tracking-tighter italic text-white">Notifications ZOYD</h2>
               </div>
-              <button onClick={onClose} className="text-white/40 hover:text-white transition-colors" aria-label="Fermer">
+              <button onClick={onClose} className="text-white/70 hover:text-white transition-colors" aria-label="Fermer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -111,17 +111,17 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
             <div className="p-6 space-y-8">
               {/* SECTION PUSH NAVIGATEUR */}
               <section>
-                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/40 mb-3 italic flex items-center gap-2">
+                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
                   <Monitor className="w-3.5 h-3.5" /> Push Navigateur
                 </h3>
                 <div className="hud-panel p-4 bg-zoyd-surface/20 border border-white/5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-xs font-ui text-white/70 mb-1">Alertes en temps réel</p>
-                      <p className="text-[10px] font-mono text-white/30">Matchs, check-in, résultats et litiges directement sur ton bureau.</p>
+                      <p className="text-[10px] font-mono text-white/60">Matchs, check-in, résultats et litiges directement sur ton bureau.</p>
                     </div>
                     {notifyPerm === 'unsupported' ? (
-                      <span className="text-[10px] font-mono text-white/40 uppercase">Non supporté</span>
+                      <span className="text-[10px] font-mono text-white/70 uppercase">Non supporté</span>
                     ) : pushEnabled ? (
                       <span className="flex items-center gap-1.5 text-[10px] font-mono text-green-400 uppercase">
                         <CheckCircle className="w-3.5 h-3.5" /> Activé
@@ -137,11 +137,11 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
 
               {/* SECTION AGENDA */}
               <section>
-                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/40 mb-3 italic flex items-center gap-2">
+                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5" /> Agenda & Rappels
                 </h3>
                 <div className="hud-panel p-4 bg-zoyd-surface/20 border border-white/5 space-y-3">
-                  <p className="text-[10px] font-mono text-white/30 leading-relaxed">
+                  <p className="text-[10px] font-mono text-white/60 leading-relaxed">
                     Télécharge un événement <strong className="text-white/60">.ics</strong> pour ajouter tes matchs et tournois à ton agenda (Google Calendar, Outlook, Apple Calendar).
                   </p>
                   <div className="flex items-center justify-between">
@@ -164,7 +164,7 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
 
               {/* SECTION TYPES DE NOTIFS */}
               <section>
-                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/40 mb-3 italic flex items-center gap-2">
+                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5" /> Types de notifications
                 </h3>
                 <div className="space-y-2">
@@ -192,7 +192,7 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
 const ToggleRow = ({ label, icon, value, onChange }: { label: string; icon: React.ReactNode; value: boolean; onChange: (v: boolean) => void }) => (
   <div className="flex items-center justify-between px-4 py-3 bg-zoyd-surface/10 border border-white/5 hover:bg-zoyd-surface/20 transition-colors">
     <div className="flex items-center gap-3 text-xs text-white/70">
-      <span className="text-white/30">{icon}</span>
+      <span className="text-white/60">{icon}</span>
       {label}
     </div>
     <button

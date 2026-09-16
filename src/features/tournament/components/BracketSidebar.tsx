@@ -4,7 +4,7 @@ import type { Tournament, TournamentMatch } from '../../../app/stores/tournament
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">{label}</div>
     <div className="font-display font-black text-white italic">{value}</div>
   </div>
 );
@@ -48,7 +48,7 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
           />
           <RuleRow label="Map pool" value={tournament.rules.mapPool.join(' / ')} />
         </div>
-        <p className="text-xs text-white/35 mt-4">
+        <p className="text-xs text-white/70 mt-4">
           {tournament.rules.notes || "Aucun match n'est planifie entre 00h00 et 07h00."}
         </p>
       </div>
@@ -56,7 +56,7 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
       <div className="hud-panel p-6 bg-zoyd-surface/20">
         <div className="flex items-center justify-between gap-4 mb-5">
           <h2 className="text-lg font-display font-black uppercase italic">{participantLabel}</h2>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
             {tournament.entries.length} / {tournament.maxEntries} {participantSlotLabel}
           </div>
         </div>
@@ -73,12 +73,12 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
                   <div className="font-display font-black text-sm uppercase italic text-white">
                     #{entry.seed} - {entry.squadName}
                   </div>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/40">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-white/70">
                     {entry.captainPseudo}
                     {entry.finalPlacement ? ` - Top ${entry.finalPlacement}` : ''}
                   </div>
                 </div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
                   {entry.wins} vic. / {entry.losses} def.
                 </div>
               </div>
@@ -89,7 +89,7 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
                     className={`border px-2 py-1 text-[10px] font-mono uppercase tracking-widest ${
                       member.isCaptain
                         ? 'border-zoyd-yellow/20 text-zoyd-yellow'
-                        : 'border-white/10 text-white/40'
+                        : 'border-white/10 text-white/70'
                     }`}
                   >
                     {member.pseudo}

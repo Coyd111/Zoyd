@@ -27,7 +27,7 @@ const typeIcons: Record<NotificationType, React.ReactNode> = {
   result_ready: <Trophy className="w-3.5 h-3.5 text-zoyd-yellow" />,
   dispute_update: <AlertTriangle className="w-3.5 h-3.5 text-red-400" />,
   wallet_update: <Wallet className="w-3.5 h-3.5 text-zoyd-yellow" />,
-  system: <ShieldCheck className="w-3.5 h-3.5 text-white/40" />,
+  system: <ShieldCheck className="w-3.5 h-3.5 text-white/70" />,
   arbitration_assigned: <ShieldCheck className="w-3.5 h-3.5 text-zoyd-blue" />,
   check_in_required: <Clock className="w-3.5 h-3.5 text-orange-400" />,
 };
@@ -35,8 +35,8 @@ const typeIcons: Record<NotificationType, React.ReactNode> = {
 const priorityBadge: Record<Notification['priority'], string> = {
   urgent: 'bg-red-500/20 text-red-400 border-red-500/30',
   high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  normal: 'bg-white/5 text-white/30 border-white/10',
-  low: 'bg-white/5 text-white/40 border-white/5',
+  normal: 'bg-white/5 text-white/60 border-white/10',
+  low: 'bg-white/5 text-white/70 border-white/5',
 };
 
 export const NotificationDropdown: React.FC = () => {
@@ -64,7 +64,7 @@ export const NotificationDropdown: React.FC = () => {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative text-white/40 hover:text-white transition-colors p-1 touch-target"
+        className="relative text-white/70 hover:text-white transition-colors p-1 touch-target"
         aria-label="Notifications"
         aria-expanded={open ? 'true' : 'false'}
         aria-haspopup="menu"
@@ -88,7 +88,7 @@ export const NotificationDropdown: React.FC = () => {
           >
             {/* HEADER */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-zoyd-surface/30">
-              <span className="text-[10px] font-mono font-black uppercase tracking-widest text-white/40 italic">Notifications</span>
+              <span className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 italic">Notifications</span>
               <div className="flex items-center gap-2">
                 {unread > 0 && (
                   <button
@@ -99,7 +99,7 @@ export const NotificationDropdown: React.FC = () => {
                     <Check className="w-3 h-3" /> Tout lire
                   </button>
                 )}
-                <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white transition-colors" aria-label="Fermer">
+                <button onClick={() => setOpen(false)} className="text-white/70 hover:text-white transition-colors" aria-label="Fermer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -120,7 +120,7 @@ export const NotificationDropdown: React.FC = () => {
               {visible.length === 0 ? (
                 <div className="px-4 py-8 text-center">
                   <Bell className="w-8 h-8 text-white/10 mx-auto mb-3" />
-                  <p className="text-white/40 text-xs font-mono uppercase tracking-widest">Aucune notification</p>
+                  <p className="text-white/70 text-xs font-mono uppercase tracking-widest">Aucune notification</p>
                 </div>
               ) : (
                 visible.map((n) => (
@@ -148,10 +148,10 @@ export const NotificationDropdown: React.FC = () => {
                           <span className={`text-[10px] font-mono font-black uppercase tracking-wider px-1.5 py-0.5 border ${priorityBadge[n.priority]}`}>
                             {n.priority}
                           </span>
-                          <span className="text-[10px] font-mono text-white/40">{new Date(n.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[10px] font-mono text-white/70">{new Date(n.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <p className="text-xs font-display font-bold text-white uppercase tracking-tight truncate">{n.title}</p>
-                        <p className="text-[10px] font-ui text-white/40 leading-relaxed line-clamp-2">{n.message}</p>
+                        <p className="text-[10px] font-ui text-white/70 leading-relaxed line-clamp-2">{n.message}</p>
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
@@ -171,7 +171,7 @@ export const NotificationDropdown: React.FC = () => {
             {/* FOOTER */}
             {visible.length > 0 && (
               <div className="px-4 py-2 border-t border-white/5 bg-zoyd-surface/20 text-center">
-                <Link to="/parametres" onClick={() => setOpen(false)} className="text-[10px] font-mono uppercase tracking-wider text-white/30 hover:text-zoyd-yellow transition-colors">
+                <Link to="/parametres" onClick={() => setOpen(false)} className="text-[10px] font-mono uppercase tracking-wider text-white/60 hover:text-zoyd-yellow transition-colors">
                   Paramètres de notification →
                 </Link>
               </div>

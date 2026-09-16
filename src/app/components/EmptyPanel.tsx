@@ -16,7 +16,7 @@ const EmptyPanel: React.FC<EmptyPanelProps> = ({ icon, image, title, body }) => 
     )}
     <div className="relative mx-auto mb-4 flex w-12 h-12 items-center justify-center">{icon}</div>
     <p className="relative font-display font-black uppercase italic text-white mb-2">{title}</p>
-    <p className="relative text-sm text-white/30 max-w-xl mx-auto">{body}</p>
+    <p className="relative text-sm text-white/60 max-w-xl mx-auto">{body}</p>
   </div>
 );
 

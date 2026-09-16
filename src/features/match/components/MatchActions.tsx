@@ -17,7 +17,7 @@ import type { User } from '../../../app/stores/authStore';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">{label}</div>
     <div className="font-display font-black text-white italic">{value}</div>
   </div>
 );
@@ -137,7 +137,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
 
       {!user && (
         <div className="space-y-4">
-          <p className="text-white/40 text-sm">
+          <p className="text-white/70 text-sm">
             Connecte-toi pour rejoindre une equipe, suivre la salle et discuter avec les autres joueurs.
           </p>
           <Link to="/auth/login" className="inline-flex items-center gap-2 bg-white text-black px-5 py-3 font-display font-black uppercase tracking-widest text-xs italic">
@@ -204,11 +204,11 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               {currentPlayer.isReady ? 'Retirer le ready' : 'Je suis pret'}
             </button>
           </div>
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-white/70">
             Une fois ton pass engage, ta place reste reservee jusqu'au score final.
           </p>
           {match.scheduledAt ? (
-            <p className="text-xs text-white/35">
+            <p className="text-xs text-white/70">
               Presence attendue avant l'heure confirmee. Toute equipe incomplete a l'heure du match passe automatiquement en forfait.
             </p>
           ) : null}
@@ -374,12 +374,12 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </div>
 
             <div className="border border-white/10 bg-black/30 px-4 py-3">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-2">Motif déclaré</div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">Motif déclaré</div>
               <div className="text-sm text-white/80 leading-relaxed">{openDisputeRecord.reason}</div>
             </div>
 
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-3">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-3">
                 Pièces jointes ({openDisputeRecord.evidence.length})
               </div>
               {openDisputeRecord.evidence.length > 0 ? (
@@ -398,7 +398,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                         href={isSafe ? item : undefined}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex items-center gap-2 text-xs font-mono break-all transition-colors ${isSafe ? 'text-zoyd-blue hover:text-white' : 'text-white/30 cursor-default'}`}
+                        className={`flex items-center gap-2 text-xs font-mono break-all transition-colors ${isSafe ? 'text-zoyd-blue hover:text-white' : 'text-white/60 cursor-default'}`}
                       >
                         <ExternalLink className="w-3 h-3 shrink-0" />
                         {item}
@@ -407,7 +407,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-white/30 italic">Aucune pièce jointe.</p>
+                <p className="text-xs text-white/60 italic">Aucune pièce jointe.</p>
               )}
             </div>
 
@@ -415,7 +415,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               <div className="border-t border-white/5 pt-4">
                 <button
                   onClick={() => disputeState.setShowAddEvidenceForm((v) => !v)}
-                  className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 hover:text-zoyd-blue transition-colors"
+                  className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/70 hover:text-zoyd-blue transition-colors"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   Ajouter une preuve au dossier
@@ -506,7 +506,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
 
                 {(openDisputeRecord.level || 1) < 2 && (
                   <div className="border-t border-white/5 pt-4">
-                    <p className="text-xs text-white/40 mb-3">
+                    <p className="text-xs text-white/70 mb-3">
                       Impossible de trancher ? L'équipe d'administration ZOYD peut prendre le relais.
                     </p>
                     <button

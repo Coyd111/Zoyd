@@ -203,7 +203,7 @@ const CreateTournamentPage: React.FC = () => {
         <div className="flex items-center justify-between gap-4 mb-10">
           <Link
             to="/mj/tournois"
-            className="touch-target inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest"
+            className="touch-target inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour aux tournois
@@ -287,7 +287,7 @@ const CreateTournamentPage: React.FC = () => {
                           className={`border p-4 text-left transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                             selected
                               ? 'border-zoyd-yellow bg-zoyd-yellow/10 text-zoyd-yellow'
-                              : 'border-white/10 hover:border-white/30 text-white/40'
+                              : 'border-white/10 hover:border-white/30 text-white/70'
                           }`}
                         >
                           <div className="font-display font-black text-xl sm:text-2xl italic">{format}</div>
@@ -346,7 +346,7 @@ const CreateTournamentPage: React.FC = () => {
                         }`}
                       >
                         <div className="font-display font-black text-lg italic text-white">{mode.name}</div>
-                        <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                        <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                           {mode.desc}
                         </div>
                       </button>
@@ -372,7 +372,7 @@ const CreateTournamentPage: React.FC = () => {
                           className={`min-h-[44px] p-3 border text-xs font-display font-black italic uppercase transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                             selected
                               ? 'bg-white text-black border-white'
-                              : 'border-white/5 hover:border-white/20 text-white/40'
+                              : 'border-white/5 hover:border-white/20 text-white/70'
                           }`}
                         >
                           {map}
@@ -451,7 +451,7 @@ const CreateTournamentPage: React.FC = () => {
                     />
                     <div className="w-3 h-3 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                   </div>
-                  <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
+                  <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
                     Corps a corps autorise
                   </span>
                 </label>
@@ -517,7 +517,7 @@ const CreateTournamentPage: React.FC = () => {
                         className={`min-h-[44px] p-4 border font-display font-black italic text-sm transition-all focus:ring-2 focus:ring-zoyd-blue focus:ring-offset-2 focus:ring-offset-zoyd-black ${
                           selectedMaxEntries === amount
                             ? 'bg-white text-black border-white'
-                            : 'border-white/10 text-white/40 hover:border-white/30'
+                            : 'border-white/10 text-white/70 hover:border-white/30'
                         }`}
                       >
                         {amount} slots
@@ -574,7 +574,7 @@ const CreateTournamentPage: React.FC = () => {
                     />
                     <div className="w-3 h-3 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                   </div>
-                  <span className="text-[11px] font-display font-black text-white/40 uppercase group-hover:text-white italic">
+                  <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
                     Je veux tenir la premiere place d'arbitre
                   </span>
                 </label>
@@ -618,7 +618,7 @@ const CreateTournamentPage: React.FC = () => {
             </div>
 
             <div className="hud-panel p-5 sm:p-6 md:p-8 bg-zoyd-surface/40">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-4">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-4">
                 Publication
               </div>
               <p className="text-sm text-white/60 mb-6">
@@ -652,7 +652,7 @@ const CreateTournamentPage: React.FC = () => {
 
 const SummaryBox = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-1">{label}</div>
     <div className="font-display font-black text-white italic">{value}</div>
   </div>
 );
@@ -667,7 +667,7 @@ const ProjectionRow = ({
   accent?: string;
 }) => (
   <div className="flex items-center justify-between border-b border-white/5 pb-3">
-    <span className="text-xs font-display font-black text-white/40 italic">{label}</span>
+    <span className="text-xs font-display font-black text-white/70 italic">{label}</span>
     <span className={`font-display font-black italic ${accent}`}>{value}</span>
   </div>
 );

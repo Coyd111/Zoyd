@@ -273,14 +273,14 @@ const LeaksPage: React.FC = () => {
           <h1 className="text-4xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9]">
             Leaks
             <br />
-            <span className="text-white/40 underline decoration-zoyd-yellow/50 underline-offset-8">
+            <span className="text-white/70 underline decoration-zoyd-yellow/50 underline-offset-8">
               &amp; Infos
             </span>
           </h1>
-          <p className="mt-5 max-w-3xl text-sm text-white/40">
+          <p className="mt-5 max-w-3xl text-sm text-white/70">
             Septembre 2026 — Saison 8 "Twilight Heist", collab Honkai Impact 3rd, RAM-7 Mythic, balance changes majeures. Sois le premier informe.
           </p>
-          <div className="mt-4 flex flex-wrap gap-3 text-[10px] font-mono text-white/30">
+          <div className="mt-4 flex flex-wrap gap-3 text-[10px] font-mono text-white/60">
             <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> Mis a jour: 27 Aout 2026</span>
             <span className="flex items-center gap-1.5"><AlertTriangle className="w-3 h-3 text-zoyd-yellow" /> S8 lance le 3 Septembre</span>
           </div>
@@ -305,7 +305,7 @@ const LeaksPage: React.FC = () => {
                   className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
                     isActive
                       ? 'bg-white text-black border-white'
-                      : 'text-white/30 border-white/5 hover:border-white/20 hover:text-white/60'
+                      : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -327,17 +327,17 @@ const LeaksPage: React.FC = () => {
                   <h3 className="font-display font-black text-sm uppercase tracking-tighter italic text-white">
                     Offres en cours
                   </h3>
-                  <p className="text-[10px] font-mono text-white/30 mt-1">Donnees temps reel depuis le store CODM</p>
+                  <p className="text-[10px] font-mono text-white/60 mt-1">Donnees temps reel depuis le store CODM</p>
                 </div>
                 {bundlesLoading && (
-                  <div className="flex items-center gap-2 text-[10px] font-mono text-white/30">
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-white/60">
                     <div className="w-3 h-3 border border-zoyd-yellow border-t-transparent rounded-full animate-spin" />
                     Chargement...
                   </div>
                 )}
               </div>
               {!bundlesLoading && bundles.length === 0 && (
-                <div className="text-center py-8 text-white/30 text-sm">Donnees du store temporairement indisponibles.</div>
+                <div className="text-center py-8 text-white/60 text-sm">Donnees du store temporairement indisponibles.</div>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {bundlesLoading && Array.from({ length: 6 }).map((_, i) => (
@@ -374,7 +374,7 @@ const LeaksPage: React.FC = () => {
                     <div className="p-3">
                       <div className="font-display font-black text-[10px] uppercase tracking-tight italic text-white truncate">{bundle.title || 'Bundle'}</div>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-[10px] font-mono text-white/40">{bundle.isFree ? 'Gratuit' : `${bundle.price} ${bundle.currency}`}</span>
+                        <span className="text-[10px] font-mono text-white/70">{bundle.isFree ? 'Gratuit' : `${bundle.price} ${bundle.currency}`}</span>
                         {bundle.isPopular && <Star className="w-3 h-3 text-zoyd-yellow" />}
                       </div>
                     </div>
@@ -389,19 +389,19 @@ const LeaksPage: React.FC = () => {
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
                 <div className="flex-1">
                   <h3 className="font-display font-black text-sm uppercase tracking-tighter italic text-white">{TOTAL_WEAPONS} armes — S5 2026</h3>
-                  <p className="text-[10px] font-mono text-white/30 mt-1">Base de donnees complete avec categories</p>
+                  <p className="text-[10px] font-mono text-white/60 mt-1">Base de donnees complete avec categories</p>
                 </div>
                 <div className="relative w-full md:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
                   <input type="text" placeholder="Rechercher une arme..." value={weaponSearch} onChange={(e) => setWeaponSearch(e.target.value)}
-                    className="w-full bg-zoyd-surface/50 border border-white/10 text-white text-xs font-mono pl-9 pr-4 py-2.5 placeholder:text-white/30 focus:border-zoyd-yellow/50 transition-colors" />
+                    className="w-full bg-zoyd-surface/50 border border-white/10 text-white text-xs font-mono pl-9 pr-4 py-2.5 placeholder:text-white/60 focus:border-zoyd-yellow/50 transition-colors" />
                 </div>
               </div>
               <div className="flex flex-nowrap gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-2">
                 {WEAPON_CATEGORIES.map((cat) => (
                   <button key={cat} onClick={() => { setSelectedWeaponCategory(cat); setWeaponSearch(''); }}
                     className={`px-3 py-1.5 font-display font-black text-[10px] tracking-wider italic uppercase whitespace-nowrap transition-all border ${
-                      selectedWeaponCategory === cat ? 'bg-white text-black border-white' : 'text-white/30 border-white/5 hover:border-white/20 hover:text-white/60'
+                      selectedWeaponCategory === cat ? 'bg-white text-black border-white' : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
                     }`}>{cat}</button>
                 ))}
               </div>
@@ -415,11 +415,11 @@ const LeaksPage: React.FC = () => {
                       <Crosshair className="w-3 h-3 text-zoyd-yellow/50 group-hover:text-zoyd-yellow transition-colors" />
                       <span className="font-display font-black text-[10px] uppercase tracking-tight italic text-white truncate">{weapon}</span>
                     </div>
-                    <div className="text-[10px] font-mono text-white/30 uppercase">{selectedWeaponCategory}</div>
+                    <div className="text-[10px] font-mono text-white/60 uppercase">{selectedWeaponCategory}</div>
                   </motion.div>
                 ))}
               </div>
-              {searchedWeapons.length === 0 && <div className="text-center py-6 text-white/30 text-sm">Aucune arme trouvée.</div>}
+              {searchedWeapons.length === 0 && <div className="text-center py-6 text-white/60 text-sm">Aucune arme trouvée.</div>}
             </div>
           )}
         </div>
@@ -433,7 +433,7 @@ const LeaksPage: React.FC = () => {
               return (
                 <button key={cat.id} role="tab" aria-selected={isActive} onClick={() => setActiveCategory(cat.id)}
                   className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
-                    isActive ? 'bg-white text-black border-white' : 'text-white/30 border-white/5 hover:border-white/20 hover:text-white/60'
+                    isActive ? 'bg-white text-black border-white' : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
                   }`}><Icon className="w-4 h-4" />{cat.label}</button>
               );
             })}
@@ -471,19 +471,19 @@ const LeaksPage: React.FC = () => {
               <div className="md:w-1/2 p-6 md:p-8 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-4">
                   <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[featured.category]}`}>{featured.category}</span>
-                  <span className="text-[10px] font-mono text-white/30">{featured.date}</span>
-                  <span className="text-[10px] font-mono text-white/30">{featured.readTime}</span>
+                  <span className="text-[10px] font-mono text-white/60">{featured.date}</span>
+                  <span className="text-[10px] font-mono text-white/60">{featured.readTime}</span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-display font-black uppercase tracking-tighter italic leading-tight mb-4 group-hover:text-zoyd-yellow transition-colors">{featured.title}</h2>
-                <p className="text-sm text-white/40 mb-4 line-clamp-3">{featured.excerpt}</p>
-                {featured.source && <p className="text-[10px] font-mono text-white/30 mb-4">Source: {featured.source}</p>}
+                <p className="text-sm text-white/70 mb-4 line-clamp-3">{featured.excerpt}</p>
+                {featured.source && <p className="text-[10px] font-mono text-white/60 mb-4">Source: {featured.source}</p>}
                 <button onClick={() => toggleArticle(featured.id)} aria-expanded={expandedArticles.has(featured.id)}
                   className="flex items-center gap-2 text-zoyd-yellow font-display font-black text-xs tracking-widest uppercase italic hover:gap-4 transition-all">
                   {expandedArticles.has(featured.id) ? 'REVOIR' : 'LIRE LA SUITE'}<ChevronRight className="w-4 h-4" />
                 </button>
                 {expandedArticles.has(featured.id) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 space-y-3 border-t border-white/5 pt-4">
-                    {featured.content.map((p, i) => <p key={i} className="text-sm text-white/50 leading-relaxed">{p}</p>)}
+                    {featured.content.map((p, i) => <p key={i} className="text-sm text-white/75 leading-relaxed">{p}</p>)}
                   </motion.div>
                 )}
               </div>
@@ -510,10 +510,10 @@ const LeaksPage: React.FC = () => {
                   <>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-white/[0.02]" />
                     <div className="relative z-10 flex items-center justify-center w-16 h-16 border border-white/10 group-hover:border-zoyd-yellow/30 transition-colors">
-                      {article.category === 'saison' && <Zap className="w-7 h-7 text-white/30 group-hover:text-zoyd-yellow/60 transition-colors" />}
-                      {article.category === 'armes' && <Swords className="w-7 h-7 text-white/30 group-hover:text-red-400/60 transition-colors" />}
-                      {article.category === 'competition' && <Trophy className="w-7 h-7 text-white/30 group-hover:text-zoyd-blue/60 transition-colors" />}
-                      {article.category === 'patches' && <Bug className="w-7 h-7 text-white/30 group-hover:text-orange-400/60 transition-colors" />}
+                      {article.category === 'saison' && <Zap className="w-7 h-7 text-white/60 group-hover:text-zoyd-yellow/60 transition-colors" />}
+                      {article.category === 'armes' && <Swords className="w-7 h-7 text-white/60 group-hover:text-red-400/80 transition-colors" />}
+                      {article.category === 'competition' && <Trophy className="w-7 h-7 text-white/60 group-hover:text-zoyd-blue/60 transition-colors" />}
+                      {article.category === 'patches' && <Bug className="w-7 h-7 text-white/60 group-hover:text-orange-400/80 transition-colors" />}
                     </div>
                   </>
                 )}
@@ -526,21 +526,21 @@ const LeaksPage: React.FC = () => {
               <div className="p-5">
                 <div className="flex items-center gap-3 mb-3">
                   <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-0.5 border ${categoryColors[article.category]}`}>{article.category}</span>
-                  <span className="text-[10px] font-mono text-white/30">{article.date}</span>
+                  <span className="text-[10px] font-mono text-white/60">{article.date}</span>
                 </div>
                 <h3 className="text-sm font-display font-black uppercase tracking-tight italic leading-snug mb-2 group-hover:text-zoyd-yellow transition-colors line-clamp-2">{article.title}</h3>
-                <p className="text-xs text-white/30 line-clamp-2 mb-3">{article.excerpt}</p>
-                {article.source && <p className="text-[10px] font-mono text-white/15 mb-3">Source: {article.source}</p>}
+                <p className="text-xs text-white/60 line-clamp-2 mb-3">{article.excerpt}</p>
+                {article.source && <p className="text-[10px] font-mono text-white/60 mb-3">Source: {article.source}</p>}
                 <button onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
                   className="flex items-center justify-between w-full">
-                  <span className="text-[10px] font-mono text-white/30">{article.readTime}</span>
-                  <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/30 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
+                  <span className="text-[10px] font-mono text-white/60">{article.readTime}</span>
+                  <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/60 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
                     {expandedArticles.has(article.id) ? 'Masquer' : 'Lire'}<ChevronRight className="w-3 h-3" />
                   </span>
                 </button>
                 {expandedArticles.has(article.id) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 space-y-2 border-t border-white/5 pt-3">
-                    {article.content.map((p, i) => <p key={i} className="text-xs text-white/40 leading-relaxed">{p}</p>)}
+                    {article.content.map((p, i) => <p key={i} className="text-xs text-white/70 leading-relaxed">{p}</p>)}
                   </motion.div>
                 )}
               </div>
@@ -550,9 +550,9 @@ const LeaksPage: React.FC = () => {
 
         {filteredArticles.length === 0 && (
           <div className="border border-white/5 bg-zoyd-surface/10 p-6 md:p-10 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-white/10 text-white/40"><Newspaper className="w-6 h-6" /></div>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-white/10 text-white/70"><Newspaper className="w-6 h-6" /></div>
             <h2 className="font-display font-black text-xl uppercase italic text-white mb-2">Aucun article</h2>
-            <p className="text-sm text-white/40 max-w-xl mx-auto">Aucun article dans cette categorie.</p>
+            <p className="text-sm text-white/70 max-w-xl mx-auto">Aucun article dans cette categorie.</p>
           </div>
         )}
 
@@ -562,7 +562,7 @@ const LeaksPage: React.FC = () => {
             <div className="w-12 h-12 border border-zoyd-yellow/40 flex items-center justify-center text-zoyd-yellow shrink-0"><Shield className="w-6 h-6" /></div>
             <div className="flex-1">
               <h3 className="font-display font-black text-lg uppercase tracking-tighter italic text-white mb-1">Ne rate plus rien</h3>
-              <p className="text-sm text-white/40">Rejoins ZOYD pour recevoir les leaks et infos CODM en premier. Chat en direct, alerts meta et event notifications.</p>
+              <p className="text-sm text-white/70">Rejoins ZOYD pour recevoir les leaks et infos CODM en premier. Chat en direct, alerts meta et event notifications.</p>
             </div>
             <Link to="/auth/register" className="shrink-0 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors touch-target">REJOINDRE</Link>
           </div>
@@ -579,9 +579,9 @@ const LeaksPage: React.FC = () => {
             const Icon = stat.icon;
             return (
               <div key={stat.label} className="border border-white/5 bg-zoyd-surface/10 p-4 text-center">
-                <Icon className="w-4 h-4 text-white/30 mx-auto mb-2" />
+                <Icon className="w-4 h-4 text-white/60 mx-auto mb-2" />
                 <div className="font-display font-black text-2xl text-zoyd-yellow italic">{stat.value}</div>
-                <div className="text-[10px] font-mono font-black tracking-widest text-white/30 uppercase">{stat.label}</div>
+                <div className="text-[10px] font-mono font-black tracking-widest text-white/60 uppercase">{stat.label}</div>
               </div>
             );
           })}

@@ -24,7 +24,7 @@ import type { CompetitiveSummary } from '../../../lib/profileMetrics';
 import { formatZC } from '../../../lib/utils';
 
 const levelConfig: Record<string, { label: string; color: string; bg: string }> = {
-  BEGINNER: { label: 'BEGINNER', color: 'text-white/40', bg: 'bg-white/5' },
+  BEGINNER: { label: 'BEGINNER', color: 'text-white/70', bg: 'bg-white/5' },
   COMPETITOR: { label: 'COMPETITOR', color: 'text-zoyd-yellow', bg: 'bg-zoyd-yellow/10' },
   CHALLENGER: { label: 'CHALLENGER', color: 'text-zoyd-blue', bg: 'bg-zoyd-blue/10' },
   ELITE: { label: 'ELITE', color: 'text-purple-400', bg: 'bg-purple-400/10' },
@@ -72,7 +72,7 @@ const StatCard = React.memo(({ icon, label, value }: { icon: React.ReactNode; la
   <div className="hud-panel p-4 sm:p-5 bg-zoyd-surface/20 flex items-center gap-4">
     <div className="w-10 h-10 border border-white/10 flex items-center justify-center bg-black">{icon}</div>
     <div>
-      <div className="text-[10px] font-mono font-black uppercase tracking-widest text-white/30 mb-1">{label}</div>
+      <div className="text-[10px] font-mono font-black uppercase tracking-widest text-white/60 mb-1">{label}</div>
       <div className="text-xl font-display font-black text-white italic">{value}</div>
     </div>
   </div>
@@ -80,14 +80,14 @@ const StatCard = React.memo(({ icon, label, value }: { icon: React.ReactNode; la
 
 const TrustCell = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">{label}</div>
     <div className={`font-display font-black italic ${accent}`}>{value}</div>
   </div>
 ));
 
 const InfoRow = React.memo(({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/30 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">{label}</div>
     <div className="font-display font-black italic text-white">{value}</div>
   </div>
 ));
@@ -143,7 +143,7 @@ export default function ProfileView({
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             <div className="relative">
               <div className="w-20 h-20 sm:w-28 sm:h-28 border-2 border-white/10 bg-zoyd-surface flex items-center justify-center">
-                <span className="text-3xl sm:text-5xl font-display font-black text-white/40 italic">
+                <span className="text-3xl sm:text-5xl font-display font-black text-white/70 italic">
                   {pseudo.slice(0, 2).toUpperCase()}
                 </span>
               </div>
@@ -167,7 +167,7 @@ export default function ProfileView({
                 </Badge>
               </div>
 
-              <div className="flex flex-wrap items-center gap-6 text-sm text-white/40 font-mono uppercase tracking-widest">
+              <div className="flex flex-wrap items-center gap-6 text-sm text-white/70 font-mono uppercase tracking-widest">
                 {country ? (
                   <span className="flex items-center gap-2">
                     <Flag className="w-4 h-4" /> {country}
@@ -199,7 +199,7 @@ export default function ProfileView({
                   {lvl.label}
                 </div>
                 <div className="text-3xl font-display font-black text-white italic">{progression!.xp}</div>
-                <div className="text-[10px] font-mono text-white/40 mt-1 mb-3">/ {progression!.nextLevelXp} XP</div>
+                <div className="text-[10px] font-mono text-white/70 mt-1 mb-3">/ {progression!.nextLevelXp} XP</div>
                 <ProgressBar
                   value={progressPercent}
                   barClassName={
@@ -260,7 +260,7 @@ export default function ProfileView({
               <TrustCell label="Forfaits connus" value={summary.trust.forfeits.toString()} accent={summary.trust.forfeits > 0 ? 'text-red-300' : 'text-green-400'} />
             </div>
             {trustDescription ? (
-              <p className="text-xs text-white/35 mt-4">{trustDescription}</p>
+              <p className="text-xs text-white/70 mt-4">{trustDescription}</p>
             ) : null}
           </div>
 
@@ -310,18 +310,18 @@ export default function ProfileView({
                         <div className={`w-2 h-2 ${isWin ? 'bg-green-500' : 'bg-white/20'}`} />
                         <div>
                           <div className="font-display font-black text-white text-sm uppercase italic">
-                            {match.rules.map} <span className="text-white/40">///</span> {match.rules.mode}
+                            {match.rules.map} <span className="text-white/70">///</span> {match.rules.mode}
                           </div>
-                          <div className="text-[10px] font-mono text-white/30 uppercase tracking-wider">
+                          <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider">
                             {match.format} / {new Date(match.finishedAt || match.createdAt).toLocaleDateString('fr-FR')}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`font-display font-black italic text-sm ${isWin ? 'text-zoyd-yellow' : 'text-white/50'}`}>
+                        <div className={`font-display font-black italic text-sm ${isWin ? 'text-zoyd-yellow' : 'text-white/75'}`}>
                           {isWin ? `+${formatZC(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee))}` : formatZC(match.entryFee)}
                         </div>
-                        <div className="text-[10px] font-mono text-white/40 uppercase">
+                        <div className="text-[10px] font-mono text-white/70 uppercase">
                           {match.status === 'disputed' ? 'LITIGE' : match.status}
                         </div>
                       </div>
@@ -360,7 +360,7 @@ export default function ProfileView({
                       <div className="font-display font-black text-white text-sm uppercase italic">
                         {placement.name}
                       </div>
-                      <div className="text-[10px] font-mono text-white/30 uppercase tracking-wider">
+                      <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider">
                         {placement.format} / {placement.finishedAt ? new Date(placement.finishedAt).toLocaleDateString('fr-FR') : 'Resultat valide'}
                       </div>
                     </div>
@@ -368,7 +368,7 @@ export default function ProfileView({
                       <div className="font-display font-black text-zoyd-yellow italic text-sm">
                         Top {placement.placement}
                       </div>
-                      <div className="text-[10px] font-mono text-white/40 uppercase">
+                      <div className="text-[10px] font-mono text-white/70 uppercase">
                         {placement.payout > 0 ? formatZC(placement.payout) : 'Participation'}
                       </div>
                     </div>

@@ -286,15 +286,15 @@ const WalletPage: React.FC = () => {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4 text-sm">
               <div className="border border-white/5 p-4 bg-black/40">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Gains en attente</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">Gains en attente</div>
                 <div className="text-xl md:text-2xl font-display font-black text-white">{formatZC(pendingWinnings)}</div>
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Frais de retrait</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">Frais de retrait</div>
                 <div className="text-xl md:text-2xl font-display font-black text-zoyd-yellow">2%</div>
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">Retrait minimum</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">Retrait minimum</div>
                 <div className="text-xl md:text-2xl font-display font-black text-white">150 ZC</div>
               </div>
             </div>
@@ -325,7 +325,7 @@ const WalletPage: React.FC = () => {
                     <img src="/assets/images/codm-3.jpg" alt="" loading="lazy" className="w-full h-full object-cover" />
                   </div>
                   <Clock className="relative w-12 h-12 text-white/10 mx-auto mb-4" />
-                  <p className="relative text-white/40 font-mono text-sm uppercase tracking-widest">Ton solde n'a pas encore bouge</p>
+                  <p className="relative text-white/70 font-mono text-sm uppercase tracking-widest">Ton solde n'a pas encore bouge</p>
                 </div>
               )}
             </div>
@@ -426,7 +426,7 @@ const WalletFilter = React.memo(({ active, onClick, label }: { active: boolean; 
     onClick={onClick}
     aria-label={`Filtrer par ${label}`}
     className={`px-3 py-1.5 touch-target text-[10px] font-mono font-black uppercase tracking-widest border transition-all ${
-      active ? 'bg-white text-black border-white' : 'bg-transparent text-white/40 border-white/10 hover:border-white/20'
+      active ? 'bg-white text-black border-white' : 'bg-transparent text-white/70 border-white/10 hover:border-white/20'
     }`}
   >
     {label}
@@ -435,7 +435,7 @@ const WalletFilter = React.memo(({ active, onClick, label }: { active: boolean; 
 
 const FundingMetric = React.memo(({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/10 bg-black/40 px-4 py-3">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1">{label}</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-1">{label}</div>
     <div className="font-display font-black text-lg text-white italic">{value}</div>
   </div>
 ));
@@ -485,7 +485,7 @@ const TransactionRow = React.memo(({ type, amount, description, status, timestam
         {statusIcon}
         <div>
           <div className="font-display font-black text-sm uppercase italic text-white">{description}</div>
-          <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+          <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
             {typeLabel} / {getRelativeTime(timestamp)}
             {metadata?.feeAmount ? ` / frais ${metadata.feeAmount.toFixed(1)} ZC` : ''}
           </div>

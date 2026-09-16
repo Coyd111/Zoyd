@@ -114,9 +114,9 @@ const TournoisPage: React.FC = () => {
             </div>
             <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9] mb-4">
               Tournois <br className="hidden sm:block" />
-              <span className="text-white/40 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
+              <span className="text-white/70 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
             </h1>
-            <p className="text-white/40 text-base md:text-xl font-light max-w-2xl mb-6">
+            <p className="text-white/70 text-base md:text-xl font-light max-w-2xl mb-6">
               Retrouve les tournois ouverts, ceux qui se jouent déjà et ceux qui viennent de se terminer.
               Ce que tu vois ici correspond déjà à ton profil de jeu.
             </p>
@@ -162,14 +162,14 @@ const TournoisPage: React.FC = () => {
                 <TabsTrigger
                   value="live"
                   aria-label="Tournois en cours"
-                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-blue data-[state=active]:text-black transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/60 data-[state=active]:bg-zoyd-blue data-[state=active]:text-black transition-all rounded-none"
                 >
                   En cours
                 </TabsTrigger>
                 <TabsTrigger
                   value="history"
                   aria-label="Historique des tournois terminés"
-                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/30 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/60 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
                 >
                   Termines
                 </TabsTrigger>
@@ -177,7 +177,7 @@ const TournoisPage: React.FC = () => {
 
               <div className="flex gap-4 w-full xl:w-[420px]">
                 <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -198,17 +198,17 @@ const TournoisPage: React.FC = () => {
                   className={`px-4 sm:px-5 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
                     (format === 'TOUS' && (!filters.format || filters.format === 'all')) || filters.format === format
                       ? 'bg-white text-black border-white'
-                      : 'bg-black text-white/40 border-white/5 hover:border-white/20'
+                      : 'bg-black text-white/70 border-white/5 hover:border-white/20'
                   }`}
                 >
                   {format}
                 </button>
               ))}
-              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/30">
+              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <Users className="w-3.5 h-3.5" />
                 Solo et equipe
               </div>
-              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/30">
+              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <Swords className="w-3.5 h-3.5" />
                 Elimination directe
               </div>
@@ -266,7 +266,7 @@ const TournamentGrid = ({
         <h3 className="text-2xl sm:text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">
           {emptyTitle}
         </h3>
-        <p className="text-white/40 max-w-md font-light mb-6 md:mb-8 text-sm md:text-base">{emptyBody}</p>
+        <p className="text-white/70 max-w-md font-light mb-6 md:mb-8 text-sm md:text-base">{emptyBody}</p>
         <Link
           to="/mj/tournois/creer"
           className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
@@ -295,7 +295,7 @@ const TournamentGrid = ({
 
 const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
-    <span className="text-[10px] md:text-[9px] font-mono font-bold text-white/40 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
+    <span className="text-[10px] md:text-[9px] font-mono font-bold text-white/70 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-3xl sm:text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>

@@ -52,14 +52,14 @@ const BracketActions: React.FC<BracketActionsProps> = ({
   <div className="hud-panel p-6 bg-zoyd-surface/20">
     <div className="flex items-center justify-between gap-4 mb-5">
       <h2 className="text-lg font-display font-black uppercase italic">Rejoindre le tournoi</h2>
-      <div className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+      <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
         0% de commission joueur
       </div>
     </div>
 
     {!user ? (
       <div className="space-y-4">
-        <p className="text-white/40 text-sm">
+        <p className="text-white/70 text-sm">
           Connecte-toi pour t'inscrire, ajouter ton equipe ou suivre ton prochain duel.
         </p>
         <Link
@@ -122,7 +122,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
                 />
               ))}
             </div>
-            <p className="text-xs text-white/35">
+            <p className="text-xs text-white/70">
               Le capitaine confirme l'inscription pour toute l'equipe de {teamSize} joueurs.
             </p>
           </div>
@@ -175,7 +175,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
         ) : null}
 
         {teamSize > 1 ? (
-          <p className="text-xs text-white/35">
+          <p className="text-xs text-white/70">
             Chaque inscription represente une equipe complete. Une fois tout le monde pret, le tableau se
             lance equipe contre equipe.
           </p>

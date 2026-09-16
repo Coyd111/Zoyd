@@ -64,7 +64,7 @@ const TrustScoreBadge: React.FC<Props> = ({ score, compact, detailed }) => {
             )}
           </div>
           <div>
-            <div className="text-[10px] font-mono font-black uppercase tracking-widest text-white/40">
+            <div className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70">
               FIABILITE
             </div>
             <div className={`text-sm font-display font-black uppercase tracking-tight ${getTrustColor(score.overall)}`}>
@@ -74,7 +74,7 @@ const TrustScoreBadge: React.FC<Props> = ({ score, compact, detailed }) => {
         </div>
         <div className={`text-3xl font-display font-black italic ${getTrustColor(score.overall)}`}>
           {score.overall}
-          <span className="text-white/40 text-lg">/100</span>
+          <span className="text-white/70 text-lg">/100</span>
         </div>
       </div>
 
@@ -96,7 +96,7 @@ const TrustScoreBadge: React.FC<Props> = ({ score, compact, detailed }) => {
             return (
               <div key={key}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-white/30">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-white/60">
                     {categoryLabels[key]}
                   </span>
                   <span className={`text-[11px] font-mono font-black ${getTrustColor(val)}`}>

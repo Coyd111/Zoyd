@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center p-6 safe-top">
             <div className="text-center max-w-md">
               <h2 className="text-xl font-display font-black uppercase mb-4">Une erreur est survenue</h2>
-              <p className="text-white/40 text-sm mb-6">
+              <p className="text-white/70 text-sm mb-6">
                 {import.meta.env.DEV ? (this.state.error?.message || 'Erreur inconnue.') : 'Une erreur inattendue s\'est produite.'}
               </p>
               <button

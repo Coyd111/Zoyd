@@ -36,14 +36,14 @@ export const MatchTimeline: React.FC<MatchTimelineProps> = React.memo(({
     <div className="mb-4 border border-white/5 bg-black/30 px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-white/25 mb-1">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">
             Presence salon
           </div>
           <div className="text-sm text-white/65">
             {presenceSummary.onlineCount}/{presenceSummary.total} presents, {presenceSummary.checkedInCount} check-in, {presenceSummary.readyCount} prets.
           </div>
         </div>
-        <div className="text-[10px] font-mono uppercase tracking-widest text-white/25">
+        <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
           {presenceSummary.arbiterOnline ? 'Arbitre actif' : 'Arbitre attendu'}
           {lastHeartbeatAt ? ` / sync ${new Date(lastHeartbeatAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : ''}
         </div>

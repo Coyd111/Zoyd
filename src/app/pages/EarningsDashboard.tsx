@@ -26,7 +26,7 @@ const LazyMatchResultsBarChart = React.lazy(() =>
 
 const ChartFallback = () => (
   <div className="h-full w-full flex items-center justify-center">
-    <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 animate-pulse">Chargement...</div>
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 animate-pulse">Chargement...</div>
   </div>
 );
 
@@ -99,7 +99,7 @@ const EarningsDashboard: React.FC = () => {
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center pt-safe-top">
         <div className="text-center">
           <h2 className="text-2xl font-display font-black uppercase italic">Vue des gains indisponible</h2>
-          <p className="mt-3 text-white/40">Connecte-toi pour retrouver ce que tes matchs et tournois t'ont rapporte.</p>
+          <p className="mt-3 text-white/70">Connecte-toi pour retrouver ce que tes matchs et tournois t'ont rapporte.</p>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ const EarningsDashboard: React.FC = () => {
                 <h1 className="text-3xl sm:text-4xl font-display font-black text-white italic uppercase tracking-tighter">
                   TABLEAU DE BORD FINANCIER
                 </h1>
-                <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest">
+                <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest">
                   Suivi de tes Cash Prizes et de tes Commissions d'arbitrage
                 </p>
               </div>
@@ -181,13 +181,13 @@ const EarningsDashboard: React.FC = () => {
                     </Badge>
                   </div>
                   <div>
-                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-1">
+                    <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mb-1">
                       {stat.label}
                     </div>
                     <div className="text-3xl font-display font-black text-white italic tracking-tighter mb-1">
                       {stat.value}
                     </div>
-                    <div className="text-[11px] font-mono text-white/40 uppercase">{stat.subValue}</div>
+                    <div className="text-[11px] font-mono text-white/70 uppercase">{stat.subValue}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -203,7 +203,7 @@ const EarningsDashboard: React.FC = () => {
                   <CardTitle className="text-xl font-display font-black italic uppercase text-white tracking-tighter">
                     Ton evolution sur 30 jours
                   </CardTitle>
-                  <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-1">
+                  <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">
                     Gains, remboursements et mises deja passes par ton compte
                   </p>
                 </div>
@@ -232,7 +232,7 @@ const EarningsDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 {summary.stats.totalMatches + summary.arbiterStats.arbitratedMatches === 0 ? (
-                  <div className="py-10 text-center text-[10px] font-mono uppercase tracking-widest text-white/40">
+                  <div className="py-10 text-center text-[10px] font-mono uppercase tracking-widest text-white/70">
                     Pas assez de parties pour afficher cette vue
                   </div>
                 ) : (
@@ -249,7 +249,7 @@ const EarningsDashboard: React.FC = () => {
                         <div className="text-2xl font-display font-black text-zoyd-yellow italic">
                           {summary.stats.totalMatches}
                         </div>
-                        <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                        <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                           Matchs Joués
                         </div>
                       </div>
@@ -257,7 +257,7 @@ const EarningsDashboard: React.FC = () => {
                         <div className="text-2xl font-display font-black text-zoyd-blue italic">
                           {summary.arbiterStats.arbitratedMatches}
                         </div>
-                        <div className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+                        <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                           Matchs Arbitrés
                         </div>
                       </div>
@@ -280,7 +280,7 @@ const EarningsDashboard: React.FC = () => {
                     <div className="text-2xl font-display font-black text-white italic tracking-tighter">
                       {user.trustScore}/100
                     </div>
-                    <p className="text-[10px] font-mono text-white/40 uppercase mt-1">
+                    <p className="text-[10px] font-mono text-white/70 uppercase mt-1">
                       Statut: {getTrustStatus(user.trustScore)}
                     </p>
                   </div>
@@ -318,7 +318,7 @@ const EarningsDashboard: React.FC = () => {
                       <div className="text-xs font-display font-black text-white uppercase italic tracking-widest">
                         {transaction.description}
                       </div>
-                      <div className="text-[10px] font-mono text-white/40 uppercase mt-1">
+                      <div className="text-[10px] font-mono text-white/70 uppercase mt-1">
                         {new Date(transaction.timestamp).toLocaleDateString('fr-FR')} / {transaction.type}
                       </div>
                     </div>
@@ -332,7 +332,7 @@ const EarningsDashboard: React.FC = () => {
                       {transaction.amount >= 0 ? '+' : ''}
                       {formatZC(transaction.amount)}
                     </div>
-                    <div className="text-[10px] font-mono text-white/40 uppercase tracking-tighter">
+                    <div className="text-[10px] font-mono text-white/70 uppercase tracking-tighter">
                       Mouvement ZC
                     </div>
                   </div>
@@ -344,7 +344,7 @@ const EarningsDashboard: React.FC = () => {
                   <div className="w-12 h-12 border border-white/10 flex items-center justify-center mx-auto mb-4">
                     <Clock className="w-6 h-6 text-white/10" />
                   </div>
-                  <p className="text-white/40 font-mono text-[10px] uppercase tracking-widest">
+                  <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest">
                     Aucun mouvement recent enregistre
                   </p>
                 </div>
@@ -359,7 +359,7 @@ const EarningsDashboard: React.FC = () => {
 
 const MetricTile = React.memo(({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
   <div className="border border-white/5 bg-black/30 p-3">
-    <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">
+    <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">
       {icon}
       {label}
     </div>

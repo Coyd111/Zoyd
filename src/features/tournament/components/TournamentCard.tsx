@@ -23,7 +23,7 @@ const statusConfig: Record<Tournament['status'], { label: string; dot: string; t
   completed: {
     label: 'Tournoi terminé',
     dot: 'bg-white/20',
-    tone: 'text-white/30',
+    tone: 'text-white/60',
     cta: 'Voir le resultat',
   },
   cancelled: {
@@ -55,7 +55,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
             {status.label}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-white/40 uppercase">
+        <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-white/70 uppercase">
           <Users className="w-3 h-3" />
           {entryLabel}
         </div>
@@ -65,7 +65,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
         <h3 className="text-3xl font-display font-black text-white italic uppercase tracking-tighter leading-tight mb-4 group-hover:text-zoyd-yellow transition-colors">
           {tournament.name}
         </h3>
-        <div className="flex flex-wrap gap-3 text-[10px] font-mono uppercase tracking-widest text-white/30">
+        <div className="flex flex-wrap gap-3 text-[10px] font-mono uppercase tracking-widest text-white/60">
           <span>{tournament.format}</span>
           <span>{tournament.rules.mode}</span>
           <span>{tournament.rules.mapPool.join(' / ')}</span>
@@ -74,9 +74,9 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
 
       <div className="grid grid-cols-2 gap-4 border-y border-white/5 py-4 mb-8">
         <div className="flex items-center gap-3">
-          <Clock3 className="w-4 h-4 text-white/40" />
+          <Clock3 className="w-4 h-4 text-white/70" />
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-white/40">Depart</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-white/70">Depart</div>
             <div className="text-[10px] font-display font-black uppercase italic text-white">
               {tournament.status === 'completed'
                 ? `Terminé ${getRelativeTime(tournament.finishedAt || tournament.startsAt)}`
@@ -92,7 +92,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
         <div className="flex items-center justify-end gap-3">
           <Trophy className="w-4 h-4 text-zoyd-yellow" />
           <div className="text-right">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-white/40">A gagner</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-white/70">A gagner</div>
             <div className="text-[10px] font-display font-black uppercase italic text-zoyd-yellow">
               {formatZC(tournament.payout.playerPool)}
             </div>
@@ -114,11 +114,11 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
                 <div className="font-display font-black text-white uppercase italic">{winner.squadName}</div>
               </div>
             </div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-white/30">#1</span>
+            <span className="text-[10px] font-mono uppercase tracking-widest text-white/60">#1</span>
           </div>
         ) : (
           <div>
-            <div className="flex justify-between text-[10px] font-mono font-black text-white/40 uppercase tracking-widest mb-2">
+            <div className="flex justify-between text-[10px] font-mono font-black text-white/70 uppercase tracking-widest mb-2">
               <span>{slotLabel}</span>
               <span>
                 {tournament.entries.length} / {tournament.maxEntries}
@@ -130,7 +130,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
                 style={{ '--progress': `${completion}%` } as React.CSSProperties}
               />
             </div>
-            <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/30">
+            <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/60">
               <span className="inline-flex items-center gap-2">
                 <Users className="w-3.5 h-3.5" />
                 Inscription {formatZC(tournament.entryFee)} / joueur
@@ -144,7 +144,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = React.memo(({ tourn
         )}
 
         <div className="flex items-center justify-between border-t border-white/5 pt-4">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-white/40">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-white/70">
             Inscription {formatZC(tournament.entryFee)} / joueur
           </div>
           <div className="inline-flex items-center gap-2 text-xs font-display font-black uppercase tracking-[0.18em] italic text-white group-hover:text-zoyd-yellow transition-colors">

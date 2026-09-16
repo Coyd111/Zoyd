@@ -251,7 +251,7 @@ export default function ProfileView({
           <div className="hud-panel p-6 bg-zoyd-surface/20">
             <div className="flex items-center gap-3 mb-5">
               <ShieldCheck className="w-5 h-5 text-zoyd-yellow" />
-              <h2 className="text-lg font-display font-black uppercase italic">Score de Fiabilite (Trust Score)</h2>
+              <h2 className="text-lg font-display font-black uppercase italic">Score de Fiabilité (Trust Score)</h2>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <TrustCell label="Score global" value={`${summary.trust.overall}/100`} accent="text-zoyd-yellow" />
@@ -347,7 +347,7 @@ export default function ProfileView({
                 icon={<Trophy className="w-8 h-8 text-white/10" />}
                 image={emptyTournamentsImage || '/assets/images/codm-1.jpg'}
                 title="Aucun tournoi recent"
-                body="Les participations et podiums apparaitront ici des que les tournois seront Termines."
+                body="Les participations et podiums apparaitront ici des que les tournois seront Terminés."
               />
             ) : (
               <div className="space-y-3">
@@ -361,7 +361,7 @@ export default function ProfileView({
                         {placement.name}
                       </div>
                       <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider">
-                        {placement.format} / {placement.finishedAt ? new Date(placement.finishedAt).toLocaleDateString('fr-FR') : 'Resultat valide'}
+                        {placement.format} / {placement.finishedAt ? new Date(placement.finishedAt).toLocaleDateString('fr-FR') : 'Résultat valide'}
                       </div>
                     </div>
                     <div className="text-right">

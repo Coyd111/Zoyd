@@ -219,7 +219,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
           pushRealtimeReminder(
             'check_in_required',
             minutesUntilMatch <= 5 ? 'Check-in urgent' : 'Check-in ouvert',
-            `${match.id}: confirme ta presence avant le debut du match.`,
+            `${match.id}: confirmé ta presence avant le début du match.`,
             `/mj/match/${match.id}`,
             `rt-check-in-${match.id}-${currentUser.id}`,
             minutesUntilMatch <= 5 ? 'high' : 'normal'
@@ -237,7 +237,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
         pushRealtimeReminder(
           'arbitration_assigned',
           'Salle disponible',
-          `${match.id}: la room CODM est prete pour les joueurs confirms.`,
+          `${match.id}: la room CODM est prête pour les joueurs confirms.`,
           `/mj/match/${match.id}`,
           `rt-room-${match.id}-${currentUser.id}`,
           'high'

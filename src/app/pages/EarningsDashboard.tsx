@@ -204,7 +204,7 @@ const EarningsDashboard: React.FC = () => {
                     Ton evolution sur 30 jours
                   </CardTitle>
                   <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">
-                    Gains, remboursements et mises deja passes par ton compte
+                    Gains, remboursements et mises déjà passes par ton compte
                   </p>
                 </div>
                 <div className="px-3 py-1 bg-white/5 text-white text-[10px] font-mono font-black uppercase">

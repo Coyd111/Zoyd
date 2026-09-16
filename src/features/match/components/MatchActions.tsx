@@ -194,7 +194,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               disabled={!canCheckIn || currentPlayer.isCheckedIn}
               className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30"
             >
-              {currentPlayer.isCheckedIn ? 'Presence confirmee' : 'Confirmer ma presence'}
+              {currentPlayer.isCheckedIn ? 'Présence confirmée' : 'Confirmer ma presence'}
             </button>
             <button
               onClick={handlers.toggleReady}
@@ -205,11 +205,11 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </button>
           </div>
           <p className="text-xs text-white/70">
-            Une fois ton pass engage, ta place reste reservee jusqu'au score final.
+            Une fois ton pass engage, ta place reste réservée jusqu'au score final.
           </p>
           {match.scheduledAt ? (
             <p className="text-xs text-white/70">
-              Presence attendue avant l'heure confirmee. Toute equipe incomplete a l'heure du match passe automatiquement en forfait.
+              Présence attendue avant l'heure confirmee. Toute équipe incomplète a l'heure du match passe automatiquement en forfait.
             </p>
           ) : null}
         </div>

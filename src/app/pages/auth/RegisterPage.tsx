@@ -36,7 +36,7 @@ const step1Schema = z
   .object({
     pseudo: z.string().min(3, 'Minimum 3 caracteres').max(20, 'Maximum 20 caracteres'),
     email: z.string().email('Email invalide'),
-    phone: z.string().min(8, 'Numero invalide'),
+    phone: z.string().min(8, 'Numéro invalide'),
     password: z
       .string()
       .min(8, 'Minimum 8 caracteres')
@@ -189,7 +189,7 @@ const RegisterPage: React.FC = () => {
         pending.push({
           type: 'system',
           title: 'Bienvenue sur ZOYD !',
-          message: `Ton compte ${formData.pseudo} est pret. Commence par explorer la plateforme.`,
+          message: `Ton compte ${formData.pseudo} est prêt. Commence par explorer la plateforme.`,
           priority: 'high',
           actionUrl: '/',
         });
@@ -590,7 +590,7 @@ const RegisterPage: React.FC = () => {
                   <div className="mt-6">
                     <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white uppercase italic tracking-tighter">Profil pret</h2>
                     <p className="text-white/70 font-mono text-[11px] uppercase tracking-widest mt-2">
-                      Compte #{formData.pseudo || 'ZOYD'} pret pour ZOYD
+                      Compte #{formData.pseudo || 'ZOYD'} prêt pour ZOYD
                     </p>
                   </div>
                 </div>

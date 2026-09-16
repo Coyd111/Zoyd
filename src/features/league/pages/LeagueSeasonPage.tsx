@@ -121,7 +121,7 @@ const LeagueSeasonPage = () => {
           message = `Confirmer la reassignation du joueur du ${payload?.fromDay} au ${payload?.toDay} ?`;
           break;
         case 'submit-final-results':
-          message = 'Confirmer la soumission des resultats de finale ? Cette action est irreversible.';
+          message = 'Confirmer la soumission des resultats de finale ? Cette action est irréversible.';
           break;
         case 'advance-to-final':
           message = "Confirmer l'avancement vers la finale ? Cette action cloturera les qualifications.";
@@ -264,7 +264,7 @@ const LeagueSeasonPage = () => {
                       <p className="text-xs text-red-300">Confirmer le retrait de la saison ? Ton inscription ({formatZC(season.entryFee)}) sera remboursee.</p>
                       <div className="flex gap-2">
                         <button onClick={() => setConfirmLeave(false)} disabled={actionLoading} className="touch-target flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors disabled:opacity-50">
-                          Annuler
+                          Annulér
                         </button>
                         <button onClick={() => { setConfirmLeave(false); void handleLeave(); }} disabled={actionLoading} className="touch-target flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50">
                           Confirmer
@@ -302,7 +302,7 @@ const LeagueSeasonPage = () => {
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/70 uppercase tracking-wider mb-1">
-              {season.status === 'completed' ? 'Terminee' : myStanding ? 'Ta position' : 'Classement'}
+              {season.status === 'completed' ? 'Terminée' : myStanding ? 'Ta position' : 'Classement'}
             </div>
             <div className="text-lg md:text-xl font-black text-white">
               {season.status === 'completed'
@@ -448,7 +448,7 @@ const LeagueSeasonPage = () => {
       </div>
 
       {confirmAction && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmation requise">
           <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
@@ -468,7 +468,7 @@ const LeagueSeasonPage = () => {
                 disabled={actionLoading}
                 className="flex-1"
               >
-                Annuler
+                Annulér
               </Button>
               <Button
                 variant="primary"

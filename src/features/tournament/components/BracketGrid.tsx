@@ -77,8 +77,8 @@ const BracketGrid: React.FC<BracketGridProps> = ({
                     tournamentName={tournament.name}
                     selected={selectedMatchId === match.id}
                     onSelect={() => onSelectMatch(match.id)}
-                    entryALabel={tournament.entries.find((entry) => entry.id === match.entryAId)?.squadName || 'A confirmer'}
-                    entryBLabel={tournament.entries.find((entry) => entry.id === match.entryBId)?.squadName || 'A confirmer'}
+                    entryALabel={tournament.entries.find((entry) => entry.id === match.entryAId)?.squadName || 'À confirmer'}
+                    entryBLabel={tournament.entries.find((entry) => entry.id === match.entryBId)?.squadName || 'À confirmer'}
                   />
                 ))}
             </div>
@@ -96,8 +96,8 @@ const BracketGrid: React.FC<BracketGridProps> = ({
                 tournamentName={tournament.name}
                 selected={selectedMatchId === bronzeMatch.id}
                 onSelect={() => onSelectMatch(bronzeMatch.id)}
-                entryALabel={tournament.entries.find((entry) => entry.id === bronzeMatch.entryAId)?.squadName || 'A confirmer'}
-                entryBLabel={tournament.entries.find((entry) => entry.id === bronzeMatch.entryBId)?.squadName || 'A confirmer'}
+                entryALabel={tournament.entries.find((entry) => entry.id === bronzeMatch.entryAId)?.squadName || 'À confirmer'}
+                entryBLabel={tournament.entries.find((entry) => entry.id === bronzeMatch.entryBId)?.squadName || 'À confirmer'}
               />
             </div>
           ) : null}

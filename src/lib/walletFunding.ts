@@ -82,12 +82,12 @@ export const getFundingPromptCopy = (context: FundingContext) => {
       return {
         title: 'Ajoute des ZC avant de publier cette partie',
         body: "Le createur engage aussi son pass. Recharge ton wallet puis reviens publier ton match.",
-        returnLabel: 'Retour a la creation',
+        returnLabel: 'Retour à la creation',
       };
     case 'tournament-entry':
       return {
         title: 'Ajoute des ZC pour confirmer cette inscription',
-        body: "Le pass se bloque des que ton inscription est validee. Recharge puis reviens finaliser ton entree.",
+        body: "Le pass se bloque des que ton inscription est validée. Recharge puis reviens finaliser ton entrée.",
         returnLabel: 'Retour au tournoi',
       };
   }

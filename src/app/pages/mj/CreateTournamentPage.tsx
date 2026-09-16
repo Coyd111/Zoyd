@@ -91,7 +91,7 @@ const CreateTournamentPage: React.FC = () => {
       weaponRestrictions: WEAPON_OPTIONS[0],
       pointstreaks: 'restricted',
       meleeAllowed: false,
-      notes: 'Pas de matchs entre 00h00 et 07h00. Verification room 10 min avant le round.',
+      notes: 'Pas de matchs entre 00h00 et 07h00. Vérification room 10 min avant le round.',
       startsAt: getDefaultStartAt(),
       deviceRestriction: 'open',
       controllerRestriction: 'open',
@@ -153,7 +153,7 @@ const CreateTournamentPage: React.FC = () => {
 
     const startAt = new Date(data.startsAt);
     if (Number.isNaN(startAt.getTime()) || startAt.getTime() <= Date.now()) {
-      toast.error("Choisis une fenetre de depart valide dans le futur.");
+      toast.error("Choisis une fenêtre de depart valide dans le futur.");
       return;
     }
 
@@ -232,7 +232,7 @@ const CreateTournamentPage: React.FC = () => {
               Créer un <span className="text-zoyd-yellow">tournoi</span>
             </h1>
             <p className="text-white/60 mt-3 max-w-xl">
-              Prepare une cup solo ou en equipe, choisis l'heure, les regles et le montant d'inscription.
+              Prepare une cup solo ou en equipe, choisis l'heure, les règles et le montant d'inscription.
               Une fois publie, les joueurs pourront te rejoindre directement.
             </p>
           </div>
@@ -302,7 +302,7 @@ const CreateTournamentPage: React.FC = () => {
 
                 <div>
                   <label htmlFor="starts-at" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                    Debut souhaite
+                    Début souhaite
                   </label>
                   <input
                     id="starts-at"
@@ -312,7 +312,7 @@ const CreateTournamentPage: React.FC = () => {
                   />
                   {errors.startsAt ? (
                     <p className="text-[10px] font-mono uppercase tracking-widest text-red-300 mt-2" role="alert">
-                      La date de debut est requise.
+                      La date de début est requise.
                     </p>
                   ) : null}
                 </div>
@@ -575,7 +575,7 @@ const CreateTournamentPage: React.FC = () => {
                     <div className="w-3 h-3 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                   </div>
                   <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
-                    Je veux tenir la premiere place d'arbitre
+                    Je veux tenir la première place d'arbitre
                   </span>
                 </label>
               </div>
@@ -623,7 +623,7 @@ const CreateTournamentPage: React.FC = () => {
               </div>
               <p className="text-sm text-white/60 mb-6">
                 Ton tournoi apparaitra d&apos;abord dans les inscriptions ouvertes. Les joueurs rejoignent ensuite
-                depuis leur profil, pendant que tu gardes la main sur l&apos;organisation.
+                depuis leur profil, pendant que tu gardès la main sur l&apos;organisation.
               </p>
               {teamSize > 1 ? (
                 <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 p-4 text-sm text-white/60 mb-6">
@@ -632,7 +632,7 @@ const CreateTournamentPage: React.FC = () => {
               ) : null}
               {reserveCreatorAsArbiter ? (
                 <div className="border border-zoyd-blue/20 bg-zoyd-blue/5 p-4 text-sm text-white/60 mb-6">
-                  Tu prendras la premiere place d&apos;arbitre pour lancer les premiers duels au bon moment.
+                  Tu prendras la première place d&apos;arbitre pour lancer les premiers duels au bon moment.
                 </div>
               ) : null}
               <button

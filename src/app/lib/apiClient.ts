@@ -76,8 +76,8 @@ export class ApiError extends Error {
 
 const ERROR_MESSAGES: Record<string, string> = {
   INSUFFICIENT_FUNDS: 'Solde insuffisant. Recharge ton portefeuille.',
-  MATCH_CLOSED: 'Ce match est deja ferme.',
-  ALREADY_JOINED: 'Tu es deja inscrit a ce match.',
+  MATCH_CLOSED: 'Ce match est déjà ferme.',
+  ALREADY_JOINED: 'Tu es déjà inscrit a ce match.',
   MATCH_NOT_FOUND: 'Match introuvable.',
   TOURNAMENT_NOT_FOUND: 'Tournoi introuvable.',
   LEAGUE_NOT_FOUND: 'Ligue introuvable.',
@@ -85,19 +85,19 @@ const ERROR_MESSAGES: Record<string, string> = {
   NOT_ENOUGH_PLAYERS: 'Pas assez de joueurs pour commencer.',
   REGISTRATION_CLOSED: 'Les inscriptions sont fermees.',
   NOT_JOINED: 'Tu n\'es pas inscrit.',
-  MATCH_ALREADY_LIVE: 'Ce match est deja en cours.',
+  MATCH_ALREADY_LIVE: 'Ce match est déjà en cours.',
   INVALID_DAY: 'Journee invalide.',
   INVALID_RESULTS: 'Resultats invalides.',
-  DUPLICATE_PSEUDO: 'Ce pseudo est deja utilise.',
-  DUPLICATE_EMAIL: 'Cet email est deja utilise.',
-  DUPLICATE_PHONE: 'Ce numero est deja utilise.',
-  ARBITER_TAKEN: 'Un arbitre est deja assigne.',
+  DUPLICATE_PSEUDO: 'Ce pseudo est déjà utilise.',
+  DUPLICATE_EMAIL: 'Cet email est déjà utilise.',
+  DUPLICATE_PHONE: 'Ce numéro est déjà utilise.',
+  ARBITER_TAKEN: 'Un arbitre est déjà assigne.',
   ROLE_CONFLICT: 'Conflit de role.',
   NO_SLOT_AVAILABLE: 'Aucune place disponible.',
   TRUST_REQUIRED: 'Score de confiance insuffisant.',
-  DISPUTE_ALREADY_OPEN: 'Un dispute est deja ouvert.',
+  DISPUTE_ALREADY_OPEN: 'Un dispute est déjà ouvert.',
   RESULT_NOT_FOUND: 'Resultat introuvable.',
-  RESULT_ALREADY_EXISTS: 'Un resultat a deja ete soumis.',
+  RESULT_ALREADY_EXISTS: 'Un resultat a déjà été soumis.',
 };
 
 export const readJson = async <T>(response: Response): Promise<T> => {
@@ -113,7 +113,7 @@ export const readJson = async <T>(response: Response): Promise<T> => {
     }
     
     const code = payload.code || 'UNKNOWN_ERROR';
-    const message = payload.error || 'Une erreur reseau est survenue.';
+    const message = payload.error || 'Une erreur réseau est survenue.';
     const friendlyMessage = ERROR_MESSAGES[code] || message;
     
     throw new ApiError(friendlyMessage, code, response.status);

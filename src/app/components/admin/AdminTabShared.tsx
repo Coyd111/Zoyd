@@ -13,6 +13,24 @@ export const statusToneMap: Record<string, string> = {
   forfeited: 'text-red-300 border-red-500/20',
 };
 
+export const statusLabelFR: Record<string, string> = {
+  recruiting: 'INSCRIPTIONS',
+  full: 'COMPLET',
+  check_in: 'PRÉSENCE',
+  ready: 'PRÊT',
+  in_progress: 'EN COURS',
+  disputed: 'LITIGE',
+  finished: 'TERMINÉ',
+  cancelled: 'ANNULÉ',
+  forfeited: 'FORFAIT',
+};
+
+export const userStatusLabelFR: Record<string, string> = {
+  critical: 'CRITIQUE',
+  watch: 'SURVEILLÉ',
+  clean: 'propre',
+};
+
 export const moderationToneMap: Record<string, string> = {
   success: 'text-green-400 border-green-500/20 bg-green-500/5',
   warning: 'text-zoyd-yellow border-zoyd-yellow/20 bg-zoyd-yellow/5',
@@ -122,7 +140,7 @@ export const PriorityBadge = ({ kind }: { kind: 'litige' | 'signalement' | 'ops'
     return <StatusPill label="litige" tone="text-red-300 border-red-500/30" />;
   }
   if (kind === 'signalement') {
-    return <StatusPill label="report" tone="text-zoyd-yellow border-zoyd-yellow/30" />;
+    return <StatusPill label="signalement" tone="text-zoyd-yellow border-zoyd-yellow/30" />;
   }
   return <StatusPill label="ops" tone="text-zoyd-blue border-zoyd-blue/30" />;
 };

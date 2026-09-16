@@ -218,11 +218,11 @@ const TournamentBracketPage: React.FC = () => {
 
     if (tournament.teamSize > 1) {
       if (cleanedSquadName.length < 3) {
-        toast.error('Donne un nom clair a ton equipe avant de valider.');
+        toast.error('Donne un nom clair a ton équipe avant de valider.');
         return;
       }
       if (cleanedTeammates.some((entry) => entry.length < 2)) {
-        toast.error(`Ajoute les ${tournament.teamSize - 1} coequipiers avant de confirmer ton equipe.`);
+        toast.error(`Ajoute les ${tournament.teamSize - 1} coéquipiers avant de confirmer ton equipe.`);
         return;
       }
 
@@ -230,7 +230,7 @@ const TournamentBracketPage: React.FC = () => {
       for (const pseudo of [user.pseudo, ...cleanedTeammates]) {
         const key = pseudo.toLowerCase();
         if (rosterKeys.has(key)) {
-          toast.error('Chaque pseudo de ton equipe doit etre unique.');
+          toast.error('Chaque pseudo de ton équipe doit etre unique.');
           return;
         }
         rosterKeys.add(key);
@@ -253,7 +253,7 @@ const TournamentBracketPage: React.FC = () => {
       applyTournamentResponse(response);
       toast.success(
         tournament.teamSize === 1
-          ? `Ta place est reservee pour ${tournament.name}.`
+          ? `Ta place est réservée pour ${tournament.name}.`
           : `${cleanedSquadName} est maintenant inscrite a ${tournament.name}.`
       );
     } catch (error) {
@@ -262,7 +262,7 @@ const TournamentBracketPage: React.FC = () => {
           ? error.message
           : tournament.teamSize === 1
             ? "Impossible de confirmer ton inscription avec ton profil actuel."
-            : "Impossible de confirmer cette equipe pour le moment."
+            : "Impossible de confirmer cette équipe pour le moment."
       );
     }
   };
@@ -272,7 +272,7 @@ const TournamentBracketPage: React.FC = () => {
     try {
       const response = await leaveServerTournament(tournament.id);
       applyTournamentResponse(response);
-      toast.success('Inscription retiree et pass rembourse.');
+      toast.success('Inscription retiree et pass remboursé.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de retirer cette inscription.");
     }
@@ -297,9 +297,9 @@ const TournamentBracketPage: React.FC = () => {
     try {
       const response = await startServerTournament(tournament.id);
       applyTournamentResponse(response);
-      toast.success('Le tableau est pret. Les premiers duels peuvent commencer.');
+      toast.success('Le tableau est prêt. Les premiers duels peuvent commencer.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Le tournoi ne peut pas demarrer tout de suite.");
+      toast.error(error instanceof Error ? error.message : "Le tournoi ne peut pas démarrer tout de suite.");
     }
   };
 
@@ -311,7 +311,7 @@ const TournamentBracketPage: React.FC = () => {
     try {
       const response = await setServerTournamentRoomDetails(tournament.id, selectedMatch.id, roomName, roomPassword);
       applyTournamentResponse(response);
-      toast.success('La salle privee a ete partagee pour ce duel.');
+      toast.success('La salle privée a été partagée pour ce duel.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Impossible de partager la salle pour ce duel.');
     }
@@ -438,9 +438,9 @@ const TournamentBracketPage: React.FC = () => {
                     >
                       {actionableMatches.map((match) => {
                         const entryA =
-                          tournament.entries.find((entry) => entry.id === match.entryAId)?.squadName || 'A confirmer';
+                          tournament.entries.find((entry) => entry.id === match.entryAId)?.squadName || 'À confirmer';
                         const entryB =
-                          tournament.entries.find((entry) => entry.id === match.entryBId)?.squadName || 'A confirmer';
+                          tournament.entries.find((entry) => entry.id === match.entryBId)?.squadName || 'À confirmer';
                         return (
                           <option key={match.id} value={match.id}>
                             {entryA} vs {entryB}
@@ -488,16 +488,16 @@ const TournamentBracketPage: React.FC = () => {
                         type="number"
                         value={scoreA}
                         onChange={(event) => setScoreA(event.target.value)}
-                        placeholder="Score equipe A"
-                        aria-label="Score equipe A"
+                        placeholder="Score équipe A"
+                        aria-label="Score équipe A"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                       <input
                         type="number"
                         value={scoreB}
                         onChange={(event) => setScoreB(event.target.value)}
-                        placeholder="Score equipe B"
-                        aria-label="Score equipe B"
+                        placeholder="Score équipe B"
+                        aria-label="Score équipe B"
                         className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
                     </div>
@@ -528,7 +528,7 @@ const TournamentBracketPage: React.FC = () => {
       </main>
 
       {confirmAction === 'leave' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmer le retrait du tournoi">
           <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
@@ -548,7 +548,7 @@ const TournamentBracketPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annuler
+                Annulér
               </button>
               <button
                 onClick={() => { setConfirmAction(null); void handleLeave(); }}

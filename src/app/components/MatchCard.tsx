@@ -31,10 +31,10 @@ interface MatchCardProps {
 const statusCopy: Record<MatchCardProps['status'], { label: string; accent: string }> = {
   open: { label: 'Inscriptions ouvertes', accent: 'text-zoyd-yellow' },
   full: { label: 'Joueurs complets', accent: 'text-white' },
-  check_in: { label: 'Presence a confirmer', accent: 'text-zoyd-blue' },
-  ready: { label: 'Pret a jouer', accent: 'text-green-400' },
+  check_in: { label: 'Présence à confirmer', accent: 'text-zoyd-blue' },
+  ready: { label: 'Prêt à jouer', accent: 'text-green-400' },
   in_progress: { label: 'Partie en cours', accent: 'text-zoyd-blue' },
-  finished: { label: 'Partie terminee', accent: 'text-white/70' },
+  finished: { label: 'Partie terminée', accent: 'text-white/70' },
   forfeited: { label: 'Victoire par forfait', accent: 'text-zoyd-yellow' },
   cancelled: { label: 'Match annulé', accent: 'text-red-300' },
 };
@@ -136,7 +136,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
           </div>
           <div className="flex items-center gap-2 text-white/70">
             <ShieldCheck className={`w-3.5 h-3.5 ${arbitre ? 'text-zoyd-blue' : 'text-white/70'}`} />
-            {arbitre ? 'Arbitre confirme' : 'Arbitre a confirmer'}
+            {arbitre ? 'Arbitre confirme' : 'Arbitre à confirmer'}
           </div>
           <div className="flex items-center gap-2 text-white/60">
             <Clock className="w-3.5 h-3.5" />
@@ -151,13 +151,13 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
         <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-black text-white/70 uppercase tracking-widest">
-              Equipe Alpha
+              Équipe Alpha
             </span>
             {renderSlots(teams.team1.filled, teams.team1.slots, 'bg-zoyd-blue')}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono font-black text-white/70 uppercase tracking-widest">
-              Equipe Bravo
+              Équipe Bravo
             </span>
             {renderSlots(teams.team2.filled, teams.team2.slots, 'bg-white')}
           </div>

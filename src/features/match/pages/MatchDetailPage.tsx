@@ -245,7 +245,7 @@ const MatchDetailPage: React.FC = () => {
           canPublish: true,
           message:
             minutesUntilMatch !== null && minutesUntilMatch >= 0
-              ? 'La salle peut maintenant etre partagee avec les joueurs confirms.'
+              ? 'La salle peut maintenant etre partagée avec les joueurs confirms.'
               : "L'heure est depassee: partage la salle tout de suite ou tranche le dossier.",
         };
   const forfeitLabel =
@@ -289,7 +289,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await joinServerMatch(match.id, team);
       applyMatchResponse(response);
-      toast.success(`Pass bloque. Tu rejoins ${team === 1 ? 'Squad Bravo' : team === 0 ? 'Squad Alpha' : 'l equipe disponible'}.`);
+      toast.success(`Pass bloque. Tu rejoins ${team === 1 ? 'Squad Bravo' : team === 0 ? 'Squad Alpha' : 'l équipe disponible'}.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de rejoindre ce match avec ton profil actuel.");
     } finally {
@@ -429,11 +429,11 @@ const MatchDetailPage: React.FC = () => {
         category: disputeCategory,
       });
       applyMatchResponse(response);
-      toast.success('Litige ouvert. Les gains restent bloques jusqu a resolution.');
+      toast.success('Litige ouvert. Les gains restent bloqués jusqu\u2019à résolution.');
       setDisputeReason('');
       setDisputeEvidence('');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Un litige est deja actif sur ce match ou les preuves sont insuffisantes.");
+      toast.error(error instanceof Error ? error.message : "Un litige est déjà actif sur ce match ou les preuves sont insuffisantes.");
     } finally {
       setIsDisputing(false);
     }
@@ -672,7 +672,7 @@ const MatchDetailPage: React.FC = () => {
           >
             <div className="space-y-5">
               <p className="text-sm text-white/70">
-                Cette action distribue les gains et clot le match{openDisputeRecord ? ' ainsi que le litige ouvert' : ''}. Elle est irreversible.
+                Cette action distribué les gains et clôt le match{openDisputeRecord ? ' ainsi que le litige ouvert' : ''}. Elle est irréversible.
               </p>
               <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
                 <div className="flex items-center justify-between px-4 py-3">
@@ -706,7 +706,7 @@ const MatchDetailPage: React.FC = () => {
                   disabled={isSubmittingResult}
                   className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
                 >
-                  Annuler
+                  Annulér
                 </button>
                 <button
                   onClick={() => void handleResultSubmit()}
@@ -723,7 +723,7 @@ const MatchDetailPage: React.FC = () => {
       })()}
 
       {confirmAction === 'dispute' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmer l'ouverture d'un litige">
           <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
@@ -734,7 +734,7 @@ const MatchDetailPage: React.FC = () => {
                   Ouvrir un litige ?
                 </h3>
                 <p className="text-white/60 text-sm">
-                  Les gains restent bloques jusqu&apos;a resolution du litige. Assure-toi d&apos;avoir fourni suffisamment de preuves.
+                  Les gains restent bloqués jusqu&apos;a resolution du litige. Assure-toi d&apos;avoir fourni suffisamment de preuves.
                 </p>
               </div>
             </div>
@@ -743,7 +743,7 @@ const MatchDetailPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annuler
+                Annulér
               </button>
               <button
                 disabled={isDisputing}
@@ -758,7 +758,7 @@ const MatchDetailPage: React.FC = () => {
       )}
 
       {confirmAction === 'escalate' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Escalader à l'administration">
           <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
@@ -778,7 +778,7 @@ const MatchDetailPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annuler
+                Annulér
               </button>
               <button
                 onClick={() => { setConfirmAction(null); void handleEscalate(); }}

@@ -410,11 +410,11 @@ const LeaguePage: React.FC = () => {
       </main>
 
       {confirmAction === 'start-qualification' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Démarrer les qualifications">
           <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
             <p className="text-sm text-yellow-300">Démarrer les qualifications ? Cette action est irréversible.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
+              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annulér</button>
               <button onClick={() => { setConfirmAction(null); void handleStartQualification(activeSeason?.id || ''); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
             </div>
           </div>
@@ -422,11 +422,11 @@ const LeaguePage: React.FC = () => {
       )}
 
       {confirmAction === 'create-season' && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Créer une nouvelle saison">
           <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
             <p className="text-sm text-yellow-300">Créer une nouvelle saison ? Cette action est irréversible.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
+              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annulér</button>
               <button onClick={() => { setConfirmAction(null); void handleCreateSeason(); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
             </div>
           </div>

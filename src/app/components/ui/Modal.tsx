@@ -39,6 +39,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={title ? 'modal-title' : undefined}
               className={cn(
                 'relative w-[calc(100%-2rem)] sm:w-full max-h-[85dvh] overflow-y-auto bg-zoyd-black border border-white/20 shadow-2xl pointer-events-auto safe-bottom',
                 sizeClasses[size]
@@ -47,7 +50,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               {/* Header */}
               {title && (
                 <div className="flex items-center justify-between p-6 border-b border-white/10">
-                  <h2 className="text-2xl font-display font-bold text-white">{title}</h2>
+                  <h2 id="modal-title" className="text-2xl font-display font-bold text-white">{title}</h2>
                   <button
                     onClick={onClose}
                     title="Fermer"

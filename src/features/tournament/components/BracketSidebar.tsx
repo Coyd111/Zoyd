@@ -111,21 +111,21 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
           <div className="grid md:grid-cols-2 gap-4">
             <RuleRow
               label={tournament.teamSize > 1 ? 'Equipe A' : 'Joueur A'}
-              value={tournament.entries.find((entry) => entry.id === participantMatch.entryAId)?.squadName || 'A confirmer'}
+              value={tournament.entries.find((entry) => entry.id === participantMatch.entryAId)?.squadName || 'À confirmer'}
             />
             <RuleRow
               label={tournament.teamSize > 1 ? 'Equipe B' : 'Joueur B'}
-              value={tournament.entries.find((entry) => entry.id === participantMatch.entryBId)?.squadName || 'A confirmer'}
+              value={tournament.entries.find((entry) => entry.id === participantMatch.entryBId)?.squadName || 'À confirmer'}
             />
             <RuleRow
               label="Horaire"
               value={
                 participantMatch.scheduledAt
                   ? new Date(participantMatch.scheduledAt).toLocaleString('fr-FR')
-                  : 'A confirmer'
+                  : 'À confirmer'
               }
             />
-            <RuleRow label="Salle" value={participantMatch.roomName || 'A partager'} />
+            <RuleRow label="Salle" value={participantMatch.roomName || 'À partager'} />
           </div>
           {participantMatch.roomPassword ? (
             <div className="mt-4 border border-white/10 bg-black/40 px-4 py-3 text-sm text-white/70">

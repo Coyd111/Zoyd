@@ -139,7 +139,7 @@ const AdminDashboardPage: React.FC = () => {
                 <span className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest italic">Administration</span>
               </div>
               <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Centre de <span className="text-white/70">commandement</span></h1>
-              <p className="text-white/70 max-w-2xl mt-2">Vue operationnelle pour prioriser les litiges, garder un oeil sur les passes bloques et agir vite sur les comptes qui degringolent en trust.</p>
+              <p className="text-white/70 max-w-2xl mt-2">Vue operationnelle pour prioriser les litiges, garder un oeil sur les passes bloqués et agir vite sur les comptes qui degringolent en trust.</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 xl:min-w-[650px]">
               <FocusCard icon={<AlertTriangle className="w-4 h-4 text-red-300" aria-hidden="true" />} label="Litiges" value={adminInsights.openDisputes.length.toString()} detail="A trancher" tone="danger" />
@@ -177,7 +177,7 @@ const AdminDashboardPage: React.FC = () => {
       </main>
 
       {confirmAction && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmer l'annulation du match">
           <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
@@ -188,7 +188,7 @@ const AdminDashboardPage: React.FC = () => {
                   Confirmer l&apos;annulation ?
                 </h3>
                 <p className="text-white/60 text-sm">
-                  Ce match sera annule et les joueurs seront rembourses. Cette action est irreversible.
+                  Ce match sera annulé et les joueurs seront rembourses. Cette action est irréversible.
                 </p>
               </div>
             </div>
@@ -197,7 +197,7 @@ const AdminDashboardPage: React.FC = () => {
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
-                Annuler
+                Annulér
               </button>
               <button
                 onClick={() => { const matchId = confirmAction; setConfirmAction(null); if (matchId) void handleCancelMatch(matchId); }}

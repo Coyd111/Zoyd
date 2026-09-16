@@ -641,7 +641,7 @@ export const buildAdminInsights = ({
       .filter((match) => match.result && match.finishedAt)
       .map((match) => ({
         id: `${match.id}-finished`,
-        action: 'Resultat valide',
+        action: 'Résultat valide',
         target: match.id,
         timestamp: match.finishedAt || match.updatedAt,
         tone: 'success',

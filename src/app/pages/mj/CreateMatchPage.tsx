@@ -475,7 +475,7 @@ const CreateMatchPage: React.FC = () => {
                             <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
                           </div>
                           <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
-                            Partie privee (sur invitation)
+                            Partie privée (sur invitation)
                           </span>
                         </label>
                       </div>
@@ -500,7 +500,7 @@ const CreateMatchPage: React.FC = () => {
               <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                 <div className="text-center mb-12">
                   <div className="inline-flex items-center gap-3 px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-500 font-display font-black text-[10px] tracking-widest uppercase mb-6 italic">
-                    <ShieldCheck className="w-4 h-4" /> Pret a publier
+                    <ShieldCheck className="w-4 h-4" /> Prêt à publier
                   </div>
                   <h2 className="text-xl sm:text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter">
                     Récapitulatif du Wager
@@ -520,7 +520,7 @@ const CreateMatchPage: React.FC = () => {
                 {requiredTopUp > 0 ? (
                   <div className="mb-8 border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-5 py-4 text-sm text-white/70">
                     Il te manque <span className="font-display font-black text-zoyd-yellow">{requiredTopUp.toFixed(1)} ZC</span> pour publier cette
-                    partie. Ton pass sera bloque des la mise en ligne.
+                    partie. Ton pass sera bloque dès la mise en ligne.
                   </div>
                 ) : null}
 
@@ -544,7 +544,7 @@ const CreateMatchPage: React.FC = () => {
         >
           <div className="space-y-5">
             <p className="text-sm text-white/70">
-              Tu vas bloquer ton pass des la mise en ligne. Verifie les montants avant de publier.
+              Tu vas bloquer ton pass dès la mise en ligne. Vérifie les montants avant de publier.
             </p>
             <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
               <div className="flex items-center justify-between px-4 py-3">
@@ -574,7 +574,7 @@ const CreateMatchPage: React.FC = () => {
                 disabled={isSubmitting}
                 className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
               >
-                Annuler
+                Annulér
               </button>
               <button
                 onClick={() => void onFinalSubmit()}

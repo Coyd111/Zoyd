@@ -139,7 +139,7 @@ const LoginPage: React.FC = () => {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-zoyd-blue/10 border border-zoyd-blue/20 text-zoyd-blue text-[10px] font-mono font-black uppercase tracking-[0.2em] italic">
               <ShieldCheck className="w-3.5 h-3.5" />
-              Acces securise ZOYD
+              Acces sécurisé ZOYD
             </div>
 
             <h2 className="text-6xl font-display font-black text-white italic uppercase leading-[0.9] tracking-tighter">
@@ -203,7 +203,7 @@ const LoginPage: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-4">
               <Input
-                label="Email, telephone ou pseudo"
+                label="Email, téléphone ou pseudo"
                 autoComplete="username"
                 inputMode="text"
                 {...register('emailOrPseudo', { required: 'Identification requise' })}

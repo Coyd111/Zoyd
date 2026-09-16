@@ -171,7 +171,7 @@ const PublicProfilPage = () => {
       prefersReducedMotion={prefersReducedMotion}
       emptyMatchesImage="/assets/images/codm-2.jpg"
       emptyTournamentsImage="/assets/images/codm-3.jpg"
-      trustDescription="Cette fiche rassemble ce que ZOYD a deja pu voir de ce joueur dans ses matchs, ses tournois et ses relations."
+      trustDescription="Cette fiche rassemble ce que ZOYD a déjà pu voir de ce joueur dans ses matchs, ses tournois et ses relations."
       codmTitle="Infos visibles"
       backLink={
         <Link to="/profil" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
@@ -199,7 +199,7 @@ const PublicProfilPage = () => {
                 <p className="text-xs text-red-300">Confirmer le blocage de {publicProfile.pseudo} ?</p>
                 <div className="flex gap-2">
                   <button onClick={() => setConfirmAction(null)} className="flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors">
-                    Annuler
+                    Annulér
                   </button>
                   <button onClick={() => { setConfirmAction(null); void handleBlock(); }} className="flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors">
                     Confirmer
@@ -213,7 +213,7 @@ const PublicProfilPage = () => {
             </Button>
             {confirmReport && (
               <Button variant="ghost" size="sm" onClick={() => setConfirmReport(false)} className="touch-target text-white/70 hover:text-white">
-                Annuler
+                Annulér
               </Button>
             )}
           </div>

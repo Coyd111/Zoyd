@@ -54,7 +54,7 @@ const ModeSelectionPage: React.FC = () => {
           </h1>
           <p className="text-white/46 text-base sm:text-lg md:text-xl leading-relaxed max-w-3xl">
             Ton profil, ton wallet et ta progression restent dans le meme espace. Tu entres dans le mode que tu
-            veux suivre maintenant, puis ZOYD garde tout relie autour de ton compte.
+            veux suivre maintenant, puis ZOYD garde tout relié autour de ton compte.
           </p>
         </motion.div>
 
@@ -167,7 +167,7 @@ const ModeSelectionPage: React.FC = () => {
           </div>
           <div className="inline-flex items-start md:items-center gap-2 md:gap-3 text-sm text-white/52">
             <Wallet className="w-4 h-4 text-zoyd-yellow shrink-0 mt-0.5 md:mt-0" />
-            Tout reste relie a ton espace joueur.
+            Tout reste relié a ton espace joueur.
           </div>
         </div>
       </div>

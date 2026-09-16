@@ -42,7 +42,7 @@ const TeamCard = ({
                 {player.isCaptain ? ' / Capitaine' : ''}
               </div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
-                {player.isCheckedIn ? 'Presence confirmee' : 'En attente'}
+                {player.isCheckedIn ? 'Présence confirmée' : 'En attente'}
               </div>
             </div>
           </div>
@@ -71,7 +71,7 @@ export const MatchPlayers: React.FC<MatchPlayersProps> = ({ match, teamAlpha, te
   <>
     <div className="grid md:grid-cols-4 gap-4">
       <InfoCard icon={<CreditCard className="w-5 h-5 text-zoyd-yellow" />} label="Mise" value={formatZC(match.entryFee)} />
-      <InfoCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Cash Prize" value={formatZC(match.prizePool)} />
+      <InfoCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Cagnotte" value={formatZC(match.prizePool)} />
       <InfoCard icon={<ShieldCheck className="w-5 h-5 text-zoyd-blue" />} label="Arbitre" value={match.arbiter ? match.arbiter.pseudo : 'Libre'} />
       <InfoCard icon={<Clock3 className="w-5 h-5 text-white/75" />} label="Horaire" value={match.scheduledAt ? countdown || '00:00:00' : 'A fixer'} />
     </div>

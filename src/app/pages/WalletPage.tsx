@@ -142,12 +142,12 @@ const WalletPage: React.FC = () => {
             toast.error('Transaction invalide.');
             return;
           }
-          toast.loading('Verification de la transaction...');
+          toast.loading('Vérification de la transaction...');
           try {
             const result = await verifyFedaPayTransaction(resp.transaction.id);
             toast.dismiss();
             if (result.ok) {
-              toast.success(`${formatZC(result.amount || 0)} ajoutes dans ton wallet.`);
+              toast.success(`${formatZC(result.amount || 0)} ajoutées dans ton wallet.`);
               // Update local state using hydrateFromServer
               useWalletStore.getState().hydrateFromServer(result.wallet);
             } else {
@@ -155,7 +155,7 @@ const WalletPage: React.FC = () => {
             }
           } catch (err) {
             toast.dismiss();
-            toast.error(err instanceof Error ? err.message : 'Erreur lors de la verification de la transaction FedaPay.');
+            toast.error(err instanceof Error ? err.message : 'Erreur lors de la vérification de la transaction FedaPay.');
           }
         } else {
           toast.error('Transaction annulee ou echouee.');
@@ -202,7 +202,7 @@ const WalletPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter mb-2">
               LE COFFRE-FORT <span className="text-zoyd-yellow">(WALLET)</span>
             </h1>
-            <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouille tes wagers et retire tes gains de maniere securisee.</p>
+            <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouillé tes wagers et retire tes gains de manière securisee.</p>
           </div>
         </div>
 

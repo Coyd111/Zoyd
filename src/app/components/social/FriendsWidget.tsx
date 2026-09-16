@@ -75,6 +75,7 @@ const FriendsWidget: React.FC = () => {
     <div className="bg-zoyd-black border border-white/5 overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
         aria-label={isOpen ? 'Réduire le panneau amis' : 'Développer le panneau amis'}
         className="w-full flex items-center justify-between px-5 py-4 bg-zoyd-surface/20 hover:bg-zoyd-surface/40 transition-colors"
       >

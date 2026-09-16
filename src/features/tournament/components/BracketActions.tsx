@@ -60,7 +60,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
     {!user ? (
       <div className="space-y-4">
         <p className="text-white/70 text-sm">
-          Connecte-toi pour t'inscrire, ajouter ton equipe ou suivre ton prochain duel.
+          Connecte-toi pour t'inscrire, ajouter ton équipe ou suivre ton prochain duel.
         </p>
         <Link
           to="/auth/login"
@@ -123,7 +123,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
               ))}
             </div>
             <p className="text-xs text-white/70">
-              Le capitaine confirme l'inscription pour toute l'equipe de {teamSize} joueurs.
+              Le capitaine confirmé l'inscription pour toute l'equipe de {teamSize} joueurs.
             </p>
           </div>
         ) : null}
@@ -176,8 +176,8 @@ const BracketActions: React.FC<BracketActionsProps> = ({
 
         {teamSize > 1 ? (
           <p className="text-xs text-white/70">
-            Chaque inscription represente une equipe complete. Une fois tout le monde pret, le tableau se
-            lance equipe contre equipe.
+            Chaque inscription représente une équipe complete. Une fois tout le monde pret, le tableau se
+            lance équipe contre equipe.
           </p>
         ) : null}
       </div>

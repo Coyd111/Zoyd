@@ -1,7 +1,7 @@
 import React from 'react';
 import { Filter } from 'lucide-react';
 import { formatZC, getRelativeTime } from '../../../lib/utils';
-import { StatusPill, MetaChip, statusToneMap } from './AdminTabShared';
+import { StatusPill, MetaChip, statusToneMap, statusLabelFR } from './AdminTabShared';
 import type { Match } from '../../stores/matchStore';
 import type { MatchFilter } from './AdminTabShared';
 
@@ -65,13 +65,13 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
                   }`}
                 />
                 <div className="font-display font-black text-lg uppercase italic">{match.id}</div>
-                <StatusPill label={match.status} tone={statusToneMap[match.status] || ''} />
+                <StatusPill label={statusLabelFR[match.status] || match.status} tone={statusToneMap[match.status] || ''} />
               </div>
               <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <MetaChip label="Format" value={match.format} />
                 <MetaChip label="Map" value={match.rules.map} />
                 <MetaChip label="Roster" value={`${match.players.length}/${match.maxPlayers}`} />
-                <MetaChip label="Arbitre" value={match.arbiter ? match.arbiter.pseudo : 'Non assigne'} />
+                <MetaChip label="Arbitre" value={match.arbiter ? match.arbiter.pseudo : 'Non assigné'} />
               </div>
               <div className="flex flex-wrap gap-4 text-[11px] text-white/70">
                 <span>Prizepool {formatZC(match.prizePool)}</span>

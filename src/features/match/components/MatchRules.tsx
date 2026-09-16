@@ -20,7 +20,7 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
         <h2 className="text-lg font-display font-black uppercase italic">Format et regles</h2>
         {match.trustScoreMin ? (
           <div className="text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow border border-zoyd-yellow/20 px-3 py-1">
-            Fiabilite {match.trustScoreMin}+
+            Fiabilité {match.trustScoreMin}+
           </div>
         ) : null}
       </div>
@@ -36,7 +36,7 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
 
     {canSeeRoom && (
       <div className="p-6">
-        <h2 className="text-lg font-display font-black uppercase italic mb-4">Salle privee du match</h2>
+        <h2 className="text-lg font-display font-black uppercase italic mb-4">Salle privée du match</h2>
         {match.roomName && match.roomPassword ? (
           <div className="grid md:grid-cols-2 gap-4">
             <RuleRow label="Nom de la salle" value={match.roomName} />
@@ -44,12 +44,12 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
           </div>
         ) : (
           <p className="text-white/70 text-sm">
-            La salle sera partagee peu avant le debut du match.
+            La salle sera partagée peu avant le début du match.
           </p>
         )}
         {match.arbiter?.roomPublishedAt ? (
           <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/60">
-            Salle publiee {new Date(match.arbiter.roomPublishedAt).toLocaleString('fr-FR')}
+            Salle publiée {new Date(match.arbiter.roomPublishedAt).toLocaleString('fr-FR')}
           </div>
         ) : null}
       </div>

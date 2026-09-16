@@ -53,12 +53,12 @@ export const MatchResults: React.FC<MatchResultsProps> = ({ match, forfeitLabel,
       </div>
       {forfeitLabel ? (
         <div className="mt-4 border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-4 py-3 text-sm text-white/70">
-          {forfeitLabel}. Le gain a ete distribue automatiquement.
+          {forfeitLabel}. Le gain a été distribué automatiquement.
         </div>
       ) : null}
       {resultProofSummary ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <EvidencePanel title="Scoreboard" items={resultProofSummary.scoreboard} />
+          <EvidencePanel title="Tableau des scores" items={resultProofSummary.scoreboard} />
           <EvidencePanel title="Ecran final" items={resultProofSummary.finalResult} />
           <EvidencePanel title="Salle / room" items={resultProofSummary.roomCapture} />
           <EvidencePanel title="Autres preuves" items={resultProofSummary.extraEvidence} />
@@ -66,7 +66,7 @@ export const MatchResults: React.FC<MatchResultsProps> = ({ match, forfeitLabel,
       ) : null}
       {match.result.proofHash ? (
         <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/60">
-          Proof hash: {match.result.proofHash}
+          Hash de preuve : {match.result.proofHash}
         </div>
       ) : null}
       {currentPlayer && !match.result.confirmedByTeams.includes(currentPlayer.userId) && (

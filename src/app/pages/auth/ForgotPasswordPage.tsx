@@ -82,7 +82,7 @@ const ForgotPasswordPage: React.FC = () => {
           </h1>
           <p className="text-white/60 text-center text-sm mb-8">
             {codeSent
-              ? 'Entre le code recu puis choisis un nouveau mot de passe.'
+              ? 'Entre le code reçu puis choisis un nouveau mot de passe.'
               : 'Indique ton pseudo, email ou numero. Tu recevras un code de verification.'}
           </p>
 
@@ -115,7 +115,7 @@ const ForgotPasswordPage: React.FC = () => {
             <form onSubmit={handleReset} className="space-y-4">
               <div>
                 <label htmlFor="reset-code" className="text-[10px] font-mono text-white/70 uppercase mb-2 block">
-                  Code de verification (8 chiffres)
+                  Code de vérification (8 chiffres)
                 </label>
                 <Input
                   id="reset-code"

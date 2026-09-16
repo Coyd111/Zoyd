@@ -35,7 +35,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">
-                PRIORITY QUEUE
+                FILE DE PRIORITÉ
               </div>
               <h2 className="text-xl font-display font-black uppercase italic">Ce qui doit bouger maintenant</h2>
             </div>
@@ -83,23 +83,23 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
         <section className="space-y-6">
           <div className="p-6">
             <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-4">
-              OPERATIONS HEALTH
+              SANTÉ DES OPÉRATIONS
             </div>
             <div className="space-y-3">
               <StatusLane
-                label="Check-in / Ready"
+                label="Présence / Prêt"
                 count={readyMatchesCount}
-                body="Slots complets mais encore bloques dans le tunnel avant match."
+                body="Slots complets mais encore bloqués dans le tunnel avant match."
                 accent="bg-zoyd-blue"
               />
               <StatusLane
-                label="Matchs live"
+                label="Matchs en direct"
                 count={liveMatchesCount}
                 body="Salons actuellement en cours et a surveiller."
                 accent="bg-green-500"
               />
               <StatusLane
-                label="Reports pending"
+                label="Signalements en attente"
                 count={pendingReportsCount}
                 body="Signalements utilisateurs qui attendent un triage."
                 accent="bg-zoyd-yellow"
@@ -111,7 +111,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">
-                  RECENT SIGNALS
+                  ÉVÉNEMENTS RÉCENTS
                 </div>
                 <h2 className="text-lg font-display font-black uppercase italic">Journal moderation</h2>
               </div>
@@ -119,7 +119,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                 onClick={() => onNavigateToTab('users')}
                 className="text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow"
               >
-                Ouvrir la watchlist
+                Ouvrir la liste de surveillance
               </button>
             </div>
 

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Eye, Users, ChevronLeft, ChevronRight } from 'lucide-react';
-import { StatusPill, SignalBadge } from './AdminTabShared';
+import { StatusPill, SignalBadge, userStatusLabelFR } from './AdminTabShared';
 import type { FlaggedUser, UserFilter } from './AdminTabShared';
 
 type AdminUsersTabProps = {
@@ -38,7 +38,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
       <div className="flex flex-wrap gap-2">
         {[
           { id: 'critical', label: 'Critiques' },
-          { id: 'watch', label: 'Sous watch' },
+          { id: 'watch', label: 'Surveillés' },
           { id: 'all', label: 'Tous' },
         ].map((filter) => (
           <button
@@ -82,7 +82,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                 <div className="flex flex-wrap items-center gap-3 mb-2">
                   <div className="font-display font-black text-sm uppercase italic">{flaggedUser.pseudo}</div>
                   <StatusPill
-                    label={flaggedUser.status}
+                    label={userStatusLabelFR[flaggedUser.status] || flaggedUser.status}
                     tone={
                       flaggedUser.status === 'critical'
                         ? 'text-red-400 border-red-500/30'
@@ -94,7 +94,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
                 </div>
                 <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase tracking-widest text-white/60">
                   <SignalBadge label={`Trust ${typeof flaggedUser.trustScore === 'number' ? flaggedUser.trustScore : '--'}`} />
-                  <SignalBadge label={`${flaggedUser.reportsCount} report(s)`} />
+                  <SignalBadge label={`${flaggedUser.reportsCount} signalement(s)`} />
                   <SignalBadge label={`${flaggedUser.disputedMatches} litige(s)`} />
                   <SignalBadge label={`${flaggedUser.forfeits} forfait(s)`} />
                   <SignalBadge label={`${flaggedUser.activityCount} session(s)`} />

@@ -275,7 +275,7 @@ const ClassementsPage: React.FC = () => {
             </span>
           </h1>
           <p className="mt-5 max-w-3xl text-sm text-white/70">
-            Ces classements bougent avec les matchs et tournois deja joues sur ZOYD. Rien n&apos;est affiche tant
+            Ces classements bougent avec les matchs et tournois déjà joues sur ZOYD. Rien n&apos;est affiche tant
             que l&apos;activité n&apos;existe pas encore.
           </p>
           {user && myRank ? (
@@ -335,7 +335,7 @@ const ClassementsPage: React.FC = () => {
               Aucun classement pour le moment
             </h2>
             <p className="text-sm text-white/70 max-w-xl mx-auto">
-              Cette vue se remplira des que suffisamment de matchs, d&apos;equipes ou de joueurs auront ete vus par ZOYD.
+              Cette vue se remplira des que suffisamment de matchs, d&apos;equipes ou de joueurs auront été vus par ZOYD.
             </p>
           </div>
         ) : (

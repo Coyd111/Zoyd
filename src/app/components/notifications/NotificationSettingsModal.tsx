@@ -179,7 +179,7 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
 
             {/* FOOTER */}
             <div className="px-6 py-4 border-t border-white/5 bg-zoyd-surface/20 flex justify-end gap-3">
-              <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+              <Button variant="ghost" size="sm" onClick={onClose}>Annulér</Button>
               <Button variant="primary" size="sm" onClick={onClose}>Sauvegarder</Button>
             </div>
           </motion.div>

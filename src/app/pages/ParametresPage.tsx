@@ -106,7 +106,7 @@ const ParametresPage: React.FC = () => {
 
   const handleSave = async () => {
     if (form.phone && !/^\+?[\d\s-]{7,15}$/.test(form.phone)) {
-      toast.error('Numero de telephone invalide.');
+      toast.error('Numéro de téléphone invalide.');
       return;
     }
     setIsSaving(true);
@@ -345,14 +345,14 @@ const ParametresPage: React.FC = () => {
                   </Button>
                 </div>
 
-                <SectionTitle title="Verification OTP" />
+                <SectionTitle title="Vérification OTP" />
                 <div className="hud-panel p-4 md:p-6 bg-zoyd-surface/20">
                   <div className="flex items-center justify-between gap-4 mb-3">
-                    <div className="font-display font-black text-white uppercase italic">Verification par telephone</div>
+                    <div className="font-display font-black text-white uppercase italic">Vérification par telephone</div>
                     <Badge variant="yellow">Bientot</Badge>
                   </div>
                   <p className="text-sm text-white/70">
-                    Le numero {user.phone || 'non renseigne'} servira a confirmer certains retraits et actions sensibles.
+                    Le numéro {user.phone || 'non renseigne'} servira à confirmer certains retraits et actions sensibles.
                   </p>
                 </div>
 
@@ -369,7 +369,7 @@ const ParametresPage: React.FC = () => {
               <div role="tabpanel" id="panel-gaming" aria-labelledby="tab-gaming">
                 <SectionTitle title="Ton compte CODM" />
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Input label="Game ID" value={user.gameId} disabled helperText="Ton identifiant CODM deja lie a ce compte." />
+                  <Input label="Game ID" value={user.gameId} disabled helperText="Ton identifiant CODM déjà lie a ce compte." />
                   <Input
                     label="Niveau CODM"
                     type="number"
@@ -433,7 +433,7 @@ const ParametresPage: React.FC = () => {
                   />
                   <NotificationRow
                     label="Resultats"
-                    desc="Quand un score est confirme ou qu'un gain arrive sur ton compte."
+                    desc="Quand un score est confirmé ou qu'un gain arrive sur ton compte."
                     value={notificationToggles.results}
                     onChange={(value) => setNotificationToggles((prev) => ({ ...prev, results: value }))}
                   />
@@ -463,7 +463,7 @@ const ParametresPage: React.FC = () => {
                     size="sm"
                     onClick={() => {
                       markAllAsRead();
-                      toast.success('Toutes les notifications ont ete marquees comme lues.');
+                      toast.success('Toutes les notifications ont été marquees comme lues.');
                     }}
                   >
                     Tout marquer comme lu

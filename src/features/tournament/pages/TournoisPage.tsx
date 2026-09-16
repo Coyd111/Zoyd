@@ -171,7 +171,7 @@ const TournoisPage: React.FC = () => {
                   aria-label="Historique des tournois terminés"
                   className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/60 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
                 >
-                  Termines
+                  Terminés
                 </TabsTrigger>
               </TabsList>
 

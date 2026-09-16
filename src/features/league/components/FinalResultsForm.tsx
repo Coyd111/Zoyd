@@ -55,7 +55,8 @@ export const FinalResultsForm = ({
                     max={100}
                     value={entry.placement || ''}
                     onChange={(e) => updateEntry(entry.userId, 'placement', Number(e.target.value))}
-                    className="w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 "
+                    aria-label={`Placement pour ${entry.pseudo}`}
+                    className="touch-target w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 "
                     placeholder="#"
                   />
                 </td>
@@ -65,7 +66,8 @@ export const FinalResultsForm = ({
                     min={0}
                     value={entry.kills || ''}
                     onChange={(e) => updateEntry(entry.userId, 'kills', Number(e.target.value))}
-                    className="w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 "
+                    aria-label={`Kills pour ${entry.pseudo}`}
+                    className="touch-target w-16 bg-white/5 border border-white/10 px-2 py-1 text-sm text-white text-center focus:border-zoyd-yellow/50 "
                     placeholder="0"
                   />
                 </td>
@@ -81,9 +83,9 @@ export const FinalResultsForm = ({
         <button
           onClick={handleSubmit}
           disabled={isLoading || entries.filter((e) => e.placement > 0).length === 0}
-          className="text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
+          className="touch-target text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
         >
-          Valider les resultats
+          {isLoading ? 'Envoi...' : 'Valider les resultats'}
         </button>
       </div>
     </div>

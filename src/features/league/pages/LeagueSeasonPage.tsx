@@ -248,25 +248,25 @@ const LeagueSeasonPage = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               {season.status === 'registering' && (
                 isRegistered ? (
                   <>
                   <button
                     onClick={() => setConfirmLeave(true)}
                     disabled={actionLoading}
-                    className="border border-red-500/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
+                    className="touch-target border border-red-500/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
                   >
                     Se desinscrire
                   </button>
                   {confirmLeave && (
-                    <div className="border border-red-500/30 bg-red-500/10 p-3 space-y-2 col-span-full">
+                    <div className="border border-red-500/30 bg-red-500/10 p-3 space-y-2 w-full">
                       <p className="text-xs text-red-300">Confirmer le retrait de la saison ? Ton inscription ({formatZC(season.entryFee)}) sera remboursee.</p>
                       <div className="flex gap-2">
-                        <button onClick={() => setConfirmLeave(false)} disabled={actionLoading} className="flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors disabled:opacity-50">
+                        <button onClick={() => setConfirmLeave(false)} disabled={actionLoading} className="touch-target flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors disabled:opacity-50">
                           Annuler
                         </button>
-                        <button onClick={() => { setConfirmLeave(false); void handleLeave(); }} disabled={actionLoading} className="flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50">
+                        <button onClick={() => { setConfirmLeave(false); void handleLeave(); }} disabled={actionLoading} className="touch-target flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50">
                           Confirmer
                         </button>
                       </div>
@@ -277,7 +277,7 @@ const LeagueSeasonPage = () => {
                   <button
                     onClick={handleJoin}
                     disabled={actionLoading}
-                    className="border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
+                    className="touch-target border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
                   >
                     S&apos;inscrire — {formatZC(season.entryFee)}
                   </button>

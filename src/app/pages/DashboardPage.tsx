@@ -430,15 +430,17 @@ const DashboardPage: React.FC = () => {
                       <div className="flex gap-1.5 shrink-0">
                         <button
                           onClick={() => useFriendsStore.getState().acceptRequest(req.id)}
-                          className="w-7 h-7 flex items-center justify-center border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 transition-colors"
+                          aria-label={`Accepter ${req.senderPseudo}`}
+                          className="w-11 h-11 touch-target flex items-center justify-center border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 transition-colors"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                          <CheckCircle2 className="w-5 h-5 text-green-400" />
                         </button>
                         <button
                           onClick={() => useFriendsStore.getState().declineRequest(req.id)}
-                          className="w-7 h-7 flex items-center justify-center border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+                          aria-label={`Refuser ${req.senderPseudo}`}
+                          className="w-11 h-11 touch-target flex items-center justify-center border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors"
                         >
-                          <XCircle className="w-3.5 h-3.5 text-red-400" />
+                          <XCircle className="w-5 h-5 text-red-400" />
                         </button>
                       </div>
                     </div>

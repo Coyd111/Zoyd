@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper, Shield, TrendingUp } from 'lucide-react';
+import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper, Shield, TrendingUp, Plus } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../../stores/authStore';
@@ -8,10 +8,14 @@ import { useAuthStore } from '../../stores/authStore';
 const navItems = [
   { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
   { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
+  { icon: MessageCircle, label: 'MESSAGES', path: '/chat' },
+  { icon: Wallet, label: 'WALLET', path: '/wallet' },
+];
+
+const moreNavItems = [
   { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
   { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
   { icon: TrendingUp, label: 'GAINS', path: '/earnings' },
-  { icon: MessageCircle, label: 'MESSAGES', path: '/chat' },
   { icon: Newspaper, label: 'INFOS', path: '/infos' },
 ];
 
@@ -32,6 +36,15 @@ const BottomNav: React.FC = React.memo(() => {
     setMenuOpen(false);
     navigate(path);
   };
+
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen]);
 
   return (
     <>
@@ -55,6 +68,9 @@ const BottomNav: React.FC = React.memo(() => {
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="md:hidden fixed bottom-20 left-0 right-0 z-50 bg-zoyd-black border-t border-white/10 safe-bottom"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Plus d'options"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
               <span className="font-display font-black text-[10px] text-white/40 tracking-widest uppercase italic">Plus</span>
@@ -63,6 +79,32 @@ const BottomNav: React.FC = React.memo(() => {
               </button>
             </div>
             <div className="p-2 pb-4">
+              <button
+                onClick={() => handleNavigate('/mj/creer')}
+                aria-label="Créer un match"
+                className="flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all bg-zoyd-yellow text-black hover:bg-white mb-2"
+              >
+                <Plus className="w-5 h-5" />
+                Créer un match
+              </button>
+              {moreNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path || location.pathname.startsWith(item.path);
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNavigate(item.path)}
+                    aria-label={item.label}
+                    className={cn(
+                      'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
+                      isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/40 hover:text-white hover:bg-white/5'
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.label}
+                  </button>
+                );
+              })}
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -121,8 +163,8 @@ const BottomNav: React.FC = React.memo(() => {
                     className="absolute top-0 w-full h-[3px] bg-zoyd-yellow shadow-[0_4px_10px_rgba(255,230,0,0.5)]"
                   />
                 )}
-                <Icon className={cn("w-5 h-5 mb-1 transition-transform", isActive ? "scale-110" : "")} />
-                <span className="text-[10px] font-display font-black uppercase tracking-widest italic">{item.label}</span>
+                <Icon className={cn("w-5 h-5 mb-1 transition-transform shrink-0", isActive ? "scale-110" : "")} />
+                <span className="text-[10px] font-display font-black uppercase tracking-widest italic truncate max-w-full px-0.5">{item.label}</span>
               </Link>
             );
           })}
@@ -130,6 +172,7 @@ const BottomNav: React.FC = React.memo(() => {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Plus d'options"
+            aria-expanded={menuOpen}
             className={cn(
               'relative flex flex-col items-center justify-center w-full h-full touch-target transition-all',
               menuOpen ? 'text-white' : 'text-white/30'

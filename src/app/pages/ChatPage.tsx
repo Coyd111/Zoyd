@@ -113,7 +113,7 @@ const ChatPage: React.FC = () => {
   const onlineFriends = useMemo(() => friends.filter((friend) => friend.status === 'online'), [friends]);
 
   return (
-    <div className="safe-top flex flex-col bg-zoyd-black text-white font-ui scanline" style={{ height: 'calc(100svh - 3.5rem)' }}>
+    <div className="safe-top flex flex-col bg-zoyd-black text-white font-ui scanline h-[calc(100dvh-9.5rem)] md:h-[calc(100dvh-4.5rem)]">
       <SEOHead title="Chat — ZOYD" description="Discute avec la communauté ZOYD en temps réel." path="/chat" noindex />
       <a href="#chat-main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-zoyd-blue focus:text-white">
         Aller au contenu principal

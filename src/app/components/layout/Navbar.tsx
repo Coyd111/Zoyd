@@ -60,7 +60,7 @@ const Navbar: React.FC = React.memo(() => {
             className="flex items-center gap-2 px-2 py-1.5 transition-all touch-target"
           >
             <Wallet className="w-5 h-5 text-zoyd-yellow" />
-            <span className="hidden sm:block text-right">
+            <span className="text-right">
               <span className="text-[10px] font-mono font-bold text-white/30 uppercase tracking-widest">Solde</span>
               <span className="block font-display font-black text-xs text-zoyd-yellow tracking-widest leading-none">
                 {formatZC(totalBalance)}

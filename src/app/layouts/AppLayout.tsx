@@ -42,7 +42,7 @@ const AppLayout = ({ requireAdmin = false }: AppLayoutProps) => {
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main id="main-content" className="flex-1 pb-24 md:pb-4 overflow-x-hidden">
+        <main id="main-content" className="flex-1 pb-24 md:pb-4 overflow-x-clip">
           <Outlet />
         </main>
       </div>

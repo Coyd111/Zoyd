@@ -740,6 +740,58 @@ export const getLeaderboard = () => {
   return leaderboardCache;
 };
 
+// ─── Public platform stats (landing page, cached 60s) ───────────────────────
+let publicStatsCache = null;
+let publicStatsCacheAt = 0;
+const PUBLIC_STATS_TTL = 60_000;
+
+/**
+ * Compute real platform stats from in-memory state (no PII exposed).
+ * - players: active non-admin accounts
+ * - matchesPlayed: matches live or finished
+ * - zcDistributed: sum of players' totalEarnings
+ * - payoutRate: honored withdrawals / total withdrawals (100 when none yet)
+ * @returns {{ players: number, matchesPlayed: number, zcDistributed: number, payoutRate: number }}
+ */
+export const getPublicStats = () => {
+  const now = Date.now();
+  if (publicStatsCache && now - publicStatsCacheAt < PUBLIC_STATS_TTL) return publicStatsCache;
+  let players = 0;
+  let zcDistributed = 0;
+  let withdrawTotal = 0;
+  let withdrawHonored = 0;
+  for (const user of memoryUsers.values()) {
+    if (user.role === 'admin' || user.isActive === false) continue;
+    players++;
+    zcDistributed += Number(user.stats?.totalEarnings || 0);
+    const txs = user.wallet?.transactions;
+    if (Array.isArray(txs)) {
+      for (const tx of txs) {
+        if (tx?.type !== 'withdraw') continue;
+        withdrawTotal++;
+        if (tx.status === 'completed' && tx.metadata?.payoutStatus !== 'failed') withdrawHonored++;
+      }
+    }
+  }
+  let matchesPlayed = 0;
+  try {
+    const matches = getStateCollection('matches');
+    if (Array.isArray(matches)) {
+      for (const m of matches) {
+        if (m?.status === 'finished' || m?.status === 'live') matchesPlayed++;
+      }
+    }
+  } catch { /* collections not loaded yet — stats default to 0 */ }
+  publicStatsCache = {
+    players,
+    matchesPlayed,
+    zcDistributed: Math.round(zcDistributed),
+    payoutRate: withdrawTotal ? Math.round((withdrawHonored / withdrawTotal) * 100) : 100,
+  };
+  publicStatsCacheAt = now;
+  return publicStatsCache;
+};
+
 /**
  * Update a user account using an async updater function, protected by user-level mutex.
  * Persists changes to both memory and Supabase.

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import {
@@ -12,8 +12,49 @@ import {
   X,
 } from 'lucide-react';
 import { LANDING_TICKER_ITEMS } from '../../lib/competition';
+import { getApiUrl } from '../lib/apiClient';
 import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
+
+interface PublicStats {
+  players: number;
+  matchesPlayed: number;
+  zcDistributed: number;
+  payoutRate: number;
+}
+
+const formatCount = (n: number): string => {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  return `${Math.floor(n).toLocaleString('fr-FR')}+`;
+};
+
+const formatCompactZC = (n: number): string => {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M+`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.', ',')}K+`;
+  return `${Math.floor(n).toLocaleString('fr-FR')}+`;
+};
+
+const usePublicStats = () => {
+  const [stats, setStats] = useState<PublicStats | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(getApiUrl('/api/stats'))
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('stats'))))
+      .then((payload) => {
+        if (!cancelled && payload?.stats) setStats(payload.stats);
+        else if (!cancelled) setFailed(true);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return { stats, failed };
+};
 
 const platformCards = [
   {
@@ -53,6 +94,15 @@ const playerJourney = [
 
 export default function LandingPage() {
   const reduceMotion = useReducedMotion();
+  const { stats, failed } = usePublicStats();
+  const statValue = (kind: 'players' | 'matches' | 'zc' | 'rate'): string => {
+    if (failed) return '—';
+    if (!stats) return '…';
+    if (kind === 'players') return formatCount(stats.players);
+    if (kind === 'matches') return formatCount(stats.matchesPlayed);
+    if (kind === 'zc') return formatCompactZC(stats.zcDistributed);
+    return `${Math.max(0, Math.min(100, Math.round(stats.payoutRate)))}%`;
+  };
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline sélection:bg-zoyd-yellow sélection:text-black overflow-x-hidden safe-top">
@@ -214,10 +264,10 @@ export default function LandingPage() {
         <section className="py-16 md:py-20 border-b border-white/5">
           <div className="max-w-[1600px] mx-auto px-6 md:px-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-              <StatBlock number="2 400+" label="Joueurs inscrits" />
-              <StatBlock number="12 000+" label="Matchs joués" />
-              <StatBlock number="85M+" label="ZC distribués" />
-              <StatBlock number="98%" label="Paiements honorés" />
+              <StatBlock number={statValue('players')} label="Joueurs inscrits" />
+              <StatBlock number={statValue('matches')} label="Matchs joués" />
+              <StatBlock number={statValue('zc')} label="ZC distribués" />
+              <StatBlock number={statValue('rate')} label="Paiements honorés" />
             </div>
           </div>
         </section>

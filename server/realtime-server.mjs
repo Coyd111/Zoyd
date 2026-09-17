@@ -75,6 +75,7 @@ import {
   getPublicUserById,
   checkProfileUniqueness,
   tagWalletTransaction,
+  getPublicStats,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet, calcWithdrawNet, MIN_WITHDRAWAL_ZC } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex } from './mutex.mjs';
@@ -1153,6 +1154,16 @@ const server = http.createServer(async (req, res) => {
       }
     }
     respondJson(res, 200, { ok: true, wallet: getServerWallet(session.user.id), user: getUserById(session.user.id), payoutId: payoutResult.payoutId });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/stats') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
+    try {
+      respondJson(res, 200, { ok: true, stats: getPublicStats() });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
     return;
   }
 

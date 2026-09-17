@@ -333,12 +333,18 @@ const WalletPage: React.FC = () => {
 
         <div className="grid md:grid-cols-2 gap-4 mb-8">
           <Button variant="primary" size="lg" fullWidth onClick={() => setShowDepositModal(true)} aria-label="Effectuer un dépôt Mobile Money">
-            <ArrowDownToLine className="w-5 h-5" />
-            DÉPÔT MOBILE MONEY (AJOUTER DES ZC)
+            <span className="inline-flex items-center gap-2">
+              <ArrowDownToLine className="w-5 h-5 shrink-0" />
+              DÉPÔT
+            </span>{' '}
+            MOBILE MONEY (AJOUTER DES ZC)
           </Button>
           <Button variant="secondary" size="lg" fullWidth onClick={() => setShowWithdrawModal(true)} aria-label="Retirer mes gains">
-            <ArrowUpFromLine className="w-5 h-5" />
-            RETIRER MES GAINS
+            <span className="inline-flex items-center gap-2">
+              <ArrowUpFromLine className="w-5 h-5 shrink-0" />
+              RETIRER
+            </span>{' '}
+            MES GAINS
           </Button>
         </div>
 

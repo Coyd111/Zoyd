@@ -3,6 +3,19 @@ import { getWalletSnapshot, updateWalletSnapshot } from './persistence.mjs';
 
 const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
+
+export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE };
+
+/**
+ * Compute fee + net for a withdrawal (single source of truth, 2-decimal rounding).
+ * @param {number} amount - Gross amount in ZC
+ * @returns {{ feeAmount: number, netAmount: number }}
+ */
+export const calcWithdrawNet = (amount) => {
+  const gross = roundAmount(amount);
+  const feeAmount = roundAmount(gross * WITHDRAWAL_FEE_RATE);
+  return { feeAmount, netAmount: roundAmount(gross - feeAmount) };
+};
 import { roundAmount, getNow, makeError } from './utils.mjs';
 
 const buildTransaction = (tx) => ({
@@ -59,9 +72,10 @@ export const depositToWallet = async (userId, amount, method = 'Mobile Money') =
  * @param {number} amount - Amount to withdraw in ZC.
  * @param {string} [method] - Withdrawal method (e.g. 'Mobile Money').
  * @param {string} [phone] - Phone number for mobile money transfer.
+ * @param {Object} [extraMetadata] - Extra metadata merged into the transaction (e.g. idempotencyKey).
  * @returns {Promise<Object>} Updated wallet snapshot.
  */
-export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money', phone = '') => {
+export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money', phone = '', extraMetadata = {}) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount < MIN_WITHDRAWAL_ZC) {
     throw makeError('WITHDRAWAL_MIN', `Retrait minimum: ${MIN_WITHDRAWAL_ZC} ZC.`);
@@ -72,8 +86,7 @@ export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money'
       throw makeError('INSUFFICIENT_FUNDS', 'Solde cash insuffisant pour ce retrait.');
     }
 
-    const feeAmount = roundAmount(safeAmount * WITHDRAWAL_FEE_RATE);
-    const netAmount = roundAmount(safeAmount - feeAmount);
+    const { feeAmount, netAmount } = calcWithdrawNet(safeAmount);
 
     return withTransaction(
       {
@@ -85,7 +98,7 @@ export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money'
         amount: -safeAmount,
         description: `Retrait ${method} vers ${phone || 'compte mobile'}`,
         status: 'completed',
-        metadata: { method, phone, feeAmount, netAmount },
+        metadata: { method, phone, feeAmount, netAmount, ...extraMetadata },
       }
     );
   })).wallet;

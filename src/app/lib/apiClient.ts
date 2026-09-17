@@ -98,6 +98,15 @@ const ERROR_MESSAGES: Record<string, string> = {
   DISPUTE_ALREADY_OPEN: 'Un dispute est déjà ouvert.',
   RESULT_NOT_FOUND: 'Resultat introuvable.',
   RESULT_ALREADY_EXISTS: 'Un resultat a déjà été soumis.',
+  WITHDRAWAL_MIN: 'Retrait minimum: 150 ZC.',
+  INVALID_PHONE: 'Numéro de téléphone invalide.',
+  INVALID_OPERATOR: 'Opérateur invalide.',
+  INVALID_AMOUNT: 'Montant invalide.',
+  TRANSACTION_ALREADY_PROCESSED: 'Cette transaction a déjà été traitée.',
+  TRANSACTION_IN_PROGRESS: 'Transaction en cours de traitement. Réessaie dans un instant.',
+  PAYOUT_FAILED: 'Le transfert Mobile Money a échoué. Ton solde a été restauré.',
+  ACCOUNT_LOCKED: 'Compte verrouillé. Réessaie plus tard.',
+  PAYMENT_NOT_CONFIGURED: 'Paiement temporairement indisponible.',
 };
 
 export const readJson = async <T>(response: Response): Promise<T> => {
@@ -141,6 +150,12 @@ const authorizedRequest = async <T>(method: HttpMethod, path: string, body?: unk
         signal: controller.signal,
       })
     );
+  } catch (err) {
+    // Timeout 30s → ApiError explicite au lieu d'une DOMException brute
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError('Délai dépassé. Vérifie ta connexion et réessaie.', 'TIMEOUT', 408);
+    }
+    throw err;
   } finally {
     clearTimeout(timeoutId);
   }

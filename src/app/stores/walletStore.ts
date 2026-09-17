@@ -52,7 +52,8 @@ export interface WalletState {
   withdraw: (amount: number, method: string, phone: string) => Promise<void>;
   // TODO: lockFunds/unlockFunds are optimistic-UI helpers; they should be
   // driven by server confirmations via socket events in production.
-  lockFunds: (amount: number, entryKey: string) => boolean;
+  // lockFunds returns a revert function on success, false when funds are insufficient.
+  lockFunds: (amount: number, entryKey: string) => false | (() => void);
   unlockFunds: (amount: number, entryKey: string) => void;
   addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
   getTotalBalance: () => number;
@@ -99,7 +100,15 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             bonusBalance: roundAmount(snapshot.bonusBalance ?? 0),
             lockedBalance: roundAmount(snapshot.lockedBalance ?? 0),
             pendingWinnings: roundAmount(snapshot.pendingWinnings ?? 0),
-            transactions: Array.isArray(snapshot.transactions) ? snapshot.transactions : [],
+            // Le serveur envoie created_at, le store utilise timestamp
+            transactions: Array.isArray(snapshot.transactions)
+              ? snapshot.transactions.map((tx) => ({
+                  ...tx,
+                  timestamp: (tx as unknown as Record<string, string>).timestamp
+                    ?? (tx as unknown as Record<string, string>).created_at
+                    ?? new Date().toISOString(),
+                }))
+              : [],
             lockedEntries: snapshot.lockedEntries || {},
           }));
           syncAuthBalance();
@@ -119,31 +128,26 @@ export const useWalletStore = create<WalletState>()((set, get) => {
 
         deposit: async (amount, method) => {
           const safeAmount = roundAmount(amount);
-          try {
-            const payload = await depositWalletBalance(safeAmount, method);
-            get().hydrateFromServer(payload.wallet);
-            if (payload.user) {
-              useAuthStore.getState().updateUser(payload.user);
-            }
-            pushWalletNotification('Depot confirme', `${safeAmount.toFixed(1)} ZC ajoutées via ${method}.`);
-          } catch (err) {
-            throw err;
+          const payload = await depositWalletBalance(safeAmount, method);
+          get().hydrateFromServer(payload.wallet);
+          if (payload.user) {
+            useAuthStore.getState().updateUser(payload.user);
           }
+          pushWalletNotification('Depot confirme', `${safeAmount.toFixed(1)} ZC ajoutées via ${method}.`);
         },
 
         withdraw: async (amount, method, phone) => {
           const safeAmount = roundAmount(amount);
-          try {
-            const payload = await withdrawWalletBalance(safeAmount, method, phone);
-            get().hydrateFromServer(payload.wallet);
-            if (payload.user) {
-              useAuthStore.getState().updateUser(payload.user);
-            }
-            const netAmount = roundAmount(safeAmount - safeAmount * WITHDRAWAL_FEE_RATE);
-            pushWalletNotification('Retrait confirme', `${netAmount.toFixed(1)} ZC net envoyés après frais.`);
-          } catch (err) {
-            throw err;
+          if (safeAmount < MIN_WITHDRAWAL_ZC) {
+            throw new Error(`Retrait minimum: ${MIN_WITHDRAWAL_ZC} ZC.`);
           }
+          const payload = await withdrawWalletBalance(safeAmount, method, phone);
+          get().hydrateFromServer(payload.wallet);
+          if (payload.user) {
+            useAuthStore.getState().updateUser(payload.user);
+          }
+          const netAmount = roundAmount(safeAmount - safeAmount * WITHDRAWAL_FEE_RATE);
+          pushWalletNotification('Retrait confirme', `${netAmount.toFixed(1)} ZC net envoyés après frais.`);
         },
 
         addTransaction: (txData) => {
@@ -209,7 +213,8 @@ export const useWalletStore = create<WalletState>()((set, get) => {
         },
 
         // Optimistic-UI: restore funds if registration is cancelled.
-        unlockFunds: (amount, entryKey) => {
+        // Note: amount is informational — the reservation stored in lockedEntries is authoritative.
+        unlockFunds: (_amount, entryKey) => {
           const state = get();
           const reservation = state.lockedEntries[entryKey];
           if (!reservation) return;

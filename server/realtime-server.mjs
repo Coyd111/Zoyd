@@ -73,8 +73,10 @@ import {
   sbUpsert,
   sbFire,
   getPublicUserById,
+  checkProfileUniqueness,
+  tagWalletTransaction,
 } from './persistence.mjs';
-import { depositToWallet, getServerWallet, withdrawFromWallet } from './wallet-engine.mjs';
+import { depositToWallet, getServerWallet, withdrawFromWallet, calcWithdrawNet, MIN_WITHDRAWAL_ZC } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex } from './mutex.mjs';
 import { initCronJobs } from './cron.mjs';
 import { getNow } from './utils.mjs';
@@ -98,7 +100,7 @@ import {
   addEvidenceToDisputeOnServer,
   escalateDisputeOnServer,
 } from './match-engine.mjs';
-import { verifyFedaPayTransactionAndCredit } from './payment-engine.mjs';
+import { verifyFedaPayTransactionAndCredit, initiateFedaPayPayout, parsePhoneForFedaPay } from './payment-engine.mjs';
 import {
   assignTournamentArbiterOnServer,
   createTournamentOnServer,
@@ -655,6 +657,8 @@ const server = http.createServer(async (req, res) => {
         }
       }
       const updatedUser = await updateUserAccount(session.user.id, (user) => {
+        // Unicité pseudo/email/phone (sinon collisions auth) — throw DUPLICATE_* → 409
+        checkProfileUniqueness(session.user.id, safeUpdate);
         return { ...user, ...safeUpdate };
       });
       respondJson(res, 200, { ok: true, user: updatedUser }, req);
@@ -909,6 +913,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/logout') {
+    if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
     const token = readBearerToken(req);
     const session = token ? getAuthSession(token) : null;
     if (token) {
@@ -1000,6 +1005,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const user = getUserById(session.user.id);
       respondJson(res, 200, { ok: true, wallet: user?.wallet || getServerWallet(session.user.id), user });
@@ -1057,37 +1063,96 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
       return;
     }
-    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0 || body.amount > 10_000_000) {
-      respondJson(res, 400, { ok: false, error: 'Montant invalide (max 10 000 000 FCFA).', code: 'INVALID_AMOUNT' });
+    // Montants en ZC : 150 min, 100 000 ZC max (= 1 000 000 FCFA, plafond payout FedaPay)
+    if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount < MIN_WITHDRAWAL_ZC || body.amount > 100_000) {
+      respondJson(res, 400, { ok: false, error: `Montant invalide (${MIN_WITHDRAWAL_ZC} a 100 000 ZC).`, code: 'INVALID_AMOUNT' });
+      return;
+    }
+    // Whitelist opérateur AVANT tout débit (évite débit + refund parasites)
+    const WITHDRAW_OPERATORS = ['MTN MoMo', 'Moov Money', 'Orange Money'];
+    if (typeof body.method !== 'string' || !WITHDRAW_OPERATORS.includes(body.method)) {
+      respondJson(res, 400, { ok: false, error: 'Opérateur invalide. Utilisez MTN MoMo, Moov Money ou Orange Money.', code: 'INVALID_OPERATOR' });
+      return;
+    }
+    // Téléphone Bénin valide AVANT tout débit
+    const phoneInfo = parsePhoneForFedaPay(typeof body.phone === 'string' ? body.phone : '');
+    if (!phoneInfo.number) {
+      respondJson(res, 400, { ok: false, error: 'Numéro de téléphone invalide (format Bénin: +229XXXXXXXX).', code: 'INVALID_PHONE' });
       return;
     }
     // Idempotency: prevent double-withdrawal on retry/double-click
-    const idempotencyKey = body.idempotencyKey || req.headers['x-idempotency-key'];
+    const rawKey = body.idempotencyKey || req.headers['x-idempotency-key'];
+    const cleanKey = typeof rawKey === 'string' && rawKey ? rawKey : null;
 
-    try { await withWalletMutex(session.user.id, async () => {
-      // Check idempotency INSIDE mutex to prevent TOCTOU race
-      if (idempotencyKey && typeof idempotencyKey === 'string') {
-        const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
-          .find((tx) => tx.metadata?.idempotencyKey === idempotencyKey && tx.type === 'withdraw');
-        if (existingTx) {
-          respondJson(res, 200, { ok: true, wallet: getServerWallet(session.user.id), user: getUserById(session.user.id), duplicate: true });
-          return;
+    // 1. Débit sous mutex (court, aucun appel réseau) — fonds réservés atomiquement
+    let debitedWallet = null;
+    let withdrawTxId = null;
+    let isDuplicate = false;
+    try {
+      await withWalletMutex(session.user.id, async () => {
+        // Check idempotency INSIDE mutex to prevent TOCTOU race
+        if (cleanKey) {
+          const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
+            .find((tx) => tx.metadata?.idempotencyKey === cleanKey && tx.type === 'withdraw');
+          if (existingTx) {
+            debitedWallet = getServerWallet(session.user.id);
+            isDuplicate = true;
+            return;
+          }
         }
-      }
-      const wallet = await withdrawFromWallet(session.user.id, body.amount, body.method, body.phone);
-      // Tag transaction with idempotency key for dedup on retry
-      if (idempotencyKey && typeof idempotencyKey === 'string') {
-        const user = getUserById(session.user.id);
-        const lastTx = user?.wallet?.transactions?.[0];
-        if (lastTx?.type === 'withdraw' && !lastTx.metadata?.idempotencyKey) {
-          lastTx.metadata = { ...lastTx.metadata, idempotencyKey };
-        }
-      }
-      const user = getUserById(session.user.id);
-      respondJson(res, 200, { ok: true, wallet, user });
-    }); } catch (error) {
+        debitedWallet = await withdrawFromWallet(
+          session.user.id, body.amount, body.method, body.phone,
+          cleanKey ? { idempotencyKey: cleanKey } : {},
+        );
+        withdrawTxId = debitedWallet?.transactions?.[0]?.id || null;
+      });
+    } catch (error) {
       respondMappedError(res, error);
+      return;
     }
+    if (isDuplicate) {
+      respondJson(res, 200, { ok: true, wallet: debitedWallet, user: getUserById(session.user.id), duplicate: true });
+      return;
+    }
+
+    // 2. Payout FedaPay HORS mutex (appel réseau, ne bloque plus le wallet) — montant net après 2%
+    const { netAmount } = calcWithdrawNet(body.amount);
+    let payoutResult;
+    try {
+      const currentUser = getUserById(session.user.id);
+      payoutResult = await initiateFedaPayPayout({
+        amountZC: netAmount,
+        method: body.method,
+        phone: body.phone,
+        userPseudo: currentUser?.pseudo || 'Joueur',
+        userEmail: currentUser?.email,
+        merchantReference: cleanKey || `ZOYD-WITHDRAW-${Date.now()}`,
+      });
+    } catch (payoutError) {
+      // 3. Échec payout — remboursement sous mutex + traçabilité sur la tx d'origine
+      log.error('Payout failed, refunding wallet', { userId: session.user.id, error: payoutError.message });
+      try {
+        await withWalletMutex(session.user.id, async () => {
+          await depositToWallet(session.user.id, body.amount, `Remboursement retrait echoue (${body.amount} ZC)`);
+        });
+        if (withdrawTxId) {
+          await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed' }).catch(() => {});
+        }
+      } catch (refundError) {
+        log.error('CRITICAL: Refund also failed', { userId: session.user.id, error: refundError.message });
+      }
+      respondMappedError(res, payoutError);
+      return;
+    }
+    // 4. Tag payoutId persisté (memory + Supabase) — best effort, le débit reste valide même si le tag échoue
+    if (withdrawTxId) {
+      try {
+        await tagWalletTransaction(session.user.id, withdrawTxId, { payoutId: payoutResult.payoutId, payoutStatus: payoutResult.status });
+      } catch (tagError) {
+        log.error('Failed to tag payout metadata', { userId: session.user.id, txId: withdrawTxId, error: tagError.message });
+      }
+    }
+    respondJson(res, 200, { ok: true, wallet: getServerWallet(session.user.id), user: getUserById(session.user.id), payoutId: payoutResult.payoutId });
     return;
   }
 
@@ -1183,7 +1248,7 @@ const server = http.createServer(async (req, res) => {
         respondJson(res, 400, { ok: false, error: 'maxEntries doit être entre 2 et 256.', code: 'INVALID_MAX_ENTRIES' });
         return;
       }
-      if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || body.entryFee < 0)) {
+      if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || !Number.isFinite(body.entryFee) || body.entryFee < 0)) {
         respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
         return;
       }
@@ -1651,7 +1716,7 @@ const server = http.createServer(async (req, res) => {
   const leaguePayments = pathname.match(/^\/api\/leagues\/([^/]+)\/payments$/);
   if (req.method === 'GET' && leaguePayments) {
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
-    const session = requireAdmin(req, res);
+    const session = requireAdmin2fa(req, res);
     if (!session) return;
     try {
       const payments = getLeaguePayments(getStoredLeagues(), leaguePayments[1]);
@@ -1688,8 +1753,14 @@ const server = http.createServer(async (req, res) => {
         user: outcome.user
       });
     }); } catch (error) {
-      log.error('Payment verification failed', { message: error.message });
-      respondJson(res, 400, { ok: false, error: 'Verification du paiement echouee.', code: 'PAYMENT_FAILED' });
+      // Préserve les codes métier (ALREADY_PROCESSED → 409, IN_PROGRESS → 409, etc.)
+      // au lieu de tout écraser en 400 générique
+      log.error('Payment verification failed', { message: error.message, code: error.code });
+      if (error && typeof error.code === 'string' && error.code !== 'UNKNOWN_ERROR') {
+        respondMappedError(res, error);
+      } else {
+        respondJson(res, 400, { ok: false, error: 'Verification du paiement echouee.', code: 'PAYMENT_FAILED' });
+      }
     }
     return;
   }
@@ -1712,7 +1783,7 @@ const server = http.createServer(async (req, res) => {
         respondJson(res, 400, { ok: false, error: 'format invalide (ex: 1VS1, 5VS5).', code: 'INVALID_FORMAT' });
         return;
       }
-      if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || body.entryFee < 0)) {
+      if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || !Number.isFinite(body.entryFee) || body.entryFee < 0)) {
         respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
         return;
       }
@@ -1735,6 +1806,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
@@ -1757,6 +1829,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
 
     try { await withMatchMutex(async () => {
       const outcome = assignArbiterOnServer(getStateCollection('matches'), session.user, matchArbiter[1]);
@@ -1785,6 +1858,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
 
     try { await withMatchMutex(async () => {
       const outcome = checkInMatchOnServer(getStateCollection('matches'), session.user, matchCheckIn[1]);
@@ -1804,6 +1878,7 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
     }
+    if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
 
     try { await withMatchMutex(async () => {
       const outcome = toggleReadyOnServer(getStateCollection('matches'), session.user, matchReady[1]);
@@ -2026,7 +2101,7 @@ const server = http.createServer(async (req, res) => {
   // Admin: force reload all data from Supabase
   if (req.method === 'POST' && pathname === '/api/admin/reload') {
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
-    const session = requireAdmin(req, res);
+    const session = requireAdmin2fa(req, res);
     if (!session) return;
     log.info('Admin force reload from Supabase', { adminId: session.user.id });
     try {

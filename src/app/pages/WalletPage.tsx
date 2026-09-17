@@ -17,6 +17,7 @@ import { verifyFedaPayTransaction } from '../lib/walletApi';
 import { SEOHead } from '../components/SEOHead';
 
 const MIN_WITHDRAWAL_ZC = 150;
+const WITHDRAWAL_FEE_RATE = 0.02;
 
 const FEDAPAY_SCRIPT_URL = 'https://cdn.fedapay.com/checkout.js';
 let fedaPayLoadPromise: Promise<boolean> | null = null;
@@ -38,18 +39,30 @@ const loadFedaPayScript = (): Promise<boolean> => {
   return fedaPayLoadPromise;
 };
 
-declare const FedaPay: {
-  checkout: (config: {
-    public_key: string;
-    transaction: { amount: number; description: string; currency: { code: string } };
-    onComplete: (resp: { data?: { token: string } }) => void;
-    onClose: () => void;
-  }) => void;
-} | undefined;
+interface FedaPayCheckoutConfig {
+  public_key: string;
+  transaction: { amount: number; description: string; currency?: { iso: string } };
+  customer?: { email?: string; firstname?: string; lastname?: string };
+  onComplete?: (resp: { reason?: string; transaction?: { id: number | string } }) => void;
+  onClose?: () => void;
+}
+
+declare const FedaPay:
+  | { checkout: (config: FedaPayCheckoutConfig) => void }
+  | undefined;
+
+const getFedaPayCheckout = (): ((config: FedaPayCheckoutConfig) => void) | null => {
+  if (typeof window === 'undefined') return null;
+  const fp = (window as unknown as Record<string, unknown>).FedaPay as
+    | { checkout?: unknown }
+    | undefined;
+  return typeof fp?.checkout === 'function'
+    ? (fp.checkout as (config: FedaPayCheckoutConfig) => void)
+    : null;
+};
 
 const WalletPage: React.FC = () => {
   const transactions = useWalletStore((s) => s.transactions);
-  const deposit = useWalletStore((s) => s.deposit);
   const withdraw = useWalletStore((s) => s.withdraw);
   const cashBalance = useWalletStore((s) => s.cashBalance);
   const bonusBalance = useWalletStore((s) => s.bonusBalance);
@@ -62,8 +75,10 @@ const WalletPage: React.FC = () => {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState('');
+  const [withdrawOperator, setWithdrawOperator] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawPhone, setWithdrawPhone] = useState('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw' | 'prize_win'>('all');
   const [fundingPrefillKey, setFundingPrefillKey] = useState('');
@@ -77,6 +92,10 @@ const WalletPage: React.FC = () => {
 
   const presetAmounts = [50, 100, 200, 500];
   const spendableBalance = getAvailableToSpend();
+  const withdrawAmountNum = parseFloat(withdrawAmount) || 0;
+  // Arrondi 2 décimales — identique au roundAmount() backend (wallet-engine)
+  const withdrawFee = Math.round(withdrawAmountNum * WITHDRAWAL_FEE_RATE * 100) / 100;
+  const withdrawNet = Math.round((withdrawAmountNum - withdrawFee) * 100) / 100;
   const fundingPrompt = useMemo(() => parseFundingPrompt(searchParams), [searchParams]);
   const fundingCopy = fundingPrompt ? getFundingPromptCopy(fundingPrompt.context) : null;
   const canResumeFundingFlow =
@@ -98,35 +117,63 @@ const WalletPage: React.FC = () => {
     }
   }, [fundingKey, fundingPrefillKey, fundingPrompt]);
 
+  // Pré-remplit le numéro de retrait depuis le profil à l'ouverture de la modale
+  useEffect(() => {
+    if (showWithdrawModal && !withdrawPhone && user?.phone) {
+      setWithdrawPhone(user.phone);
+    }
+  }, [showWithdrawModal, withdrawPhone, user?.phone]);
+
+  const closeDepositModal = () => {
+    setShowDepositModal(false);
+    setDepositAmount('');
+    setSelectedOperator('');
+  };
+
+  const closeWithdrawModal = () => {
+    setShowWithdrawModal(false);
+    setWithdrawAmount('');
+    setWithdrawOperator('');
+    setWithdrawPhone('');
+  };
+
   const filteredTransactions = useMemo(() => {
     if (filter === 'all') return transactions;
     return transactions.filter((transaction) => transaction.type === filter);
   }, [filter, transactions]);
 
   const handleDeposit = async () => {
-    if (!depositAmount) return;
+    if (!depositAmount) {
+      toast.error('Entre un montant à ajouter.');
+      return;
+    }
     const depositAmountNum = parseFloat(depositAmount);
-    if (isNaN(depositAmountNum) || depositAmountNum <= 0) return;
+    if (isNaN(depositAmountNum) || depositAmountNum <= 0) {
+      toast.error('Montant invalide.');
+      return;
+    }
     const amountFCFA = depositAmountNum * 10; // 1 ZC = 10 FCFA
 
     const publicKey = import.meta.env.VITE_FEDAPAY_PUBLIC_KEY;
-    
+
     if (!publicKey) {
       toast.error("La clé FedaPay (VITE_FEDAPAY_PUBLIC_KEY) est manquante dans l'environnement local.");
       return;
     }
 
-    // Check if FedaPay is loaded
-    if (typeof FedaPay === 'undefined') {
+    // Check if FedaPay is loaded (via window — safe en module ESM)
+    let checkout = getFedaPayCheckout();
+    if (!checkout) {
       const loaded = await loadFedaPayScript();
-      if (!loaded || typeof FedaPay === 'undefined') {
+      checkout = loaded ? getFedaPayCheckout() : null;
+      if (!checkout) {
         toast.error("Le service de paiement FedaPay n'est pas disponible. Recharge la page ou essaie plus tard.");
         return;
       }
     }
 
     // Using FedaPay Widget
-    FedaPay.checkout({
+    checkout({
       public_key: publicKey,
       transaction: {
         amount: amountFCFA,
@@ -136,7 +183,10 @@ const WalletPage: React.FC = () => {
         email: user?.email || 'joueur@zoyd.app',
         lastname: user?.pseudo || 'Joueur ZOYD'
       },
-      onComplete: async (resp: { reason?: string; transaction?: { id: number | string } }) => {
+      onClose: () => {
+        toast.dismiss();
+      },
+      onComplete: async (resp) => {
         if (resp.reason === 'CHECKOUT COMPLETE') {
           if (!resp.transaction?.id) {
             toast.error('Transaction invalidé.');
@@ -160,26 +210,39 @@ const WalletPage: React.FC = () => {
         } else {
           toast.error('Transaction annulée ou echouee.');
         }
-        setShowDepositModal(false);
-        setDepositAmount('');
-        setSelectedOperator('');
+        closeDepositModal();
       }
     });
   };
 
   const handleWithdraw = async () => {
-    if (!withdrawAmount || !user) return;
+    if (!user) {
+      toast.error('Session expirée. Reconnecte-toi.');
+      return;
+    }
+    if (!withdrawAmount) {
+      toast.error('Entre un montant à retirer.');
+      return;
+    }
+    if (!withdrawOperator) {
+      toast.error('Choisis un opérateur Mobile Money.');
+      return;
+    }
+    const cleanPhone = withdrawPhone.trim();
+    if (!cleanPhone || cleanPhone.replace(/[\s\-().]/g, '').length < 8) {
+      toast.error('Numéro de téléphone invalide.');
+      return;
+    }
     setIsWithdrawing(true);
     try {
-      const withdrawAmountNum = parseFloat(withdrawAmount);
-      if (isNaN(withdrawAmountNum) || withdrawAmountNum <= 0) {
+      const amount = parseFloat(withdrawAmount);
+      if (isNaN(amount) || amount <= 0) {
         toast.error('Montant invalidé.');
         return;
       }
-      await withdraw(withdrawAmountNum, 'Mobile Money', user.phone || '');
-      toast.success(`Retrait lance pour ${formatZC(withdrawAmountNum)}.`);
-      setShowWithdrawModal(false);
-      setWithdrawAmount('');
+      await withdraw(amount, withdrawOperator, cleanPhone);
+      toast.success(`Retrait lancé vers ${cleanPhone} via ${withdrawOperator}.`);
+      closeWithdrawModal();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erreur de retrait.');
     } finally {
@@ -332,7 +395,7 @@ const WalletPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Modal isOpen={showDepositModal} onClose={() => setShowDepositModal(false)} title="Ajouter des ZC" size="md">
+        <Modal isOpen={showDepositModal} onClose={closeDepositModal} title="Ajouter des ZC" size="md">
           <div className="space-y-6">
             <div>
               <label htmlFor="deposit-amount" className="block text-sm font-medium text-white mb-3">Montant à ajouter</label>
@@ -378,7 +441,7 @@ const WalletPage: React.FC = () => {
           </div>
         </Modal>
 
-        <Modal isOpen={showWithdrawModal} onClose={() => setShowWithdrawModal(false)} title="Retirer mes ZC" size="md">
+        <Modal isOpen={showWithdrawModal} onClose={closeWithdrawModal} title="Retirer mes ZC" size="md">
           <div className="space-y-6">
             <div>
               <label htmlFor="withdraw-amount" className="block text-sm font-medium text-white mb-3">Montant à retirer</label>
@@ -390,17 +453,67 @@ const WalletPage: React.FC = () => {
                 placeholder={`${MIN_WITHDRAWAL_ZC} ZC minimum (${MIN_WITHDRAWAL_ZC * 10} FCFA)`}
                 max={cashBalance}
               />
+              {withdrawAmountNum >= MIN_WITHDRAWAL_ZC && (
+                <div className="mt-3 border border-white/10 bg-black/40 p-3 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-white/60">Montant demandé</span>
+                    <span className="text-white font-mono">{formatZC(withdrawAmountNum)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-white/60">Frais (2%)</span>
+                    <span className="text-red-400 font-mono">-{formatZC(withdrawFee)}</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-1 flex justify-between text-xs">
+                    <span className="text-white/80 font-semibold">Tu recevras</span>
+                    <span className="text-green-400 font-mono font-bold">{formatZC(withdrawNet)} (~ {formatFCFA(withdrawNet)})</span>
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-white/60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-white mb-3">Opérateur Mobile Money</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {operators.map((operator) => (
+                  <button
+                    key={operator.id}
+                    onClick={() => setWithdrawOperator(operator.id)}
+                    aria-label={`Retirer via ${operator.name}`}
+                    className={`p-4 touch-target border transition-all ${
+                      withdrawOperator === operator.id
+                        ? 'border-zoyd-yellow bg-white/10'
+                        : 'border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 mx-auto mb-2 ${operator.colorClass}`} />
+                    <p className="text-xs font-display font-semibold text-white text-center">{operator.name}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="withdraw-phone" className="block text-sm font-medium text-white mb-3">Numéro de téléphone</label>
+              <Input
+                id="withdraw-phone"
+                type="tel"
+                value={withdrawPhone}
+                onChange={(event) => setWithdrawPhone(event.target.value)}
+                placeholder="+229 61 00 00 01"
+                autoComplete="tel"
+              />
+              <p className="text-xs text-white/60 mt-2">Le numéro Mobile Money où recevoir les fonds.</p>
             </div>
 
             <Button
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) < MIN_WITHDRAWAL_ZC || parseFloat(withdrawAmount) > cashBalance}
+              disabled={isWithdrawing || !withdrawAmount || !withdrawOperator || !withdrawPhone.trim() || withdrawAmountNum < MIN_WITHDRAWAL_ZC || withdrawAmountNum > cashBalance}
               aria-label="Confirmer le retrait"
             >
-              Retirer mes gains
+              {isWithdrawing ? 'Transfert en cours...' : 'Retirer mes gains'}
             </Button>
           </div>
         </Modal>

@@ -568,6 +568,28 @@ const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   if (gameIdKeys.has(gk)) throw makeError('DUPLICATE_GAME_ID', 'Cet UID CODM est deja verifie sur la plateforme.');
 };
 
+/**
+ * Check that a profile update (pseudo/email/phone) doesn't collide with ANOTHER user.
+ * Used by PATCH /api/auth/me which bypasses insertUser's ensureUniqueRegistration.
+ * @param {string} userId - ID of the user being updated (own keys are allowed)
+ * @param {Object} fields - May contain pseudo, email, phone (raw strings)
+ */
+export const checkProfileUniqueness = (userId, { pseudo, email, phone } = {}) => {
+  const ownedByOther = (key) => {
+    const entry = memoryPasswordHashes.get(key);
+    return entry && entry[0] !== userId;
+  };
+  if (typeof pseudo === 'string' && pseudo.trim() && ownedByOther(normalizePseudoKey(pseudo))) {
+    throw makeError('DUPLICATE_PSEUDO', 'Ce pseudo est deja utilise sur ZOYD.');
+  }
+  if (typeof email === 'string' && email.trim() && ownedByOther(normalizeEmailKey(email))) {
+    throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
+  }
+  if (typeof phone === 'string' && phone.trim() && ownedByOther(normalizePhoneKey(phone))) {
+    throw makeError('DUPLICATE_PHONE', 'Ce numero est deja rattache a un compte ZOYD.');
+  }
+};
+
 const insertUser = async ({ password, role = 'player', ...input }) => {
   if (!input.pseudo?.trim() || !input.email?.trim() || !input.phone?.trim() || !input.gameId?.trim()) {
     throw makeError('INVALID_REGISTRATION', 'Informations joueur incompletes.');
@@ -777,6 +799,30 @@ export const updateWalletSnapshot = async (userId, updater) =>
     user.walletBalance = roundAmount(user.wallet.cashBalance + user.wallet.bonusBalance);
     return user;
   });
+
+/**
+ * Merge metadata into an existing wallet transaction and persist (memory + Supabase).
+ * Used to tag a withdraw with payoutId/payoutStatus AFTER the FedaPay payout succeeds.
+ * @param {string} userId - ID of the user
+ * @param {string} txId - Transaction ID to tag
+ * @param {Object} patch - Metadata fields to merge
+ * @returns {Promise<boolean>} true if the transaction was found and tagged
+ */
+export const tagWalletTransaction = async (userId, txId, patch) => {
+  if (!txId || !patch || typeof patch !== 'object') return false;
+  let tagged = false;
+  await updateUserAccount(userId, (user) => {
+    const txs = user.wallet?.transactions;
+    if (!Array.isArray(txs)) return user;
+    const tx = txs.find((t) => t?.id === txId);
+    if (tx) {
+      tx.metadata = { ...(tx.metadata || {}), ...patch };
+      tagged = true;
+    }
+    return user;
+  });
+  return tagged;
+};
 
 /**
  * Create a new user account. Mutex-protected to ensure uniqueness checks are atomic.
@@ -1743,6 +1789,19 @@ export const claimTransaction = async (transactionId, userId, amountZC) => {
   }
   await sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
   return true;
+};
+
+/**
+ * Release a claimed transaction (rollback when credit fails AFTER claim).
+ * Without this, a failed credit leaves the tx marked processed and retry
+ * would return TRANSACTION_ALREADY_PROCESSED with funds never credited.
+ * @param {string} transactionId - FedaPay transaction ID
+ */
+export const releaseTransaction = async (transactionId) => {
+  memoryProcessedTransactions.delete(transactionId);
+  try {
+    await sbDelete('processed_transactions', { transaction_id: transactionId });
+  } catch { /* rollback is best-effort — memory release already allows retry */ }
 };
 
 // ─── Admin 2FA Persistence ─────────────────────────────────────────────────

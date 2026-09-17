@@ -215,6 +215,9 @@ export const mapPersistenceError = (error) => {
   switch (code) {
     case 'INVALID_REGISTRATION':
       return { status: 400, message, code };
+    case 'INVALID_JSON':
+    case 'PAYLOAD_TOO_LARGE':
+    case 'INVALID_TRANSACTION_ID':
     case 'INVALID_AMOUNT':
     case 'WITHDRAWAL_MIN':
     case 'MATCH_SEGMENT_MISMATCH':
@@ -235,16 +238,25 @@ export const mapPersistenceError = (error) => {
     case 'INVALID_RESULTS':
       return { status: 400, message, code };
     case 'INVALID_CREDENTIALS':
+    case 'UNAUTHORIZED':
       return { status: 401, message, code };
+    case 'ACCOUNT_LOCKED':
+      return { status: 423, message, code };
     case 'WEAK_PASSWORD':
     case 'RESET_FAILED':
+    case 'INVALID_EMAIL':
+    case 'INVALID_OPERATOR':
+    case 'INVALID_PHONE':
       return { status: 400, message, code };
     case 'FORBIDDEN':
+    case 'ACCOUNT_NOT_ACTIVATED':
       return { status: 403, message, code };
     case 'DUPLICATE_PSEUDO':
     case 'DUPLICATE_EMAIL':
     case 'DUPLICATE_PHONE':
     case 'DUPLICATE_GAME_ID':
+    case 'ALREADY_LOCKED':
+    case 'TRANSACTION_IN_PROGRESS':
     case 'INSUFFICIENT_FUNDS':
     case 'MATCH_CLOSED':
     case 'ALREADY_JOINED':
@@ -255,13 +267,12 @@ export const mapPersistenceError = (error) => {
     case 'SELF_BLOCK':
     case 'TRANSACTION_ALREADY_PROCESSED':
       return { status: 409, message, code };
-    case 'INVALID_JSON':
-    case 'PAYLOAD_TOO_LARGE':
     case 'PAYMENT_NOT_CONFIGURED':
-    case 'TRANSACTION_IN_PROGRESS':
     case 'TRANSACTION_NOT_APPROVED':
     case 'FEDAPAY_API_ERROR':
       return { status: 400, message, code };
+    case 'PAYOUT_FAILED':
+      return { status: 502, message, code };
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':
     case 'DISPUTE_ALREADY_OPEN':

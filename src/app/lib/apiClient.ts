@@ -152,8 +152,10 @@ const authorizedRequest = async <T>(method: HttpMethod, path: string, body?: unk
     );
   } catch (err) {
     // Timeout 30s → ApiError explicite au lieu d'une DOMException brute
+    // Note: le backend gratuit (Render) dort après inactivité : le 1er appel
+    // le réveille (30-60s) et timeout, le 2e passe. Message adapté en ce sens.
     if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new ApiError('Délai dépassé. Vérifie ta connexion et réessaie.', 'TIMEOUT', 408);
+      throw new ApiError('Délai dépassé — le serveur se réveille (offre gratuite). Attends quelques secondes puis réessaie.', 'TIMEOUT', 408);
     }
     throw err;
   } finally {

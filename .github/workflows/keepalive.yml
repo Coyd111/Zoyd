@@ -1,0 +1,27 @@
+# Keep-alive Render (offre gratuite) : le backend dort après ~15 min
+# d'inactivité, ce qui fait échouer le 1er appel (timeout 30s côté front).
+# Ce cron ping /api/health toutes les 10 minutes pour le garder éveillé.
+# Coût : ~4 300 min Actions/mois (inclus : 2 000 priv / illimité public).
+name: Keep backend awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Render health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Wake backend (cold start toléré)
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 110 https://zoyd.onrender.com/api/health) || code="000"
+            echo "Tentative $i : HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "Backend injoignable après 3 tentatives"
+          exit 1

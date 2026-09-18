@@ -123,8 +123,10 @@ export const requireAdmin = (req, res) => {
 };
 
 /**
- * Require an authenticated admin session with verified 2FA (mandatory).
- * Admins without 2FA setup are rejected with requires2faSetup (setup via POST /api/admin/2fa/setup).
+ * Require an authenticated admin session, plus verified 2FA when enabled.
+ * NOTE (décision produit 2026-09-18) : 2FA en OPT-IN jusqu'au domaine dédié.
+ * Sans entrée TOTP active, l'accès passe (mot de passe uniquement).
+ * Pour réactiver l'obligation : rejeter quand !totpEntry?.enabled.
  * @param {import('http').IncomingMessage} req - HTTP request
  * @param {import('http').ServerResponse} res - HTTP response
  * @returns {object|null} Authenticated session or null if rejected
@@ -141,11 +143,7 @@ export const requireAdmin2fa = (req, res) => {
     return null;
   }
   const totpEntry = adminTotpSecrets.get(session.user.id);
-  if (!totpEntry?.enabled) {
-    respondJson(res, 403, { ok: false, error: '2FA requise : configure-la via POST /api/admin/2fa/setup.', requires2faSetup: true });
-    return null;
-  }
-  if (!session.admin2faVerified || session.admin2faExpires <= Date.now()) {
+  if (totpEntry?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
     respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
     return null;
   }

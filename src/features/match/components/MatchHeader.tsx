@@ -12,14 +12,14 @@ interface MatchHeaderProps {
 
 export const MatchHeader: React.FC<MatchHeaderProps> = ({ match, statusLabel }) => (
   <>
-    <div className="flex items-center justify-between gap-4 mb-8">
-      <Link to="/mj" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
+    <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-8">
+      <Link to="/mj" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest shrink-0">
         <ArrowLeft className="w-4 h-4" />
         Retour aux matchs
       </Link>
-      <div className="inline-flex items-center gap-2 border border-white/10 px-4 py-2 text-[10px] font-mono uppercase tracking-[0.25em] text-white/75">
-        <Radio className="w-3.5 h-3.5 text-zoyd-blue" />
-        {statusLabel}
+      <div className="inline-flex items-center gap-2 border border-white/10 px-3 sm:px-4 py-2 text-[10px] font-mono uppercase tracking-[0.15em] sm:tracking-[0.25em] text-white/75 min-w-0">
+        <Radio className="w-3.5 h-3.5 text-zoyd-blue shrink-0" />
+        <span className="truncate">{statusLabel}</span>
       </div>
     </div>
 

@@ -42,7 +42,10 @@ const AppLayout = ({ requireAdmin = false }: AppLayoutProps) => {
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main id="main-content" className="flex-1 pb-24 md:pb-4 overflow-x-clip">
+        {/* min-w-0 : sans ça, le min-content des descendants (onglets nowrap,
+            inputs, grilles) étire main au-delà du viewport (flex item min-width:auto).
+            Avec overflow-x-clip, ça ne scrollait pas — mais le contenu était rogné. */}
+        <main id="main-content" className="flex-1 min-w-0 pb-24 md:pb-4 overflow-x-clip">
           <Outlet />
         </main>
       </div>

@@ -1343,6 +1343,22 @@ export const deleteAuthSession = (token) => {
 };
 
 /**
+ * Mark the STORED auth session as 2FA-verified (5-minute window).
+ * Must mutate the stored entry — getAuthSession() returns a copy,
+ * so setting flags on its result never persists (admin 2FA bypass bug).
+ * @param {string} token - Session token
+ * @returns {boolean} true if the session was found and marked
+ */
+export const markAdmin2faVerified = (token) => {
+  if (!token) return false;
+  const stored = memoryAuthSessions.get(token);
+  if (!stored) return false;
+  stored.admin2faVerified = true;
+  stored.admin2faExpires = Date.now() + 5 * 60 * 1000;
+  return true;
+};
+
+/**
  * Create a realtime (WebSocket) session with a 6-hour TTL.
  * @param {object} params - { userId, pseudo, role }
  * @returns {{ token: string, userId: string, pseudo: string, role: string, expiresAt: string }}

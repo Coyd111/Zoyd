@@ -26,14 +26,17 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
 }) => {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | null>(null);
 
   const { user } = useAuthStore();
   const currentUserId = user?.id || 'u1';
   const onlineMembers = presence.filter((member) => member.isOnline);
 
+  // Scrolle UNIQUEMENT la liste des messages (jamais la page) :
+  // scrollIntoView() sur le marqueur déplaçait aussi documentElement (scroll horizontal parasite).
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   useEffect(
@@ -128,7 +131,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar font-ui text-sm">
+      <div ref={listRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar font-ui text-sm">
         {!isConnected ? (
           <div className="h-full flex flex-col items-center justify-center text-white/70 text-center">
             <Terminal className="w-8 h-8 mb-4 opacity-10" />
@@ -197,14 +200,14 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
 
       <div className="p-4 border-t border-white/5 bg-zoyd-surface/60">
         <form onSubmit={handleSubmit} className="flex gap-4">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(event) => handleInputChange(event.target.value)}
-            disabled={!isConnected}
-            placeholder="Transmettre un message..."
-            className="flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors disabled:opacity-50"
-          />
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(event) => handleInputChange(event.target.value)}
+              disabled={!isConnected}
+              placeholder="Transmettre un message..."
+              className="flex-1 min-w-0 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors disabled:opacity-50"
+            />
           <button
             type="submit"
             disabled={!inputValue.trim() || !isConnected}

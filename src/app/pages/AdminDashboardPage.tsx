@@ -132,8 +132,8 @@ const AdminDashboardPage: React.FC = () => {
         <img src="/assets/images/codm-8.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
         <img src="/assets/images/codm-1.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
         <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-4 md:px-8 py-10">
-          <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-8">
-            <div>
+          <div className="flex flex-col 2xl:flex-row 2xl:items-end 2xl:justify-between gap-8">
+            <div className="min-w-0">
               <div className="flex items-center gap-4 mb-2">
                 <div className="w-10 h-10 flex items-center justify-center text-zoyd-yellow"><Shield className="w-5 h-5" aria-hidden="true" /></div>
                 <span className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest italic">Administration</span>
@@ -141,7 +141,7 @@ const AdminDashboardPage: React.FC = () => {
               <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Centre de <span className="text-white/70">commandement</span></h1>
               <p className="text-white/70 max-w-2xl mt-2">Vue opérationnelle pour prioriser les litiges, garder un oeil sur les passes bloqués et agir vite sur les comptes qui degringolent en trust.</p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 xl:min-w-[650px]">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 2xl:min-w-[650px] 2xl:max-w-[720px]">
               <FocusCard icon={<AlertTriangle className="w-4 h-4 text-red-300" aria-hidden="true" />} label="Litiges" value={adminInsights.openDisputes.length.toString()} detail="A trancher" tone="danger" />
               <FocusCard icon={<Users className="w-4 h-4 text-zoyd-yellow" aria-hidden="true" />} label="Reports" value={pendingReports.length.toString()} detail="En attente" tone="warning" />
               <FocusCard icon={<Swords className="w-4 h-4 text-green-400" aria-hidden="true" />} label="Salon live" value={matchQueues.live.length.toString()} detail="En cours" tone="success" />

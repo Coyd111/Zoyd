@@ -76,6 +76,7 @@ import {
   checkProfileUniqueness,
   tagWalletTransaction,
   getPublicStats,
+  markAdmin2faVerified,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet, calcWithdrawNet, MIN_WITHDRAWAL_ZC } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex } from './mutex.mjs';
@@ -137,7 +138,7 @@ if (vapidKeys) {
   webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
 }
 
-const server = http.createServer(async (req, res) => {
+const handleRequest = async (req, res) => {
   if (!req.url) {
     respondJson(res, 404, { ok: false, error: 'Not found', code: 'NOT_FOUND' });
     return;
@@ -1019,7 +1020,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && pathname === '/api/wallet/deposit') {
     // Deposit endpoint admin-only (deposits go through /api/wallet/verify-fedapay in production)
-    const adminSession = requireAdmin2fa(req);
+    const adminSession = requireAdmin2fa(req, res);
     if (!adminSession) {
       respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.', code: 'ADMIN_REQUIRED' });
       return;
@@ -2178,8 +2179,8 @@ const server = http.createServer(async (req, res) => {
     } catch (dbErr) {
       log.error('2FA enable: failed to persist secret', { adminId: session.user.id, error: dbErr.message });
     }
-    session.admin2faVerified = true;
-    session.admin2faExpires = Date.now() + 5 * 60 * 1000;
+    // Persiste sur la session STOCKÉE (getAuthSession renvoie une copie — muter `session` ne suffit pas)
+    markAdmin2faVerified(readBearerToken(req));
     log.info('Admin 2FA enabled', { adminId: session.user.id });
     respondJson(res, 200, { ok: true });
     return;
@@ -2206,8 +2207,8 @@ const server = http.createServer(async (req, res) => {
       respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.', code: 'MFA_INVALID' });
       return;
     }
-    session.admin2faVerified = true;
-    session.admin2faExpires = Date.now() + 5 * 60 * 1000;
+    // Persiste sur la session STOCKÉE (getAuthSession renvoie une copie — muter `session` ne suffit pas)
+    markAdmin2faVerified(readBearerToken(req));
     log.info('Admin 2FA verified', { adminId: session.user.id });
     respondJson(res, 200, { ok: true });
     return;
@@ -2614,6 +2615,17 @@ const server = http.createServer(async (req, res) => {
   }
 
   respondJson(res, 404, { ok: false, error: 'Route introuvable.', code: 'NOT_FOUND' });
+};
+
+// Filet de sécurité : sans ce catch, la moindre exception non gérée dans une
+// route laisse la requête pendre indéfiniment (client en timeout au lieu d'une 500).
+const server = http.createServer((req, res) => {
+  handleRequest(req, res).catch((err) => {
+    log.error('Unhandled route error', { message: err?.message, path: req?.url });
+    try {
+      respondJson(res, 500, { ok: false, error: 'Erreur serveur inattendue.', code: 'INTERNAL_ERROR' });
+    } catch { /* socket déjà fermée */ }
+  });
 });
 
 const io = new SocketIOServer(server, {

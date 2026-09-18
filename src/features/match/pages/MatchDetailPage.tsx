@@ -187,51 +187,18 @@ const MatchDetailPage: React.FC = () => {
   const readCount = match ? Object.keys(seenByChannel[match.channelId] || {}).length : 0;
   const channelConnected = !!user && socketConnected && match ? isChannelLive(match.channelId) : false;
 
-  if (!id) {
-    return null;
-  }
-
-  if (!bootstrapReady) {
-    return (
-      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
-        <div className="max-w-[1500px] w-full px-4 py-8 space-y-4">
-          <Skeleton className="h-8 w-48 bg-white/5" />
-          <Skeleton className="h-40 w-full bg-white/5" />
-          <div className="grid grid-cols-2 gap-4">
-            <Skeleton className="h-24 bg-white/5" />
-            <Skeleton className="h-24 bg-white/5" />
-          </div>
-          <Skeleton className="h-64 w-full bg-white/5" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!match) {
-    return (
-      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
-        <div className="text-center">
-          <h2 className="text-xl font-display font-black uppercase mb-4">Match introuvable</h2>
-          <Link to="/mj" className="border border-white/10 px-4 sm:px-6 py-3 uppercase text-sm font-display font-black tracking-widest touch-target">
-            Retour aux matchs
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const teamAlpha = match.players.filter((player) => player.team === 0);
-  const teamBravo = match.players.filter((player) => player.team === 1);
-  const statusLabel = statusLabels[match.status] || match.status;
-  const canJoinAsPlayer = !!user && !currentPlayer && !isArbiter && !['finished', 'cancelled', 'forfeited'].includes(match.status);
-  const canJoinArbiterSlot = !!user && canJoinAsArbiter(match.id);
-  const canCheckIn = !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);
-  const canToggleReady = !!currentPlayer && currentPlayer.isCheckedIn && ['check_in', 'ready'].includes(match.status);
-  const canLaunch = isArbiter && !!match.roomName && !!match.roomPassword && match.players.every((player) => player.isCheckedIn && player.isReady);
-  const countdown = match.scheduledAt ? getCountdownDisplay(match.scheduledAt) : null;
-  const scheduledAtMs = match.scheduledAt ? new Date(match.scheduledAt).getTime() : null;
+  const teamAlpha = (match?.players ?? []).filter((player) => player.team === 0);
+  const teamBravo = (match?.players ?? []).filter((player) => player.team === 1);
+  const statusLabel = match ? statusLabels[match.status] || match.status : '';
+  const canJoinAsPlayer = !!match && !!user && !currentPlayer && !isArbiter && !['finished', 'cancelled', 'forfeited'].includes(match.status);
+  const canJoinArbiterSlot = !!match && !!user && canJoinAsArbiter(match.id);
+  const canCheckIn = !!match && !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);
+  const canToggleReady = !!match && !!currentPlayer && currentPlayer.isCheckedIn && ['check_in', 'ready'].includes(match.status);
+  const canLaunch = !!match && isArbiter && !!match.roomName && !!match.roomPassword && match.players.every((player) => player.isCheckedIn && player.isReady);
+  const countdown = match?.scheduledAt ? getCountdownDisplay(match.scheduledAt) : null;
+  const scheduledAtMs = match?.scheduledAt ? new Date(match.scheduledAt).getTime() : null;
   const minutesUntilMatch = scheduledAtMs ? Math.round((scheduledAtMs - Date.now()) / 60000) : null;
-  const roomPublishWindow = !match.scheduledAt
+  const roomPublishWindow = !match?.scheduledAt
     ? {
         canPublish: false,
         message: "Confirme d'abord l'heure du match avant de partager la salle.",
@@ -249,17 +216,17 @@ const MatchDetailPage: React.FC = () => {
               : "L'heure est dépassée: partage la salle tout de suite ou tranche le dossier.",
         };
   const forfeitLabel =
-    match.result?.résolutionType === 'forfeit'
+    match?.result?.résolutionType === 'forfeit'
       ? match.result.forfeitTeam === 0
         ? 'Squad Alpha perd par forfait'
         : 'Squad Bravo perd par forfait'
       : null;
-  const requiredTopUp = getRequiredTopUp(match.entryFee, availableSpend);
+  const requiredTopUp = getRequiredTopUp(match?.entryFee ?? 0, availableSpend);
   const fundingPath = buildFundingPath({
     context: 'match-join',
-    requiredAmount: match.entryFee,
+    requiredAmount: match?.entryFee ?? 0,
     availableAmount: availableSpend,
-    returnTo: `/mj/match/${match.id}`,
+    returnTo: `/mj/match/${match?.id ?? ''}`,
   });
 
   const applyMatchResponse = useCallback((payload: { match: typeof match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
@@ -295,7 +262,7 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsJoining(false);
     }
-  }, [user, navigate, availableSpend, match.entryFee, match.id, match.trustScoreMin, isJoining, applyMatchResponse]);
+  }, [user, navigate, availableSpend, match?.entryFee, match?.id, match?.trustScoreMin, isJoining, applyMatchResponse]);
 
   const handleJoinAsArbiter = useCallback(async () => {
     if (!user) {
@@ -310,7 +277,7 @@ const MatchDetailPage: React.FC = () => {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "La place d'arbitre n'est plus disponible.");
     }
-  }, [user, navigate, match.id, applyMatchResponse]);
+  }, [user, navigate, match?.id, applyMatchResponse]);
 
   const handleSchedule = async () => {
     if (!scheduleValue || isScheduling) return;
@@ -451,7 +418,7 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  }, [isProcessingAction, match.id, applyMatchResponse]);
+  }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleToggleReady = useCallback(async () => {
     if (isProcessingAction) return;
@@ -464,7 +431,7 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  }, [isProcessingAction, match.id, applyMatchResponse]);
+  }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleLaunch = useCallback(async () => {
     if (isProcessingAction) return;
@@ -478,7 +445,7 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  }, [isProcessingAction, match.id, applyMatchResponse]);
+  }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleConfirmResult = useCallback(async () => {
     if (isProcessingAction) return;
@@ -492,7 +459,7 @@ const MatchDetailPage: React.FC = () => {
     } finally {
       setIsProcessingAction(false);
     }
-  }, [isProcessingAction, match.id, applyMatchResponse]);
+  }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleAddEvidence = async () => {
     const refs = addEvidenceInput
@@ -528,12 +495,12 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const onTypingChange = useCallback((isTyping: boolean) => {
-    if (!user) return;
+    if (!user || !match) return;
     setTyping(match.channelId, user.id, user.pseudo, isTyping);
-  }, [user, match.channelId, setTyping]);
+  }, [user, match?.channelId, setTyping]);
 
   const onSendMessage = useCallback((text: string) => {
-    if (!user) {
+    if (!user || !match) {
       navigate('/auth/login');
       return;
     }
@@ -548,7 +515,41 @@ const MatchDetailPage: React.FC = () => {
       .catch((error) => {
         toast.error(error instanceof Error ? error.message : "Impossible d'envoyer ce message.");
       });
-  }, [user, navigate, match.channelId, hydrateChat, receiveServerMessage, setTyping, markChannelSeen]);
+  }, [user, navigate, match?.channelId, hydrateChat, receiveServerMessage, setTyping, markChannelSeen]);
+
+  // Early returns APRÈS tous les hooks (sinon React error #310 quand match charge après le 1er rendu)
+  if (!id) {
+    return null;
+  }
+
+  if (!bootstrapReady) {
+    return (
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
+        <div className="max-w-[1500px] w-full px-4 py-8 space-y-4">
+          <Skeleton className="h-8 w-48 bg-white/5" />
+          <Skeleton className="h-40 w-full bg-white/5" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-24 bg-white/5" />
+            <Skeleton className="h-24 bg-white/5" />
+          </div>
+          <Skeleton className="h-64 w-full bg-white/5" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
+        <div className="text-center">
+          <h2 className="text-xl font-display font-black uppercase mb-4">Match introuvable</h2>
+          <Link to="/mj" className="border border-white/10 px-4 sm:px-6 py-3 uppercase text-sm font-display font-black tracking-widest touch-target">
+            Retour aux matchs
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline safe-top">
@@ -557,12 +558,12 @@ const MatchDetailPage: React.FC = () => {
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 relative z-10">
         <MatchHeader match={match} statusLabel={statusLabel} />
         <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-8">
-          <div className="space-y-8">
+          <div className="space-y-8 min-w-0">
             <MatchPlayers match={match} teamAlpha={teamAlpha} teamBravo={teamBravo} countdown={countdown} />
             <MatchRules match={match} canSeeRoom={canSeeRoom} />
             <MatchResults match={match} forfeitLabel={forfeitLabel} currentPlayer={currentPlayer} onConfirmResult={handleConfirmResult} />
           </div>
-          <div className="space-y-8">
+          <div className="space-y-8 min-w-0">
             <MatchActions
               match={match}
               user={user}

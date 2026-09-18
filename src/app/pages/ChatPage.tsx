@@ -84,7 +84,8 @@ const ChatPage: React.FC = () => {
     const el = containerRef.current;
     const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
     if (isNearBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Scrolle le conteneur uniquement (scrollIntoView déplacerait aussi la page)
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }, [currentMessages.length]);
 
@@ -354,7 +355,7 @@ const ChatPage: React.FC = () => {
                   }}
                   placeholder="Envoyér un message..."
                   aria-label="Saisir un message"
-                  className="touch-target flex-1 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors"
+                  className="touch-target flex-1 min-w-0 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors"
                 />
                 <Button type="submit" variant="primary" disabled={!input.trim() || isSending} className="touch-target px-6" aria-label="Envoyér le message">
                   <Send className="w-4 h-4" />

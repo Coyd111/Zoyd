@@ -409,12 +409,16 @@ const handleRequest = async (req, res) => {
       };
       const user = await createUserAccount(safeBody);
       const activationCode = generateActivationCode(user.email, user.id);
-      
+      const delivery = await deliverAuthCode({ to: user.email, code: activationCode, purpose: 'activation' });
+
       respondJson(res, 201, {
         ok: true,
         user: sanitizeUserPayload(user),
         ...(process.env.NODE_ENV !== 'production' && { activationCode }),
-        message: 'Compte cree avec succes.',
+        delivery: delivery.delivered ? 'sent' : 'pending-provider',
+        message: delivery.delivered
+          ? 'Compte cree. Verifie ta boite email pour le code d\'activation.'
+          : 'Compte cree avec succes.',
       });
     } catch (error) {
       log.error('register error', { message: error.message, code: error.code });

@@ -100,6 +100,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   RESULT_ALREADY_EXISTS: 'Un resultat a déjà été soumis.',
   WITHDRAWAL_MIN: 'Retrait minimum: 150 ZC.',
   INVALID_PHONE: 'Numéro de téléphone invalide.',
+  INVALID_CREDENTIALS: 'Identifiants invalides. Vérifie ton pseudo/email et ton mot de passe.',
+  ACCOUNT_NOT_ACTIVATED: 'Compte non activé. Termine ton inscription avec le code reçu.',
   INVALID_OPERATOR: 'Opérateur invalide.',
   INVALID_AMOUNT: 'Montant invalide.',
   TRANSACTION_ALREADY_PROCESSED: 'Cette transaction a déjà été traitée.',
@@ -113,18 +115,28 @@ export const readJson = async <T>(response: Response): Promise<T> => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     handleAuthError(response.status);
-    
+
+    const code = payload.code || 'UNKNOWN_ERROR';
+    const serverMessage = payload.error || 'Une erreur réseau est survenue.';
+    const friendlyMessage = ERROR_MESSAGES[code] || serverMessage;
+
+    // 401/403 : préserve le vrai code serveur au lieu de tout écraser.
+    // Avant, un mauvais mot de passe affichait "Session expiree" (trompeur).
     if (response.status === 401) {
-      throw new ApiError('Session expiree. Veuillez te reconnecter.', 'SESSION_EXPIRED', 401);
+      throw new ApiError(
+        code === 'UNKNOWN_ERROR' ? 'Session expiree. Veuillez te reconnecter.' : friendlyMessage,
+        code === 'UNKNOWN_ERROR' ? 'SESSION_EXPIRED' : code,
+        401
+      );
     }
     if (response.status === 403) {
-      throw new ApiError('Accès refuse. Tu n\'as pas les permissions necessaires.', 'FORBIDDEN', 403);
+      throw new ApiError(
+        code === 'UNKNOWN_ERROR' ? 'Accès refuse. Tu n\'as pas les permissions necessaires.' : friendlyMessage,
+        code === 'UNKNOWN_ERROR' ? 'FORBIDDEN' : code,
+        403
+      );
     }
-    
-    const code = payload.code || 'UNKNOWN_ERROR';
-    const message = payload.error || 'Une erreur réseau est survenue.';
-    const friendlyMessage = ERROR_MESSAGES[code] || message;
-    
+
     throw new ApiError(friendlyMessage, code, response.status);
   }
 

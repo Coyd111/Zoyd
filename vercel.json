@@ -2,7 +2,6 @@
   "installCommand": "pnpm install --no-frozen-lockfile",
   "outputDirectory": "dist",
   "framework": "vite",
-  "cleanUrls": true,
   "headers": [
     {
       "source": "/assets/(.*)",
@@ -32,14 +31,14 @@
   "rewrites": [
     { "source": "/auth/(.*)", "destination": "/index.html" },
     { "source": "/mode", "destination": "/index.html" },
-    { "source": "/mj/(.*)", "destination": "/index.html" },
+    { "source": "/mj(.*)", "destination": "/index.html" },
     { "source": "/wallet", "destination": "/index.html" },
     { "source": "/earnings", "destination": "/index.html" },
     { "source": "/classements", "destination": "/index.html" },
     { "source": "/chat", "destination": "/index.html" },
-    { "source": "/profil/(.*)", "destination": "/index.html" },
+    { "source": "/profil(.*)", "destination": "/index.html" },
     { "source": "/parametres", "destination": "/index.html" },
-    { "source": "/br-league/(.*)", "destination": "/index.html" },
+    { "source": "/br-league(.*)", "destination": "/index.html" },
     { "source": "/infos", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" }
   ]

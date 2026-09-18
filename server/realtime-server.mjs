@@ -2128,6 +2128,16 @@ const handleRequest = async (req, res) => {
     return;
   }
 
+  // SEC-R4: Admin 2FA status — whether TOTP is enabled for this admin
+  if (req.method === 'GET' && pathname === '/api/admin/2fa/status') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
+    const session = requireAdmin(req, res);
+    if (!session) return;
+    const entry = adminTotpSecrets.get(session.user.id);
+    respondJson(res, 200, { ok: true, enabled: !!entry?.enabled });
+    return;
+  }
+
   // SEC-R4: Admin 2FA setup — generate TOTP secret for admin
   if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;

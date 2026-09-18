@@ -110,7 +110,6 @@ export const resendActivationCode = (email: string): Promise<RecoveryResponse> =
 
 export const changeActivationEmail = (oldEmail: string, newEmail: string): Promise<RecoveryResponse> =>
   postAuthRecovery('/api/auth/activation-email', { oldEmail, newEmail });
-
 export const requestPasswordReset = (identifier: string): Promise<RecoveryResponse> =>
   postAuthRecovery('/api/auth/forgot-password', { identifier });
 
@@ -120,3 +119,31 @@ export const resetPasswordWithCode = (
   newPassword: string
 ): Promise<RecoveryResponse> =>
   postAuthRecovery('/api/auth/reset-password', { identifier, code, newPassword });
+
+// ─── Admin TOTP 2FA ─────────────────────────────────────────────────────────
+
+interface Admin2faStatusResponse {
+  ok: boolean;
+  enabled: boolean;
+}
+
+interface Admin2faSetupResponse {
+  ok: boolean;
+  otpauthUrl: string;
+}
+
+export const fetchAdmin2faStatus = async (): Promise<Admin2faStatusResponse> => {
+  return authorizedGet<Admin2faStatusResponse>('/api/admin/2fa/status');
+};
+
+export const setupAdmin2fa = async (): Promise<Admin2faSetupResponse> => {
+  return authorizedPost<Admin2faSetupResponse>('/api/admin/2fa/setup', {});
+};
+
+export const enableAdmin2fa = async (code: string): Promise<{ ok: boolean }> => {
+  return authorizedPost<{ ok: boolean }>('/api/admin/2fa/enable', { code });
+};
+
+export const verifyAdmin2fa = async (code: string): Promise<{ ok: boolean }> => {
+  return authorizedPost<{ ok: boolean }>('/api/admin/2fa/verify', { code });
+};

@@ -7,7 +7,7 @@ import { useNotificationStore } from '../stores/notificationStore';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { updateServerAccount } from '../lib/authApi';
+import { updateServerAccount, fetchAdmin2faStatus, setupAdmin2fa, enableAdmin2fa, verifyAdmin2fa } from '../lib/authApi';
 import { CODM_RANGS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
 import { SEOHead } from '../components/SEOHead';
 
@@ -356,6 +356,13 @@ const ParametresPage: React.FC = () => {
                   </p>
                 </div>
 
+                {user.role === 'admin' ? (
+                  <>
+                    <SectionTitle title="Double authentification (admin)" />
+                    <Admin2faSection />
+                  </>
+                ) : null}
+
                 <SectionTitle title="En bref" />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <StatusCard label="Fiabilité" value={`${user.trustScore}/100`} accent="text-zoyd-yellow" />
@@ -490,6 +497,185 @@ const SectionTitle = React.memo(({ title }: { title: string }) => (
     {title}
   </h2>
 ));
+
+const Admin2faSection: React.FC = () => {
+  const [status, setStatus] = useState<'loading' | 'disabled' | 'enabled' | 'error'>('loading');
+  const [secret, setSecret] = useState('');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAdmin2faStatus()
+      .then((res) => {
+        if (!cancelled) setStatus(res.enabled ? 'enabled' : 'disabled');
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSetup = async () => {
+    setBusy(true);
+    try {
+      const res = await setupAdmin2fa();
+      const match = /secret=([A-Z2-7]+)/i.exec(res.otpauthUrl || '');
+      if (!match) {
+        toast.error('Secret introuvable dans la réponse.');
+        return;
+      }
+      setSecret(match[1]);
+      toast.success('Secret généré. Ajoute-le à ton appli authenticator.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Échec de génération du secret.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleEnable = async () => {
+    if (code.trim().length < 6) {
+      toast.error('Entre le code à 6 chiffres affiché par ton appli.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await enableAdmin2fa(code.trim());
+      setStatus('enabled');
+      setSecret('');
+      setCode('');
+      toast.success('Double authentification activée.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Code invalide.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (code.trim().length < 6) {
+      toast.error('Entre le code à 6 chiffres affiché par ton appli.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await verifyAdmin2fa(code.trim());
+      setCode('');
+      setVerifiedAt(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+      toast.success('Session vérifiée pour 5 minutes.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Code invalide.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copySecret = async () => {
+    try {
+      await navigator.clipboard.writeText(secret);
+      toast.success('Secret copié.');
+    } catch {
+      toast.error('Copie impossible — recopie le secret à la main.');
+    }
+  };
+
+  return (
+    <div className="hud-panel p-4 md:p-6 bg-zoyd-surface/20 space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="font-display font-black text-white uppercase italic">TOTP Admin</div>
+        {status === 'enabled' ? (
+          <Badge variant="success">Actif</Badge>
+        ) : status === 'disabled' ? (
+          <Badge variant="yellow">Inactif</Badge>
+        ) : status === 'error' ? (
+          <Badge variant="disabled">Erreur</Badge>
+        ) : (
+          <Badge variant="disabled">...</Badge>
+        )}
+      </div>
+
+      <p className="text-sm text-white/70">
+        Protège les opérations sensibles (crédits, arbitrages admin, rechargement). Utilise Google Authenticator ou Authy.
+      </p>
+
+      {status === 'disabled' ? (
+        <div className="space-y-4">
+          {!secret ? (
+            <Button variant="secondary" size="sm" onClick={handleSetup} disabled={busy}>
+              {busy ? 'GÉNÉRATION...' : 'GÉNÉRER UN SECRET'}
+            </Button>
+          ) : (
+            <>
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">
+                  1. Ajoute ce secret dans ton appli (saisie manuelle)
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <code className="flex-1 min-w-0 break-all bg-black border border-white/10 px-4 py-3 font-mono text-sm text-zoyd-yellow">
+                    {secret}
+                  </code>
+                  <Button variant="secondary" size="sm" onClick={copySecret} aria-label="Copier le secret">
+                    Copier
+                  </Button>
+                </div>
+              </div>
+              <div className="max-w-md">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">
+                  2. Entre le code à 6 chiffres affiché
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    aria-label="Code TOTP à 6 chiffres"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                  />
+                  <Button variant="primary" size="sm" onClick={handleEnable} disabled={busy || code.trim().length < 6}>
+                    {busy ? '...' : 'Activer'}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {status === 'enabled' ? (
+        <div className="space-y-3">
+          <p className="text-sm text-white/70">
+            Vérifie ta session avant chaque opération sensible (valable 5 minutes).
+            {verifiedAt ? ` Dernière vérification : ${verifiedAt}.` : ''}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+            <Input
+              aria-label="Code TOTP à 6 chiffres"
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="123456"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+            />
+            <Button variant="primary" size="sm" onClick={handleVerify} disabled={busy || code.trim().length < 6}>
+              {busy ? '...' : 'Vérifier'}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {status === 'error' ? (
+        <p className="text-sm text-red-400">Impossible de lire le statut 2FA. Recharge la page.</p>
+      ) : null}
+    </div>
+  );
+};
 
 const SelectField = React.memo(({
   label,

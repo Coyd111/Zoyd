@@ -1,3 +1,4 @@
+import React from 'react';
 import { Outlet, Navigate } from 'react-router';
 import { Navbar } from '../components/layout/Navbar';
 import { Sidebar } from '../components/layout/Sidebar';
@@ -7,9 +8,10 @@ import { useAuthStore } from '../stores/authStore';
 
 interface AppLayoutProps {
   requireAdmin?: boolean;
+  children?: React.ReactNode;
 }
 
-const AppLayout = ({ requireAdmin = false }: AppLayoutProps) => {
+const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const user = useAuthStore((s) => s.user);
@@ -46,7 +48,7 @@ const AppLayout = ({ requireAdmin = false }: AppLayoutProps) => {
             inputs, grilles) étire main au-delà du viewport (flex item min-width:auto).
             Avec overflow-x-clip, ça ne scrollait pas — mais le contenu était rogné. */}
         <main id="main-content" className="flex-1 min-w-0 pb-24 md:pb-4 overflow-x-clip">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
       <BottomNav />

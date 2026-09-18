@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import LandingPage from './LandingPage';
+import AppLayout from '../layouts/AppLayout';
 
 const DashboardPage = React.lazy(() => import('./DashboardPage'));
 
@@ -18,14 +19,18 @@ const RootIndexPage: React.FC = () => {
 
   if (!isAuthenticated) return <LandingPage />;
 
+  // Connecté : même chrome de navigation que le reste de l'app
+  // (sinon le tableau de bord est une impasse sans sidebar ni bottom nav).
   return (
-    <Suspense fallback={
-      <div className="min-h-dvh bg-zoyd-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white/20 border-t-zoyd-yellow rounded-full animate-spin" />
-      </div>
-    }>
-      <DashboardPage />
-    </Suspense>
+    <AppLayout>
+      <Suspense fallback={
+        <div className="min-h-dvh bg-zoyd-black flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-zoyd-yellow rounded-full animate-spin" />
+        </div>
+      }>
+        <DashboardPage />
+      </Suspense>
+    </AppLayout>
   );
 };
 

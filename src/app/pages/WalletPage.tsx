@@ -87,7 +87,7 @@ const WalletPage: React.FC = () => {
   const operators = [
     { id: 'MTN MoMo', name: 'MTN MoMo', colorClass: 'bg-[#FFCC00]' },
     { id: 'Moov Money', name: 'Moov Money', colorClass: 'bg-[#009EE2]' },
-    { id: 'Orange Money', name: 'Orange Money', colorClass: 'bg-[#FF7900]' },
+    { id: 'Celtiis', name: 'Celtiis', colorClass: 'bg-[#00B0F0]' },
   ];
 
   const presetAmounts = [50, 100, 200, 500];

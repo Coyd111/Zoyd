@@ -534,6 +534,7 @@ export const buildUserPayload = (input, role = 'player') => {
     id: input.id, role,
     pseudo: input.pseudo.trim(), email: input.email.trim(),
     phone: input.phone.trim(), gameId: input.gameId.trim(),
+    isActive: input.isActive !== false,
     controllerType: input.controllerType || 'touch',
     device: input.device || 'phone',
     levelCODM: Number(input.levelCODM || 1),

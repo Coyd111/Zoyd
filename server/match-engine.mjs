@@ -159,7 +159,7 @@ const applyResultSettlement = async (match, result) => {
         if (isWinner) {
           await releaseWalletWinnings(
             player.userId, payout, match.id, 'prize_win',
-            `Gain du match ${match.rules.mode} / ${match.rules.map}`
+            `Gain du match ${match.rules?.mode || match.format} / ${match.rules?.map || 'Libre'}`
           );
           await patchUserForMatchOutcome(player.userId, (user) => {
             const nextStats = {
@@ -274,7 +274,7 @@ export const createMatchOnServer = async (matches, actor, input) => {
     format: input.format,
     teamSize,
     maxPlayers,
-    rules: input.rules,
+    rules: input.rules && typeof input.rules === 'object' ? input.rules : {},
     entryFee: roundAmount(input.entryFee),
     prizePool,
     zoydFee: 0,

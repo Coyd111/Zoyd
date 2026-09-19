@@ -24,10 +24,10 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({ match, statusLabel }) 
     </div>
 
     <header className="relative mb-10 overflow-hidden min-h-[300px] flex flex-col justify-end p-5 sm:p-8 -mx-4 sm:-mx-6 md:mx-0">
-      {getMapImage(match.rules.map) && (
+      {getMapImage(match.rules?.map) && (
         <img
-          src={getMapImage(match.rules.map)}
-          alt={match.rules.map}
+          src={getMapImage(match.rules?.map)}
+          alt={match.rules?.map || 'Carte inconnue'}
           className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity"
         />
       )}
@@ -42,7 +42,7 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({ match, statusLabel }) 
           <span className="text-[10px] font-mono uppercase tracking-[0.35em] text-zoyd-yellow">SALLE DU WAGER</span>
         </div>
         <h1 className="text-4xl md:text-6xl font-display font-black italic uppercase tracking-tighter">
-          {match.rules.map} <span className="text-white/60">/</span> {match.rules.mode}
+          {match.rules?.map || 'Carte libre'} <span className="text-white/60">/</span> {match.rules?.mode || match.format}
         </h1>
         <p className="text-white/70 mt-3 max-w-3xl">
           {match.format} / Wager: {formatZC(match.entryFee)} / Cagnotte: {formatZC(match.prizePool)} / Créé par {match.creatorPseudo}

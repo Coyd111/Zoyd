@@ -28,7 +28,7 @@ import {
   COUNTRY_OPTIONS,
   DEVICE_OPTIONS,
 } from '../../../lib/competition';
-import { registerWithBackend, type RegisterPayload } from '../../lib/authApi';
+import { registerWithBackend, type RegisterPayload, type AuthResponse } from '../../lib/authApi';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { SEOHead } from '../../components/SEOHead';
 
@@ -180,9 +180,15 @@ const RegisterPage: React.FC = () => {
         streamerPseudo: formData.streamerMode ? formData.streamerPseudo : '',
       });
 
-      // Show success and redirect to activation (login requires an active code step)
-      toast.success('Compte créé avec succès. Active-le avec le code envoyé.');
-      
+      // V1 simplifiée : compte directement actif + session immédiate (pas d'étape code).
+      const response = auth as AuthResponse & { token?: string; expiresAt?: string };
+      if (response.token && response.user) {
+        login(response.user, response.token, response.expiresAt);
+        toast.success(`Bienvenue sur ZOYD, ${formData.pseudo} !`);
+      } else {
+        toast.success('Compte créé avec succès. Connecte-toi.');
+      }
+
       // Store pending welcome notification for after login
       try {
         const pending = JSON.parse(localStorage.getItem('zoyd_pending_notifs') || '[]');
@@ -195,11 +201,8 @@ const RegisterPage: React.FC = () => {
         });
         localStorage.setItem('zoyd_pending_notifs', JSON.stringify(pending));
       } catch { /* ignore localStorage errors */ }
-      
-      // Redirect to activation page with the account email (and dev code when provided)
-      navigate('/auth/activate', {
-        state: { email: formData.email, devCode: (auth as { activationCode?: string }).activationCode || '' },
-      });
+
+      navigate('/');
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Inscription impossible.';
       toast.error(msg);

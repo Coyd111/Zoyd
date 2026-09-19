@@ -1,7 +1,7 @@
 import type { User } from '../stores/authStore';
 import { authorizedGet, authorizedPost, authorizedPatch, getApiUrl } from './apiClient';
 
-interface AuthResponse {
+export interface AuthResponse {
   ok: boolean;
   token?: string;
   user: User;

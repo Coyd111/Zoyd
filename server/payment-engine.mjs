@@ -115,7 +115,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
 const OPERATOR_MODE_MAP = {
   'MTN MoMo': 'mtn_open',
   'Moov Money': 'moov',
-  'Orange Money': 'orange_bj',
+  'Celtiis': 'sbin',
 };
 
 /**
@@ -151,7 +151,8 @@ export const parsePhoneForFedaPay = (rawPhone) => {
  *
  * @param {Object} params
  * @param {number} params.amountZC - Amount in Zoyd Coins
- * @param {string} params.method - Operator name ('MTN MoMo', 'Moov Money', 'Orange Money')
+ * @param {string} params.method - Operator name ('MTN MoMo', 'Moov Money', 'Celtiis')
+ * (modes FedaPay vérifiés : mtn_open, moov, sbin — pas de mode Orange/Wave au Bénin)
  * @param {string} params.phone - User's phone number
  * @param {string} params.userPseudo - User's display name
  * @param {string} [params.userEmail] - User's email
@@ -166,7 +167,7 @@ export const initiateFedaPayPayout = async ({ amountZC, method, phone, userPseud
 
   const mode = OPERATOR_MODE_MAP[method];
   if (!mode) {
-    throw makeError('INVALID_OPERATOR', `Opérateur non supporté: ${method}. Utilisez MTN MoMo ou Moov Money.`);
+    throw makeError('INVALID_OPERATOR', `Opérateur non supporté: ${method}. Utilisez MTN MoMo, Moov Money ou Celtiis.`);
   }
 
   const amountFCFA = Math.round(amountZC * 10);

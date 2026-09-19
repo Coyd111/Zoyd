@@ -408,17 +408,24 @@ const handleRequest = async (req, res) => {
         streamerPseudo: sanitizeText(rawBody.streamerPseudo || ''),
       };
       const user = await createUserAccount(safeBody);
-      const activationCode = generateActivationCode(user.email, user.id);
-      const delivery = await deliverAuthCode({ to: user.email, code: activationCode, purpose: 'activation' });
+      // V1 simplifiée (décision 2026-09-18) : compte directement actif,
+      // session immédiate. Pas de code d'activation (pas d'email/SMS pour l'instant).
+      const session = await createAuthSession(user.id);
+      const cookieValue = serializeCookie('zoyd_auth', session.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 6 * 60 * 60,
+        path: '/',
+      });
+      res.setHeader('Set-Cookie', cookieValue);
 
       respondJson(res, 201, {
         ok: true,
-        user: sanitizeUserPayload(user),
-        ...(process.env.NODE_ENV !== 'production' && { activationCode }),
-        delivery: delivery.delivered ? 'sent' : 'pending-provider',
-        message: delivery.delivered
-          ? 'Compte cree. Verifie ta boite email pour le code d\'activation.'
-          : 'Compte cree avec succes.',
+        token: session.token,
+        user: session.user,
+        expiresAt: session.expiresAt,
+        message: 'Compte cree avec succes. Bienvenue sur ZOYD !',
       });
     } catch (error) {
       log.error('register error', { message: error.message, code: error.code });
@@ -1076,9 +1083,9 @@ const handleRequest = async (req, res) => {
       return;
     }
     // Whitelist opérateur AVANT tout débit (évite débit + refund parasites)
-    const WITHDRAW_OPERATORS = ['MTN MoMo', 'Moov Money', 'Orange Money'];
+    const WITHDRAW_OPERATORS = ['MTN MoMo', 'Moov Money', 'Celtiis'];
     if (typeof body.method !== 'string' || !WITHDRAW_OPERATORS.includes(body.method)) {
-      respondJson(res, 400, { ok: false, error: 'Opérateur invalide. Utilisez MTN MoMo, Moov Money ou Orange Money.', code: 'INVALID_OPERATOR' });
+      respondJson(res, 400, { ok: false, error: 'Opérateur invalide. Utilisez MTN MoMo, Moov Money ou Celtiis.', code: 'INVALID_OPERATOR' });
       return;
     }
     // Téléphone Bénin valide AVANT tout débit

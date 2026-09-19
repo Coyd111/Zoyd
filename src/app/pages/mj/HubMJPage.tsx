@@ -22,6 +22,9 @@ const HubMJPage: React.FC = () => {
   const filters = useMatchStore((s) => s.filters);
   const setFilters = useMatchStore((s) => s.setFilters);
   const getFilteredMatches = useMatchStore((s) => s.getFilteredMatches);
+  // Souscrit au tableau : sans ça, le useMemo ci-dessous ne recalcule jamais
+  // quand RootLayout hydrate le store après le 1er rendu (liste vide figée).
+  const matches = useMatchStore((s) => s.matches);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
@@ -42,7 +45,7 @@ const HubMJPage: React.FC = () => {
         match.creatorPseudo.toLowerCase().includes(query)
       );
     });
-  }, [getFilteredMatches, debouncedQuery, needsArbiter]);
+  }, [getFilteredMatches, debouncedQuery, needsArbiter, matches]);
 
   const metrics = useMemo(() => {
     const livePool = filteredMatches.reduce((sum, match) => sum + match.prizePool, 0);

@@ -157,6 +157,8 @@ const LeaguePage: React.FC = () => {
   const filters = useLeagueStore((s) => s.filters);
   const setFilters = useLeagueStore((s) => s.setFilters);
   const getFilteredSeasons = useLeagueStore((s) => s.getFilteredSeasons);
+  // Souscrit au tableau pour recalculer quand le fetch du useEffect hydrate le store.
+  const allSeasons = useLeagueStore((s) => s.seasons);
   const replaceFromServer = useLeagueStore((s) => s.replaceFromServer);
   const getActiveSeason = useLeagueStore((s) => s.getActiveSeason);
   const [isLoading, setIsLoading] = useState(true);
@@ -192,7 +194,7 @@ const LeaguePage: React.FC = () => {
     return () => controller.abort();
   }, [replaceFromServer, reloadKey]);
 
-  const seasons = useMemo(() => getFilteredSeasons(), [getFilteredSeasons]);
+  const seasons = useMemo(() => getFilteredSeasons(), [getFilteredSeasons, allSeasons]);
   const activeSeason = getActiveSeason();
 
   const handleJoin = async (seasonId: string) => {

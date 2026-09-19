@@ -16,6 +16,8 @@ const TournoisPage: React.FC = () => {
   const filters = useTournamentStore((s) => s.filters);
   const setFilters = useTournamentStore((s) => s.setFilters);
   const getFilteredTournaments = useTournamentStore((s) => s.getFilteredTournaments);
+  // Souscrit au tableau pour recalculer quand le fetch du useEffect hydrate le store.
+  const allTournaments = useTournamentStore((s) => s.tournaments);
   const replaceFromServer = useTournamentStore((s) => s.replaceFromServer);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
@@ -60,7 +62,7 @@ const TournoisPage: React.FC = () => {
         tournament.rules.mapPool.some((map) => map.toLowerCase().includes(query))
       );
     });
-  }, [getFilteredTournaments, debouncedQuery]);
+  }, [getFilteredTournaments, debouncedQuery, allTournaments]);
 
   const recruiting = useMemo(() => tournaments.filter((tournament) => tournament.status === 'recruiting'), [tournaments]);
   const live = useMemo(() => tournaments.filter((tournament) => tournament.status === 'live'), [tournaments]);

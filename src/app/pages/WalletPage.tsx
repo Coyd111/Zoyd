@@ -11,7 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useSocketStore } from '../stores/socketStore';
 import { Skeleton } from '../components/ui/Skeleton';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
-import { getPayoutCountry, PAYOUT_COUNTRIES } from '../../lib/payoutOperators';
+import { getPayoutCountry, PAYOUT_COUNTRIES, type PayoutOperator } from '../../lib/payoutOperators';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
@@ -439,7 +439,7 @@ const WalletPage: React.FC = () => {
                         : 'border-white/10 hover:border-white/20'
                     }`}
                   >
-                    <div className={`w-12 h-12 mx-auto mb-2 ${operator.colorClass}`} />
+                    <OperatorBadge operator={operator} />
                     <p className="text-xs font-display font-semibold text-white text-center">{operator.name}</p>
                   </button>
                 ))}
@@ -504,7 +504,7 @@ const WalletPage: React.FC = () => {
                         : 'border-white/10 hover:border-white/20'
                     }`}
                   >
-                    <div className={`w-12 h-12 mx-auto mb-2 ${operator.colorClass}`} />
+                    <OperatorBadge operator={operator} />
                     <p className="text-xs font-display font-semibold text-white text-center">{operator.name}</p>
                   </button>
                 ))}
@@ -540,6 +540,20 @@ const WalletPage: React.FC = () => {
     </div>
   );
 };
+
+const OperatorBadge = React.memo(({ operator }: { operator: PayoutOperator }) => (
+  <div
+    aria-hidden="true"
+    className="w-14 h-14 mx-auto mb-2 flex items-center justify-center font-display font-black italic leading-none px-1 text-center"
+    style={{
+      backgroundColor: operator.bg,
+      color: operator.fg,
+      fontSize: operator.mark.length > 5 ? 11 : operator.mark.length > 3 ? 13 : 16,
+    }}
+  >
+    {operator.mark}
+  </div>
+));
 
 const BalanceCard = React.memo(({ label, value, hint, accent = false }: { label: string; value: string; hint: string; accent?: boolean }) => (
   <Card className={accent ? 'bg-gradient-to-br from-zoyd-yellow/10 to-transparent border-zoyd-yellow' : ''}>

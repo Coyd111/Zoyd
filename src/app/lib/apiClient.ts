@@ -103,6 +103,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: 'Identifiants invalides. Vérifie ton pseudo/email et ton mot de passe.',
   ACCOUNT_NOT_ACTIVATED: 'Compte non activé. Termine ton inscription avec le code reçu.',
   INVALID_OPERATOR: 'Opérateur invalide.',
+  INVALID_COUNTRY: 'Retraits bientôt disponibles pour ton pays.',
   INVALID_AMOUNT: 'Montant invalide.',
   TRANSACTION_ALREADY_PROCESSED: 'Cette transaction a déjà été traitée.',
   TRANSACTION_IN_PROGRESS: 'Transaction en cours de traitement. Réessaie dans un instant.',

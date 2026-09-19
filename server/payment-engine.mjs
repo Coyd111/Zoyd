@@ -111,11 +111,45 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
 };
 
 // ─── FedaPay Payout (Retrait Mobile Money) ───────────────────────────────────
+// Matrice pays → opérateurs supportés (modes FedaPay vérifiés dans la doc).
+// Bénin : MTN (mtn_open), Moov (moov), Celtiis (sbin).
+// Côte d'Ivoire : MTN (mtn_ci), Moov (moov_ci), Orange (orange_ci), Wave (wave_ci).
+// Sénégal : Orange (orange_sn), Wave (wave_sn).
+// Togo : Moov (moov_tg), Togocel (togocel).
+// Pas de mode Orange/Wave au Bénin, pas de payout FedaPay pour CM/GA/CD/NG/GH.
+export const PAYOUT_COUNTRY_CONFIG = {
+  bj: {
+    prefix: '229', localLength: 8, label: 'Bénin',
+    operators: { 'MTN MoMo': 'mtn_open', 'Moov Money': 'moov', 'Celtiis': 'sbin' },
+  },
+  ci: {
+    prefix: '225', localLength: 10, label: "Côte d'Ivoire",
+    operators: { 'MTN MoMo': 'mtn_ci', 'Moov Money': 'moov_ci', 'Orange Money': 'orange_ci', 'Wave': 'wave_ci' },
+  },
+  sn: {
+    prefix: '221', localLength: 9, label: 'Sénégal',
+    operators: { 'Orange Money': 'orange_sn', 'Wave': 'wave_sn' },
+  },
+  tg: {
+    prefix: '228', localLength: 8, label: 'Togo',
+    operators: { 'Moov Money': 'moov_tg', 'Togocel': 'togocel' },
+  },
+};
 
-const OPERATOR_MODE_MAP = {
-  'MTN MoMo': 'mtn_open',
-  'Moov Money': 'moov',
-  'Celtiis': 'sbin',
+const COUNTRY_NAME_TO_ISO = {
+  benin: 'bj', bj: 'bj',
+  "cote d'ivoire": 'ci', 'côte d’ivoire': 'ci', ci: 'ci',
+  senegal: 'sn', 'sénégal': 'sn', sn: 'sn',
+  togo: 'tg', tg: 'tg',
+};
+
+/**
+ * Normalize un pays (nom FR du profil ou iso) vers son iso payout.
+ * @returns {string|null} 'bj'|'ci'|'sn'|'tg' ou null si non supporté
+ */
+export const normalizePayoutCountry = (country) => {
+  if (!country || typeof country !== 'string') return null;
+  return COUNTRY_NAME_TO_ISO[country.trim().toLowerCase()] || null;
 };
 
 /**
@@ -127,22 +161,25 @@ export const maskPhone = (number) => {
   return '*'.repeat(digits.length - 2) + digits.slice(-2);
 };
 /**
- * Parse a phone number string into FedaPay format.
- * Accepts: "+22961000001", "22961000001", "61000001" (Benin, 8 digits).
- * Returns { number: '', country: 'bj' } when the input is not a valid phone.
+ * Parse a phone number string into FedaPay format for a given payout country.
+ * Accepts international (+229XXXXXXXX) or local (XXXXXXXX) forms.
+ * @param {string} rawPhone - Raw phone input
+ * @param {string} [countryIso='bj'] - Payout country iso
+ * @returns {{ number: string, country: string }} number='' quand invalide
  */
-export const parsePhoneForFedaPay = (rawPhone) => {
-  if (!rawPhone || typeof rawPhone !== 'string') return { number: '', country: 'bj' };
+export const parsePhoneForFedaPay = (rawPhone, countryIso = 'bj') => {
+  const cfg = PAYOUT_COUNTRY_CONFIG[countryIso];
+  if (!rawPhone || typeof rawPhone !== 'string' || !cfg) return { number: '', country: countryIso || 'bj' };
   const cleaned = rawPhone.replace(/[\s\-().]/g, '');
+  const len = cfg.localLength;
 
-  // +229XXXXXXXX or 229XXXXXXXX → country bj, local 8-digit number
-  const match229 = cleaned.match(/^\+?229(\d{8})$/);
-  if (match229) return { number: match229[1], country: 'bj' };
+  const matchPrefix = cleaned.match(new RegExp(`^\\+?${cfg.prefix}(\\d{${len}})$`));
+  if (matchPrefix) return { number: matchPrefix[1], country: countryIso };
 
-  // Already a local 8-digit Benin number
-  if (/^\d{8}$/.test(cleaned)) return { number: cleaned, country: 'bj' };
+  const localRe = new RegExp(`^\\d{${len}}$`);
+  if (localRe.test(cleaned)) return { number: cleaned, country: countryIso };
 
-  return { number: '', country: 'bj' };
+  return { number: '', country: countryIso };
 };
 
 /**
@@ -151,23 +188,28 @@ export const parsePhoneForFedaPay = (rawPhone) => {
  *
  * @param {Object} params
  * @param {number} params.amountZC - Amount in Zoyd Coins
- * @param {string} params.method - Operator name ('MTN MoMo', 'Moov Money', 'Celtiis')
- * (modes FedaPay vérifiés : mtn_open, moov, sbin — pas de mode Orange/Wave au Bénin)
+ * @param {string} params.method - Operator name (selon pays, voir PAYOUT_COUNTRY_CONFIG)
+ * @param {string} [params.country] - Pays payout : iso ('bj') ou nom FR ('Benin'). Défaut 'bj'.
  * @param {string} params.phone - User's phone number
  * @param {string} params.userPseudo - User's display name
  * @param {string} [params.userEmail] - User's email
  * @param {string} [params.merchantReference] - Unique reference for idempotency
  * @returns {Promise<{ success: boolean, payoutId?: number, status?: string, amountFCFA?: number }>}
  */
-export const initiateFedaPayPayout = async ({ amountZC, method, phone, userPseudo, userEmail, merchantReference }) => {
+export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, userPseudo, userEmail, merchantReference }) => {
   const FEDAPAY_SECRET_KEY = getFedaPayConfig();
   if (!FEDAPAY_SECRET_KEY) {
     throw makeError('PAYMENT_NOT_CONFIGURED', "FedaPay n'est pas configuré pour les retraits.");
   }
 
-  const mode = OPERATOR_MODE_MAP[method];
+  const countryIso = country ? normalizePayoutCountry(country) : 'bj';
+  const cfg = countryIso ? PAYOUT_COUNTRY_CONFIG[countryIso] : undefined;
+  if (!countryIso || !cfg) {
+    throw makeError('INVALID_COUNTRY', 'Retraits bientôt disponibles pour ton pays.');
+  }
+  const mode = cfg.operators[method];
   if (!mode) {
-    throw makeError('INVALID_OPERATOR', `Opérateur non supporté: ${method}. Utilisez MTN MoMo, Moov Money ou Celtiis.`);
+    throw makeError('INVALID_OPERATOR', `Opérateur non supporté (${cfg.label}) : ${Object.keys(cfg.operators).join(', ')}.`);
   }
 
   const amountFCFA = Math.round(amountZC * 10);
@@ -175,16 +217,16 @@ export const initiateFedaPayPayout = async ({ amountZC, method, phone, userPseud
     throw makeError('INVALID_AMOUNT', 'Montant invalide pour le retrait (max 1 000 000 FCFA).');
   }
 
-  const phoneInfo = parsePhoneForFedaPay(phone);
+  const phoneInfo = parsePhoneForFedaPay(phone, countryIso);
   if (!phoneInfo.number) {
-    throw makeError('INVALID_PHONE', 'Numéro de téléphone invalide pour le retrait.');
+    throw makeError('INVALID_PHONE', `Numéro de téléphone invalide (format ${cfg.label} : +${cfg.prefix}...).`);
   }
 
   const names = (userPseudo || 'Joueur').split(/\s+/);
   const firstname = names[0] || 'Joueur';
   const lastname = names.slice(1).join(' ') || 'ZOYD';
 
-  log.info('Initiating FedaPay payout', { amountFCFA, method, mode, phone: maskPhone(phoneInfo.number), merchantReference });
+  log.info('Initiating FedaPay payout', { amountFCFA, method, mode, country: countryIso, phone: maskPhone(phoneInfo.number), merchantReference });
 
   try {
     // 1. Create the payout

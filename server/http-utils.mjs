@@ -247,6 +247,7 @@ export const mapPersistenceError = (error) => {
     case 'INVALID_EMAIL':
     case 'INVALID_OPERATOR':
     case 'INVALID_PHONE':
+    case 'INVALID_COUNTRY':
       return { status: 400, message, code };
     case 'FORBIDDEN':
     case 'ACCOUNT_NOT_ACTIVATED':

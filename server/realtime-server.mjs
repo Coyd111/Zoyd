@@ -102,7 +102,7 @@ import {
   addEvidenceToDisputeOnServer,
   escalateDisputeOnServer,
 } from './match-engine.mjs';
-import { verifyFedaPayTransactionAndCredit, initiateFedaPayPayout, parsePhoneForFedaPay } from './payment-engine.mjs';
+import { verifyFedaPayTransactionAndCredit, initiateFedaPayPayout, parsePhoneForFedaPay, normalizePayoutCountry, PAYOUT_COUNTRY_CONFIG } from './payment-engine.mjs';
 import {
   assignTournamentArbiterOnServer,
   createTournamentOnServer,
@@ -1082,16 +1082,22 @@ const handleRequest = async (req, res) => {
       respondJson(res, 400, { ok: false, error: `Montant invalide (${MIN_WITHDRAWAL_ZC} a 100 000 ZC).`, code: 'INVALID_AMOUNT' });
       return;
     }
-    // Whitelist opérateur AVANT tout débit (évite débit + refund parasites)
-    const WITHDRAW_OPERATORS = ['MTN MoMo', 'Moov Money', 'Celtiis'];
-    if (typeof body.method !== 'string' || !WITHDRAW_OPERATORS.includes(body.method)) {
-      respondJson(res, 400, { ok: false, error: 'Opérateur invalide. Utilisez MTN MoMo, Moov Money ou Celtiis.', code: 'INVALID_OPERATOR' });
+    // Pays payout : requête explicite, sinon profil, sinon Bénin (legacy).
+    // Un pays explicite mais non supporté → INVALID_COUNTRY (pas de fallback silencieux).
+    const rawCountry = typeof body.country === 'string' && body.country ? body.country : session.user.country;
+    const countryIso = rawCountry ? normalizePayoutCountry(rawCountry) : 'bj';
+    const countryCfg = PAYOUT_COUNTRY_CONFIG[countryIso];
+    if (!countryCfg) {
+      respondJson(res, 400, { ok: false, error: 'Retraits bientôt disponibles pour ton pays.', code: 'INVALID_COUNTRY' });
       return;
     }
-    // Téléphone Bénin valide AVANT tout débit
-    const phoneInfo = parsePhoneForFedaPay(typeof body.phone === 'string' ? body.phone : '');
+    if (typeof body.method !== 'string' || !countryCfg.operators[body.method]) {
+      respondJson(res, 400, { ok: false, error: `Opérateur invalide (${countryCfg.label}) : ${Object.keys(countryCfg.operators).join(', ')}.`, code: 'INVALID_OPERATOR' });
+      return;
+    }
+    const phoneInfo = parsePhoneForFedaPay(typeof body.phone === 'string' ? body.phone : '', countryIso);
     if (!phoneInfo.number) {
-      respondJson(res, 400, { ok: false, error: 'Numéro de téléphone invalide (format Bénin: +229XXXXXXXX).', code: 'INVALID_PHONE' });
+      respondJson(res, 400, { ok: false, error: `Numéro de téléphone invalide (format ${countryCfg.label} : +${countryCfg.prefix}...).`, code: 'INVALID_PHONE' });
       return;
     }
     // Idempotency: prevent double-withdrawal on retry/double-click
@@ -1137,6 +1143,7 @@ const handleRequest = async (req, res) => {
       payoutResult = await initiateFedaPayPayout({
         amountZC: netAmount,
         method: body.method,
+        country: countryIso,
         phone: body.phone,
         userPseudo: currentUser?.pseudo || 'Joueur',
         userEmail: currentUser?.email,

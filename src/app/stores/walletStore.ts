@@ -49,7 +49,7 @@ export interface WalletState {
   hydrateFromServer: (snapshot: WalletSnapshot) => void;
   refreshFromServer: () => Promise<void>;
   deposit: (amount: number, method: string) => Promise<void>;
-  withdraw: (amount: number, method: string, phone: string) => Promise<void>;
+  withdraw: (amount: number, method: string, phone: string, country?: string) => Promise<void>;
   // TODO: lockFunds/unlockFunds are optimistic-UI helpers; they should be
   // driven by server confirmations via socket events in production.
   // lockFunds returns a revert function on success, false when funds are insufficient.
@@ -136,12 +136,12 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           pushWalletNotification('Depot confirme', `${safeAmount.toFixed(1)} ZC ajoutées via ${method}.`);
         },
 
-        withdraw: async (amount, method, phone) => {
+        withdraw: async (amount, method, phone, country) => {
           const safeAmount = roundAmount(amount);
           if (safeAmount < MIN_WITHDRAWAL_ZC) {
             throw new Error(`Retrait minimum: ${MIN_WITHDRAWAL_ZC} ZC.`);
           }
-          const payload = await withdrawWalletBalance(safeAmount, method, phone);
+          const payload = await withdrawWalletBalance(safeAmount, method, phone, country);
           get().hydrateFromServer(payload.wallet);
           if (payload.user) {
             useAuthStore.getState().updateUser(payload.user);

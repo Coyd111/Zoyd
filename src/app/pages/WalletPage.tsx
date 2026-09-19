@@ -11,6 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useSocketStore } from '../stores/socketStore';
 import { Skeleton } from '../components/ui/Skeleton';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
+import { getPayoutCountry, PAYOUT_COUNTRIES } from '../../lib/payoutOperators';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
@@ -84,11 +85,11 @@ const WalletPage: React.FC = () => {
   const [fundingPrefillKey, setFundingPrefillKey] = useState('');
   const [searchParams] = useSearchParams();
 
-  const operators = [
-    { id: 'MTN MoMo', name: 'MTN MoMo', colorClass: 'bg-[#FFCC00]' },
-    { id: 'Moov Money', name: 'Moov Money', colorClass: 'bg-[#009EE2]' },
-    { id: 'Celtiis', name: 'Celtiis', colorClass: 'bg-[#00B0F0]' },
-  ];
+  // Pays payout depuis le profil (null = non supporté → retrait désactivé avec message).
+  const payoutCountry = getPayoutCountry(user?.country);
+  const operators = payoutCountry?.operators || [];
+  // Dépôts via widget FedaPay (aucune contrainte pays) : fallback Bénin si pays non supporté.
+  const depositOperators = operators.length > 0 ? operators : PAYOUT_COUNTRIES.bj.operators;
 
   const presetAmounts = [50, 100, 200, 500];
   const spendableBalance = getAvailableToSpend();
@@ -224,6 +225,10 @@ const WalletPage: React.FC = () => {
       toast.error('Entre un montant à retirer.');
       return;
     }
+    if (!payoutCountry) {
+      toast.error(`Retraits bientôt disponibles pour ton pays (${user?.country || 'inconnu'}).`);
+      return;
+    }
     if (!withdrawOperator) {
       toast.error('Choisis un opérateur Mobile Money.');
       return;
@@ -240,7 +245,7 @@ const WalletPage: React.FC = () => {
         toast.error('Montant invalidé.');
         return;
       }
-      await withdraw(amount, withdrawOperator, cleanPhone);
+      await withdraw(amount, withdrawOperator, cleanPhone, payoutCountry.iso);
       toast.success(`Retrait lancé vers ${cleanPhone} via ${withdrawOperator}.`);
       closeWithdrawModal();
     } catch (err) {
@@ -423,7 +428,7 @@ const WalletPage: React.FC = () => {
             <div>
               <label htmlFor="operator-select" className="block text-sm font-medium text-white mb-3">Opérateur Mobile Money</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {operators.map((operator) => (
+                {depositOperators.map((operator) => (
                     <button
                       key={operator.id}
                       onClick={() => setSelectedOperator(operator.id)}
@@ -479,7 +484,14 @@ const WalletPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-3">Opérateur Mobile Money</label>
+              <label className="block text-sm font-medium text-white mb-3">
+                Opérateur Mobile Money{payoutCountry ? ` (${payoutCountry.label})` : ''}
+              </label>
+              {!payoutCountry ? (
+                <p className="text-xs text-zoyd-yellow border border-zoyd-yellow/20 bg-zoyd-yellow/5 p-3">
+                  Retraits bientôt disponibles pour ton pays ({user?.country || 'inconnu'}). Change ton pays dans Profil si besoin.
+                </p>
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {operators.map((operator) => (
                   <button
@@ -497,6 +509,7 @@ const WalletPage: React.FC = () => {
                   </button>
                 ))}
               </div>
+              )}
             </div>
 
             <div>
@@ -506,17 +519,17 @@ const WalletPage: React.FC = () => {
                 type="tel"
                 value={withdrawPhone}
                 onChange={(event) => setWithdrawPhone(event.target.value)}
-                placeholder="+229 61 00 00 01"
+                placeholder={payoutCountry?.placeholder || '+229 61 00 00 01'}
                 autoComplete="tel"
               />
-              <p className="text-xs text-white/60 mt-2">Le numéro Mobile Money où recevoir les fonds.</p>
+              <p className="text-xs text-white/60 mt-2">Le numéro Mobile Money où recevoir les fonds{payoutCountry ? ` (${payoutCountry.label}, ${payoutCountry.prefix}...)` : ''}.</p>
             </div>
 
             <Button
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={isWithdrawing || !withdrawAmount || !withdrawOperator || !withdrawPhone.trim() || withdrawAmountNum < MIN_WITHDRAWAL_ZC || withdrawAmountNum > cashBalance}
+              disabled={!payoutCountry || isWithdrawing || !withdrawAmount || !withdrawOperator || !withdrawPhone.trim() || withdrawAmountNum < MIN_WITHDRAWAL_ZC || withdrawAmountNum > cashBalance}
               aria-label="Confirmer le retrait"
             >
               {isWithdrawing ? 'Transfert en cours...' : 'Retirer mes gains'}

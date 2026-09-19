@@ -34,8 +34,8 @@ export const depositWalletBalance = async (amount: number, method: string): Prom
   return authorizedPost<WalletResponse>('/api/wallet/deposit', { amount, method });
 };
 
-export const withdrawWalletBalance = async (amount: number, method: string, phone: string): Promise<WalletResponse> => {
-  return authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone });
+export const withdrawWalletBalance = async (amount: number, method: string, phone: string, country?: string): Promise<WalletResponse> => {
+  return authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone, country });
 };
 
 export const verifyFedaPayTransaction = async (transactionId: number | string): Promise<WalletResponse> => {

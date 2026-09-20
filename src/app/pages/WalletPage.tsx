@@ -45,21 +45,27 @@ interface FedaPayCheckoutConfig {
   transaction: { amount: number; description: string; currency?: { iso: string } };
   customer?: { email?: string; firstname?: string; lastname?: string };
   onComplete?: (resp: { reason?: string; transaction?: { id: number | string } }) => void;
-  onClose?: () => void;
+}
+
+interface FedaPayWidget {
+  open: () => void;
+  close?: () => void;
 }
 
 declare const FedaPay:
-  | { checkout: (config: FedaPayCheckoutConfig) => void }
+  | {
+      init: (config: FedaPayCheckoutConfig) => FedaPayWidget;
+      DIALOG_DISMISSED?: string;
+      CHECKOUT_COMPLETED?: string;
+    }
   | undefined;
 
-const getFedaPayCheckout = (): ((config: FedaPayCheckoutConfig) => void) | null => {
+const getFedaPay = (): NonNullable<typeof FedaPay> | null => {
   if (typeof window === 'undefined') return null;
   const fp = (window as unknown as Record<string, unknown>).FedaPay as
-    | { checkout?: unknown }
+    | { init?: unknown }
     | undefined;
-  return typeof fp?.checkout === 'function'
-    ? (fp.checkout as (config: FedaPayCheckoutConfig) => void)
-    : null;
+  return typeof fp?.init === 'function' ? (fp as NonNullable<typeof FedaPay>) : null;
 };
 
 const WalletPage: React.FC = () => {
@@ -163,31 +169,38 @@ const WalletPage: React.FC = () => {
     }
 
     // Check if FedaPay is loaded (via window — safe en module ESM)
-    let checkout = getFedaPayCheckout();
-    if (!checkout) {
+    let fedapay = getFedaPay();
+    if (!fedapay) {
       const loaded = await loadFedaPayScript();
-      checkout = loaded ? getFedaPayCheckout() : null;
-      if (!checkout) {
+      fedapay = loaded ? getFedaPay() : null;
+      if (!fedapay) {
         toast.error("Le service de paiement FedaPay n'est pas disponible. Recharge la page ou essaie plus tard.");
         return;
       }
     }
 
-    // Using FedaPay Widget
-    checkout({
-      public_key: publicKey,
-      transaction: {
-        amount: amountFCFA,
-        description: `Recharge de ${depositAmountNum} ZC (~ ${amountFCFA} FCFA)`,
-      },
-      customer: {
-        email: user?.email || 'joueur@zoyd.app',
-        lastname: user?.pseudo || 'Joueur ZOYD'
-      },
-      onClose: () => {
-        toast.dismiss();
-      },
-      onComplete: async (resp) => {
+    // Using FedaPay Widget — API officielle : FedaPay.init(config) puis widget.open().
+    // (Il n'existe pas de FedaPay.checkout() : l'ancien appel throw silencieusement.)
+    // try/catch obligatoire : sans ça, une erreur synchrone devient un rejet non géré, totalement silencieux.
+    // `settled` + vérification DOM : si init/open ne throw PAS mais n'affiche
+    // rien (clé invalide, bloqueur), on l'annonce au lieu de rester muet.
+    let settled = false;
+    const markSettled = () => {
+      settled = true;
+    };
+    try {
+      const widget = fedapay.init({
+        public_key: publicKey,
+        transaction: {
+          amount: amountFCFA,
+          description: `Recharge de ${depositAmountNum} ZC (~ ${amountFCFA} FCFA)`,
+        },
+        customer: {
+          email: user?.email || 'joueur@zoyd.app',
+          lastname: user?.pseudo || 'Joueur ZOYD'
+        },
+        onComplete: async (resp) => {
+        markSettled();
         if (resp.reason === 'CHECKOUT COMPLETE') {
           if (!resp.transaction?.id) {
             toast.error('Transaction invalidé.');
@@ -212,8 +225,23 @@ const WalletPage: React.FC = () => {
           toast.error('Transaction annulée ou echouee.');
         }
         closeDepositModal();
+      },
+      });
+      widget.open();
+    } catch (err) {
+      markSettled();
+      toast.error(err instanceof Error ? err.message : "Le widget de paiement n'a pas pu s'ouvrir.");
+    }
+    window.setTimeout(() => {
+      if (settled) return;
+      const opened =
+        typeof document !== 'undefined' &&
+        document.querySelector('iframe[src*="fedapay" i], [id*="fedapay" i], [class*="fedapay" i]');
+      if (!opened) {
+        markSettled();
+        toast.error("Le widget de paiement ne s'est pas ouvert. Désactive ton bloqueur de pub puis réessaie.");
       }
-    });
+    }, 4000);
   };
 
   const handleWithdraw = async () => {

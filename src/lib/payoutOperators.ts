@@ -5,11 +5,13 @@
 export interface PayoutOperator {
   id: string;
   name: string;
-  /** Couleur de fond du badge (couleur marque) */
+  /** Chemin du vrai logo (public/operators). Absent = badge texte stylé. */
+  logo?: string;
+  /** Couleur de fond du badge (fallback + fond logo) */
   bg: string;
-  /** Couleur du texte du badge */
+  /** Couleur du texte du badge fallback */
   fg: string;
-  /** Wordmark affiché dans le badge */
+  /** Wordmark affiché si pas de logo */
   mark: string;
 }
 
@@ -28,9 +30,9 @@ export const PAYOUT_COUNTRIES: Record<string, PayoutCountry> = {
     prefix: '+229',
     placeholder: '+229 61 00 00 01',
     operators: [
-      { id: 'MTN MoMo', name: 'MTN MoMo', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
+      { id: 'MTN MoMo', name: 'MTN MoMo', logo: '/operators/mtn.svg', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
       { id: 'Moov Money', name: 'Moov Money', bg: '#009EE2', fg: '#FFFFFF', mark: 'moov' },
-      { id: 'Celtiis', name: 'Celtiis', bg: '#0077B6', fg: '#FFFFFF', mark: 'celtiis' },
+      { id: 'Celtiis', name: 'Celtiis', logo: '/operators/celtiis.svg', bg: '#FFFFFF', fg: '#0077B6', mark: 'celtiis' },
     ],
   },
   ci: {
@@ -39,10 +41,10 @@ export const PAYOUT_COUNTRIES: Record<string, PayoutCountry> = {
     prefix: '+225',
     placeholder: '+225 07 00 00 00 00',
     operators: [
-      { id: 'MTN MoMo', name: 'MTN MoMo', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
+      { id: 'MTN MoMo', name: 'MTN MoMo', logo: '/operators/mtn.svg', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
       { id: 'Moov Money', name: 'Moov Money', bg: '#009EE2', fg: '#FFFFFF', mark: 'moov' },
-      { id: 'Orange Money', name: 'Orange Money', bg: '#FF7900', fg: '#000000', mark: 'Orange' },
-      { id: 'Wave', name: 'Wave', bg: '#1DC8FF', fg: '#0A0A0A', mark: 'wave' },
+      { id: 'Orange Money', name: 'Orange Money', logo: '/operators/orange.svg', bg: '#000000', fg: '#FFFFFF', mark: 'Orange' },
+      { id: 'Wave', name: 'Wave', logo: '/operators/wave.png', bg: '#FFFFFF', fg: '#0A0A0A', mark: 'wave' },
     ],
   },
   sn: {
@@ -51,8 +53,8 @@ export const PAYOUT_COUNTRIES: Record<string, PayoutCountry> = {
     prefix: '+221',
     placeholder: '+221 77 000 00 00',
     operators: [
-      { id: 'Orange Money', name: 'Orange Money', bg: '#FF7900', fg: '#000000', mark: 'Orange' },
-      { id: 'Wave', name: 'Wave', bg: '#1DC8FF', fg: '#0A0A0A', mark: 'wave' },
+      { id: 'Orange Money', name: 'Orange Money', logo: '/operators/orange.svg', bg: '#000000', fg: '#FFFFFF', mark: 'Orange' },
+      { id: 'Wave', name: 'Wave', logo: '/operators/wave.png', bg: '#FFFFFF', fg: '#0A0A0A', mark: 'wave' },
     ],
   },
   tg: {

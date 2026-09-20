@@ -544,14 +544,27 @@ const WalletPage: React.FC = () => {
 const OperatorBadge = React.memo(({ operator }: { operator: PayoutOperator }) => (
   <div
     aria-hidden="true"
-    className="w-14 h-14 mx-auto mb-2 flex items-center justify-center font-display font-black italic leading-none px-1 text-center"
-    style={{
-      backgroundColor: operator.bg,
-      color: operator.fg,
-      fontSize: operator.mark.length > 5 ? 11 : operator.mark.length > 3 ? 13 : 16,
-    }}
+    className="w-14 h-14 mx-auto mb-2 flex items-center justify-center overflow-hidden"
+    style={{ backgroundColor: operator.bg }}
   >
-    {operator.mark}
+    {operator.logo ? (
+      <img
+        src={operator.logo}
+        alt=""
+        loading="lazy"
+        className="w-full h-full object-contain p-1.5"
+      />
+    ) : (
+      <span
+        className="font-display font-black italic leading-none px-1 text-center"
+        style={{
+          color: operator.fg,
+          fontSize: operator.mark.length > 5 ? 11 : operator.mark.length > 3 ? 13 : 16,
+        }}
+      >
+        {operator.mark}
+      </span>
+    )}
   </div>
 ));
 

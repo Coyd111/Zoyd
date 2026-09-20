@@ -10,6 +10,12 @@
       ]
     },
     {
+      "source": "/(auth|mode|mj|wallet|earnings|classements|chat|profil|parametres|br-league|infos|admin)(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+      ]
+    },
+    {
       "source": "/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }

@@ -1770,12 +1770,16 @@ const handleRequest = async (req, res) => {
 
     try { await withWalletMutex(session.user.id, async () => {
       const body = await parseRequestBody(req);
-      if (!body.transactionId || typeof body.transactionId !== 'string' || !/^\d{1,20}$/.test(body.transactionId)) {
+      // FedaPay renvoie un id NUMÉRIQUE (ex: 23) : on accepte number et string.
+      const transactionId = body.transactionId === undefined || body.transactionId === null
+        ? ''
+        : String(body.transactionId);
+      if (!/^\d{1,20}$/.test(transactionId)) {
         respondJson(res, 400, { ok: false, error: 'transactionId invalide.', code: 'INVALID_TRANSACTION_ID' });
         return;
       }
 
-      const outcome = await verifyFedaPayTransactionAndCredit(body.transactionId, session.user);
+      const outcome = await verifyFedaPayTransactionAndCredit(transactionId, session.user);
       const wallet = getServerWallet(session.user.id);
       respondJson(res, 200, { 
         ok: true, 

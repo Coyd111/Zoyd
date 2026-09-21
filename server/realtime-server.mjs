@@ -568,7 +568,9 @@ const handleRequest = async (req, res) => {
         respondJson(res, 400, { ok: false, error: 'Identifiant requis.', code: 'MISSING_FIELDS' });
         return;
       }
-      // Always 200: never reveal whether the identifier exists.
+      // UX v1 : le front a besoin de savoir si le compte existe pour rester
+      // sur l'étape 1 avec un message clair (choix produit assumé : cela
+      // rend l'existence des comptes devinable, acceptable pour la v1).
       const result = requestPasswordReset(identifier);
       let delivery = { delivered: false };
       if (result.found) {
@@ -576,9 +578,14 @@ const handleRequest = async (req, res) => {
       }
       respondJson(res, 200, {
         ok: true,
-        message: 'Si un compte existe pour cet identifiant, un code vient de lui etre adresse.',
+        found: result.found,
+        message: result.found
+          ? (delivery.delivered
+            ? 'Code envoyé. Vérifie ta boîte de réception (et tes spams).'
+            : "Code généré mais l'envoi automatique a échoué : réessaie dans un instant ou contacte le support.")
+          : 'Aucun compte associé à cet identifiant.',
+        ...(result.found && { delivery: delivery.delivered ? 'sent' : 'pending-provider' }),
         ...(result.found && process.env.NODE_ENV !== 'production' && { resetCode: result.code }),
-        ...(result.found && !delivery.delivered && { delivery: 'pending-provider' }),
       });
     } catch (error) {
       respondMappedError(res, error);

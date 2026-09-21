@@ -24,9 +24,18 @@ const ForgotPasswordPage: React.FC = () => {
     setIsRequesting(true);
     try {
       const response = await requestPasswordReset(identifier.trim());
+      // Compte inconnu : on reste sur l'étape 1 avec un message clair.
+      if (response.found === false) {
+        toast.error(response.message || 'Aucun compte associé à cet identifiant.');
+        return;
+      }
       if (response.resetCode) setDevCode(response.resetCode);
       setCodeSent(true);
-      toast.success(response.message);
+      if (response.delivery === 'pending-provider') {
+        toast.warning(response.message);
+      } else {
+        toast.success(response.message);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Demande impossible.');
     } finally {

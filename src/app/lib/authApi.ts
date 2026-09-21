@@ -21,6 +21,7 @@ interface ActivationResponse {
 interface RecoveryResponse {
   ok: boolean;
   message: string;
+  found?: boolean;
   activationCode?: string;
   resetCode?: string;
   delivery?: 'sent' | 'pending-provider';

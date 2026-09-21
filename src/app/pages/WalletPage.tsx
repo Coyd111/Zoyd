@@ -408,6 +408,16 @@ const WalletPage: React.FC = () => {
                 <div className="text-xl md:text-2xl font-display font-black text-white">150 ZC</div>
               </div>
             </div>
+            <p className="mt-4 text-[11px] font-mono uppercase tracking-widest text-white/40">
+              18+ — Ne mise que ce que tu peux perdre.{' '}
+              <Link to="/conditions" className="text-zoyd-yellow hover:text-white underline">
+                Frais et conditions
+              </Link>
+              {' · '}
+              <Link to="/jeu-responsable" className="text-zoyd-yellow hover:text-white underline">
+                Jeu responsable
+              </Link>
+            </p>
           </CardContent>
         </Card>
 

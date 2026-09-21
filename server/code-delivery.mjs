@@ -61,12 +61,14 @@ const buildBodies = (code, purpose) => {
     ],
   };
   const text = (lines[purpose] || lines.activation).join('\n');
+  const footerText = '\n\n—\nZOYD, Cotonou (Bénin) — 18+. Assistance : coyd2976@gmail.com / WhatsApp +2290165240654 (8h-01h GMT+1).';
   const html = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#050505;color:#fff;">
 <p style="font-size:14px;color:rgba(255,255,255,.7)">ZOYD — vérification</p>
 <p style="font-size:28px;font-weight:900;letter-spacing:.2em;color:#FFFF00">${code}</p>
 <p style="font-size:13px;color:rgba(255,255,255,.7)">${(lines[purpose] || lines.activation).slice(1).join('<br>')}</p>
+<p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:24px;border-top:1px solid rgba(255,255,255,.1);padding-top:12px;">ZOYD, Cotonou (Bénin) — 18+.<br>Assistance : coyd2976@gmail.com / WhatsApp +2290165240654 (8h-01h GMT+1).</p>
 </div>`;
-  return { text, html };
+  return { text: text + footerText, html };
 };
 
 /**

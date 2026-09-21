@@ -476,8 +476,15 @@ export default function LandingPage() {
             <Link to="/mode" className="hover:text-white/60 transition-colors">MJ + BR</Link>
             <Link to="/classements" className="hover:text-white/60 transition-colors">Classements</Link>
           </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-mono uppercase tracking-[0.22em] text-white/40">
+            <Link to="/conditions" className="hover:text-white/70 transition-colors">Conditions</Link>
+            <Link to="/confidentialite" className="hover:text-white/70 transition-colors">Confidentialité</Link>
+            <Link to="/mentions" className="hover:text-white/70 transition-colors">Mentions & Assistance</Link>
+            <Link to="/jeu-responsable" className="hover:text-white/70 transition-colors">Jeu responsable</Link>
+          </div>
           <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/70">
-            © 2026 ZOYD Plateforme
+            © 2026 ZOYD — Cotonou, Bénin
+            <span className="ml-3 inline-block border border-zoyd-yellow/50 text-zoyd-yellow px-2 py-0.5">18+</span>
           </div>
         </div>
       </footer>

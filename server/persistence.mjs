@@ -151,7 +151,7 @@ export const sanitizeUserPayload = (payload) => {
 
 export const sanitizePublicUserPayload = (payload) => {
   if (!payload) return null;
-  const { wallet, walletBalance, email, phone, ...publicFields } = payload;
+  const { wallet, walletBalance, email, phone, legal, ...publicFields } = payload;
   return {
     ...publicFields,
     trustScore: Number(payload.trustScore || 0),
@@ -598,6 +598,10 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
   if (typeof password !== 'string' || password.length < 8) {
     throw makeError('INVALID_REGISTRATION', 'Le mot de passe doit contenir au moins 8 caracteres.');
   }
+  // Conformité : 18+ et CGU obligatoires (sauf compte admin système).
+  if (role !== 'admin' && (input.acceptAdult !== true || input.acceptTerms !== true)) {
+    throw makeError('LEGAL_NOT_ACCEPTED', 'Confirme avoir 18 ans ou plus et accepter les Conditions pour créer un compte.');
+  }
 
   const release = await registrationMutex.acquire();
   try {
@@ -606,6 +610,13 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     const id = input.id || crypto.randomUUID();
     const createdAt = input.dateJoined || getNow();
     const payload = buildUserPayload({ ...input, id, dateJoined: createdAt, isActive: true }, role);
+    if (role !== 'admin') {
+      payload.legal = {
+        version: '2026-09-21',
+        adultAt: input.acceptedAt || createdAt,
+        termsAt: input.acceptedAt || createdAt,
+      };
+    }
     const passwordHash = await hashPassword(password);
 
     // Write to memory

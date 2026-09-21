@@ -12,6 +12,10 @@ import ActivatePage from './pages/auth/ActivatePage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
 import RootIndexPage from './pages/RootIndexPage';
+import ConditionsPage from './pages/legal/ConditionsPage';
+import ConfidentialitePage from './pages/legal/ConfidentialitePage';
+import MentionsPage from './pages/legal/MentionsPage';
+import JeuResponsablePage from './pages/legal/JeuResponsablePage';
 
 // Lazy page loaders
 const modeLoader = async () => { const { default: Component } = await import('./pages/ModeSelectionPage'); return { Component }; };
@@ -68,6 +72,23 @@ export const router = createBrowserRouter([
       {
         path: 'mode',
         lazy: modeLoader,
+      },
+      // Pages légales publiques (pas de login requis)
+      {
+        path: 'conditions',
+        Component: ConditionsPage,
+      },
+      {
+        path: 'confidentialite',
+        Component: ConfidentialitePage,
+      },
+      {
+        path: 'mentions',
+        Component: MentionsPage,
+      },
+      {
+        path: 'jeu-responsable',
+        Component: JeuResponsablePage,
       },
       {
         path: 'mj',

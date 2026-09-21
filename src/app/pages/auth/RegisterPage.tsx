@@ -78,6 +78,8 @@ const RegisterPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [acceptAdult, setAcceptAdult] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [formData, setFormData] = useState<Partial<RegisterPayload>>({});
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const navigate = useNavigate();
@@ -162,8 +164,17 @@ const RegisterPage: React.FC = () => {
   };
 
   const onFinalSubmit = async () => {
+    if (!acceptAdult) {
+      toast.error('Tu dois confirmer avoir 18 ans ou plus pour créer un compte.');
+      return;
+    }
+    if (!acceptTerms) {
+      toast.error("Tu dois accepter les Conditions d'utilisation pour continuer.");
+      return;
+    }
     setIsLoading(true);
     try {
+      const acceptedAt = new Date().toISOString();
       const auth = await registerWithBackend({
         pseudo: formData.pseudo,
         email: formData.email,
@@ -178,6 +189,9 @@ const RegisterPage: React.FC = () => {
         country: formData.country || 'Benin',
         streamerMode: Boolean(formData.streamerMode),
         streamerPseudo: formData.streamerMode ? formData.streamerPseudo : '',
+        acceptAdult,
+        acceptTerms,
+        acceptedAt,
       });
 
       // V1 simplifiée : compte directement actif + session immédiate (pas d'étape code).
@@ -642,14 +656,51 @@ const RegisterPage: React.FC = () => {
                   >
                     RÉGLAGES
                   </button>
+                </div>
+
+                <div className="relative z-10 space-y-3 text-left border border-white/10 bg-black/40 p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      id="acceptAdult"
+                      type="checkbox"
+                      checked={acceptAdult}
+                      onChange={(e) => setAcceptAdult(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 accent-zoyd-yellow"
+                    />
+                    <span className="text-[11px] font-mono uppercase tracking-widest text-white/70">
+                      Je confirme avoir <span className="text-white font-black">18 ans ou plus</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      id="acceptTerms"
+                      type="checkbox"
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 accent-zoyd-yellow"
+                    />
+                    <span className="text-[11px] font-mono uppercase tracking-widest text-white/70">
+                      J'accepte les{' '}
+                      <Link to="/conditions" target="_blank" className="text-zoyd-yellow hover:text-white underline">
+                        Conditions d'utilisation
+                      </Link>
+                      {' '}et les règles du{' '}
+                      <Link to="/jeu-responsable" target="_blank" className="text-zoyd-yellow hover:text-white underline">
+                        jeu responsable
+                      </Link>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="relative z-10">
                   <Button
                     type="button"
                     onClick={onFinalSubmit}
                     variant="primary"
                     fullWidth
                     size="lg"
-                    className="flex-[2] py-6"
-                    disabled={isLoading}
+                    className="py-6"
+                    disabled={isLoading || !acceptAdult || !acceptTerms}
                   >
                     {isLoading ? <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'CRÉER MON COMPTE'}
                   </Button>

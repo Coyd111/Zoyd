@@ -36,6 +36,10 @@
   ],
   "rewrites": [
     { "source": "/auth/(.*)", "destination": "/index.html" },
+    { "source": "/conditions", "destination": "/index.html" },
+    { "source": "/confidentialite", "destination": "/index.html" },
+    { "source": "/mentions", "destination": "/index.html" },
+    { "source": "/jeu-responsable", "destination": "/index.html" },
     { "source": "/mode", "destination": "/index.html" },
     { "source": "/mj(.*)", "destination": "/index.html" },
     { "source": "/wallet", "destination": "/index.html" },

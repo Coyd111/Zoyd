@@ -101,6 +101,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   WITHDRAWAL_MIN: 'Retrait minimum: 150 ZC.',
   INVALID_PHONE: 'Numéro de téléphone invalide.',
   INVALID_CREDENTIALS: 'Identifiants invalides. Vérifie ton pseudo/email et ton mot de passe.',
+  LEGAL_NOT_ACCEPTED: 'Confirme avoir 18 ans ou plus et accepter les Conditions pour créer un compte.',
   ACCOUNT_NOT_ACTIVATED: 'Compte non activé. Termine ton inscription avec le code reçu.',
   INVALID_OPERATOR: 'Opérateur invalide.',
   INVALID_COUNTRY: 'Retraits bientôt disponibles pour ton pays.',

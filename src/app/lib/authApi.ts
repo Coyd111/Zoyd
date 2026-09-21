@@ -41,6 +41,9 @@ export interface RegisterPayload {
   country: string;
   streamerMode: boolean;
   streamerPseudo?: string;
+  acceptAdult?: boolean;
+  acceptTerms?: boolean;
+  acceptedAt?: string;
 }
 
 export const registerWithBackend = async (payload: RegisterPayload): Promise<AuthResponse> => {

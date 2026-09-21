@@ -26,3 +26,13 @@ services:
         sync: false
       - key: ZOYD_ALLOWED_ORIGINS
         value: "https://zoyd.vercel.app,https://zoyd.africa,https://www.zoyd.africa"
+      # Email via API HTTPS (port 443 — SMTP bloqué sur Render gratuit).
+      # Resend (recommandé) : https://resend.com/api-keys
+      - key: RESEND_API_KEY
+        sync: false
+      # Alternative : Brevo https://app.brevo.com/settings/keys/api
+      - key: BREVO_API_KEY
+        sync: false
+      # Expéditeur affiché (doit être vérifié chez le provider).
+      - key: EMAIL_FROM
+        sync: false

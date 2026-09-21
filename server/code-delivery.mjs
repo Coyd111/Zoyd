@@ -1,11 +1,17 @@
 // server/code-delivery.mjs — Auth code delivery (activation / password reset).
 // Canaux par ordre de priorité :
-// 1. SMTP (ex. Outlook smtp.office365.com) si SMTP_HOST/SMTP_USER/SMTP_PASS
-//    sont configurés et que le destinataire est un email.
-// 2. CODE_DELIVERY_WEBHOOK si défini (POST { to, code, purpose }, 5s timeout).
-// 3. Sinon hors production : code loggé pour tests locaux, la route expose
+// 1. Resend API HTTPS (port 443, compatible Render gratuit) si RESEND_API_KEY
+//    est configuré et que le destinataire est un email.
+//    → https://resend.com → API Keys → RESEND_API_KEY + EMAIL_FROM
+// 2. Brevo API HTTPS (port 443) si BREVO_API_KEY est configuré.
+//    → https://app.brevo.com → API Keys → BREVO_API_KEY + EMAIL_FROM
+// 3. SMTP si SMTP_HOST/SMTP_USER/SMTP_PASS sont configurés.
+//    ⚠️ BLOQUÉ sur Render gratuit (ports 25/465/587 fermés depuis sept 2025 :
+//    "Connection timeout"). Ne marche qu'en local ou instance payante.
+// 4. CODE_DELIVERY_WEBHOOK si défini (POST { to, code, purpose }, 5s timeout).
+// 5. Sinon hors production : code loggé pour tests locaux, la route expose
 //    le code en JSON (même pattern que register).
-// 4. En production sans provider : delivery pending, les routes répondent
+// 6. En production sans provider : delivery pending, les routes répondent
 //    honnêtement au lieu de prétendre que le message est parti.
 
 import { createLogger } from './logger.mjs';
@@ -64,7 +70,93 @@ const buildBodies = (code, purpose) => {
 };
 
 /**
+ * Try sending the code through Resend HTTP API (port 443 — marche sur Render gratuit).
+ * Docs : https://resend.com/docs/api-reference/emails/send-email
+ * Env : RESEND_API_KEY (re_...), EMAIL_FROM (ex. "ZOYD <noreply@zoyd.africa>").
+ * Sans domaine vérifié, EMAIL_FROM = "ZOYD <onboarding@resend.dev>" (test uniquement).
+ * @returns {Promise<boolean>} true si envoyé
+ */
+const sendViaResend = async ({ to, code, purpose }) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || !isEmail(to)) return false;
+  const from = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'ZOYD <onboarding@resend.dev>';
+  const { text, html } = buildBodies(code, purpose);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: SUBJECTS[purpose] || SUBJECTS.activation,
+        text,
+        html,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`Resend HTTP ${response.status} ${body.slice(0, 200)}`);
+    }
+    return true;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+/**
+ * Try sending the code through Brevo HTTP API (port 443 — marche sur Render gratuit).
+ * Docs : https://developers.brevo.com/reference/sendtransacemail
+ * Env : BREVO_API_KEY (xkeysib-...), EMAIL_FROM (expéditeur vérifié dans Brevo).
+ * @returns {Promise<boolean>} true si envoyé
+ */
+const sendViaBrevo = async ({ to, code, purpose }) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey || !isEmail(to)) return false;
+  const fromRaw = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'coyd2976@gmail.com';
+  const m = String(fromRaw).match(/^(.*)<([^<>]+)>$/);
+  const sender = m
+    ? { name: m[1].trim().replace(/^["']|["']$/g, '') || 'ZOYD', email: m[2].trim() }
+    : { name: 'ZOYD', email: fromRaw.trim() };
+  const { text, html } = buildBodies(code, purpose);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: to }],
+        subject: SUBJECTS[purpose] || SUBJECTS.activation,
+        htmlContent: html,
+        textContent: text,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`Brevo HTTP ${response.status} ${body.slice(0, 200)}`);
+    }
+    return true;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+/**
  * Try sending the code through SMTP (Outlook ou compatible).
+ * ⚠️ Render gratuit bloque les ports SMTP (25/465/587) → "Connection timeout".
+ * Gardé pour dev local / instance payante uniquement.
  * @returns {Promise<boolean>} true si envoyé
  */
 const sendViaSmtp = async ({ to, code, purpose }) => {
@@ -109,16 +201,41 @@ const sendViaSmtp = async ({ to, code, purpose }) => {
 export const deliverAuthCode = async ({ to, code, purpose }) => {
   const isProd = process.env.NODE_ENV === 'production';
 
-  // 1. SMTP
+  // 1. Resend API (HTTPS — compatible Render gratuit)
+  try {
+    if (await sendViaResend({ to, code, purpose })) {
+      return { delivered: true, channel: 'resend' };
+    }
+  } catch (error) {
+    log.error('resend delivery failed', { purpose, to: maskDestination(to), message: error.message });
+  }
+
+  // 2. Brevo API (HTTPS — compatible Render gratuit)
+  try {
+    if (await sendViaBrevo({ to, code, purpose })) {
+      return { delivered: true, channel: 'brevo' };
+    }
+  } catch (error) {
+    log.error('brevo delivery failed', { purpose, to: maskDestination(to), message: error.message });
+  }
+
+  // 3. SMTP (local / instance payante uniquement — bloqué sur Render gratuit)
   try {
     if (await sendViaSmtp({ to, code, purpose })) {
       return { delivered: true, channel: 'smtp' };
     }
   } catch (error) {
     log.error('smtp delivery failed', { purpose, to: maskDestination(to), message: error.message });
+    // Conseil actionnable : Render gratuit ferme les ports SMTP.
+    if (/timeout|ETIMEDOUT|ENOTFOUND|ECONN/i.test(error.message || '')) {
+      log.warn('smtp blocked? use RESEND_API_KEY or BREVO_API_KEY (HTTPS port 443)', {
+        purpose,
+        to: maskDestination(to),
+      });
+    }
   }
 
-  // 2. Webhook
+  // 4. Webhook
   const webhook = process.env.CODE_DELIVERY_WEBHOOK;
   if (webhook) {
     try {
@@ -139,7 +256,7 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
     }
   }
 
-  // 3. Défaut
+  // 5. Défaut
   if (!isProd) {
     // Local testing only: never log codes in production.
     log.info('dev auth code', { purpose, to: maskDestination(to), code });

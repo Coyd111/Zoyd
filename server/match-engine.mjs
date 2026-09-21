@@ -587,6 +587,11 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     throw makeError('FORBIDDEN', 'Seul l arbitre peut valider le score quand un arbitre est assigne.');
   }
   if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
+  // Pas de résultat sur un match clôturé : les mises ont déjà été remboursées
+  // (cancel) ou consommées — en créer un ici minterait des ZC sans cagnotte.
+  if (['cancelled', 'forfeited'].includes(match.status)) {
+    throw makeError('MATCH_CLOSED', 'Ce match est clôturé et ne peut plus recevoir de résultat.');
+  }
 
   const normalizedProofs = resultPayload.proofs
     ? {
@@ -610,7 +615,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un ecran final avant de valider le score.');
   }
 
-  if (isInstantNoArbiter && !normalizedScreenshots.length) {
+  if (isInstantNoArbiter && !normalizedScreenshots.length && resultPayload.submittedBy !== 'admin-dashboard') {
     throw makeError('PROOFS_REQUIRED', 'Ajoute au moins une capture d\'ecran pour valider le score.');
   }
 

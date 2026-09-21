@@ -146,6 +146,14 @@ const WalletPage: React.FC = () => {
 
   const filteredTransactions = useMemo(() => {
     if (filter === 'all') return transactions;
+    // GAINS regroupe tous les crédits : gains de match, commissions d'arbitrage, bonus.
+    if (filter === 'prize_win') {
+      return transactions.filter((transaction) =>
+        transaction.type === 'prize_win' ||
+        transaction.type === 'arbitration_fee' ||
+        transaction.type === 'bonus'
+      );
+    }
     return transactions.filter((transaction) => transaction.type === filter);
   }, [filter, transactions]);
 
@@ -637,7 +645,8 @@ interface TransactionRowProps {
 }
 
 const TransactionRow = React.memo(({ type, amount, description, status, timestamp, metadata }: TransactionRowProps) => {
-  const isPositive = amount >= 0;
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const isPositive = safeAmount >= 0;
   const typeLabel =
     type === 'deposit'
       ? 'Ajout'
@@ -648,14 +657,20 @@ const TransactionRow = React.memo(({ type, amount, description, status, timestam
           : type === 'entry_fee'
             ? 'Pass'
             : type === 'refund'
-              ? 'Remboursément'
+              ? 'Remboursement'
               : type === 'bonus'
                 ? 'Bonus'
                 : type === 'arbitration_fee'
                   ? 'Arbitrage'
                   : type === 'match_loss'
                     ? 'Partie'
-                    : type;
+                    : type === 'debit'
+                      ? 'Débit'
+                      : type === 'penalty'
+                        ? 'Pénalité'
+                        : type === 'referral'
+                          ? 'Parrainage'
+                          : type;
 
   const statusIcon =
     status === 'completed' ? (
@@ -666,21 +681,26 @@ const TransactionRow = React.memo(({ type, amount, description, status, timestam
       <AlertCircle className="w-4 h-4 text-zoyd-yellow" />
     );
 
+  const timeValue = timestamp ? new Date(timestamp).getTime() : NaN;
+  const timeLabel = Number.isFinite(timeValue) ? getRelativeTime(timestamp) : '—';
+  const feeValue = Number(metadata?.feeAmount ?? 0);
+  const feeLabel = Number.isFinite(feeValue) && feeValue > 0 ? ` / frais ${feeValue.toFixed(1)} ZC` : '';
+
   return (
     <div className="flex items-center justify-between border border-white/5 p-4 bg-black/40 touch-target">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 min-w-0">
         {statusIcon}
-        <div>
-          <div className="font-display font-black text-sm uppercase italic text-white">{description}</div>
+        <div className="min-w-0">
+          <div className="font-display font-black text-sm uppercase italic text-white truncate">{description || typeLabel}</div>
           <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
-            {typeLabel} / {getRelativeTime(timestamp)}
-            {metadata?.feeAmount ? ` / frais ${metadata.feeAmount.toFixed(1)} ZC` : ''}
+            {typeLabel} / {timeLabel}
+            {feeLabel}
           </div>
         </div>
       </div>
-      <div className="text-right">
+      <div className="text-right shrink-0">
         <div className={`font-display font-black text-lg ${isPositive ? 'text-green-400' : 'text-white'}`}>
-          {isPositive ? '+' : ''}{formatZC(Math.abs(amount))}
+          {isPositive ? '+' : ''}{formatZC(Math.abs(safeAmount))}
         </div>
         <Badge variant={status === 'completed' ? 'success' : status === 'pending' ? 'yellow' : 'disabled'}>
           {status}

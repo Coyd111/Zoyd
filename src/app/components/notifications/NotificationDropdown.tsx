@@ -84,7 +84,7 @@ export const NotificationDropdown: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-12 w-[380px] bg-zoyd-black border border-white/10 shadow-2xl shadow-black/80 z-50"
+            className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[calc(100vw-2rem)] sm:max-w-[380px] bg-zoyd-black border border-white/10 shadow-2xl shadow-black/80 z-50"
           >
             {/* HEADER */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-zoyd-surface/30">

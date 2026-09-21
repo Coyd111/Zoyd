@@ -199,7 +199,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       .slice(0, count),
 
   hydrateFromServer: (serverNotifications) => {
-    const nextNotifications = serverNotifications.map((n: ServerNotification) => ({
+    const normalized = serverNotifications.map((n: ServerNotification) => ({
       id: n.id,
       type: n.type as NotificationType,
       title: n.title,
@@ -211,7 +211,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       dismissed: false,
       timestamp: n.created_at || n.timestamp || new Date().toISOString(),
     }));
-    set({ notifications: nextNotifications });
+    // Merge (pas replace) : sinon les notifs créées localement (ex. confirmations
+    // wallet) sont effacées à chaque re-synchronisation serveur.
+    set((state) => {
+      const serverIds = new Set(normalized.map((n) => n.id));
+      const localOnly = state.notifications.filter((n) => !serverIds.has(n.id));
+      const merged = [...normalized, ...localOnly].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      return { notifications: merged.slice(0, MAX_NOTIFICATIONS) };
+    });
   },
 }));
 

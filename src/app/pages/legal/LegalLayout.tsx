@@ -5,6 +5,8 @@ import { SEOHead } from '../../components/SEOHead';
 
 const NAV = [
   { path: '/conditions', label: 'Conditions' },
+  { path: '/reglement-litiges', label: 'Litiges' },
+  { path: '/anti-fraude', label: 'Anti-fraude' },
   { path: '/confidentialite', label: 'Confidentialité' },
   { path: '/mentions', label: 'Mentions & Assistance' },
   { path: '/jeu-responsable', label: 'Jeu responsable' },

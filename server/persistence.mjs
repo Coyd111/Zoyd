@@ -1213,6 +1213,94 @@ export const revokeAuthSessionsForUser = (userId) => {
   sbFire('revokeAuthSessionsForUser', () => sbDelete('auth_sessions', { user_id: userId }));
 };
 
+/**
+ * Permanently delete a user's own account (closure / right to erasure).
+ * Removes the user row, sessions, push subscriptions, social graph,
+ * notifications and chat reads; anonymizes own chat messages
+ * ("Joueur supprimé"). Match/tournament history snapshots are kept
+ * without the profile (tournament records). Any remaining balance is
+ * forfeited — the caller must confirm (confirmForfeit).
+ * Admin accounts cannot self-delete.
+ * @param {string} userId
+ * @returns {Promise<{ userId: string, forfeitedCash: number }>}
+ */
+export const deleteUserAccount = async (userId) => {
+  const user = memoryUsers.get(userId);
+  if (!user) throw makeError('USER_NOT_FOUND', 'Compte introuvable.');
+  if (user.role === 'admin' || memoryAdminIds.has(userId)) {
+    throw makeError('FORBIDDEN', 'Le compte admin ne peut pas être supprimé.');
+  }
+  const forfeitedCash = roundAmount(getWalletSnapshot(userId)?.cashBalance || 0);
+
+  // ── Memory cleanup ──
+  memoryUsers.delete(userId);
+  pseudoKeys.delete(userId);
+  gameIdKeys.delete(userId);
+  memoryPasswordHashes.delete(userId);
+  if (user.pseudo) memoryPasswordHashes.delete(normalizePseudoKey(user.pseudo));
+  if (user.email) memoryPasswordHashes.delete(normalizeEmailKey(user.email));
+  if (user.phone) memoryPasswordHashes.delete(normalizePhoneKey(user.phone));
+  if (user.email) memoryActivationCodes.delete(normalizeEmailKey(user.email));
+  memoryPasswordResetCodes.delete(userId);
+  revokeAuthSessionsForUser(userId);
+  deleteRealtimeSessionsForUser(userId);
+  for (const [endpoint, sub] of memoryPushSubscriptions) {
+    if (sub?.userId === userId || sub?.user_id === userId) memoryPushSubscriptions.delete(endpoint);
+  }
+  for (const [id, fr] of memoryFriendRequests) {
+    if (fr.sender_id === userId || fr.target_id === userId) memoryFriendRequests.delete(id);
+  }
+  for (const pair of [...memoryFriendships]) {
+    if (pair.startsWith(`${userId}:`) || pair.endsWith(`:${userId}`)) memoryFriendships.delete(pair);
+  }
+  memoryFriendshipsByUser.delete(userId);
+  for (const [, set] of memoryFriendshipsByUser) set.delete(userId);
+  for (const pair of [...memoryUserBlocks]) {
+    if (pair.startsWith(`${userId}:`) || pair.endsWith(`:${userId}`)) memoryUserBlocks.delete(pair);
+  }
+  memoryBlocksByUser.delete(userId);
+  for (const [, set] of memoryBlocksByUser) set.delete(userId);
+  for (const [id, n] of memoryNotifications) {
+    if (n.userId === userId) memoryNotifications.delete(id);
+  }
+  memoryUnreadByUser.delete(userId);
+  for (const key of [...memoryChatReads.keys()]) {
+    if (key.endsWith(`:${userId}`)) memoryChatReads.delete(key);
+  }
+  // Anonymize own chat messages (persisted below, best effort).
+  const anonymizedRows = [];
+  for (const [chId, msgs] of memoryChatMessages) {
+    for (const m of msgs) {
+      if (m.senderId === userId) {
+        m.senderPseudo = 'Joueur supprimé';
+        m.senderAvatar = undefined;
+        anonymizedRows.push({ id: m.id, channel_id: chId, payload: m });
+      }
+    }
+  }
+
+  // ── Supabase cleanup ──
+  await sbDelete('auth_sessions', { user_id: userId });
+  await sbDelete('realtime_sessions', { user_id: userId });
+  const subs = await sbSelect('push_subscriptions', { user_id: userId }, 'endpoint');
+  await sbDeleteMulti('push_subscriptions', 'endpoint', subs.map((s) => s.endpoint));
+  await sbDelete('friend_requests', { sender_id: userId });
+  await sbDelete('friend_requests', { target_id: userId });
+  await sbDelete('friendships', { user_id_1: userId });
+  await sbDelete('friendships', { user_id_2: userId });
+  await sbDelete('user_blocks', { blocker_id: userId });
+  await sbDelete('user_blocks', { blocked_id: userId });
+  await sbDelete('user_notifications', { user_id: userId });
+  await sbDelete('chat_reads', { user_id: userId });
+  for (let i = 0; i < anonymizedRows.length; i += 100) {
+    sbFire('anonymizeChatMessages', () => sbUpsert('chat_messages', anonymizedRows.slice(i, i + 100)));
+  }
+  await sbDelete('app_users', { id: userId });
+
+  log.info('account deleted', { userId, forfeitedCash });
+  return { userId, forfeitedCash };
+};
+
 export const cleanupExpiredPasswordResets = () => {
   const now = new Date();
   for (const [userId, record] of memoryPasswordResetCodes) {

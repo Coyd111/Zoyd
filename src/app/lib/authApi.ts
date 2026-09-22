@@ -1,5 +1,5 @@
 import type { User } from '../stores/authStore';
-import { authorizedGet, authorizedPost, authorizedPatch, getApiUrl } from './apiClient';
+import { authorizedGet, authorizedPost, authorizedPatch, authorizedDelete, getApiUrl } from './apiClient';
 
 export interface AuthResponse {
   ok: boolean;
@@ -74,6 +74,10 @@ export const logoutFromBackend = async () => {
 
 export const updateServerAccount = async (updates: Partial<User>): Promise<{ ok: boolean; user: User }> => {
   return authorizedPatch<{ ok: boolean; user: User }>('/api/auth/me', updates);
+};
+
+export const deleteOwnAccount = async (): Promise<{ ok: boolean; message: string }> => {
+  return authorizedDelete<{ ok: boolean; message: string }>('/api/auth/me', { confirmForfeit: true });
 };
 
 export const activateAccount = async (email: string, code: string): Promise<ActivationResponse> => {

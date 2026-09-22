@@ -102,6 +102,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_PHONE: 'Numéro de téléphone invalide.',
   INVALID_CREDENTIALS: 'Identifiants invalides. Vérifie ton pseudo/email et ton mot de passe.',
   LEGAL_NOT_ACCEPTED: 'Confirme avoir 18 ans ou plus et accepter les Conditions pour créer un compte.',
+  CONFIRM_REQUIRED: 'Confirmation requise pour cette action définitive.',
   ACCOUNT_NOT_ACTIVATED: 'Compte non activé. Termine ton inscription avec le code reçu.',
   INVALID_OPERATOR: 'Opérateur invalide.',
   INVALID_COUNTRY: 'Retraits bientôt disponibles pour ton pays.',
@@ -180,4 +181,4 @@ const authorizedRequest = async <T>(method: HttpMethod, path: string, body?: unk
 export const authorizedGet = <T>(path: string) => authorizedRequest<T>('GET', path);
 export const authorizedPost = <T>(path: string, body?: unknown) => authorizedRequest<T>('POST', path, body);
 export const authorizedPatch = <T>(path: string, body?: unknown) => authorizedRequest<T>('PATCH', path, body);
-export const authorizedDelete = <T>(path: string) => authorizedRequest<T>('DELETE', path);
+export const authorizedDelete = <T>(path: string, body?: unknown) => authorizedRequest<T>('DELETE', path, body);

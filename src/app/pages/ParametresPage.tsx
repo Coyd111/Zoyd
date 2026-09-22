@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Bell, Gamepad2, Save, Shield, User } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,7 +8,7 @@ import { useNotificationStore } from '../stores/notificationStore';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { updateServerAccount, fetchAdmin2faStatus, setupAdmin2fa, enableAdmin2fa, verifyAdmin2fa } from '../lib/authApi';
+import { updateServerAccount, deleteOwnAccount, fetchAdmin2faStatus, setupAdmin2fa, enableAdmin2fa, verifyAdmin2fa } from '../lib/authApi';
 import { CODM_RANGS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
 import { SEOHead } from '../components/SEOHead';
 
@@ -304,6 +305,8 @@ const ParametresPage: React.FC = () => {
                     />
                   ) : null}
                 </div>
+
+                <DangerZone />
               </div>
             ) : null}
 
@@ -497,6 +500,84 @@ const SectionTitle = React.memo(({ title }: { title: string }) => (
     {title}
   </h2>
 ));
+
+const DangerZone: React.FC = () => {
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
+  const [armed, setArmed] = useState(false);
+  const [understood, setUnderstood] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  if (!user || user.role === 'admin') return null;
+
+  const handleDelete = async () => {
+    if (!armed) {
+      setArmed(true);
+      return;
+    }
+    if (!understood) {
+      toast.error('Coche la case pour confirmer que tu comprends.');
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const res = await deleteOwnAccount();
+      toast.success(res.message || 'Compte supprimé.');
+      logout();
+      navigate('/');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Suppression impossible.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="mt-8 border border-red-500/40 bg-red-500/5 p-4">
+      <div className="font-display font-black text-red-400 text-sm uppercase italic">Zone danger</div>
+      <p className="text-[11px] font-mono text-white/60 uppercase tracking-widest mt-2 leading-relaxed">
+        Supprimer ton compte est définitif : profil, amis, historique et messages anonymisés.
+        Retire d'abord ton solde cash (minimum 150 ZC) — tout solde restant sera abandonné.
+      </p>
+      <div className="mt-3 flex flex-col gap-3">
+        {armed ? (
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={understood}
+              onChange={(e) => setUnderstood(e.target.checked)}
+              className="w-4 h-4 mt-0.5 accent-red-500"
+            />
+            <span className="text-[11px] font-mono uppercase tracking-widest text-white/70">
+              Je comprends, supprimer mon compte et abandonner mon solde restant
+            </span>
+          </label>
+        ) : null}
+        <div>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleDelete}
+            disabled={isDeleting || (armed && !understood)}
+          >
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            {isDeleting ? 'SUPPRESSION...' : armed ? 'CONFIRMER LA SUPPRESSION' : 'SUPPRIMER MON COMPTE'}
+          </Button>
+          {armed && !isDeleting ? (
+            <button
+              type="button"
+              onClick={() => { setArmed(false); setUnderstood(false); }}
+              className="ml-3 text-[11px] font-mono uppercase tracking-widest text-white/50 hover:text-white"
+            >
+              Annuler
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Admin2faSection: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'disabled' | 'enabled' | 'error'>('loading');

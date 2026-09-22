@@ -24,6 +24,7 @@ import {
   createUserAccount,
   deleteAuthSession,
   deleteRealtimeSessionsForUser,
+  deleteUserAccount,
   ensureGlobalChatChannel,
   getAuthSession,
   getLeaderboard,
@@ -1007,8 +1008,42 @@ const handleRequest = async (req, res) => {
     return;
   }
 
-  if (req.method === 'GET' && pathname === '/api/leaderboard') {
-    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
+  if (req.method === 'DELETE' && pathname === '/api/auth/me') {
+    if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
+    const token = readBearerToken(req);
+    const session = token ? getAuthSession(token) : null;
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+      return;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      if (body?.confirmForfeit !== true) {
+        respondJson(res, 400, { ok: false, error: 'Confirme la perte du solde restant pour supprimer ton compte.', code: 'CONFIRM_REQUIRED' });
+        return;
+      }
+      const { forfeitedCash } = await deleteUserAccount(session.user.id);
+      // Clear HttpOnly cookie (all sessions already revoked)
+      res.setHeader('Set-Cookie', serializeCookie('zoyd_auth', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 0,
+        path: '/',
+      }));
+      respondJson(res, 200, {
+        ok: true,
+        message: forfeitedCash > 0
+          ? `Compte supprimé. Solde restant de ${forfeitedCash} ZC abandonné.`
+          : 'Compte supprimé définitivement.',
+      });
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/leaderboard') {    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const leaderboard = getLeaderboard();
       const { limit, offset } = parseQueryParams(req.url);

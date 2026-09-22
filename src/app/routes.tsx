@@ -13,6 +13,8 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
 import RootIndexPage from './pages/RootIndexPage';
 import ConditionsPage from './pages/legal/ConditionsPage';
+import LitigesPage from './pages/legal/LitigesPage';
+import AntiFraudePage from './pages/legal/AntiFraudePage';
 import ConfidentialitePage from './pages/legal/ConfidentialitePage';
 import MentionsPage from './pages/legal/MentionsPage';
 import JeuResponsablePage from './pages/legal/JeuResponsablePage';
@@ -77,6 +79,14 @@ export const router = createBrowserRouter([
       {
         path: 'conditions',
         Component: ConditionsPage,
+      },
+      {
+        path: 'reglement-litiges',
+        Component: LitigesPage,
+      },
+      {
+        path: 'anti-fraude',
+        Component: AntiFraudePage,
       },
       {
         path: 'confidentialite',

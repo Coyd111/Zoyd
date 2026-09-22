@@ -478,6 +478,8 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-mono uppercase tracking-[0.22em] text-white/40">
             <Link to="/conditions" className="hover:text-white/70 transition-colors">Conditions</Link>
+            <Link to="/reglement-litiges" className="hover:text-white/70 transition-colors">Litiges</Link>
+            <Link to="/anti-fraude" className="hover:text-white/70 transition-colors">Anti-fraude</Link>
             <Link to="/confidentialite" className="hover:text-white/70 transition-colors">Confidentialité</Link>
             <Link to="/mentions" className="hover:text-white/70 transition-colors">Mentions & Assistance</Link>
             <Link to="/jeu-responsable" className="hover:text-white/70 transition-colors">Jeu responsable</Link>

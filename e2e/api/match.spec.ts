@@ -19,6 +19,9 @@ test.describe('Match Lifecycle', () => {
         phone: `+229${Math.floor(10000000 + Math.random() * 90000000)}`,
         gameId: `MA_${unique()}`,
         password: PASSWORD,
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
       },
     });
     const b1 = await r1.json();
@@ -37,6 +40,9 @@ test.describe('Match Lifecycle', () => {
         phone: `+229${Math.floor(10000000 + Math.random() * 90000000)}`,
         gameId: `MB_${unique()}`,
         password: PASSWORD,
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
       },
     });
     const b2 = await r2.json();
@@ -55,6 +61,9 @@ test.describe('Match Lifecycle', () => {
         phone: `+229${Math.floor(10000000 + Math.random() * 90000000)}`,
         gameId: `MC_${unique()}`,
         password: PASSWORD,
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
       },
     });
     const b3 = await r3.json();

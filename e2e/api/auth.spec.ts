@@ -26,6 +26,9 @@ test.describe('Auth', () => {
         rankMJ: 'Gold',
         rankBR: 'Gold',
         country: 'Benin',
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
       },
     });
     expect(res.status()).toBe(201);
@@ -45,6 +48,9 @@ test.describe('Auth', () => {
         phone: `+229${Math.floor(10000000 + Math.random() * 90000000)}`,
         gameId: `DUP_${unique()}`,
         password: TEST_PASSWORD,
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
       },
     });
     expect(res.status()).toBe(409);
@@ -61,6 +67,9 @@ test.describe('Auth', () => {
         phone: `+229${Math.floor(10000000 + Math.random() * 90000000)}`,
         gameId: `SHORT_${unique()}`,
         password: '1234567',
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
       },
     });
     expect(res.status()).toBe(400);

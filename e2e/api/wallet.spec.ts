@@ -17,6 +17,9 @@ test.describe('Wallet', () => {
         phone: `+229${Math.floor(10000000 + Math.random() * 90000000)}`,
         gameId: `WALLET_${unique()}`,
         password: PASSWORD,
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
       },
     });
     // Accept 201 or 429 (rate limited) — if rate limited, try login instead

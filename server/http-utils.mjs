@@ -250,6 +250,7 @@ export const mapPersistenceError = (error) => {
     case 'INVALID_COUNTRY':
       return { status: 400, message, code };
     case 'FORBIDDEN':
+    case 'TRANSACTION_NOT_OWNED':
     case 'ACCOUNT_NOT_ACTIVATED':
       return { status: 403, message, code };
     case 'DUPLICATE_PSEUDO':

@@ -230,8 +230,10 @@ export const settleMatchLossWallet = async (userId, matchId, description) =>
   })).wallet;
 
 /**
- * Release winnings (prize or arbiter fee) into the user's cash balance.
+ * Release winnings (prize or arbiter fee) into the user's wallet.
  * Also unlocks any associated entry fee reservation for the match.
+ * Anti-blanchiment : la part bonus de la mise du gagnant retourne en bonus
+ * (non retirable) au lieu de se convertir en cash via le gain.
  * @param {string} userId - ID of the user.
  * @param {number} amount - Amount to release.
  * @param {string} matchId - ID of the match or tournament.
@@ -251,20 +253,27 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
     if (reservation) {
       delete nextLockedEntries[matchId];
     }
+    // La mise bonus du gagnant ne doit pas devenir du cash retirable :
+    // on la rend en bonus, le reste du gain part en cash.
+    const stakeBonus = roundAmount(reservation?.bonusAmount || 0);
+    const bonusRestore = Math.min(stakeBonus, safeAmount);
+    const cashCredit = roundAmount(safeAmount - bonusRestore);
 
     return withTransaction(
       {
         ...wallet,
-        cashBalance: roundAmount(wallet.cashBalance + roundAmount(amount)),
+        cashBalance: roundAmount(wallet.cashBalance + cashCredit),
+        bonusBalance: roundAmount(wallet.bonusBalance + bonusRestore),
         lockedBalance: roundAmount(Math.max(0, wallet.lockedBalance - releasedAmount)),
         lockedEntries: nextLockedEntries,
       },
       {
         type,
-        amount: roundAmount(amount),
+        amount: safeAmount,
         description: description || (type === 'arbitration_fee' ? `Commission arbitre ${matchId}` : `Gain ${matchId}`),
         status: 'completed',
         matchId,
+        metadata: { cashCredit, bonusRestore },
       }
     );
   })).wallet;

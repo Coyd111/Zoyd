@@ -15,6 +15,7 @@ vi.mock('./wallet-engine.mjs', () => ({
 
 import * as matchEngine from './match-engine.mjs';
 import { getUserById } from './persistence.mjs';
+import { releaseWalletWinnings } from './wallet-engine.mjs';
 
 describe('match-engine - XP Progression', () => {
   it('should add XP and stay at same level when below threshold', () => {
@@ -384,5 +385,43 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
 
     expect(result.match.result).toBeDefined();
     expect(result.match.status).toBe('forfeited');
+  });
+
+  it('should split the pot between winners in 2v2 (anti-mint)', async () => {
+    getUserById.mockImplementation((id) => ({
+      id, pseudo: id, role: id === 'admin-1' ? 'admin' : 'player',
+      stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100,
+    }));
+    const match = {
+      id: 'M-2V2',
+      arbiter: { userId: 'arb-1' },
+      status: 'in_progress',
+      players: [
+        { userId: 'u1', team: 0 },
+        { userId: 'u2', team: 0 },
+        { userId: 'u3', team: 1 },
+        { userId: 'u4', team: 1 },
+      ],
+      disputes: [],
+      prizePool: 400,
+      zoydFee: 0,
+      arbiterFee: 8,
+      entryFee: 100,
+      format: '2VS2',
+      teamSize: 2,
+    };
+
+    await matchEngine.submitMatchResultOnServer([match], { id: 'admin-1' }, 'M-2V2', {
+      winnerTeam: 0,
+      scores: { team0: 100, team1: 50 },
+      resolutionType: 'forfeit',
+      submittedBy: 'admin-dashboard',
+    });
+
+    const prizeCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
+    expect(prizeCalls).toHaveLength(2);
+    const total = prizeCalls.reduce((sum, c) => sum + c[1], 0);
+    expect(total).toBe(392); // pot entier distribué, pas 2× le pot
+    expect(prizeCalls.map((c) => c[0]).sort()).toEqual(['u1', 'u2']);
   });
 });

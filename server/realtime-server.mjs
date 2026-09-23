@@ -1152,10 +1152,12 @@ const handleRequest = async (req, res) => {
     let isDuplicate = false;
     try {
       await withWalletMutex(session.user.id, async () => {
-        // Check idempotency INSIDE mutex to prevent TOCTOU race
+        // Check idempotency INSIDE mutex to prevent TOCTOU race.
+        // Les tentatives marquées payoutStatus:'failed' (payout raté + remboursé)
+        // sont EXCLUES : un retry avec la même clé doit relancer un vrai payout.
         if (cleanKey) {
           const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
-            .find((tx) => tx.metadata?.idempotencyKey === cleanKey && tx.type === 'withdraw');
+            .find((tx) => tx.metadata?.idempotencyKey === cleanKey && tx.type === 'withdraw' && tx.metadata?.payoutStatus !== 'failed');
           if (existingTx) {
             debitedWallet = getServerWallet(session.user.id);
             isDuplicate = true;

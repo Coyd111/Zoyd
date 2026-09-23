@@ -20,7 +20,7 @@ vi.mock('./wallet-engine.mjs', () => ({
   debitFromWallet: vi.fn(),
 }));
 
-import { verifyFedaPayTransactionAndCredit } from './payment-engine.mjs';
+import { verifyFedaPayTransactionAndCredit, isTransactionOwnedBy } from './payment-engine.mjs';
 import { Transaction } from 'fedapay';
 import {
   hasTransactionBeenProcessed,
@@ -42,6 +42,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
     Transaction.retrieve.mockResolvedValue({
       status: 'approved',
       amount: 5000,
+      description: 'ZOYD:user-1 — Recharge 500 ZC',
     });
     depositToWallet.mockResolvedValue(mockUser);
 
@@ -110,6 +111,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
     Transaction.retrieve.mockResolvedValue({
       status: 'approved',
       amount: 15000,
+      description: 'ZOYD:user-1 — Recharge 1500 ZC',
     });
     depositToWallet.mockResolvedValue(mockUser);
 
@@ -121,6 +123,7 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
     Transaction.retrieve.mockResolvedValue({
       status: 'approved',
       amount: 1000,
+      description: 'ZOYD:user-1 — Recharge 100 ZC',
     });
     depositToWallet.mockResolvedValue(mockUser);
     claimTransaction.mockResolvedValue(false);
@@ -128,5 +131,59 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
     await expect(
       verifyFedaPayTransactionAndCredit('TX-RACE', mockUser)
     ).rejects.toThrow(/déjà été traitée/);
+  });
+
+  it('should reject a transaction owned by another user (anti-theft)', async () => {
+    Transaction.retrieve.mockResolvedValue({
+      status: 'approved',
+      amount: 5000,
+      description: 'ZOYD:victim-9 — Recharge 500 ZC',
+    });
+
+    await expect(
+      verifyFedaPayTransactionAndCredit('TX-STOLEN', mockUser)
+    ).rejects.toThrow(/ne correspond pas à ton compte/);
+    expect(depositToWallet).not.toHaveBeenCalled();
+    expect(claimTransaction).not.toHaveBeenCalled();
+  });
+
+  it('should accept legacy transactions matching payer phone', async () => {
+    Transaction.retrieve.mockResolvedValue({
+      status: 'approved',
+      amount: 5000,
+      description: 'Ancien format sans binding',
+      customer: { phone_number: '+2290165240654' },
+    });
+    depositToWallet.mockResolvedValue(mockUser);
+    const userWithPhone = { ...mockUser, phone: '+2290165240654' };
+
+    const result = await verifyFedaPayTransactionAndCredit('TX-LEGACY', userWithPhone);
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('payment-engine - isTransactionOwnedBy', () => {
+  const user = { id: 'user-1', phone: '+2290165240654', email: 'User@Zoyd.com' };
+
+  it('accepts ZOYD:userId description binding', () => {
+    expect(isTransactionOwnedBy({ description: 'ZOYD:user-1 — Recharge 500 ZC' }, user)).toBe(true);
+  });
+
+  it('rejects binding to another user', () => {
+    expect(isTransactionOwnedBy({ description: 'ZOYD:victim-9 — Recharge 500 ZC' }, user)).toBe(false);
+  });
+
+  it('accepts matching payer phone (legacy)', () => {
+    expect(isTransactionOwnedBy({ description: 'x', customer: { phone_number: '+229 01 65 24 06 54' } }, user)).toBe(true);
+  });
+
+  it('accepts matching payer email, case-insensitive (legacy)', () => {
+    expect(isTransactionOwnedBy({ description: 'x', customer: { email: 'user@zoyd.com' } }, user)).toBe(true);
+  });
+
+  it('rejects when nothing matches', () => {
+    expect(isTransactionOwnedBy({ description: 'x', customer: { phone_number: '+22800000000', email: 'stranger@x.com' } }, user)).toBe(false);
+    expect(isTransactionOwnedBy({}, user)).toBe(false);
+    expect(isTransactionOwnedBy(null, user)).toBe(false);
   });
 });

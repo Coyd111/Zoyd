@@ -201,7 +201,9 @@ const WalletPage: React.FC = () => {
         public_key: publicKey,
         transaction: {
           amount: amountFCFA,
-          description: `Recharge de ${depositAmountNum} ZC (~ ${amountFCFA} FCFA)`,
+          // Binding anti-vol : l'ID user est gravé dans la description.
+          // Le serveur refuse de créditer si elle ne correspond pas au demandeur.
+          description: `ZOYD:${user?.id || 'inconnu'} — Recharge ${depositAmountNum} ZC (~ ${amountFCFA} FCFA)`,
         },
         customer: {
           email: user?.email || 'joueur@zoyd.app',

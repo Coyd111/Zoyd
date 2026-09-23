@@ -150,6 +150,14 @@ const applyResultSettlement = async (match, result) => {
   const winnerIds = new Set(match.players.filter(p => p.team === result.winnerTeam).map(p => p.userId));
   const loserIds = new Set(match.players.filter(p => p.team !== result.winnerTeam).map(p => p.userId));
 
+  // Anti-mint : le pot (moins commission) est DIVISÉ entre les gagnants.
+  // Avant, chaque gagnant recevait le pot entier (2v2 = 2× le pot créé).
+  const winnerCount = winnerIds.size || 1;
+  const sharePerWinner = roundAmount(payout / winnerCount);
+  // Le premier gagnant absorbe l'arrondi pour garder un total exact.
+  const firstWinnerShare = roundAmount(payout - sharePerWinner * (winnerCount - 1));
+  const paidWinners = new Set();
+
   for (const player of match.players) {
     try {
       const isWinner = player.team === result.winnerTeam;
@@ -157,15 +165,19 @@ const applyResultSettlement = async (match, result) => {
 
       await withWalletMutex(player.userId, async () => {
         if (isWinner) {
+          // Un même user listé 2 fois ne doit être payé qu'une fois.
+          if (paidWinners.has(player.userId)) return;
+          const amount = paidWinners.size === 0 ? firstWinnerShare : sharePerWinner;
+          paidWinners.add(player.userId);
           await releaseWalletWinnings(
-            player.userId, payout, match.id, 'prize_win',
+            player.userId, amount, match.id, 'prize_win',
             `Gain du match ${match.rules?.mode || match.format} / ${match.rules?.map || 'Libre'}`
           );
           await patchUserForMatchOutcome(player.userId, (user) => {
             const nextStats = {
               ...user.stats,
               wins: Number(user.stats?.wins || 0) + 1,
-              totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + payout),
+              totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + amount),
               elo: Math.round(Number(user.stats?.elo || 1200) + deltaElo),
             };
             const total = nextStats.wins + Number(nextStats.losses || 0) + Number(nextStats.draws || 0);
@@ -767,6 +779,11 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+  // Anti-double-remboursement : un match déjà soldé (résultat + gains distribués
+  // ou statut terminal) ne peut plus être annulé — les mises sont déjà parties.
+  if (match.result?.payoutDistributed || TERMINAL_STATUSES.includes(match.status)) {
+    throw makeError('MATCH_CLOSED', 'Match déjà clôturé : annulation impossible, gains déjà distribués.');
+  }
 
   for (const player of match.players) {
     await withWalletMutex(player.userId, async () => {

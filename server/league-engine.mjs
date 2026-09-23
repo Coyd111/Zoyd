@@ -654,6 +654,11 @@ export const updateLeagueSettingsOnServer = (seasons, actor, seasonId, settings)
     if (newFee < 0 || newFee > 500) {
       throw makeError('INVALID_REGISTRATION', 'Le pass d entree doit etre entre 0 et 500 ZC.');
     }
+    // Anti-détournement : le tarif est figé dès la première inscription —
+    // les mises déjà bloquées ne correspondraient plus au pot affiché.
+    if (season.registeredPlayers.length > 0 && newFee !== season.entryFee) {
+      throw makeError('REGISTRATION_CLOSED', 'Pass figé : des joueurs sont déjà inscrits à ce tarif.');
+    }
     season.entryFee = newFee;
     season.payout = buildLeaguePayout(season.registeredPlayers.length * newFee);
   }

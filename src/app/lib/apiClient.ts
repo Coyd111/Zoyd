@@ -108,6 +108,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_COUNTRY: 'Retraits bientôt disponibles pour ton pays.',
   INVALID_AMOUNT: 'Montant invalide.',
   TRANSACTION_ALREADY_PROCESSED: 'Cette transaction a déjà été traitée.',
+  TRANSACTION_NOT_OWNED: "Cette transaction ne correspond pas à ton compte.",
   TRANSACTION_IN_PROGRESS: 'Transaction en cours de traitement. Réessaie dans un instant.',
   PAYOUT_FAILED: 'Le transfert Mobile Money a échoué. Ton solde a été restauré.',
   ACCOUNT_LOCKED: 'Compte verrouillé. Réessaie plus tard.',

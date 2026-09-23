@@ -26,7 +26,7 @@ test.describe.serial('LIVE API — Full E2E', () => {
     const registerAndLogin = async (prefix: string, rank: string) => {
       const r = await request.post(`${BASE}/auth/register`, {
         headers: HEADERS,
-        data: { pseudo: `${prefix}_${unique()}`, email: `${prefix.toLowerCase()}_${unique()}@test.com`, phone: `+22991${Math.floor(1000000 + Math.random() * 9000000)}`, gameId: `${prefix}_${unique()}`, password: PASSWORD, controllerType: 'touch', device: 'phone', levelCODM: 15, rankMJ: rank, rankBR: rank, country: 'Benin' },
+        data: { pseudo: `${prefix}_${unique()}`, email: `${prefix.toLowerCase()}_${unique()}@test.com`, phone: `+22991${Math.floor(1000000 + Math.random() * 9000000)}`, gameId: `${prefix}_${unique()}`, password: PASSWORD, controllerType: 'touch', device: 'phone', levelCODM: 15, rankMJ: rank, rankBR: rank, country: 'Benin', acceptAdult: true, acceptTerms: true, acceptedAt: new Date().toISOString() },
       });
       expect(r.status()).toBe(201);
       const body = await r.json();
@@ -62,7 +62,7 @@ test.describe.serial('LIVE API — Full E2E', () => {
   });
 
   test('4. Brute-force activation blocked', async ({ request }) => {
-    const r = await request.post(`${BASE}/auth/register`, { headers: HEADERS, data: { pseudo: `BF_${unique()}`, email: `bf_${unique()}@test.com`, phone: `+22991${Math.floor(1000000 + Math.random() * 9000000)}`, gameId: `BF_${unique()}`, password: PASSWORD } });
+    const r = await request.post(`${BASE}/auth/register`, { headers: HEADERS, data: { pseudo: `BF_${unique()}`, email: `bf_${unique()}@test.com`, phone: `+22991${Math.floor(1000000 + Math.random() * 9000000)}`, gameId: `BF_${unique()}`, password: PASSWORD, acceptAdult: true, acceptTerms: true, acceptedAt: new Date().toISOString() } });
     const b = await r.json();
     for (let i = 0; i < 5; i++) {
       await request.post(`${BASE}/auth/activate`, { headers: HEADERS, data: { email: b.user.email, code: '00000000' } });

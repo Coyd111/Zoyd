@@ -317,12 +317,41 @@ describe('wallet-engine - Release Winnings', () => {
     const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
     const result = updater(mockWallet);
     
-    expect(result.cashBalance).toBe(75);
+    // Mise bonus (3) rendue en bonus, reste du gain (22) en cash
+    expect(result.cashBalance).toBe(72);
+    expect(result.bonusBalance).toBe(13);
     expect(result.lockedBalance).toBe(0);
     expect(result.pendingWinnings).toBe(20);
     expect(result.lockedEntries['match1']).toBeUndefined();
     expect(result.transactions[0].type).toBe('prize_win');
     expect(result.transactions[0].amount).toBe(25);
+    expect(result.transactions[0].metadata.cashCredit).toBe(22);
+    expect(result.transactions[0].metadata.bonusRestore).toBe(3);
+  });
+
+  it('should not launder pure-bonus stake into cash', async () => {
+    const mockWallet = {
+      cashBalance: 0,
+      bonusBalance: 0,
+      lockedBalance: 150,
+      transactions: [],
+      lockedEntries: {
+        'match1': { amount: 150, cashAmount: 0, bonusAmount: 150, lockedAt: '2024-01-01' }
+      }
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.releaseWalletWinnings('user1', 294, 'match1', 'prize_win', 'Match win');
+
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+
+    expect(result.cashBalance).toBe(144); // 294 - 150 bonus restauré
+    expect(result.bonusBalance).toBe(150); // bonus reste non-retirable
+    expect(result.lockedBalance).toBe(0);
   });
 
   it('should handle winnings without existing reservation', async () => {

@@ -21,6 +21,31 @@ const getFedaPayConfig = () => {
   return key;
 };
 
+/**
+ * Vérifie que la transaction FedaPay appartient au demandeur.
+ * 1. Cas nominal : la description contient `ZOYD:<userId>` (gravé par notre widget).
+ * 2. Compatibilité (anciennes transactions) : le téléphone ou l'email du payeur
+ *    FedaPay correspond au profil du demandeur.
+ */
+const normalizePhoneLoose = (value) => String(value || '').replace(/\D/g, '').slice(-8);
+
+export const isTransactionOwnedBy = (transaction, user) => {
+  if (!transaction || !user) return false;
+  const description = String(transaction.description || '');
+  const match = /ZOYD:([A-Za-z0-9-]+)/.exec(description);
+  if (match && match[1] === user.id) return true;
+  const customer = transaction.customer || {};
+  const txPhone = normalizePhoneLoose(
+    customer.phone_number || customer.phone || transaction.phone || transaction.phone_number
+  );
+  const userPhone = normalizePhoneLoose(user.phone);
+  if (txPhone && userPhone && txPhone === userPhone) return true;
+  const txEmail = String(customer.email || transaction.email || '').trim().toLowerCase();
+  const userEmail = String(user.email || '').trim().toLowerCase();
+  if (txEmail && userEmail && txEmail === userEmail) return true;
+  return false;
+};
+
 // Atomic lock per transaction ID — Map<id, Promise> for true TOCTOU safety
 const processingTransactions = new Map();
 
@@ -65,6 +90,22 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       throw makeError('TRANSACTION_NOT_APPROVED', `La transaction n'est pas approuvée (Statut: ${transaction.status})`);
     }
 
+    // 2b. Anti-vol : la transaction doit appartenir au demandeur.
+    // Le widget ZOYD grave `ZOYD:<userId>` dans la description. Sans ça,
+    // n'importe qui pourrait créditer son wallet avec un transactionId volé/deviné.
+    if (!isTransactionOwnedBy(transaction, user)) {
+      log.error('deposit ownership mismatch', { transactionId, userId: user.id });
+      throw makeError('TRANSACTION_NOT_OWNED', "Cette transaction ne correspond pas à ton compte.");
+    }
+
+    // 2c. Devise : XOF attendu quand l'info est présente.
+    const currency = typeof transaction.currency === 'string'
+      ? transaction.currency
+      : transaction.currency?.iso;
+    if (currency && String(currency).toUpperCase() !== 'XOF') {
+      throw makeError('INVALID_AMOUNT', 'Devise de transaction inattendue.');
+    }
+
     // 3. Calculer les Zoyd Coins (1 ZC = 10 FCFA) + validation
     const amountZC = transaction.amount / 10;
     if (!Number.isFinite(amountZC) || amountZC <= 0) {
@@ -99,7 +140,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
   } catch (error) {
     log.error('FedaPay verification error', { message: error.message });
     if (error instanceof PaymentRollbackError) throw error;
-    if (error.code === 'TRANSACTION_ALREADY_PROCESSED' || error.code === 'TRANSACTION_IN_PROGRESS') throw error;
+    if (error.code === 'TRANSACTION_ALREADY_PROCESSED' || error.code === 'TRANSACTION_IN_PROGRESS' || error.code === 'TRANSACTION_NOT_OWNED') throw error;
     if (error.message.includes('UNIQUE')) {
       throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');
     }

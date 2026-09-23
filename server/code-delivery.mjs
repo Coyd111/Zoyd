@@ -237,9 +237,27 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
     }
   }
 
-  // 4. Webhook
+  // 4. Webhook (allowlist https: stricte — anti-SSRF : pas d'http, pas d'IP/host local)
   const webhook = process.env.CODE_DELIVERY_WEBHOOK;
-  if (webhook) {
+  const webhookAllowed = (() => {
+    if (!webhook) return false;
+    try {
+      const url = new URL(webhook);
+      if (url.protocol !== 'https:') return false;
+      const host = url.hostname.toLowerCase();
+      if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return false;
+      if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) return false; // IPv4 (dont privées)
+      if (host.includes(':')) return false; // IPv6
+      if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(host)) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  if (webhook && !webhookAllowed) {
+    log.error('webhook blocked (not https public url)', { host: maskDestination(webhook) });
+  }
+  if (webhookAllowed) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
@@ -259,10 +277,11 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
   }
 
   // 5. Défaut
-  if (!isProd) {
+  // Fail-closed : le code n'est loggé qu'avec ALLOW_DEBUG_CODES=true explicite.
+  if (process.env.ALLOW_DEBUG_CODES === 'true') {
     // Local testing only: never log codes in production.
     log.info('dev auth code', { purpose, to: maskDestination(to), code });
-  } else {
+  } else if (isProd || !process.env.NODE_ENV) {
     log.warn('auth code delivery pending (no provider)', { purpose, to: maskDestination(to) });
   }
   return { delivered: false, channel: 'none' };

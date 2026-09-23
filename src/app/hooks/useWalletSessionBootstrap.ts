@@ -3,16 +3,16 @@ import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 
 export const useWalletSessionBootstrap = () => {
-  const sessionToken = useAuthStore((state) => state.sessionToken);
-  const hydratedTokenRef = useRef<string | null>(null);
+  const userId = useAuthStore((state) => state.user?.id);
+  const hydratedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!sessionToken) {
-      hydratedTokenRef.current = null;
+    if (!userId) {
+      hydratedRef.current = null;
       return;
     }
 
-    if (hydratedTokenRef.current === sessionToken) {
+    if (hydratedRef.current === userId) {
       return;
     }
 
@@ -21,17 +21,17 @@ export const useWalletSessionBootstrap = () => {
     useWalletStore.getState().refreshFromServer()
       .then(() => {
         if (!cancelled) {
-          hydratedTokenRef.current = sessionToken;
+          hydratedRef.current = userId;
         }
       })
       .catch(() => {
         if (!cancelled) {
-          hydratedTokenRef.current = null;
+          hydratedRef.current = null;
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [sessionToken]);
+  }, [userId]);
 };

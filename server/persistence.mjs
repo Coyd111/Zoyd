@@ -18,7 +18,7 @@ const log = createLogger('persistence');
 const memoryUsers = new Map();
 const MAX_USERS = 100000;
 const pseudoKeys = new Map(); // userId → normalized pseudo (avoids re-normalizing on search)
-const gameIdKeys = new Map(); // userId → normalized gameId (O(1) uniqueness check)
+const gameIdKeys = new Map(); // normalized gameId → userId (unicité UID CODM)
 const memoryAuthSessions = new Map();
 const MAX_AUTH_SESSIONS = 50000;
 const memoryRealtimeSessions = new Map();
@@ -112,7 +112,7 @@ export const normalizeEmailKey = (value) => value.trim().toLowerCase();
  * @returns {string} Digits-only phone key
  */
 export const normalizePhoneKey = (value) => value.replace(/\D/g, '');
-export const normalizeGameIdKey = (value) => value.trim();
+export const normalizeGameIdKey = (value) => String(value || '').trim().toLowerCase();
 export const normalizeChatParticipants = (participants) =>
   [...new Set((Array.isArray(participants) ? participants : []).map((entry) => `${entry || ''}`.trim()).filter(Boolean))];
 
@@ -263,7 +263,7 @@ export const loadFromSupabase = async () => {
         const payload = sanitizeUserPayload(row.payload);
         memoryUsers.set(row.id, payload);
         pseudoKeys.set(row.id, normalizePseudoKey(payload.pseudo || ''));
-        if (payload.gameId) gameIdKeys.set(row.id, normalizeGameIdKey(payload.gameId));
+        if (payload.gameId) gameIdKeys.set(normalizeGameIdKey(payload.gameId), row.id);
         if (row.role === 'admin') memoryAdminIds.add(row.id);
         if (row.password_hash) {
           storePasswordHash(row.id, row.password_hash, row.payload?.pseudo, row.payload?.email, row.payload?.phone);
@@ -554,6 +554,9 @@ export const buildUserPayload = (input, role = 'player') => {
 
 const registrationMutex = new Mutex();
 
+/** Exécute fn sous le mutex global d'unicité (inscription + PATCH profil). */
+export const withRegistrationMutex = (fn) => registrationMutex.runExclusive(fn);
+
 const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   const pk = normalizePseudoKey(pseudo);
   const ek = normalizeEmailKey(email);
@@ -595,9 +598,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
   if (!input.pseudo?.trim() || !input.email?.trim() || !input.phone?.trim() || !input.gameId?.trim()) {
     throw makeError('INVALID_REGISTRATION', 'Informations joueur incompletes.');
   }
-  if (typeof password !== 'string' || password.length < 8) {
-    throw makeError('INVALID_REGISTRATION', 'Le mot de passe doit contenir au moins 8 caracteres.');
-  }
+  assertStrongPassword(password);
   // Conformité : 18+ et CGU obligatoires (sauf compte admin système).
   if (role !== 'admin' && (input.acceptAdult !== true || input.acceptTerms !== true)) {
     throw makeError('LEGAL_NOT_ACCEPTED', 'Confirme avoir 18 ans ou plus et accepter les Conditions pour créer un compte.');
@@ -606,6 +607,12 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
   const release = await registrationMutex.acquire();
   try {
     ensureUniqueRegistration(input);
+
+    // Cap anti-OOM : on refuse au lieu d'évincer (évincer supprimait un compte
+    // de la RAM avec ses fonds, ressuscité ensuite depuis Supabase).
+    if (memoryUsers.size >= MAX_USERS) {
+      throw makeError('SERVER_BUSY', 'Trop de comptes en mémoire, réessaie plus tard.');
+    }
 
     const id = input.id || crypto.randomUUID();
     const createdAt = input.dateJoined || getNow();
@@ -620,10 +627,9 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     const passwordHash = await hashPassword(password);
 
     // Write to memory
-    evictOldest(memoryUsers, MAX_USERS);
     memoryUsers.set(id, payload);
     pseudoKeys.set(id, normalizePseudoKey(payload.pseudo || ''));
-    if (payload.gameId) gameIdKeys.set(id, normalizeGameIdKey(payload.gameId));
+    if (payload.gameId) gameIdKeys.set(normalizeGameIdKey(payload.gameId), id);
     if (role === 'admin') memoryAdminIds.add(id);
     storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
 
@@ -819,7 +825,8 @@ export const updateUserAccount = async (userId, updater) => {
     const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
     memoryUsers.set(userId, next);
     pseudoKeys.set(userId, normalizePseudoKey(next.pseudo || ''));
-    if (next.gameId) gameIdKeys.set(userId, normalizeGameIdKey(next.gameId));
+    if (current.gameId) gameIdKeys.delete(normalizeGameIdKey(current.gameId));
+    if (next.gameId) gameIdKeys.set(normalizeGameIdKey(next.gameId), userId);
 
     // Track admin role changes
     if (next.role === 'admin') memoryAdminIds.add(userId);
@@ -1146,6 +1153,15 @@ const isStrongPassword = (password) =>
   /[0-9]/.test(password) &&
   /[^A-Za-z0-9]/.test(password);
 
+export const assertStrongPassword = (password) => {
+  if (!isStrongPassword(password)) {
+    throw makeError(
+      'WEAK_PASSWORD',
+      'Le mot de passe doit faire au moins 8 caracteres avec une majuscule, un chiffre et un caractere special.'
+    );
+  }
+};
+
 /**
  * Issue a password-reset code for an identifier. Never reveals whether the
  * account exists — routes always answer 200.
@@ -1187,12 +1203,7 @@ export const resetPasswordWithCode = async (identifier, code, newPassword) => {
     memoryPasswordResetCodes.delete(userId);
     throw generic();
   }
-  if (!isStrongPassword(newPassword)) {
-    throw makeError(
-      'WEAK_PASSWORD',
-      'Le mot de passe doit faire au moins 8 caracteres avec une majuscule, un chiffre et un caractere special.'
-    );
-  }
+  assertStrongPassword(newPassword);
   const newHash = await hashPassword(newPassword);
   await updatePasswordHash(userId, newHash);
   memoryPasswordResetCodes.delete(userId);
@@ -1235,7 +1246,7 @@ export const deleteUserAccount = async (userId) => {
   // ── Memory cleanup ──
   memoryUsers.delete(userId);
   pseudoKeys.delete(userId);
-  gameIdKeys.delete(userId);
+  if (user.gameId) gameIdKeys.delete(normalizeGameIdKey(user.gameId));
   memoryPasswordHashes.delete(userId);
   if (user.pseudo) memoryPasswordHashes.delete(normalizePseudoKey(user.pseudo));
   if (user.email) memoryPasswordHashes.delete(normalizeEmailKey(user.email));
@@ -1398,9 +1409,12 @@ export const createAuthSession = async (userId) => {
 /**
  * Get an auth session by token, auto-deleting if expired or user not found.
  * @param {string} token - Session token
+ * @param {object} [opts] - { skipRotation: true } pour le flow cookie httpOnly
+ *   (le navigateur ne peut pas recevoir le nouveau token mid-request ; la TTL
+ *   absolue de 6h reste le garde-fou).
  * @returns {{ token: string, userId: string, user: object }|null} Session with user or null
  */
-export const getAuthSession = (token) => {
+export const getAuthSession = (token, opts = {}) => {
   if (!token) return null;
   const session = memoryAuthSessions.get(token);
   if (!session) return null;
@@ -1411,10 +1425,13 @@ export const getAuthSession = (token) => {
   const user = getUserById(session.userId);
   if (!user) { memoryAuthSessions.delete(token); return null; }
 
-  // Session rotation: if session is older than 30 minutes, fire-and-forget rotation
-  const sessionAge = Date.now() - new Date(session.issuedAt).getTime();
-  if (sessionAge > 30 * 60 * 1000) {
-    rotateAuthSession(session, user).catch(err => log.error('Session rotation failed', err));
+  // Session rotation: if session is older than 30 minutes, fire-and-forget rotation.
+  // Skipped for cookie flow (see opts) — le client ne recevrait jamais le nouveau token.
+  if (!opts.skipRotation) {
+    const sessionAge = Date.now() - new Date(session.issuedAt).getTime();
+    if (sessionAge > 30 * 60 * 1000) {
+      rotateAuthSession(session, user).catch(err => log.error('Session rotation failed', err));
+    }
   }
 
   return { ...session, user };
@@ -1468,7 +1485,27 @@ export const createRealtimeSession = async ({ userId, pseudo, role }) => {
 };
 
 export const getRealtimeSession = (token) => {
-  return token ? memoryRealtimeSessions.get(token) || null : null;
+  if (!token) return null;
+  const s = memoryRealtimeSessions.get(token);
+  if (!s) return null;
+  if (s.expiresAt && new Date(s.expiresAt) < new Date()) {
+    memoryRealtimeSessions.delete(token);
+    return null;
+  }
+  return s;
+};
+
+/**
+ * Find a valid realtime session for a user, or create one.
+ * Used by the Socket.io cookie fallback (no token in handshake).
+ */
+export const getOrCreateRealtimeSessionForUser = async (userId) => {
+  const now = new Date();
+  for (const s of memoryRealtimeSessions.values()) {
+    if (s.userId === userId && s.expiresAt && new Date(s.expiresAt) > now) return s;
+  }
+  const user = getUserById(userId);
+  return await createRealtimeSession({ userId, pseudo: user?.pseudo || 'Joueur', role: user?.role || 'player' });
 };
 
 export const deleteRealtimeSession = (token) => {

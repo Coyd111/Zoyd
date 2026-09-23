@@ -62,57 +62,17 @@ export interface User {
   };
 }
 
-const STORAGE_KEY_ZOYD_TOKEN = 'zoyd_session_token';
-const STORAGE_KEY_ZOYD_EXPIRES = 'zoyd_session_expires';
-
-function persistSession(token: string, expiresAt: string | null) {
-  try {
-    localStorage.setItem(STORAGE_KEY_ZOYD_TOKEN, token);
-    if (expiresAt) localStorage.setItem(STORAGE_KEY_ZOYD_EXPIRES, expiresAt);
-  } catch { /* storage full or blocked */ }
-}
-
-function readPersistedSession(): { token: string | null; expiresAt: string | null } {
-  try {
-    const token = localStorage.getItem(STORAGE_KEY_ZOYD_TOKEN);
-    const expiresAt = localStorage.getItem(STORAGE_KEY_ZOYD_EXPIRES);
-    if (!token) return { token: null, expiresAt: null };
-
-    if (typeof token !== 'string' || token.length < 10 || token.length > 512) {
-      clearPersistedSession();
-      return { token: null, expiresAt: null };
-    }
-
-    if (expiresAt && new Date(expiresAt) < new Date()) {
-      clearPersistedSession();
-      return { token: null, expiresAt: null };
-    }
-    return { token, expiresAt };
-  } catch {
-    return { token: null, expiresAt: null };
-  }
-}
-
-function clearPersistedSession() {
-  try {
-    localStorage.removeItem(STORAGE_KEY_ZOYD_TOKEN);
-    localStorage.removeItem(STORAGE_KEY_ZOYD_EXPIRES);
-  } catch { /* ok */ }
-}
-
 export interface AuthState {
   user: User | null;
-  sessionToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   expiresAt: string | null;
-  login: (user: User, sessionToken: string, expiresAt?: string) => void;
-  hydrateSession: (user: User, sessionToken: string, expiresAt?: string) => void;
+  login: (user: User, expiresAt?: string) => void;
+  hydrateSession: (user: User, expiresAt?: string) => void;
   setLoading: (loading: boolean) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   updateStats: (partial: Partial<UserStats>) => void;
-  getPersistedToken: () => string | null;
 }
 
 const normalizeUser = (user: User | null | undefined): User | null => {
@@ -123,30 +83,27 @@ const normalizeUser = (user: User | null | undefined): User | null => {
   };
 };
 
-// Hydrate from storage on module load
-const initialSession = readPersistedSession();
-
+// Auth cookie-only : le token vit dans le cookie httpOnly `zoyd_auth`,
+// jamais en JS (ni localStorage, ni mémoire). La session est revalidée
+// au chargement via GET /api/auth/me (cookie envoyé automatiquement).
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
-  sessionToken: initialSession.token,
   isAuthenticated: false,
-  isLoading: !!initialSession.token,
-  expiresAt: initialSession.expiresAt,
-  login: (user, sessionToken, expiresAt) => {
+  isLoading: true,
+  expiresAt: null,
+  login: (user, expiresAt) => {
     const normalized = normalizeUser(user);
     useTrustScoreStore.getState().hydrateFromUser(normalized ?? {});
-    persistSession(sessionToken, expiresAt || null);
-    set({ user: normalized, sessionToken, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
+    set({ user: normalized, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },
-  hydrateSession: (user, sessionToken, expiresAt) => {
+  hydrateSession: (user, expiresAt) => {
     const normalized = normalizeUser(user);
     useTrustScoreStore.getState().hydrateFromUser(normalized ?? {});
-    set({ user: normalized, sessionToken, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
+    set({ user: normalized, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },
   setLoading: (loading) => set({ isLoading: loading }),
   logout: () => {
-    clearPersistedSession();
-    set({ user: null, sessionToken: null, isAuthenticated: false, isLoading: false, expiresAt: null });
+    set({ user: null, isAuthenticated: false, isLoading: false, expiresAt: null });
   },
   updateUser: (updates) => {
     const allowedKeys = new Set([
@@ -175,5 +132,4 @@ export const useAuthStore = create<AuthState>()((set) => ({
       newStats.totalMatches = total;
       return { user: { ...state.user, stats: newStats } };
     }),
-  getPersistedToken: () => readPersistedSession().token,
 }));

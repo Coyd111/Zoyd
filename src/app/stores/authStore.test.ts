@@ -72,42 +72,40 @@ const makeUser = (overrides = {}) => ({
 // ---------------------------------------------------------------------------
 describe('authStore - Authentication', () => {
   beforeEach(() => {
-    useAuthStore.setState({ user: null, sessionToken: null, isAuthenticated: false });
+    useAuthStore.setState({ user: null, isAuthenticated: false });
   });
 
   it('should login user successfully', () => {
     const mockUser = makeUser();
-    useAuthStore.getState().login(mockUser, 'session-token-123');
+    useAuthStore.getState().login(mockUser);
 
     const state = useAuthStore.getState();
     expect(state.user).toEqual(mockUser);
-    expect(state.sessionToken).toBe('session-token-123');
     expect(state.isAuthenticated).toBe(true);
   });
 
   it('should hydrate session successfully', () => {
     const mockUser = makeUser();
-    useAuthStore.getState().hydrateSession(mockUser, 'session-token-123');
+    useAuthStore.getState().hydrateSession(mockUser);
 
     const state = useAuthStore.getState();
     expect(state.user).toEqual(mockUser);
-    expect(state.sessionToken).toBe('session-token-123');
     expect(state.isAuthenticated).toBe(true);
   });
 
   it('should logout user successfully', () => {
-    useAuthStore.getState().login(makeUser(), 'token');
+    useAuthStore.getState().login(makeUser());
     useAuthStore.getState().logout();
 
     const state = useAuthStore.getState();
     expect(state.user).toBeNull();
-    expect(state.sessionToken).toBeNull();
+    expect(state.expiresAt).toBeNull();
     expect(state.isAuthenticated).toBe(false);
   });
 
   it('should normalize user with missing role to "player"', () => {
     const userWithoutRole = makeUser({ role: undefined as any });
-    useAuthStore.getState().login(userWithoutRole, 'token');
+    useAuthStore.getState().login(userWithoutRole);
 
     expect(useAuthStore.getState().user?.role).toBe('player');
   });
@@ -120,7 +118,6 @@ describe('authStore - User Updates', () => {
   beforeEach(() => {
     useAuthStore.setState({
       user: makeUser(),
-      sessionToken: 'token',
       isAuthenticated: true,
     });
   });
@@ -161,7 +158,6 @@ describe('authStore - Stats Updates', () => {
           arbitratedMatches: 0,
         },
       }),
-      sessionToken: 'token',
       isAuthenticated: true,
     });
   });
@@ -199,7 +195,6 @@ describe('authStore - Server-Driven Progression Reflection', () => {
         arbiterProgression: { level: 'NOVICE' as const, xp: 0, nextLevelXp: 1 },
         trustScore: 85,
       }),
-      sessionToken: 'token',
       isAuthenticated: true,
     });
   });

@@ -36,9 +36,27 @@ export const serializeCookie = (name, value, options = {}) => {
   return parts.join('; ');
 };
 
+/**
+ * Cookie de session centralisé. Le front (Vercel) et l'API (Render) sont
+ * cross-origin : en production il faut SameSite=None + Secure pour que le
+ * navigateur envoie le cookie. En dev local (http), Lax sans Secure.
+ * @param {string} value - token (ou '' pour déconnecter)
+ * @param {number} maxAge - secondes (0 = suppression)
+ * @returns {string}
+ */
+export const serializeAuthCookie = (value, maxAge) => {
+  const isProd = process.env.NODE_ENV === 'production';
+  return serializeCookie('zoyd_auth', value, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    maxAge,
+    path: '/',
+  });
+};
+
 /** @type {string[]} */
-const devOrigins = process.env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173'];
-export const ALLOWED_ORIGINS = [
+const devOrigins = process.env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173'];export const ALLOWED_ORIGINS = [
   ...(process.env.ZOYD_ALLOWED_ORIGINS
     ? process.env.ZOYD_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : devOrigins),
@@ -46,6 +64,12 @@ export const ALLOWED_ORIGINS = [
   'https://zoyd.africa',
   'https://www.zoyd.africa',
 ];
+
+/**
+ * Fail-closed : les secrets de debug (tokens, codes) ne sont exposés en
+ * réponse que si ALLOW_DEBUG_CODES=true explicite. NODE_ENV absent = prod.
+ */
+export const ALLOW_DEBUG_CODES = process.env.ALLOW_DEBUG_CODES === 'true';
 
 /**
  * @param {import('node:http').IncomingMessage} req
@@ -167,12 +191,19 @@ export const readBearerToken = (req) => {
 
 /**
  * Resolve the authenticated app session from the request token.
+ * Header Authorization = rotation active ; cookie seul = pas de rotation
+ * (le navigateur ne recevrait jamais le nouveau token).
  * @param {import('node:http').IncomingMessage} req
  * @returns {object|null}
  */
 export const getAuthenticatedAppSession = (req) => {
+  const authorization = req.headers.authorization || '';
+  if (authorization.startsWith('Bearer ')) {
+    const token = authorization.slice('Bearer '.length).trim();
+    return token ? getAuthSession(token) : null;
+  }
   const token = readBearerToken(req);
-  return token ? getAuthSession(token) : null;
+  return token ? getAuthSession(token, { skipRotation: true }) : null;
 };
 
 /**
@@ -275,6 +306,8 @@ export const mapPersistenceError = (error) => {
       return { status: 400, message, code };
     case 'PAYOUT_FAILED':
       return { status: 502, message, code };
+    case 'SERVER_BUSY':
+      return { status: 503, message, code };
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':
     case 'DISPUTE_ALREADY_OPEN':

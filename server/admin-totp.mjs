@@ -123,10 +123,10 @@ export const requireAdmin = (req, res) => {
 };
 
 /**
- * Require an authenticated admin session, plus verified 2FA when enabled.
- * NOTE (décision produit 2026-09-18) : 2FA en OPT-IN jusqu'au domaine dédié.
- * Sans entrée TOTP active, l'accès passe (mot de passe uniquement).
- * Pour réactiver l'obligation : rejeter quand !totpEntry?.enabled.
+ * Require an authenticated admin session, plus verified 2FA (OBLIGATOIRE
+ * sur les routes financières/modération). Sans 2FA activée → 403 avec
+ * code 2FA_REQUIRED (l'admin l'active dans Paramètres > Sécurité,
+ * endpoints /api/admin/2fa/* qui restent accessibles au mot de passe).
  * @param {import('http').IncomingMessage} req - HTTP request
  * @param {import('http').ServerResponse} res - HTTP response
  * @returns {object|null} Authenticated session or null if rejected
@@ -143,8 +143,12 @@ export const requireAdmin2fa = (req, res) => {
     return null;
   }
   const totpEntry = adminTotpSecrets.get(session.user.id);
-  if (totpEntry?.enabled && (!session.admin2faVerified || session.admin2faExpires <= Date.now())) {
-    respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', requires2fa: true });
+  if (!totpEntry?.enabled) {
+    respondJson(res, 403, { ok: false, error: 'Active la 2FA dans Paramètres > Sécurité pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
+    return null;
+  }
+  if (!session.admin2faVerified || session.admin2faExpires <= Date.now()) {
+    respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
     return null;
   }
   return session;

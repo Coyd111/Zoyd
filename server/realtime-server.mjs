@@ -5,7 +5,7 @@ import webpush from 'web-push';
 import { vapidKeys } from './vapid-keys.mjs';
 import { createLogger } from './logger.mjs';
 import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from './metrics.mjs';
-import { serializeCookie, ALLOWED_ORIGINS, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
+import { serializeAuthCookie, ALLOWED_ORIGINS, ALLOW_DEBUG_CODES, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
 import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs';
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
@@ -25,10 +25,12 @@ import {
   deleteAuthSession,
   deleteRealtimeSessionsForUser,
   deleteUserAccount,
+  revokeAuthSessionsForUser,
   ensureGlobalChatChannel,
   getAuthSession,
   getLeaderboard,
   getUserById,
+  getOrCreateRealtimeSessionForUser,
   verifyUserPassword,
   verifyActivationCode,
   generateActivationCode,
@@ -75,6 +77,8 @@ import {
   sbFire,
   getPublicUserById,
   checkProfileUniqueness,
+  withRegistrationMutex,
+  assertStrongPassword,
   tagWalletTransaction,
   getPublicStats,
   markAdmin2faVerified,
@@ -412,20 +416,14 @@ const handleRequest = async (req, res) => {
       // V1 simplifiée (décision 2026-09-18) : compte directement actif,
       // session immédiate. Pas de code d'activation (pas d'email/SMS pour l'instant).
       const session = await createAuthSession(user.id);
-      const cookieValue = serializeCookie('zoyd_auth', session.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 6 * 60 * 60,
-        path: '/',
-      });
-      res.setHeader('Set-Cookie', cookieValue);
+      res.setHeader('Set-Cookie', serializeAuthCookie(session.token, 6 * 60 * 60));
 
       respondJson(res, 201, {
         ok: true,
-        token: session.token,
         user: session.user,
         expiresAt: session.expiresAt,
+        // Dev/test uniquement : jamais de token en réponse en production.
+        ...(ALLOW_DEBUG_CODES && { token: session.token }),
         message: 'Compte cree avec succes. Bienvenue sur ZOYD !',
       });
     } catch (error) {
@@ -448,22 +446,15 @@ const handleRequest = async (req, res) => {
       
       const session = await createAuthSession(user.id);
 
-      // Set HttpOnly cookie for enhanced security
-      const cookieValue = serializeCookie('zoyd_auth', session.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 6 * 60 * 60, // 6 hours — matches session expiry in persistence.mjs
-        path: '/',
-      });
-
-      res.setHeader('Set-Cookie', cookieValue);
+      // Cookie httpOnly = seul credential du navigateur (plus de token en JS).
+      res.setHeader('Set-Cookie', serializeAuthCookie(session.token, 6 * 60 * 60));
 
       respondJson(res, 200, {
         ok: true,
-        token: session.token,
         user: session.user,
         expiresAt: session.expiresAt,
+        // Dev/test uniquement : jamais de token en réponse en production.
+        ...(ALLOW_DEBUG_CODES && { token: session.token }),
       });
     } catch (error) {
       respondMappedError(res, error);
@@ -523,7 +514,7 @@ const handleRequest = async (req, res) => {
           ? 'Nouveau code envoye. Verifie ta boite de reception.'
           : "Nouveau code genere. L'envoi automatique n'est pas encore configure : contacte le support si tu ne le recois pas.",
         delivery: delivery.delivered ? 'sent' : 'pending-provider',
-        ...(process.env.NODE_ENV !== 'production' && { activationCode: code }),
+        ...(ALLOW_DEBUG_CODES && { activationCode: code }),
       });
     } catch (error) {
       respondMappedError(res, error);
@@ -550,7 +541,7 @@ const handleRequest = async (req, res) => {
           ? 'Email mis a jour. Nouveau code envoye.'
           : "Email mis a jour. L'envoi automatique n'est pas encore configure : contacte le support si tu ne recois pas le code.",
         delivery: delivery.delivered ? 'sent' : 'pending-provider',
-        ...(process.env.NODE_ENV !== 'production' && { activationCode: code }),
+        ...(ALLOW_DEBUG_CODES && { activationCode: code }),
       });
     } catch (error) {
       respondMappedError(res, error);
@@ -586,7 +577,7 @@ const handleRequest = async (req, res) => {
             : "Code généré mais l'envoi automatique a échoué : réessaie dans un instant ou contacte le support.")
           : 'Aucun compte associé à cet identifiant.',
         ...(result.found && { delivery: delivery.delivered ? 'sent' : 'pending-provider' }),
-        ...(result.found && process.env.NODE_ENV !== 'production' && { resetCode: result.code }),
+        ...(result.found && ALLOW_DEBUG_CODES && { resetCode: result.code }),
       });
     } catch (error) {
       respondMappedError(res, error);
@@ -678,11 +669,12 @@ const handleRequest = async (req, res) => {
           safeUpdate[field] = value;
         }
       }
-      const updatedUser = await updateUserAccount(session.user.id, (user) => {
-        // Unicité pseudo/email/phone (sinon collisions auth) — throw DUPLICATE_* → 409
+      const updatedUser = await withRegistrationMutex(() => updateUserAccount(session.user.id, (user) => {
+        // Unicité pseudo/email/phone (sinon collisions auth) — throw DUPLICATE_* → 409.
+        // Sous mutex global : deux PATCH concurrents ne peuvent plus prendre le même identifiant.
         checkProfileUniqueness(session.user.id, safeUpdate);
         return { ...user, ...safeUpdate };
-      });
+      }));
       respondJson(res, 200, { ok: true, user: updatedUser }, req);
     } catch (error) {
       respondMappedError(res, error);
@@ -946,15 +938,7 @@ const handleRequest = async (req, res) => {
     }
 
     // Clear HttpOnly cookie
-    const cookieValue = serializeCookie('zoyd_auth', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 0,
-      path: '/',
-    });
-
-    res.setHeader('Set-Cookie', cookieValue);
+    res.setHeader('Set-Cookie', serializeAuthCookie('', 0));
 
     respondJson(res, 200, { ok: true });
     return;
@@ -976,8 +960,10 @@ const handleRequest = async (req, res) => {
         respondJson(res, 400, { ok: false, error: 'Les deux mots de passe sont requis.', code: 'MISSING_FIELDS' });
         return;
       }
-      if (newPassword.length < 8) {
-        respondJson(res, 400, { ok: false, error: 'Le nouveau mot de passe doit faire au moins 8 caracteres.', code: 'WEAK_PASSWORD' });
+      try {
+        assertStrongPassword(newPassword);
+      } catch (e) {
+        respondMappedError(res, e);
         return;
       }
       const user = getUserById(session.user.id);
@@ -991,16 +977,10 @@ const handleRequest = async (req, res) => {
       }
       const newHash = await hashPassword(newPassword);
       await updatePasswordHash(session.user.id, newHash);
-      deleteAuthSession(token);
+      // B9 : révoque TOUTES les sessions (une session attaquant ne doit pas survivre).
+      revokeAuthSessionsForUser(session.user.id);
       deleteRealtimeSessionsForUser(session.user.id);
-      const cookieValue = serializeCookie('zoyd_auth', '', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 0,
-      });
-      res.setHeader('Set-Cookie', cookieValue);
+      res.setHeader('Set-Cookie', serializeAuthCookie('', 0));
       respondJson(res, 200, { ok: true });
     } catch (error) {
       respondMappedError(res, error);
@@ -1024,13 +1004,7 @@ const handleRequest = async (req, res) => {
       }
       const { forfeitedCash } = await deleteUserAccount(session.user.id);
       // Clear HttpOnly cookie (all sessions already revoked)
-      res.setHeader('Set-Cookie', serializeCookie('zoyd_auth', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 0,
-        path: '/',
-      }));
+      res.setHeader('Set-Cookie', serializeAuthCookie('', 0));
       respondJson(res, 200, {
         ok: true,
         message: forfeitedCash > 0
@@ -2711,9 +2685,10 @@ const io = new SocketIOServer(server, {
         callback(null, true);
         return;
       }
-      callback(null, false);
+      callback(new Error('origin_not_allowed'));
     },
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
@@ -2743,7 +2718,7 @@ const cleanupSocketConnectionCounts = () => {
 };
 setInterval(cleanupSocketConnectionCounts, 5 * 60 * 1000);
 
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   const ip = socket.handshake.address || '127.0.0.1';
   const now = Date.now();
   const entry = socketConnectionCounts.get(ip);
@@ -2757,8 +2732,18 @@ io.use((socket, next) => {
     }
   }
 
-  const token = socket.handshake.auth?.token;
-  const session = getRealtimeSession(token);
+  let session = getRealtimeSession(socket.handshake.auth?.token);
+  if (!session) {
+    // Fallback cookie httpOnly : session auth -> session realtime (créée si besoin).
+    const cookieHeader = socket.handshake.headers?.cookie || '';
+    const cookieMatch = /zoyd_auth=([^;]+)/.exec(cookieHeader);
+    if (cookieMatch) {
+      try {
+        const authSession = getAuthSession(decodeURIComponent(cookieMatch[1]), { skipRotation: true });
+        if (authSession) session = await getOrCreateRealtimeSessionForUser(authSession.user.id);
+      } catch { /* jeton invalide -> unauthorized ci-dessous */ }
+    }
+  }
 
   if (!session) {
     next(new Error('unauthorized'));
@@ -3018,3 +3003,4 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 start();
+

@@ -40,7 +40,7 @@ const LoginPage: React.FC = () => {
     try {
       const auth = await loginWithBackend(data.emailOrPseudo, data.password);
       
-      login(auth.user, auth.token, auth.expiresAt);
+      login(auth.user, auth.expiresAt);
 
       useNotificationStore.getState().addNotification({
         type: 'system',

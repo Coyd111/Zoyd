@@ -1,7 +1,6 @@
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import type { User } from '../stores/authStore';
-import { useAuthStore } from '../stores/authStore';
 import { getApiUrl, getBaseUrl } from './apiClient';
 import type { ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import type { Match } from '../stores/matchStore';
@@ -84,16 +83,13 @@ const ensureRealtimeSession = async (user: User) => {
     return sessionPromise;
   }
 
-  const appSessionToken = useAuthStore.getState().sessionToken;
-  if (!appSessionToken) {
-    throw new Error('Application session required before realtime connection.');
-  }
-
+  // La session app est prouvée par le cookie httpOnly (credentials:include),
+  // plus besoin du token en JS.
   sessionPromise = fetch(getApiUrl('/api/realtime/auth/session'), {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${appSessionToken}`,
     },
     signal: AbortSignal.timeout(15000),
   })
@@ -118,7 +114,8 @@ export const getRealtimeSocket = () => {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
       autoConnect: false,
-      withCredentials: false,
+      // Envoie le cookie httpOnly pendant le handshake (fallback serveur).
+      withCredentials: true,
     });
   }
 

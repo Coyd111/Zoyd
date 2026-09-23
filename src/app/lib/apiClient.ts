@@ -16,16 +16,9 @@ export const getBaseUrl = () => {
 export const getApiUrl = (path: string) => `${getBaseUrl()}${path}`;
 
 export const getAuthHeaders = () => {
-  // First try to get token from HttpOnly cookie
-  const cookieToken = getCookie('zoyd_auth');
-  
-  // Fallback to store token (for backward compatibility)
-  const storeToken = useAuthStore.getState().sessionToken;
+  // Cookie-only : le token vit dans le cookie httpOnly `zoyd_auth`,
+  // envoyé automatiquement (credentials:include ci-dessous).
   const expiresAt = useAuthStore.getState().expiresAt;
-  
-  const token = cookieToken || storeToken;
-  
-  if (!token) return {};
 
   // Check token expiration on client side — defer logout to avoid race conditions with parallel requests
   if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
@@ -36,22 +29,9 @@ export const getAuthHeaders = () => {
         logoutQueued = false;
       });
     }
-    return {};
   }
 
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-};
-
-// Helper to read cookie on client
-const getCookie = (name: string): string | null => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) {
-    return parts.pop()?.split(';').shift() || null;
-  }
-  return null;
+  return {};
 };
 
 const handleAuthError = (status: number) => {
@@ -103,12 +83,15 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: 'Identifiants invalides. Vérifie ton pseudo/email et ton mot de passe.',
   LEGAL_NOT_ACCEPTED: 'Confirme avoir 18 ans ou plus et accepter les Conditions pour créer un compte.',
   CONFIRM_REQUIRED: 'Confirmation requise pour cette action définitive.',
+  '2FA_REQUIRED': 'Vérification 2FA requise : ouvre Paramètres > Sécurité.',
+  WEAK_PASSWORD: 'Mot de passe trop faible : 8 caractères min, majuscule, chiffre et caractère spécial.',
   ACCOUNT_NOT_ACTIVATED: 'Compte non activé. Termine ton inscription avec le code reçu.',
   INVALID_OPERATOR: 'Opérateur invalide.',
   INVALID_COUNTRY: 'Retraits bientôt disponibles pour ton pays.',
   INVALID_AMOUNT: 'Montant invalide.',
   TRANSACTION_ALREADY_PROCESSED: 'Cette transaction a déjà été traitée.',
   TRANSACTION_NOT_OWNED: "Cette transaction ne correspond pas à ton compte.",
+  SERVER_BUSY: 'Serveur saturé. Réessaie dans un instant.',
   TRANSACTION_IN_PROGRESS: 'Transaction en cours de traitement. Réessaie dans un instant.',
   PAYOUT_FAILED: 'Le transfert Mobile Money a échoué. Ton solde a été restauré.',
   ACCOUNT_LOCKED: 'Compte verrouillé. Réessaie plus tard.',
@@ -158,6 +141,8 @@ const authorizedRequest = async <T>(method: HttpMethod, path: string, body?: unk
     return await readJson<T>(
       await fetch(getApiUrl(path), {
         method,
+        // Cookie httpOnly cross-origin (Vercel -> Render) : indispensable.
+        credentials: 'include',
         headers: {
           ...getAuthHeaders(),
           ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),

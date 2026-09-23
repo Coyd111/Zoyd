@@ -195,9 +195,9 @@ const RegisterPage: React.FC = () => {
       });
 
       // V1 simplifiée : compte directement actif + session immédiate (pas d'étape code).
-      const response = auth as AuthResponse & { token?: string; expiresAt?: string };
-      if (response.token && response.user) {
-        login(response.user, response.token, response.expiresAt);
+      const response = auth as AuthResponse & { expiresAt?: string };
+      if (response.user) {
+        login(response.user, response.expiresAt);
         toast.success(`Bienvenue sur ZOYD, ${formData.pseudo} !`);
       } else {
         toast.success('Compte créé avec succès. Connecte-toi.');

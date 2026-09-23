@@ -54,17 +54,7 @@ export const loginWithBackend = async (identifier: string, password: string): Pr
   return authorizedPost<AuthResponse>('/api/auth/login', { identifier, password });
 };
 
-export const fetchCurrentUser = async (token?: string) => {
-  if (token) {
-    const { useAuthStore } = await import('../stores/authStore');
-    const prev = useAuthStore.getState().sessionToken;
-    useAuthStore.setState({ sessionToken: token });
-    try {
-      return await authorizedGet<AuthResponse>('/api/auth/me');
-    } finally {
-      useAuthStore.setState({ sessionToken: prev });
-    }
-  }
+export const fetchCurrentUser = async () => {
   return authorizedGet<AuthResponse>('/api/auth/me');
 };
 
@@ -86,6 +76,7 @@ export const activateAccount = async (email: string, code: string): Promise<Acti
   try {
     const response = await fetch(getApiUrl('/api/auth/activate'), {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, code }),
       signal: controller.signal,
@@ -103,6 +94,7 @@ export const activateAccount = async (email: string, code: string): Promise<Acti
 const postAuthRecovery = async (path: string, body: Record<string, string>): Promise<RecoveryResponse> => {
   const response = await fetch(getApiUrl(path), {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });

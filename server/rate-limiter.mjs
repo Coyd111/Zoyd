@@ -59,18 +59,37 @@ setInterval(cleanupRateLimits, 60 * 1000);
 const isValidIp = (ip) => /^[\d.:a-fA-F]+$/.test(ip);
 
 /**
- * Extract the real client IP from a request, respecting X-Forwarded-For
- * (set by Render proxy). Falls back to the socket remote address.
- * @param {import('http').IncomingMessage} req
+ * True if the direct TCP peer is a proxy/private hop (Render proxy, Docker,
+ * localhost). X-Forwarded-For is only trusted in that case — sinon un client
+ * pourrait forger l'en-tête et contourner le rate limit.
+ */
+const isTrustedProxyPeer = (remoteAddress) => {
+  if (!remoteAddress) return false;
+  const ip = String(remoteAddress).replace(/^::ffff:/, '');
+  if (ip === '127.0.0.1' || ip === '::1') return true;
+  if (/^10\./.test(ip) || /^192\.168\./.test(ip)) return true;
+  const m172 = /^172\.(\d+)\./.exec(ip);
+  if (m172 && Number(m172[1]) >= 16 && Number(m172[1]) <= 31) return true;
+  if (/^(fc|fd)/i.test(ip)) return true;
+  return false;
+};
+
+/**
+ * Extract the real client IP from a request. X-Forwarded-For is honored
+ * only when the direct peer is a trusted proxy (Render).
+ * @param {import('node:http').IncomingMessage} req
  * @returns {string}
  */
 const getClientIp = (req) => {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const firstIp = forwarded.split(',')[0].trim();
-    if (isValidIp(firstIp)) return firstIp;
+  const peer = req.socket?.remoteAddress || '';
+  if (isTrustedProxyPeer(peer)) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      const firstIp = forwarded.split(',')[0].trim();
+      if (isValidIp(firstIp)) return firstIp;
+    }
   }
-  return req.socket.remoteAddress || '127.0.0.1';
+  return peer || '127.0.0.1';
 };
 
 /**

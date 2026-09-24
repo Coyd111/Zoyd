@@ -1676,8 +1676,10 @@ export const ensureGlobalChatChannel = () =>
  * @param {object[]} items - Full array of items to replace the collection with
  */
 export const replaceStateCollection = async (kind, items) => {
+  // Pendant un reload, toute écriture serait écrasée puis perdue : on refuse
+  // (503 SERVER_BUSY) pour que l'appelant réessaie après.
   if (reloadInProgress) {
-    log.warn(`replaceStateCollection(${kind}) deferred — reload in progress`);
+    throw makeError('SERVER_BUSY', 'Rechargement en cours, réessaie dans un instant.');
   }
 
   const itemIds = new Set(items.map((item) => item.id));
@@ -1700,24 +1702,50 @@ export const replaceStateCollection = async (kind, items) => {
     kindMap.delete(id);
   }
 
+  if (!supabase) return;
+  // Les IDs évincés doivent aussi disparaître en base, sinon le prochain
+  // reload les ressuscite (divergence mémoire/base).
+  if (idsToDelete.length > 0) {
+    await sbDeleteKindEntities(kind, idsToDelete);
+  }
+  if (items.length === 0) {
+    // Collection vidée : purge totale du kind en base.
+    await sbDeleteKindEntities(kind, null);
+    return;
+  }
   // Sync to Supabase (batch upsert with retry)
-  if (items.length > 0 && supabase && !reloadInProgress) {
-    const rows = items.map(item => ({ kind, entity_id: item.id, payload: item, updated_at: getNow() }));
-    for (let i = 0; i < rows.length; i += 100) {
-      const batch = rows.slice(i, i + 100);
-      let upserted = false;
-      for (let attempt = 1; attempt <= 3 && !upserted; attempt++) {
-        upserted = await sbUpsert('state_snapshots', batch);
-        if (!upserted && attempt < 3) {
-          const delay = attempt * 1000;
-          log.warn(`replaceStateCollection(${kind}) batch ${i} attempt ${attempt} failed — retrying in ${delay}ms`);
-          await new Promise((r) => setTimeout(r, delay));
-        }
-      }
-      if (!upserted) {
-        log.error(`replaceStateCollection(${kind}) batch ${i} failed after 3 attempts — memory and Supabase may diverge`, { batchIds: batch.map((r) => r.entity_id).slice(0, 5) });
+  const rows = items.map(item => ({ kind, entity_id: item.id, payload: item, updated_at: getNow() }));
+  for (let i = 0; i < rows.length; i += 100) {
+    const batch = rows.slice(i, i + 100);
+    let upserted = false;
+    for (let attempt = 1; attempt <= 3 && !upserted; attempt++) {
+      upserted = await sbUpsert('state_snapshots', batch);
+      if (!upserted && attempt < 3) {
+        const delay = attempt * 1000;
+        log.warn(`replaceStateCollection(${kind}) batch ${i} attempt ${attempt} failed — retrying in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
+    if (!upserted) {
+      log.error(`replaceStateCollection(${kind}) batch ${i} failed after 3 attempts — memory and Supabase may diverge`, { batchIds: batch.map((r) => r.entity_id).slice(0, 5) });
+    }
+  }
+};
+
+/**
+ * Delete state_snapshots rows for a kind (optionally restricted to entity ids).
+ * @param {string} kind
+ * @param {string[]|null} entityIds - null = tout le kind
+ */
+const sbDeleteKindEntities = async (kind, entityIds) => {
+  if (!supabase) return;
+  try {
+    let q = supabase.from('state_snapshots').delete().eq('kind', kind);
+    if (entityIds) q = q.in('entity_id', entityIds);
+    const { error } = await q;
+    if (error) log.error('state_snapshots delete error', { message: error.message });
+  } catch (err) {
+    log.error('state_snapshots delete error', { message: err.message });
   }
 };
 
@@ -1743,7 +1771,13 @@ export const getStateEntity = (kind, entityId) => {
 export const upsertStateEntity = async (kind, entity) => {
   if (!memoryStateByKind.has(kind)) memoryStateByKind.set(kind, new Map());
   const kindMap = memoryStateByKind.get(kind);
-  evictOldest(kindMap, MAX_STATE_PER_KIND);
+  // Cap : l'évincé doit aussi disparaître en base, sinon reload = résurrection.
+  if (kindMap.size >= MAX_STATE_PER_KIND && !kindMap.has(entity.id)) {
+    const oldest = kindMap.keys().next().value;
+    kindMap.delete(oldest);
+    memoryStateSnapshots.delete(`${kind}:${oldest}`);
+    sbFire('evictStateEntity', () => sbDeleteKindEntities(kind, [oldest]));
+  }
   kindMap.set(entity.id, entity);
   memoryStateSnapshots.set(`${kind}:${entity.id}`, entity);
 

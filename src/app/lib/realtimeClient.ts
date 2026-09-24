@@ -128,6 +128,7 @@ export const bindRealtimeHandlers = (handlers: RealtimeHandlers) => {
 
   currentSocket.off('connect');
   currentSocket.off('disconnect');
+  currentSocket.off('connect_error');
   currentSocket.off('presence:snapshot');
   currentSocket.off('typing:snapshot');
   currentSocket.off('notification:deliver');
@@ -140,6 +141,19 @@ export const bindRealtimeHandlers = (handlers: RealtimeHandlers) => {
 
   currentSocket.on('connect', () => handlers.onConnect?.(currentSocket));
   currentSocket.on('disconnect', () => handlers.onDisconnect?.());
+  // Session realtime expirée (sleep Render…) : on régénère puis on retente,
+  // au lieu de boucler en unauthorized avec le même token.
+  currentSocket.on('connect_error', (err: Error) => {
+    if (String(err?.message || '').includes('unauthorized') && identifiedUser) {
+      activeSession = null;
+      ensureRealtimeSession(identifiedUser as User)
+        .then((session) => {
+          currentSocket.auth = { token: session.token };
+          currentSocket.connect();
+        })
+        .catch(() => { /* retry au prochain cycle */ });
+    }
+  });
   currentSocket.on('presence:snapshot', (snapshot) => handlers.onPresenceSnapshot?.(snapshot));
   currentSocket.on('typing:snapshot', (snapshot) => handlers.onTypingSnapshot?.(snapshot));
   currentSocket.on('notification:deliver', (payload) => handlers.onPushDelivery?.(payload));

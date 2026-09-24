@@ -9,8 +9,18 @@ const log = createLogger('cron');
 export const initCronJobs = () => {
   log.info('Service de tâches planifiées initialisé.');
 
+  // Gardes anti-chevauchement : un tick lent (Supabase) ne doit jamais
+  // empiler le suivant — on saute le tick et on loggue.
+  let matchCleanupRunning = false;
+  let leagueCloseRunning = false;
+
   // Nettoyage des matchs inactifs — toutes les 6 heures
   setInterval(async () => {
+    if (matchCleanupRunning) {
+      log.warn('Nettoyage matchs sauté : tick précédent encore en cours.');
+      return;
+    }
+    matchCleanupRunning = true;
     try {
       log.info('Démarrage du nettoyage des matchs inactifs...');
       await withMatchMutex(async () => {
@@ -48,11 +58,18 @@ export const initCronJobs = () => {
       });
     } catch (error) {
       log.error('Erreur lors du nettoyage des matchs', error);
+    } finally {
+      matchCleanupRunning = false;
     }
   }, 6 * 60 * 60 * 1000);
 
   // Fermeture automatique des inscriptions ligue — toutes les heures
   setInterval(async () => {
+    if (leagueCloseRunning) {
+      log.warn('Fermeture ligue sautée : tick précédent encore en cours.');
+      return;
+    }
+    leagueCloseRunning = true;
     try {
       await withLeagueMutex(async () => {
         const seasons = getStateCollection('leagues');
@@ -107,6 +124,8 @@ export const initCronJobs = () => {
       });
     } catch (error) {
       log.error('Erreur fermeture inscriptions ligue', error);
+    } finally {
+      leagueCloseRunning = false;
     }
   }, 60 * 60 * 1000);
 

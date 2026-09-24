@@ -8,6 +8,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Logs prod en warn+ (le debug par requête noierait les erreurs sur Render gratuit)
+      - key: LOG_LEVEL
+        value: warn
       - key: PORT
         value: 4001
       - key: SUPABASE_URL

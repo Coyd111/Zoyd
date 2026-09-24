@@ -138,6 +138,7 @@ const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
 const API_KEY_ROTATION_DAYS = Number(process.env.ZOYD_API_KEY_ROTATION_DAYS || 90);
 let matchAutomationIntervalId = null;
+let matchAutomationRunning = false;
 
 if (vapidKeys) {
   webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
@@ -1826,8 +1827,15 @@ const handleRequest = async (req, res) => {
     }
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
 
+    // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+    let body;
+    try {
+      body = await parseRequestBody(req);
+    } catch (error) {
+      respondMappedError(res, error);
+      return;
+    }
     try { await withMatchMutex(async () => {
-      const body = await parseRequestBody(req);
       if (body.tournamentId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.tournamentId)) {
         respondJson(res, 400, { ok: false, error: 'tournamentId invalide.', code: 'INVALID_JSON' });
         return;
@@ -1861,8 +1869,14 @@ const handleRequest = async (req, res) => {
     }
     if (!rateLimitGuard(res, getClientIp(req), 'social')) return;
 
+    let body;
+    try {
+      body = await parseRequestBody(req);
+    } catch (error) {
+      respondMappedError(res, error);
+      return;
+    }
     try { await withMatchMutex(async () => {
-      const body = await parseRequestBody(req);
       const outcome = await withWalletMutex(session.user.id, async () =>
         joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team)
       );
@@ -2679,6 +2693,9 @@ const server = http.createServer((req, res) => {
 });
 
 const io = new SocketIOServer(server, {
+  // Détection rapide des connexions mortes (sleep Render, réseau mobile).
+  pingInterval: 20_000,
+  pingTimeout: 10_000,
   cors: {
     origin: (origin, callback) => {
       if (!origin || ALLOWED_ORIGINS.includes(origin)) {
@@ -2964,6 +2981,11 @@ const start = async () => {
   initCronJobs();
 
   matchAutomationIntervalId = setInterval(async () => {
+    if (matchAutomationRunning) {
+      log.warn('Match automation skipped: previous tick still running.');
+      return;
+    }
+    matchAutomationRunning = true;
     try { await withMatchMutex(async () => {
       const outcome = await processMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.changed) {
@@ -2972,6 +2994,8 @@ const start = async () => {
     });
     } catch (error) {
       log.error('Match automation error', error);
+    } finally {
+      matchAutomationRunning = false;
     }
   }, MATCH_AUTOMATION_INTERVAL_MS);
 

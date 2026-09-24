@@ -1,4 +1,4 @@
-import { Trophy, Play, Clock, CheckCircle } from 'lucide-react';
+import { Trophy, Play, Clock } from 'lucide-react';
 import type { LeagueSeason, LeagueDayKey } from '../../../app/stores/leagueStore';
 import { DAY_KEYS, DAY_LABELS, DAY_STATUS_ICONS } from './leagueSeasonConstants';
 

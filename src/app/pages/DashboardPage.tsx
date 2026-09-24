@@ -55,8 +55,6 @@ const statusColor: Record<string, string> = {
 const DashboardPage: React.FC = () => {
   const reduceMotion = useReducedMotion();
   const user = useAuthStore((s) => s.user);
-  const cashBalance = useWalletStore((s) => s.cashBalance);
-  const bonusBalance = useWalletStore((s) => s.bonusBalance);
   const getTotalBalance = useWalletStore((s) => s.getTotalBalance);
   const getAvailableCash = useWalletStore((s) => s.getAvailableCash);
   const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
@@ -133,7 +131,7 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">
-      <SEOHead title="Tableau de bord — ZOYD" description="Ton espace ZOYD — matchs, wallet, progression." path="/dashboard" noindex />
+      <SEOHead title="Tableau de bord — ZOYD" description="Ton espace ZOYD — matchs, wallet, progression." path="/" noindex />
 
       <main className="max-w-[1600px] mx-auto px-5 md:px-8 pt-20 md:pt-28 pb-28 safe-bottom">
         {/* Hero greeting */}
@@ -649,7 +647,7 @@ const DashboardPage: React.FC = () => {
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
-              to="/mj/créer"
+              to="/mj/creer"
               className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors"
             >
               <Plus className="w-4 h-4" /> Créer un match

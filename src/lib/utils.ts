@@ -6,7 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatZC(amount: number): string {
-  return `${amount.toFixed(1)} ZC`;
+  const rounded = Math.round(amount * 10) / 10;
+  const display = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace('.', ',');
+  return `${display} ZC`;
 }
 
 export function roundAmount(value: number): number {
@@ -14,7 +16,7 @@ export function roundAmount(value: number): number {
 }
 
 export function formatFCFA(amount: number): string {
-  return `${(amount * 10).toLocaleString()} FCFA`;
+  return `${(amount * 10).toLocaleString('fr-FR')} FCFA`;
 }
 
 export function getRelativeTime(date: Date | string): string {

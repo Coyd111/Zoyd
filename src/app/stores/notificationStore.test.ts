@@ -6,18 +6,6 @@ vi.mock('../lib/notificationApi', () => ({
   markAllServerNotificationsRead: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
-const makeNotif = (overrides = {}) => ({
-  id: `n-${Date.now()}`,
-  type: 'match_start' as const,
-  title: 'Match',
-  message: 'Le match commence',
-  priority: 'normal' as const,
-  read: false,
-  timestamp: new Date().toISOString(),
-  dismissed: false,
-  ...overrides,
-});
-
 describe('notificationStore', () => {
   beforeEach(() => {
     useNotificationStore.setState({ notifications: [] });

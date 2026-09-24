@@ -36,7 +36,6 @@ interface MatchFormData {
 
 const CreateMatchPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<MatchFormData>>({});
   const [selectedFormat, setSelectedFormat] = useState<MatchFormat | ''>('');
   const [selectedGameMode, setSelectedGameMode] = useState('');
   const [selectedMap, setSelectedMap] = useState('');
@@ -93,32 +92,24 @@ const CreateMatchPage: React.FC = () => {
       return;
     }
 
-    setFormData((prev) => ({ ...prev, format: selectedFormat }));
     setCurrentStep(2);
   };
 
-  const onStep2Submit = (data: Partial<MatchFormData>) => {
+  const onStep2Submit = (_data: Partial<MatchFormData>) => {
     if (!selectedGameMode || !selectedMap) {
       toast.error('Choisis un mode et une carte.');
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      ...data,
-      gameMode: selectedGameMode,
-      map: selectedMap,
-    }));
     setCurrentStep(3);
   };
 
-  const onStep3Submit = (data: Partial<MatchFormData>) => {
+  const onStep3Submit = (_data: Partial<MatchFormData>) => {
     if (!selectedPass || selectedPass <= 0) {
       toast.error('Choisis une mise validé pour continuer.');
       return;
     }
 
-    setFormData((prev) => ({ ...prev, ...data }));
     setCurrentStep(4);
   };
 
@@ -141,7 +132,7 @@ const CreateMatchPage: React.FC = () => {
           context: 'match-create',
           requiredAmount: selectedPass,
           availableAmount: availableSpend,
-          returnTo: '/mj/créer',
+          returnTo: '/mj/creer',
         })
       );
       return;
@@ -185,7 +176,7 @@ const CreateMatchPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
-      <SEOHead title="Créer un match — ZOYD" description="Configure et lance un nouveau match wager." path="/mj/créer" noindex />
+      <SEOHead title="Créer un match — ZOYD" description="Configure et lance un nouveau match wager." path="/mj/creer" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 relative z-10">

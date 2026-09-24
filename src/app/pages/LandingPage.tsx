@@ -72,7 +72,7 @@ const platformCards = [
   {
     title: 'Mobile Money Intégré',
     description:
-      'Gère tes dépôts et retiré tes gains instantanément via MTN, Moov ou Celtiis directement depuis ton téléphone.',
+      'Gère tes dépôts et retire tes gains instantanément via MTN, Moov ou Celtiis directement depuis ton téléphone.',
     icon: Wallet,
   },
 ];

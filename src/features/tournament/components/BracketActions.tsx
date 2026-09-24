@@ -38,8 +38,6 @@ const BracketActions: React.FC<BracketActionsProps> = ({
   canStartTournament,
   tournamentStatus,
   myEntry,
-  myArbiterSlot,
-  tournamentName,
   squadName,
   teammateInputs,
   onSquadNameChange,

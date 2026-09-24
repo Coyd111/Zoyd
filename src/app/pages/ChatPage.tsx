@@ -9,13 +9,12 @@ import {
   markServerChatChannelRead,
   sendServerChatMessage,
 } from '../lib/chatApi';
-import { useChatStore, type ChatMessage } from '../stores/chatStore';
+import { useChatStore } from '../stores/chatStore';
 import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
 import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
 import { SEOHead } from '../components/SEOHead';
-import { useSocketStore } from '../stores/socketStore';
 import { getApiUrl, getAuthHeaders } from '../lib/apiClient';
 
 const channelIcons: Record<string, React.ReactNode> = {
@@ -353,11 +352,11 @@ const ChatPage: React.FC = () => {
                       void handleSend(event);
                     }
                   }}
-                  placeholder="Envoyér un message..."
+                  placeholder="Envoyer un message..."
                   aria-label="Saisir un message"
                   className="touch-target flex-1 min-w-0 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors"
                 />
-                <Button type="submit" variant="primary" disabled={!input.trim() || isSending} className="touch-target px-6" aria-label="Envoyér le message">
+                <Button type="submit" variant="primary" disabled={!input.trim() || isSending} className="touch-target px-6" aria-label="Envoyer le message">
                   <Send className="w-4 h-4" />
                 </Button>
               </form>

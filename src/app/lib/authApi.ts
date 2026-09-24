@@ -71,39 +71,36 @@ export const deleteOwnAccount = async (): Promise<{ ok: boolean; message: string
 };
 
 export const activateAccount = async (email: string, code: string): Promise<ActivationResponse> => {
+  return postUnauthenticated<ActivationResponse>('/api/auth/activate', { email, code }, 15000);
+};
+
+const postUnauthenticated = async <T>(
+  path: string,
+  body: Record<string, string>,
+  timeoutMs = 30000
+): Promise<T> => {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(getApiUrl('/api/auth/activate'), {
+    const response = await fetch(getApiUrl(path), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
     const data = await response.json();
     if (!response.ok || !data.ok) {
       throw new Error(data.error || `HTTP ${response.status}`);
     }
-    return data;
+    return data as T;
   } finally {
     clearTimeout(timeout);
   }
 };
 
-const postAuthRecovery = async (path: string, body: Record<string, string>): Promise<RecoveryResponse> => {
-  const response = await fetch(getApiUrl(path), {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  if (!response.ok || !data.ok) {
-    throw new Error(data.error || `HTTP ${response.status}`);
-  }
-  return data;
-};
+const postAuthRecovery = async (path: string, body: Record<string, string>): Promise<RecoveryResponse> =>
+  postUnauthenticated<RecoveryResponse>(path, body);
 
 export const resendActivationCode = (email: string): Promise<RecoveryResponse> =>
   postAuthRecovery('/api/auth/resend-code', { email });

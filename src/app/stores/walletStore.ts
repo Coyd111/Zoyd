@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { depositWalletBalance, fetchWalletSnapshot, type WalletSnapshot, withdrawWalletBalance } from '../lib/walletApi';
 import { useAuthStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
-import { roundAmount } from '../../lib/utils';
+import { roundAmount, formatZC } from '../../lib/utils';
 
 let lockFundsInFlight = false;
 
@@ -133,7 +133,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           if (payload.user) {
             useAuthStore.getState().updateUser(payload.user);
           }
-          pushWalletNotification('Depot confirme', `${safeAmount.toFixed(1)} ZC ajoutées via ${method}.`);
+          pushWalletNotification('Depot confirme', `${formatZC(safeAmount)} ajoutées via ${method}.`);
         },
 
         withdraw: async (amount, method, phone, country) => {
@@ -147,7 +147,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             useAuthStore.getState().updateUser(payload.user);
           }
           const netAmount = roundAmount(safeAmount - safeAmount * WITHDRAWAL_FEE_RATE);
-          pushWalletNotification('Retrait confirme', `${netAmount.toFixed(1)} ZC net envoyés après frais.`);
+          pushWalletNotification('Retrait confirme', `${formatZC(netAmount)} net envoyés après frais.`);
         },
 
         addTransaction: (txData) => {

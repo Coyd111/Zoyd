@@ -22,7 +22,6 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
   myEntry,
   myArbiterSlot,
   participantMatch,
-  userPseudo,
 }) => {
   const participantLabel = tournament.teamSize > 1 ? 'Équipes inscrites' : 'Joueurs inscrits';
   const participantSlotLabel = tournament.teamSize > 1 ? 'équipes' : 'joueurs';

@@ -35,8 +35,8 @@ import { SEOHead } from '../../components/SEOHead';
 const step1Schema = z
   .object({
     pseudo: z.string().min(3, 'Minimum 3 caractères').max(20, 'Maximum 20 caractères'),
-    email: z.string().email('Email invalidé'),
-    phone: z.string().min(8, 'Numéro invalidé'),
+    email: z.string().email('Email invalide'),
+    phone: z.string().min(8, 'Numéro invalide'),
     password: z
       .string()
       .min(8, 'Minimum 8 caractères')
@@ -92,7 +92,6 @@ const RegisterPage: React.FC = () => {
     watch,
     setValue,
     getValues,
-    trigger,
   } = useForm<Partial<RegisterPayload>>({
     resolver: currentStep === 1 ? zodResolver(step1Schema) : currentStep === 2 ? zodResolver(step2Schema) : undefined,
     defaultValues: {
@@ -141,7 +140,7 @@ const RegisterPage: React.FC = () => {
     }
 
     if (!data.gameId?.trim()) {
-      const msg = 'Renseigné ton UID CODM avant de continuer.';
+      const msg = 'Renseigne ton UID CODM avant de continuer.';
       toast.error(msg);
       useNotificationStore.getState().addNotification({
         type: 'system',
@@ -566,10 +565,15 @@ const RegisterPage: React.FC = () => {
                   >
                     <ChevronLeft className="w-4 h-4" /> RETOUR
                   </button>
-                  <Button type="submit" variant="primary" fullWidth size="lg" className="flex-[2]" disabled={!selectedDevice}>
+                  <Button type="submit" variant="primary" fullWidth size="lg" className="flex-[2]">
                     VERIFIER LA CONFIG <ChevronRight className="w-5 h-5 ml-2" />
                   </Button>
                 </div>
+                {!selectedDevice ? (
+                  <p className="text-[11px] font-mono uppercase tracking-widest text-zoyd-yellow" role="status">
+                    Choisis ton appareil principal ci-dessus pour continuer.
+                  </p>
+                ) : null}
               </motion.form>
             )}
 

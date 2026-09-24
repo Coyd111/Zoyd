@@ -164,7 +164,7 @@ const LoginPage: React.FC = () => {
 
             <div className="flex items-center gap-4 pt-4">
               <div className="flex -space-x-2">
-                {['S1', 'X2', 'ZK'].map((tag, i) => (
+                {['S1', 'X2', 'ZK'].map((tag) => (
                   <div key={tag} className="w-8 h-8 border-2 border-zoyd-black bg-zoyd-surface flex items-center justify-center">
                     <span className="text-[10px] font-display font-black text-white/60 italic">{tag}</span>
                   </div>

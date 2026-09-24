@@ -97,7 +97,8 @@ const WalletPage: React.FC = () => {
   // Dépôts via widget FedaPay (aucune contrainte pays) : fallback Bénin si pays non supporté.
   const depositOperators = operators.length > 0 ? operators : PAYOUT_COUNTRIES.bj.operators;
 
-  const presetAmounts = [50, 100, 200, 500];
+  // Presets alignés sur le retrait minimum (150 ZC) : aucun dépôt « coincé ».
+  const presetAmounts = [150, 200, 500, 1000];
   const spendableBalance = getAvailableToSpend();
   const withdrawAmountNum = parseFloat(withdrawAmount) || 0;
   // Arrondi 2 décimales — identique au roundAmount() backend (wallet-engine)
@@ -232,7 +233,7 @@ const WalletPage: React.FC = () => {
             toast.error(err instanceof Error ? err.message : 'Erreur lors de la vérification de la transaction FedaPay.');
           }
         } else {
-          toast.error('Transaction annulée ou echouee.');
+          toast.error('Transaction annulée ou échouée.');
         }
         closeDepositModal();
       },
@@ -308,7 +309,7 @@ const WalletPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter mb-2">
               LE COFFRE-FORT <span className="text-zoyd-yellow">(WALLET)</span>
             </h1>
-            <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouillé tes wagers et retiré tes gains de manière sécurisée.</p>
+            <p className="text-white/60 max-w-xl">Recharge via Mobile Money, verrouille tes wagers et retire tes gains de manière sécurisée.</p>
           </div>
         </div>
 
@@ -537,7 +538,9 @@ const WalletPage: React.FC = () => {
               </label>
               {!payoutCountry ? (
                 <p className="text-xs text-zoyd-yellow border border-zoyd-yellow/20 bg-zoyd-yellow/5 p-3">
-                  Retraits bientôt disponibles pour ton pays ({user?.country || 'inconnu'}). Change ton pays dans Profil si besoin.
+                  Retraits disponibles au Bénin, en Côte d'Ivoire, au Sénégal et au Togo pour le moment
+                  (ton pays : {user?.country || 'inconnu'}). Les dépôts et le jeu restent ouverts.
+                  Ne falsifie pas ton pays : le retrait part vers un numéro du pays réel du profil.
                 </p>
               ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
-import { roundAmount } from '../../lib/utils';
 
 export type MatchFormat = '1VS1' | '2VS2' | '3VS3' | '4VS4' | '5VS5';
 export type MatchStatus =
@@ -171,17 +170,6 @@ export interface MatchState {
 
 const ACTIVE_STATUSES: MatchStatus[] = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
-
-const getNow = () => new Date().toISOString();
-const getTeamSize = (format: MatchFormat) => parseInt(format.split('VS')[0], 10);
-const getSquadLabel = (team: MatchTeam) => (team === 0 ? 'Squad Alpha' : 'Squad Bravo');
-const getScheduledTimestamp = (match: Match) => (match.scheduledAt ? new Date(match.scheduledAt).getTime() : null);
-const getTeamCheckInCount = (match: Match, team: MatchTeam) =>
-  match.players.filter((player) => player.team === team && player.isCheckedIn).length;
-const isTeamReadyForLaunch = (match: Match, team: MatchTeam) => getTeamCheckInCount(match, team) >= match.teamSize;
-const isTerminalMatchStatus = (status: MatchStatus) =>
-  status === 'finished' || status === 'cancelled' || status === 'forfeited';
-const normalizeProofRefs = (refs: string[]) => refs.map((ref) => ref.trim()).filter(Boolean);
 const flattenProofs = (proofs?: MatchProofBundle) =>
   proofs
     ? [
@@ -318,17 +306,6 @@ const normalizeStoredMatch = (match: StoredMatch): Match => ({
   trustScoreMin: match.trustScoreMin,
   isInstant: match.isInstant ?? false,
 });
-
-const getPreferredTeam = (match: Match, preferredTeam?: number): MatchTeam | null => {
-  const team0Count = match.players.filter((player) => player.team === 0).length;
-  const team1Count = match.players.filter((player) => player.team === 1).length;
-
-  if (preferredTeam === 0 && team0Count < match.teamSize) return 0;
-  if (preferredTeam === 1 && team1Count < match.teamSize) return 1;
-  if (team0Count <= team1Count && team0Count < match.teamSize) return 0;
-  if (team1Count < match.teamSize) return 1;
-  return null;
-};
 
 const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match[]) => {
   const merged = new Map<string, Match>();

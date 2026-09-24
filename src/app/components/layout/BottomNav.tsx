@@ -80,7 +80,7 @@ const BottomNav: React.FC = React.memo(() => {
             </div>
             <div className="p-2 pb-4">
               <button
-                onClick={() => handleNavigate('/mj/créer')}
+                onClick={() => handleNavigate('/mj/creer')}
                 aria-label="Créer un match"
                 className="flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all bg-zoyd-yellow text-black hover:bg-white mb-2"
               >
@@ -164,7 +164,7 @@ const BottomNav: React.FC = React.memo(() => {
                   />
                 )}
                 <Icon className={cn("w-5 h-5 mb-1 transition-transform shrink-0", isActive ? "scale-110" : "")} />
-                <span className="text-[10px] font-display font-black uppercase tracking-widest italic truncate max-w-full px-0.5">{item.label}</span>
+                <span className="text-[11px] font-display font-black uppercase tracking-widest italic truncate max-w-full px-0.5">{item.label}</span>
               </Link>
             );
           })}

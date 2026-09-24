@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Trophy, Users, Calendar, Crown, Zap, ChevronRight } from 'lucide-react';
+import { Trophy, Calendar, Crown, Zap, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
 import { useLeagueStore, type LeagueSeason, type LeagueSeasonStatus } from '../../../app/stores/leagueStore';
 import { useAuthStore } from '../../../app/stores/authStore';
@@ -12,7 +12,7 @@ import {
   startServerLeagueQualification,
 } from '../../../app/lib/leagueApi';
 import { toast } from 'sonner';
-import { formatZC, formatFCFA, getRelativeTime } from '../../../lib/utils';
+import { formatZC } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
 import { SEOHead } from '../../../app/components/SEOHead';
 

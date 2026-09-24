@@ -100,7 +100,7 @@ const HubMJPage: React.FC = () => {
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-16 relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
         <div>
           <div className="flex flex-col lg:flex-row gap-8 mb-12 items-start lg:items-center">
-            <div className="overflow-x-auto scrollbar-hide"
+            <div className="overflow-x-auto scrollbar-hide" role="region" aria-label="Filtres défilants"
             >
               <div className="flex flex-nowrap gap-2 flex-1">
               {MATCH_FORMATS.map((format) => (
@@ -169,7 +169,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:border-zoyd-blue transition-colors"
                 />
               </div>
-              <Link to="/mj/créer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
+              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
                 <Activity className="w-4 h-4" /> CRÉER UN WAGER
               </Link>
             </div>
@@ -238,7 +238,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 Sois le premier à imposer le respect. Lance un Wager et attends que tes adversaires relèvent le défi.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link to="/mj/créer" className="hud-panel px-6 sm:px-12 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:bg-white hover:text-black transition-colors touch-target">
+                <Link to="/mj/creer" className="hud-panel px-6 sm:px-12 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:bg-white hover:text-black transition-colors touch-target">
                   Lancer un Wager
                 </Link>
                 <Link to="/wallet" className="border border-white/10 px-6 sm:px-10 py-4 sm:py-5 text-sm font-display font-black tracking-widest uppercase hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors touch-target">

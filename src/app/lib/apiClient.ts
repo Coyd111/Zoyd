@@ -57,7 +57,7 @@ export class ApiError extends Error {
 const ERROR_MESSAGES: Record<string, string> = {
   INSUFFICIENT_FUNDS: 'Solde insuffisant. Recharge ton portefeuille.',
   MATCH_CLOSED: 'Ce match est déjà fermé.',
-  ALREADY_JOINED: 'Tu es déjà inscrit a ce match.',
+  ALREADY_JOINED: 'Tu es déjà inscrit à ce match.',
   MATCH_NOT_FOUND: 'Match introuvable.',
   TOURNAMENT_NOT_FOUND: 'Tournoi introuvable.',
   LEAGUE_NOT_FOUND: 'Ligue introuvable.',
@@ -75,7 +75,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   ROLE_CONFLICT: 'Conflit de role.',
   NO_SLOT_AVAILABLE: 'Aucune place disponible.',
   TRUST_REQUIRED: 'Score de confiance insuffisant.',
-  DISPUTE_ALREADY_OPEN: 'Un dispute est déjà ouvert.',
+  DISPUTE_ALREADY_OPEN: 'Un litige est déjà ouvert.',
   RESULT_NOT_FOUND: 'Resultat introuvable.',
   RESULT_ALREADY_EXISTS: 'Un resultat a déjà été soumis.',
   WITHDRAWAL_MIN: 'Retrait minimum: 150 ZC.',

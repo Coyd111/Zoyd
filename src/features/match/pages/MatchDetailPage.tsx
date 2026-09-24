@@ -350,7 +350,7 @@ const MatchDetailPage: React.FC = () => {
       const response = await submitServerMatchResult(match.id, {
         winnerTeam: alpha > bravo ? 0 : 1,
         scores: { team0: alpha, team1: bravo },
-        scréénshots: [...scoreboardRefs, ...finalRefs, ...roomRefs, ...extraRefs],
+        screenshots: [...scoreboardRefs, ...finalRefs, ...roomRefs, ...extraRefs],
         proofs: {
           scoreboard: scoreboardRefs,
           finalResult: finalRefs,
@@ -553,7 +553,7 @@ const MatchDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline safe-top">
-      <SEOHead title="Détails du match — ZOYD" description="Consulte les détails d'un match ZOYD." path="/mj/match" noindex />
+      <SEOHead title="Détails du match — ZOYD" description="Consulte les détails d'un match ZOYD." path={`/mj/match/${id ?? ''}`} noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10 relative z-10">
         <MatchHeader match={match} statusLabel={statusLabel} />

@@ -1,11 +1,10 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';
 import AppLayout from './layouts/AppLayout';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 // Critical pages loaded synchronously (landing + auth)
-import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ActivatePage from './pages/auth/ActivatePage';
@@ -110,7 +109,7 @@ export const router = createBrowserRouter([
             lazy: hubLoader,
           },
           {
-            path: 'créer',
+            path: 'creer',
             lazy: createMatchLoader,
           },
           {
@@ -122,8 +121,17 @@ export const router = createBrowserRouter([
             lazy: tournoisLoader,
           },
           {
-            path: 'tournois/créer',
+            path: 'tournois/creer',
             lazy: createTournamentLoader,
+          },
+          // Compat : anciennes URLs accentuées partagées avant le renommage.
+          {
+            path: 'créer',
+            element: <Navigate to="/mj/creer" replace />,
+          },
+          {
+            path: 'tournois/créer',
+            element: <Navigate to="/mj/tournois/creer" replace />,
           },
           {
             path: 'tournois/:id',

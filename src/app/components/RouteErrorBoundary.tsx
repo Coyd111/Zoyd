@@ -20,13 +20,22 @@ export function RouteErrorBoundary() {
     <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center p-6">
       <div className="text-center max-w-md">
         <h2 className="text-xl font-display font-black uppercase mb-4">{title}</h2>
-        <p className="text-white/70 text-sm mb-6">{import.meta.env.DEV ? message : 'Une erreur inattendue s\'est produite.'}</p>
-        <Link
-          to="/"
-          className="inline-block px-6 py-3 bg-white text-black font-display font-black text-xs uppercase tracking-widest hover:bg-zoyd-yellow transition-colors"
-        >
-          Retour à l'accueil
-        </Link>
+        <p className="text-white/70 text-sm mb-6">{message}</p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-block px-6 py-3 bg-white text-black font-display font-black text-xs uppercase tracking-widest hover:bg-zoyd-yellow transition-colors touch-target"
+          >
+            Réessayer
+          </button>
+          <Link
+            to="/"
+            className="inline-block px-6 py-3 border border-white/20 font-display font-black text-xs uppercase tracking-widest hover:border-white transition-colors touch-target"
+          >
+            Retour à l'accueil
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -119,12 +119,12 @@ const TournoisPage: React.FC = () => {
               <span className="text-white/70 underline decoration-zoyd-yellow/50 underline-offset-4 md:underline-offset-8 ml-2 sm:ml-0">ZOYD</span>
             </h1>
             <p className="text-white/70 text-base md:text-xl font-light max-w-2xl mb-6">
-              Retrouve les tournois ouverts, ceux qui se jouent déjà et ceux qui viennent de se terminér.
+              Retrouve les tournois ouverts, ceux qui se jouent déjà et ceux qui viennent de se terminer.
               Ce que tu vois ici correspond déjà à ton profil de jeu.
             </p>
             <div className="mt-4 md:mt-6">
               <Link
-                to="/mj/tournois/créer"
+                to="/mj/tournois/creer"
                 className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -157,21 +157,21 @@ const TournoisPage: React.FC = () => {
                 <TabsTrigger
                   value="upcoming"
                   aria-label="Tournois à rejoindre"
-                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic data-[state=active]:bg-white data-[state=active]:text-black transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3.5 min-h-[44px] text-[12px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic data-[state=active]:bg-white data-[state=active]:text-black transition-all rounded-none"
                 >
                   A rejoindre
                 </TabsTrigger>
                 <TabsTrigger
                   value="live"
                   aria-label="Tournois en cours"
-                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/60 data-[state=active]:bg-zoyd-blue data-[state=active]:text-black transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3.5 min-h-[44px] text-[12px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/60 data-[state=active]:bg-zoyd-blue data-[state=active]:text-black transition-all rounded-none"
                 >
                   En cours
                 </TabsTrigger>
                 <TabsTrigger
                   value="history"
                   aria-label="Historique des tournois terminés"
-                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3 text-[9px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/60 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
+                  className="flex-1 sm:flex-none px-2 sm:px-6 md:px-8 py-3.5 min-h-[44px] text-[12px] md:text-[10px] font-display font-black uppercase tracking-[0.1em] md:tracking-[0.15em] italic text-white/60 data-[state=active]:bg-zoyd-surface data-[state=active]:text-white transition-all rounded-none"
                 >
                   Terminés
                 </TabsTrigger>
@@ -197,7 +197,7 @@ const TournoisPage: React.FC = () => {
                 <button
                   key={format}
                   onClick={() => setFilters({ format: format === 'TOUS' ? 'all' : format })}
-                  className={`px-4 sm:px-5 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
+                  className={`px-4 sm:px-5 py-3 sm:py-3.5 min-h-[44px] text-[12px] sm:text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
                     (format === 'TOUS' && (!filters.format || filters.format === 'all')) || filters.format === format
                       ? 'bg-white text-black border-white'
                       : 'bg-black text-white/70 border-white/5 hover:border-white/20'
@@ -270,7 +270,7 @@ const TournamentGrid = ({
         </h3>
         <p className="text-white/70 max-w-md font-light mb-6 md:mb-8 text-sm md:text-base">{emptyBody}</p>
         <Link
-          to="/mj/tournois/créer"
+          to="/mj/tournois/creer"
           className="inline-flex items-center gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
         >
           <Plus className="w-4 h-4" />

@@ -212,8 +212,8 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             type="submit"
             disabled={!inputValue.trim() || !isConnected}
             className="w-14 bg-white text-black hover:bg-zoyd-yellow transition-colors disabled:opacity-50 flex items-center justify-center border-none"
-            aria-label="Envoyér"
-            title="Envoyér le message"
+            aria-label="Envoyer"
+            title="Envoyer le message"
           >
             <Send className="w-5 h-5" />
           </button>

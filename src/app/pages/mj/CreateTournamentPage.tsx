@@ -196,7 +196,7 @@ const CreateTournamentPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-20">
-      <SEOHead title="Créer un tournoi — ZOYD" description="Crée un tournoi avec brackets automatiques." path="/mj/tournois/créer" noindex />
+      <SEOHead title="Créer un tournoi — ZOYD" description="Crée un tournoi avec brackets automatiques." path="/mj/tournois/creer" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-8 relative z-10">

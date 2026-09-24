@@ -6,7 +6,6 @@ import {
   getTrustBg,
   getTrustLabel,
   categoryLabels,
-  useTrustScoreStore,
   type TrustBreakdown,
 } from '../../stores/trustScoreStore';
 

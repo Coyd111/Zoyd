@@ -95,7 +95,7 @@ interface SocketConnectionState {
   bootstrapServerState: (user?: User | null) => Promise<void>;
 }
 
-export const useSocketConnectionStore = create<SocketConnectionState>((set, get) => ({
+export const useSocketConnectionStore = create<SocketConnectionState>((set) => ({
   isConnected: false,
   serverConnected: false,
   bootstrapReady: false,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Trophy, Crown, Medal, Zap, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Crown, Medal, Zap, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
 import { Button } from '../../../app/components/ui/Button';
 import { useLeagueStore } from '../../../app/stores/leagueStore';

@@ -36,7 +36,7 @@ export interface MatchResultPayload {
   winnerTeam: 0 | 1;
   score?: string;
   scores?: { team0: number; team1: number };
-  scréénshots?: string[];
+  screenshots?: string[];
   proofs?: {
     scoreboard?: string[];
     finalResult?: string[];

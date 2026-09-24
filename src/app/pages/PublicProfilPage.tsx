@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useReducedMotion } from 'motion/react';
-import { AlertTriangle, ArrowLeft, Swords, Trophy, UserPlus, UserX } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Swords, UserPlus, UserX } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { useMatchStore } from '../stores/matchStore';
@@ -118,7 +118,7 @@ const PublicProfilPage = () => {
       navigate('/auth/login');
       return;
     }
-    navigate(`/mj/créer?invite=${encodeURIComponent(id)}`);
+    navigate(`/mj/creer?invite=${encodeURIComponent(id)}`);
   };
 
   const handleBlock = async () => {

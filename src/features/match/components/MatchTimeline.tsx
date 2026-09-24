@@ -1,7 +1,7 @@
 import React from 'react';
 import { MatchChat } from './MatchChat';
-import type { ChatMessage } from '../../stores/chatStore';
-import type { RoomPresenceMember, TypingMember } from '../../stores/presenceStore';
+import type { ChatMessage } from '../../../app/stores/chatStore';
+import type { RoomPresenceMember, TypingMember } from '../../../app/stores/presenceStore';
 
 interface MatchTimelineProps {
   messages: ChatMessage[];

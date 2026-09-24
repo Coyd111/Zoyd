@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Check, Trash2, X, Swords, Trophy, UserPlus, AlertTriangle, Wallet, ShieldCheck, Calendar, Clock } from 'lucide-react';
+import { Bell, Check, Trash2, X, Swords, Trophy, UserPlus, AlertTriangle, Wallet, ShieldCheck, Clock } from 'lucide-react';
 import { useNotificationStore, type Notification, type NotificationType, selectUnreadCount } from '../../stores/notificationStore';
 import { useServiceWorker } from '../../hooks/useServiceWorker';
 

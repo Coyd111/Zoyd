@@ -122,7 +122,6 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
   openDisputeRecord,
   isEscalating,
   isSubmittingResult,
-  isProcessingAction,
   isScheduling,
   isSavingRoom,
   roomState,
@@ -436,7 +435,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                       onClick={handlers.addEvidence}
                       className="px-5 py-3 border border-zoyd-blue/30 text-zoyd-blue text-[10px] font-display font-black uppercase tracking-widest hover:bg-zoyd-blue hover:text-black transition-colors"
                     >
-                      Envoyér
+                      Envoyer
                     </button>
                   </div>
                 )}

@@ -5,7 +5,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useChatStore } from '../../stores/chatStore';
 import { cn, formatZC } from '../../../lib/utils';
-import ZoydLogo from '../branding/ZoydLogo';
 import { useLogout } from '../../hooks/useLogout';
 
 const navItems = [
@@ -63,11 +62,11 @@ const Sidebar: React.FC = React.memo(() => {
 
         <div className="px-2">
           <div className="space-y-2">
-            <Link to="/mj/créer" className="flex items-center justify-between bg-zoyd-yellow text-black py-4 px-5 touch-target font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors">
+            <Link to="/mj/creer" className="flex items-center justify-between bg-zoyd-yellow text-black py-4 px-5 touch-target font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors">
               CRÉER UN MATCH
               <Plus className="w-5 h-5" />
             </Link>
-            <Link to="/mj/tournois/créer" className="flex items-center justify-between border border-white/10 text-white py-4 px-5 touch-target font-display font-black text-xs tracking-[0.2em] italic uppercase hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors">
+            <Link to="/mj/tournois/creer" className="flex items-center justify-between border border-white/10 text-white py-4 px-5 touch-target font-display font-black text-xs tracking-[0.2em] italic uppercase hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors">
               CRÉER UN TOURNOI
               <Trophy className="w-5 h-5" />
             </Link>

@@ -711,8 +711,9 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   };
 
   match.result = fullResult;
-  match.disputes = resolveOpenDisputes(match, 'Resultat arbitre valide');
-  match.dispute = match.disputes[0];
+  // Un litige ouvert ne se clôture PAS automatiquement : la cagnotte reste
+  // gelée jusqu'à resolveDispute (sinon le mauvais joueur pouvait payer).
+  match.updatedAt = getNow();
   if (match.arbiter) {
     match.arbiter.hasSubmittedResult = true;
   }
@@ -726,7 +727,6 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
 
   const settlementResult = await applyResultSettlement(match, fullResult);
   match.result.payoutDistributed = settlementResult.success;
-
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 

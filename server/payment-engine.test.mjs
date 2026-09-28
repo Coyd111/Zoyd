@@ -147,7 +147,9 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
     expect(claimTransaction).not.toHaveBeenCalled();
   });
 
-  it('should accept legacy transactions matching payer phone', async () => {
+  it('should REJECT a transaction matched only by phone suffix (collision theft)', async () => {
+    // +229 et +225 partagent les 8 derniers chiffres : un attaquant inscrit
+    // avec un numéro cousin ne doit pas pouvoir réclamer le dépôt d'autrui.
     Transaction.retrieve.mockResolvedValue({
       status: 'approved',
       amount: 5000,
@@ -155,10 +157,12 @@ describe('payment-engine - verifyFedaPayTransactionAndCredit', () => {
       customer: { phone_number: '+2290165240654' },
     });
     depositToWallet.mockResolvedValue(mockUser);
-    const userWithPhone = { ...mockUser, phone: '+2290165240654' };
+    const attacker = { id: 'attacker-9', phone: '+2250165240654', email: 'a@x.com' };
 
-    const result = await verifyFedaPayTransactionAndCredit('TX-LEGACY', userWithPhone);
-    expect(result.success).toBe(true);
+    await expect(
+      verifyFedaPayTransactionAndCredit('TX-PHONE', attacker)
+    ).rejects.toThrow(/ne correspond pas à ton compte/);
+    expect(depositToWallet).not.toHaveBeenCalled();
   });
 });
 
@@ -173,8 +177,12 @@ describe('payment-engine - isTransactionOwnedBy', () => {
     expect(isTransactionOwnedBy({ description: 'ZOYD:victim-9 — Recharge 500 ZC' }, user)).toBe(false);
   });
 
-  it('accepts matching payer phone (legacy)', () => {
-    expect(isTransactionOwnedBy({ description: 'x', customer: { phone_number: '+229 01 65 24 06 54' } }, user)).toBe(true);
+  it('REJECTS phone-suffix match across countries (anti-theft)', () => {
+    // +229 97 61 23 45 67 vs +225 97 61 23 45 67 → derniers 8 chiffres identiques
+    expect(isTransactionOwnedBy(
+      { description: 'x', customer: { phone_number: '+22997612345' } },
+      { id: 'u1', phone: '+22597612345', email: 'u1@zoyd.com' }
+    )).toBe(false);
   });
 
   it('accepts matching payer email, case-insensitive (legacy)', () => {

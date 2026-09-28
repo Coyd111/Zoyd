@@ -89,7 +89,7 @@ test.describe('Wallet', () => {
   test('POST /api/wallet/withdraw — deducts from wallet', async ({ request }) => {
     const res = await request.post(`${BASE}/wallet/withdraw`, {
       headers: { Authorization: `Bearer ${token}` },
-      data: { amount: 200, method: 'mobile', phone: '+22997000000' },
+      data: { amount: 200, method: 'mobile', phone: '+22997000000', idempotencyKey: `e2e-${unique()}` },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();

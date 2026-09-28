@@ -34,8 +34,28 @@ export const depositWalletBalance = async (amount: number, method: string): Prom
   return authorizedPost<WalletResponse>('/api/wallet/deposit', { amount, method });
 };
 
-export const withdrawWalletBalance = async (amount: number, method: string, phone: string, country?: string): Promise<WalletResponse> => {
-  return authorizedPost<WalletResponse>('/api/wallet/withdraw', { amount, method, phone, country });
+/**
+ * Retire des fonds. `idempotencyKey` est générée ici et non par l'appelant :
+ * un double-clic ou un retry réseau réutilise la même clé, donc le serveur
+ * détecte la duplication (un seul débit, un seul payout FedaPay).
+ */
+export const withdrawWalletBalance = async (
+  amount: number,
+  method: string,
+  phone: string,
+  country?: string
+): Promise<WalletResponse> => {
+  const idempotencyKey =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `k-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return authorizedPost<WalletResponse>('/api/wallet/withdraw', {
+    amount,
+    method,
+    phone,
+    country,
+    idempotencyKey,
+  });
 };
 
 export const verifyFedaPayTransaction = async (transactionId: number | string): Promise<WalletResponse> => {

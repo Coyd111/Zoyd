@@ -23,9 +23,15 @@ const getFedaPayConfig = () => {
 
 /**
  * Vérifie que la transaction FedaPay appartient au demandeur.
- * 1. Cas nominal : la description contient `ZOYD:<userId>` (gravé par notre widget).
- * 2. Compatibilité (anciennes transactions) : le téléphone ou l'email du payeur
- *    FedaPay correspond au profil du demandeur.
+ *
+ * Source de vérité unique : la description `ZOYD:<userId>` gravée par notre
+ * widget au moment du paiement.
+ *
+ * ⚠️ Le téléphone n'est PLUS utilisé comme preuve : l'unicité d'inscription
+ * porte sur la chaîne complète alors qu'une comparaison sur les 8 derniers
+ * chiffres collide entre pays (+229 97… vs +225 97…) — un attaquant pouvait
+ * s'inscrire avec un numéro cousin et réclamer le dépôt d'un autre.
+ * L'email reste accepté : il n'est pas devinable par collision.
  */
 const normalizePhoneLoose = (value) => String(value || '').replace(/\D/g, '').slice(-8);
 
@@ -35,15 +41,9 @@ export const isTransactionOwnedBy = (transaction, user) => {
   const match = /ZOYD:([A-Za-z0-9-]+)/.exec(description);
   if (match && match[1] === user.id) return true;
   const customer = transaction.customer || {};
-  const txPhone = normalizePhoneLoose(
-    customer.phone_number || customer.phone || transaction.phone || transaction.phone_number
-  );
-  const userPhone = normalizePhoneLoose(user.phone);
-  if (txPhone && userPhone && txPhone === userPhone) return true;
   const txEmail = String(customer.email || transaction.email || '').trim().toLowerCase();
   const userEmail = String(user.email || '').trim().toLowerCase();
-  if (txEmail && userEmail && txEmail === userEmail) return true;
-  return false;
+  return Boolean(txEmail && userEmail && txEmail === userEmail);
 };
 
 // Atomic lock per transaction ID — Map<id, Promise> for true TOCTOU safety

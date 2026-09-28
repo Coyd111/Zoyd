@@ -245,6 +245,8 @@ export const mapPersistenceError = (error) => {
   const message = error?.message || 'Une erreur serveur est survenue.';
   switch (code) {
     case 'INVALID_REGISTRATION':
+    case 'IDEMPOTENCY_KEY_REQUIRED':
+    case 'ACTIVE_WAGER':
       return { status: 400, message, code };
     case 'INVALID_JSON':
     case 'PAYLOAD_TOO_LARGE':

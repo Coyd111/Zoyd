@@ -1248,6 +1248,17 @@ export const deleteUserAccount = async (userId) => {
   if (user.role === 'admin' || memoryAdminIds.has(userId)) {
     throw makeError('FORBIDDEN', 'Le compte admin ne peut pas être supprimé.');
   }
+  // Fonds engagés (passes bloquées) : supprimer le compte ferait disparaître
+  // la mise alors que le règlement la redistribue aux adversaires = ZC créés.
+  // Le joueur doit d'abord finir/annuler ses matchs.
+  const lockedEntries = user.wallet?.lockedEntries || {};
+  const lockedTotal = roundAmount(Object.values(lockedEntries).reduce((sum, r) => sum + (Number(r?.amount) || 0), 0));
+  if (lockedTotal > 0) {
+    throw makeError(
+      'ACTIVE_WAGER',
+      'Tu as des wagers en cours. Termine ou annule tes matchs avant de supprimer ton compte.'
+    );
+  }
   const forfeitedCash = roundAmount(getWalletSnapshot(userId)?.cashBalance || 0);
 
   // ── Memory cleanup ──

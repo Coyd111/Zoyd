@@ -98,6 +98,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   TRANSACTION_ALREADY_PROCESSED: 'Cette transaction a déjà été traitée.',
   TRANSACTION_NOT_OWNED: "Cette transaction ne correspond pas à ton compte.",
   SERVER_BUSY: 'Serveur saturé. Réessaie dans un instant.',
+  IDEMPOTENCY_KEY_REQUIRED: 'Recharge la page puis réessaie ton retrait.',
+  ACTIVE_WAGER: 'Tu as des wagers en cours : termine ou annule tes matchs avant de supprimer ton compte.',
   TRANSACTION_IN_PROGRESS: 'Transaction en cours de traitement. Réessaie dans un instant.',
   PAYOUT_FAILED: 'Le transfert Mobile Money a échoué. Ton solde a été restauré.',
   ACCOUNT_LOCKED: 'Compte verrouillé. Réessaie plus tard.',

@@ -536,10 +536,11 @@ const DangerZone: React.FC = () => {
   return (
     <div className="mt-8 border border-red-500/40 bg-red-500/5 p-4">
       <div className="font-display font-black text-red-400 text-sm uppercase italic">Zone danger</div>
-      <p className="text-[11px] font-mono text-white/60 uppercase tracking-widest mt-2 leading-relaxed">
-        Supprimer ton compte est définitif : profil, amis, historique et messages anonymisés.
-        Retire d'abord ton solde cash (minimum 150 ZC) — tout solde restant sera abandonné.
-      </p>
+        <p className="text-[11px] font-mono text-white/60 uppercase tracking-widest mt-2 leading-relaxed">
+          Supprimer ton compte est définitif : profil, amis, historique et messages anonymisés.
+          Retire d'abord ton solde cash (minimum 150 ZC) et termine tes matchs en cours — tout solde restant sera
+          abandonné.
+        </p>
       <div className="mt-3 flex flex-col gap-3">
         {armed ? (
           <label className="flex items-start gap-3 cursor-pointer">

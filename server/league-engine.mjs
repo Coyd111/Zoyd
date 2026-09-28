@@ -347,7 +347,11 @@ export const startLeagueDayOnServer = (seasons, actor, seasonId, dayKey) => {
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
   if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n est pas en phase de qualification.');
-  if (!season.qualificationGroups[dayKey]) {
+  // Anti-pollution de prototype : '__proto__'/'constructor' en dayKeyDonne
+  // `qualificationGroups['__proto__']` = Object.prototype (truthy) et l'écriture
+  // suivante contaminait TOUT le process Node.
+  if (!DAY_KEYS.includes(dayKey)) throw makeError('INVALID_DAY', 'Journee invalide.');
+  if (!Object.prototype.hasOwnProperty.call(season.qualificationGroups, dayKey) || !season.qualificationGroups[dayKey]) {
     throw makeError('INVALID_DAY', 'Journee invalide.');
   }
 
@@ -376,6 +380,7 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
   if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n est pas en phase de qualification.');
+  if (!DAY_KEYS.includes(dayKey)) throw makeError('INVALID_DAY', 'Journee invalide.');
 
   const daySlot = season.qualificationGroups[dayKey];
   if (!daySlot) throw makeError('INVALID_DAY', 'Journee invalide.');
@@ -481,13 +486,29 @@ export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId,
   }
 
   const finalistIds = new Set(season.finalists.map((f) => f.userId));
+  const seenUserIds = new Set();
+  const seenPlacements = new Set();
   for (const r of finalResults) {
     if (!r.userId || !finalistIds.has(r.userId)) {
       throw makeError('INVALID_RESULTS', 'Un resultats reference un joueur non qualifie pour la finale.');
     }
-    if (Number(r.placement) < 1 || Number(r.placement) > LEAGUE_FINAL_TABLE_SIZE) {
-      throw makeError('INVALID_RESULTS', `Le classement doit etre entre 1 et ${LEAGUE_FINAL_TABLE_SIZE}.`);
+    // Un même joueur listé deux fois (ex. 1er ET 2e) touchait deux fois le
+    // podium = pot sur-distribué. Idem pour deux joueurs à la même place.
+    if (seenUserIds.has(r.userId)) {
+      throw makeError('INVALID_RESULTS', 'Ce joueur apparait plusieurs fois dans le classement final.');
     }
+    seenUserIds.add(r.userId);
+    const placement = Number(r.placement);
+    if (!Number.isInteger(placement) || placement < 1 || placement > LEAGUE_FINAL_TABLE_SIZE) {
+      throw makeError('INVALID_RESULTS', `Le classement doit etre un entier entre 1 et ${LEAGUE_FINAL_TABLE_SIZE}.`);
+    }
+    if (seenPlacements.has(placement)) {
+      throw makeError('INVALID_RESULTS', 'Deux joueurs ne peuvent pas partager la meme place.');
+    }
+    seenPlacements.add(placement);
+  }
+  if (seenPlacements.size !== finalResults.length) {
+    throw makeError('INVALID_RESULTS', 'Classement final incoherent.');
   }
 
   const processedFinal = finalResults.map((r) => ({

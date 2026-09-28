@@ -1149,9 +1149,15 @@ const handleRequest = async (req, res) => {
       respondJson(res, 400, { ok: false, error: `Numéro de téléphone invalide (format ${countryCfg.label} : +${countryCfg.prefix}...).`, code: 'INVALID_PHONE' });
       return;
     }
-    // Idempotency: prevent double-withdrawal on retry/double-click
+    // Idempotence : OBLIGATOIRE. Sans clé, un double-clic ou un retry réseau
+    // débitait deux fois et déclenchait deux payouts FedaPay.
     const rawKey = body.idempotencyKey || req.headers['x-idempotency-key'];
-    const cleanKey = typeof rawKey === 'string' && rawKey ? rawKey : null;
+    const cleanKey = typeof rawKey === 'string' && rawKey.trim() ? rawKey.trim() : null;
+    if (!cleanKey) {
+      respondJson(res, 400, { ok: false, error: 'idempotencyKey requis pour un retrait.', code: 'IDEMPOTENCY_KEY_REQUIRED' });
+      return;
+    }
+
 
     // 1. Débit sous mutex (court, aucun appel réseau) — fonds réservés atomiquement
     let debitedWallet = null;

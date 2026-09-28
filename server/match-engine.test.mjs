@@ -388,10 +388,14 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
   });
 
   it('should split the pot between winners in 2v2 (anti-mint)', async () => {
-    getUserById.mockImplementation((id) => ({
-      id, pseudo: id, role: id === 'admin-1' ? 'admin' : 'player',
+    // 4 joueurs ayant chacun 100 ZC réellement verrouillés (pot réel = 400)
+    const makePlayer = (id) => ({
+      id, pseudo: id, role: 'player',
       stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100,
-    }));
+      wallet: { lockedEntries: { 'M-2V2': { amount: 100, cashAmount: 100, bonusAmount: 0 } } },
+    });
+    getUserById.mockImplementation((id) => (id === 'admin-1' ? { ...makePlayer(id), role: 'admin' } : makePlayer(id)));
+
     const match = {
       id: 'M-2V2',
       arbiter: { userId: 'arb-1' },
@@ -409,6 +413,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
       entryFee: 100,
       format: '2VS2',
       teamSize: 2,
+      maxPlayers: 4,
     };
 
     await matchEngine.submitMatchResultOnServer([match], { id: 'admin-1' }, 'M-2V2', {
@@ -421,7 +426,117 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
     const prizeCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
     expect(prizeCalls).toHaveLength(2);
     const total = prizeCalls.reduce((sum, c) => sum + c[1], 0);
-    expect(total).toBe(392); // pot entier distribué, pas 2× le pot
+    // 400 verrouillés − 2% sans arbitre payeur = 392 distribués (pas 2× le pot)
+    expect(total).toBe(392);
     expect(prizeCalls.map((c) => c[0]).sort()).toEqual(['u1', 'u2']);
+  });
+
+  it('should never pay more than the funds actually locked (anti-mint)', async () => {
+    // Le joueur createur seul a bloque 200 ZC ; maxPlayers = 2 donc
+    // match.prizePool = 400. La cagnotte reelle (200) est la seule payable.
+    getUserById.mockImplementation((id) => ({
+      id, pseudo: id, role: id === 'admin-1' ? 'admin' : 'player',
+      stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100,
+      wallet: { lockedEntries: { 'M-SOLO': { amount: 200, cashAmount: 200, bonusAmount: 0 } } },
+    }));
+
+    const match = {
+      id: 'M-SOLO',
+      arbiter: { userId: 'arb-1' },
+      status: 'in_progress',
+      players: [{ userId: 'solo', team: 0 }],
+      disputes: [],
+      prizePool: 400,
+      zoydFee: 0,
+      arbiterFee: 8,
+      entryFee: 200,
+      format: '1VS1',
+      teamSize: 1,
+      maxPlayers: 2,
+    };
+
+    await matchEngine.submitMatchResultOnServer([match], { id: 'admin-1' }, 'M-SOLO', {
+      winnerTeam: 0,
+      scores: { team0: 10, team1: 0 },
+      resolutionType: 'forfeit',
+      submittedBy: 'admin-dashboard',
+    });
+
+    const prizeCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
+    const paid = prizeCalls.reduce((sum, c) => sum + c[1], 0);
+    // 200 reellement verrouilles − 2% arbitre = 196 distribues.
+    // Avant : 400 (prizePool fantome) − 8 = 392 => 192 ZC crees.
+    expect(paid).toBe(196);
+    expect(paid).toBeLessThanOrEqual(200);
+    const arbiterCall = releaseWalletWinnings.mock.calls.find((c) => c[3] === 'arbitration_fee');
+    expect(arbiterCall?.[1]).toBe(4);
+  });
+
+  it('should reject a result on an incomplete roster (player route)', async () => {
+    getUserById.mockReturnValue({
+      id: 'arb-1', pseudo: 'Arb', role: 'arbiter',
+      stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100, wallet: {},
+    });
+    const match = {
+      id: 'M-1V1-EMPTY', arbiter: { userId: 'arb-1' }, status: 'in_progress',
+      players: [{ userId: 'solo', team: 0 }], disputes: [],
+      prizePool: 400, zoydFee: 0, arbiterFee: 8, entryFee: 200,
+      format: '1VS1', teamSize: 1, maxPlayers: 2,
+    };
+
+    await expect(
+      matchEngine.submitMatchResultOnServer([match], { id: 'arb-1' }, 'M-1V1-EMPTY', {
+        winnerTeam: 0,
+        scores: { team0: 10, team1: 0 },
+        screenshots: ['x'],
+      })
+    ).rejects.toThrow(/incomplet/);
+  });
+
+  it('should reject an invalid winnerTeam', async () => {
+    getUserById.mockReturnValue({
+      id: 'a', pseudo: 'A', role: 'player',
+      stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100, wallet: {},
+    });
+    const match = {
+      id: 'M-BAD', arbiter: { userId: 'a' }, status: 'in_progress',
+      players: [{ userId: 'a', team: 0 }], disputes: [],
+      prizePool: 200, zoydFee: 0, arbiterFee: 4, entryFee: 100,
+      format: '1VS1', teamSize: 1, maxPlayers: 1,
+    };
+
+    for (const bad of [null, 2, '0', undefined]) {
+      await expect(
+        matchEngine.submitMatchResultOnServer([match], { id: 'a' }, 'M-BAD', {
+          winnerTeam: bad,
+          scores: { team0: 1, team1: 0 },
+          resolutionType: 'forfeit',
+          submittedBy: 'admin-dashboard',
+        })
+      ).rejects.toThrow(/gagnante invalide/i);
+    }
+  });
+
+  it('should block settlement while a dispute is open', async () => {
+    getUserById.mockReturnValue({
+      id: 'a', pseudo: 'A', role: 'player',
+      stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100, wallet: {},
+    });
+    const match = {
+      id: 'M-DISP', arbiter: { userId: 'a' }, status: 'disputed',
+      players: [{ userId: 'a', team: 0 }], disputes: [],
+      prizePool: 200, zoydFee: 0, arbiterFee: 4, entryFee: 100,
+      format: '1VS1', teamSize: 1, maxPlayers: 1,
+    };
+    match.disputes = [{ id: 'D1', status: 'open', prizePoolFrozen: true }];
+
+    await expect(
+      matchEngine.submitMatchResultOnServer([match], { id: 'a' }, 'M-DISP', {
+        winnerTeam: 0,
+        scores: { team0: 1, team1: 0 },
+        resolutionType: 'forfeit',
+        submittedBy: 'admin-dashboard',
+      })
+    ).rejects.toThrow(/litige/i);
   });
 });

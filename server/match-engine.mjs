@@ -48,6 +48,27 @@ const buildProofHash = (matchId, winnerTeam, scores, refs) =>
   [String(matchId).toLowerCase(), winnerTeam, scores?.team0 ?? 0, scores?.team1 ?? 0, ...refs.map((ref) => ref.toLowerCase())].join('|');
 export const getWinnerPayout = (match) => Math.max(0, roundAmount(match.prizePool - match.zoydFee - match.arbiterFee));
 
+/** Commission d'arbitrage (part de l'arbitre sur la cagnotte). */
+const ARBITER_FEE_RATE = 0.02;
+
+/**
+ * Cagnotte RÉELLEMENT verrouillée par les joueurs du match.
+ * Source de vérité = les réservations wallet (lockedEntries), pas match.prizePool
+ * (calculé sur maxPlayers à la création). Sans ça, un match à roster incomplet
+ * distribue un pot fantôme : le joueur créait de la monnaie.
+ * @param {object} match
+ * @returns {number} somme des montants effectivement bloqués
+ */
+export const getLockedPot = (match) => {
+  let total = 0;
+  for (const player of match.players || []) {
+    const user = getUserById(player.userId);
+    const reservation = user?.wallet?.lockedEntries?.[match.id];
+    if (reservation?.amount > 0) total += reservation.amount;
+  }
+  return roundAmount(total);
+};
+
 const cloneMatches = (matches) => matches.map((match) => structuredClone(match));
 
 export const getPreferredTeam = (match, preferredTeam) => {
@@ -131,7 +152,12 @@ export const getRankFromElo = (elo) => {
 };
 
 const applyResultSettlement = async (match, result) => {
-  const payout = getWinnerPayout(match);
+  // Anti-mint : on ne distribue QUE l'argent réellement verrouillé.
+  // match.prizePool est calculé sur maxPlayers à la création ; s'il servait de
+  // base, un match à roster incomplet paierait un pot fantôme.
+  const lockedPot = getLockedPot(match);
+  const arbiterFee = match.arbiter?.userId ? roundAmount(lockedPot * ARBITER_FEE_RATE) : 0;
+  const payout = Math.max(0, roundAmount(lockedPot - arbiterFee));
   const settlementErrors = [];
 
   // Elo Calculation
@@ -235,12 +261,12 @@ const applyResultSettlement = async (match, result) => {
     }
   }
 
-  if (match.arbiter?.userId && match.arbiterFee > 0) {
+  if (match.arbiter?.userId && arbiterFee > 0) {
     try {
       await withWalletMutex(match.arbiter.userId, async () => {
         await releaseWalletWinnings(
           match.arbiter.userId,
-          match.arbiterFee,
+          arbiterFee,
           match.id,
           'arbitration_fee',
           `Commission arbitre ${match.id}`
@@ -618,8 +644,27 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
   // Pas de résultat sur un match clôturé : les mises ont déjà été remboursées
   // (cancel) ou consommées — en créer un ici minterait des ZC sans cagnotte.
-  if (['cancelled', 'forfeited'].includes(match.status)) {
+  if (['cancelled', 'forfeited', 'archived'].includes(match.status)) {
     throw makeError('MATCH_CLOSED', 'Ce match est clôturé et ne peut plus recevoir de résultat.');
+  }
+  // Un litige ouvert gèle la cagnotte : seul resolveDispute peut le clore.
+  if ((match.disputes || []).some((d) => d.status === 'open' || d.status === 'under_review')) {
+    throw makeError('DISPUTE_ALREADY_OPEN', 'Un litige est actif sur ce match : règle-le avant de valider un score.');
+  }
+  // winnerTeam strict : "0", null, 2 ou undefined détruiraient la cagnotte
+  // (isWinner false pour tous) ou permettaient des calculs falsifiés.
+  if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
+    throw makeError('INVALID_RESULTS', 'Equipe gagnante invalide.');
+  }
+  // Roster complet + match lancé, sauf override admin (award/moderation).
+  const isAdminOverride = resultPayload.submittedBy === 'admin-dashboard';
+  if (!isAdminOverride) {
+    if (match.status !== 'in_progress') {
+      throw makeError('MATCH_NOT_LIVE', 'Le match doit etre lance avant de valider un score.');
+    }
+    if (match.players.length !== match.maxPlayers) {
+      throw makeError('NOT_ENOUGH_PLAYERS', `Match incomplet (${match.players.length}/${match.maxPlayers} joueurs).`);
+    }
   }
 
   const normalizedProofs = resultPayload.proofs

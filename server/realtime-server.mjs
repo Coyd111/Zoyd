@@ -406,13 +406,21 @@ const handleRequest = async (req, res) => {
         respondJson(res, 400, { ok: false, error: 'Adresse email invalide.', code: 'INVALID_EMAIL' });
         return;
       }
-      const { role: _role, ...rawBody } = body;
-      const safeBody = {
-        ...rawBody,
-        pseudo: sanitizeText(rawBody.pseudo || ''),
-        bio: sanitizeText(rawBody.bio || ''),
-        streamerPseudo: sanitizeText(rawBody.streamerPseudo || ''),
-      };
+      // Whitelist STRICTE : sans elle, un POST {id, wallet, trustScore, stats}
+      // écrasait un compte en RAM+base et créditait un solde arbitraire.
+      const REGISTER_FIELDS = [
+        'pseudo', 'email', 'phone', 'password', 'gameId',
+        'controllerType', 'device', 'levelCODM', 'rankMJ', 'rankBR',
+        'country', 'streamerMode', 'streamerPseudo',
+        'acceptAdult', 'acceptTerms', 'acceptedAt',
+      ];
+      const safeBody = {};
+      for (const field of REGISTER_FIELDS) {
+        if (field in body) safeBody[field] = body[field];
+      }
+      for (const field of ['pseudo', 'bio', 'streamerPseudo']) {
+        if (field in safeBody) safeBody[field] = sanitizeText(safeBody[field] || '');
+      }
       const user = await createUserAccount(safeBody);
       // V1 simplifiée (décision 2026-09-18) : compte directement actif,
       // session immédiate. Pas de code d'activation (pas d'email/SMS pour l'instant).
@@ -2197,6 +2205,19 @@ const handleRequest = async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
     const session = requireAdmin(req, res);
     if (!session) return;
+    // Anti-takeover : ré-enrôler une 2FA déjà ACTIVE imposerait de connaitre
+    // le secret courant. Sans ce garde, un attaquant ayant le seul mot de passe
+    // admin remplaçait le secret, s'auto-validait un code et obtenait l'accès
+    // financier complet.
+    const existing = adminTotpSecrets.get(session.user.id);
+    if (existing?.enabled) {
+      respondJson(res, 409, {
+        ok: false,
+        error: '2FA deja activee. Verifie un code TOTP pour la re-enroller.',
+        code: '2FA_ALREADY_ENABLED',
+      });
+      return;
+    }
     const secret = toBase32(crypto.randomBytes(20));
     adminTotpSecrets.set(session.user.id, { secret, enabled: false, verifiedAt: null });
     try {

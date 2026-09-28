@@ -292,6 +292,7 @@ export const mapPersistenceError = (error) => {
     case 'TRANSACTION_IN_PROGRESS':
     case 'INSUFFICIENT_FUNDS':
     case 'MATCH_CLOSED':
+    case 'MATCH_NOT_LIVE':
     case 'ALREADY_JOINED':
     case 'ROLE_CONFLICT':
     case 'TRUST_REQUIRED':
@@ -308,6 +309,8 @@ export const mapPersistenceError = (error) => {
       return { status: 502, message, code };
     case 'SERVER_BUSY':
       return { status: 503, message, code };
+    case '2FA_ALREADY_ENABLED':
+      return { status: 409, message, code };
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':
     case 'DISPUTE_ALREADY_OPEN':

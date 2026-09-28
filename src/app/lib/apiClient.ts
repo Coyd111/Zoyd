@@ -107,6 +107,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   SERVER_BUSY: 'Serveur saturé. Réessaie dans un instant.',
   IDEMPOTENCY_KEY_REQUIRED: 'Recharge la page puis réessaie ton retrait.',
   ACTIVE_WAGER: 'Tu as des wagers en cours : termine ou annule tes matchs avant de supprimer ton compte.',
+  DELETE_FAILED: 'Suppression impossible pour le moment. Réessaie dans un instant.',
   TRANSACTION_IN_PROGRESS: 'Transaction en cours de traitement. Réessaie dans un instant.',
   PAYOUT_FAILED: 'Le transfert Mobile Money a échoué. Ton solde a été restauré.',
   ACCOUNT_LOCKED: 'Compte verrouillé. Réessaie plus tard.',

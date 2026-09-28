@@ -313,6 +313,8 @@ export const mapPersistenceError = (error) => {
       return { status: 503, message, code };
     case '2FA_ALREADY_ENABLED':
       return { status: 409, message, code };
+    case 'DELETE_FAILED':
+      return { status: 503, message, code };
     case 'RESULT_NOT_FOUND':
     case 'RESULT_ALREADY_EXISTS':
     case 'DISPUTE_ALREADY_OPEN':

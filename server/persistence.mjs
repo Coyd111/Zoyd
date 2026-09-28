@@ -214,6 +214,26 @@ const sbDelete = async (table, filters) => {
   if (error) log.error(`${table} delete error`, { message: error.message });
 };
 
+/** Comme sbDelete mais remonte l'échec (opérations destructrices). */
+const sbDeleteStrict = async (table, filters) => {
+  if (!supabase) return false;
+  try {
+    let q = supabase.from(table).delete();
+    for (const [col, val] of Object.entries(filters)) {
+      q = q.eq(col, val);
+    }
+    const { error } = await q;
+    if (error) {
+      log.error(`${table} strict delete error`, { message: error.message });
+      return false;
+    }
+    return true;
+  } catch (err) {
+    log.error(`${table} strict delete error`, { message: err.message });
+    return false;
+  }
+};
+
 const sbDeleteMulti = async (table, col, values) => {
   if (!supabase || values.length === 0) return;
   const { error } = await supabase.from(table).delete().in(col, values);
@@ -251,14 +271,34 @@ export const loadFromSupabase = async () => {
   log.info('Loading from Supabase...');
   const t0 = Date.now();
 
+  // PostgREST plafonne chaque réponse à 1000 lignes (max-rows) SANS erreur :
+  // au-delà, les lignes suivantes disparaissent SILENCIEUSEMENT (utilisateurs
+  // non chargés → sessions nulles, matchs absents, puis purge à l'écriture).
+  // On pagine donc explicitement jusqu'à recevoir moins d'une page.
+  const PAGE_SIZE = 1000;
+  const fetchAllRows = async (table, buildQuery) => {
+    const rows = [];
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      let q = supabase.from(table).select('*');
+      if (buildQuery) q = buildQuery(q);
+      const { data, error } = await q.range(offset, offset + PAGE_SIZE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rows.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      // Garde-fou : évite une boucle infinie si l'API ignore `range`.
+      if (rows.length > 200_000) {
+        log.error('Pagination aborted — suspiciously large table', { table, rows: rows.length });
+        break;
+      }
+    }
+    return rows;
+  };
+
   try {
     // Users
-    const { data: users, error: usersErr } = await supabase.from('app_users').select('*');
-    if (usersErr) {
-      log.error('Failed to load users from Supabase', { message: usersErr.message, code: usersErr.code });
-      throw usersErr;
-    }
-    if (users) {
+    const users = await fetchAllRows('app_users');
+    {
       for (const row of users) {
         const payload = sanitizeUserPayload(row.payload);
         memoryUsers.set(row.id, payload);
@@ -273,32 +313,28 @@ export const loadFromSupabase = async () => {
     log.info('Users loaded', { count: memoryUsers.size });
 
     // Auth sessions
-    const { data: authSessions } = await supabase.from('auth_sessions').select('*');
-    if (authSessions) {
-      for (const s of authSessions) {
-        memoryAuthSessions.set(s.token, { token: s.token, userId: s.user_id, issuedAt: s.issued_at, expiresAt: s.expires_at });
-      }
+    const authSessions = await fetchAllRows('auth_sessions');
+    for (const s of authSessions) {
+      memoryAuthSessions.set(s.token, { token: s.token, userId: s.user_id, issuedAt: s.issued_at, expiresAt: s.expires_at });
     }
 
     // Realtime sessions
-    const { data: rtSessions } = await supabase.from('realtime_sessions').select('*');
-    if (rtSessions) {
-      for (const s of rtSessions) {
-        memoryRealtimeSessions.set(s.token, { token: s.token, userId: s.user_id, pseudo: s.pseudo, role: s.role, issuedAt: s.issued_at, expiresAt: s.expires_at });
-      }
+    const rtSessions = await fetchAllRows('realtime_sessions');
+    for (const s of rtSessions) {
+      memoryRealtimeSessions.set(s.token, { token: s.token, userId: s.user_id, pseudo: s.pseudo, role: s.role, issuedAt: s.issued_at, expiresAt: s.expires_at });
     }
 
     // Chat channels
-    const { data: channels } = await supabase.from('chat_channels').select('*');
-    if (channels) {
-      for (const ch of channels) {
-        memoryChatChannels.set(ch.id, normalizeChatChannelPayload(ch.payload));
-      }
+    const channels = await fetchAllRows('chat_channels');
+    for (const ch of channels) {
+      memoryChatChannels.set(ch.id, normalizeChatChannelPayload(ch.payload));
     }
 
-    // Chat messages (last 500 per channel)
-    const { data: messages } = await supabase.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(5000);
-    if (messages) {
+    // Chat messages (bornés : 5000 plus récents)
+    const messages = await fetchAllRows('chat_messages', (q) =>
+      q.order('created_at', { ascending: false }).limit(5000)
+    );
+    {
       const byChannel = new Map();
       for (const msg of messages.reverse()) {
         const parsed = normalizeChatMessagePayload(msg.payload);
@@ -311,78 +347,70 @@ export const loadFromSupabase = async () => {
     }
 
     // State snapshots (populate both old flat map and new per-kind map)
-    const { data: snapshots } = await supabase.from('state_snapshots').select('*');
-    if (snapshots) {
-      for (const snap of snapshots) {
-        memoryStateSnapshots.set(`${snap.kind}:${snap.entity_id}`, snap.payload);
-        if (!memoryStateByKind.has(snap.kind)) memoryStateByKind.set(snap.kind, new Map());
-        memoryStateByKind.get(snap.kind).set(snap.entity_id, snap.payload);
-      }
+    const snapshots = await fetchAllRows('state_snapshots');
+    for (const snap of snapshots) {
+      memoryStateSnapshots.set(`${snap.kind}:${snap.entity_id}`, snap.payload);
+      if (!memoryStateByKind.has(snap.kind)) memoryStateByKind.set(snap.kind, new Map());
+      memoryStateByKind.get(snap.kind).set(snap.entity_id, snap.payload);
     }
 
     // Friend requests
-    const { data: friendReqs } = await supabase.from('friend_requests').select('*');
-    if (friendReqs) {
-      for (const fr of friendReqs) {
-        memoryFriendRequests.set(fr.id, fr);
-      }
+    const friendReqs = await fetchAllRows('friend_requests');
+    for (const fr of friendReqs) {
+      memoryFriendRequests.set(fr.id, fr);
     }
 
     // Friendships (populate both Set and per-user index)
-    const { data: friendships } = await supabase.from('friendships').select('*');
-    if (friendships) {
-      for (const f of friendships) {
-        memoryFriendships.add(`${f.user_id_1}:${f.user_id_2}`);
-        if (!memoryFriendshipsByUser.has(f.user_id_1)) memoryFriendshipsByUser.set(f.user_id_1, new Set());
-        memoryFriendshipsByUser.get(f.user_id_1).add(f.user_id_2);
-      }
+    const friendships = await fetchAllRows('friendships');
+    for (const f of friendships) {
+      memoryFriendships.add(`${f.user_id_1}:${f.user_id_2}`);
+      if (!memoryFriendshipsByUser.has(f.user_id_1)) memoryFriendshipsByUser.set(f.user_id_1, new Set());
+      memoryFriendshipsByUser.get(f.user_id_1).add(f.user_id_2);
     }
 
     // Blocks (populate both Set and per-user index)
-    const { data: blocks } = await supabase.from('user_blocks').select('*');
-    if (blocks) {
-      for (const b of blocks) {
-        memoryUserBlocks.add(`${b.blocker_id}:${b.blocked_id}`);
-        if (!memoryBlocksByUser.has(b.blocker_id)) memoryBlocksByUser.set(b.blocker_id, new Set());
-        memoryBlocksByUser.get(b.blocker_id).add(b.blocked_id);
-      }
+    const blocks = await fetchAllRows('user_blocks');
+    for (const b of blocks) {
+      memoryUserBlocks.add(`${b.blocker_id}:${b.blocked_id}`);
+      if (!memoryBlocksByUser.has(b.blocker_id)) memoryBlocksByUser.set(b.blocker_id, new Set());
+      memoryBlocksByUser.get(b.blocker_id).add(b.blocked_id);
     }
 
     // Notifications (populate both map and per-user unread index)
-    const { data: notifs } = await supabase.from('user_notifications').select('*').order('created_at', { ascending: false }).limit(5000);
-    if (notifs) {
-      for (const n of notifs) {
-        memoryNotifications.set(n.id, {
-          id: n.id, userId: n.user_id, type: n.type, title: n.title,
-          message: n.message, priority: n.priority, actionUrl: n.action_url,
-          metadata: n.metadata, isRead: n.is_read, createdAt: n.created_at,
-        });
-        if (!n.is_read) {
-          if (!memoryUnreadByUser.has(n.user_id)) memoryUnreadByUser.set(n.user_id, new Set());
-          memoryUnreadByUser.get(n.user_id).add(n.id);
-        }
+    const notifs = await fetchAllRows('user_notifications', (q) =>
+      q.order('created_at', { ascending: false }).limit(5000)
+    );
+    for (const n of notifs) {
+      memoryNotifications.set(n.id, {
+        id: n.id, userId: n.user_id, type: n.type, title: n.title,
+        message: n.message, priority: n.priority, actionUrl: n.action_url,
+        metadata: n.metadata, isRead: n.is_read, createdAt: n.created_at,
+      });
+      if (!n.is_read) {
+        if (!memoryUnreadByUser.has(n.user_id)) memoryUnreadByUser.set(n.user_id, new Set());
+        memoryUnreadByUser.get(n.user_id).add(n.id);
       }
     }
 
     // Push subscriptions
-    const { data: subs } = await supabase.from('push_subscriptions').select('*');
-    if (subs) {
-      for (const s of subs) {
-        memoryPushSubscriptions.set(s.endpoint, s.payload);
-      }
+    const subs = await fetchAllRows('push_subscriptions');
+    for (const s of subs) {
+      memoryPushSubscriptions.set(s.endpoint, s.payload);
     }
 
     // Processed transactions (FedaPay idempotency)
-    const { data: processed } = await supabase.from('processed_transactions').select('transaction_id');
-    if (processed) {
-      for (const p of processed) {
-        memoryProcessedTransactions.add(p.transaction_id);
-      }
+    const processed = await fetchAllRows('processed_transactions', (q) => q.select('transaction_id'));
+    for (const p of processed) {
+      memoryProcessedTransactions.add(p.transaction_id);
     }
 
-    log.info('Loaded from Supabase', { durationMs: Date.now() - t0, users: memoryUsers.size, channels: memoryChatChannels.size, snapshots: memoryStateSnapshots.size });
+    log.info('Loaded from Supabase', { durationMs: Date.now() - t0, users: memoryUsers.size, channels: memoryChatMessages.size || memoryChatChannels.size, snapshots: memoryStateSnapshots.size });
   } catch (err) {
+    // Un échec de table NE doit pas laisser le serveur démarrer « à moitié » :
+    // les kinds non chargés renverraient [] et le premier replaceStateCollection
+    // purgerait la table correspondante en base.
     log.error('Error loading from Supabase', { message: err.message, stack: err.stack });
+    return false;
   }
 
   await ensureSeedAdmin();
@@ -1261,6 +1289,15 @@ export const deleteUserAccount = async (userId) => {
   }
   const forfeitedCash = roundAmount(getWalletSnapshot(userId)?.cashBalance || 0);
 
+  // ── Supabase d'ABORD ──
+  // L'inverse (mémoire purgée puis base best-effort) laissait le compte
+  // ressusciter au prochain démarrage, solde compris. Et une suppression
+  // échouée doit être signalée, pas avalée en silence.
+  const deleted = await sbDeleteStrict('app_users', { id: userId });
+  if (!deleted) {
+    throw makeError('DELETE_FAILED', 'Suppression impossible pour le moment. Réessaie dans un instant.');
+  }
+
   // ── Memory cleanup ──
   memoryUsers.delete(userId);
   pseudoKeys.delete(userId);
@@ -1324,7 +1361,6 @@ export const deleteUserAccount = async (userId) => {
   for (let i = 0; i < anonymizedRows.length; i += 100) {
     sbFire('anonymizeChatMessages', () => sbUpsert('chat_messages', anonymizedRows.slice(i, i + 100)));
   }
-  await sbDelete('app_users', { id: userId });
 
   log.info('account deleted', { userId, forfeitedCash });
   return { userId, forfeitedCash };

@@ -37,9 +37,14 @@ export interface ServerNotification {
   message: string;
   priority: string;
   read?: boolean;
+  // Le serveur REST renvoie `isRead`/`createdAt` (camelCase) depuis
+  // persistence.mjs ; le bootstrap realtime renvoyait du snake_case.
+  // Les deux formes sont acceptées pour ne pas tout ré-afficher « à l'instant ».
+  isRead?: boolean;
   actionUrl?: string;
   metadata?: Record<string, unknown>;
   created_at?: string;
+  createdAt?: string;
   timestamp?: string;
 }
 
@@ -207,9 +212,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       priority: n.priority as NotificationPriority,
       actionUrl: n.actionUrl,
       metadata: n.metadata,
-      read: n.read ?? false,
+      read: n.read ?? n.isRead ?? false,
       dismissed: false,
-      timestamp: n.created_at || n.timestamp || new Date().toISOString(),
+      timestamp: n.createdAt || n.created_at || n.timestamp || new Date().toISOString(),
     }));
     // Merge (pas replace) : sinon les notifs créées localement (ex. confirmations
     // wallet) sont effacées à chaque re-synchronisation serveur.

@@ -682,14 +682,36 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
     throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton controle ne correspond pas a ce tournoi.');
   }
 
-  const normalizedCaptainPseudo = normalizeLabel(input.pseudo || actorUser.pseudo);
+  // Le capitaine ne peut pas usurper le pseudo d'un autre : on force son
+  // propre pseudo (l'inscription à un tournoi engage du vrai argent).
+  if (normalizeLabel(input.pseudo || '').toLowerCase() !== actorUser.pseudo.toLowerCase()) {
+    throw makeError('INVALID_REGISTRATION', 'Utilise ton propre pseudo de compte comme capitaine.');
+  }
+  const normalizedCaptainPseudo = normalizeLabel(actorUser.pseudo);
   const normalizedTeammates =
     tournament.teamSize === 1
       ? []
-      : (input.teammates || []).map((member) => ({
-          ...member,
-          pseudo: normalizeLabel(member.pseudo),
-        }));
+      : (input.teammates || []).map((member) => {
+          const teammate = getUserById(member.userId);
+          // userId inexistant = identité injectée dans le bracket (et les gains
+          // partiraient vers un compte fantôme ou usurpé).
+          if (!teammate) {
+            throw makeError('INVALID_REGISTRATION', 'Un coequipier est introuvable.');
+          }
+          return { ...member, userId: teammate.id, pseudo: normalizeLabel(teammate.pseudo) };
+        });
+
+  // Un coequipier ne peut pas être le capitaine, et chaque joueur une seule fois.
+  const memberIds = new Set();
+  for (const member of normalizedTeammates) {
+    if (member.userId === actorUser.id) {
+      throw makeError('INVALID_REGISTRATION', 'Tu ne peux pas etre a la fois capitaine et coequipier.');
+    }
+    if (memberIds.has(member.userId)) {
+      throw makeError('INVALID_REGISTRATION', 'Un joueur ne peut pas etre deux fois dans la meme squad.');
+    }
+    memberIds.add(member.userId);
+  }
 
   if (normalizedCaptainPseudo.length < 2) {
     throw makeError('INVALID_REGISTRATION', 'Pseudo capitaine invalide.');
@@ -794,6 +816,60 @@ export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) 
     tournament,
     actorUser: getUserById(actorUser.id),
   };
+};
+
+/**
+ * Annule un tournoi qui n'a jamais démarré et rembourse tous les capitaines.
+ * Sans ce workflow, un tournoi resté en 'recruiting' (pas assez d'arbitres,
+ * pas assez d'équipes) bloquait les passes (pass × taille d'équipe) à vie :
+ * aucun cron ne traitait la collection 'tournaments'.
+ * @param {Array} tournaments - Liste courante des tournois
+ * @param {string} tournamentId - ID du tournoi à annuler
+ * @param {string} [reason] - Motif affiché aux joueurs
+ * @returns {Promise<{tournaments: Array, tournament: object|null, refunded: number}>}
+ */
+export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, reason = 'Tournoi annule (inscriptions clos).') => {
+  const nextTournaments = cloneTournaments(tournaments);
+  const tournament = findTournament(nextTournaments, tournamentId);
+  if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
+  if (tournament.status !== 'recruiting') {
+    throw makeError('MATCH_CLOSED', 'Seul un tournoi non demarre peut etre annule ainsi.');
+  }
+
+  let refunded = 0;
+  for (const entry of tournament.entries) {
+    if (!entry.captainId) continue;
+    try {
+      await withWalletMutex(entry.captainId, async () => {
+        await refundLockedEntry(entry.captainId, tournament.id, `Remboursement du pass ${tournament.name}`);
+      });
+      refunded += 1;
+    } catch (error) {
+      log.error('Tournament refund failed', { tournamentId, captainId: entry.captainId, error: error.message });
+    }
+  }
+
+  tournament.status = 'cancelled';
+  tournament.cancelReason = reason;
+  tournament.cancelledAt = getNow();
+  tournament.entries = [];
+  tournament.updatedAt = getNow();
+
+  return { tournaments: nextTournaments, tournament, refunded };
+};
+
+/**
+ * Tournois en inscription dont la date de début est dépassée depuis plus de
+ * `graceMs` : ils n'ont jamais démarré, leurs passes doivent être libérés.
+ * @param {Array} tournaments - Liste courante des tournois
+ * @param {number} graceMs - Tolérance après startsAt
+ * @returns {Array<string>} IDs à annuler
+ */
+export const getExpiredTournamentIds = (tournaments, graceMs = 24 * 60 * 60 * 1000) => {
+  const now = Date.now();
+  return tournaments
+    .filter((t) => t.status === 'recruiting' && t.startsAt && new Date(t.startsAt).getTime() + graceMs < now)
+    .map((t) => t.id);
 };
 
 /**

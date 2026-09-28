@@ -1,7 +1,8 @@
 import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
-import { withMatchMutex, withLeagueMutex } from './mutex.mjs';
+import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays } from './league-engine.mjs';
+import { getExpiredTournamentIds, cancelStaleTournamentOnServer } from './tournament-engine.mjs';
 import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
@@ -142,4 +143,47 @@ export const initCronJobs = () => {
       log.error('Erreur nettoyage mémoire', error);
     }
   }, 60 * 60 * 1000);
+
+  // Tournois jamais démarrés — libère les passes bloqués (toutes les 6 h).
+  // Sans ça, un tournoi resté 'recruiting' (pas assez d'arbitres/équipes)
+  // gardait entryFee × teamSize en lockedEntries indefinement.
+  let tournamentSweepRunning = false;
+  setInterval(async () => {
+    if (tournamentSweepRunning) {
+      log.warn('Sweep tournois saute : tick precedent encore en cours.');
+      return;
+    }
+    tournamentSweepRunning = true;
+    try {
+      await withTournamentMutex(async () => {
+        const tournaments = getStateCollection('tournaments');
+        const expiredIds = getExpiredTournamentIds(tournaments);
+        if (expiredIds.length === 0) return;
+
+        let updated = tournaments;
+        let totalRefunded = 0;
+        for (const id of expiredIds) {
+          try {
+            const outcome = await cancelStaleTournamentOnServer(
+              updated,
+              id,
+              'Tournoi annule : pas assez d inscriptions avant la date de debut.'
+            );
+            updated = outcome.tournaments;
+            totalRefunded += outcome.refunded;
+          } catch (error) {
+            log.error('Annulation tournoi expiree echouee', { tournamentId: id, error: error.message });
+          }
+        }
+        if (updated !== tournaments) {
+          await replaceStateCollection('tournaments', updated);
+          log.warn('Tournois expires annules', { count: expiredIds.length, refunds: totalRefunded });
+        }
+      });
+    } catch (error) {
+      log.error('Erreur sweep tournois', error);
+    } finally {
+      tournamentSweepRunning = false;
+    }
+  }, 6 * 60 * 60 * 1000);
 };

@@ -1,4 +1,5 @@
 import { useAuthStore } from '../stores/authStore';
+import { resetAllSessionStores } from './sessionReset';
 
 let logoutQueued = false;
 
@@ -42,7 +43,13 @@ const handleAuthError = (status: number, code?: string) => {
   if (isAuthFailure) {
     if (!logoutQueued) {
       logoutQueued = true;
-      queueMicrotask(() => { logoutQueued = false; useAuthStore.getState().logout(); });
+      queueMicrotask(() => {
+        logoutQueued = false;
+        // Purge aussi les données de session (solde, matchs, chat, amis) :
+        // sinon elles restent visibles pour un compte connecté ensuite.
+        resetAllSessionStores();
+        useAuthStore.getState().logout();
+      });
     }
   }
 };

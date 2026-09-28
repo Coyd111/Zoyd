@@ -115,14 +115,13 @@ export const useWalletStore = create<WalletState>()((set, get) => {
         },
 
         refreshFromServer: async () => {
-          try {
-            const payload = await fetchWalletSnapshot();
-            get().hydrateFromServer(payload.wallet);
-            if (payload.user) {
-              useAuthStore.getState().updateUser(payload.user);
-            }
-          } catch {
-            // silent
+          // Ne swallow PAS l'erreur : le bootstrap en dépend pour savoir s'il
+          // doit retenter. Avaler ici affichait 0 ZC alors que le serveur en
+          // avait (le joueur croyait son portefeuille vidé).
+          const payload = await fetchWalletSnapshot();
+          get().hydrateFromServer(payload.wallet);
+          if (payload.user) {
+            useAuthStore.getState().updateUser(payload.user);
           }
         },
 

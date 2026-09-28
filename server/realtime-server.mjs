@@ -48,6 +48,8 @@ import {
   loadFromSupabaseWithRetry,
   forceReloadFromSupabase,
   isReloadInProgress,
+  isStateTrusted,
+  getStateLoadError,
   getHealthInfo,
   verifyDataIntegrity,
   loadAdminTotpSecrets,
@@ -192,8 +194,10 @@ const handleRequest = async (req, res) => {
 
   if (req.method === 'GET' && pathname === '/api/health') {
     const health = getHealthInfo();
-    respondJson(res, 200, {
-      ok: true,
+    // ok=false quand l'état mémoire n'est pas fiable : les écritures sont
+    // refusées, un orchestrateur doit le savoir plutôt que de croire au vert.
+    respondJson(res, health.stateTrusted ? 200 : 503, {
+      ok: health.stateTrusted,
       service: 'zoyd-api',
       persistence: { ...health, reloadInProgress: isReloadInProgress() },
       timestamp: getNow(),
@@ -3063,7 +3067,14 @@ io.on('connection', (socket) => {
 const start = async () => {
   const loaded = await loadFromSupabaseWithRetry(3);
   if (!loaded) {
-    log.error('CRITICAL: Failed to load data from Supabase after 3 attempts — users may not be available');
+    // Le serveur démarre quand même (les lectures restent possibles), mais
+    // TOUTE écriture d'état est refusée tant que l'état n'est pas complet
+    // (isStateTrusted() === false). C'est volontaire : démarrer avec un état
+    // partiel faisait purger la base au premier match créé.
+    log.error('CRITICAL: Failed to load data from Supabase after 3 attempts — ecritures desactivees', {
+      stateTrusted: isStateTrusted(),
+      error: getStateLoadError(),
+    });
   }
 
   // Load admin 2FA secrets from Supabase

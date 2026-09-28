@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('./persistence.mjs', () => ({
   getUserById: vi.fn(),
+  getUserByExactPseudo: vi.fn(),
   updateUserAccount: vi.fn(),
+}));
+
+vi.mock('./mutex.mjs', () => ({
+  withWalletMutex: async (_id, fn) => fn(),
 }));
 
 vi.mock('./wallet-engine.mjs', () => ({
@@ -471,5 +476,74 @@ describe('tournament-engine - pure helpers', () => {
     const result = tournamentEngine.startTournamentOnServer([tournament], mockAdmin, 'T-TEST');
     expect(result.tournament.mainRounds).toBe(3);
     expect(result.tournament.matches.filter((m) => m.bracketType === 'main')).toHaveLength(7);
+  });
+});
+
+describe('tournament-engine - annulation et remboursement des passes', () => {
+  const makeTournament = () => ({
+    id: 'T-STALE',
+    name: 'Open Benin',
+    format: '1VS1',
+    teamSize: 1,
+    entryFee: 100,
+    status: 'recruiting',
+    entries: [makeEntry('player-1', 'ShadowX', 1), makeEntry('player-2', 'Ghost', 2)],
+    arbiters: [],
+    arbitersNeeded: 1,
+    matches: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  it('rembourse tous les captains quand tout reussit', async () => {
+    refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
+    const result = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
+    expect(refundLockedEntry).toHaveBeenCalledTimes(2);
+    expect(result.refunded).toBe(2);
+    expect(result.tournament.entries).toHaveLength(0);
+    expect(result.tournament.pendingRefunds).toEqual([]);
+  });
+
+  it('conserve la dette et la rejoue quand un refund echoue', async () => {
+    // Le bug historique : l'erreur etait loguee puis `entries = []`
+    // detruisait la preuve => entryFee bloques a jamais.
+    refundLockedEntry
+      .mockResolvedValueOnce({ cashBalance: 100 })
+      .mockRejectedValueOnce(new Error('USER_NOT_FOUND'));
+
+    const cancelled = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
+    expect(cancelled.refunded).toBe(1);
+    expect(cancelled.pendingRefunds).toBe(1);
+    expect(cancelled.tournament.entries.map((e) => e.captainId)).toEqual(['player-2']);
+    expect(cancelled.tournament.pendingRefunds[0].captainId).toBe('player-2');
+
+    // Le retry rejoue le refund raté.
+    refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
+    const retried = await tournamentEngine.retryPendingTournamentRefunds([cancelled.tournament]);
+    expect(retried.retried).toBe(1);
+    expect(retried.remaining).toBe(0);
+    expect(retried.tournaments[0].pendingRefunds).toEqual([]);
+    expect(retried.tournaments[0].entries).toHaveLength(0);
+  });
+
+  it('garde la dette si le retry echoue encore', async () => {
+    refundLockedEntry.mockRejectedValue(new Error('STILL_DOWN'));
+    const cancelled = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
+    expect(cancelled.pendingRefunds).toBe(2);
+
+    const retried = await tournamentEngine.retryPendingTournamentRefunds([cancelled.tournament]);
+    expect(retried.retried).toBe(0);
+    expect(retried.remaining).toBe(2);
+    expect(tournamentEngine.countPendingTournamentRefunds(retried.tournaments)).toBe(2);
+  });
+
+  it('preserve pendingRefunds apres normalisation (redemarrage)', () => {
+    const normalized = tournamentEngine.normalizeTournamentCollection([{
+      ...makeTournament(),
+      status: 'cancelled',
+      pendingRefunds: [{ captainId: 'player-2', entryId: 'ENTRY-2', lastError: 'X' }],
+    }]);
+    expect(normalized[0].pendingRefunds).toHaveLength(1);
+    expect(normalized[0].pendingRefunds[0].captainId).toBe('player-2');
   });
 });

@@ -265,8 +265,14 @@ export const loadFromSupabase = async () => {
     log.warn('No Supabase client — running from memory only');
     await ensureSeedAdmin();
     ensureGlobalChatChannel();
+    stateTrusted = true; // mode mémoire : la base EST l'état
     return false;
   }
+
+  // repartir de zéro : sinon un utilisateur supprimé en base entre deux
+  // tentatives resterait en mémoire (fantôme) et le chargement suivant
+  // verrait un état partiel.
+  clearAllMemoryCaches();
 
   log.info('Loading from Supabase...');
   const t0 = Date.now();
@@ -410,12 +416,22 @@ export const loadFromSupabase = async () => {
     // les kinds non chargés renverraient [] et le premier replaceStateCollection
     // purgerait la table correspondante en base.
     log.error('Error loading from Supabase', { message: err.message, stack: err.stack });
+    stateLoadError = err.message;
+    stateTrusted = false;
     return false;
   }
 
+  // ensureSeedAdmin / ensureGlobalChatChannel doivent tourner même après un load
+  // raté, sinon le `return false` court-circuite le seed et l'admin n'existe
+  // pas en mémoire (modération inaccessible jusqu'au redémarrage).
   await ensureSeedAdmin();
   ensureGlobalChatChannel();
-  return memoryUsers.size > 0;
+  // Une base vide est un état LÉGITIME (fresh deploy) : on ne se base pas sur
+  // memoryUsers.size, sinon 3 tentatives (9 s) pour rien + un log CRITICAL
+  // faux positif. Ce qui compte, c'est qu'aucune exception n'a été levée.
+  stateLoadError = null;
+  stateTrusted = true;
+  return true;
 };
 
 // Retry wrapper — retries up to 3 times with exponential backoff
@@ -442,7 +458,46 @@ export const loadFromSupabaseWithRetry = async (maxRetries = 3) => {
 const reloadMutex = new Mutex();
 let reloadInProgress = false;
 
+/**
+ * L'état mémoire est-il complet et cohérent avec la base ?
+ *
+ * `false` après un chargement Supabase raté (ou interrompu). Tant que ce
+ * drapeau est faux, TOUTE écriture d'état est refusée : sinon le premier
+ * `replaceStateCollection` part d'un état partiel et supprime en base tout ce
+ * qui n'est pas dans son batch (tous les matchs, tournois et ligues).
+ */
+let stateTrusted = !supabase;
+let stateLoadError = null;
+
 export const isReloadInProgress = () => reloadInProgress;
+export const isStateTrusted = () => stateTrusted;
+export const getStateLoadError = () => stateLoadError;
+
+/** Vider tous les caches mémoire (avant un (re)chargement complet). */
+const clearAllMemoryCaches = () => {
+  memoryUsers.clear();
+  pseudoKeys.clear();
+  gameIdKeys.clear();
+  memoryAdminIds.clear();
+  memoryPasswordHashes.clear();
+  memoryAuthSessions.clear();
+  memoryRealtimeSessions.clear();
+  memoryChatChannels.clear();
+  memoryChatMessages.clear();
+  memoryChatReads.clear();
+  memoryStateSnapshots.clear();
+  memoryStateByKind.clear();
+  memoryFriendRequests.clear();
+  memoryFriendships.clear();
+  memoryFriendshipsByUser.clear();
+  memoryUserBlocks.clear();
+  memoryBlocksByUser.clear();
+  memoryNotifications.clear();
+  memoryUnreadByUser.clear();
+  memoryProcessedTransactions.clear();
+  memoryPushSubscriptions.clear();
+  loginAttempts.clear();
+};
 
 /**
  * Force a full reload from Supabase, clearing all in-memory caches first.
@@ -454,29 +509,7 @@ export const forceReloadFromSupabase = async () => {
   reloadInProgress = true;
   log.warn('Force reload started — all in-flight operations may see stale data');
   try {
-    // Clear all in-memory state
-    memoryUsers.clear();
-    pseudoKeys.clear();
-    gameIdKeys.clear();
-    memoryAdminIds.clear();
-    memoryPasswordHashes.clear();
-    memoryAuthSessions.clear();
-    memoryRealtimeSessions.clear();
-    memoryChatChannels.clear();
-    memoryChatMessages.clear();
-    memoryChatReads.clear();
-    memoryStateSnapshots.clear();
-    memoryStateByKind.clear();
-    memoryFriendRequests.clear();
-    memoryFriendships.clear();
-    memoryFriendshipsByUser.clear();
-    memoryUserBlocks.clear();
-    memoryBlocksByUser.clear();
-    memoryNotifications.clear();
-    memoryUnreadByUser.clear();
-    memoryProcessedTransactions.clear();
-    memoryPushSubscriptions.clear();
-    loginAttempts.clear();
+    clearAllMemoryCaches();
     const ok = await loadFromSupabase();
     return ok;
   } finally {
@@ -492,6 +525,10 @@ export const forceReloadFromSupabase = async () => {
  */
 export const getHealthInfo = () => ({
   supabaseConnected: !!supabase,
+  // false = chargement incomplet : toutes les écritures d'état sont refusées
+  // pour éviter une purge destructive. Doit remonter en alerte si false.
+  stateTrusted,
+  stateLoadError,
   usersInMemory: memoryUsers.size,
   adminsInMemory: memoryAdminIds.size,
   channelsInMemory: memoryChatChannels.size,
@@ -661,14 +698,27 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     if (role === 'admin') memoryAdminIds.add(id);
     storePasswordHash(id, passwordHash, payload.pseudo, payload.email, payload.phone);
 
-    // Write to Supabase
-    await sbUpsert('app_users', {
+    // Write to Supabase — CRITIQUE : ignorer l'échec renvoyait 201 alors que
+    // le compte n'existait qu'en RAM, donc le joueur ne pouvait plus se
+    // reconnecter après le redémarrage de Render.
+    const persisted = await sbUpsert('app_users', {
       id, pseudo_key: normalizePseudoKey(payload.pseudo),
       email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
       game_id_key: normalizeGameIdKey(payload.gameId), role,
       password_hash: passwordHash, payload,
       created_at: createdAt, updated_at: createdAt,
     });
+    if (supabase && !persisted) {
+      memoryUsers.delete(id);
+      pseudoKeys.delete(id);
+      if (payload.gameId) gameIdKeys.delete(normalizeGameIdKey(payload.gameId));
+      memoryAdminIds.delete(id);
+      memoryPasswordHashes.delete(id);
+      memoryPasswordHashes.delete(normalizePseudoKey(payload.pseudo));
+      if (payload.email) memoryPasswordHashes.delete(normalizeEmailKey(payload.email));
+      if (payload.phone) memoryPasswordHashes.delete(normalizePhoneKey(payload.phone));
+      throw makeError('SERVER_BUSY', "Inscription impossible pour le moment, reessaie.");
+    }
 
   return sanitizeUserPayload(payload);
   } finally {
@@ -899,13 +949,28 @@ export const updateUserAccount = async (userId, updater) => {
       storePasswordHash(userId, passwordHash, next.pseudo, next.email, next.phone);
     }
 
-    await sbUpsert('app_users', {
+    // Écriture CRITIQUE (solde / profil) : on n'avale pas l'échec. Sinon le
+    // client reçoit 200, la mutation ne survit pas au redémarrage, et une
+    // transaction FedaPay déjà « claimée » en mémoire peut créditer 2×.
+    const persisted = await sbUpsert('app_users', {
       id: userId, pseudo_key: normalizePseudoKey(next.pseudo),
       email_key: normalizeEmailKey(next.email), phone_key: normalizePhoneKey(next.phone),
       game_id_key: normalizeGameIdKey(next.gameId), role: next.role,
       password_hash: passwordHash, payload: next,
       created_at: current.dateJoined, updated_at: getNow(),
     });
+
+    if (supabase && !persisted) {
+      // On remet l'état mémoire d'avant : le client doit pouvoir rejouer.
+      if (next.gameId) gameIdKeys.delete(normalizeGameIdKey(next.gameId));
+      memoryUsers.set(userId, current);
+      pseudoKeys.set(userId, normalizePseudoKey(current.pseudo || ''));
+      if (current.gameId) gameIdKeys.set(normalizeGameIdKey(current.gameId), userId);
+      memoryAdminIds.delete(userId);
+      if (current.role === 'admin') memoryAdminIds.add(userId);
+      if (passwordHash) storePasswordHash(userId, passwordHash, current.pseudo, current.email, current.phone);
+      throw makeError('SERVER_BUSY', 'Sauvegarde du profil impossible, reessaie dans un instant.');
+    }
 
     return next;
   });
@@ -1377,8 +1442,16 @@ export const deleteUserAccount = async (userId) => withUserMutex(userId, async (
   await sbDelete('user_blocks', { blocked_id: userId });
   await sbDelete('user_notifications', { user_id: userId });
   await sbDelete('chat_reads', { user_id: userId });
+  // Droit à l'effacement : l'anonymisation ne doit PAS être best-effort. En
+  // sbFire, un échec laissait le pseudo du joueur supprimé DÉFINITIVEMENT en
+  // base, sans trace. On la fait stricte (échec => le compte est déjà supprimé
+  // en base, on le signale plutôt que de mentir).
   for (let i = 0; i < anonymizedRows.length; i += 100) {
-    sbFire('anonymizeChatMessages', () => sbUpsert('chat_messages', anonymizedRows.slice(i, i + 100)));
+    const batch = anonymizedRows.slice(i, i + 100);
+    const ok = await sbUpsert('chat_messages', batch);
+    if (supabase && !ok) {
+      log.error('chat anonymization failed', { userId, batch: i });
+    }
   }
 
   log.info('account deleted', { userId, forfeitedCash });
@@ -1754,10 +1827,31 @@ export const replaceStateCollection = async (kind, items) => {
   if (reloadInProgress) {
     throw makeError('SERVER_BUSY', 'Rechargement en cours, réessaie dans un instant.');
   }
+  // ÉTAT NON FIABLE : des tables n'ont pas pu être chargées. Écrire maintenant
+  // reviendrait à supprimer en base tout ce qui manque du batch (donc
+  // potentiellement TOUS les matchs/tournois/ligues). On refuse tout.
+  if (!stateTrusted) {
+    throw makeError(
+      'SERVER_BUSY',
+      'Base de donnees indisponible, ecriture refusee pour eviter une perte de donnees.',
+    );
+  }
 
   const itemIds = new Set(items.map((item) => item.id));
   if (!memoryStateByKind.has(kind)) memoryStateByKind.set(kind, new Map());
   const kindMap = memoryStateByKind.get(kind);
+
+  // Sauvegarde pour rollback : en cas d'échec d'écriture, l'état mémoire doit
+  // revenir à sa valeur d'origine, sinon le prochain appel compare un état
+  // « optimiste » à la base et la divergence devient invisible.
+  const previousById = new Map(kindMap);
+  const previousFlatKeys = new Set(memoryStateSnapshots.keys());
+  const rollbackMemory = () => {
+    kindMap.clear();
+    for (const [id, payload] of previousById) kindMap.set(id, payload);
+    for (const key of previousFlatKeys) memoryStateSnapshots.delete(key);
+    for (const item of items) memoryStateSnapshots.set(`${kind}:${item.id}`, item);
+  };
 
   // Update memory (both flat and per-kind maps)
   for (const item of items) {
@@ -1800,7 +1894,12 @@ export const replaceStateCollection = async (kind, items) => {
       }
     }
     if (!upserted) {
-      log.error(`replaceStateCollection(${kind}) batch ${i} failed after 3 attempts — memory and Supabase may diverge`, { batchIds: batch.map((r) => r.entity_id).slice(0, 5) });
+      // FAIL CLOSED. Avalent l'erreur, la route répondait 200 au client alors
+      // que la base n'avait rien : au redémarrage le résultat de match
+      // 'pending' disparaissait et la cagnotte restait gelée, ou (pire) le
+      // règlement était rejoué et créditait deux fois.
+      rollbackMemory();
+      throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
     }
   }
 };
@@ -2099,7 +2198,14 @@ export const claimTransaction = async (transactionId, userId, amountZC) => {
     const first = memoryProcessedTransactions.values().next().value;
     memoryProcessedTransactions.delete(first);
   }
-  await sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
+  // CRITIQUE : la revendication d'idempotence doit survivre au redémarrage.
+  // Si lupsert échoue et qu'on la laisse en RAM, la même transaction FedaPay
+  // est créditée une SECONDE fois au prochain boot.
+  const claimed = await sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
+  if (supabase && !claimed) {
+    memoryProcessedTransactions.delete(transactionId);
+    throw makeError('SERVER_BUSY', 'Verification du paiement impossible, reessaie.');
+  }
   return true;
 };
 
@@ -2118,7 +2224,12 @@ export const releaseTransaction = async (transactionId) => {
 
 // ─── Admin 2FA Persistence ─────────────────────────────────────────────────
 export const saveAdminTotpSecret = async (userId, secret, enabled = false) => {
-  await sbUpsert('admin_2fa_secrets', { user_id: userId, secret, enabled });
+  // CRITIQUE : un secret 2FA perdu au redémarrage verrouille l'admin hors de
+  // toutes les routes d'administration, sans aucun moyen de le récupérer.
+  const saved = await sbUpsert('admin_2fa_secrets', { user_id: userId, secret, enabled });
+  if (supabase && !saved) {
+    throw makeError('SERVER_BUSY', 'Sauvegarde 2FA impossible, reessaie dans un instant.');
+  }
 };
 
 export const loadAdminTotpSecrets = async () => {

@@ -107,6 +107,14 @@ export interface Tournament {
   createdAt: string;
   updatedAt: string;
   finishedAt?: string;
+  cancelReason?: string;
+  cancelledAt?: string;
+  /**
+   * Remboursements de pass restés en échec sur un tournoi annulé. Non vide =
+   * des ZC sont encore bloqués pour ces capitaines ; le serveur les rejoue
+   * toutes les 6 h.
+   */
+  pendingRefunds?: Array<{ captainId: string; entryId?: string; lastError?: string }>;
 }
 
 export interface TournamentFilters {

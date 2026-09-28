@@ -117,6 +117,17 @@ const normalizeTournamentSnapshot = (tournament) => {
     payout: buildPayout(tournament?.entryFee || 0, entries.length, arbitersNeeded, teamSize),
     matches: Array.isArray(tournament?.matches) ? tournament.matches : [],
     mainRounds: Number(tournament?.mainRounds || 0),
+    cancelReason: tournament?.cancelReason,
+    cancelledAt: tournament?.cancelledAt,
+    // Dette de remboursement : préservée au chargement, sinon un redémarrage
+    // entre l'échec et le retry perdrait définitivement des ZC bloqués.
+    pendingRefunds: Array.isArray(tournament?.pendingRefunds)
+      ? tournament.pendingRefunds.map((item) => ({
+          captainId: item?.captainId,
+          entryId: item?.entryId,
+          lastError: item?.lastError,
+        })).filter((item) => item.captainId)
+      : [],
     createdAt,
     updatedAt,
     finishedAt: tournament?.finishedAt,
@@ -854,6 +865,7 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
   }
 
   let refunded = 0;
+  const failedCaptains = [];
   for (const entry of tournament.entries) {
     if (!entry.captainId) continue;
     try {
@@ -862,18 +874,81 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
       });
       refunded += 1;
     } catch (error) {
+      // NE PAS perdre la trace : l'entrée reste dans pendingRefunds et le
+      // cron de reprise la réessaie. Avant, l'erreur était loguée puis
+      // `entries = []` détruisait la preuve de la dette : les ZC restaient
+      // bloqués dans lockedEntries sans aucun chemin pour les libérer.
       log.error('Tournament refund failed', { tournamentId, captainId: entry.captainId, error: error.message });
+      failedCaptains.push({ captainId: entry.captainId, entryId: entry.id, lastError: error.message });
     }
   }
 
   tournament.status = 'cancelled';
   tournament.cancelReason = reason;
   tournament.cancelledAt = getNow();
-  tournament.entries = [];
   tournament.updatedAt = getNow();
+  // Dette conservée : le retry la reprend, et /health peut l'alerter.
+  tournament.pendingRefunds = failedCaptains;
+  // On ne retire que les entrées réellement remboursées.
+  tournament.entries = failedCaptains.length > 0
+    ? tournament.entries.filter((e) => failedCaptains.some((f) => f.entryId === e.id))
+    : [];
 
-  return { tournaments: nextTournaments, tournament, refunded };
+  return { tournaments: nextTournaments, tournament, refunded, pendingRefunds: failedCaptains.length };
 };
+
+/**
+ * Rejouer les remboursements restés en échec sur un tournoi annulé.
+ * Appelé par le cron toutes les 6 h et au boot.
+ * @param {Array} tournaments - Liste courante des tournois
+ * @returns {Promise<{tournaments: Array, retried: number, remaining: number}>}
+ */
+export const retryPendingTournamentRefunds = async (tournaments) => {
+  const nextTournaments = cloneTournaments(tournaments);
+  let retried = 0;
+  let remaining = 0;
+
+  for (const tournament of nextTournaments) {
+    const pending = Array.isArray(tournament.pendingRefunds) ? tournament.pendingRefunds : [];
+    if (pending.length === 0) continue;
+
+    const stillFailing = [];
+    for (const item of pending) {
+      try {
+        await withWalletMutex(item.captainId, async () => {
+          await refundLockedEntry(item.captainId, tournament.id, `Remboursement du pass ${tournament.name}`);
+        });
+        retried += 1;
+      } catch (error) {
+        log.warn('Tournament refund retry failed', {
+          tournamentId: tournament.id, captainId: item.captainId, error: error.message,
+        });
+        stillFailing.push({ ...item, lastError: error.message });
+      }
+    }
+    tournament.pendingRefunds = stillFailing;
+    remaining += stillFailing.length;
+    // Une dette remboursée doit disparaître des entries, sinon le joueur
+    // verrait encore son équipe dans un tournoi annulé.
+    tournament.entries = stillFailing.length > 0
+      ? (tournament.entries || []).filter((e) => stillFailing.some((f) => f.entryId === e.id))
+      : [];
+    tournament.updatedAt = getNow();
+  }
+
+  return { tournaments: nextTournaments, retried, remaining };
+};
+
+/**
+ * Total des remboursement en attente sur tous les tournois (santé).
+ * @param {Array} tournaments - Liste courante des tournois
+ * @returns {number}
+ */
+export const countPendingTournamentRefunds = (tournaments) =>
+  tournaments.reduce(
+    (sum, t) => sum + (Array.isArray(t.pendingRefunds) ? t.pendingRefunds.length : 0),
+    0,
+  );
 
 /**
  * Tournois en inscription dont la date de début est dépassée depuis plus de

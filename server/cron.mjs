@@ -2,7 +2,7 @@ import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCod
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays } from './league-engine.mjs';
-import { getExpiredTournamentIds, cancelStaleTournamentOnServer } from './tournament-engine.mjs';
+import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds } from './tournament-engine.mjs';
 import { settlePendingMatchResult } from './match-engine.mjs';
 import { getNow } from './utils.mjs';
 
@@ -224,4 +224,37 @@ export const initCronJobs = () => {
   setInterval(() => { void sweepPendingSettlements(); }, 60 * 1000);
   // Au boot : un redemarrage Render est justement le cas le plus probable.
   setTimeout(() => { void sweepPendingSettlements(); }, 15 * 1000);
+
+  // Reprise des remboursements de tournoi restés en echec — toutes les 6 h +
+  // au boot. Sans ce retry, un refund rate (utilisateur supprime, mutex, panne
+  // Supabase) laissait entryFee x teamSize bloques dans lockedEntries SANS
+  // aucun chemin pour les liberer : perte seche.
+  let refundRetryRunning = false;
+  const sweepPendingRefunds = async () => {
+    if (refundRetryRunning) return;
+    refundRetryRunning = true;
+    try {
+      await withTournamentMutex(async () => {
+        const tournaments = getStateCollection('tournaments');
+        const outstanding = countPendingTournamentRefunds(tournaments);
+        if (outstanding === 0) return;
+        const outcome = await retryPendingTournamentRefunds(tournaments);
+        if (outcome.retried > 0 || outcome.remaining !== outstanding) {
+          await replaceStateCollection('tournaments', outcome.tournaments);
+        }
+        if (outcome.retried > 0) {
+          log.warn('Remboursements de tournoi rejoues', { retried: outcome.retried, remaining: outcome.remaining });
+        }
+        if (outcome.remaining > 0) {
+          log.error('Remboursements de tournoi toujours en echec', { remaining: outcome.remaining });
+        }
+      });
+    } catch (error) {
+      log.error('Erreur reprise des remboursements', error);
+    } finally {
+      refundRetryRunning = false;
+    }
+  };
+  setInterval(() => { void sweepPendingRefunds(); }, 6 * 60 * 60 * 1000);
+  setTimeout(() => { void sweepPendingRefunds(); }, 20 * 1000);
 };

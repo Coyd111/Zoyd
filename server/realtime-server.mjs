@@ -103,6 +103,7 @@ import {
   scheduleMatchOnServer,
   setRoomDetailsOnServer,
   submitMatchResultOnServer,
+  settlePendingMatchResult,
   toggleReadyOnServer,
   addEvidenceToDisputeOnServer,
   escalateDisputeOnServer,
@@ -165,6 +166,29 @@ const handleRequest = async (req, res) => {
     respondJson(res, 204, {}, req);
     return;
   }
+
+  // ─── CSRF ────────────────────────────────────────────────────────────────
+  // Le cookie de session est SameSite=None (front Vercel → API Render) : sans
+  // ce garde, une page tierce peut POSTer /api/wallet/withdraw avec
+  // `mode:'no-cors'` et `Content-Type: text/plain` (requête simple, sans
+  // preflight) en profitant du cookie envoyé automatiquement.
+  // Défense à deux niveaux : Origin sur la liste blanche + Content-Type JSON obligatoire.
+  if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
+    const origin = req.headers.origin;
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+      log.warn('CSRF origin rejected', { origin, path: pathname });
+      respondJson(res, 403, { ok: false, error: 'Origine non autorisee.', code: 'CSRF_ORIGIN_REJECTED' }, req);
+      return;
+    }
+    // text/plain échoue ici : c'est ce qui bloque le CSRF "simple request".
+    // Un client sans Content-Type (curl, e2e) reste accepté.
+    const contentType = String(req.headers['content-type'] || '');
+    if (contentType && !contentType.includes('application/json')) {
+      respondJson(res, 415, { ok: false, error: 'Content-Type application/json requis.', code: 'UNSUPPORTED_MEDIA_TYPE' }, req);
+      return;
+    }
+  }
+
 
   if (req.method === 'GET' && pathname === '/api/health') {
     const health = getHealthInfo();
@@ -2041,9 +2065,22 @@ const handleRequest = async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = await submitMatchResultOnServer(getStateCollection('matches'), session.user, matchResult[1], body);
+      // Deux phases : on PERSISTE le résultat avant de créditer les wallets.
+      // Si l'écriture échoue, aucun gain n'a été versé et le client peut
+      // rejouer sans être payé deux fois.
+      const outcome = await submitMatchResultOnServer(
+        getStateCollection('matches'), session.user, matchResult[1], body, { deferSettlement: true }
+      );
       await saveMatches(io, outcome.matches, outcome.match);
-      respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+
+      const settled = await settlePendingMatchResult(outcome.matches, matchResult[1]);
+      if (settled.match) {
+        await saveMatches(io, settled.matches, settled.match);
+      }
+      if (!settled.success) {
+        log.error('Settlement incomplete — retry requis', { matchId: matchResult[1] });
+      }
+      respondJson(res, 200, buildMatchActionPayload(settled.match || outcome.match, session.user.id));
     });
     } catch (error) {
       respondMappedError(res, error);
@@ -2314,6 +2351,7 @@ const handleRequest = async (req, res) => {
       const currentMatches = getStateCollection('matches');
       const targetMatch = currentMatches.find((entry) => entry.id === adminMatchAward[1]);
       const defaultScores = body.winnerTeam === 0 ? { team0: 1, team1: 0 } : { team0: 0, team1: 1 };
+      // Même discipline deux phases que la route joueur : persisté avant crédit.
       const outcome = await submitMatchResultOnServer(currentMatches, session.user, adminMatchAward[1], {
         winnerTeam: body.winnerTeam,
         scores: targetMatch?.result?.scores || defaultScores,
@@ -2321,10 +2359,17 @@ const handleRequest = async (req, res) => {
         proofs: targetMatch?.result?.proofs,
         arbiterNotes: body.arbiterNotes || 'Resolution admin depuis le command center.',
         submittedBy: 'admin-dashboard',
-      });
+      }, { deferSettlement: true });
       await saveMatches(io, outcome.matches, outcome.match);
+      const settled = await settlePendingMatchResult(outcome.matches, adminMatchAward[1]);
+      if (settled.match) {
+        await saveMatches(io, settled.matches, settled.match);
+      }
+      if (!settled.success) {
+        log.error('Admin award settlement incomplete', { matchId: adminMatchAward[1] });
+      }
       log.info('Admin action: award match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
-      respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+      respondJson(res, 200, buildMatchActionPayload(settled.match || outcome.match, session.user.id));
     });
     } catch (error) {
       respondMappedError(res, error);

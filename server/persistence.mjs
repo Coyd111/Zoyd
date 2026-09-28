@@ -845,6 +845,13 @@ export const updateUserAccount = async (userId, updater) => {
 
     const passwordHash = memoryPasswordHashes.get(userId)?.[1] || '';
 
+    // Réindexe les NOUVEAUX identifiants : sans ça, un joueur qui change son
+    // pseudo/téléphone ne pouvait plus se connecter (authenticateUserAccount ne
+    // trouvait plus la clé) jusqu'au redémarrage serveur.
+    if (passwordHash) {
+      storePasswordHash(userId, passwordHash, next.pseudo, next.email, next.phone);
+    }
+
     await sbUpsert('app_users', {
       id: userId, pseudo_key: normalizePseudoKey(next.pseudo),
       email_key: normalizeEmailKey(next.email), phone_key: normalizePhoneKey(next.phone),

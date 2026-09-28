@@ -34,8 +34,12 @@ export const getAuthHeaders = () => {
   return {};
 };
 
-const handleAuthError = (status: number) => {
-  if (status === 401 || status === 403) {
+const handleAuthError = (status: number, code?: string) => {
+  // 403 = refus d'autorisation MÉTIER (2FA requise, mot de passe actuel faux,
+  // transaction d'un autre compte) : la session est valide, ne la détruit pas.
+  // Seul un 401 (ou un 403 explicitement lié à l'authentification) purge l'état.
+  const isAuthFailure = status === 401 || (status === 403 && code === 'AUTH_REQUIRED');
+  if (isAuthFailure) {
     if (!logoutQueued) {
       logoutQueued = true;
       queueMicrotask(() => { logoutQueued = false; useAuthStore.getState().logout(); });
@@ -103,9 +107,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 export const readJson = async <T>(response: Response): Promise<T> => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    handleAuthError(response.status);
-
     const code = payload.code || 'UNKNOWN_ERROR';
+    handleAuthError(response.status, code);
+
     const serverMessage = payload.error || 'Une erreur réseau est survenue.';
     const friendlyMessage = ERROR_MESSAGES[code] || serverMessage;
 

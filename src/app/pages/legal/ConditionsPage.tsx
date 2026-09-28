@@ -47,15 +47,27 @@ const ConditionsPage: React.FC = () => (
     <LegalSection n="4" title="Règles des matchs avec mise">
       <p>
         Pour publier ou rejoindre un match avec mise, ta mise (le « pass ») est bloquée sur ton solde. La cagnotte
-        totale vaut <strong className="text-white">mise × nombre de joueurs</strong>. À la validation du résultat, une{' '}
-        <strong className="text-white">commission d'arbitrage de 2 %</strong> est prélevée sur la cagnotte, le reste
-        revient au gagnant.
+        réelle vaut <strong className="text-white">pass × nombre de joueurs inscrits</strong> — seuls les montants
+        réellement versés sont redistribués. À la validation du résultat, une commission d'arbitrage de{' '}
+        <strong className="text-white">2 %</strong> est prélevée sur la cagnotte, le reste revient au gagnant.
       </p>
       <p>
-        Un résultat validé crédite les gains de façon définitive. Un match annulé avant son démarrage rembourse
-        intégralement les mises bloquées.
+        Un résultat ne peut être validé que si le match est complet (tous les joueurs inscrits) et démarré. Un match
+        annulé ou clôturé ne peut plus être ni validé ni contesté, et un litige en cours bloque le paiement jusqu'à sa
+        résolution.
       </p>
+      <p>Un match annulé avant son démarrage rembourse intégralement les mises bloquées.</p>
       <p>Toute triche, collusion entre joueurs ou faux résultat entraîne l'exclusion et l'annulation des gains.</p>
+    </LegalSection>
+
+    <LegalSection n="4bis" title="Tournois">
+      <p>
+        En tournoi, la commission d'arbitrage est de <strong className="text-white">5 %</strong> pour une finale à 8
+        places ou moins, et de <strong className="text-white">10 %</strong> au-delà (deux arbitres). Le reste est
+        réparti entre le podium selon les places affichées au moment de l'inscription.
+      </p>
+      <p>Les capitaines verrouillent leur pass (pass × taille d'équipe) à l'inscription ; il est remboursé si le tournoi
+        n'est pas lancé. Une équipe doit être composée de joueurs réellement inscrits sur ZOYD.</p>
     </LegalSection>
 
     <LegalSection n="5" title="Retraits" >

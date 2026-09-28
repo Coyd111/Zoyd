@@ -11,8 +11,12 @@ const LitigesPage: React.FC = () => (
   >
     <LegalSection n="1" title="Quand contester">
       <p>
-        Tu peux contester un match si le résultat publié est faux, si ton adversaire ne s'est pas présenté, ou si tu
-        constates une triche. Délai : <strong className="text-white">24 heures après la fin du match</strong>.
+        Tu peux contester un match tant qu'il n'est pas clôturé (le score doit avoir été enregistré et les gains
+        distribués). En pratique, conteste dans les <strong className="text-white">24 heures</strong> suivant la fin du
+        match : au-delà, l'arbitre ou la modération tranche sans nouvelle contestation possible.
+      </p>
+      <p>
+        Seul un joueur inscrit au match, son arbitre ou la modération peut ouvrir un litige.
       </p>
     </LegalSection>
 
@@ -29,8 +33,9 @@ const LitigesPage: React.FC = () => (
         </li>
       </ul>
       <p>
-        Dès l'ouverture, la <strong className="text-white">cagnotte est gelée</strong> : aucun gain n'est distribué tant
-        que le litige est ouvert. Un seul litige actif à la fois par match.
+        Dès l'ouverture, la <strong className="text-white">cagnotte est gelée</strong> : aucun gain n'est distribué et
+        aucun autre résultat ne peut être validé tant que le litige est ouvert. Un seul litige actif à la fois par
+        match.
       </p>
     </LegalSection>
 
@@ -41,9 +46,15 @@ const LitigesPage: React.FC = () => (
         <strong className="text-white">niveau 2 — l'administration ZOYD</strong>.
       </p>
       <p>
-        La décision rendue (gain attribué, match rejoué ou mises remboursées) est{' '}
-        <strong className="text-white">finale</strong> et débloque la cagnotte : rappel, une commission d'arbitrage de{' '}
-        <strong className="text-white">2 %</strong> s'applique sur la cagnotte distribuée.
+        Tant qu'un litige est ouvert, <strong className="text-white">aucun gain n'est versé</strong> : le règlement est
+        bloqué, y compris par l'arbitre. La décision rendue (gain attribué, match rejoué ou mises remboursées) est{' '}
+        <strong className="text-white">finale</strong> et débloque la cagnotte.
+      </p>
+      <p>
+        Commission d'arbitrage : <strong className="text-white">2 %</strong> sur les matchs,{' '}
+        <strong className="text-white">5 %</strong> (finale 8 places ou moins) ou{' '}
+        <strong className="text-white">10 %</strong> (au-delà) sur les tournois, prélevée sur la cagnotte réellement
+        distribuée.
       </p>
     </LegalSection>
 

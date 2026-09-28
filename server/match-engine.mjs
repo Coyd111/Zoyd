@@ -626,9 +626,12 @@ export const launchMatchOnServer = (matches, actor, matchId) => {
  * @param {Object} actor - The user submitting the result (arbiter, player, or admin).
  * @param {string} matchId - ID of the match.
  * @param {Object} resultPayload - Result data (winnerTeam, scores, proofs, resolutionType).
+ * @param {Object} [opts] - { deferSettlement: true } renvoie le résultat marqué
+ *   'pending' sans créditer (la route persiste d'abord, puis appelle
+ *   settlePendingMatchResult) — évite le double paiement si l'écriture échoue.
  * @returns {Promise<{matches: Array, match: Object, actorUser: Object}>}
  */
-export const submitMatchResultOnServer = async (matches, actor, matchId, resultPayload) => {
+export const submitMatchResultOnServer = async (matches, actor, matchId, resultPayload, opts = {}) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
@@ -701,7 +704,10 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     resolutionType: resultPayload.resolutionType || 'played',
     submittedAt: getNow(),
     confirmedByTeams: [],
-    payoutDistributed: false,
+    // 'pending' = résultat écrit mais gains pas encore distribués. Permet de
+    // persister le résultat AVANT de créditer : si l'écriture échoue, aucun
+    // crédit n'a eu lieu et le client peut rejouer sans double paiement.
+    payoutDistributed: opts.deferSettlement ? 'pending' : false,
   };
 
   match.result = fullResult;
@@ -714,10 +720,33 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   match.finishedAt = getNow();
   match.updatedAt = getNow();
 
+  if (opts.deferSettlement) {
+    return { matches: nextMatches, match, actorUser: getUserById(actorUser.id), needsSettlement: true };
+  }
+
   const settlementResult = await applyResultSettlement(match, fullResult);
   match.result.payoutDistributed = settlementResult.success;
 
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
+};
+
+/**
+ * Deuxième phase du règlement : distribue les gains d'un résultat marqué
+ * 'pending'. Idempotent — un résultat déjà distribué n'est pas rejoué.
+ * @param {Array} matches - Liste courante des matchs
+ * @param {string} matchId - ID du match à régler
+ * @returns {Promise<{matches: Array, match: object|null, success: boolean}>}
+ */
+export const settlePendingMatchResult = async (matches, matchId) => {
+  const nextMatches = cloneMatches(matches);
+  const match = findMatch(nextMatches, matchId);
+  if (!match?.result) return { matches: nextMatches, match: match || null, success: true };
+  if (match.result.payoutDistributed !== 'pending') {
+    return { matches: nextMatches, match, success: match.result.payoutDistributed !== false };
+  }
+  const settlementResult = await applyResultSettlement(match, match.result);
+  match.result.payoutDistributed = settlementResult.success;
+  return { matches: nextMatches, match, success: settlementResult.success };
 };
 
 /**
@@ -762,6 +791,18 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
   const normalizedEvidence = normalizeProofRefs(payload.evidence);
 
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+  // Seuls un participant, l'arbitre ou un admin peuvent contester. Sinon
+  // n'importe quel connecté figeait la cagnotte d'un match arbitraire
+  // (statut 'disputed' que l'automation saute ensuite indéfiniment).
+  const isParticipant = match.players.some((p) => p.userId === actorUser.id);
+  const isMatchArbiter = match.arbiter?.userId === actorUser.id;
+  if (!isParticipant && !isMatchArbiter && actorUser.role !== 'admin') {
+    throw makeError('FORBIDDEN', 'Seul un joueur du match ou son arbitre peut contester.');
+  }
+  // Un match clôturé ne se conteste plus : ses mises sont déjà réglées.
+  if (TERMINAL_STATUSES.includes(match.status) || match.status === 'archived' || match.result) {
+    throw makeError('MATCH_CLOSED', 'Ce match est clos : trop tard pour contester.');
+  }
   if (!payload.reason?.trim() || normalizedEvidence.length === 0) {
     throw makeError('DISPUTE_INCOMPLETE', 'Ajoute une raison claire et au moins une preuve.');
   }

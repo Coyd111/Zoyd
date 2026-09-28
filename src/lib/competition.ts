@@ -38,7 +38,9 @@ export const COUNTRY_OPTIONS = [
   'Autre',
 ] as const;
 
-export const MJ_FORMATS = ['1VS1', '2VS2', '3VS3', '5VS5'] as const;
+// Formats de match : 1VS1 à 5VS5 (limite serveur : voir match-engine/realtime-server).
+export const MJ_FORMATS = ['1VS1', '2VS2', '3VS3', '4VS4', '5VS5'] as const;
+export const MAX_TEAM_SIZE = 5;
 
 export const MJ_MODE_OPTIONS = [
   { id: 'snd', name: 'S&D', desc: 'Recherche et destruction' },

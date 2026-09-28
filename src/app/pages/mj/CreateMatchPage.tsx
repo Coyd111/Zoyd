@@ -218,7 +218,7 @@ const CreateMatchPage: React.FC = () => {
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white mb-10 italic uppercase">Choisis le format</h2>
-                <div id="format-group" role="radiogroup" aria-labelledby="format-group" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
+                <div id="format-group" role="radiogroup" aria-labelledby="format-group" className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-12">
                   {MJ_FORMATS.map((format) => {
                     const selected = selectedFormat === format;
                     const formatTeamSize = Number(format.split('VS')[0] || 1);

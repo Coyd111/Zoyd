@@ -10,7 +10,7 @@ import { formatZC } from '../../../lib/utils';
 import { useDebounce } from '../../../app/hooks/useDebounce';
 import { SEOHead } from '../../../app/components/SEOHead';
 
-const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'];
+const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'];
 
 const TournoisPage: React.FC = () => {
   const filters = useTournamentStore((s) => s.filters);

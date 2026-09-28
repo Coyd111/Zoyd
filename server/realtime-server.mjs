@@ -1878,8 +1878,11 @@ const handleRequest = async (req, res) => {
         respondJson(res, 400, { ok: false, error: 'tournamentId invalide.', code: 'INVALID_JSON' });
         return;
       }
-      if (!body.format || !/^\d+VS\d+$/i.test(body.format)) {
-        respondJson(res, 400, { ok: false, error: 'format invalide (ex: 1VS1, 5VS5).', code: 'INVALID_FORMAT' });
+      // Formats 1VS1 à 5VS5 uniquement (garde serveur, cf. MAX_TEAM_SIZE).
+      const formatMatch = /^(\d+)VS(\d+)$/i.exec(String(body.format || ''));
+      const formatTeamSize = formatMatch ? Number(formatMatch[1]) : NaN;
+      if (!formatMatch || formatMatch[1] !== formatMatch[2] || formatTeamSize < 1 || formatTeamSize > 5) {
+        respondJson(res, 400, { ok: false, error: 'format invalide (de 1VS1 a 5VS5).', code: 'INVALID_FORMAT' });
         return;
       }
       if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || !Number.isFinite(body.entryFee) || body.entryFee < 0)) {

@@ -9,7 +9,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SEOHead } from '../../components/SEOHead';
 
-const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '5VS5'] as const;
+const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'] as const;
 const STATUS_FILTERS = [
   { label: 'TOUS', value: 'all' },
   { label: 'OUVERTS', value: 'recruiting' },

@@ -13,6 +13,8 @@ export { addXpToProgression };
 
 const log = createLogger('match-engine');
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
+/** Taille d'équipe maximale par camp (1VS1 … 5VS5). */
+export const MAX_TEAM_SIZE = 5;
 
 const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];
 const TERMINAL_STATUSES = ['finished', 'cancelled', 'forfeited'];
@@ -310,12 +312,17 @@ export const createMatchOnServer = async (matches, actor, input) => {
   if (!input.format || typeof input.format !== 'string') {
     throw makeError('INVALID_MATCH', 'Le format du match (ex: 1VS1, 2VS2) est requis.');
   }
+  // Limite produit : 1VS1 à 5VS5. Sans garde, un "12VS12" par POST créait un
+  // match que l'interface ne sait ni afficher ni arbitrer.
+  const teamSize = getTeamSize(input.format);
+  if (!Number.isInteger(teamSize) || teamSize < 1 || teamSize > MAX_TEAM_SIZE) {
+    throw makeError('INVALID_MATCH', 'Format invalide : de 1VS1 a 5VS5.');
+  }
   if (input.entryFee === undefined || input.entryFee === null || Number(input.entryFee) < 0) {
     throw makeError('INVALID_AMOUNT', 'Le droit dentree est requis et doit etre positif.');
   }
 
   const matchId = `M-${Date.now().toString(36).toUpperCase()}`;
-  const teamSize = getTeamSize(input.format);
   const maxPlayers = teamSize * 2;
   const prizePool = roundAmount(input.entryFee * maxPlayers);
   const creatorTeam = input.creatorTeam ?? 0;

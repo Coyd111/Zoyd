@@ -272,7 +272,7 @@ const CreateTournamentPage: React.FC = () => {
                   <label htmlFor="format-group" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                     Format du tournoi
                   </label>
-                  <div id="format-group" role="radiogroup" aria-labelledby="format-group" className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div id="format-group" role="radiogroup" aria-labelledby="format-group" className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {MJ_FORMATS.map((format) => {
                       const selected = selectedFormat === format;
                       const formatTeamSize = Number(format.split('VS')[0] || 1);

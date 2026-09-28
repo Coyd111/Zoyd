@@ -3,6 +3,7 @@ import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer } from './tournament-engine.mjs';
+import { settlePendingMatchResult } from './match-engine.mjs';
 import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
@@ -186,4 +187,41 @@ export const initCronJobs = () => {
       tournamentSweepRunning = false;
     }
   }, 6 * 60 * 60 * 1000);
+
+  // Reprise des reglements de match interrompus — toutes les 60 s.
+  // Le reglement se fait en 2 phases : on persiste d'abord le resultat avec
+  // payoutDistributed='pending', puis on credite les wallets. Si le process
+  // meurt (redemarrage Render) ou si le batch Supabase echoue entre les deux,
+  // le match reste 'pending' ET la cagnotte reste gelee DEFINITIVEMENT :
+  // settlePendingMatchResult n'etait appele que par les 2 routes HTTP, donc
+  // aucun retry n'existait. Ce job est ce retry.
+  let pendingSettlementRunning = false;
+  const sweepPendingSettlements = async () => {
+    if (pendingSettlementRunning) return;
+    pendingSettlementRunning = true;
+    try {
+      await withMatchMutex(async () => {
+        let list = getStateCollection('matches');
+        const pending = list.filter((m) => m.result?.payoutDistributed === 'pending');
+        if (pending.length === 0) return;
+        log.warn('Reglements de match en attente : reprise.', { count: pending.length });
+        for (const match of pending) {
+          try {
+            const settled = await settlePendingMatchResult(list, match.id);
+            if (settled.match) list = settled.matches;
+          } catch (error) {
+            log.error('Reprise de reglement echouee', { matchId: match.id, error: error.message });
+          }
+        }
+        await replaceStateCollection('matches', list);
+      });
+    } catch (error) {
+      log.error('Erreur reprise des reglements', error);
+    } finally {
+      pendingSettlementRunning = false;
+    }
+  };
+  setInterval(() => { void sweepPendingSettlements(); }, 60 * 1000);
+  // Au boot : un redemarrage Render est justement le cas le plus probable.
+  setTimeout(() => { void sweepPendingSettlements(); }, 15 * 1000);
 };

@@ -38,7 +38,10 @@ export const useWalletSessionBootstrap = () => {
 
     const load = async () => {
       try {
-        await useWalletStore.getState().refreshFromServer();
+        // On passe le userId attendu : si la réponse arrive après un logout +
+        // reconnexion d'un autre compte, le store refuse d'écrire au lieu
+        // d'afficher le solde d'un autre joueur.
+        await useWalletStore.getState().refreshFromServer(userId);
         if (!cancelled) {
           hydratedRef.current = userId;
           retryRef.current = { attempt: 0, timer: null };

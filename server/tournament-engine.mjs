@@ -1,4 +1,4 @@
-import { getUserById, updateUserAccount, sanitizeText } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText, getUserByExactPseudo } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 import { createLogger } from './logger.mjs';
@@ -617,6 +617,14 @@ const applyTournamentSettlement = async (tournament) => {
  */
 export const createTournamentOnServer = (tournaments, actor, input) => {
   const actorUser = requireActorUser(actor);
+  // Même garde que les matchs (1VS1 → 5VS5). Sans elle, un POST en "12VS12"
+  // créait un tournoi que l'UI ne sait ni afficher ni arbitrer, ET
+  // getSquadLockAmount(entryFee, 12) prélevait 12× le pass sur le capitaine.
+  const formatMatch = /^(\d+)VS(\d+)$/i.exec(`${input.format || '1VS1'}`);
+  const formatTeamSize = formatMatch ? Number(formatMatch[1]) : NaN;
+  if (!formatMatch || formatMatch[1] !== formatMatch[2] || formatTeamSize < 1 || formatTeamSize > 5) {
+    throw makeError('INVALID_FORMAT', 'Format de tournoi invalide : de 1VS1 a 5VS5.');
+  }
   const tournamentId = `T-MJ-${Date.now().toString(36).toUpperCase()}`;
   const reserveCreatorAsArbiter = input.reserveCreatorAsArbiter !== false;
   const normalizedStart = normalizePlayableDate(new Date(input.startsAt || getNow())).toISOString();
@@ -692,13 +700,22 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
     tournament.teamSize === 1
       ? []
       : (input.teammates || []).map((member) => {
-          const teammate = getUserById(member.userId);
-          // userId inexistant = identité injectée dans le bracket (et les gains
-          // partiraient vers un compte fantôme ou usurpé).
+          // Résolution par userId en priorité. Le front n'envoie historically
+          // que le pseudo saisi (pas de recherche joueur implémentée), donc on
+          // retombe sur le pseudo — qui est unique (unicité vérifiée à
+          // l'inscription). Sans ce fallback, TOUTE inscription en équipe
+          // (2VS2→5VS5) était rejetée.
+          const teammate = getUserById(member.userId)
+            || (member.pseudo ? getUserByExactPseudo(member.pseudo) : null);
+          // userId ET pseudo introuvables = identité injectée dans le bracket
+          // (et les gains partiraient vers un compte fantôme ou usurpé).
           if (!teammate) {
-            throw makeError('INVALID_REGISTRATION', 'Un coequipier est introuvable.');
+            throw makeError(
+              'INVALID_REGISTRATION',
+              'Un coequipier est introuvable. Verifie son pseudo exact.',
+            );
           }
-          return { ...member, userId: teammate.id, pseudo: normalizeLabel(teammate.pseudo) };
+          return { userId: teammate.id, pseudo: normalizeLabel(teammate.pseudo) };
         });
 
   // Un coequipier ne peut pas être le capitaine, et chaque joueur une seule fois.

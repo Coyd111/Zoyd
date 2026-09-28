@@ -962,7 +962,11 @@ const handleRequest = async (req, res) => {
   if (req.method === 'POST' && pathname === '/api/auth/logout') {
     if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
     const token = readBearerToken(req);
-    const session = token ? getAuthSession(token) : null;
+    // skipRotation: sans ça, getAuthSession déclenche une rotation
+    // fire-and-forget qui INSÈRE le nouveau token en mémoire de façon
+    // synchrone AVANT que la route ne supprime l'ancien => une session
+    // serveur valide de 6h survivait au logout (poste partagé).
+    const session = token ? getAuthSession(token, { skipRotation: true }) : null;
     if (token) {
       deleteAuthSession(token);
     }
@@ -981,7 +985,7 @@ const handleRequest = async (req, res) => {
     const clientIp = getClientIp(req);
     if (!rateLimitGuard(res, clientIp, 'auth')) return;
     const token = readBearerToken(req);
-    const session = token ? getAuthSession(token) : null;
+    const session = token ? getAuthSession(token, { skipRotation: true }) : null;
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
@@ -1024,7 +1028,7 @@ const handleRequest = async (req, res) => {
   if (req.method === 'DELETE' && pathname === '/api/auth/me') {
     if (!rateLimitGuard(res, getClientIp(req), 'auth')) return;
     const token = readBearerToken(req);
-    const session = token ? getAuthSession(token) : null;
+    const session = token ? getAuthSession(token, { skipRotation: true }) : null;
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
       return;
@@ -2077,8 +2081,17 @@ const handleRequest = async (req, res) => {
       // Deux phases : on PERSISTE le résultat avant de créditer les wallets.
       // Si l'écriture échoue, aucun gain n'a été versé et le client peut
       // rejouer sans être payé deux fois.
+      // Whitelist stricte : le body est du JSON client, on ne persiste que
+      // les champs attendus (anti mass-assignment sur match.result).
       const outcome = await submitMatchResultOnServer(
-        getStateCollection('matches'), session.user, matchResult[1], body, { deferSettlement: true }
+        getStateCollection('matches'), session.user, matchResult[1], {
+          winnerTeam: body.winnerTeam,
+          scores: body.scores,
+          proofs: body.proofs,
+          screenshots: body.screenshots,
+          resolutionType: body.resolutionType,
+          arbiterNotes: body.arbiterNotes,
+        }, { deferSettlement: true }
       );
       await saveMatches(io, outcome.matches, outcome.match);
 
@@ -2771,6 +2784,20 @@ const io = new SocketIOServer(server, {
   // Détection rapide des connexions mortes (sleep Render, réseau mobile).
   pingInterval: 20_000,
   pingTimeout: 10_000,
+  // Le cookie de session est en SameSite=None (cross-site Vercel→Render), il
+  // part donc aussi sur le handshake WebSocket. Or `cors.origin` ne s'applique
+  // qu'au transport polling : une page tierce pouvait ouvrir un socket
+  // authentifié avec le cookie de la victime (usurpation de présence, écoute
+  // des events). allowRequest filtre l'upgrade WebSocket aussi.
+  allowRequest: (req, callback) => {
+    const origin = req.headers.origin;
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    log.warn('Socket WS refuse : origine non autorisee', { origin });
+    callback(null, false);
+  },
   cors: {
     origin: (origin, callback) => {
       if (!origin || ALLOWED_ORIGINS.includes(origin)) {

@@ -47,7 +47,7 @@ export interface WalletState {
   transactions: Transaction[];
   lockedEntries: Record<string, LockedEntry>;
   hydrateFromServer: (snapshot: WalletSnapshot) => void;
-  refreshFromServer: () => Promise<void>;
+  refreshFromServer: (expectedUserId?: string) => Promise<void>;
   deposit: (amount: number, method: string) => Promise<void>;
   withdraw: (amount: number, method: string, phone: string, country?: string) => Promise<void>;
   // TODO: lockFunds/unlockFunds are optimistic-UI helpers; they should be
@@ -114,11 +114,18 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           syncAuthBalance();
         },
 
-        refreshFromServer: async () => {
+        refreshFromServer: async (expectedUserId) => {
           // Ne swallow PAS l'erreur : le bootstrap en dépend pour savoir s'il
           // doit retenter. Avaler ici affichait 0 ZC alors que le serveur en
           // avait (le joueur croyait son portefeuille vidé).
           const payload = await fetchWalletSnapshot();
+          // Garde-fou multi-compte : la réponse peut arriver APRÈS un logout
+          // suivi d'une autre connexion (timeout 30s). Sans ce contrôle, le
+          // wallet ET le profil du compte précédent s'écrivaient dans le store
+          // du nouveau compte → solde et historique d'un autre joueur visibles.
+          if (expectedUserId && useAuthStore.getState().user?.id !== expectedUserId) {
+            return;
+          }
           get().hydrateFromServer(payload.wallet);
           if (payload.user) {
             useAuthStore.getState().updateUser(payload.user);

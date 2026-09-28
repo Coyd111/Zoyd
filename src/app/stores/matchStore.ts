@@ -269,7 +269,7 @@ const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResu
     submittedBy: result?.submittedBy || '',
     submittedAt: result?.submittedAt || '',
     confirmedByTeams: result?.confirmedByTeams || [],
-    payoutDistributed: Boolean(result?.payoutDistributed),
+        payoutDistributed: result?.payoutDistributed === true,
   };
 };
 const normalizeStoredMatch = (match: StoredMatch): Match => ({

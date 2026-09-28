@@ -212,8 +212,15 @@ export const getAuthenticatedAppSession = (req) => {
  * @returns {object|null}
  */
 export const getAuthenticatedRealtimeSession = (req) => {
-  const token = readBearerToken(req);
-  return token ? getRealtimeSession(token) : null;
+  // L'en-tête Authorization d'abord, PAS readBearerToken : celui-ci privilégie
+  // le cookie zoyd_auth, qui n'est PAS un token realtime. Le front appelle ces
+  // routes sans `credentials: include` (cross-origin), donc ça marchait par
+  // chance ; le jour où le cookie est envoyé, getRealtimeSession(cookie) → null
+  // → 401 sur le bootstrap realtime (reconnexion en boucle) et push-subscribe
+  // échoué en silence.
+  const auth = req.headers.authorization || '';
+  const bearerToken = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  return bearerToken ? getRealtimeSession(bearerToken) : null;
 };
 
 /**

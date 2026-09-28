@@ -339,7 +339,14 @@ describe('match-engine - Winner Payout', () => {
 describe('match-engine - submitMatchResultOnServer idempotency', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getUserById.mockReturnValue({ id: 'arb-1', pseudo: 'Arbiter', role: 'arbiter', wallet: {} });
+    // requireActorUser résout l'acteur via getUserById : le rôle vient donc
+    // du store serveur, jamais de l'objet passé en paramètre.
+    getUserById.mockImplementation((id) => ({
+      id,
+      pseudo: id,
+      role: id === 'root' ? 'admin' : 'player',
+      wallet: {},
+    }));
   });
 
   it('should reject if match already has a result', async () => {
@@ -376,7 +383,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
       teamSize: 1,
     };
 
-    const result = await matchEngine.submitMatchResultOnServer([match], { id: 'arb-1' }, 'M-2', {
+    const result = await matchEngine.submitMatchResultOnServer([match], { id: 'root' }, 'M-2', {
       winnerTeam: 0,
       scores: { team0: 100, team1: 50 },
       resolutionType: 'forfeit',
@@ -385,6 +392,40 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
 
     expect(result.match.result).toBeDefined();
     expect(result.match.status).toBe('forfeited');
+  });
+
+  it('should reject a forged admin-dashboard submittedBy from a player (anti-mint)', async () => {
+    // Match 'recruiting' incomplet : les gardes (lance, roster complet,
+    // preuves) doivent s'appliquer MEME si le client envoie submittedBy.
+    const match = {
+      id: 'M-FORGE',
+      status: 'recruiting',
+      isInstant: true,
+      players: [{ userId: 'p-1', team: 0 }],
+      disputes: [],
+      prizePool: 100,
+      zoydFee: 5,
+      entryFee: 50,
+      format: '1VS1',
+      teamSize: 1,
+      maxPlayers: 2,
+    };
+
+    await expect(
+      matchEngine.submitMatchResultOnServer([match], { id: 'p-1' }, 'M-FORGE', {
+        winnerTeam: 0,
+        scores: { team0: 1, team1: 0 },
+        submittedBy: 'admin-dashboard',
+      })
+    ).rejects.toThrow(/lance avant de valider/i);
+
+    // Le role admin RÉEL débloque bien l'override (command center).
+    const ok = await matchEngine.submitMatchResultOnServer([match], { id: 'root' }, 'M-FORGE', {
+      winnerTeam: 0,
+      scores: { team0: 1, team1: 0 },
+      submittedBy: 'admin-dashboard',
+    });
+    expect(ok.match.result).toBeDefined();
   });
 
   it('should split the pot between winners in 2v2 (anti-mint)', async () => {

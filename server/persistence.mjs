@@ -688,6 +688,25 @@ export const getUserById = (userId) => {
 };
 
 /**
+ * Lookup EXACT par pseudo (comparaison normalisée).
+ *
+ * `findUsersByPseudo` fait du flou (`key.includes(q)`) : sur une inscription
+ * en équipe (argent réel), "Ghost" aurait pu matché "GhostMaster" et inscrit
+ * le mauvais joueur dans le bracket. Ici pas de correspondance partielle.
+ * @param {string} pseudo - Pseudo exact saisi par le capitaine
+ * @returns {object|null} User payload or null if no exact match
+ */
+export const getUserByExactPseudo = (pseudo) => {
+  const key = normalizePseudoKey(pseudo || '');
+  if (!key) return null;
+  for (const [userId, user] of memoryUsers) {
+    const userKey = pseudoKeys.get(userId) || normalizePseudoKey(user.pseudo || '');
+    if (userKey === key) return sanitizeUserPayload(user);
+  }
+  return null;
+};
+
+/**
  * Get a public user profile (no wallet, email, or phone) from memory.
  * @param {string} userId - User UUID
  * @returns {object|null} Public user payload or null if not found
@@ -1270,7 +1289,7 @@ export const revokeAuthSessionsForUser = (userId) => {
  * @param {string} userId
  * @returns {Promise<{ userId: string, forfeitedCash: number }>}
  */
-export const deleteUserAccount = async (userId) => {
+export const deleteUserAccount = async (userId) => withUserMutex(userId, async () => {
   const user = memoryUsers.get(userId);
   if (!user) throw makeError('USER_NOT_FOUND', 'Compte introuvable.');
   if (user.role === 'admin' || memoryAdminIds.has(userId)) {
@@ -1364,7 +1383,7 @@ export const deleteUserAccount = async (userId) => {
 
   log.info('account deleted', { userId, forfeitedCash });
   return { userId, forfeitedCash };
-};
+});
 
 export const cleanupExpiredPasswordResets = () => {
   const now = new Date();

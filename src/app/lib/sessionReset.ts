@@ -8,6 +8,7 @@ import { useFriendsStore } from '../stores/friendsStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useTrustScoreStore } from '../stores/trustScoreStore';
 import { usePresenceStore } from '../stores/presenceStore';
+import { useToastStore } from '../stores/toastStore';
 
 /**
  * Vide TOUTES les données de session d'un compte.
@@ -36,15 +37,24 @@ export const resetAllSessionStores = () => {
   } catch { /* noop */ }
   try {
     useMatchStore.setState({ matches: [] });
-    useTournamentStore.setState({ tournaments: [] });
+    useTournamentStore.setState({
+      tournaments: [],
+      // Maps par-utilisateur : sans ce reset, le nouveau compte héritait de
+      // l'ENTRÉE du précédent (le bracket affichait "ta position" et
+      // bloquait l'inscription) -> fuite de données + fonctionnalité cassée.
+      callerEntryByTournament: {},
+      callerArbiterSlotByTournament: {},
+      openArbiterSlotsByTournament: {},
+    });
     useLeagueStore.setState({ seasons: [] });
   } catch { /* noop */ }
   try {
     useChatStore.getState().replaceFromServer([], []);
   } catch { /* noop */ }
   try {
-    useFriendsStore.setState({ friends: [], requests: [], blockedIds: [] });
+    useFriendsStore.setState({ friends: [], requests: [], blockedIds: [], reports: [], pendingId: null });
     useNotificationStore.getState().clearAll();
+    useToastStore.getState().clearAll();
   } catch { /* noop */ }
   try {
     useTrustScoreStore.setState({

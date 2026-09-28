@@ -13,6 +13,12 @@ services:
         value: warn
       - key: PORT
         value: 4001
+      # Le trafic arrive via le load balancer Render : on fait confiance au
+      # X-Forwarded-For pour le rate-limit anti-bruteforce. Sans ça, si le
+      # peer du LB n'est pas dans une plage privée, TOUS les utilisateurs
+      # partagent un seul bucket (429 en série).
+      - key: TRUST_PROXY
+        value: "true"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY

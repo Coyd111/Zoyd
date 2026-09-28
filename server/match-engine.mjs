@@ -314,8 +314,9 @@ export const createMatchOnServer = async (matches, actor, input) => {
   }
   // Limite produit : 1VS1 à 5VS5. Sans garde, un "12VS12" par POST créait un
   // match que l'interface ne sait ni afficher ni arbitrer.
-  const teamSize = getTeamSize(input.format);
-  if (!Number.isInteger(teamSize) || teamSize < 1 || teamSize > MAX_TEAM_SIZE) {
+  const formatMatch = /^(\d+)VS(\d+)$/i.exec(`${input.format || '1VS1'}`);
+  const teamSize = formatMatch ? Number(formatMatch[1]) : NaN;
+  if (!formatMatch || formatMatch[1] !== formatMatch[2] || teamSize < 1 || teamSize > MAX_TEAM_SIZE) {
     throw makeError('INVALID_MATCH', 'Format invalide : de 1VS1 a 5VS5.');
   }
   if (input.entryFee === undefined || input.entryFee === null || Number(input.entryFee) < 0) {
@@ -667,7 +668,11 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     throw makeError('INVALID_RESULTS', 'Equipe gagnante invalide.');
   }
   // Roster complet + match lancé, sauf override admin (award/moderation).
-  const isAdminOverride = resultPayload.submittedBy === 'admin-dashboard';
+  // Source de vérité = le rôle RÉEL de l'acteur. `resultPayload.submittedBy`
+  // venait du JSON client : un joueur pouvait forger "admin-dashboard" pour
+  // sauter ces gardes ET les preuves, puis emporter la mise de l'adversaire
+  // sur un match jamais lancé.
+  const isAdminOverride = actorUser.role === 'admin';
   if (!isAdminOverride) {
     if (match.status !== 'in_progress') {
       throw makeError('MATCH_NOT_LIVE', 'Le match doit etre lance avant de valider un score.');
@@ -691,7 +696,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     : flattenedProofs;
   const isInstantNoArbiter = !match.arbiter && match.isInstant;
   const requiresMandatoryProofs =
-    resultPayload.resolutionType !== 'forfeit' && resultPayload.submittedBy !== 'admin-dashboard' && !isInstantNoArbiter;
+    resultPayload.resolutionType !== 'forfeit' && !isAdminOverride && !isInstantNoArbiter;
 
   if (requiresMandatoryProofs &&
     (!normalizedProofs || normalizedProofs.scoreboard.length === 0 || normalizedProofs.finalResult.length === 0)
@@ -699,7 +704,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un ecran final avant de valider le score.');
   }
 
-  if (isInstantNoArbiter && !normalizedScreenshots.length && resultPayload.submittedBy !== 'admin-dashboard') {
+  if (isInstantNoArbiter && !normalizedScreenshots.length && !isAdminOverride) {
     throw makeError('PROOFS_REQUIRED', 'Ajoute au moins une capture d\'ecran pour valider le score.');
   }
 

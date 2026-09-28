@@ -62,8 +62,13 @@ const isValidIp = (ip) => /^[\d.:a-fA-F]+$/.test(ip);
  * True if the direct TCP peer is a proxy/private hop (Render proxy, Docker,
  * localhost). X-Forwarded-For is only trusted in that case — sinon un client
  * pourrait forger l'en-tête et contourner le rate limit.
+ *
+ * TRUST_PROXY=true force la confiance (déployé derrière un LB dont le peer
+ * n'est pas dans une plage privée). Le danger symétrique de cette option : si
+ * le service est exposé directement, n'importe qui forge son XFF.
  */
 const isTrustedProxyPeer = (remoteAddress) => {
+  if (String(process.env.TRUST_PROXY || '').toLowerCase() === 'true') return true;
   if (!remoteAddress) return false;
   const ip = String(remoteAddress).replace(/^::ffff:/, '');
   if (ip === '127.0.0.1' || ip === '::1') return true;

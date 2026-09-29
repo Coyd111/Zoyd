@@ -204,38 +204,25 @@ const getArbitersNeeded = (maxEntries: number): 1 | 2 => (maxEntries > 8 ? 2 : 1
 /** Extract team size from format string (e.g. '4VS4' → 4). */
 const getTeamSize = (format: MatchFormat) => parseInt(format.split('VS')[0], 10);
 
-interface StoredTournamentEntry {
-  id?: string;
-  userId?: string;
-  pseudo?: string;
-  seed?: number;
-  teamSize?: number;
-  members?: Array<{ userId: string; pseudo: string }>;
-  [key: string]: unknown;
-}
+/** Le serveur ne produit que 1 ou 2 ; le garde-fou tolère une valeur héritée hors bornes. */
+const isArbiterCount = (value: number): value is 1 | 2 => value === 1 || value === 2;
 
-interface StoredTournament {
-  format?: string;
-  teamSize?: number;
-  entries?: StoredTournamentEntry[];
-  arbitersNeeded?: number;
-  maxEntries?: number;
-  entryFee?: number;
-  [key: string]: unknown;
-}
-
-const normalizePersistedTournament = (tournament: StoredTournament): Tournament => {
+const normalizePersistedTournament = (tournament: Tournament): Tournament => {
   const format = tournament?.format || '1VS1';
   const teamSize = tournament?.teamSize || getTeamSize(format as MatchFormat);
-  const entries = Array.isArray(tournament?.entries)
-    ? tournament.entries.map((entry: StoredTournamentEntry, index: number) => ({
+  const entries: TournamentEntry[] = Array.isArray(tournament?.entries)
+    ? tournament.entries.map((entry, index) => ({
         ...entry,
         seed: entry?.seed || index + 1,
         teamSize: entry?.teamSize || teamSize,
         members: Array.isArray(entry?.members) ? entry.members : [],
       }))
     : [];
-  const arbitersNeeded = tournament?.arbitersNeeded || getArbitersNeeded(tournament?.maxEntries || 4);
+  const rawArbitersNeeded = tournament?.arbitersNeeded;
+  const arbitersNeeded =
+    typeof rawArbitersNeeded === 'number' && isArbiterCount(rawArbitersNeeded)
+      ? rawArbitersNeeded
+      : getArbitersNeeded(tournament?.maxEntries || 4);
 
   return {
     ...tournament,

@@ -24,7 +24,7 @@ import {
 import { applyServerAccountState } from '../../../app/lib/serverSync';
 import { useAuthStore, type User } from '../../../app/stores/authStore';
 import type { WalletSnapshot } from '../../../app/lib/walletApi';
-import { useMatchStore, type DisputeCategory } from '../../../app/stores/matchStore';
+import { useMatchStore, type DisputeCategory, type Match } from '../../../app/stores/matchStore';
 import { useChatStore } from '../../../app/stores/chatStore';
 import { useSocketStore, usePresenceStore } from '../../../app/stores/socketStore';
 import { Skeleton } from '../../../app/components/ui/Skeleton';
@@ -89,7 +89,7 @@ const MatchDetailPage: React.FC = () => {
   const [scoreAlpha, setScoreAlpha] = useState('0');
   const [scoreBravo, setScoreBravo] = useState('0');
   const [resultNotes, setResultNotes] = useState('');
-  const [scoreboardProofs, setscoreboardProofs] = useState('');
+  const [scoreboardProofs, setScoreboardProofs] = useState('');
   const [finalResultProofs, setFinalResultProofs] = useState('');
   const [roomCaptureProofs, setRoomCaptureProofs] = useState('');
   const [extraResultProofs, setExtraResultProofs] = useState('');
@@ -216,7 +216,7 @@ const MatchDetailPage: React.FC = () => {
               : "L'heure est dépassée: partage la salle tout de suite ou tranche le dossier.",
         };
   const forfeitLabel =
-    match?.result?.résolutionType === 'forfeit'
+    match?.result?.resolutionType === 'forfeit'
       ? match.result.forfeitTeam === 0
         ? 'Squad Alpha perd par forfait'
         : 'Squad Bravo perd par forfait'
@@ -229,7 +229,7 @@ const MatchDetailPage: React.FC = () => {
     returnTo: `/mj/match/${match?.id ?? ''}`,
   });
 
-  const applyMatchResponse = useCallback((payload: { match: typeof match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
+  const applyMatchResponse = useCallback((payload: { match: Match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => {
     hydrateMatches([payload.match]);
     applyServerAccountState(payload);
   }, [hydrateMatches, applyServerAccountState]);
@@ -239,6 +239,10 @@ const MatchDetailPage: React.FC = () => {
       navigate('/auth/login');
       return;
     }
+    // Les handlers sont créés avant le rendu conditionnel : TS ne peut pas
+    // savoir qu'un match existe. Sans cette garde, `match.entryFee` levait
+    // un TypeError si le match avait disparu entre deux rendus.
+    if (!match) return;
 
     if (availableSpend < match.entryFee) {
       toast.error("Solde insuffisant. Fais d'abord un dépôt avant de bloquer ton pass.");
@@ -269,6 +273,7 @@ const MatchDetailPage: React.FC = () => {
       navigate('/auth/login');
       return;
     }
+    if (!match) return;
 
     try {
       const response = await assignServerArbiter(match.id);
@@ -280,6 +285,7 @@ const MatchDetailPage: React.FC = () => {
   }, [user, navigate, match?.id, applyMatchResponse]);
 
   const handleSchedule = async () => {
+    if (!match) return;
     if (!scheduleValue || isScheduling) return;
     setIsScheduling(true);
     try {
@@ -294,6 +300,7 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const handleRoomSave = async () => {
+    if (!match) return;
     if (!roomName || !roomPassword) {
       toast.error('Entre un nom de salle et un mot de passe.');
       return;
@@ -326,6 +333,7 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const handleResultSubmit = async () => {
+    if (!match) return;
     if (isSubmittingResult) {
       toast.error('Un résultat est déjà en cours de soumission. Patientez...');
       return;
@@ -361,7 +369,7 @@ const MatchDetailPage: React.FC = () => {
         submittedBy: user?.id || 'arbiter',
       });
       applyMatchResponse(response);
-      setscoreboardProofs('');
+      setScoreboardProofs('');
       setFinalResultProofs('');
       setRoomCaptureProofs('');
       setExtraResultProofs('');
@@ -374,6 +382,7 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const handleDispute = async () => {
+    if (!match) return;
     if (!user) {
       navigate('/auth/login');
       return;
@@ -407,6 +416,7 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const handleCheckIn = useCallback(async () => {
+    if (!match) return;
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -421,6 +431,7 @@ const MatchDetailPage: React.FC = () => {
   }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleToggleReady = useCallback(async () => {
+    if (!match) return;
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -434,6 +445,7 @@ const MatchDetailPage: React.FC = () => {
   }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleLaunch = useCallback(async () => {
+    if (!match) return;
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -448,6 +460,7 @@ const MatchDetailPage: React.FC = () => {
   }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleConfirmResult = useCallback(async () => {
+    if (!match) return;
     if (isProcessingAction) return;
     setIsProcessingAction(true);
     try {
@@ -462,6 +475,7 @@ const MatchDetailPage: React.FC = () => {
   }, [isProcessingAction, match?.id, applyMatchResponse]);
 
   const handleAddEvidence = async () => {
+    if (!match) return;
     const refs = addEvidenceInput
       .split(',')
       .map((s) => s.trim())
@@ -482,6 +496,7 @@ const MatchDetailPage: React.FC = () => {
   };
 
   const handleEscalate = async () => {
+    if (!match) return;
     setIsEscalating(true);
     try {
       const response = await escalateServerDispute(match.id);
@@ -602,7 +617,7 @@ const MatchDetailPage: React.FC = () => {
               }}
               proofsState={{
                 scoreboardProofs,
-                setscoreboardProofs,
+                setScoreboardProofs,
                 finalResultProofs,
                 setFinalResultProofs,
                 roomCaptureProofs,
@@ -645,7 +660,7 @@ const MatchDetailPage: React.FC = () => {
               typingUsers={typingUsers}
               readCount={readCount}
               presenceSummary={presenceSummary}
-              lastHeartbeatAt={lastHeartbeatAt}
+              lastHeartbeatAt={lastHeartbeatAt ?? null}
               onTypingChange={onTypingChange}
               onSendMessage={onSendMessage}
             />

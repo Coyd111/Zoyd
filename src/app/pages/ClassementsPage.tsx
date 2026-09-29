@@ -115,7 +115,7 @@ const ClassementsPage: React.FC = () => {
     } satisfies RankingRow));
   }, [players]);
 
-  const rowsByActiveTab = useMemo(() => {
+  const rowsByActiveTab = useMemo<RankingRow[]>(() => {
     const indexedPlayers = players.filter(
       (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0 || player.isMe
     );

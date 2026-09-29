@@ -38,7 +38,7 @@ const HubMJPage: React.FC = () => {
     return baseMatches.filter((match) => {
       const query = debouncedQuery.trim().toLowerCase();
       if (!query) return true;
-      const rules = typeof match.rules === 'string' ? {} : match.rules;
+      const rules = match.rules;
       return (
         (rules.map || '').toLowerCase().includes(query) ||
         (rules.mode || '').toLowerCase().includes(query) ||
@@ -184,7 +184,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
           ) : filteredMatches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {filteredMatches.map((match) => {
-                const rules = typeof match.rules === 'string' ? {} : match.rules;
+                const rules = match.rules;
                 return (
                 <MatchCard
                   key={match.id}

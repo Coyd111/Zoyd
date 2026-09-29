@@ -711,7 +711,7 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
     tournament.teamSize === 1
       ? []
       : (input.teammates || []).map((member) => {
-          // Résolution par userId en priorité. Le front n'envoie historically
+          // Résolution par userId en priorité. Le front n'envoie historiquement
           // que le pseudo saisi (pas de recherche joueur implémentée), donc on
           // retombe sur le pseudo — qui est unique (unicité vérifiée à
           // l'inscription). Sans ce fallback, TOUTE inscription en équipe

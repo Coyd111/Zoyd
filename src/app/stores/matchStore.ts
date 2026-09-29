@@ -55,11 +55,11 @@ export interface MatchProofBundle {
 export interface MatchResult {
   winnerTeam: MatchTeam;
   scores: { team0: number; team1: number };
-  scréénshots: string[];
+  screenshots: string[];
   proofs?: MatchProofBundle;
   proofHash?: string;
   arbiterNotes?: string;
-  résolutionType?: 'played' | 'forfeit';
+  resolutionType?: 'played' | 'forfeit';
   forfeitTeam?: MatchTeam;
   submittedBy: string;
   submittedAt: string;
@@ -79,7 +79,7 @@ export interface Dispute {
   openedByPseudo?: string;
   escalatedByPseudo?: string;
   status: 'open' | 'under_review' | 'resolved' | 'rejected';
-  résolution?: string;
+  resolution?: string;
   createdAt: string;
   openedAt?: string;
   escalatedAt?: string;
@@ -189,7 +189,7 @@ interface StoredDispute {
   evidence?: string[];
   requestedBy?: string;
   status?: string;
-  résolution?: string;
+  resolution?: string;
   createdAt?: string;
   openedAt?: string;
   resolvedAt?: string;
@@ -206,11 +206,11 @@ interface StoredProofs {
 interface StoredResult {
   winnerTeam?: MatchTeam;
   scores?: { team0: number; team1: number };
-  scréénshots?: string[];
+  screenshots?: string[];
   proofs?: StoredProofs;
   proofHash?: string;
   arbiterNotes?: string;
-  résolutionType?: 'played' | 'forfeit';
+  resolutionType?: 'played' | 'forfeit';
   forfeitTeam?: MatchTeam;
   submittedBy?: string;
   submittedAt?: string;
@@ -218,12 +218,47 @@ interface StoredResult {
   payoutDistributed?: boolean;
 }
 
+/**
+ * Forme brute d'un match venant du serveur. Tous les champs sont optionnels
+ * (le serveur peut envoyer une forme partielle) mais DOIVENT être déclarés
+ * explicitement, et SANS index signature : avec `[key: string]: unknown`, chaque
+ * accès non déclaré retombait sur l'index et `match.foo || ''` devenait `{}`
+ * (30 erreurs TS2322 en cascade). Sans index signature, une faute de frappe
+ * devient une erreur de compilation au lieu d'un `unknown` silencieux.
+ */
 interface StoredMatch {
   id?: string;
+  creatorId?: string;
+  creatorPseudo?: string;
+  format?: MatchFormat;
+  teamSize?: number;
+  maxPlayers?: number;
+  rules?: MatchRules;
+  entryFee?: number;
+  prizePool?: number;
+  zoydFee?: number;
+  arbiterFee?: number;
+  visibility?: MatchVisibility;
+  deviceRestriction?: DeviceRestriction;
+  controllerRestriction?: ControllerRestriction;
+  status?: MatchStatus;
+  players?: MatchPlayer[];
+  arbiter?: MatchArbiter;
+  scheduledAt?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  roomName?: string;
+  roomPassword?: string;
+  chatChannelId?: string;
+  channelId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  expiresAt?: string;
+  trustScoreMin?: number;
+  isInstant?: boolean;
   disputes?: StoredDispute[];
   dispute?: StoredDispute;
   result?: StoredResult;
-  [key: string]: unknown;
 }
 
 const normalizeStoredDispute = (dispute: StoredDispute): Dispute => ({
@@ -234,7 +269,7 @@ const normalizeStoredDispute = (dispute: StoredDispute): Dispute => ({
   evidence: Array.isArray(dispute?.evidence) ? dispute.evidence : [],
   requestedBy: dispute?.requestedBy || '',
   status: (dispute?.status as Dispute['status']) || 'open',
-  résolution: dispute?.résolution,
+  resolution: dispute?.resolution,
   createdAt: dispute?.createdAt || '',
   openedAt: dispute?.openedAt,
   resolvedAt: dispute?.resolvedAt,
@@ -248,21 +283,21 @@ const normalizeStoredProofs = (proofs: StoredProofs): MatchProofBundle => ({
 });
 const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResult => {
   const proofs = result?.proofs ? normalizeStoredProofs(result.proofs) : undefined;
-  const scréénshots = Array.isArray(result?.scréénshots) ? result.scréénshots : flattenProofs(proofs);
+  const screenshots = Array.isArray(result?.screenshots) ? result.screenshots : flattenProofs(proofs);
 
   return {
     winnerTeam: result?.winnerTeam ?? 0,
     scores: result?.scores || { team0: 0, team1: 0 },
-    scréénshots,
+    screenshots,
     proofs,
-    résolutionType: result?.résolutionType || 'played',
+    resolutionType: result?.resolutionType || 'played',
     proofHash:
       result?.proofHash ||
       buildProofHash(
         matchId,
         result?.winnerTeam ?? 0,
         result?.scores || { team0: 0, team1: 0 },
-        scréénshots
+        screenshots
       ),
     arbiterNotes: result?.arbiterNotes,
     forfeitTeam: result?.forfeitTeam,

@@ -60,7 +60,7 @@ describe('walletStore - Hydration', () => {
           amount: 100,
           description: 'Test deposit',
           status: 'completed' as const,
-          timestamp: '2024-01-01',
+          created_at: '2024-01-01',
         },
       ],
       lockedEntries: {

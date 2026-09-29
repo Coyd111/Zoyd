@@ -18,12 +18,12 @@
  * that verify updateUser() is called when the server emits xp_update events.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useAuthStore } from './authStore';
+import { useAuthStore, type User } from './authStore';
 
 // ---------------------------------------------------------------------------
 // Shared mock user
 // ---------------------------------------------------------------------------
-const makeUser = (overrides = {}) => ({
+const makeUser = (overrides: Partial<User> = {}): User => ({
   id: 'user1',
   role: 'player' as const,
   pseudo: 'TestUser',
@@ -52,7 +52,7 @@ const makeUser = (overrides = {}) => ({
     arbitratedMatches: 0,
   },
   progression: {
-    level: 'CHALLENGER' as const,
+    level: 'COMPETITEUR' as const,
     xp: 5000,
     nextLevelXp: 7000,
   },
@@ -104,7 +104,7 @@ describe('authStore - Authentication', () => {
   });
 
   it('should normalize user with missing role to "player"', () => {
-    const userWithoutRole = makeUser({ role: undefined as any });
+    const userWithoutRole = makeUser({ role: undefined });
     useAuthStore.getState().login(userWithoutRole);
 
     expect(useAuthStore.getState().user?.role).toBe('player');
@@ -191,7 +191,7 @@ describe('authStore - Server-Driven Progression Reflection', () => {
   beforeEach(() => {
     useAuthStore.setState({
       user: makeUser({
-        progression: { level: 'DEBUTANT' as const, xp: 5, nextLevelXp: 8 },
+        progression: { level: 'DÉBUTANT' as const, xp: 5, nextLevelXp: 8 },
         arbiterProgression: { level: 'NOVICE' as const, xp: 0, nextLevelXp: 1 },
         trustScore: 85,
       }),

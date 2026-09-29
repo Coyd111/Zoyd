@@ -100,16 +100,39 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             bonusBalance: roundAmount(snapshot.bonusBalance ?? 0),
             lockedBalance: roundAmount(snapshot.lockedBalance ?? 0),
             pendingWinnings: roundAmount(snapshot.pendingWinnings ?? 0),
-            // Le serveur envoie created_at, le store utilise timestamp
+            // Le serveur envoie `created_at`, le store utilise `timestamp`.
+            // On liste les champs explicitement (pas de `...tx`) : le spread
+            // laissait fuiter `created_at` hors du type `Transaction`.
             transactions: Array.isArray(snapshot.transactions)
               ? snapshot.transactions.map((tx) => ({
-                  ...tx,
-                  timestamp: (tx as unknown as Record<string, string>).timestamp
-                    ?? (tx as unknown as Record<string, string>).created_at
-                    ?? new Date().toISOString(),
+                  id: tx.id,
+                  type: tx.type,
+                  amount: tx.amount,
+                  // `Transaction.description` est requis alors que le serveur
+                  // l'envoie parfois absent : on normalise plutôt que de
+                  // laisser `undefined` dans l'UI.
+                  description: tx.description ?? '',
+                  status: tx.status,
+                  metadata: tx.metadata,
+                  timestamp: tx.created_at || new Date().toISOString(),
                 }))
               : [],
-            lockedEntries: snapshot.lockedEntries || {},
+            // Le serveur rend `cashAmount`/`bonusAmount` optionnels (une passe
+            // payée en bonus n'a pas de part cash) alors que le store les
+            // exige : sans normalisation, `cashAmount` restait undefined et
+            // les calculs de solde disponible continuaient de passer par
+            // `|| 0`. On materialise les zéros une fois pour toutes.
+            lockedEntries: Object.fromEntries(
+              Object.entries(snapshot.lockedEntries || {}).map(([key, entry]) => [
+                key,
+                {
+                  amount: entry.amount,
+                  cashAmount: entry.cashAmount ?? 0,
+                  bonusAmount: entry.bonusAmount ?? 0,
+                  lockedAt: entry.lockedAt,
+                },
+              ])
+            ),
           }));
           syncAuthBalance();
         },

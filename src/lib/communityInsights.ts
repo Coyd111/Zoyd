@@ -359,7 +359,10 @@ export const buildCommunityPlayers = ({
       controllerType: friend.controllerType as User['controllerType'],
       trustScore: friend.trustScore,
       isOnline: friend.status === 'online' || friend.status === 'in_match' || friend.status === 'in_lobby',
-      elo: friend.stats?.elo ?? 1200,
+      // `Friend` ne porte pas de stats (le serveur renvoie le profil public
+      // sans `stats`) : lire `friend.stats?.elo` donnait toujours undefined
+      // et le rang par défaut de 1200 écrasait tout le monde au même niveau.
+      elo: 1200,
       priority: 4,
     });
   }
@@ -383,7 +386,7 @@ export const buildCommunityPlayers = ({
       }
 
       if (match.result) {
-        if (match.result.résolutionType === 'forfeit' && match.result.forfeitTeam === player.team) {
+        if (match.result.resolutionType === 'forfeit' && match.result.forfeitTeam === player.team) {
           record.forfeitedMatches.add(match.id);
         }
 
@@ -596,7 +599,7 @@ export const buildAdminInsights = ({
   const operationalMatches = matches.filter((match) => !['finished', 'cancelled', 'forfeited'].includes(match.status));
 
   const recentEvents: ModerationEvent[] = [
-    ...reports.map((report) => ({
+    ...reports.map((report): ModerationEvent => ({
       id: report.id,
       action: isReportOpen(report) ? 'Signalément reçu' : 'Signalément traite',
       target: playerIndex.get(report.targetId)?.pseudo || report.targetId,
@@ -630,7 +633,9 @@ export const buildAdminInsights = ({
     ),
     ...matches
       .filter((match) => match.status === 'cancelled' && match.finishedAt)
-      .map((match) => ({
+      // Annotation du retour : sans elle, `tone` est élargi en `string` et
+      // l'ensemble n'est pas assignable à ModerationEvent[].
+      .map((match): ModerationEvent => ({
         id: `${match.id}-cancelled`,
         action: 'Match annulé',
         target: match.id,
@@ -639,7 +644,7 @@ export const buildAdminInsights = ({
       })),
     ...matches
       .filter((match) => match.result && match.finishedAt)
-      .map((match) => ({
+      .map((match): ModerationEvent => ({
         id: `${match.id}-finished`,
         action: 'Résultat validé',
         target: match.id,

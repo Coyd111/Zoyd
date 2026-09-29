@@ -42,9 +42,9 @@ const PublicProfilPage = () => {
         ? createPublicProfile({
             userId: id,
             currentUser,
-            observedPlayer: observedPlayer ?? null,
-            observedArbiter: observedArbiter ?? null,
-            friendRecord: friendRecord ?? null,
+            observedPlayer: observedPlayer ?? undefined,
+            observedArbiter: observedArbiter ?? undefined,
+            friendRecord: friendRecord ?? undefined,
           })
         : null,
     [currentUser, friendRecord, id, observedArbiter, observedPlayer]
@@ -168,7 +168,7 @@ const PublicProfilPage = () => {
       rankMJ={publicProfile.rankMJ}
       rankBR={publicProfile.rankBR}
       summary={summary}
-      prefersReducedMotion={prefersReducedMotion}
+      prefersReducedMotion={prefersReducedMotion ?? false}
       emptyMatchesImage="/assets/images/codm-2.jpg"
       emptyTournamentsImage="/assets/images/codm-3.jpg"
       trustDescription="Cette fiche rassemble ce que ZOYD a déjà pu voir de ce joueur dans ses matchs, ses tournois et ses relations."

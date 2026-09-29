@@ -14,7 +14,17 @@ import {
 import { toast } from 'sonner';
 import { formatZC } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
+import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { SEOHead } from '../../../app/components/SEOHead';
+
+const EMPTY_WALLET: WalletSnapshot = {
+  cashBalance: 0,
+  bonusBalance: 0,
+  lockedBalance: 0,
+  pendingWinnings: 0,
+  transactions: [],
+  lockedEntries: {},
+};
 
 const STATUS_TABS: Array<{ value: LeagueSeasonStatus | 'all'; label: string }> = [
   { value: 'all', label: 'TOUT' },
@@ -203,7 +213,7 @@ const LeaguePage: React.FC = () => {
       setActionLoading(true);
       const response = await joinServerLeagueSeason(seasonId);
       replaceFromServer([response.season]);
-      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: response.wallet });
+      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: { ...EMPTY_WALLET, ...response.wallet } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de rejoindre la saison.");
     } finally {
@@ -217,7 +227,7 @@ const LeaguePage: React.FC = () => {
       setActionLoading(true);
       const response = await leaveServerLeagueSeason(seasonId);
       replaceFromServer([response.season]);
-      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: response.wallet });
+      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: { ...EMPTY_WALLET, ...response.wallet } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de quitter la saison.");
     } finally {

@@ -6,6 +6,7 @@ import type { ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import type { Match } from '../stores/matchStore';
 import type { Tournament } from '../stores/tournamentStore';
 import type { LeagueSeason } from '../stores/leagueStore';
+import type { FriendRequestStatus } from '../stores/friendsStore';
 
 export interface ServerPresenceSnapshot {
   channelId: string;
@@ -267,20 +268,36 @@ export const fetchRealtimeBootstrap = async (user: User) => {
     throw new Error('Unable to fetch realtime bootstrap.');
   }
 
+/**
+ * Le serveur renvoie `getFriendsForUser()` = `getPublicUserById()` sur chaque
+ * ami, donc des PROFILS PUBLICS (`id`, `country`, `controllerType`,
+ * `trustScore`, `streamerMode`…) et non des `{ userId, status }`.
+ * Le type précédent annonçait `userId`/`status`/`createdAt` : `friend.id`
+ * valait undefined à l'exécution et la liste d'amis était cassée.
+ * `status` et `isStreamer` sont dérivés côté store.
+ */
 interface BootstrapFriend {
-  userId: string;
+  id: string;
   pseudo: string;
-  status: string;
-  createdAt: string;
+  avatar?: string;
+  country: string;
+  controllerType: string;
+  trustScore: number;
+  streamerMode?: boolean;
+  lastSeen?: string;
 }
 
+/** Normalisé côté serveur (`getFriendRequestsForUser` renvoie déjà
+ *  `senderPseudo` et `timestamp`, plus les ids bruts). */
 interface BootstrapFriendRequest {
   id: string;
   senderId: string;
   targetId: string;
-  status: string;
+  senderPseudo?: string;
+  senderAvatar?: string;
+  status: FriendRequestStatus;
   message?: string;
-  createdAt: string;
+  timestamp?: string;
 }
 
 interface BootstrapNotification {

@@ -19,6 +19,15 @@ import AdminUsersTab from '../components/admin/AdminUsersTab';
 import type { MatchFilter, UserFilter, DisputeFilter } from '../components/admin/AdminTabShared';
 import { SEOHead } from '../components/SEOHead';
 
+const EMPTY_WALLET: WalletSnapshot = {
+  cashBalance: 0,
+  bonusBalance: 0,
+  lockedBalance: 0,
+  pendingWinnings: 0,
+  transactions: [],
+  lockedEntries: {},
+};
+
 const AdminDashboardPage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const friends = useFriendsStore((s) => s.friends);
@@ -77,14 +86,17 @@ const AdminDashboardPage: React.FC = () => {
     return [...disputeItems, ...reportItems, ...operationalItems].sort((a, b) => b.severity - a.severity || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 8);
   }, [adminInsights.openDisputes, pendingReports, playerById, matchQueues.ready]);
   const filteredUsers = useMemo(() => {
-    if (userFilter === 'critical') return adminInsights.flaggedUsers.filter((u) => u.status === 'critical');
-    if (userFilter === 'watch') return adminInsights.flaggedUsers.filter((u) => u.status !== 'clean');
-    return adminInsights.flaggedUsers;
+    const flagged = userFilter === 'critical'
+      ? adminInsights.flaggedUsers.filter((u) => u.status === 'critical')
+      : userFilter === 'watch'
+        ? adminInsights.flaggedUsers.filter((u) => u.status !== 'clean')
+        : adminInsights.flaggedUsers;
+    return flagged.map((u) => ({ ...u, trustScore: u.trustScore ?? '--' }));
   }, [adminInsights.flaggedUsers, userFilter]);
 
   if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
 
-  const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: WalletSnapshot | null }) => { hydrateMatches([payload.match]); applyServerAccountState(payload); };
+  const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: Partial<WalletSnapshot> | null }) => { hydrateMatches([payload.match]); applyServerAccountState({ user: payload.user, wallet: payload.wallet ? { ...EMPTY_WALLET, ...payload.wallet } : null }); };
   const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => {
     if (loadingAction) return;
     setLoadingAction(true);

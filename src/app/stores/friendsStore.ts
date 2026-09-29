@@ -25,6 +25,13 @@ export interface Friend {
   trustScore: number;
 }
 
+/**
+ * Ce que le serveur renvoie réellement pour un ami : le profil public
+ * (`getPublicUserById`), donc sans `status`/`isStreamer` mais avec
+ * `streamerMode`. Ces deux champs sont dérivés par `hydrateFromServer`.
+ */
+export type FriendProfileInput = Omit<Friend, 'status' | 'isStreamer'> & { streamerMode?: boolean };
+
 export interface FriendRequest {
   id: string;
   senderId: string;
@@ -51,7 +58,11 @@ export interface FriendsState {
   reports: Report[];
   pendingId: string | null;
   // Actions
-  hydrateFromServer: (friends: Friend[], requests: FriendRequest[], blockedIds: string[]) => void;
+  hydrateFromServer: (
+    friends: FriendProfileInput[],
+    requests: Array<Omit<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'> & Partial<Pick<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'>>>,
+    blockedIds: string[]
+  ) => void;
   sendRequest: (targetId: string, targetPseudo: string, message?: string) => void;
   acceptRequest: (requestId: string) => void;
   declineRequest: (requestId: string) => void;
@@ -73,7 +84,26 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
   pendingId: null,
 
   hydrateFromServer: (friends, requests, blockedIds) => {
-    set({ friends, requests, blockedIds });
+    // Le serveur renvoie des profils publics (id/pseudo/country/trustScore/…)
+    // et aucun `status` : on force `offline` et on dérive `isStreamer`. Le
+    // temps réel est ensuite poussé par le socket
+    // (`friend:presence` → updateFriendStatus).
+    set({
+      friends: friends.map((friend) => ({
+        ...friend,
+        isStreamer: Boolean(friend.streamerMode),
+        status: 'offline' as FriendStatus,
+      })),
+      // Défensifs : le serveur normalise déjà, mais un `senderPseudo` absent
+      // affichait "undefined veut t'ajouter".
+      requests: requests.map((request) => ({
+        ...request,
+        senderPseudo: request.senderPseudo || 'Joueur',
+        status: request.status || 'pending',
+        timestamp: request.timestamp || new Date().toISOString(),
+      })),
+      blockedIds,
+    });
   },
 
   sendRequest: async (targetId, _targetPseudo, message) => {

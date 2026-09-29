@@ -48,7 +48,11 @@ export const getObservedPlayerSnapshot = (userId: string, matches: Match[]): Mat
 
 export const getTournamentPlacements = (userId: string, tournaments: Tournament[]): TournamentPlacement[] =>
   tournaments
-    .map((tournament) => {
+    // Annotation du retour du map : sans elle le type inféré est
+    // `{...} | null` et le prédicat de filter plus bas est invalide (TS2677),
+    // car TournamentPlacement.format (string) n'est pas assignable au
+    // MatchFormat du littéral.
+    .map((tournament): TournamentPlacement | null => {
       const entry = tournament.entries.find((candidate) =>
         candidate.members.some((member) => member.userId === userId)
       );
@@ -72,7 +76,7 @@ export const getTournamentPlacements = (userId: string, tournaments: Tournament[
         finishedAt: tournament.finishedAt,
       };
     })
-    .filter((entry): entry is TournamentPlacement => !!entry)
+    .filter((entry): entry is TournamentPlacement => entry !== null)
     .sort((a, b) => new Date(b.finishedAt || 0).getTime() - new Date(a.finishedAt || 0).getTime());
 
 export const buildCompetitiveSummary = ({
@@ -97,7 +101,7 @@ export const buildCompetitiveSummary = ({
   );
   const forfeits = playerMatches.filter((match) => {
     const participant = match.players.find((player) => player.userId === userId);
-    return !!participant && match.result?.résolutionType === 'forfeit' && match.result.forfeitTeam === participant.team;
+    return !!participant && match.result?.resolutionType === 'forfeit' && match.result.forfeitTeam === participant.team;
   }).length;
 
   let arbitratedMatches = 0;
@@ -138,6 +142,12 @@ export const buildCompetitiveSummary = ({
     winRate: wins + losses + draws > 0 ? Math.round((wins / (wins + losses + draws)) * 1000) / 10 : 0,
     tournamentsWon: tournamentPlacements.filter((placement) => placement.placement === 1).length,
     tournamentsPlayed: tournamentPlacements.length,
+    // `elo` n'est pas dérivable des matchs (notation gérée par le serveur) :
+    // sans ce repli, `stats.elo` valait undefined sur les profils dont le
+    // compte n'a pas encore de stats persistées. `arbitratedMatches` en
+    // revanche est calculé plus haut.
+    elo: fallbackStats?.elo ?? 1200,
+    arbitratedMatches,
   };
 
   const stats = fallbackStats

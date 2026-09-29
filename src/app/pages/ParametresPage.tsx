@@ -25,15 +25,19 @@ type SettingsForm = Pick<
   AuthUser,
   | 'phone'
   | 'country'
-  | 'bio'
   | 'streamerMode'
-  | 'streamerPseudo'
   | 'controllerType'
   | 'device'
   | 'levelCODM'
   | 'rankMJ'
   | 'rankBR'
->;
+> & {
+  // Le formulaire normalise en chaîne les deux champs optionnels du profil
+  // (`user.bio || ''`, `user.streamerPseudo || ''`) : ils ne sont jamais
+  // `undefined` dans l'état du formulaire, contrairement à `AuthUser`.
+  bio: string;
+  streamerPseudo: string;
+};
 
 type NotificationSettings = {
   matchStart: boolean;

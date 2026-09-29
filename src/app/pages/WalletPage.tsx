@@ -24,7 +24,7 @@ const FEDAPAY_SCRIPT_URL = 'https://cdn.fedapay.com/checkout.js';
 let fedaPayLoadPromise: Promise<boolean> | null = null;
 
 const loadFedaPayScript = (): Promise<boolean> => {
-  if (typeof window !== 'undefined' && typeof (window as Record<string, unknown>).FedaPay !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof window.FedaPay !== 'undefined') {
     return Promise.resolve(true);
   }
   if (!fedaPayLoadPromise) {
@@ -52,20 +52,22 @@ interface FedaPayWidget {
   close?: () => void;
 }
 
-declare const FedaPay:
-  | {
-      init: (config: FedaPayCheckoutConfig) => FedaPayWidget;
-      DIALOG_DISMISSED?: string;
-      CHECKOUT_COMPLETED?: string;
-    }
-  | undefined;
+interface FedaPayApi {
+  init: (config: FedaPayCheckoutConfig) => FedaPayWidget;
+  DIALOG_DISMISSED?: string;
+  CHECKOUT_COMPLETED?: string;
+}
 
-const getFedaPay = (): NonNullable<typeof FedaPay> | null => {
+declare global {
+  interface Window {
+    FedaPay?: FedaPayApi;
+  }
+}
+
+const getFedaPay = (): FedaPayApi | null => {
   if (typeof window === 'undefined') return null;
-  const fp = (window as unknown as Record<string, unknown>).FedaPay as
-    | { init?: unknown }
-    | undefined;
-  return typeof fp?.init === 'function' ? (fp as NonNullable<typeof FedaPay>) : null;
+  const fp = window.FedaPay;
+  return fp && typeof fp.init === 'function' ? fp : null;
 };
 
 const WalletPage: React.FC = () => {

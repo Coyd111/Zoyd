@@ -1962,7 +1962,21 @@ export const upsertStateEntity = async (kind, entity) => {
 export const getFriendRequestsForUser = (userId) => {
   const results = [];
   for (const fr of memoryFriendRequests.values()) {
-    if (fr.target_id === userId || fr.sender_id === userId) results.push(fr);
+    if (fr.target_id !== userId && fr.sender_id !== userId) continue;
+    // Normalisation vers la forme consommée par le front (`senderPseudo`,
+    // `timestamp`). On renvoyait la ligne DB brute (`sender_id`,
+    // `created_at`) : le composant affichait "undefined veut t'ajouter".
+    const sender = getPublicUserById(fr.sender_id);
+    results.push({
+      id: fr.id,
+      senderId: fr.sender_id,
+      targetId: fr.target_id,
+      senderPseudo: sender?.pseudo || 'Joueur',
+      senderAvatar: sender?.avatar,
+      status: fr.status,
+      message: fr.message,
+      timestamp: fr.created_at || fr.createdAt || getNow(),
+    });
   }
   return results;
 };

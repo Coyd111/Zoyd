@@ -7,14 +7,24 @@ interface ErrorContext {
   [key: string]: unknown;
 }
 
+interface LogPayload {
+  level: ErrorLevel;
+  message: string;
+  stack?: string;
+  context?: ErrorContext;
+  timestamp: string;
+  url?: string;
+  userAgent?: string;
+}
+
 const isProd = import.meta.env.PROD;
 
 export function logError(error: unknown, context?: ErrorContext) {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
 
-  const payload = {
-    level: 'error' as const,
+  const payload: LogPayload = {
+    level: 'error',
     message,
     stack,
     context,
@@ -32,8 +42,8 @@ export function logError(error: unknown, context?: ErrorContext) {
 }
 
 export function logWarning(message: string, context?: ErrorContext) {
-  const payload = {
-    level: 'warn' as const,
+  const payload: LogPayload = {
+    level: 'warn',
     message,
     context,
     timestamp: new Date().toISOString(),
@@ -48,6 +58,7 @@ export function logWarning(message: string, context?: ErrorContext) {
 
 export function logInfo(message: string, context?: ErrorContext) {
   if (!isProd) {
-    console.log('[ZOYD]', { level: 'info', message, context, timestamp: new Date().toISOString() });
+    const payload: LogPayload = { level: 'info', message, context, timestamp: new Date().toISOString() };
+    console.log('[ZOYD]', payload);
   }
 }

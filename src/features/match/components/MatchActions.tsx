@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { Link } from 'react-router';
 import {
   AlertTriangle,
@@ -86,9 +87,9 @@ interface MatchActionsProps {
     addEvidenceInput: string;
     setAddEvidenceInput: (v: string) => void;
     showAddEvidenceForm: boolean;
-    setShowAddEvidenceForm: (v: boolean) => void;
+    setShowAddEvidenceForm: Dispatch<SetStateAction<boolean>>;
     showArbiterScore: boolean;
-    setShowArbiterScore: (v: boolean) => void;
+    setShowArbiterScore: Dispatch<SetStateAction<boolean>>;
   };
   handlers: {
     join: (team?: 0 | 1) => void;

@@ -3,6 +3,8 @@ import type {
   Tournament,
   TournamentRegistrationInput,
 } from '../stores/tournamentStore';
+import type { User } from '../stores/authStore';
+import type { WalletSnapshot } from './walletApi';
 import { authorizedGet, authorizedPost } from './apiClient';
 
 interface TournamentListResponse {
@@ -13,8 +15,10 @@ interface TournamentListResponse {
 interface TournamentResponse {
   ok: boolean;
   tournament: Tournament;
-  user?: { id: string; pseudo: string; wallet?: { cashBalance: number; bonusBalance: number } };
-  wallet?: { cashBalance: number; bonusBalance: number };
+  /** Enregistrement complet de l'appelant, renvoyé par les actions authentifiées. */
+  user?: Partial<User>;
+  /** Snapshot normalisé complet renvoyé par les actions authentifiées. */
+  wallet?: WalletSnapshot;
   /** Caller-scoped context (present on authenticated action responses, absent on public reads). */
   myEntryId?: string | null;
   myArbiterSlot?: 1 | 2 | null;

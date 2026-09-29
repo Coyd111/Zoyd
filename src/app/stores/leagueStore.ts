@@ -104,9 +104,9 @@ export interface LeagueState {
 }
 
 interface StoredSeason {
-  id?: string;
-  cycleNumber?: number;
-  status?: string;
+  id: string;
+  cycleNumber: number;
+  status?: LeagueSeasonStatus;
   entryFee?: number;
   maxPlayers?: number;
   registeredPlayers?: LeaguePlayer[];

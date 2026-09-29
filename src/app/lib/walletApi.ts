@@ -1,11 +1,16 @@
 import { authorizedGet, authorizedPost } from './apiClient';
 
+import type { TransactionStatus, TransactionType } from '../stores/walletStore';
+
 export interface WalletTransaction {
   id: string;
-  type: string;
+  /** Union volontairement reprise du store : le serveur n'émet que ces
+   *  valeurs, et un `string` large rendait le mapping non assignable
+   *  (le store forçait un cast). */
+  type: TransactionType;
   amount: number;
   description?: string;
-  status: string;
+  status: TransactionStatus;
   metadata?: Record<string, unknown>;
   created_at: string;
 }

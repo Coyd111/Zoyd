@@ -71,6 +71,14 @@ const toastTypeByPriority: Record<NotificationPriority, ToastType> = {
   low: 'info',
 };
 
+// `metadata` est un `Record<string, unknown>` : on le lit uniquement à travers
+// ces accesseurs typés plutôt qu'avec des casts.
+const readMetadataString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.length > 0 ? value : undefined;
+
+const isToastType = (value: unknown): value is ToastType =>
+  value === 'success' || value === 'error' || value === 'warning' || value === 'info';
+
 const showBrowserNotification = async (notification: Notification) => {
   if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
     return;
@@ -93,7 +101,7 @@ const showBrowserNotification = async (notification: Notification) => {
     body: notification.message,
     icon: '/logo-icon.png',
     badge: '/logo-icon.png',
-    tag: notification.metadata?.browserTag || notification.metadata?.dedupeKey || notification.id,
+    tag: readMetadataString(notification.metadata?.browserTag) || readMetadataString(notification.metadata?.dedupeKey) || notification.id,
     requireInteraction: notification.priority === 'urgent',
     data: notification.actionUrl ? { url: notification.actionUrl } : undefined,
   });
@@ -103,60 +111,55 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
 
   addNotification: (n) => {
-    const dedupeKey = typeof n.metadata?.dedupeKey === 'string' ? n.metadata.dedupeKey : null;
-    let createdNotification: Notification | null = null;
-    let shouldToast = false;
+    const dedupeKey = readMetadataString(n.metadata?.dedupeKey) ?? null;
+    // La notification créée est calculée hors du callback `set` : une affectation
+    // faite dans ce callback reste invisible à l'analyse de flux (la variable
+    // y serait vue comme `null`, donc `never` après le test).
+    const current = get().notifications;
+    const existing = dedupeKey
+      ? current.find((notification) => !notification.dismissed && notification.metadata?.dedupeKey === dedupeKey)
+      : undefined;
 
-    set((state) => {
-      if (dedupeKey) {
-        const existing = state.notifications.find(
-          (notification) => !notification.dismissed && notification.metadata?.dedupeKey === dedupeKey
-        );
-
-        if (existing) {
-          const refreshedNotification: Notification = {
-            ...existing,
-            ...n,
-            timestamp: new Date().toISOString(),
-            read: false,
-            dismissed: false,
-          };
-          createdNotification = refreshedNotification;
-          shouldToast =
-            Boolean(n.metadata?.showToast) &&
-            (existing.message !== n.message || existing.title !== n.title || existing.priority !== n.priority);
-          const nextNotifications = [refreshedNotification, ...state.notifications.filter((notification) => notification.id !== existing.id)];
-          return { notifications: nextNotifications.length > MAX_NOTIFICATIONS ? nextNotifications.slice(0, MAX_NOTIFICATIONS) : nextNotifications };
+    const createdNotification: Notification = existing
+      ? {
+          ...existing,
+          ...n,
+          timestamp: new Date().toISOString(),
+          read: false,
+          dismissed: false,
         }
-      }
+      : {
+          ...n,
+          id: `NOTIF-${crypto.randomUUID()}`,
+          timestamp: new Date().toISOString(),
+          read: false,
+          dismissed: false,
+        };
 
-      const notif: Notification = {
-        ...n,
-        id: `NOTIF-${crypto.randomUUID()}`,
-        timestamp: new Date().toISOString(),
-        read: false,
-        dismissed: false,
-      };
-      createdNotification = notif;
-      shouldToast = Boolean(n.metadata?.showToast) || n.priority === 'high' || n.priority === 'urgent';
-      const nextNotifications = [notif, ...state.notifications];
-      return { notifications: nextNotifications.length > MAX_NOTIFICATIONS ? nextNotifications.slice(0, MAX_NOTIFICATIONS) : nextNotifications };
+    const shouldToast = existing
+      ? Boolean(n.metadata?.showToast) &&
+        (existing.message !== n.message || existing.title !== n.title || existing.priority !== n.priority)
+      : Boolean(n.metadata?.showToast) || n.priority === 'high' || n.priority === 'urgent';
+
+    const previous = existing ? current.filter((notification) => notification.id !== existing.id) : current;
+    const nextNotifications = [createdNotification, ...previous];
+
+    set({
+      notifications:
+        nextNotifications.length > MAX_NOTIFICATIONS ? nextNotifications.slice(0, MAX_NOTIFICATIONS) : nextNotifications,
     });
 
-    if (createdNotification && shouldToast) {
+    if (shouldToast) {
+      const toastType = readMetadataString(createdNotification.metadata?.toastType);
       useToastStore.getState().addToast({
-        type:
-          (createdNotification.metadata?.toastType as ToastType | undefined) ||
-          toastTypeByPriority[createdNotification.priority],
+        type: isToastType(toastType) ? toastType : toastTypeByPriority[createdNotification.priority],
         title: createdNotification.title,
         message: createdNotification.message,
         duration: createdNotification.priority === 'urgent' ? 7000 : 5000,
       });
     }
 
-    if (createdNotification) {
-      void showBrowserNotification(createdNotification);
-    }
+    void showBrowserNotification(createdNotification);
   },
 
   markAsRead: (id) => {

@@ -1,8 +1,12 @@
 import React from 'react';
 import { cn } from '../../../lib/utils';
-import { motion } from 'motion/react';
+import { motion, type MotionProps } from 'motion/react';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+type NativeCardProps = React.HTMLAttributes<HTMLDivElement>;
+type MotionOverriddenKeys = Extract<keyof NativeCardProps, keyof MotionProps>;
+
+interface CardProps extends Omit<NativeCardProps, MotionOverriddenKeys> {
+  children?: React.ReactNode;
   hover?: boolean;
   animate?: boolean;
 }

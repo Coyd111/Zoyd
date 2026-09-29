@@ -32,32 +32,67 @@ import { registerWithBackend, type RegisterPayload, type AuthResponse } from '..
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { SEOHead } from '../../components/SEOHead';
 
-const step1Schema = z
-  .object({
-    pseudo: z.string().min(3, 'Minimum 3 caractères').max(20, 'Maximum 20 caractères'),
-    email: z.string().email('Email invalide'),
-    phone: z.string().min(8, 'Numéro invalide'),
+// RHF n'admet qu'un seul type de champs pour tout le formulaire : les deux
+// étapes partagent donc la même forme et chaque étape renforce uniquement les
+// champs qu'elle affiche. Tous les champs sont optionnels car le formulaire est
+// partiel (une étape à la fois) — un champ monté vaut '' par défaut, donc les
+// règles s'appliquent bien à ce que l'utilisateur saisit réellement.
+// `z.coerce.number()` est remplacé par un union + transform : il type l'entrée
+// du resolver en `unknown`, ce qui le rend incompatible avec le resolver RHF.
+const levelCODMSchema = z
+  .union([z.number(), z.string()])
+  .transform((value) => Number(value));
+
+const registerFormBaseSchema = z.object({
+  pseudo: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
+  gameId: z.string().optional(),
+  levelCODM: levelCODMSchema.optional(),
+  rankMJ: z.string().optional(),
+  rankBR: z.string().optional(),
+  country: z.string().optional(),
+  streamerPseudo: z.string().optional(),
+  controllerType: z.enum(['touch', 'controller', 'emulator', 'pc', 'other']).optional(),
+  device: z.enum(['phone', 'tablet', 'pc', 'other']).optional(),
+  streamerMode: z.boolean().optional(),
+  acceptAdult: z.boolean().optional(),
+  acceptTerms: z.boolean().optional(),
+  acceptedAt: z.string().optional(),
+});
+
+const step1Schema = registerFormBaseSchema
+  .extend({
+    pseudo: z.string().min(3, 'Minimum 3 caractères').max(20, 'Maximum 20 caractères').optional(),
+    email: z.string().email('Email invalide').optional(),
+    phone: z.string().min(8, 'Numéro invalide').optional(),
     password: z
       .string()
       .min(8, 'Minimum 8 caractères')
       .regex(/[A-Z]/, 'Doit contenir au moins une majuscule')
       .regex(/[0-9]/, 'Doit contenir au moins un chiffre')
-      .regex(/[^A-Za-z0-9]/, 'Doit contenir au moins un caractère spécial'),
-    confirmPassword: z.string(),
+      .regex(/[^A-Za-z0-9]/, 'Doit contenir au moins un caractère spécial')
+      .optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas',
     path: ['confirmPassword'],
   });
 
-const step2Schema = z.object({
-  gameId: z.string().min(1, 'UID CODM requis'),
-  levelCODM: z.coerce.number().min(1, 'Niveau invalidé').optional(),
-  rankMJ: z.string().optional(),
-  rankBR: z.string().optional(),
-  country: z.string().optional(),
-  streamerPseudo: z.string().optional(),
+const step2Schema = registerFormBaseSchema.extend({
+  gameId: z.string().min(1, 'UID CODM requis').optional(),
+  levelCODM: levelCODMSchema.pipe(z.number().min(1, 'Niveau invalidé')).optional(),
 });
+
+// Les valeurs du formulaire ne sont pas le payload : chaque étape n'en renseigne
+// qu'une partie, `levelCODM` arrive en `string` depuis l'input texte, et
+// `confirmPassword` n'existe qu'à l'étape 1 (jamais envoyé au backend).
+type RegisterFormValues = Partial<Omit<RegisterPayload, 'levelCODM'>> & {
+  levelCODM?: string | number;
+  confirmPassword?: string;
+};
 
 const deviceIcons: Record<string, React.ElementType> = {
   phone: Smartphone,
@@ -80,7 +115,7 @@ const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [acceptAdult, setAcceptAdult] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [formData, setFormData] = useState<Partial<RegisterPayload>>({});
+  const [formData, setFormData] = useState<RegisterFormValues>({});
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const navigate = useNavigate();
   const { login } = useAuthStore();
@@ -92,7 +127,7 @@ const RegisterPage: React.FC = () => {
     watch,
     setValue,
     getValues,
-  } = useForm<Partial<RegisterPayload>>({
+  } = useForm<RegisterFormValues>({
     resolver: currentStep === 1 ? zodResolver(step1Schema) : currentStep === 2 ? zodResolver(step2Schema) : undefined,
     defaultValues: {
       controllerType: 'touch',
@@ -103,7 +138,7 @@ const RegisterPage: React.FC = () => {
     },
   });
 
-  const password = watch('password', '');
+  const password = watch('password') ?? '';
   const selectedController = watch('controllerType', 'touch');
   const streamerModeEnabled = watch('streamerMode', false);
 
@@ -120,12 +155,12 @@ const RegisterPage: React.FC = () => {
   const passwordStrength = getPasswordStrength(password);
   const strengthLabels = ['', 'Faible', 'Moyen', 'Fort', 'Elite'];
 
-  const onStep1Submit = (data: Partial<RegisterPayload>) => {
+  const onStep1Submit = (data: RegisterFormValues) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setCurrentStep(2);
   };
 
-  const onStep2Submit = (data: Partial<RegisterPayload>) => {
+  const onStep2Submit = (data: RegisterFormValues) => {
     if (!selectedDevice) {
       const msg = "Choisis ton appareil principal pour personnaliser ton expérience ZOYD.";
       toast.error(msg);
@@ -152,10 +187,11 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
+    const gameId = data.gameId.trim();
     setFormData((prev) => ({
       ...prev,
       ...data,
-      gameId: data.gameId.trim(),
+      gameId,
       device: selectedDevice as RegisterPayload['device'],
       controllerType: (data.controllerType || getValues('controllerType') || 'touch') as RegisterPayload['controllerType'],
     }));
@@ -171,15 +207,23 @@ const RegisterPage: React.FC = () => {
       toast.error("Tu dois accepter les Conditions d'utilisation pour continuer.");
       return;
     }
+    // Les étapes 1 et 2 garantissent pseudo/email/phone/password/gameId, mais
+    // l'état accumulé reste typé partiel : on le vérifie avant l'envoi plutôt
+    // que de laisser partir un payload incomplet vers l'API.
+    const { pseudo, email, phone, password, gameId } = formData;
+    if (!pseudo || !email || !phone || !password || !gameId) {
+      toast.error('Formulaire incomplet, reprends l\'inscription.');
+      return;
+    }
     setIsLoading(true);
     try {
       const acceptedAt = new Date().toISOString();
       const auth = await registerWithBackend({
-        pseudo: formData.pseudo,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        gameId: formData.gameId,
+        pseudo,
+        email,
+        phone,
+        password,
+        gameId,
         controllerType: formData.controllerType || 'touch',
         device: formData.device || 'phone',
         levelCODM: Number(formData.levelCODM) || 1,
@@ -197,7 +241,7 @@ const RegisterPage: React.FC = () => {
       const response = auth as AuthResponse & { expiresAt?: string };
       if (response.user) {
         login(response.user, response.expiresAt);
-        toast.success(`Bienvenue sur ZOYD, ${formData.pseudo} !`);
+        toast.success(`Bienvenue sur ZOYD, ${pseudo} !`);
       } else {
         toast.success('Compte créé avec succès. Connecte-toi.');
       }
@@ -208,7 +252,7 @@ const RegisterPage: React.FC = () => {
         pending.push({
           type: 'system',
           title: 'Bienvenue sur ZOYD !',
-          message: `Ton compte ${formData.pseudo} est prêt. Commence par explorer la plateforme.`,
+          message: `Ton compte ${pseudo} est prêt. Commence par explorer la plateforme.`,
           priority: 'high',
           actionUrl: '/',
         });

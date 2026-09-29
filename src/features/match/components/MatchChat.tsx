@@ -127,7 +127,12 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             </div>
           </div>
 
-          <ShieldCheck className="w-4 h-4 text-white/70 shrink-0" title="Canal sécurisé" />
+          {/* `title` n'existe pas sur LucideProps (les attributs SVG Leaked via
+              LucideProps ne l'incluent pas) : l'info-bulle n'était jamais
+              rendue. On passe par un <title> enfant, rendu dans le SVG. */}
+          <ShieldCheck className="w-4 h-4 text-white/70 shrink-0" aria-label="Canal sécurisé">
+            <title>Canal sécurisé</title>
+          </ShieldCheck>
         </div>
       </div>
 

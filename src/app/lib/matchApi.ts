@@ -1,12 +1,15 @@
 import type { Match } from '../stores/matchStore';
 import type { User } from '../stores/authStore';
+import type { WalletSnapshot } from './walletApi';
 import { authorizedGet, authorizedPost } from './apiClient';
 
 interface MatchResponse {
   ok: boolean;
   match: Match;
-  user?: Pick<User, 'id' | 'pseudo' | 'wallet'>;
-  wallet?: { cashBalance: number; bonusBalance: number };
+  /** Le serveur renvoie l'enregistrement utilisateur complet. */
+  user?: Partial<User>;
+  /** Snapshot normalisé complet renvoyé par les actions authentifiées. */
+  wallet?: WalletSnapshot;
 }
 
 interface MatchListResponse {
@@ -24,7 +27,7 @@ export interface CreateMatchPayload {
   rules?: {
     mode: string;
     map: string;
-    weaponRestrictions?: string[];
+    weaponRestrictions?: string;
     scoreTarget?: number;
     bestOf?: number;
     pointstreaks?: 'allowed' | 'restricted';
@@ -116,8 +119,8 @@ export const adminAwardServerMatch = async (matchId: string, winnerTeam: 0 | 1, 
   return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/award`, { winnerTeam, arbiterNotes });
 };
 
-export const adminResolveServerDispute = async (matchId: string, résolution: string) => {
-  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/resolve-dispute`, { résolution });
+export const adminResolveServerDispute = async (matchId: string, resolution: string) => {
+  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/resolve-dispute`, { resolution });
 };
 
 export const adminCancelServerMatch = async (matchId: string, reason: string) => {

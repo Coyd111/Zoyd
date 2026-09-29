@@ -23,15 +23,16 @@ const TEAM_OPTIONS = [
 ] as const;
 
 interface MatchFormData {
-  entryFee: number;
-  maxPlayers: number;
-  trustScoreMin: number;
-  weaponRestriction: string;
+  passAmount: number;
+  trustScoreMin: string;
+  /** Sélection d'armes : pas de valeur par défaut, la 1re option du select fait foi. */
+  weapons?: string;
+  score: number;
+  bestOf: number;
+  pointstreaks: 'allowed' | 'restricted';
+  meleeAllowed: boolean;
   isPrivate: boolean;
-  deviceRestriction?: string;
-  controllerRestriction?: string;
-  rules?: Record<string, unknown>;
-  scheduledAt?: string;
+  creatorTeam: number;
 }
 
 const CreateMatchPage: React.FC = () => {
@@ -46,7 +47,7 @@ const CreateMatchPage: React.FC = () => {
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
   const { getAvailableToSpend } = useWalletStore();
 
-  const { register, handleSubmit, watch, setValue, getValues } = useForm({
+  const { register, handleSubmit, watch, setValue, getValues } = useForm<MatchFormData>({
     defaultValues: {
       passAmount: 50,
       trustScoreMin: '0',

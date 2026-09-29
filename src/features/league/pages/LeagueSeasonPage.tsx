@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router';
 import { ArrowLeft, Crown, Medal, Zap, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
 import { Button } from '../../../app/components/ui/Button';
-import { useLeagueStore } from '../../../app/stores/leagueStore';
+import { useLeagueStore, type LeagueDayKey } from '../../../app/stores/leagueStore';
 import { useAuthStore } from '../../../app/stores/authStore';
 import {
   fetchServerLeagueSeason,
@@ -20,12 +20,32 @@ import {
 import { toast } from 'sonner';
 import { formatZC, getRelativeTime } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
+import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { StandingsTable } from '../components/StandingsTable';
 import { QualificationPanel } from '../components/QualificationPanel';
 import { AdminPanel } from '../components/AdminPanel';
 import { FinalResultsForm } from '../components/FinalResultsForm';
 import { STATUS_LABELS } from '../components/leagueSeasonConstants';
 import { SEOHead } from '../../../app/components/SEOHead';
+
+const EMPTY_WALLET: WalletSnapshot = {
+  cashBalance: 0,
+  bonusBalance: 0,
+  lockedBalance: 0,
+  pendingWinnings: 0,
+  transactions: [],
+  lockedEntries: {},
+};
+
+type LeagueAdminPayload = {
+  dayKey?: LeagueDayKey;
+  fromDay?: LeagueDayKey;
+  toDay?: LeagueDayKey;
+  userId?: string;
+  maxPlayers?: number;
+  entryFee?: number;
+  results?: Array<{ userId: string; placement: number; kills?: number }>;
+};
 
 const LeagueSeasonPage = () => {
   const { seasonId } = useParams<{ seasonId: string }>();
@@ -36,7 +56,7 @@ const LeagueSeasonPage = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('standings');
   const [actionLoading, setActionLoading] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: Record<string, unknown>; message: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: LeagueAdminPayload; message: string } | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -86,7 +106,7 @@ const LeagueSeasonPage = () => {
       setActionLoading(true);
       const response = await joinServerLeagueSeason(seasonId);
       replaceFromServer([response.season]);
-      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: response.wallet });
+      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: { ...EMPTY_WALLET, ...response.wallet } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de rejoindre la saison.");
     } finally {
@@ -100,7 +120,7 @@ const LeagueSeasonPage = () => {
       setActionLoading(true);
       const response = await leaveServerLeagueSeason(seasonId);
       replaceFromServer([response.season]);
-      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: response.wallet });
+      if (response.user && response.wallet) applyServerAccountState({ user: response.user, wallet: { ...EMPTY_WALLET, ...response.wallet } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de quitter la saison.");
     } finally {
@@ -108,7 +128,7 @@ const LeagueSeasonPage = () => {
     }
   };
 
-  const handleAdminAction = async (action: string, payload?: Record<string, unknown>) => {
+  const handleAdminAction = async (action: string, payload?: LeagueAdminPayload) => {
     if (!seasonId || actionLoading || user?.role !== 'admin') return;
     const destructiveActions = ['refund', 'reassign', 'submit-final-results', 'advance-to-final'];
     if (destructiveActions.includes(action)) {
@@ -133,7 +153,7 @@ const LeagueSeasonPage = () => {
     executeAdminAction(action, payload);
   };
 
-  const executeAdminAction = async (action: string, payload?: Record<string, unknown>) => {
+  const executeAdminAction = async (action: string, payload?: LeagueAdminPayload) => {
     if (!seasonId || actionLoading || user?.role !== 'admin') return;
     try {
       setActionLoading(true);

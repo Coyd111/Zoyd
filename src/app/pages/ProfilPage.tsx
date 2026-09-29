@@ -62,7 +62,7 @@ const ProfilPage = () => {
       rankBR={user.rankBR}
       progression={user.progression}
       summary={summary}
-      prefersReducedMotion={prefersReducedMotion}
+      prefersReducedMotion={prefersReducedMotion ?? false}
       showProgression
       matchesLink={{ to: '/mj', label: 'Hub MJ' }}
       tournamentsLink={{ to: '/mj/tournois', label: 'Voir les tournois' }}

@@ -139,7 +139,9 @@ export const requireAdmin2fa = (req, res) => {
   }
   if (session.user.role !== 'admin') {
     log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id });
-    respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
+    // `code` obligatoire : sans lui, apiClient ne peut pas distinguer un 403
+    // d'autorisation d'une session expiree, et deconnectait le joueur.
+    respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.', code: 'ADMIN_REQUIRED' }, req);
     return null;
   }
   const totpEntry = adminTotpSecrets.get(session.user.id);

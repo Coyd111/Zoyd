@@ -21,7 +21,20 @@ export default defineConfig({
       // (jamais en prod). Sans ça, TOUTES les assertions de token échouent en
       // 401 et l'E2E ne testait plus rien — en silence, car la CI ne lance
       // pas Playwright.
-      env: { ...process.env, ALLOW_DEBUG_CODES: 'true', NODE_ENV: 'test' },
+      //
+      // ZOYD_DISABLE_SUPABASE force le mode mémoire : les tests deviennent
+      // hermétiques (pas de réseau, pas de données réelles) et l'écriture
+      // d'état est autorisée (en base injoignable, `stateTrusted` reste false
+      // et TOUTE création de match/tournoi répond 503).
+      env: {
+        ...process.env,
+        ALLOW_DEBUG_CODES: 'true',
+        NODE_ENV: 'test',
+        ZOYD_DISABLE_SUPABASE: 'true',
+        // requis au boot (seed du compte de contrôle) et doit passer la
+        // politique de mot de passe fort, sinon le serveur ne démarre pas
+        ZOYD_ADMIN_PASSWORD: process.env.ZOYD_ADMIN_PASSWORD || 'ZoydE2E!Admin2026',
+      },
     },
     {
       command: 'npx vite --port 5173',

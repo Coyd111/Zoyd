@@ -1087,12 +1087,11 @@ const handleRequest = async (req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/api/wallet/deposit') {
-    // Deposit endpoint admin-only (deposits go through /api/wallet/verify-fedapay in production)
+    // Deposit endpoint admin-only (deposits go through /api/wallet/verify-fedapay in production).
+    // requireAdmin2fa repond LUI-MEME (401/403 + code) : ne pas re-repondre
+    // derriere, sinon double ecriture d'en-tetes, avalee en ERR_HTTP_HEADERS_SENT.
     const adminSession = requireAdmin2fa(req, res);
-    if (!adminSession) {
-      respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.', code: 'ADMIN_REQUIRED' });
-      return;
-    }
+    if (!adminSession) return;
     if (!rateLimitGuard(res, getClientIp(req), 'wallet')) return;
     let body;
     try {

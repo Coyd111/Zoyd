@@ -38,12 +38,12 @@ jobs:
       - run: pnpm build
 
   typecheck:
-    name: TypeScript baseline (non-blocking)
+    name: TypeScript (bloquant)
     runs-on: ubuntu-latest
-    # Non bloquant : 202 erreurs pré-existantes au 2026-09-15 (tsc n'avait
-    # jamais tourné, typescript n'était pas installé). Passer en bloquant
-    # (retirer continue-on-error) quand le compteur revient à 0.
-    continue-on-error: true
+    # Blocant depuis la remise à zéro du compteur (340 -> 0 le 2026-09-29).
+    # C'était `continue-on-error` avec un commentaire « 202 erreurs
+    # pré-existantes » : la moitié des régressions de typage passaient
+    # inaperçues (identifiants corrompus, contrats serveur/front divergents).
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -55,3 +55,34 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+
+  e2e:
+    name: E2E API (playwright)
+    runs-on: ubuntu-latest
+    # Ces specs n'ont jamais été exécutées avant : Playwright n'était pas dans
+    # la CI, et `pnpm test:run` les collectait via Vitest en échouant (7
+    # "suites failed" sans un seul test exécuté). Elles divergeaient du contrat
+    # réel (format '1v1' au lieu de '1VS1', rules en string, etc.).
+    # Elles tournent en mode MÉMOIRE (ZOYD_DISABLE_SUPABASE) : pas de réseau,
+    # pas de données réelles, et les rate-limits sont partagés entre fichiers
+    # (workers: 1 dans playwright.config.ts).
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e --project=api
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

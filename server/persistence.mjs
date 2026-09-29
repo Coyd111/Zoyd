@@ -266,7 +266,10 @@ export const loadFromSupabase = async () => {
     await ensureSeedAdmin();
     ensureGlobalChatChannel();
     stateTrusted = true; // mode mémoire : la base EST l'état
-    return false;
+    // `true` et non `false` : l'état est complet (en mémoire), sinon
+    // loadFromSupabaseWithRetry réessayait 3 fois (9 s de boot perdu) et
+    // loguait un CRITICAL sur un fonctionnement normal.
+    return true;
   }
 
   // repartir de zéro : sinon un utilisateur supprimé en base entre deux
@@ -2260,26 +2263,44 @@ export const loadAdminTotpSecrets = async () => {
 };
 
 // ─── Seed data ──────────────────────────────────────────────────────────────
+/**
+ * Créer le compte admin de contrôle s'il n'existe pas.
+ *
+ * Ne doit JAMAIS faire tomber le serveur : `insertUser` applique
+ * `assertStrongPassword`, donc un `ZOYD_ADMIN_PASSWORD` trop faible
+ * déclenchait une promesse rejetée non gérée au boot → le process mourait
+ * (FATAL "Unhandled promise rejection") et TOUTE l'API était down, avec un
+ * message qui ne mentionnait pas la variable responsable.
+ */
 const ensureSeedAdmin = async () => {
   const adminEmail = normalizeEmailKey('admin@zoyd.com');
   for (const user of memoryUsers.values()) {
     if (normalizeEmailKey(user.email) === adminEmail) return;
   }
 
-  await insertUser({
-    id: 'admin-zoyd-control', role: 'admin',
-    pseudo: 'ZOYD Control', email: 'admin@zoyd.com', phone: '+22960000000',
-    password: (() => {
-      const pw = process.env.ZOYD_ADMIN_PASSWORD;
-      if (!pw) {
-        throw new Error('[FATAL] ZOYD_ADMIN_PASSWORD must be set.');
-      }
-      return pw;
-    })(),
-    gameId: 'ADMIN-ZOYD-0001', controllerType: 'touch', device: 'pc',
-    levelCODM: 150, rankMJ: 'Legendary', rankBR: 'Legendary', country: 'Benin',
-    walletBalance: 0, trustScore: 100,
-    stats: { ...defaultStats }, progression: { level: 'PRO', xp: 20000, nextLevelXp: 20000 },
-    achievements: ['Control Room'], bio: 'Compte de moderation ZOYD.',
-  });
+  const password = process.env.ZOYD_ADMIN_PASSWORD;
+  if (!password) {
+    log.error('[FATAL] ZOYD_ADMIN_PASSWORD absent — reinitialisation du compte admin impossible.');
+    return;
+  }
+
+  try {
+    await insertUser({
+      id: 'admin-zoyd-control', role: 'admin',
+      pseudo: 'ZOYD Control', email: 'admin@zoyd.com', phone: '+22960000000',
+      password,
+      gameId: 'ADMIN-ZOYD-0001', controllerType: 'touch', device: 'pc',
+      levelCODM: 150, rankMJ: 'Legendary', rankBR: 'Legendary', country: 'Benin',
+      walletBalance: 0, trustScore: 100,
+      stats: { ...defaultStats }, progression: { level: 'PRO', xp: 20000, nextLevelXp: 20000 },
+      achievements: ['Control Room'], bio: 'Compte de moderation ZOYD.',
+    });
+    log.warn('Admin de controle cree depuis ZOYD_ADMIN_PASSWORD — change ce mot de passe.');
+  } catch (error) {
+    // Ex. mot de passe admin trop faible. On ne coupe pas le serveur : le jeu
+    // reste accessible, seul le compte de modération manque.
+    log.error('[FATAL] Creation du compte admin impossible (verifie ZOYD_ADMIN_PASSWORD).', {
+      reason: error?.message,
+    });
+  }
 };

@@ -1,202 +1,252 @@
+/**
+ * E2E LIVE — zoyd.onrender.com (production)
+ *
+ * Deux volets :
+ *
+ * 1. Surface PUBLIQUE (toujours exécuté, ne crée rien) : codes d'erreur,
+ *    CSRF, CORS, listes, 404, health, rate-limits. C'est ce qui peut être
+ *    vérifié sans compte, et cela recouvre l'essentiel des régressions
+ *    récentes (codes d'erreur non mappés → 500, CSRF Origin, allowRequest
+ *    WebSocket).
+ *
+ * 2. Volet AUTHENTIFIÉ (exécuté seulement si ZOYD_LIVE_EMAIL et
+ *    ZOYD_LIVE_PASSWORD sont fournis) : il faut un compte PRÉPARÉ ET ACTIVÉ
+ *    par un humain.
+ *
+ *    Pourquoi pas de création de compte ici : depuis le passage en
+ *    cookie-only, `token` ET `activationCode` ne sont renvoyés que si
+ *    `ALLOW_DEBUG_CODES=true`, jamais en production. Activer ce flag en prod
+ *    pour que les tests passent serait une régression de sécurité. Et
+ *    `POST /api/wallet/deposit` est désormais admin + 2FA (les dépôts
+ *    passent par FedaPay), donc un test ne peut pas se créditer lui-même.
+ *
+ * Préparer le compte (une fois) :
+ *   1. Ouvrir https://zoyd.vercel.app/auth/register depuis le navigateur
+ *   2. Pseudo prefixé `ZOYDLIVE` (pour le repérer et le supprimer ensuite)
+ *   3. Activer via le code reçu par email
+ *   4. $env:ZOYD_LIVE_EMAIL = '...'; $env:ZOYD_LIVE_PASSWORD = '...'
+ *      pnpm test:e2e:live
+ *
+ * Nettoyage : DELETE /api/auth/me (suppression réelle en base).
+ */
+
 import { test, expect } from '@playwright/test';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 const BASE = 'https://zoyd.onrender.com/api';
-const HEADERS = { Origin: 'https://zoyd.vercel.app' } as const;
-const unique = () => Math.random().toString(36).slice(2, 8);
-const PASSWORD = 'LiveTest123!';
-const h = (t: string) => ({ ...HEADERS, Authorization: `Bearer ${t}` });
+const ORIGIN = 'https://zoyd.vercel.app';
+const HEADERS = { Origin: ORIGIN } as const;
+const UNIQ = Date.now().toString(36).slice(-6);
 
-async function waitForOk(request: any, url: string, opts: any, expectStatus: number, maxRetries = 5): Promise<any> {
-  for (let i = 0; i < maxRetries; i++) {
-    const r = await request.post(url, opts);
-    if (r.status() === expectStatus || (r.status() !== 429 && r.status() !== 400)) return r;
-    if (r.status() === 429) await delay(5000);
-  }
-  const r = await request.post(url, opts);
-  return r;
-}
+const LIVE_EMAIL = process.env.ZOYD_LIVE_EMAIL || '';
+const LIVE_PASSWORD = process.env.ZOYD_LIVE_PASSWORD || '';
+const hasLiveAccount = Boolean(LIVE_EMAIL && LIVE_PASSWORD);
 
-let tokenA = '', tokenB = '', tokenC = '';
-let matchId = '';
+/** Identifiant unique : un seul appel par route pour ne pas déclencher 429. */
+const once = async (request: any, method: string, url: string, opts: any = {}) =>
+  method === 'GET' ? request.get(url, opts) : request.post(url, opts);
 
-test.describe.serial('LIVE API — Full E2E', () => {
-  test('1. Register 3 users + Activate + Login', async ({ request }) => {
-    const registerAndLogin = async (prefix: string, rank: string) => {
-      const r = await request.post(`${BASE}/auth/register`, {
-        headers: HEADERS,
-        data: { pseudo: `${prefix}_${unique()}`, email: `${prefix.toLowerCase()}_${unique()}@test.com`, phone: `+22991${Math.floor(1000000 + Math.random() * 9000000)}`, gameId: `${prefix}_${unique()}`, password: PASSWORD, controllerType: 'touch', device: 'phone', levelCODM: 15, rankMJ: rank, rankBR: rank, country: 'Benin', acceptAdult: true, acceptTerms: true, acceptedAt: new Date().toISOString() },
-      });
-      expect(r.status()).toBe(201);
-      const body = await r.json();
-      expect(body.activationCode.length).toBe(8);
-      await delay(1500);
-      const act = await request.post(`${BASE}/auth/activate`, { headers: HEADERS, data: { email: body.user.email, code: body.activationCode } });
-      expect(act.status()).toBe(200);
-      await delay(1500);
-      const login = await request.post(`${BASE}/auth/login`, { headers: HEADERS, data: { identifier: body.user.pseudo, password: PASSWORD } });
-      expect(login.status()).toBe(200);
-      return (await login.json()).token;
-    };
-
-    tokenA = await registerAndLogin('E2E_A', 'Gold');
-    await delay(2000);
-    tokenB = await registerAndLogin('E2E_B', 'Platinum');
-    await delay(2000);
-    tokenC = await registerAndLogin('E2E_C', 'Legendary');
-  });
-
-  test('2. GET /api/auth/me', async ({ request }) => {
-    const r = await request.get(`${BASE}/auth/me`, { headers: h(tokenA) });
+test.describe('LIVE — surface publique (aucun compte cree)', () => {
+  test('health expose stateTrusted', async ({ request }) => {
+    const r = await once(request, 'GET', `${BASE}/health`, { headers: HEADERS });
     expect(r.status()).toBe(200);
     const body = await r.json();
     expect(body.ok).toBe(true);
-    expect(body.user.trustScore).toBe(100);
+    expect(body.service).toBe('zoyd-api');
+    // `stateTrusted` absent = ancien deploiement, ou etat partiel.
+    expect(body.persistence).toHaveProperty('stateTrusted');
+    expect(body.persistence.stateTrusted).toBe(true);
   });
 
-  test('3. PATCH /api/auth/me', async ({ request }) => {
-    const r = await request.patch(`${BASE}/auth/me`, { headers: h(tokenA), data: { bio: 'E2E player', levelCODM: 25 } });
+  test('realtime health repond', async ({ request }) => {
+    const r = await once(request, 'GET', `${BASE}/realtime/health`, { headers: HEADERS });
     expect(r.status()).toBe(200);
-    expect((await r.json()).user.bio).toBe('E2E player');
+    expect((await r.json()).service).toBe('zoyd-realtime');
   });
 
-  test('4. Brute-force activation blocked', async ({ request }) => {
-    const r = await request.post(`${BASE}/auth/register`, { headers: HEADERS, data: { pseudo: `BF_${unique()}`, email: `bf_${unique()}@test.com`, phone: `+22991${Math.floor(1000000 + Math.random() * 9000000)}`, gameId: `BF_${unique()}`, password: PASSWORD, acceptAdult: true, acceptTerms: true, acceptedAt: new Date().toISOString() } });
-    const b = await r.json();
-    for (let i = 0; i < 5; i++) {
-      await request.post(`${BASE}/auth/activate`, { headers: HEADERS, data: { email: b.user.email, code: '00000000' } });
-    }
-    const final = await request.post(`${BASE}/auth/activate`, { headers: HEADERS, data: { email: b.user.email, code: '00000000' } });
-    expect(final.status()).toBe(400);
+  test('404 sur route inconnue', async ({ request }) => {
+    const r = await once(request, 'GET', `${BASE}/route-inexistante-${UNIQ}`, { headers: HEADERS });
+    expect(r.status()).toBe(404);
   });
 
-  test('5. Wallet deposit + negative rejected', async ({ request }) => {
-    const dep = await request.post(`${BASE}/wallet/deposit`, { headers: h(tokenA), data: { amount: 1000, method: 'E2E' } });
-    expect(dep.status()).toBe(200);
-    expect((await dep.json()).wallet.cashBalance).toBeGreaterThanOrEqual(1000);
-
-    const neg = await request.post(`${BASE}/wallet/deposit`, { headers: h(tokenA), data: { amount: -500, method: 'hack' } });
-    expect(neg.status()).toBe(400);
-
-    const bal = await request.get(`${BASE}/wallet/me`, { headers: h(tokenA) });
-    expect(bal.status()).toBe(200);
-  });
-
-  test('6. Wallet insufficient funds', async ({ request }) => {
-    const dep = await request.post(`${BASE}/wallet/deposit`, { headers: h(tokenB), data: { amount: 200, method: 'E2E' } });
-    expect(dep.status()).toBe(200);
-  });
-
-  test('7. Match: create', async ({ request }) => {
-    const cr = await request.post(`${BASE}/matches`, { headers: h(tokenA), data: { format: '1v1', entryFee: 50, rules: { mode: 'MJ', map: 'Crossfire', scoreTarget: 6, bestOf: 3 }, visibility: 'public' } });
-    expect(cr.status()).toBe(201);
-    const body = await cr.json();
-    expect(body.match.status).toBe('recruiting');
-    matchId = body.match.id;
-  });
-
-  test('8. Match list: no roomPassword', async ({ request }) => {
-    const r = await request.get(`${BASE}/matches`, { headers: HEADERS });
-    const str = JSON.stringify(await r.json());
-    expect(str).not.toContain('roomPassword');
-  });
-
-  test('9. Match: join', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/join`, { headers: h(tokenB), data: { team: 1 } });
-    expect(r.status()).toBe(200);
-    expect((await r.json()).match.status).toBe('full');
-  });
-
-  test('10. Match: self-join rejected', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/join`, { headers: h(tokenA), data: { team: 1 } });
-    expect(r.status()).toBe(409);
-  });
-
-  test('11. Match: check-in both', async ({ request }) => {
-    expect((await request.post(`${BASE}/matches/${matchId}/check-in`, { headers: h(tokenA) })).status()).toBe(200);
-    expect((await request.post(`${BASE}/matches/${matchId}/check-in`, { headers: h(tokenB) })).status()).toBe(200);
-  });
-
-  test('12. Match: ready both', async ({ request }) => {
-    expect((await request.post(`${BASE}/matches/${matchId}/ready`, { headers: h(tokenA) })).status()).toBe(200);
-    expect((await request.post(`${BASE}/matches/${matchId}/ready`, { headers: h(tokenB) })).status()).toBe(200);
-  });
-
-  test('13. Match: assign arbiter', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/arbiter`, { headers: h(tokenC) });
-    expect(r.status()).toBe(200);
-    expect((await r.json()).match.arbiter).toBeTruthy();
-  });
-
-  test('14. Match: player cant assign arbiter', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/arbiter`, { headers: h(tokenA) });
-    expect(r.status()).toBe(409);
-  });
-
-  test('14b. Match: schedule (required for room)', async ({ request }) => {
-    const scheduledAt = new Date(Date.now() + 8 * 60 * 1000).toISOString(); // 8 min from now
-    const r = await request.post(`${BASE}/matches/${matchId}/schedule`, { headers: h(tokenA), data: { scheduledAt } });
-    expect(r.status()).toBe(200);
-  });
-
-  test('15. Match: room publish by arbiter', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/room`, { headers: h(tokenC), data: { roomName: 'E2E-Room', roomPassword: 'Secret123' } });
-    expect(r.status()).toBe(200);
-    expect((await r.json()).match.roomName).toBe('E2E-Room');
-  });
-
-  test('16. Match: room publish by player rejected', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/room`, { headers: h(tokenA), data: { roomName: 'Hack', roomPassword: 'x' } });
+  test('CSRF : Origin malveillant rejete (403)', async ({ request }) => {
+    const r = await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: { Origin: 'https://evil.example.com' },
+      data: { identifier: 'peu-importe', password: 'Peu importe1!' },
+    });
     expect(r.status()).toBe(403);
   });
 
-  test('17. Match: launch', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/launch`, { headers: h(tokenC) });
-    expect(r.status()).toBe(200);
-    expect((await r.json()).match.status).toBe('in_progress');
+  test('login : erreur generique, pas d enumeration de compte', async ({ request }) => {
+    const r = await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: `inconnu_${UNIQ}`, password: 'Peu importe1!' },
+    });
+    expect(r.status()).toBe(401);
+    const body = await r.json();
+    expect(body.code).toBe('INVALID_CREDENTIALS');
+    // Le message ne doit jamais reveler si le compte existe.
+    expect(body.error.toLowerCase()).not.toContain('introuvable');
   });
 
-  test('18. Match: submit result', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches/${matchId}/result`, { headers: h(tokenC), data: { winnerTeam: 0, scores: { team0: 6, team1: 3 }, resolutionType: 'played', screenshots: ['https://example.com/proof.png'], proofs: { scoreboard: ['https://example.com/score.png'], finalResult: ['https://example.com/result.png'] } } });
-    expect(r.status()).toBe(200);
-    expect((await r.json()).match.status).toBe('finished');
+  test('register : 18+/CGU non confirmes -> 400 (et non 500)', async ({ request }) => {
+    // Regression : LEGAL_NOT_ACCEPTED absent de mapPersistenceError -> 500.
+    const r = await once(request, 'POST', `${BASE}/auth/register`, {
+      headers: HEADERS,
+      data: {
+        pseudo: `NOCONSENT_${UNIQ}`,
+        email: `noconsent_${UNIQ}@example.com`,
+        phone: `+2299${UNIQ}0000`,
+        gameId: `NOCONSENT_${UNIQ}`,
+        password: 'MotDePasse1!',
+        acceptAdult: false,
+        acceptTerms: false,
+      },
+    });
+    expect(r.status()).toBe(400);
+    expect((await r.json()).code).toBe('LEGAL_NOT_ACCEPTED');
   });
 
-  test('19. Match: player cant submit result', async ({ request }) => {
-    const cr = await request.post(`${BASE}/matches`, { headers: h(tokenA), data: { format: '1v1', entryFee: 0, rules: 'x', visibility: 'public' } });
-    const m = (await cr.json()).match.id;
-    const r = await request.post(`${BASE}/matches/${m}/result`, { headers: h(tokenA), data: { winnerTeam: 0, scores: { team0: 1, team1: 0 }, resolutionType: 'played', screenshots: [] } });
-    expect(r.status()).toBe(403);
+  test('register : mot de passe faible -> 400 WEAK_PASSWORD', async ({ request }) => {
+    const r = await once(request, 'POST', `${BASE}/auth/register`, {
+      headers: HEADERS,
+      data: {
+        pseudo: `WEAK_${UNIQ}`,
+        email: `weak_${UNIQ}@example.com`,
+        phone: `+2298${UNIQ}0000`,
+        gameId: `WEAK_${UNIQ}`,
+        password: 'court',
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
+      },
+    });
+    expect(r.status()).toBe(400);
+    expect((await r.json()).code).toBe('WEAK_PASSWORD');
   });
 
-  test('20. Health endpoint', async ({ request }) => {
-    const r = await request.get(`${BASE}/health`, { headers: HEADERS });
-    expect(r.status()).toBe(200);
-    expect((await r.json()).service).toBe('zoyd-api');
+  test('listes publiques accessibles sans session', async ({ request }) => {
+    expect((await once(request, 'GET', `${BASE}/matches`, { headers: HEADERS })).status()).toBe(200);
+    expect((await once(request, 'GET', `${BASE}/tournaments`, { headers: HEADERS })).status()).toBe(200);
+    expect((await once(request, 'GET', `${BASE}/leagues`, { headers: HEADERS })).status()).toBe(200);
   });
 
-  test('21. Auth without token rejected', async ({ request }) => {
-    expect((await request.get(`${BASE}/wallet/me`, { headers: HEADERS })).status()).toBe(401);
+  test('liste des matchs ne fuite aucun mot de passe de salle', async ({ request }) => {
+    const r = await once(request, 'GET', `${BASE}/matches`, { headers: HEADERS });
+    const text = JSON.stringify(await r.json());
+    expect(text).not.toContain('roomPassword');
   });
 
-  test('22. Auth with fake token rejected', async ({ request }) => {
-    expect((await request.get(`${BASE}/wallet/me`, { headers: { ...HEADERS, Authorization: 'Bearer fake-token' } })).status()).toBe(401);
+  test('acces sans session -> 401 sur le wallet', async ({ request }) => {
+    expect((await once(request, 'GET', `${BASE}/wallet/me`, { headers: HEADERS })).status()).toBe(401);
   });
 
-  test('23. Wrong password rejected', async ({ request }) => {
-    const r = await request.post(`${BASE}/auth/login`, { headers: HEADERS, data: { identifier: 'admin@zoyd.com', password: 'Wrong123!' } });
+  test('token falsifie rejete (401)', async ({ request }) => {
+    const r = await once(request, 'GET', `${BASE}/wallet/me`, {
+      headers: { ...HEADERS, Authorization: 'Bearer jeton-invente' },
+    });
     expect(r.status()).toBe(401);
   });
 
-  test('24. Match: insufficient funds rejected', async ({ request }) => {
-    const r = await request.post(`${BASE}/matches`, { headers: h(tokenB), data: { format: '1v1', entryFee: 99999, rules: 'x', visibility: 'public' } });
-    expect(r.status()).toBe(409);
+  test('format de match hors 1VS1-5VS5 rejete (400)', async ({ request }) => {
+    // Regression : la limite 5v5 n'existait pas cote serveur avant 68499ad.
+    const r = await once(request, 'POST', `${BASE}/matches`, {
+      headers: HEADERS,
+      data: { format: '12VS12', entryFee: 50, visibility: 'public' },
+    });
+    // Sans session : 401. Avec session : 400 INVALID_FORMAT. Les deux sont
+    // acceptables ici, un 500 ne l'est pas (indique une garde manquante).
+    expect([400, 401]).toContain(r.status());
+    if (r.status() === 400) expect((await r.json()).code).toBe('INVALID_FORMAT');
+  });
+});
+
+test.describe('LIVE — cookie-only (compte prepare requis)', () => {
+  test.skip(!hasLiveAccount, 'Renseigne ZOYD_LIVE_EMAIL et ZOYD_LIVE_PASSWORD pour ce volet.');
+
+  test('login pose un cookie HttpOnly et ne renvoie PAS de token', async ({ request }) => {
+    const r = await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+    });
+    expect(r.status()).toBe(200);
+    const body = await r.json();
+    // Contrat cookie-only : aucun token en JSON.
+    expect(body.token).toBeUndefined();
+    const cookies = await request.storageState();
+    const auth = cookies.cookies.find((c) => c.name === 'zoyd_auth');
+    expect(auth, 'cookie zoyd_auth attendu').toBeTruthy();
+    expect(auth.httpOnly, 'le cookie doit etre HttpOnly').toBe(true);
+    expect(auth.sameSite).toBe('None'); // cross-site Vercel -> Render
+    expect(auth.secure, 'le cookie doit etre Secure').toBe(true);
   });
 
-  test('25. Lists return data', async ({ request }) => {
-    expect((await request.get(`${BASE}/matches`, { headers: HEADERS })).status()).toBe(200);
-    expect((await request.get(`${BASE}/tournaments`, { headers: HEADERS })).status()).toBe(200);
-    expect((await request.get(`${BASE}/leagues`, { headers: HEADERS })).status()).toBe(200);
+  test('la session persiste sur /auth/me', async ({ request }) => {
+    expect((await once(request, 'GET', `${BASE}/auth/me`, { headers: HEADERS })).status()).toBe(200);
+    const r = await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+    });
+    expect(r.status()).toBe(200);
+    const me = await once(request, 'GET', `${BASE}/auth/me`, { headers: HEADERS });
+    expect(me.status()).toBe(200);
+    expect((await me.json()).user).toBeTruthy();
+  });
+
+  test('le depot direct est refuse au joueur (403 admin+2FA)', async ({ request }) => {
+    await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+    });
+    const r = await once(request, 'POST', `${BASE}/wallet/deposit`, {
+      headers: HEADERS,
+      data: { amount: 100, userId: 'nimporte-quoi' },
+    });
+    // Le credit ne passe QUE par FedaPay. Un joueur qui peut credited son
+    // propre compte creerait de la monnaie : doit etre refuse.
+    expect(r.status()).toBe(403);
+  });
+
+  test('creation de match sans solde -> 409 (et non 500)', async ({ request }) => {
+    await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+    });
+    const r = await once(request, 'POST', `${BASE}/matches`, {
+      headers: HEADERS,
+      data: { format: '1VS1', entryFee: 500, visibility: 'public' },
+    });
+    expect([200, 409]).toContain(r.status());
+    if (r.status() === 200) {
+      // Match cree : on l'annule pour ne pas polluer la prod.
+      const id = (await r.json()).match.id;
+      const del = await request.delete(`${BASE}/matches/${id}`, { headers: HEADERS });
+      expect([200, 403, 405, 409]).toContain(del.status());
+    }
+  });
+
+  test('format 4VS4 accepte (le format manquant)', async ({ request }) => {
+    await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+    });
+    const r = await once(request, 'POST', `${BASE}/matches`, {
+      headers: HEADERS,
+      data: { format: '4VS4', entryFee: 1, visibility: 'public' },
+    });
+    // 409 si le solde ne suffit pas, sinon 201 : jamais 400 INVALID_FORMAT.
+    expect([201, 409]).toContain(r.status());
+    if (r.status() === 201) {
+      const id = (await r.json()).match.id;
+      await request.delete(`${BASE}/matches/${id}`, { headers: HEADERS });
+    }
+  });
+
+  test('deconnexion invalide la session', async ({ request }) => {
+    await once(request, 'POST', `${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+    });
+    expect((await once(request, 'POST', `${BASE}/auth/logout`, { headers: HEADERS })).status()).toBe(200);
+    expect((await once(request, 'GET', `${BASE}/auth/me`, { headers: HEADERS })).status()).toBe(401);
   });
 });

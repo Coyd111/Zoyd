@@ -288,6 +288,11 @@ export const mapPersistenceError = (error) => {
     case 'INVALID_OPERATOR':
     case 'INVALID_PHONE':
     case 'INVALID_COUNTRY':
+    // Sans ces deux cas, ils tombaient dans le `default` → 500 « Erreur
+    // serveur inattendue » pour une simple erreur de saisie côté client
+    // (consentement 18+/CGU non coche, format de tournoi hors 1VS1-5VS5).
+    case 'LEGAL_NOT_ACCEPTED':
+    case 'INVALID_FORMAT':
       return { status: 400, message, code };
     case 'FORBIDDEN':
     case 'TRANSACTION_NOT_OWNED':

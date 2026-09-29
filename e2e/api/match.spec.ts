@@ -26,9 +26,9 @@ import {
 //                                  + ready + salle publiée.
 //   .../result                     200, arbitre uniquement dès qu'un arbitre est
 //                                  assigné ; scoreboard + écran final obligatoires.
-//   .../confirm                    409 ALREADY_CONFIRMED : `submitMatchResultOnServer`
-//                                  passe déjà le match à `finished`, donc la
-//                                  confirmation joueur est inatteignable (cf. rapport).
+//   .../confirm                    joueur du match uniquement. Une seule
+//                                  confirmation ne verse rien ; la deuxieme
+//                                  declenche le reglement. Un tiers est 403.
 //   .../disputes                   200, participant/arbitre/admin uniquement,
 //                                  raison + ≥ 1 preuve obligatoires.
 const BASE = '/api';
@@ -322,7 +322,7 @@ test.describe('Match lifecycle', () => {
     expect(res.body.code).toBe('INVALID_RESULTS');
   });
 
-  test('POST /api/matches/:id/result — 200 : l’arbitre valide, le règlement est distribué', async () => {
+  test('POST /api/matches/:id/result — 200 : mise en attente de confirmation, RIEN n’est versé', async () => {
     const res = await call(arbiter, 'POST', `${BASE}/matches/${matchId}/result`, {
       winnerTeam: 0,
       scores: { team0: 10, team1: 3 },
@@ -335,19 +335,27 @@ test.describe('Match lifecycle', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
+    expect(res.body.awaitingConfirmation).toBe(true);
     const match = res.body.match;
-    expect(match.status).toBe('finished');
+    // La confirmation des deux équipes précède TOUT versement.
+    expect(match.status).toBe('awaiting_confirmation');
     expect(match.result.winnerTeam).toBe(0);
     expect(match.result.scores).toEqual({ team0: 10, team1: 3 });
     expect(match.result.resolutionType).toBe('played');
-    expect(match.result.payoutDistributed).toBe(true);
+    expect(match.result.payoutDistributed).toBe('pending');
+    expect(match.result.confirmedByTeams).toEqual([]);
+    expect(match.confirmationDeadline).toBeTruthy();
     expect(typeof match.result.proofHash).toBe('string');
     // Les preuves ne sont jamais rediffusées dans la charge utile publique.
     expect(match.result.proofs).toBeUndefined();
     expect(match.result.screenshots).toBeUndefined();
 
-    // La réponse décrit l'ARBITRE : sa commission = 2 % de la cagnotte verrouillée.
-    expect(res.body.wallet.cashBalance).toBe(ARBITER_FEE);
+    // Point de non-retour : l'arbitre n'est PAS payé tant que les joueurs
+    // n'ont pas confirmé. L'arbitre démarre à 0 (seuls le créateur et le
+    // joiner sont crédités), donc 0 = aucune commission versée.
+    const arbiterWallet = await call(arbiter, 'GET', `${BASE}/wallet/me`);
+    expect(arbiterWallet.status).toBe(200);
+    expect(arbiterWallet.body.wallet.cashBalance).toBe(0);
   });
 
   test('POST /api/matches/:id/result — 409 si un résultat existe déjà', async () => {
@@ -365,16 +373,37 @@ test.describe('Match lifecycle', () => {
     expect(res.body.code).toBe('RESULT_ALREADY_EXISTS');
   });
 
-  test('POST /api/matches/:id/confirm — 409 : le match est déjà soldé', async () => {
-    // Contrat observé : submitMatchResultOnServer bascule le match à
-    // `finished` avant toute confirmation, donc confirmMatchResultOnServer
-    // répond systématiquement ALREADY_CONFIRMED. On verrouille ce comportement
-    // plutôt que de le contourner.
-    for (const actor of [creator, joiner]) {
-      const res = await call(actor, 'POST', `${BASE}/matches/${matchId}/confirm`);
-      expect(res.status).toBe(409);
-      expect(res.body.code).toBe('ALREADY_CONFIRMED');
-    }
+  test('POST /api/matches/:id/confirm — un seul joueur ne suffit pas', async () => {
+    const res = await call(creator, 'POST', `${BASE}/matches/${matchId}/confirm`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.settled).toBe(false);
+    expect(res.body.waitingFor).toEqual([joiner.id]);
+    expect(res.body.match.status).toBe('awaiting_confirmation');
+    expect(res.body.match.result.payoutDistributed).toBe('pending');
+
+    // Toujours rien versé.
+    const winner = await call(creator, 'GET', `${BASE}/wallet/me`);
+    expect(winner.body.wallet.cashBalance).toBe(START_BALANCE - ENTRY_FEE);
+    expect(winner.body.wallet.lockedEntries).not.toEqual({});
+  });
+
+  test('POST /api/matches/:id/confirm — un tiers ne peut pas confirmer', async () => {
+    const res = await call(arbiter, 'POST', `${BASE}/matches/${matchId}/confirm`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('FORBIDDEN');
+  });
+
+  test('POST /api/matches/:id/confirm — la seconde confirmation déclenche le règlement', async () => {
+    const res = await call(joiner, 'POST', `${BASE}/matches/${matchId}/confirm`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.settled).toBe(true);
+    expect(res.body.waitingFor).toEqual([]);
+    expect(res.body.match.status).toBe('finished');
+    expect(res.body.match.result.payoutDistributed).toBe(true);
+    expect(res.body.match.confirmationDeadline).toBeNull();
   });
 
   test('Le règlement distribue la cagnotte verrouillée, pas la cagnotte nominale', async () => {
@@ -393,6 +422,21 @@ test.describe('Match lifecycle', () => {
     expect(loser.body.wallet.cashBalance).toBe(START_BALANCE - ENTRY_FEE);
     expect(loser.body.wallet.lockedBalance).toBe(0);
     expect(loser.body.user.stats.losses).toBe(1);
+
+    // La commission d'arbitre n'est versée qu'à ce moment-là.
+    const arbiterWallet = await call(arbiter, 'GET', `${BASE}/wallet/me`);
+    expect(arbiterWallet.body.wallet.cashBalance).toBe(ARBITER_FEE);
+  });
+
+  test('Une fois les gains versés, le litige est refusé', async () => {
+    const res = await call(joiner, 'POST', `${BASE}/matches/${matchId}/disputes`, {
+      category: 'result',
+      reason: ' Trop tard',
+      evidence: 'https://example.com/capture.png',
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('MATCH_CLOSED');
   });
 
   test('POST /api/matches — 409 si le solde ne permet pas de bloquer le passe', async () => {

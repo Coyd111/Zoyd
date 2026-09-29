@@ -3,11 +3,14 @@ import type { Dispatch, SetStateAction } from 'react';
 import { Link } from 'react-router';
 import {
   AlertTriangle,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Clock,
   ExternalLink,
   Flame,
   Gavel,
+  Hourglass,
   PlusCircle,
   ShieldAlert,
   Trophy,
@@ -31,6 +34,41 @@ const disputeCategoryLabels: Record<DisputeCategory, string> = {
   other: 'Autre',
 };
 
+const teamLabels: Record<MatchPlayer['team'], string> = { 0: 'Squad Alpha', 1: 'Squad Bravo' };
+
+const ConfirmationList = ({
+  title,
+  players,
+  confirmed,
+}: {
+  title: string;
+  players: MatchPlayer[];
+  confirmed: boolean;
+}) => (
+  <div className="border border-white/5 bg-black/30 px-4 py-3">
+    <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">
+      {title} ({players.length})
+    </div>
+    {players.length > 0 ? (
+      <ul className="space-y-1.5">
+        {players.map((player) => (
+          <li key={player.userId} className="flex items-center gap-2 text-xs text-white/75">
+            {confirmed ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
+            ) : (
+              <Clock className="w-3.5 h-3.5 text-zoyd-yellow shrink-0" />
+            )}
+            <span className="truncate">{player.pseudo}</span>
+            <span className="text-white/40 font-mono uppercase tracking-wider">{teamLabels[player.team]}</span>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-xs text-white/50">Aucun joueur.</p>
+    )}
+  </div>
+);
+
 interface MatchActionsProps {
   match: Match;
   user: User | null;
@@ -53,6 +91,18 @@ interface MatchActionsProps {
    */
   canOpenDispute: boolean;
   closedRecourseMessage?: string;
+  /**
+   * Fenêtre de confirmation des deux équipes : `null` quand le match
+   * n'attend aucune confirmation (tout autre statut).
+   */
+  confirmation: {
+    countdown: string | null;
+    confirmedPlayers: MatchPlayer[];
+    waitingPlayers: MatchPlayer[];
+  } | null;
+  /** Joueur du match qui n'a pas encore confirmé le résultat. */
+  canConfirmResult: boolean;
+  isConfirmingResult: boolean;
   isEscalating: boolean;
   isSubmittingResult: boolean;
   isProcessingAction: boolean;
@@ -104,6 +154,7 @@ interface MatchActionsProps {
     schedule: () => void;
     roomSave: () => void;
     resultSubmit: () => void;
+    confirmResult: () => void;
     dispute: () => void;
     checkIn: () => void;
     toggleReady: () => void;
@@ -130,6 +181,9 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
   openDisputeRecord,
   canOpenDispute,
   closedRecourseMessage,
+  confirmation,
+  canConfirmResult,
+  isConfirmingResult,
   isEscalating,
   isSubmittingResult,
   isScheduling,
@@ -348,6 +402,52 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
         </div>
       )}
     </div>
+
+    {confirmation ? (
+      <div className="border-t border-white/5 p-6 space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Hourglass className="w-4 h-4 text-zoyd-yellow shrink-0" />
+            <h2 className="text-lg font-display font-black uppercase italic">Confirmation des equipes</h2>
+          </div>
+          {confirmation.countdown ? (
+            <div className="text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow border border-zoyd-yellow/30 bg-zoyd-yellow/5 px-3 py-1 shrink-0">
+              {confirmation.countdown}
+            </div>
+          ) : null}
+        </div>
+
+        <p className="text-sm text-white/70">
+          Aucun ZC n'est verse tant que chaque joueur n'a pas confirme ce score. Passe le delai, le match est regle
+          automatiquement. D'ici la, tu peux encore ouvrir un litige.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          <ConfirmationList title="Ont confirme" players={confirmation.confirmedPlayers} confirmed />
+          <ConfirmationList title="Restent a confirmer" players={confirmation.waitingPlayers} confirmed={false} />
+        </div>
+
+        {canConfirmResult ? (
+          <button
+            onClick={handlers.confirmResult}
+            disabled={isConfirmingResult}
+            className={`w-full py-4 font-display font-black uppercase tracking-widest text-xs italic ${
+              isConfirmingResult
+                ? 'bg-white/50 text-black/50 cursor-not-allowed'
+                : 'bg-zoyd-yellow text-black hover:bg-white'
+            }`}
+          >
+            {isConfirmingResult ? 'Confirmation en cours...' : 'Confirmer le resultat'}
+          </button>
+        ) : (
+          <p className="text-xs text-white/60">
+            {confirmation.waitingPlayers.some((player) => player.userId === user?.id)
+              ? 'Tu as deja confirme ce resultat. On attend les autres joueurs.'
+              : 'Tu n\'es pas joueur sur ce match : tu ne peux pas confirmer le resultat.'}
+          </p>
+        )}
+      </div>
+    ) : null}
 
     <div className="overflow-hidden">
       {openDisputeRecord ? (

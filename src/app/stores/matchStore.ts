@@ -9,6 +9,8 @@ export type MatchStatus =
   | 'check_in'
   | 'ready'
   | 'in_progress'
+  /** Résultat soumis, cagnotte gelée : les deux équipes doivent confirmer. */
+  | 'awaiting_confirmation'
   | 'finished'
   | 'disputed'
   | 'cancelled'
@@ -64,7 +66,13 @@ export interface MatchResult {
   submittedBy: string;
   submittedAt: string;
   confirmedByTeams: string[];
-  payoutDistributed: boolean;
+  /**
+   * `'pending'` = résultat écrit mais cagnotte NON versée (fenêtre de
+   * confirmation ouverte, ou règlement en attente). `true`/`false` = la
+   * distribution a été tentée. Seul `true` autorise à compter le match
+   * comme gagné/perdu.
+   */
+  payoutDistributed: 'pending' | boolean;
 }
 
 export type DisputeCategory = 'result' | 'room_issue' | 'no_show' | 'conduct' | 'other';
@@ -122,6 +130,8 @@ export interface Match {
   scheduledAt?: string;
   startedAt?: string;
   finishedAt?: string;
+  /** ISO : fin de la fenêtre de confirmation, présente sur 'awaiting_confirmation'. */
+  confirmationDeadline?: string;
   roomName?: string;
   roomPassword?: string;
   chatChannelId: string;
@@ -138,6 +148,18 @@ export interface MatchFilters {
   status?: MatchStatus | 'all';
   minTrustScore?: number;
 }
+
+/**
+ * La cagnotte n'est réellement partie que lorsque `payoutDistributed === true`.
+ * Un résultat `'pending'` (fenêtre de confirmation) ou `false` (règlement échoué)
+ * ne doit jamais être compté comme victoire/défaite : l'argent n'est pas
+ * arrivé. Même règle que `applyResultSettlement` côté serveur.
+ *
+ * Type guard : dans un `if (isMatchPayoutSettled(match))`, `match.result` est
+ * garanti présent (sinon TS18048 sur chaque accès).
+ */
+export const isMatchPayoutSettled = (match: Match): match is Match & { result: MatchResult } =>
+  match.result?.payoutDistributed === true;
 
 export interface CreateMatchInput {
   creatorId: string;
@@ -168,7 +190,9 @@ export interface MatchState {
   canJoinAsArbiter: (matchId: string) => boolean;
 }
 
-const ACTIVE_STATUSES: MatchStatus[] = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];
+// Un match en attente de confirmation reste actif côté serveur (cagnotte
+// gelée) : il doit donc rester dans les matchs actifs du joueur.
+const ACTIVE_STATUSES: MatchStatus[] = ['recruiting', 'full', 'check_in', 'ready', 'in_progress', 'awaiting_confirmation'];
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 const flattenProofs = (proofs?: MatchProofBundle) =>
   proofs
@@ -215,7 +239,7 @@ interface StoredResult {
   submittedBy?: string;
   submittedAt?: string;
   confirmedByTeams?: string[];
-  payoutDistributed?: boolean;
+  payoutDistributed?: 'pending' | boolean;
 }
 
 /**
@@ -247,6 +271,8 @@ interface StoredMatch {
   scheduledAt?: string;
   startedAt?: string;
   finishedAt?: string;
+  /** ISO : fin de la fenêtre de confirmation, présente sur 'awaiting_confirmation'. */
+  confirmationDeadline?: string;
   roomName?: string;
   roomPassword?: string;
   chatChannelId?: string;
@@ -284,6 +310,12 @@ const normalizeStoredProofs = (proofs: StoredProofs): MatchProofBundle => ({
 const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResult => {
   const proofs = result?.proofs ? normalizeStoredProofs(result.proofs) : undefined;
   const screenshots = Array.isArray(result?.screenshots) ? result.screenshots : flattenProofs(proofs);
+  // 'pending' doit survivre à la normalisation : l'écraser en `false`
+  // ferait passer un résultat non versé pour un match réglé (stats fausses).
+  const payoutDistributed =
+    result?.payoutDistributed === 'pending'
+      ? 'pending'
+      : result?.payoutDistributed === true;
 
   return {
     winnerTeam: result?.winnerTeam ?? 0,
@@ -304,7 +336,7 @@ const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResu
     submittedBy: result?.submittedBy || '',
     submittedAt: result?.submittedAt || '',
     confirmedByTeams: result?.confirmedByTeams || [],
-        payoutDistributed: result?.payoutDistributed === true,
+    payoutDistributed,
   };
 };
 const normalizeStoredMatch = (match: StoredMatch): Match => ({
@@ -331,6 +363,7 @@ const normalizeStoredMatch = (match: StoredMatch): Match => ({
   scheduledAt: match.scheduledAt,
   startedAt: match.startedAt,
   finishedAt: match.finishedAt,
+  confirmationDeadline: match.confirmationDeadline,
   roomName: match.roomName,
   roomPassword: match.roomPassword,
   chatChannelId: match.chatChannelId || '',

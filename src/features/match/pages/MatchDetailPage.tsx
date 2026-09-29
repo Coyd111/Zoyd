@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import {
   fetchServerChatChannel,
   markServerChatChannelRead,
@@ -46,6 +46,7 @@ const statusLabels: Record<string, string> = {
   check_in: 'Confirmation de présence',
   ready: 'Prêt à jouer',
   in_progress: 'Partie en cours',
+  awaiting_confirmation: 'En attente de confirmation',
   finished: 'Partie terminée',
   disputed: 'Litige ouvert',
   cancelled: 'Annulé',
@@ -106,6 +107,7 @@ const MatchDetailPage: React.FC = () => {
   const [isScheduling, setIsScheduling] = useState(false);
   const [isSavingRoom, setIsSavingRoom] = useState(false);
   const [isDisputing, setIsDisputing] = useState(false);
+  const [isConfirmingResult, setIsConfirmingResult] = useState(false);
   const [showResultConfirm, setShowResultConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
@@ -195,11 +197,13 @@ const MatchDetailPage: React.FC = () => {
   const canCheckIn = !!match && !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);
   const canToggleReady = !!match && !!currentPlayer && currentPlayer.isCheckedIn && ['check_in', 'ready'].includes(match.status);
   const canLaunch = !!match && isArbiter && !!match.roomName && !!match.roomPassword && match.players.every((player) => player.isCheckedIn && player.isReady);
-  // Le serveur refuse tout litige sur un match clos (MATCH_CLOSED) : meme
-  // terminaux que TERMINAL_STATUSES cote engine, plus 'archived' et la
-  // simple presence d'un resultat deja regle.
+  // Le serveur refuse tout litige sur un match clos (`openDisputeOnServer`
+  // leve MATCH_CLOSED). Depuis la confirmation obligatoire, un résultat
+  // n'est plus un match clos : tant que la cagnotte n'est pas partie
+  // (`payoutDistributed !== true`) le perdant a le droit de contester.
   const matchIsClosed = !!match && (
-    ['finished', 'cancelled', 'forfeited', 'archived'].includes(match.status) || !!match.result
+    ['finished', 'cancelled', 'forfeited', 'archived'].includes(match.status)
+    || match.result?.payoutDistributed === true
   );
   const canOpenDispute = !!match && !matchIsClosed && (!!currentPlayer || isArbiter);
   // On ne pretend pas qu'un litige est possible : on dit ce qui est possible.
@@ -209,6 +213,22 @@ const MatchDetailPage: React.FC = () => {
       : 'Ce match est cloture et ses mises ont ete remboursees. Pour tout reclamant, contacte le support.')
     : undefined;
   const countdown = match?.scheduledAt ? getCountdownDisplay(match.scheduledAt) : null;
+  // Fenêtre de confirmation des deux équipes : compte à rebours jusqu'à
+  // l'échéance du serveur, au-delà laquelle le cron règle le match.
+  const confirmationCountdown = match?.confirmationDeadline
+    ? getCountdownDisplay(match.confirmationDeadline)
+    : null;
+  const confirmedUserIds = match?.result?.confirmedByTeams ?? [];
+  const confirmation = match?.status === 'awaiting_confirmation'
+    ? {
+        countdown: confirmationCountdown,
+        confirmedPlayers: (match.players ?? []).filter((player) => confirmedUserIds.includes(player.userId)),
+        waitingPlayers: (match.players ?? []).filter((player) => !confirmedUserIds.includes(player.userId)),
+      }
+    : null;
+  // Seul un JOUEUR du match peut confirmer, et une seule fois.
+  const canConfirmResult =
+    !!confirmation && !!currentPlayer && !confirmedUserIds.includes(currentPlayer.userId);
   const scheduledAtMs = match?.scheduledAt ? new Date(match.scheduledAt).getTime() : null;
   const minutesUntilMatch = scheduledAtMs ? Math.round((scheduledAtMs - Date.now()) / 60000) : null;
   const roomPublishWindow = !match?.scheduledAt
@@ -386,7 +406,7 @@ const MatchDetailPage: React.FC = () => {
       setFinalResultProofs('');
       setRoomCaptureProofs('');
       setExtraResultProofs('');
-      toast.success('Résultat validé. Les gains sont en cours de distribution.');
+      toast.success('Score soumis. Les deux equipes doivent confirmer avant le versement.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ajouté au moins une capture de scoreboard et un écran final avant de valider le score.");
     } finally {
@@ -474,18 +494,28 @@ const MatchDetailPage: React.FC = () => {
 
   const handleConfirmResult = useCallback(async () => {
     if (!match) return;
-    if (isProcessingAction) return;
-    setIsProcessingAction(true);
+    if (isConfirmingResult) return;
+    setIsConfirmingResult(true);
     try {
       const response = await confirmServerMatchResult(match.id);
+      // `applyMatchResponse` réhydrate le store avec le match renvoyé : le
+      // nouveau `confirmedByTeams` (et le statut `finished` si `settled`)
+      // sont immédiatement reflétés.
       applyMatchResponse(response);
-      toast.success('Résultat confirmé de ton côté.');
+      if (response.settled) {
+        toast.success('Les deux equipes ont confirme : la cagnotte est versee.');
+        return;
+      }
+      const waitingNames = response.waitingFor.map(
+        (userId) => match.players.find((player) => player.userId === userId)?.pseudo || 'un joueur'
+      );
+      toast.success(`Resultat confirme de ton cote. En attente de ${waitingNames.join(', ')}.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Confirmation impossible.');
     } finally {
-      setIsProcessingAction(false);
+      setIsConfirmingResult(false);
     }
-  }, [isProcessingAction, match?.id, applyMatchResponse]);
+  }, [isConfirmingResult, match?.id, match?.players, applyMatchResponse]);
 
   const handleAddEvidence = async () => {
     if (!match) return;
@@ -589,7 +619,7 @@ const MatchDetailPage: React.FC = () => {
           <div className="space-y-8 min-w-0">
             <MatchPlayers match={match} teamAlpha={teamAlpha} teamBravo={teamBravo} countdown={countdown} />
             <MatchRules match={match} canSeeRoom={canSeeRoom} />
-            <MatchResults match={match} forfeitLabel={forfeitLabel} currentPlayer={currentPlayer} onConfirmResult={handleConfirmResult} />
+            <MatchResults match={match} forfeitLabel={forfeitLabel} />
           </div>
           <div className="space-y-8 min-w-0">
             <MatchActions
@@ -609,6 +639,9 @@ const MatchDetailPage: React.FC = () => {
               openDisputeRecord={openDisputeRecord}
               canOpenDispute={canOpenDispute}
               closedRecourseMessage={closedRecourseMessage}
+              confirmation={confirmation}
+              canConfirmResult={canConfirmResult}
+              isConfirmingResult={isConfirmingResult}
               isEscalating={isEscalating}
               isSubmittingResult={isSubmittingResult}
               isProcessingAction={isProcessingAction}
@@ -660,6 +693,7 @@ const MatchDetailPage: React.FC = () => {
                 schedule: handleSchedule,
                 roomSave: handleRoomSave,
                 resultSubmit: openResultConfirm,
+                confirmResult: () => setConfirmAction('confirmResult'),
                 dispute: () => setConfirmAction('dispute'),
                 checkIn: handleCheckIn,
                 toggleReady: handleToggleReady,
@@ -703,7 +737,7 @@ const MatchDetailPage: React.FC = () => {
           >
             <div className="space-y-5">
               <p className="text-sm text-white/70">
-                Cette action distribue les gains et clôt le match{openDisputeRecord ? ' ainsi que le litige ouvert' : ''}. Elle est irréversible.
+                Cette action soumet le score et ouvre la fenêtre de confirmation des deux equipes. La cagnotte n'est versee qu'apres leur accord, ou a l'expiration du delai.
               </p>
               <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
                 <div className="flex items-center justify-between px-4 py-3">
@@ -742,16 +776,56 @@ const MatchDetailPage: React.FC = () => {
                 <button
                   onClick={() => void handleResultSubmit()}
                   disabled={isSubmittingResult}
-                  aria-label="Confirmer le score et distribuer les gains"
+                  aria-label="Soumettre le score à la confirmation des deux équipes"
                   className="bg-zoyd-yellow text-black px-4 py-4 text-xs font-display font-black uppercase tracking-widest italic hover:bg-white transition-colors disabled:opacity-50 touch-target"
                 >
-                  {isSubmittingResult ? 'Distribution...' : 'Confirmer et distribuer'}
+                  {isSubmittingResult ? 'Envoi...' : 'Soumettre le résultat'}
                 </button>
               </div>
             </div>
           </Modal>
         );
       })()}
+
+      {confirmAction === 'confirmResult' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmer le résultat du match">
+          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-zoyd-yellow/20 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-6 h-6 text-zoyd-yellow" />
+              </div>
+              <div>
+                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
+                  Confirmer ce résultat ?
+                </h3>
+                <p className="text-white/60 text-sm">
+                  Ta confirmation est définitive : des que l&apos;autre équipe a aussi confirmé, la cagnotte est versée. Si le score est faux, ouvre un litige à la place.
+                </p>
+              </div>
+            </div>
+            {confirmation?.countdown ? (
+              <div className="mb-4 border border-white/10 bg-black/40 px-4 py-3 text-sm text-white/70">
+                Confirmation attendue dans <span className="font-display font-black text-zoyd-yellow">{confirmation.countdown}</span>.
+              </div>
+            ) : null}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                disabled={isConfirmingResult}
+                onClick={() => { setConfirmAction(null); void handleConfirmResult(); }}
+                className="flex-1 bg-zoyd-yellow text-black px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase hover:bg-white transition-colors disabled:opacity-40"
+              >
+                {isConfirmingResult ? 'En cours...' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmAction === 'dispute' && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmer l'ouverture d'un litige">

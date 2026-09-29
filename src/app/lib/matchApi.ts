@@ -10,6 +10,18 @@ interface MatchResponse {
   user?: Partial<User>;
   /** Snapshot normalisé complet renvoyé par les actions authentifiées. */
   wallet?: WalletSnapshot;
+  /** `true` quand le résultat attend la confirmation des deux équipes (aucun versement). */
+  awaitingConfirmation?: boolean;
+  /** ISO : fin de la fenêtre de confirmation (~30 min). */
+  confirmationDeadline?: string;
+}
+
+/** Réponse de `POST /api/matches/:id/confirm`. */
+export interface ConfirmMatchResultResponse extends MatchResponse {
+  /** `true` = toutes les équipes ont confirmé, le pot est parti, le match est `finished`. */
+  settled: boolean;
+  /** Joueurs du match qui n'ont pas encore confirmé. */
+  waitingFor: string[];
 }
 
 interface MatchListResponse {
@@ -108,7 +120,7 @@ export const submitServerMatchResult = async (matchId: string, payload: MatchRes
 };
 
 export const confirmServerMatchResult = async (matchId: string) => {
-  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/confirm`);
+  return authorizedPost<ConfirmMatchResultResponse>(`/api/matches/${matchId}/confirm`);
 };
 
 export const openServerMatchDispute = async (matchId: string, payload: DisputePayload) => {
@@ -119,8 +131,22 @@ export const adminAwardServerMatch = async (matchId: string, winnerTeam: 0 | 1, 
   return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/award`, { winnerTeam, arbiterNotes });
 };
 
-export const adminResolveServerDispute = async (matchId: string, resolution: string) => {
-  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/resolve-dispute`, { resolution });
+/**
+ * Clôturer un litige (admin).
+ *
+ * `action` décide du sort de l'argent — sans lui, le serveur applique `settle`
+ * par défaut, ce qui PAIE le résultat. Pour rembourser les passes il faut
+ * explicitement demander `refund`.
+ *   - `settle` : applique le résultat en attente (gagnant payé)
+ *   - `refund` : rembourse toutes les passes, match annulé
+ *   - `'none'`  : aucun argent en jeu (litige sur un match sans résultat)
+ */
+export const adminResolveServerDispute = async (
+  matchId: string,
+  resolution: string,
+  action: 'settle' | 'refund' | 'none' = 'settle'
+) => {
+  return authorizedPost<MatchResponse>(`/api/admin/matches/${matchId}/resolve-dispute`, { resolution, action });
 };
 
 export const adminCancelServerMatch = async (matchId: string, reason: string) => {

@@ -21,6 +21,7 @@ import { Badge } from '../ui/Badge';
 import { ProgressBar } from '../ui/ProgressBar';
 import EmptyPanel from '../EmptyPanel';
 import type { CompetitiveSummary } from '../../../lib/profileMetrics';
+import { isMatchPayoutSettled } from '../../stores/matchStore';
 import { formatZC } from '../../../lib/utils';
 
 const levelConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -300,7 +301,10 @@ export default function ProfileView({
               <div className="space-y-3">
                 {summary.recentMatches.map((match) => {
                   const player = match.players.find((entry) => entry.userId === userId);
-                  const isWin = !!match.result && !!player && player.team === match.result.winnerTeam;
+                  // Versement pas encore effectué : afficher « +X ZC » sur un
+                  // match qui n'a pas encore payé serait un gain fictif.
+                  const payoutSettled = isMatchPayoutSettled(match);
+                  const isWin = payoutSettled && !!player && player.team === match.result?.winnerTeam;
                   return (
                     <div
                       key={match.id}
@@ -319,10 +323,14 @@ export default function ProfileView({
                       </div>
                       <div className="text-right">
                         <div className={`font-display font-black italic text-sm ${isWin ? 'text-zoyd-yellow' : 'text-white/75'}`}>
-                          {isWin ? `+${formatZC(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee))}` : formatZC(match.entryFee)}
+                          {isWin ? `+${formatZC(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee))}` : payoutSettled ? formatZC(match.entryFee) : '—'}
                         </div>
                         <div className="text-[10px] font-mono text-white/70 uppercase">
-                          {match.status === 'disputed' ? 'LITIGE' : match.status}
+                          {match.status === 'disputed'
+                            ? 'LITIGE'
+                            : match.status === 'awaiting_confirmation'
+                              ? 'EN ATTENTE'
+                              : match.status}
                         </div>
                       </div>
                     </div>

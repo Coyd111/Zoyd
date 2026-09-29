@@ -24,7 +24,7 @@ interface MatchCardProps {
     team2: { slots: number; filled: number };
   };
   arbitre: boolean;
-  status: 'open' | 'full' | 'check_in' | 'ready' | 'in_progress' | 'finished' | 'forfeited' | 'cancelled';
+  status: 'open' | 'full' | 'check_in' | 'ready' | 'in_progress' | 'awaiting_confirmation' | 'finished' | 'forfeited' | 'cancelled';
   trustScoreMin?: number;
 }
 
@@ -34,6 +34,7 @@ const statusCopy: Record<MatchCardProps['status'], { label: string; accent: stri
   check_in: { label: 'Présence à confirmer', accent: 'text-zoyd-blue' },
   ready: { label: 'Prêt à jouer', accent: 'text-green-400' },
   in_progress: { label: 'Partie en cours', accent: 'text-zoyd-blue' },
+  awaiting_confirmation: { label: 'Confirmation en attente', accent: 'text-zoyd-yellow' },
   finished: { label: 'Partie terminée', accent: 'text-white/70' },
   forfeited: { label: 'Victoire par forfait', accent: 'text-zoyd-yellow' },
   cancelled: { label: 'Match annulé', accent: 'text-red-300' },

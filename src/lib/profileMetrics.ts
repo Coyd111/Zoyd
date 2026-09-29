@@ -1,5 +1,5 @@
 import type { User, UserStats } from '../app/stores/authStore';
-import type { Match, MatchPlayer } from '../app/stores/matchStore';
+import { isMatchPayoutSettled, type Match, type MatchPlayer } from '../app/stores/matchStore';
 import type { Tournament } from '../app/stores/tournamentStore';
 
 export interface TournamentPlacement {
@@ -95,7 +95,11 @@ export const buildCompetitiveSummary = ({
   dateJoined?: string;
 }): CompetitiveSummary => {
   const playerMatches = getPlayerMatches(userId, matches);
-  const settledMatches = playerMatches.filter((match) => !!match.result);
+  // Un résultat existe dès la soumission de l'arbitre, mais l'argent ne part
+  // qu'à la confirmation des deux équipes : ne compter que les matchs dont la
+  // cagnotte est effectivement distributed, sinon un match en attente s'ajoute
+  // en victoire/défaite et en gains avant tout versement.
+  const settledMatches = playerMatches.filter(isMatchPayoutSettled);
   const disputedMatches = playerMatches.filter(
     (match) => match.status === 'disputed' || match.disputes.length > 0
   );

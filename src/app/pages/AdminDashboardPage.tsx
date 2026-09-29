@@ -114,9 +114,17 @@ const AdminDashboardPage: React.FC = () => {
     if (loadingAction) return;
     setLoadingAction(true);
     try {
-      const response = await adminResolveServerDispute(matchId, 'Litige clos par modération ZOYD.');
+      // "Clore sans vainqueur" = aucun gagnant désigné. L'argent ne peut pas
+      // rester gelé indéfiniment : on REMBOURSE les passes et on annule le
+      // match. Sans `action`, le serveur applique `settle` par défaut et
+      // PAIE le résultat en attente — l'inverse de ce qu'annonce le bouton.
+      const response = await adminResolveServerDispute(
+        matchId,
+        'Litige clos sans vainqueur : passes remboursées.',
+        'refund'
+      );
       applyAdminMatchResponse(response);
-      toast.success('Litige clos sans modifier le vainqueur.');
+      toast.success('Litige clos, passes remboursées aux joueurs.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.');
     } finally {

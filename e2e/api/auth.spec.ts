@@ -121,9 +121,10 @@ test.describe('Auth API', () => {
       password: PLAYER_PASSWORD,
     });
 
-    // Le compte n'est PAS créé. Le code HTTP observé est 500 et non 400 :
-    // `LEGAL_NOT_ACCEPTED` manque dans mapPersistenceError() (http-utils.mjs).
-    expect(res.status).toBe(500);
+    // Le compte n'est PAS créé. C'est une erreur de SAISIE, pas une panne
+    // serveur : 400. (Ce test documentait un 500 parce que LEGAL_NOT_ACCEPTED
+    // manquait dans mapPersistenceError — corrigé, le test a suivi.)
+    expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
     expect(res.body.code).toBe('LEGAL_NOT_ACCEPTED');
   });

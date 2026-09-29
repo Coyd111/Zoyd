@@ -1,6 +1,6 @@
 import type { User } from '../app/stores/authStore';
 import type { Friend, Report } from '../app/stores/friendsStore';
-import type { Match } from '../app/stores/matchStore';
+import { isMatchPayoutSettled, type Match } from '../app/stores/matchStore';
 import type { Tournament, TournamentEntry } from '../app/stores/tournamentStore';
 import type { Transaction } from '../app/stores/walletStore';
 
@@ -385,7 +385,10 @@ export const buildCommunityPlayers = ({
         record.disputedMatches.add(match.id);
       }
 
-      if (match.result) {
+      // Même règle que profileMetrics : un résultat 'pending' (confirmation
+      // en cours) n'est ni une victoire ni une défaite tant que la cagnotte
+      // n'est pas partie.
+      if (isMatchPayoutSettled(match)) {
         if (match.result.resolutionType === 'forfeit' && match.result.forfeitTeam === player.team) {
           record.forfeitedMatches.add(match.id);
         }
@@ -596,7 +599,9 @@ export const buildAdminInsights = ({
         new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime()
     );
 
-  const operationalMatches = matches.filter((match) => !['finished', 'cancelled', 'forfeited'].includes(match.status));
+  // 'awaiting_confirmation' n'est plus un match ouvert : la partie est finie,
+  // seule la confirmation des équipes bloque encore le versement.
+  const operationalMatches = matches.filter((match) => !['finished', 'cancelled', 'forfeited', 'awaiting_confirmation'].includes(match.status));
 
   const recentEvents: ModerationEvent[] = [
     ...reports.map((report): ModerationEvent => ({

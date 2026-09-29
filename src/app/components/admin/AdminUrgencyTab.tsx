@@ -243,7 +243,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                       : 'border border-zoyd-blue/30 text-zoyd-blue hover:bg-zoyd-blue hover:text-black'
                   }`}
                 >
-                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'none' ? 'Confirmer clore' : 'Clore sans vainqueur'}
+                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'none' ? 'Confirmer remboursement' : 'Rembourser et clore'}
                 </button>
                 <Link
                   to={`/mj/match/${match.id}`}

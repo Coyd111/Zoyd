@@ -195,6 +195,19 @@ const MatchDetailPage: React.FC = () => {
   const canCheckIn = !!match && !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);
   const canToggleReady = !!match && !!currentPlayer && currentPlayer.isCheckedIn && ['check_in', 'ready'].includes(match.status);
   const canLaunch = !!match && isArbiter && !!match.roomName && !!match.roomPassword && match.players.every((player) => player.isCheckedIn && player.isReady);
+  // Le serveur refuse tout litige sur un match clos (MATCH_CLOSED) : meme
+  // terminaux que TERMINAL_STATUSES cote engine, plus 'archived' et la
+  // simple presence d'un resultat deja regle.
+  const matchIsClosed = !!match && (
+    ['finished', 'cancelled', 'forfeited', 'archived'].includes(match.status) || !!match.result
+  );
+  const canOpenDispute = !!match && !matchIsClosed && (!!currentPlayer || isArbiter);
+  // On ne pretend pas qu'un litige est possible : on dit ce qui est possible.
+  const closedRecourseMessage = matchIsClosed
+    ? (match?.result
+      ? 'Le score de ce match est valide et les gains sont regles. Pour contester un arbitrage, contacte le support avec tes preuves : un admin peut reexaminer le resultat.'
+      : 'Ce match est cloture et ses mises ont ete remboursees. Pour tout reclamant, contacte le support.')
+    : undefined;
   const countdown = match?.scheduledAt ? getCountdownDisplay(match.scheduledAt) : null;
   const scheduledAtMs = match?.scheduledAt ? new Date(match.scheduledAt).getTime() : null;
   const minutesUntilMatch = scheduledAtMs ? Math.round((scheduledAtMs - Date.now()) / 60000) : null;
@@ -594,6 +607,8 @@ const MatchDetailPage: React.FC = () => {
               fundingPath={fundingPath}
               roomPublishWindow={roomPublishWindow}
               openDisputeRecord={openDisputeRecord}
+              canOpenDispute={canOpenDispute}
+              closedRecourseMessage={closedRecourseMessage}
               isEscalating={isEscalating}
               isSubmittingResult={isSubmittingResult}
               isProcessingAction={isProcessingAction}

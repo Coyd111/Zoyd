@@ -46,6 +46,13 @@ interface MatchActionsProps {
   fundingPath: string;
   roomPublishWindow: { canPublish: boolean; message: string };
   openDisputeRecord: Dispute | undefined;
+  /**
+   * Le serveur refuse tout litige sur un match clos (meme statut que le
+   * reglement : `openDisputeOnServer` leve MATCH_CLOSED). Le formulaire doit
+   * donc disparaitre la, sinon le joueur remplit son dossier pour un refus.
+   */
+  canOpenDispute: boolean;
+  closedRecourseMessage?: string;
   isEscalating: boolean;
   isSubmittingResult: boolean;
   isProcessingAction: boolean;
@@ -121,6 +128,8 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
   fundingPath,
   roomPublishWindow,
   openDisputeRecord,
+  canOpenDispute,
+  closedRecourseMessage,
   isEscalating,
   isSubmittingResult,
   isScheduling,
@@ -406,7 +415,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                     );
                   })}
                 </div>
-              ) : (
+      ) : (
                 <p className="text-xs text-white/60 italic">Aucune pièce jointe.</p>
               )}
             </div>
@@ -530,7 +539,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           </div>
         </div>
 
-      ) : (
+      ) : canOpenDispute ? (
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
             <AlertTriangle className="w-4 h-4 text-zoyd-yellow" />
@@ -568,6 +577,17 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               Ouvrir un litige
             </button>
           </div>
+        </div>
+      ) : (
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <AlertTriangle className="w-4 h-4 text-white/40" />
+            <h2 className="text-lg font-display font-black uppercase italic text-white/50">Match clos</h2>
+          </div>
+          <p className="text-sm text-white/50">
+            {closedRecourseMessage
+              || 'Ce match est cloture : ses gains sont deja regles, le litige n est plus possible.'}
+          </p>
         </div>
       )}
     </div>

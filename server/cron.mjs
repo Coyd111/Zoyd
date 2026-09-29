@@ -3,7 +3,7 @@ import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds } from './tournament-engine.mjs';
-import { settlePendingMatchResult } from './match-engine.mjs';
+import { settlePendingMatchResult, expireConfirmationsOnServer } from './match-engine.mjs';
 import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
@@ -202,9 +202,13 @@ export const initCronJobs = () => {
     try {
       await withMatchMutex(async () => {
         let list = getStateCollection('matches');
-        const pending = list.filter((m) => m.result?.payoutDistributed === 'pending');
+        // ATTENTION : on ne retente QUE les règlements interrompus. Un
+        // résultat 'pending' AVEC confirmationDeadline est en attente de
+        // confirmation des équipes : le régler ici viderait la fenêtre que
+        // le perdant a pour contester.
+        const pending = list.filter((m) => m.result?.payoutDistributed === 'pending' && !m.confirmationDeadline);
         if (pending.length === 0) return;
-        log.warn('Reglements de match en attente : reprise.', { count: pending.length });
+        log.warn('Reglements de match interrompus : reprise.', { count: pending.length });
         for (const match of pending) {
           try {
             const settled = await settlePendingMatchResult(list, match.id);
@@ -224,6 +228,41 @@ export const initCronJobs = () => {
   setInterval(() => { void sweepPendingSettlements(); }, 60 * 1000);
   // Au boot : un redemarrage Render est justement le cas le plus probable.
   setTimeout(() => { void sweepPendingSettlements(); }, 15 * 1000);
+
+  // Fin de fenetre de confirmation — toutes les 60 s.
+  // Un match en attente dont le delai est depasse est regle AUTOMATIQUEMENT :
+  // sans ce job, un joueur absent gelerait la cagnotte indefiniment. Un
+  // litige ouvert reste gele (c'est l'admin qui tranche via resolve-dispute).
+  let confirmationSweepRunning = false;
+  const sweepExpiredConfirmations = async () => {
+    if (confirmationSweepRunning) return;
+    confirmationSweepRunning = true;
+    try {
+      await withMatchMutex(async () => {
+        const matches = getStateCollection('matches');
+        const expiring = matches.filter(
+          (m) => m.status === 'awaiting_confirmation'
+            && m.confirmationDeadline
+            && new Date(m.confirmationDeadline).getTime() <= Date.now(),
+        );
+        if (expiring.length === 0) return;
+        const outcome = await expireConfirmationsOnServer(matches);
+        if (outcome.settled.length > 0) {
+          await replaceStateCollection('matches', outcome.matches);
+          log.warn('Fenetres de confirmation expirees : gains liberes', {
+            count: outcome.settled.length,
+            failed: outcome.settled.filter((s) => !s.success).map((s) => s.id),
+          });
+        }
+      });
+    } catch (error) {
+      log.error('Erreur expiration des confirmations', error);
+    } finally {
+      confirmationSweepRunning = false;
+    }
+  };
+  setInterval(() => { void sweepExpiredConfirmations(); }, 60 * 1000);
+  setTimeout(() => { void sweepExpiredConfirmations(); }, 25 * 1000);
 
   // Reprise des remboursements de tournoi restés en echec — toutes les 6 h +
   // au boot. Sans ce retry, un refund rate (utilisateur supprime, mutex, panne

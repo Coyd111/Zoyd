@@ -2081,9 +2081,11 @@ const handleRequest = async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      // Deux phases : on PERSISTE le résultat avant de créditer les wallets.
-      // Si l'écriture échoue, aucun gain n'a été versé et le client peut
-      // rejouer sans être payé deux fois.
+      // On PERSISTE le résultat mais on NE VERSE PAS : le match passe en
+      // 'awaiting_confirmation'. Les deux équipes doivent confirmer (ou la
+      // fenêtre de 30 min expire via cron) avant que la cagnotte parte.
+      // C'est la seule fenêtre où le perdant peut encore ouvrir un litige.
+      //
       // Whitelist stricte : le body est du JSON client, on ne persiste que
       // les champs attendus (anti mass-assignment sur match.result).
       const outcome = await submitMatchResultOnServer(
@@ -2097,15 +2099,11 @@ const handleRequest = async (req, res) => {
         }, { deferSettlement: true }
       );
       await saveMatches(io, outcome.matches, outcome.match);
-
-      const settled = await settlePendingMatchResult(outcome.matches, matchResult[1]);
-      if (settled.match) {
-        await saveMatches(io, settled.matches, settled.match);
-      }
-      if (!settled.success) {
-        log.error('Settlement incomplete — retry requis', { matchId: matchResult[1] });
-      }
-      respondJson(res, 200, buildMatchActionPayload(settled.match || outcome.match, session.user.id));
+      respondJson(res, 200, {
+        ...buildMatchActionPayload(outcome.match, session.user.id),
+        awaitingConfirmation: true,
+        confirmationDeadline: outcome.match.confirmationDeadline,
+      });
     });
     } catch (error) {
       respondMappedError(res, error);
@@ -2122,22 +2120,29 @@ const handleRequest = async (req, res) => {
     }
 
     try { await withMatchMutex(async () => {
-      const outcome = confirmMatchResultOnServer(getStateCollection('matches'), session.user, matchConfirm[1]);
+      const outcome = await confirmMatchResultOnServer(getStateCollection('matches'), session.user, matchConfirm[1]);
       await saveMatches(io, outcome.matches, outcome.match);
 
       const match = outcome.match;
-      const otherPlayerId = match.players?.find(p => p.userId !== session.user.id)?.userId;
-      if (otherPlayerId) {
-        deliverNotification(io, otherPlayerId, {
+      // On prévient ceux qui n'ont pas encore confirmé (ils peuvent
+      // contester tant que la fenêtre est ouverte).
+      const pendingIds = outcome.waitingFor || [];
+      for (const userId of pendingIds) {
+        if (userId === session.user.id) continue;
+        deliverNotification(io, userId, {
           type: 'match_result',
-          title: 'Resultat confirme',
-          body: `${session.user.pseudo} a confirme le resultat du match.`,
+          title: 'Resultat a confirmer',
+          body: `${session.user.pseudo} a confirme le resultat du match ${match.id}. Confirme-le ou ouvre un litige avant la fin du delai.`,
           url: `/mj/match/${match.id}`,
-          requireInteraction: false
+          requireInteraction: true
         }).catch(err => log.error('Notification delivery failed', err));
       }
 
-      respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+      respondJson(res, 200, {
+        ...buildMatchActionPayload(outcome.match, session.user.id),
+        settled: outcome.settled,
+        waitingFor: outcome.waitingFor,
+      });
     });
     } catch (error) {
       respondMappedError(res, error);
@@ -2376,7 +2381,9 @@ const handleRequest = async (req, res) => {
       const currentMatches = getStateCollection('matches');
       const targetMatch = currentMatches.find((entry) => entry.id === adminMatchAward[1]);
       const defaultScores = body.winnerTeam === 0 ? { team0: 1, team1: 0 } : { team0: 0, team1: 1 };
-      // Même discipline deux phases que la route joueur : persisté avant crédit.
+      // Décision de modération = décision finale : on persistE puis on règle
+      // immédiatement, SANS fenêtre de confirmation (l'admin arbitre, les
+      // joueurs n'ont plus à confirmer). D'où deferSettlement: false.
       const outcome = await submitMatchResultOnServer(currentMatches, session.user, adminMatchAward[1], {
         winnerTeam: body.winnerTeam,
         scores: targetMatch?.result?.scores || defaultScores,
@@ -2384,13 +2391,9 @@ const handleRequest = async (req, res) => {
         proofs: targetMatch?.result?.proofs,
         arbiterNotes: body.arbiterNotes || 'Resolution admin depuis le command center.',
         submittedBy: 'admin-dashboard',
-      }, { deferSettlement: true });
+      }, { deferSettlement: false });
       await saveMatches(io, outcome.matches, outcome.match);
-      const settled = await settlePendingMatchResult(outcome.matches, adminMatchAward[1]);
-      if (settled.match) {
-        await saveMatches(io, settled.matches, settled.match);
-      }
-      if (!settled.success) {
+      if (outcome.match.result?.payoutDistributed !== true) {
         log.error('Admin award settlement incomplete', { matchId: adminMatchAward[1] });
       }
       log.info('Admin action: award match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
@@ -2410,11 +2413,15 @@ const handleRequest = async (req, res) => {
 
     try { await withMatchMutex(async () => {
       const body = await parseRequestBody(req);
-      const outcome = resolveDisputeOnServer(
+      // `action` explicite : le règlement d'un litige BOUGGE de l'argent
+      // (paiement du résultat ou remboursement des passes). Sans cela, un
+      // litige clos laissait la cagnotte gelée pour toujours.
+      const outcome = await resolveDisputeOnServer(
         getStateCollection('matches'),
         session.user,
         adminMatchResolve[1],
-        body.resolution || 'Litige clos par moderation.'
+        body.resolution || 'Litige clos par moderation.',
+        { action: body.action }
       );
       await saveMatches(io, outcome.matches, outcome.match);
       log.info('Admin action: resolve dispute', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchResolve[1], resolution: body.resolution });

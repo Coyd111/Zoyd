@@ -16,8 +16,13 @@ export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 /** Taille d'équipe maximale par camp (1VS1 … 5VS5). */
 export const MAX_TEAM_SIZE = 5;
 
-const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress'];
+const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress', 'awaiting_confirmation'];
 const TERMINAL_STATUSES = ['finished', 'cancelled', 'forfeited'];
+/**
+ * Fenetre de confirmation laissee aux deux équipes avant paiement automatique.
+ * 30 min : assez pour ouvrir un litige, trop court pour geler la cagnotte.
+ */
+export const CONFIRMATION_WINDOW_MS = 30 * 60 * 1000;
 export const getTeamSize = (format) => parseInt(format.split('VS')[0], 10);
 export const getSquadLabel = (team) => (team === 0 ? 'Squad Alpha' : 'Squad Bravo');
 const getScheduledTimestamp = (match) => (match.scheduledAt ? new Date(match.scheduledAt).getTime() : null);
@@ -723,19 +728,33 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   };
 
   match.result = fullResult;
-  // Un litige ouvert ne se clôture PAS automatiquement : la cagnotte reste
-  // gelée jusqu'à resolveDispute (sinon le mauvais joueur pouvait payer).
-  match.updatedAt = getNow();
   if (match.arbiter) {
     match.arbiter.hasSubmittedResult = true;
   }
-  match.status = fullResult.resolutionType === 'forfeit' ? 'forfeited' : 'finished';
-  match.finishedAt = getNow();
   match.updatedAt = getNow();
 
   if (opts.deferSettlement) {
-    return { matches: nextMatches, match, actorUser: getUserById(actorUser.id), needsSettlement: true };
+    // NE PAS VERSER. Le resultat part en attente de confirmation des DEUX
+    // equipes : c'est le seul moment ou le perdant peut encore contester
+    // (openDispute l'autorise sur 'awaiting_confirmation') sans que la
+    // cagnotte ait deja quitt� le compte du gagnant.
+    match.status = fullResult.resolutionType === 'forfeit' ? 'awaiting_confirmation' : 'awaiting_confirmation';
+    match.confirmationDeadline = new Date(Date.now() + CONFIRMATION_WINDOW_MS).toISOString();
+    match.finishedAt = null;
+    return {
+      matches: nextMatches,
+      match,
+      actorUser: getUserById(actorUser.id),
+      needsConfirmation: true,
+    };
   }
+
+  // Forfait automatique (no-show) : pas de perdant humain a proteger, reglement
+  // immediat pour ne pas geler la cagnotte.
+  match.status = fullResult.resolutionType === 'forfeit' ? 'forfeited' : 'finished';
+  match.finishedAt = getNow();
+  match.confirmationDeadline = null;
+  match.updatedAt = getNow();
 
   const settlementResult = await applyResultSettlement(match, fullResult);
   match.result.payoutDistributed = settlementResult.success;
@@ -769,7 +788,18 @@ export const settlePendingMatchResult = async (matches, matchId) => {
  * @param {string} matchId - ID of the match.
  * @returns {{matches: Array, match: Object, actorUser: Object}}
  */
-export const confirmMatchResultOnServer = (matches, actor, matchId) => {
+/**
+ * Confirmer un résultat en attente (joueur du match).
+ *
+ * Le pot n'est versé que lorsque TOUS les participants ont confirmé, ou à
+ * l'expiration de la fenêtre de confirmation (cron). Une dispute protège le
+ * perdant tant que la fenêtre est ouverte.
+ * @param {Array} matches - Liste courante des matchs
+ * @param {Object} actor - Le joueur confirmant
+ * @param {string} matchId - ID du match
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object, settled: boolean, waitingFor: string[]}>}
+ */
+export const confirmMatchResultOnServer = async (matches, actor, matchId) => {
   const actorUser = requireActorUser(actor);
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
@@ -778,13 +808,81 @@ export const confirmMatchResultOnServer = (matches, actor, matchId) => {
   if (!match.players.some((player) => player.userId === actorUser.id)) {
     throw makeError('FORBIDDEN', 'Seuls les joueurs du match peuvent confirmer ce resultat.');
   }
-  if (match.status === 'finished') throw makeError('ALREADY_CONFIRMED', 'Ce match est deja termine.');
+  if (match.status !== 'awaiting_confirmation') {
+    throw makeError('ALREADY_CONFIRMED', 'Ce match n attend plus de confirmation.');
+  }
   if (match.result.confirmedByTeams.includes(actorUser.id)) {
     throw makeError('ALREADY_CONFIRMED', 'Tu as deja confirme ce resultat.');
   }
+  if (match.result.payoutDistributed !== 'pending') {
+    throw makeError('ALREADY_CONFIRMED', 'Ce resultat est deja regle.');
+  }
+
   match.result.confirmedByTeams.push(actorUser.id);
   match.updatedAt = getNow();
-  return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
+
+  const pending = match.players
+    .map((player) => player.userId)
+    .filter((userId) => !match.result.confirmedByTeams.includes(userId));
+  if (pending.length > 0) {
+    return {
+      matches: nextMatches,
+      match,
+      actorUser: getUserById(actorUser.id),
+      settled: false,
+      waitingFor: pending,
+    };
+  }
+
+  const settlementResult = await applyResultSettlement(match, match.result);
+  match.result.payoutDistributed = settlementResult.success;
+  if (settlementResult.success) {
+    match.status = 'finished';
+    match.finishedAt = getNow();
+    match.confirmationDeadline = null;
+  }
+  match.updatedAt = getNow();
+  return {
+    matches: nextMatches,
+    match,
+    actorUser: getUserById(actorUser.id),
+    settled: settlementResult.success,
+    waitingFor: [],
+  };
+};
+
+/**
+ * Expirer la fenêtre de confirmation : tout match en attente depuis plus de
+ * CONFIRMATION_WINDOW_MS sans litige est réglé (sinon un joueur absent
+ * gèlerait la cagnotte indéfiniment).
+ * @param {Array} matches - Liste courante des matchs
+ * @param {number} now - Horodatage de référence
+ * @returns {Promise<{matches: Array, settled: Array}>}
+ */
+export const expireConfirmationsOnServer = async (matches, now = Date.now()) => {
+  const nextMatches = cloneMatches(matches);
+  const settled = [];
+
+  for (const match of nextMatches) {
+    if (match.status !== 'awaiting_confirmation') continue;
+    if (match.result?.payoutDistributed !== 'pending') continue;
+    const deadline = match.confirmationDeadline ? new Date(match.confirmationDeadline).getTime() : 0;
+    if (!deadline || deadline > now) continue;
+    // Un litige ouvert doit rester gelé : c'est l'admin qui tranche.
+    if (match.disputes.some((d) => d.status === 'open' || d.status === 'under_review')) continue;
+
+    const settlementResult = await applyResultSettlement(match, match.result);
+    match.result.payoutDistributed = settlementResult.success;
+    if (settlementResult.success) {
+      match.status = 'finished';
+      match.finishedAt = getNow();
+      match.confirmationDeadline = null;
+    }
+    match.updatedAt = getNow();
+    settled.push({ id: match.id, success: settlementResult.success });
+  }
+
+  return { matches: nextMatches, settled };
 };
 
 /**
@@ -811,8 +909,13 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
   if (!isParticipant && !isMatchArbiter && actorUser.role !== 'admin') {
     throw makeError('FORBIDDEN', 'Seul un joueur du match ou son arbitre peut contester.');
   }
-  // Un match clôturé ne se conteste plus : ses mises sont déjà réglées.
-  if (TERMINAL_STATUSES.includes(match.status) || match.status === 'archived' || match.result) {
+  // Un match payé ne se conteste plus : les ZC sont partis. MAIS tant que le
+  // résultat est en attente de confirmation, le perdant a le droit de
+  // contester — c'est précisément la fenêtre qui rend la confirmation utile.
+  const alreadyPaid = match.result?.payoutDistributed === true
+    || TERMINAL_STATUSES.includes(match.status)
+    || match.status === 'archived';
+  if (alreadyPaid) {
     throw makeError('MATCH_CLOSED', 'Ce match est clos : trop tard pour contester.');
   }
   if (!payload.reason?.trim() || normalizedEvidence.length === 0) {
@@ -853,7 +956,23 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
  * @param {string} resolution - Resolution note describing the outcome.
  * @returns {{matches: Array, match: Object, actorUser: Object}}
  */
-export const resolveDisputeOnServer = (matches, actor, matchId, resolution) => {
+/**
+ * Clôturer les litiges ouverts (admin) et déclencher le sort de l'argent.
+ *
+ * AVANT cette évolution, cette fonction ne touchait à aucun argent : un litige
+ * ouvert sur un match dont le résultat était déjà versé ne pouvait donc pas
+ * être corrigé, et un litige sur un résultat en attente gelait la cagnotte
+ * indéfiniment. Elle décide maintenant explicitement :
+ *   - `action: 'settle'`  → applique le résultat (défaut si un résultat existe)
+ *   - `action: 'refund'`  → rembourse toutes les passes, match annulé
+ * @param {Array} matches - Liste courante des matchs
+ * @param {Object} actor - L'admin
+ * @param {string} matchId - ID du match
+ * @param {string} resolution - Note de résolution
+ * @param {{action?: 'settle'|'refund'}} [options]
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object, action: string}>}
+ */
+export const resolveDisputeOnServer = async (matches, actor, matchId, resolution, options = {}) => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') {
     throw makeError('FORBIDDEN', 'Seul un admin peut cloturer un litige.');
@@ -865,15 +984,45 @@ export const resolveDisputeOnServer = (matches, actor, matchId, resolution) => {
 
   match.disputes = resolveOpenDisputes(match, resolution);
   match.dispute = match.disputes[0];
-  match.status =
-    match.status === 'forfeited'
-      ? 'forfeited'
-      : match.result
-        ? TERMINAL_STATUSES.includes(match.status) ? match.status : 'finished'
-        : getStatusFromMatch(match);
-  match.updatedAt = getNow();
 
-  return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
+  // Décision explicite : on ne bouge l'argent que si l'admin l'a demandé et
+  // si le match n'est pas déjà soldé (sinon il n'y a plus rien à faire).
+  const hasUnpaidResult = !!match.result && match.result.payoutDistributed !== true;
+  const action = options.action || (hasUnpaidResult ? 'settle' : 'none');
+  if (action !== 'none' && action !== 'settle' && action !== 'refund') {
+    throw makeError('INVALID_RESULTS', 'Action de resolution invalide (settle ou refund).');
+  }
+  if ((action === 'settle' || action === 'refund') && match.result?.payoutDistributed === true) {
+    throw makeError('MATCH_CLOSED', 'Gains deja distribues : rectification manuelle necessaire.');
+  }
+
+  if (action === 'settle' && match.result) {
+    const settlementResult = await applyResultSettlement(match, match.result);
+    match.result.payoutDistributed = settlementResult.success;
+    match.status = settlementResult.success ? 'finished' : 'disputed';
+    if (settlementResult.success) {
+      match.finishedAt = getNow();
+      match.confirmationDeadline = null;
+    }
+  } else if (action === 'refund') {
+    for (const player of match.players) {
+      await withWalletMutex(player.userId, async () => {
+        await refundLockedEntry(player.userId, match.id, `Remboursement litige ${match.id}`);
+      });
+    }
+    match.status = 'cancelled';
+    match.finishedAt = getNow();
+    match.confirmationDeadline = null;
+  } else {
+    // Aucun argent en jeu (litige sur un match sans résultat) : on restaure
+    // l'état de jeu pour que le match reprenne.
+    match.status = match.result
+      ? 'awaiting_confirmation'
+      : getStatusFromMatch(match);
+  }
+
+  match.updatedAt = getNow();
+  return { matches: nextMatches, match, actorUser: getUserById(actorUser.id), action };
 };
 
 /**

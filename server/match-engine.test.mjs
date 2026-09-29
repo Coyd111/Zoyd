@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('./persistence.mjs', () => ({
   getUserById: vi.fn(),
   updateUserAccount: vi.fn(),
+  // openDisputeOnServer sanitize la raison du litige.
+  sanitizeText: vi.fn((value) => String(value || '').trim()),
 }));
 
 vi.mock('./wallet-engine.mjs', () => ({
@@ -339,8 +341,8 @@ describe('match-engine - Winner Payout', () => {
 describe('match-engine - submitMatchResultOnServer idempotency', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // requireActorUser résout l'acteur via getUserById : le rôle vient donc
-    // du store serveur, jamais de l'objet passé en paramètre.
+    // requireActorUser rÃ©sout l'acteur via getUserById : le rÃ´le vient donc
+    // du store serveur, jamais de l'objet passÃ© en paramÃ¨tre.
     getUserById.mockImplementation((id) => ({
       id,
       pseudo: id,
@@ -419,7 +421,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
       })
     ).rejects.toThrow(/lance avant de valider/i);
 
-    // Le role admin RÉEL débloque bien l'override (command center).
+    // Le role admin RÃ‰EL dÃ©bloque bien l'override (command center).
     const ok = await matchEngine.submitMatchResultOnServer([match], { id: 'root' }, 'M-FORGE', {
       winnerTeam: 0,
       scores: { team0: 1, team1: 0 },
@@ -429,7 +431,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
   });
 
   it('should split the pot between winners in 2v2 (anti-mint)', async () => {
-    // 4 joueurs ayant chacun 100 ZC réellement verrouillés (pot réel = 400)
+    // 4 joueurs ayant chacun 100 ZC rÃ©ellement verrouillÃ©s (pot rÃ©el = 400)
     const makePlayer = (id) => ({
       id, pseudo: id, role: 'player',
       stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100,
@@ -467,7 +469,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
     const prizeCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
     expect(prizeCalls).toHaveLength(2);
     const total = prizeCalls.reduce((sum, c) => sum + c[1], 0);
-    // 400 verrouillés − 2% sans arbitre payeur = 392 distribués (pas 2× le pot)
+    // 400 verrouillÃ©s âˆ’ 2% sans arbitre payeur = 392 distribuÃ©s (pas 2Ã— le pot)
     expect(total).toBe(392);
     expect(prizeCalls.map((c) => c[0]).sort()).toEqual(['u1', 'u2']);
   });
@@ -505,8 +507,8 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
 
     const prizeCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
     const paid = prizeCalls.reduce((sum, c) => sum + c[1], 0);
-    // 200 reellement verrouilles − 2% arbitre = 196 distribues.
-    // Avant : 400 (prizePool fantome) − 8 = 392 => 192 ZC crees.
+    // 200 reellement verrouilles âˆ’ 2% arbitre = 196 distribues.
+    // Avant : 400 (prizePool fantome) âˆ’ 8 = 392 => 192 ZC crees.
     expect(paid).toBe(196);
     expect(paid).toBeLessThanOrEqual(200);
     const arbiterCall = releaseWalletWinnings.mock.calls.find((c) => c[3] === 'arbitration_fee');
@@ -579,5 +581,182 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
         submittedBy: 'admin-dashboard',
       })
     ).rejects.toThrow(/litige/i);
+  });
+});
+
+describe('match-engine - confirmation obligatoire des deux equipes', () => {
+  const mkPlayer = (id, team, locked) => ({
+    id, userId: id, pseudo: id, role: 'player', team,
+    isReady: true, isCheckedIn: true, isCaptain: false, joinedAt: '2026-01-01T00:00:00Z', trustScore: 50,
+    stats: { elo: 1200, wins: 0, losses: 0, draws: 0, totalMatches: 0, totalEarnings: 0, winRate: 0, tournamentsWon: 0, tournamentsPlayed: 0, arbitratedMatches: 0 },
+    wallet: { lockedEntries: { 'M-C': { amount: locked, cashAmount: locked, bonusAmount: 0, lockedAt: '2026-01-01T00:00:00Z' } } },
+  });
+
+  const makeMatch = (overrides = {}) => ({
+    id: 'M-C',
+    creatorId: 'a', creatorPseudo: 'A',
+    format: '1VS1', teamSize: 1, maxPlayers: 2,
+    rules: { mode: 'S&D', map: 'Crossfire', scoreTarget: 7, bestOf: 1 },
+    entryFee: 100, prizePool: 200, zoydFee: 4, arbiterFee: 4,
+    visibility: 'public', deviceRestriction: 'open', controllerRestriction: 'open',
+    status: 'in_progress',
+    players: [mkPlayer('a', 0, 100), mkPlayer('b', 1, 100)],
+    arbiter: { userId: 'arb' },
+    disputes: [],
+    isInstant: false,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  });
+
+  const submit = (match) => matchEngine.submitMatchResultOnServer([match], { id: 'arb' }, 'M-C', {
+    winnerTeam: 0,
+    scores: { team0: 7, team1: 2 },
+    proofs: { scoreboard: ['score.png'], finalResult: ['final.png'] },
+  }, { deferSettlement: true });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    releaseWalletWinnings.mockResolvedValue({});
+    // Le règlement relit le wallet via getUserById : il faut que les
+    // verrouillages soient visibles, sinon getLockedPot renvoie 0.
+    getUserById.mockImplementation((id) => {
+      if (id === 'root') return { ...mkPlayer(id, 0, 0), role: 'admin' };
+      if (id === 'arb') return { id, userId: id, pseudo: 'Arbiter', role: 'arbiter', trustScore: 50, wallet: {} };
+      return mkPlayer(id, id === 'a' ? 0 : 1, 100);
+    });
+  });
+
+  it('ne verse RIEN a la soumission et met en attente de confirmation', async () => {
+    const { match, needsConfirmation } = await submit(makeMatch());
+    expect(needsConfirmation).toBe(true);
+    expect(match.status).toBe('awaiting_confirmation');
+    expect(match.result.payoutDistributed).toBe('pending');
+    expect(match.confirmationDeadline).toBeTruthy();
+    expect(match.finishedAt).toBeNull();
+    // Point central : aucune sortie d'argent avant confirmation.
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+  });
+
+  it('une seule confirmation ne verse pas, la deuxieme declenche le reglement', async () => {
+    const submitted = await submit(makeMatch());
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-C');
+    expect(first.settled).toBe(false);
+    expect(first.match.status).toBe('awaiting_confirmation');
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+
+    const second = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-C');
+    expect(second.settled).toBe(true);
+    expect(second.match.status).toBe('finished');
+    expect(second.match.result.payoutDistributed).toBe(true);
+    expect(second.match.confirmationDeadline).toBeNull();
+    // Conservation de la masse : 200 verrouilles = 196 au gagnant + 4 a l'arbitre.
+    // L'assertion porte sur les MONTANTS, pas sur le nombre d'appels : deux
+    // versements distincts (vainqueur puis commission) sont le comportement correct.
+    const payouts = releaseWalletWinnings.mock.calls.map((call) => call[1]);
+    expect(payouts).toContain(196);
+    expect(payouts).toContain(4);
+    expect(payouts.reduce((sum, amount) => sum + amount, 0)).toBe(200);
+  });
+
+  it('un tiers ne peut pas confirmer', async () => {
+    const submitted = await submit(makeMatch());
+    await expect(matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'intruder' }, 'M-C'))
+      .rejects.toThrow(/Seuls les joueurs/);
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+  });
+
+  it('confirmer deux fois est refuse', async () => {
+    const submitted = await submit(makeMatch());
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-C');
+    await expect(matchEngine.confirmMatchResultOnServer(first.matches, { id: 'a' }, 'M-C'))
+      .rejects.toThrow(/deja confirme/);
+  });
+
+  it('le perdant peut ouvrir un litige PENDANT la fenetre de confirmation', async () => {
+    const submitted = await submit(makeMatch());
+    const disputed = matchEngine.openDisputeOnServer(
+      submitted.matches, { id: 'b' }, 'M-C',
+      { reason: 'Score invente', evidence: ['capture.png'] },
+    );
+    expect(disputed.match.status).toBe('disputed');
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+  });
+
+  it('litige impossible une fois les gains verses', async () => {
+    const submitted = await submit(makeMatch());
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-C');
+    const done = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-C');
+    expect(() => matchEngine.openDisputeOnServer(
+      done.matches, { id: 'b' }, 'M-C', { reason: 'trop tard', evidence: ['x.png'] },
+    )).toThrow(/clos/);
+  });
+
+  it('expiration de la fenetre : verse automatiquement', async () => {
+    const submitted = await submit(makeMatch());
+    const expired = submitted.matches.map((m) => ({
+      ...m,
+      confirmationDeadline: new Date(Date.now() - 1000).toISOString(),
+    }));
+    const outcome = await matchEngine.expireConfirmationsOnServer(expired);
+    expect(outcome.settled).toHaveLength(1);
+    expect(outcome.settled[0].success).toBe(true);
+    expect(outcome.matches[0].status).toBe('finished');
+    expect(releaseWalletWinnings).toHaveBeenCalled();
+    // Conservation de la masse sur l'expiration aussi.
+    expect(releaseWalletWinnings.mock.calls.map((call) => call[1]).reduce((sum, a) => sum + a, 0)).toBe(200);
+  });
+
+  it('expiration respecte un litige ouvert (cagnotte gelee)', async () => {
+    const submitted = await submit(makeMatch());
+    const disputed = matchEngine.openDisputeOnServer(
+      submitted.matches, { id: 'b' }, 'M-C', { reason: 'litige', evidence: ['x.png'] },
+    );
+    const expired = disputed.matches.map((m) => ({
+      ...m,
+      status: 'awaiting_confirmation',
+      confirmationDeadline: new Date(Date.now() - 1000).toISOString(),
+    }));
+    const outcome = await matchEngine.expireConfirmationsOnServer(expired);
+    expect(outcome.settled).toHaveLength(0);
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+  });
+
+  it('non expire avant la deadline', async () => {
+    const submitted = await submit(makeMatch());
+    const outcome = await matchEngine.expireConfirmationsOnServer(submitted.matches);
+    expect(outcome.settled).toHaveLength(0);
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+  });
+
+  it('resolveDispute "settle" verse le resultat en attente', async () => {
+    const submitted = await submit(makeMatch());
+    const outcome = await matchEngine.resolveDisputeOnServer(
+      submitted.matches, { id: 'root' }, 'M-C', 'Erreur arbitre corrigee', { action: 'settle' },
+    );
+    expect(outcome.action).toBe('settle');
+    expect(outcome.match.status).toBe('finished');
+    expect(releaseWalletWinnings).toHaveBeenCalled();
+  });
+
+  it('resolveDispute "refund" rembourse et annule', async () => {
+    const { refundLockedEntry } = await import('./wallet-engine.mjs');
+    refundLockedEntry.mockResolvedValue({});
+    const submitted = await submit(makeMatch());
+    const outcome = await matchEngine.resolveDisputeOnServer(
+      submitted.matches, { id: 'root' }, 'M-C', 'Annule', { action: 'refund' },
+    );
+    expect(outcome.match.status).toBe('cancelled');
+    expect(refundLockedEntry).toHaveBeenCalledTimes(2);
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+  });
+
+  it('resolveDispute refuse un match deja paye', async () => {
+    const submitted = await submit(makeMatch());
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-C');
+    const done = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-C');
+    await expect(matchEngine.resolveDisputeOnServer(
+      done.matches, { id: 'root' }, 'M-C', 'trop tard', { action: 'refund' },
+    )).rejects.toThrow(/deja distribues/);
   });
 });

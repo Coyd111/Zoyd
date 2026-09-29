@@ -140,6 +140,11 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
   } catch (error) {
     log.error('FedaPay verification error', { message: error.message });
     if (error instanceof PaymentRollbackError) throw error;
+    // SERVER_BUSY doit remonter tel quel : c'est la Base indisponible, le
+    // claim a été relâché et le joueur peut réessayer. Masqué en
+    // FEDAPAY_API_ERROR, le message poussait à croire à un échec définitif
+    // alors que rien n'a été débité.
+    if (error.code === 'SERVER_BUSY') throw error;
     if (error.code === 'TRANSACTION_ALREADY_PROCESSED' || error.code === 'TRANSACTION_IN_PROGRESS' || error.code === 'TRANSACTION_NOT_OWNED') throw error;
     if (error.message.includes('UNIQUE')) {
       throw makeError('TRANSACTION_ALREADY_PROCESSED', 'Cette transaction a déjà été traitée.');

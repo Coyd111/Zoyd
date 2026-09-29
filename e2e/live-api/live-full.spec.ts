@@ -9,25 +9,20 @@
  *    récentes (codes d'erreur non mappés → 500, CSRF Origin, allowRequest
  *    WebSocket).
  *
- * 2. Volet AUTHENTIFIÉ (exécuté seulement si ZOYD_LIVE_EMAIL et
- *    ZOYD_LIVE_PASSWORD sont fournis) : il faut un compte PRÉPARÉ ET ACTIVÉ
- *    par un humain.
+ * 2. Volet AUTHENTIFIÉ : il CRÉE lui-même un compte jetable et le SUPPRIME
+ *    à la fin (`DELETE /api/auth/me`, suppression réelle en base).
  *
- *    Pourquoi pas de création de compte ici : depuis le passage en
- *    cookie-only, `token` ET `activationCode` ne sont renvoyés que si
- *    `ALLOW_DEBUG_CODES=true`, jamais en production. Activer ce flag en prod
- *    pour que les tests passent serait une régression de sécurité. Et
- *    `POST /api/wallet/deposit` est désormais admin + 2FA (les dépôts
- *    passent par FedaPay), donc un test ne peut pas se créditer lui-même.
+ *    Pourquoi aucun code d'activation n'est nécessaire : l'inscription
+ *    renvoie directement une session + cookie (`isActive: true`, décision
+ *    du 2026-09-18 — pas d'email/SMS pour l'instant). C'est exactement le
+ *    contrat à valider en prod.
  *
- * Préparer le compte (une fois) :
- *   1. Ouvrir https://zoyd.vercel.app/auth/register depuis le navigateur
- *   2. Pseudo prefixé `ZOYDLIVE` (pour le repérer et le supprimer ensuite)
- *   3. Activer via le code reçu par email
- *   4. $env:ZOYD_LIVE_EMAIL = '...'; $env:ZOYD_LIVE_PASSWORD = '...'
- *      pnpm test:e2e:live
+ *    Le compte est identifiable : pseudo préfixé `ZOYDLIVE`, email `@e2e-live`.
+ *    Si le run est interrompu, `scripts/cleanup-live-e2e.sql` les supprime.
  *
- * Nettoyage : DELETE /api/auth/me (suppression réelle en base).
+ *    PAS de dépôt ni de retrait dans ce volet : le crédit passe par FedaPay
+ *    (widget sandbox) et le retrait par un vrai payout. Ces deux chemins se
+ *    testent à la main, pas ici.
  */
 
 import { test, expect } from '@playwright/test';
@@ -36,11 +31,6 @@ const BASE = 'https://zoyd.onrender.com/api';
 const ORIGIN = 'https://zoyd.vercel.app';
 const HEADERS = { Origin: ORIGIN } as const;
 const UNIQ = Date.now().toString(36).slice(-6);
-
-const LIVE_EMAIL = process.env.ZOYD_LIVE_EMAIL || '';
-const LIVE_PASSWORD = process.env.ZOYD_LIVE_PASSWORD || '';
-const hasLiveAccount = Boolean(LIVE_EMAIL && LIVE_PASSWORD);
-
 /** Identifiant unique : un seul appel par route pour ne pas déclencher 429. */
 const once = async (request: any, method: string, url: string, opts: any = {}) =>
   method === 'GET' ? request.get(url, opts) : request.post(url, opts);
@@ -160,93 +150,178 @@ test.describe('LIVE — surface publique (aucun compte cree)', () => {
   });
 });
 
-test.describe('LIVE — cookie-only (compte prepare requis)', () => {
-  test.skip(!hasLiveAccount, 'Renseigne ZOYD_LIVE_EMAIL et ZOYD_LIVE_PASSWORD pour ce volet.');
+test.describe('LIVE — compte jetable (inscription, session, suppression)', () => {
+  // UN SEUL compte pour tout le bloc, créé en beforeAll.
+  // Un compte par test déclenchait le rate-limit de production (50 / 15 min
+  // sur le bucket `auth`) : au-delà, 429 partout. Les tests sont en série.
+  test.describe.configure({ mode: 'serial' });
+  const PASSWORD = 'ZoydLive!2026';
+  let pseudo = '';
+  let email = '';
+  let registered: { body: any; setCookie: string } = { body: null, setCookie: '' };
 
-  test('login pose un cookie HttpOnly et ne renvoie PAS de token', async ({ request }) => {
-    const r = await once(request, 'POST', `${BASE}/auth/login`, {
+  const registerLiveAccount = async (request: any) => {
+    // Pseudo, email, téléphone ET gameId uniques : le serveur rejette les
+    // doublons (409 DUPLICATE_*). `digits` est purement numérique — un
+    // suffixe base36 rendrait le numéro invalide.
+    const digits = String(Date.now()).slice(-6) + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+    pseudo = `ZOYDLIVE_${digits}`;
+    email = `zoydlive_${digits}@e2e-live.example.com`;
+    const res = await request.post(`${BASE}/auth/register`, {
       headers: HEADERS,
-      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+      data: {
+        pseudo,
+        email,
+        phone: `+2296${digits}`,
+        gameId: 'ZOYDLIVE' + digits,
+        password: PASSWORD,
+        controllerType: 'touch',
+        device: 'phone',
+        levelCODM: 50,
+        rankMJ: 'Gold',
+        rankBR: 'Gold',
+        country: 'Benin',
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
+      },
     });
-    expect(r.status()).toBe(200);
-    const body = await r.json();
-    // Contrat cookie-only : aucun token en JSON.
-    expect(body.token).toBeUndefined();
-    const cookies = await request.storageState();
-    const auth = cookies.cookies.find((c) => c.name === 'zoyd_auth');
-    expect(auth, 'cookie zoyd_auth attendu').toBeTruthy();
-    expect(auth.httpOnly, 'le cookie doit etre HttpOnly').toBe(true);
-    expect(auth.sameSite).toBe('None'); // cross-site Vercel -> Render
-    expect(auth.secure, 'le cookie doit etre Secure').toBe(true);
+    expect(res.status(), 'inscription en direct').toBe(201);
+    const body = await res.json();
+    // Contrat V1 : compte actif immédiatement, PAS de code d'activation
+    // (pas d'email/SMS pour l'instant) et session délivrée d'office.
+    expect(body.activationCode).toBeUndefined();
+    expect(body.ok).toBe(true);
+    // On lit l'en-tête brut : c'est la source de vérité des attributs du
+    // cookie. (storageState() ne le remonte pas de façon fiable ici.)
+    return { body, setCookie: res.headers()['set-cookie'] || '' };
+  };
+
+  test.beforeAll(async ({ request }) => {
+    registered = await registerLiveAccount(request);
   });
 
-  test('la session persiste sur /auth/me', async ({ request }) => {
-    expect((await once(request, 'GET', `${BASE}/auth/me`, { headers: HEADERS })).status()).toBe(200);
-    const r = await once(request, 'POST', `${BASE}/auth/login`, {
+  // Filet de sécurité : si un test échoue avant la suppression, le compte
+  // reste en base (le dernier test, qui le supprime, n'est pas exécuté).
+  // On tente donc la suppression en fin de série quoi qu'il arrive.
+  test.afterAll(async ({ request }) => {
+    if (!pseudo) return;
+    await request.post(`${BASE}/auth/login`, {
       headers: HEADERS,
-      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+      data: { identifier: pseudo, password: PASSWORD },
     });
-    expect(r.status()).toBe(200);
-    const me = await once(request, 'GET', `${BASE}/auth/me`, { headers: HEADERS });
+    await request.delete(`${BASE}/auth/me`, {
+      headers: HEADERS,
+      data: { confirmForfeit: true },
+    });
+  });
+
+  /**
+   * Playwright crée un contexte `request` NEUF pour chaque test : le cookie
+   * posé par l'inscription (during `beforeAll`) n'est pas conservé. Il faut
+   * donc se reconnecter au début de chaque test. C'est aussi un test en soi :
+   * la reconnexion par cookie doit fonctionner.
+   */
+  const loginLiveAccount = async (request: any) => {
+    const res = await request.post(`${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: pseudo, password: PASSWORD },
+    });
+    expect(res.status(), 'reconnexion').toBe(200);
+    return res;
+  };
+
+  test("inscription : cookie HttpOnly/Secure/SameSite=None, aucun token", async ({ request }) => {
+    // La lib de sérialisation normalise l'attribut en minuscules (`SameSite=none`).
+    const setCookie = registered.setCookie;
+    const attrs = setCookie.toLowerCase();
+    expect(setCookie, 'en-tête Set-Cookie présent').toContain('zoyd_auth=');
+    expect(attrs, 'HttpOnly').toContain('httponly');
+    expect(attrs, 'Secure').toContain('secure');
+    // Cross-site Vercel -> Render : sans SameSite=None le cookie n'est pas envoyé.
+    expect(attrs, 'SameSite=None').toContain('samesite=none');
+    // Le cookie est le SEUL credential : aucun token dans le JSON.
+    expect(registered.body.token).toBeUndefined();
+  });
+
+  test('la session tient sur /auth/me et PATCH', async ({ request }) => {
+    await loginLiveAccount(request);
+    const me = await request.get(`${BASE}/auth/me`, { headers: HEADERS });
     expect(me.status()).toBe(200);
-    expect((await me.json()).user).toBeTruthy();
+    expect((await me.json()).user.pseudo).toBe(pseudo);
+
+    const patched = await request.patch(`${BASE}/auth/me`, {
+      headers: HEADERS,
+      data: { bio: 'compte jetable E2E live' },
+    });
+    expect(patched.status()).toBe(200);
+    expect((await patched.json()).user.bio).toBe('compte jetable E2E live');
   });
 
-  test('le depot direct est refuse au joueur (403 admin+2FA)', async ({ request }) => {
-    await once(request, 'POST', `${BASE}/auth/login`, {
+  test('reconnexion par le pseudo, sans token en réponse', async ({ request }) => {
+    const res = await loginLiveAccount(request);
+    expect((await res.json()).token).toBeUndefined();
+    expect((await request.get(`${BASE}/auth/me`, { headers: HEADERS })).status()).toBe(200);
+  });
+
+  test('mot de passe erroné refusé', async ({ request }) => {
+    const res = await request.post(`${BASE}/auth/login`, {
       headers: HEADERS,
-      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+      data: { identifier: pseudo, password: 'MauvaisMotDePasse1!' },
     });
-    const r = await once(request, 'POST', `${BASE}/wallet/deposit`, {
+    expect(res.status()).toBe(401);
+    expect((await res.json()).code).toBe('INVALID_CREDENTIALS');
+  });
+
+  test('le dépôt direct reste interdit au joueur', async ({ request }) => {
+    await loginLiveAccount(request);
+    // Créditer son propre compte créerait de la monnaie : refusé par design.
+    const res = await request.post(`${BASE}/wallet/deposit`, {
       headers: HEADERS,
       data: { amount: 100, userId: 'nimporte-quoi' },
     });
-    // Le credit ne passe QUE par FedaPay. Un joueur qui peut credited son
-    // propre compte creerait de la monnaie : doit etre refuse.
-    expect(r.status()).toBe(403);
+    expect(res.status()).toBe(403);
   });
 
-  test('creation de match sans solde -> 409 (et non 500)', async ({ request }) => {
-    await once(request, 'POST', `${BASE}/auth/login`, {
-      headers: HEADERS,
-      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
-    });
-    const r = await once(request, 'POST', `${BASE}/matches`, {
+  test('créer un match sans solde échoue proprement (409, pas 500)', async ({ request }) => {
+    await loginLiveAccount(request);
+    const res = await request.post(`${BASE}/matches`, {
       headers: HEADERS,
       data: { format: '1VS1', entryFee: 500, visibility: 'public' },
     });
-    expect([200, 409]).toContain(r.status());
-    if (r.status() === 200) {
-      // Match cree : on l'annule pour ne pas polluer la prod.
-      const id = (await r.json()).match.id;
-      const del = await request.delete(`${BASE}/matches/${id}`, { headers: HEADERS });
-      expect([200, 403, 405, 409]).toContain(del.status());
-    }
+    expect(res.status()).toBe(409);
+    expect((await res.json()).code).toBe('INSUFFICIENT_FUNDS');
   });
 
-  test('format 4VS4 accepte (le format manquant)', async ({ request }) => {
-    await once(request, 'POST', `${BASE}/auth/login`, {
+  test('format 4VS4 accepté (le format qui manquait)', async ({ request }) => {
+    await loginLiveAccount(request);
+    // 409 (pas de solde) et NON 400 : le format est bien valide côté serveur.
+    const res = await request.post(`${BASE}/matches`, {
       headers: HEADERS,
-      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+      data: { format: '4VS4', entryFee: 100, visibility: 'public' },
     });
-    const r = await once(request, 'POST', `${BASE}/matches`, {
-      headers: HEADERS,
-      data: { format: '4VS4', entryFee: 1, visibility: 'public' },
-    });
-    // 409 si le solde ne suffit pas, sinon 201 : jamais 400 INVALID_FORMAT.
-    expect([201, 409]).toContain(r.status());
-    if (r.status() === 201) {
-      const id = (await r.json()).match.id;
-      await request.delete(`${BASE}/matches/${id}`, { headers: HEADERS });
-    }
+    expect(res.status()).toBe(409);
   });
 
-  test('deconnexion invalide la session', async ({ request }) => {
-    await once(request, 'POST', `${BASE}/auth/login`, {
+  test('le compte jetable est supprimé (DELETE /auth/me)', async ({ request }) => {
+    await loginLiveAccount(request);
+    // Sans confirmForfeit : refus attendu, compte intact.
+    const refused = await request.delete(`${BASE}/auth/me`, { headers: HEADERS, data: {} });
+    expect(refused.status()).toBe(400);
+    expect((await refused.json()).code).toBe('CONFIRM_REQUIRED');
+
+    const deleted = await request.delete(`${BASE}/auth/me`, {
       headers: HEADERS,
-      data: { identifier: LIVE_EMAIL, password: LIVE_PASSWORD },
+      data: { confirmForfeit: true },
     });
-    expect((await once(request, 'POST', `${BASE}/auth/logout`, { headers: HEADERS })).status()).toBe(200);
-    expect((await once(request, 'GET', `${BASE}/auth/me`, { headers: HEADERS })).status()).toBe(401);
+    expect(deleted.status()).toBe(200);
+
+    // La session est morte et le compte n'existe plus.
+    expect((await request.get(`${BASE}/auth/me`, { headers: HEADERS })).status()).toBe(401);
+    const relogin = await request.post(`${BASE}/auth/login`, {
+      headers: HEADERS,
+      data: { identifier: pseudo, password: PASSWORD },
+    });
+    expect(relogin.status()).toBe(401);
   });
 });

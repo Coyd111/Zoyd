@@ -63,6 +63,11 @@ export default defineConfig({
     {
       name: 'live-api',
       testDir: './e2e/live-api',
+      // `retries: 0` OBLIGATOIRE en live : chaque retry rejoue le beforeAll,
+      // qui INSCRIT un compte. Avec retries: 1, un seul test en échec laissait
+      // 2 comptes dans la base de production. Les échecs sont à regarder,
+      // pas à réessayer automatiquement.
+      retries: 0,
       use: {
         baseURL: 'https://zoyd.onrender.com',
         extraHTTPHeaders: {

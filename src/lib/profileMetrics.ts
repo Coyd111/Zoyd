@@ -1,6 +1,7 @@
 import type { User, UserStats } from '../app/stores/authStore';
 import { isMatchPayoutSettled, type Match, type MatchPlayer } from '../app/stores/matchStore';
 import type { Tournament, TournamentEntry, TournamentEntryMember } from '../app/stores/tournamentStore';
+import { getWinnerPayout } from './matchPayout';
 
 export interface TournamentPlacement {
   tournamentId: string;
@@ -32,8 +33,6 @@ export interface CompetitiveSummary {
 }
 
 const roundAmount = (value: number) => Math.round(value * 100) / 100;
-
-const getWinnerPayout = (match: Match) => roundAmount(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee));
 
 /**
  * Cible d'un profil dans un payload de match.

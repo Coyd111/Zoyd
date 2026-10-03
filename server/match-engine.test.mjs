@@ -338,6 +338,69 @@ describe('match-engine - Winner Payout', () => {
   });
 });
 
+describe('match-engine - getProjectedPayouts (montants affiches)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Chaque joueur inscrit verrouille son entryFee : la projection doit sommer
+  // ces verrouillages, pas lire prizePool (maxPlayers * entryFee). Le front
+  // affichait `pot * 0.98` et l'admin confirmait un reglement different du verse.
+  const lockEveryone = (matchId, entryFee, lock = true) => {
+    getUserById.mockImplementation((id) => ({
+      wallet: lock ? { lockedEntries: { [matchId]: { amount: entryFee } } } : {},
+    }));
+  };
+
+  it('should base the projection on locked funds, not on prizePool', () => {
+    lockEveryone('M-1', 200);
+    const match = {
+      id: 'M-1',
+      prizePool: 1000,
+      players: [{ userId: 'a' }, { userId: 'b' }],
+      arbiter: { userId: 'arb' },
+    };
+    const projection = matchEngine.getProjectedPayouts(match);
+    expect(projection.locked).toBe(true);
+    // 200 + 200 reels, pas les 1000 theoriques
+    expect(projection.basis).toBe(400);
+    expect(projection.arbiterFee).toBe(8);
+    expect(projection.winner).toBe(392);
+  });
+
+  it('should not charge an arbiter fee when there is no arbiter', () => {
+    lockEveryone('M-1', 200);
+    const match = { id: 'M-1', prizePool: 1000, players: [{ userId: 'a' }, { userId: 'b' }] };
+    const projection = matchEngine.getProjectedPayouts(match);
+    expect(projection.arbiterFee).toBe(0);
+    expect(projection.winner).toBe(400);
+  });
+
+  it('should split the winner pot across the players of the winning team', () => {
+    lockEveryone('M-1', 500);
+    const match = {
+      id: 'M-1',
+      prizePool: 2000,
+      players: [{ userId: 'a' }, { userId: 'b' }, { userId: 'c' }, { userId: 'd' }],
+      arbiter: { userId: 'arb' },
+    };
+    const projection = matchEngine.getProjectedPayouts(match);
+    expect(projection.basis).toBe(2000);
+    expect(projection.arbiterFee).toBe(40);
+    expect(projection.winner).toBe(1960);
+    expect(projection.perWinner).toBe(490);
+  });
+
+  it('should fall back to prizePool when no funds are locked (estimation)', () => {
+    lockEveryone('M-1', 0, false);
+    const match = { id: 'M-1', prizePool: 1000, players: [{ userId: 'a' }, { userId: 'b' }] };
+    const projection = matchEngine.getProjectedPayouts(match);
+    expect(projection.locked).toBe(false);
+    expect(projection.basis).toBe(1000);
+    expect(projection.winner).toBe(1000);
+  });
+});
+
 describe('match-engine - submitMatchResultOnServer idempotency', () => {
   beforeEach(() => {
     vi.clearAllMocks();

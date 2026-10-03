@@ -39,6 +39,7 @@ import { MatchResults } from '../components/MatchResults';
 import { MatchActions } from '../components/MatchActions';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { SEOHead } from '../../../app/components/SEOHead';
+import { getArbiterFee, getWinnerPayout } from '../../../lib/matchPayout';
 
 const statusLabels: Record<string, string> = {
   recruiting: 'Recrutement ouvert',
@@ -727,9 +728,12 @@ const MatchDetailPage: React.FC = () => {
         const alpha = Number(scoreAlpha);
         const bravo = Number(scoreBravo);
         const winnerLabel = alpha > bravo ? 'Squad Alpha' : 'Squad Bravo';
-        const pot = Number(match.prizePool || 0);
-        const arbiterShare = pot * 0.02;
-        const winnerShare = Math.max(0, pot - arbiterShare);
+        // Montants autoritaires (projection serveur sur la cagnotte reellement
+        // verrouillee). Le calcul local `pot * 0.02` ignorait l'absence
+        // d'arbitre et un roster incomplet : montant affiche != montant verse.
+        const arbiterShare = getArbiterFee(match);
+        const winnerShare = getWinnerPayout(match);
+        const pot = match.projectedPayouts?.basis ?? Number(match.prizePool || 0);
         const proofsCount =
           parseRefs(scoreboardProofs).length +
           parseRefs(finalResultProofs).length +
@@ -755,8 +759,8 @@ const MatchDetailPage: React.FC = () => {
                   <dd className="font-display font-black text-zoyd-yellow">{winnerLabel}</dd>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <dt className="text-white/75">Cagnotte totale</dt>
-                  <dd className="font-display font-black text-white">{formatZC(pot)}</dd>
+                  <dt className="text-white/75">Cagnotte réelle</dt>
+                  <dd className="font-display font-black text-white">{formatZC(match.projectedPayouts?.basis ?? pot)}</dd>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
                   <dt className="text-white/75">Part arbitre (2 %)</dt>

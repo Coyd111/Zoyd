@@ -25,6 +25,7 @@ import { findTargetPlayerInMatch } from '../../../lib/profileMetrics';
 import { isMatchPayoutSettled } from '../../stores/matchStore';
 import { useAuthStore } from '../../stores/authStore';
 import { formatZC } from '../../../lib/utils';
+import { getWinnerPayout } from '../../../lib/matchPayout';
 
 const levelConfig: Record<string, { label: string; color: string; bg: string }> = {
   BEGINNER: { label: 'BEGINNER', color: 'text-white/70', bg: 'bg-white/5' },
@@ -333,7 +334,7 @@ export default function ProfileView({
                       </div>
                       <div className="text-right">
                         <div className={`font-display font-black italic text-sm ${isWin ? 'text-zoyd-yellow' : 'text-white/75'}`}>
-                          {isWin ? `+${formatZC(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee))}` : payoutSettled ? formatZC(match.entryFee) : '—'}
+                          {isWin ? `+${formatZC(getWinnerPayout(match))}` : payoutSettled ? formatZC(match.entryFee) : '—'}
                         </div>
                         <div className="text-[10px] font-mono text-white/70 uppercase">
                           {match.status === 'disputed'

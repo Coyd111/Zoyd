@@ -137,6 +137,17 @@ export interface Match {
   prizePool: number;
   zoydFee: number;
   arbiterFee: number;
+  /**
+   * Partition calculee par le serveur sur la cagnotte reellement verrouillee.
+   * Source unique pour l'affichage : le front ne recalcule plus `pot * 0.98`.
+   */
+  projectedPayouts?: {
+    basis: number;
+    locked: boolean;
+    arbiterFee: number;
+    winner: number;
+    perWinner: number;
+  };
   visibility: MatchVisibility;
   deviceRestriction: DeviceRestriction;
   controllerRestriction: ControllerRestriction;

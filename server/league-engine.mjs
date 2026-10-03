@@ -75,7 +75,17 @@ export const normalizeLeagueSeason = (season) => {
     qualificationGroups[day] = normalizeDaySlot(season?.qualificationGroups?.[day]);
   }
 
-  const registeredPlayers = Array.isArray(season?.registeredPlayers) ? season.registeredPlayers : [];
+  // `paid`/montants sont figes a l'inscription : l'etat "paye" ne doit pas
+  // dependre du verrouillage, qui est libere au règlement (payout/remboursement)
+  // et faisait donc apparaitre TOUS les joueurs "impayes" sur une saison terminee.
+  const registeredPlayers = Array.isArray(season?.registeredPlayers)
+    ? season.registeredPlayers.map((p) => ({
+        ...p,
+        paid: typeof p?.paid === 'boolean' ? p.paid : true,
+        entryFee: Number(p?.entryFee ?? season?.entryFee ?? LEAGUE_ENTRY_FEE),
+        paidAt: p?.paidAt || p?.joinedAt || null,
+      }))
+    : [];
   const standings = Array.isArray(season?.standings)
     ? season.standings.map(normalizeStanding)
     : [];
@@ -269,6 +279,11 @@ export const joinLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
     userId: actorUser.id,
     pseudo: actorUser.pseudo,
     joinedAt: getNow(),
+    // Etat de paiement fige (voir getLeaguePayments) : le verrouillage est
+    // libere au règlement, `paid` doit survivre a cette liberation.
+    paid: true,
+    entryFee: season.entryFee,
+    paidAt: getNow(),
   });
 
   season.payout = buildLeaguePayout(season.registeredPlayers.length * season.entryFee);
@@ -403,10 +418,17 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
   }
 
   const registeredIds = new Set(daySlot.players);
+  // Pas de doublon : sans cette garde, le meme joueur listee deux fois
+  // cumulait ses points ET ses `matchesPlayed` (integrite du classement).
+  const seenDayUserIds = new Set();
   for (const r of results) {
     if (!r.userId || !registeredIds.has(r.userId)) {
       throw makeError('INVALID_RESULTS', 'Un resultats reference un joueur non inscrit a cette journee.');
     }
+    if (seenDayUserIds.has(r.userId)) {
+      throw makeError('INVALID_RESULTS', 'Ce joueur apparait plusieurs fois dans les resultats de la journee.');
+    }
+    seenDayUserIds.add(r.userId);
     if (Number(r.placement) < 1 || Number(r.placement) > 100) {
       throw makeError('INVALID_RESULTS', 'Le classement doit etre entre 1 et 100.');
     }
@@ -522,6 +544,16 @@ export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId,
   }
   if (seenPlacements.size !== finalResults.length) {
     throw makeError('INVALID_RESULTS', 'Classement final incoherent.');
+  }
+  // Tous les finalistes doivent etre classes. Avant, UNE seule ligne suffisait :
+  // la saison passait 'completed', le premier touchait 60 % du pot, et les
+  // 39 autres voir leur pass consomme via settleMatchLossWallet -> 40 % du pot
+  // absorbes sans versement. Le podium 2e/3e restait `null`.
+  if (finalResults.length !== season.finalists.length) {
+    throw makeError(
+      'INVALID_RESULTS',
+      `Classe les ${season.finalists.length} finalistes (une place chacun), pas ${finalResults.length}.`,
+    );
   }
 
   const processedFinal = finalResults.map((r) => ({
@@ -799,12 +831,17 @@ export const getLeaguePayments = (seasons, seasonId) => {
     const user = getUserById(player.userId);
     const wallet = user?.wallet;
     const hasLocked = wallet?.lockedEntries?.[seasonId];
+    // `paid` = le pass a ete paye a l'inscription (etat fige sur l'inscription).
+    // `locked` = les fonds sont encore bloques (avant reglement). Les confondre
+    // faisait afficher "impaye" tout le monde apres le versement du podium.
     return {
       userId: player.userId,
       pseudo: player.pseudo,
       joinedAt: player.joinedAt,
-      paid: !!hasLocked,
-      amount: hasLocked?.amount || 0,
+      paid: player.paid !== false,
+      locked: !!hasLocked,
+      settled: !!season.finalMatch && season.finalMatch.status === 'finished',
+      amount: Number(player.entryFee ?? season.entryFee ?? 0),
       cashAmount: hasLocked?.cashAmount || 0,
       bonusAmount: hasLocked?.bonusAmount || 0,
     };

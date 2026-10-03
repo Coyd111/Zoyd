@@ -108,7 +108,12 @@ export const fetchServerLeaguePayments = async (
     userId: string;
     pseudo: string;
     joinedAt: string;
+    /** Pass paye a l'inscription (etat fige, survit au reglement). */
     paid: boolean;
+    /** Fonds encore bloques (faux apres versement du podium). */
+    locked: boolean;
+    /** Saison soldee (reglement execute). */
+    settled: boolean;
     amount: number;
     cashAmount: number;
     bonusAmount: number;

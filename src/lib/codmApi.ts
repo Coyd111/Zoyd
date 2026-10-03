@@ -42,7 +42,7 @@ export interface CodashopBundle {
 // Player data
 // ---------------------------------------------------------------------------
 
-export async function fetchCODMPlayer(userId: string, country = 'IN'): Promise<CodashopPlayer | null> {
+export async function fetchCODMPlayer(userId: string, country = 'BJ'): Promise<CodashopPlayer | null> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
@@ -60,7 +60,11 @@ export async function fetchCODMPlayer(userId: string, country = 'IN'): Promise<C
 // Store bundles
 // ---------------------------------------------------------------------------
 
-export async function fetchCODMStoreBundles(country = 'IN'): Promise<CodashopBundle[]> {
+/**
+ * Devise par defaut : XOF (Benin). `'IN'` comme defaut affichait les prix de
+ * la boutique indienne (« 499.0 INR ») a un joueur beninois.
+ */
+export async function fetchCODMStoreBundles(country = 'BJ'): Promise<CodashopBundle[]> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);

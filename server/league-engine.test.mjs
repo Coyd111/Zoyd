@@ -128,6 +128,25 @@ describe('league-engine - createLeagueSeasonOnServer', () => {
     getUserById.mockReturnValue(mockPlayer);
     expect(() => leagueEngine.createLeagueSeasonOnServer([], mockPlayer)).toThrow();
   });
+
+  // Le front appelle createServerLeagueSeason() SANS argument (body {}), donc
+  // le moteur doit generer un nom/format par defaut au lieu de lever.
+  it('should create season without name/format (front sends empty body)', () => {
+    const result = leagueEngine.createLeagueSeasonOnServer([], mockAdmin, {});
+    expect(result.season.name).toBeTruthy();
+    expect(result.season.format).toBeTruthy();
+  });
+
+  it('should use the provided name, format and teamSize', () => {
+    const result = leagueEngine.createLeagueSeasonOnServer([], mockAdmin, {
+      name: 'Ligue ZOYD Gold',
+      format: '2VS2',
+      teamSize: 2,
+    });
+    expect(result.season.name).toBe('Ligue ZOYD Gold');
+    expect(result.season.format).toBe('2VS2');
+    expect(result.season.teamSize).toBe(2);
+  });
 });
 
 describe('league-engine - joinLeagueSeasonOnServer', () => {
@@ -272,13 +291,33 @@ describe('league-engine - getLeaguePayments', () => {
     const result = leagueEngine.getLeaguePayments([season], 'LS-TEST');
     expect(result).toHaveLength(1);
     expect(result[0].paid).toBe(true);
+    expect(result[0].locked).toBe(true);
     expect(result[0].amount).toBe(50);
   });
 
-  it('should mark unpaid if no locked entry', () => {
+  // Regression P1 : `paid` derive du verrouillage, qui est libere au
+  // reglement -> apres versement du podium, TOUS les joueurs apparaissent
+  // "impayes". `paid` est fige a l'inscription, `locked` suit les fonds.
+  it('should keep paid=true after funds are released (payout done)', () => {
     getUserById.mockReturnValue({ ...mockPlayer, wallet: {} });
     const season = makeSeason({
+      status: 'completed',
       registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      finalMatch: { matchId: 'LMF-LS-TEST', results: [], status: 'finished' },
+    });
+    const result = leagueEngine.getLeaguePayments([season], 'LS-TEST');
+    expect(result[0].paid).toBe(true);
+    expect(result[0].locked).toBe(false);
+    expect(result[0].settled).toBe(true);
+    expect(result[0].amount).toBe(50);
+  });
+
+  it('should flag unpaid players explicitly', () => {
+    getUserById.mockReturnValue({ ...mockPlayer, wallet: {} });
+    const season = makeSeason({
+      registeredPlayers: [{
+        userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString(), paid: false,
+      }],
     });
     const result = leagueEngine.getLeaguePayments([season], 'LS-TEST');
     expect(result[0].paid).toBe(false);
@@ -577,6 +616,27 @@ describe('league-engine - Score Z System', () => {
       )
     ).toThrow();
   });
+
+  // Regression : un joueur liste deux fois cumulait ses points ET ses
+  // matchesPlayed, faussant le classement et le calcul des finalistes.
+  it('should reject duplicate player in day results', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      qualificationGroups: {
+        tuesday: { players: ['player-1', 'player-2'], matchId: null, results: [], status: 'live' },
+      },
+    });
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday',
+        [
+          { userId: 'player-1', placement: 1, kills: 5 },
+          { userId: 'player-1', placement: 2, kills: 3 },
+        ]
+      )
+    ).toThrow(/plusieurs fois/);
+  });
 });
 
 describe('league-engine - assignPlayersToDays', () => {
@@ -680,5 +740,50 @@ describe('league-engine - submitLeagueFinalResultsOnServer', () => {
     expect(result.season.status).toBe('completed');
     expect(result.season.podium.first).toBe('player-1');
     expect(result.season.podium.second).toBe('player-2');
+  });
+
+  // Regression P0 : une seule ligne suffisait pour solder la saison. Le 1er
+  // touchait 60 % du pot et les 39 autres finalistes absorbaient 40 % via
+  // settleMatchLossWallet sans versement (poids du pot detruit).
+  it('should reject incomplete final results (missing finalists)', async () => {
+    const season = makeSeason({
+      status: 'final',
+      finalists: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 100, bestPlacement: 1 },
+        { userId: 'player-2', pseudo: 'Ghost', totalPoints: 80, bestPlacement: 2 },
+      ],
+      finalMatch: { matchId: null, results: [], status: 'pending' },
+      payout: { gross: 200, first: 100, second: 60, third: 40 },
+    });
+
+    await expect(
+      leagueEngine.submitLeagueFinalResultsOnServer(
+        [season], mockAdmin, 'LS-TEST',
+        [{ userId: 'player-1', placement: 1, kills: 10 }]
+      )
+    ).rejects.toThrow(/finalistes/);
+  });
+
+  it('should keep the season open when final results are incomplete', async () => {
+    const season = makeSeason({
+      status: 'final',
+      finalists: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 100, bestPlacement: 1 },
+        { userId: 'player-2', pseudo: 'Ghost', totalPoints: 80, bestPlacement: 2 },
+      ],
+      finalMatch: { matchId: null, results: [], status: 'pending' },
+      payout: { gross: 200, first: 100, second: 60, third: 40 },
+    });
+
+    await expect(
+      leagueEngine.submitLeagueFinalResultsOnServer(
+        [season], mockAdmin, 'LS-TEST',
+        [{ userId: 'player-1', placement: 1, kills: 10 }]
+      )
+    ).rejects.toThrow();
+
+    // La saison d'origine (cloneSerialize) ne doit pas avoir ete soldee.
+    expect(season.status).toBe('final');
+    expect(season.podium.first).toBeNull();
   });
 });

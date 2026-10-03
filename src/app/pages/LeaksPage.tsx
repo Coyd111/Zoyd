@@ -12,6 +12,8 @@ import {
   WEAPON_DATA, WEAPON_CATEGORIES, TOTAL_WEAPONS,
   type WeaponCategory,
 } from '../../lib/codmWeaponData';
+import { toCountryIso } from '../../lib/competition';
+import { useAuthStore } from '../stores/authStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -213,13 +215,16 @@ const LeaksPage: React.FC = () => {
   const [imgErrors, setImgErrors] = useState<Set<string>>(new Set());
   const markImgError = (key: string) => setImgErrors((prev) => { const n = new Set(prev); n.add(key); return n; });
   const prefersReducedMotion = useReducedMotion();
+  // Devise de la boutique CODM : celle du profil du joueur (XOF par defaut),
+  // pas celle de l'Inde en dur.
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setBundlesLoading(true);
       try {
-        const data = await fetchCODMStoreBundles();
+        const data = await fetchCODMStoreBundles(toCountryIso(user?.country));
         if (!cancelled) {
           setBundles(data);
           setBundlesLoading(false);

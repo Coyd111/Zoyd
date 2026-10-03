@@ -38,6 +38,28 @@ export const COUNTRY_OPTIONS = [
   'Autre',
 ] as const;
 
+/**
+ * Pays (libellé de l'interface) -> code ISO attendu par Codashop.
+ * Sans ce mapping, la boutique CODM interrogeait la session Inde en dur :
+ * un joueur beninois voyait « 499.0 INR ».
+ */
+export const COUNTRY_TO_ISO: Record<string, string> = {
+  'Benin': 'BJ',
+  "Cote d'Ivoire": 'CI',
+  'Senegal': 'SN',
+  'Togo': 'TG',
+  'Cameroon': 'CM',
+  'Gabon': 'GA',
+  'RDC': 'CD',
+  'Nigeria': 'NG',
+  'Ghana': 'GH',
+  'Autre': 'BJ',
+};
+
+/** Code ISO pour un libellé de pays inconnu : BJ (seule devise XOF geree). */
+export const toCountryIso = (country?: string): string =>
+  (country ? COUNTRY_TO_ISO[country] : undefined) || 'BJ';
+
 // Formats de match : 1VS1 à 5VS5 (limite serveur : voir match-engine/realtime-server).
 export const MJ_FORMATS = ['1VS1', '2VS2', '3VS3', '4VS4', '5VS5'] as const;
 export const MAX_TEAM_SIZE = 5;

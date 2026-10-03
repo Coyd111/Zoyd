@@ -12,8 +12,8 @@ const LitigesPage: React.FC = () => (
     <LegalSection n="1" title="Quand contester">
       <p>
         Tu peux contester un match tant qu'il n'est pas clôturé (le score doit avoir été enregistré et les gains
-        distribués). En pratique, conteste dans les <strong className="text-white">24 heures</strong> suivant la fin du
-        match : au-delà, l'arbitre ou la modération tranche sans nouvelle contestation possible.
+        distribués). En pratique, conteste dans les <strong className="text-white">30 minutes</strong> suivant la fin du
+        match : passé ce délai, le règlement est exécuté automatiquement et la contestation n'est plus possible.
       </p>
       <p>
         Seul un joueur inscrit au match, son arbitre ou la modération peut ouvrir un litige.

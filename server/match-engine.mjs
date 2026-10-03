@@ -76,6 +76,28 @@ export const getLockedPot = (match) => {
   return roundAmount(total);
 };
 
+/**
+ * Projection de partage du pot, sur la cagnotte REELLEMENT verrouillee.
+ * Les matchs sans reservation (donc pot = 0) retombent sur `prizePool`
+ * pour que l'UI admin affiche une estimation, mais la base reste la meme
+ * que celle utilisee par `applyResultSettlement`.
+ */
+export const getProjectedPayouts = (match) => {
+  const lockedPot = getLockedPot(match);
+  const basis = lockedPot > 0 ? lockedPot : Number(match.prizePool || 0);
+  const arbiterFee = match.arbiter?.userId ? roundAmount(basis * ARBITER_FEE_RATE) : 0;
+  const winner = Math.max(0, roundAmount(basis - arbiterFee));
+  return {
+    basis: roundAmount(basis),
+    locked: lockedPot > 0,
+    arbiterFee,
+    winner,
+    perWinner: match.players && match.players.length
+      ? roundAmount(winner / match.players.length)
+      : 0,
+  };
+};
+
 const cloneMatches = (matches) => matches.map((match) => structuredClone(match));
 
 export const getPreferredTeam = (match, preferredTeam) => {

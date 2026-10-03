@@ -221,7 +221,29 @@ const handleRequest = async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const storeUrl = new URL(req.url, 'http://localhost');
-      const country = storeUrl.searchParams.get('country') || 'IN';
+      const rawCountry = (storeUrl.searchParams.get('country') || '').toUpperCase();
+      const country = /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : 'BJ';
+      // shopLang par pays : Codashop sert les prix dans la devise du `shopLang`.
+      // En dur `en_in`, un joueur beninois voyait « 499.0 INR » : le `country`
+      // etait lu puis jete. Inconnu -> BJ (seule devise XOF reellement geree).
+      const shopLangByCountry = {
+        BJ: 'fr_bj',
+        SN: 'fr_sn',
+        CI: 'fr_ci',
+        ML: 'fr_ml',
+        BF: 'fr_bf',
+        CM: 'fr_cm',
+        TG: 'fr_tg',
+        CD: 'fr_cd',
+        CG: 'fr_cg',
+        GW: 'pt_gw',
+        FR: 'fr_fr',
+        NG: 'en_ng',
+        GH: 'en_gh',
+        ZA: 'en_za',
+        IN: 'en_in',
+      };
+      const shopLang = shopLangByCountry[country] || 'fr_bj';
       const deviceId = crypto.randomUUID();
 
       const graphqlBody = {
@@ -234,7 +256,7 @@ const handleRequest = async (req, res) => {
           characterId: '',
           worldId: '',
           lvtId: 11347,
-          shopLang: 'en_in',
+          shopLang,
         },
         extensions: {
           clientLibrary: { name: '@apollo/client', version: '4.0.9' },
@@ -1574,12 +1596,20 @@ const handleRequest = async (req, res) => {
     }
     try { await withLeagueMutex(async () => {
       const body = await parseRequestBody(req);
-      if (!body.name || typeof body.name !== 'string' || body.name.trim().length < 3) {
-        respondJson(res, 400, { ok: false, error: 'Nom de la ligue requis (3-100 caractères).', code: 'INVALID_LEAGUE_NAME' });
+      // `name` et `format` sont OPTIONNELS : la route les exigeait (>= 3
+      // caractères) alors que le front appelle sans argument -> body {} ->
+      // 400 a chaque clic, donc la BR League etait impossible a creer. Le
+      // moteur genere un nom par defaut (`Cycle N`).
+      if (body.name !== undefined && (typeof body.name !== 'string' || body.name.trim().length < 3)) {
+        respondJson(res, 400, { ok: false, error: 'Nom de la ligue invalide (3-100 caractères).', code: 'INVALID_LEAGUE_NAME' });
         return;
       }
-      if (!body.format || typeof body.format !== 'string') {
-        respondJson(res, 400, { ok: false, error: 'Format requis.', code: 'INVALID_FORMAT' });
+      if (body.name !== undefined && body.name.length > 100) {
+        respondJson(res, 400, { ok: false, error: 'Nom de la ligue trop long (max 100 caractères).', code: 'INVALID_LEAGUE_NAME' });
+        return;
+      }
+      if (body.format !== undefined && typeof body.format !== 'string') {
+        respondJson(res, 400, { ok: false, error: 'Format invalide.', code: 'INVALID_FORMAT' });
         return;
       }
       if (body.teamSize !== undefined && (typeof body.teamSize !== 'number' || body.teamSize < 1 || body.teamSize > 5)) {
@@ -1797,11 +1827,12 @@ const handleRequest = async (req, res) => {
 
   const leagueRefund = pathname.match(/^\/api\/leagues\/([^/]+)\/refund\/([^/]+)$/);
   if (req.method === 'POST' && leagueRefund) {
-    const session = getAuthenticatedAppSession(req);
-    if (!session) {
-      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
-      return;
-    }
+    // Cette route DEPLACE DE L'ARGENT (remboursement d'un pass de ligue).
+    // Elle n'exigeait que le rôle admin, alors que la lecture de la liste des
+    // paiements exigeait la 2FA : un compte admin compromis suffisait a
+    // vider les portefeuilles. Aligne sur les autres operations financieres.
+    const session = requireAdmin2fa(req, res);
+    if (!session) return;
     try { await withLeagueMutex(async () => {
       const outcome = await refundLeaguePlayerOnServer(
         getStoredLeagues(),

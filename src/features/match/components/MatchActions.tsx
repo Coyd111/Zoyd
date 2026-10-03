@@ -18,6 +18,7 @@ import {
 import { formatZC } from '../../../lib/utils';
 import type { Match, MatchPlayer, DisputeCategory, Dispute } from '../../../app/stores/matchStore';
 import type { User } from '../../../app/stores/authStore';
+import { getArbiterFee } from '../../../lib/matchPayout';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
@@ -245,7 +246,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
 
       {user && canJoinArbiterSlot && (
         <button onClick={handlers.joinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
-          POSTULER COMME ARBITRE (COMMISSION: {formatZC(match.arbiterFee)})
+          POSTULER COMME ARBITRE (COMMISSION: {formatZC(getArbiterFee(match))})
         </button>
       )}
 

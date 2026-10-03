@@ -61,7 +61,7 @@ const shiftDays = (date: Date, days: number) => {
 const isReportOpen = (report: Report) => report.status === 'pending';
 const isDisputeOpen = (status?: string) => status === 'open' || status === 'under_review';
 
-const getWinnerPayout = (match: Match) => roundAmount(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee));
+import { getWinnerPayout } from './matchPayout';
 
 const getTournamentPlacementPayout = (entry: TournamentEntry, tournament: Tournament) => {
   if (entry.finalPlacement === 1) return tournament.payout.first;

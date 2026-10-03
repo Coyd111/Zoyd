@@ -87,7 +87,7 @@ const ConditionsPage: React.FC = () => (
     <LegalSection n="6" title="Litiges">
       <p>
         En cas de désaccord sur un résultat, ouvre une contestation depuis le match avec tes preuves (captures du
-        tableau des scores) dans un délai de <strong className="text-white">24 heures</strong>. Un arbitre ZOYD
+        tableau des scores) dans un délai de <strong className="text-white">30 minutes</strong> après la fin du match. Un arbitre ZOYD
         tranche ; sa décision est finale.
       </p>
     </LegalSection>

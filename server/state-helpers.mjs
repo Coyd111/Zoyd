@@ -2,7 +2,7 @@ import { syncMatchChatChannels, buildMatchChatChannel, broadcastChatChannel } fr
 import { broadcastStateSnapshot } from './push-notifications.mjs';
 import { replaceStateCollection, getStateCollection, getUserById } from './persistence.mjs';
 import { normalizeTournamentCollection } from './tournament-engine.mjs';
-import { getPublicMatchesForUser } from './match-engine.mjs';
+import { getPublicMatchesForUser, getProjectedPayouts } from './match-engine.mjs';
 import { normalizeLeagueCollection } from './league-engine.mjs';
 import { getServerWallet } from './wallet-engine.mjs';
 
@@ -115,9 +115,10 @@ const sanitizeMatchForBroadcast = (match, viewerId = null) => {
       hasConfirmed: confirmed.includes(userId),
     }));
   }
-  if (Array.isArray(safe.players)) {
-    safe.players = safe.players.map(({ userId, ...rest }) => rest);
-  }
+  // Partition calculee par le serveur (meme base que applyResultSettlement :
+  // cagnotte reellement verrouillee). Evite au front de recalculer un
+  // pourcentage arbitre et d'afficher un montant different du verse.
+  safe.projectedPayouts = getProjectedPayouts(match);
   if (safe.submittedBy === 'system-no-show' || safe.submittedBy === 'admin-dashboard') {
     safe.submittedBy = null;
   }

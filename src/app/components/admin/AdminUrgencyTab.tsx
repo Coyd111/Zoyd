@@ -86,7 +86,12 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
             match.dispute ||
             match.disputes[0];
           const isEscalated = (activeDispute?.level || 1) >= 2;
-          const winnerShare = Math.max(0, Number(match.prizePool || 0) * 0.98);
+          // Montant autoritaire fourni par le serveur (cagnotte reellement
+          // verrouillee - commission d'arbitre). Le `* 0.98` local ignorait la
+          // commission d'arbitre et le roster incomplet : l'admin confirmait un
+          // montant different de celui reellement verse.
+          const winnerShare = match.projectedPayouts?.winner
+            ?? Math.max(0, Number(match.prizePool || 0) - Number(match.arbiterFee || 0));
 
           return (
             <div key={match.id} className="p-6">

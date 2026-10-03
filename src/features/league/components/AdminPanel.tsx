@@ -10,7 +10,12 @@ interface PaymentInfo {
   userId: string;
   pseudo: string;
   joinedAt: string;
+  /** Pass paye a l'inscription (fige : survit au reglement). */
   paid: boolean;
+  /** Fonds encore bloques (faux apres versement du podium). */
+  locked: boolean;
+  /** Saison soldee. */
+  settled: boolean;
   amount: number;
   cashAmount: number;
   bonusAmount: number;
@@ -65,7 +70,9 @@ export const AdminPanel = ({
 
   const paidCount = payments.filter((p) => p.paid).length;
   const unpaidCount = payments.filter((p) => !p.paid).length;
-  const totalCollected = payments.filter((p) => p.paid).reduce((sum, p) => sum + p.amount, 0);
+  // `paid` est fige a l'inscription : on ne recompte donc pas les joueurs
+  // "regles" dans l'encaissement (leur fonds ont deja ete distribues).
+  const totalCollected = payments.filter((p) => p.locked).reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div className="space-y-4">
@@ -263,11 +270,12 @@ export const AdminPanel = ({
                             : 'border-red-400/30 text-red-400 bg-red-400/10'
                         }`}>
                            {payment.paid ? 'Payé' : 'Impayé'}
+                           {payment.paid && !payment.locked ? ' · réglé' : ''}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-sm text-white/60 text-right">{formatZC(payment.amount)}</td>
                       <td className="px-3 py-2 text-right">
-                        {payment.paid && (
+                        {payment.paid && payment.locked && (
                           <button
                             onClick={() => handleRefund(payment.userId)}
                             disabled={isActionLoading}

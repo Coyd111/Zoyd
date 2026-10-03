@@ -17,10 +17,27 @@ export const FinalResultsForm = ({
     setEntries((prev) => prev.map((e) => (e.userId === userId ? { ...e, [field]: value } : e)));
   };
 
+  const ranked = entries.filter((e) => e.placement > 0);
+  // Tous les finalistes doivent etre classes AVANT envoi. Filtrer les
+  // non-classes (comme avant) envoyait un classement partiel : le serveur
+  // solderait la saison et les finalistes absents verraient leur pass
+  // consomme sans jamais recevoir leur part.
+  const allRanked = ranked.length === entries.length && entries.length > 0;
+  const placements = ranked.map((e) => e.placement);
+  const duplicatePlacements = placements.length !== new Set(placements).size;
+  const canSubmit = allRanked && !duplicatePlacements && !isLoading;
+
+  const blockingReason = entries.length === 0
+    ? 'Aucun finaliste.'
+    : !allRanked
+      ? `Classe les ${entries.length - ranked.length} finaliste(s) restant(s).`
+      : duplicatePlacements
+        ? 'Deux joueurs partagent la meme place.'
+        : null;
+
   const handleSubmit = () => {
-    const valid = entries.filter((e) => e.placement > 0);
-    if (valid.length === 0) return;
-    onsubmit(valid.map(({ userId, placement, kills }) => ({ userId, placement, kills })));
+    if (!canSubmit) return;
+    onsubmit(ranked.map(({ userId, placement, kills }) => ({ userId, placement, kills })));
   };
 
   const sortedEntries = [...entries].sort((a, b) => a.placement - b.placement || b.kills - a.kills);
@@ -29,7 +46,7 @@ export const FinalResultsForm = ({
     <div className="border border-white/10 bg-zoyd-surface/20 p-5 space-y-4">
       <h3 className="text-sm font-bold text-white mb-3">Soumettre les résultats de la finale</h3>
       <p className="text-[10px] text-white/70 mb-4">
-          Saisis le classement (placement) et les kills de chaque finaliste. Seuls les joueurs avec un placement {'>'} 0 seront enregistrés.
+          Saisis le classement (placement) et les kills de chaque finaliste. Une place par joueur, et les {entries.length} finalistes doivent tous etre classes.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
@@ -78,16 +95,21 @@ export const FinalResultsForm = ({
       </div>
       <div className="flex items-center justify-between border-t border-white/5 pt-3">
         <span className="text-[10px] text-white/70">
-          {entries.filter((e) => e.placement > 0).length} / {entries.length} joueurs classe(s)
+          {ranked.length} / {entries.length} joueurs classe(s)
         </span>
         <button
           onClick={handleSubmit}
-          disabled={isLoading || entries.filter((e) => e.placement > 0).length === 0}
+          disabled={!canSubmit}
           className="touch-target text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
         >
           {isLoading ? 'Envoi...' : 'Valider les résultats'}
         </button>
       </div>
+      {blockingReason && (
+        <p role="status" className="text-[10px] font-mono text-zoyd-yellow">
+          {blockingReason}
+        </p>
+      )}
     </div>
   );
 };

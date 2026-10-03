@@ -142,8 +142,8 @@ const MatchDetailPage: React.FC = () => {
   useEffect(() => {
     if (!match?.channelId || !user) return;
 
-    const playerPresence = match.players.find((player) => player.userId === user.id);
-    const isUserArbiter = match.arbiter?.userId === user.id;
+    const playerPresence = match.players.find((player) => player.isMe);
+    const isUserArbiter = match.arbiter?.isMe === true;
 
     joinChannel(match.channelId, user.id, user.pseudo, {
       role: isUserArbiter ? 'arbiter' : playerPresence ? 'player' : 'spectator',
@@ -172,10 +172,10 @@ const MatchDetailPage: React.FC = () => {
   }, [match?.id, match?.roomName, match?.roomPassword, match?.scheduledAt]);
 
   const currentPlayer = useMemo(
-    () => match?.players.find((player) => player.userId === user?.id),
-    [match?.players, user?.id]
+    () => match?.players.find((player) => player.isMe),
+    [match?.players]
   );
-  const isArbiter = !!user && match?.arbiter?.userId === user.id;
+  const isArbiter = !!user && match?.arbiter?.isMe === true;
   const canSeeRoom = !!currentPlayer || isArbiter;
   const openDisputeRecord = match?.disputes.find(
     (dispute) => dispute.status === 'open' || dispute.status === 'under_review'
@@ -218,17 +218,17 @@ const MatchDetailPage: React.FC = () => {
   const confirmationCountdown = match?.confirmationDeadline
     ? getCountdownDisplay(match.confirmationDeadline)
     : null;
-  const confirmedUserIds = match?.result?.confirmedByTeams ?? [];
+  // `result.confirmedByTeams` ne contient que des userId, absents du payload :
+  // chaque joueur porte désormais son propre `hasConfirmed`.
   const confirmation = match?.status === 'awaiting_confirmation'
     ? {
         countdown: confirmationCountdown,
-        confirmedPlayers: (match.players ?? []).filter((player) => confirmedUserIds.includes(player.userId)),
-        waitingPlayers: (match.players ?? []).filter((player) => !confirmedUserIds.includes(player.userId)),
+        confirmedPlayers: (match.players ?? []).filter((player) => player.hasConfirmed),
+        waitingPlayers: (match.players ?? []).filter((player) => !player.hasConfirmed),
       }
     : null;
   // Seul un JOUEUR du match peut confirmer, et une seule fois.
-  const canConfirmResult =
-    !!confirmation && !!currentPlayer && !confirmedUserIds.includes(currentPlayer.userId);
+  const canConfirmResult = !!confirmation && !!currentPlayer && !currentPlayer.hasConfirmed;
   const scheduledAtMs = match?.scheduledAt ? new Date(match.scheduledAt).getTime() : null;
   const minutesUntilMatch = scheduledAtMs ? Math.round((scheduledAtMs - Date.now()) / 60000) : null;
   const roomPublishWindow = !match?.scheduledAt
@@ -506,10 +506,16 @@ const MatchDetailPage: React.FC = () => {
         toast.success('Les deux equipes ont confirme : la cagnotte est versee.');
         return;
       }
-      const waitingNames = response.waitingFor.map(
-        (userId) => match.players.find((player) => player.userId === userId)?.pseudo || 'un joueur'
+      // `waitingFor` contient des userId et le payload de match n'expose plus
+      // les userId des joueurs : il n'existe aucun moyen legitime de traduire
+      // ces ids en pseudos cote client. On affiche donc le nombre, qui est
+      // exact, plutot qu'un nom invente ou toujours « un joueur ».
+      const waitingCount = response.waitingFor.length;
+      toast.success(
+        waitingCount === 1
+          ? 'Resultat confirme de ton cote. En attente de 1 autre joueur.'
+          : `Resultat confirme de ton cote. En attente de ${waitingCount} joueurs.`
       );
-      toast.success(`Resultat confirme de ton cote. En attente de ${waitingNames.join(', ')}.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Confirmation impossible.');
     } finally {

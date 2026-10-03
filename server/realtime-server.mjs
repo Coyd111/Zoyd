@@ -1260,7 +1260,13 @@ const handleRequest = async (req, res) => {
       const allMatches = getStateCollection('matches');
       const visibleMatches = getPublicMatchesForUser(allMatches, matchCurrentUser);
       const { limit, offset } = parseQueryParams(req.url);
-      const { items: matches, hasMore } = paginate(visibleMatches.map(sanitizeMatchForBroadcast), { limit, offset });
+      // Arrow explicite : `Array.map` passe (element, index, array), donc
+      // `map(sanitizeMatchForBroadcast)` aurait passe l'INDEX comme viewerId
+      // et `isMe` aurait toujours ete false sans lever la moindre erreur.
+      const { items: matches, hasMore } = paginate(
+        visibleMatches.map((match) => sanitizeMatchForBroadcast(match, matchCurrentUser?.id || null)),
+        { limit, offset }
+      );
       respondJson(res, 200, { ok: true, matches, total: visibleMatches.length, hasMore });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des matchs.', code: 'LOAD_ERROR' });
@@ -1273,7 +1279,10 @@ const handleRequest = async (req, res) => {
     try {
       const { limit, offset } = parseQueryParams(req.url);
       const all = getStoredTournaments();
-      const { items: tournaments, hasMore } = paginate(all.map(sanitizeTournamentForBroadcast), { limit, offset });
+      const { items: tournaments, hasMore } = paginate(
+        all.map((t) => sanitizeTournamentForBroadcast(t, session?.userId || null)),
+        { limit, offset }
+      );
       respondJson(res, 200, { ok: true, tournaments, total: all.length, hasMore });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des tournois.', code: 'LOAD_ERROR' });
@@ -2660,10 +2669,12 @@ const handleRequest = async (req, res) => {
     }
 
     try {
-      const allMatches = getStateCollection('matches');
-      const recentMatches = allMatches.slice(-100).map(sanitizeMatchForBroadcast);
+const allMatches = getStateCollection('matches');
+      const recentMatches = allMatches.slice(-100)
+        .map((match) => sanitizeMatchForBroadcast(match, session.userId));
       const allTournaments = getStoredTournaments();
-      const recentTournaments = allTournaments.slice(-50).map(sanitizeTournamentForBroadcast);
+      const recentTournaments = allTournaments.slice(-50)
+        .map((t) => sanitizeTournamentForBroadcast(t, session.userId));
       respondJson(res, 200, {
         ok: true,
         matches: recentMatches,

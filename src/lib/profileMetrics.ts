@@ -1,6 +1,6 @@
 import type { User, UserStats } from '../app/stores/authStore';
 import { isMatchPayoutSettled, type Match, type MatchPlayer } from '../app/stores/matchStore';
-import type { Tournament } from '../app/stores/tournamentStore';
+import type { Tournament, TournamentEntry, TournamentEntryMember } from '../app/stores/tournamentStore';
 
 export interface TournamentPlacement {
   tournamentId: string;
@@ -35,18 +35,63 @@ const roundAmount = (value: number) => Math.round(value * 100) / 100;
 
 const getWinnerPayout = (match: Match) => roundAmount(Math.max(0, match.prizePool - match.zoydFee - match.arbiterFee));
 
-export const getPlayerMatches = (userId: string, matches: Match[]) =>
-  matches.filter((match) => match.players.some((player) => player.userId === userId));
+/**
+ * Cible d'un profil dans un payload de match.
+ *
+ * Le serveur retire le `userId` de chaque joueur : on ne peut plus le comparer
+ * à un identifiant de profil. Deux substituts existent, et un seul est valide
+ * selon le cas :
+ *  - `isOwnProfile: true` -> `player.isMe`, calculé par le serveur POUR le
+ *    demandeur. Autoritaire, y compris si le joueur a changé de pseudo depuis
+ *    le match (les matchs gardent l'ancien pseudo) ;
+ *  - `isOwnProfile: false` -> `player.pseudo`, unique et présent à
+ *    l'inscription. Seul moyen de rattacher un match à un profil tiers, sur
+ *    lequel `isMe` vaudra `false` pour tout le monde.
+ */
+export interface MatchProfileTarget {
+  isOwnProfile: boolean;
+  pseudo: string;
+}
 
-export const getObservedPlayerSnapshot = (userId: string, matches: Match[]): MatchPlayer | undefined => {
+export const findTargetPlayerInMatch = (match: Match, target: MatchProfileTarget) =>
+  match.players.find((player) => (target.isOwnProfile ? player.isMe : player.pseudo === target.pseudo));
+
+const isTargetArbiterInMatch = (match: Match, target: MatchProfileTarget) =>
+  target.isOwnProfile ? match.arbiter?.isMe === true : match.arbiter?.pseudo === target.pseudo;
+
+/**
+ * Membre d'entrée de tournoi correspondant au profil ciblé.
+ * Meme regle que `findTargetPlayerInMatch` : `isMe` sur son propre profil,
+ * `pseudo` sur celui d'un tiers (le serveur retire le userId des membres).
+ */
+const findTargetPlayerInMember = (
+  _entry: TournamentEntry,
+  target: MatchProfileTarget,
+  member: TournamentEntryMember
+) => (target.isOwnProfile ? member.isMe === true : member.pseudo === target.pseudo);
+
+export const getPlayerMatches = (target: MatchProfileTarget, matches: Match[]) =>
+  matches.filter((match) => !!findTargetPlayerInMatch(match, target));
+
+export const getObservedPlayerSnapshot = (target: MatchProfileTarget, matches: Match[]): MatchPlayer | undefined => {
   for (const match of matches) {
-    const player = match.players.find((entry) => entry.userId === userId);
+    const player = findTargetPlayerInMatch(match, target);
     if (player) return player;
   }
   return undefined;
 };
 
-export const getTournamentPlacements = (userId: string, tournaments: Tournament[]): TournamentPlacement[] =>
+/**
+ * Palmarès en tournoi du profil ciblé.
+ *
+ * Même problème que pour les matchs : `sanitizeTournamentForBroadcast` retire
+ * le `userId` des membres d'entrée, donc la comparaison par userId ne
+ * meme couple `isMe` / `pseudo` que `findTargetPlayerInMatch`.
+ */
+export const getTournamentPlacements = (
+  target: MatchProfileTarget,
+  tournaments: Tournament[]
+): TournamentPlacement[] =>
   tournaments
     // Annotation du retour du map : sans elle le type inféré est
     // `{...} | null` et le prédicat de filter plus bas est invalide (TS2677),
@@ -54,7 +99,7 @@ export const getTournamentPlacements = (userId: string, tournaments: Tournament[
     // MatchFormat du littéral.
     .map((tournament): TournamentPlacement | null => {
       const entry = tournament.entries.find((candidate) =>
-        candidate.members.some((member) => member.userId === userId)
+        candidate.members.some((member) => findTargetPlayerInMember(candidate, target, member))
       );
       if (!entry?.finalPlacement) return null;
 
@@ -80,21 +125,26 @@ export const getTournamentPlacements = (userId: string, tournaments: Tournament[
     .sort((a, b) => new Date(b.finishedAt || 0).getTime() - new Date(a.finishedAt || 0).getTime());
 
 export const buildCompetitiveSummary = ({
-  userId,
+  target,
   overallTrustScore,
   matches,
   tournaments,
   fallbackStats,
   dateJoined,
 }: {
-  userId: string;
+  /**
+   * `userId` a ete retire : l'identite ne peut plus se lire dans le payload
+   * d'un match (le serveur retire `userId` et ajoute `isMe`). `target` porte
+   * toute l'information necessaire (`isOwnProfile` + `pseudo`).
+   */
+  target: MatchProfileTarget;
   overallTrustScore: number;
   matches: Match[];
   tournaments: Tournament[];
   fallbackStats?: UserStats;
   dateJoined?: string;
 }): CompetitiveSummary => {
-  const playerMatches = getPlayerMatches(userId, matches);
+  const playerMatches = getPlayerMatches(target, matches);
   // Un résultat existe dès la soumission de l'arbitre, mais l'argent ne part
   // qu'à la confirmation des deux équipes : ne compter que les matchs dont la
   // cagnotte est effectivement distributed, sinon un match en attente s'ajoute
@@ -104,7 +154,7 @@ export const buildCompetitiveSummary = ({
     (match) => match.status === 'disputed' || match.disputes.length > 0
   );
   const forfeits = playerMatches.filter((match) => {
-    const participant = match.players.find((player) => player.userId === userId);
+    const participant = findTargetPlayerInMatch(match, target);
     return !!participant && match.result?.resolutionType === 'forfeit' && match.result.forfeitTeam === participant.team;
   }).length;
 
@@ -112,7 +162,7 @@ export const buildCompetitiveSummary = ({
   let totalCommissions = 0;
 
   for (const match of matches) {
-    if (match.arbiter?.userId === userId && (match.status === 'finished' || match.status === 'disputed') && match.result) {
+    if (isTargetArbiterInMatch(match, target) && (match.status === 'finished' || match.status === 'disputed') && match.result) {
       arbitratedMatches += 1;
       totalCommissions += match.arbiterFee;
     }
@@ -124,7 +174,7 @@ export const buildCompetitiveSummary = ({
   let matchEarnings = 0;
 
   for (const match of settledMatches) {
-    const participant = match.players.find((player) => player.userId === userId);
+    const participant = findTargetPlayerInMatch(match, target);
     if (!participant || !match.result) continue;
 
     if (participant.team === match.result.winnerTeam) {
@@ -135,7 +185,7 @@ export const buildCompetitiveSummary = ({
     }
   }
 
-  const tournamentPlacements = getTournamentPlacements(userId, tournaments);
+  const tournamentPlacements = getTournamentPlacements(target, tournaments);
   const tournamentEarnings = tournamentPlacements.reduce((sum, placement) => sum + placement.payout, 0);
   const derivedStats: UserStats = {
     wins,
@@ -202,7 +252,9 @@ export const createPublicProfile = ({
   userId: string;
   currentUser?: User | null;
   observedPlayer?: MatchPlayer;
-  observedArbiter?: { userId: string; pseudo: string; trustScore: number };
+  // `userId` retiré : le serveur ne l'envoie plus sur l'arbitre d'un match
+  // (sanitizeMatchForBroadcast). Seuls `pseudo` et `trustScore` sont lus.
+  observedArbiter?: { pseudo: string; trustScore: number };
   friendRecord?: {
     pseudo: string;
     country: string;

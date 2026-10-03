@@ -369,8 +369,14 @@ export const buildCommunityPlayers = ({
 
   for (const match of matches) {
     for (const player of match.players) {
+      // Le registre est indexe sur `normalizePseudo(pseudo)`, pas sur le userId :
+      // le serveur retire le `userId` des joueurs de match, on ne peut donc plus
+      // l'alimenter ici. `primaryUserId` reste renseigne pour le demandeur et
+      // ses amis, enregistres AVANT les matchs (priorites 5 et 4 > 3) et seuls
+      // cas ou le client connait un vrai id. `isMe` est repris tel quel, il
+      // est calcule par le serveur pour le demandeur.
       const record = ensurePlayer(registry, player.pseudo, {
-        userId: player.userId,
+        isMe: player.isMe,
         hasPublicProfile: true,
         controllerType: player.controllerType,
         device: player.device,
@@ -409,7 +415,9 @@ export const buildCommunityPlayers = ({
 
       for (const member of entry.members) {
         const record = ensurePlayer(registry, member.pseudo, {
-          userId: member.userId,
+// `userId` n'est plus dans le payload (retire par le sanitizeur) : le
+          // registre est deja indexe par pseudo, qui est unique.
+          userId: undefined,
           rankMJ: member.rankMJ,
           priority: 2,
         });

@@ -32,7 +32,7 @@ const ProfilPage = () => {
   const summary = useMemo(
     () =>
       buildCompetitiveSummary({
-        userId: user.id,
+        target: { isOwnProfile: true, pseudo: user.pseudo },
         overallTrustScore: user.trustScore,
         matches,
         tournaments,

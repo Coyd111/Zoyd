@@ -75,16 +75,16 @@ const DashboardPage: React.FC = () => {
     () =>
       matches.filter(
         (m) =>
-          m.players.some((p) => p.userId === user?.id) &&
+          m.players.some((p) => p.isMe) &&
           ['recruiting', 'full', 'check_in', 'ready', 'in_progress'].includes(m.status)
       ),
-    [matches, user?.id]
+    [matches]
   );
 
   const recentFinished = useMemo(() => {
     if (!user) return [];
     return matches
-      .filter((m) => m.players.some((p) => p.userId === user.id) && m.status === 'finished' && m.result)
+      .filter((m) => m.players.some((p) => p.isMe) && m.status === 'finished' && m.result)
       .sort((a, b) => new Date(b.finishedAt || b.updatedAt).getTime() - new Date(a.finishedAt || a.updatedAt).getTime())
       .slice(0, 3);
   }, [matches, user]);
@@ -125,7 +125,7 @@ const DashboardPage: React.FC = () => {
   );
 
   const totalWins = useMemo(() => recentFinished.filter((m) => {
-    const myPlayer = m.players.find((p) => p.userId === user.id);
+    const myPlayer = m.players.find((p) => p.isMe);
     return myPlayer && m.result?.winnerTeam === myPlayer.team;
   }).length, [recentFinished, user.id]);
 
@@ -237,7 +237,7 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {recentFinished.map((match) => {
-                  const myPlayer = match.players.find((p) => p.userId === user.id);
+                  const myPlayer = match.players.find((p) => p.isMe);
                   const won = myPlayer && match.result?.winnerTeam === myPlayer.team;
                   const scores = match.result?.scores;
 

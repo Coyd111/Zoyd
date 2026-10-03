@@ -138,7 +138,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-3">ROSTER IMPACTÉ</div>
                   <div className="flex flex-wrap gap-2">
                     {match.players.map((player) => (
-                      <PlayerPill key={`${match.id}-${player.userId}`} label={player.pseudo} team={player.team} />
+                      <PlayerPill key={`${match.id}-${player.pseudo}`} label={player.pseudo} team={player.team} />
                     ))}
                   </div>
                 </div>

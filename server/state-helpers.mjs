@@ -2,6 +2,7 @@ import { syncMatchChatChannels, buildMatchChatChannel, broadcastChatChannel } fr
 import { broadcastStateSnapshot } from './push-notifications.mjs';
 import { replaceStateCollection, getStateCollection, getUserById } from './persistence.mjs';
 import { normalizeTournamentCollection } from './tournament-engine.mjs';
+import { getPublicMatchesForUser } from './match-engine.mjs';
 import { normalizeLeagueCollection } from './league-engine.mjs';
 import { getServerWallet } from './wallet-engine.mjs';
 
@@ -18,11 +19,10 @@ const saveMatches = async (io, matches, changedMatch = null) => {
   await replaceStateCollection('matches', matches);
   // Broadcast only the changed match delta instead of full collection
   if (changedMatch) {
-    broadcastStateSnapshot(io, 'matches', [sanitizeMatchForBroadcast(changedMatch)]);
+    broadcastMatchesToSessions(io, [changedMatch]);
     broadcastChatChannel(io, buildMatchChatChannel(changedMatch));
   } else {
-    const storedMatches = getStateCollection('matches');
-    broadcastStateSnapshot(io, 'matches', storedMatches.map(sanitizeMatchForBroadcast));
+    broadcastMatchesToSessions(io, getStateCollection('matches'));
   }
   return getStateCollection('matches');
 };
@@ -41,11 +41,13 @@ const getStoredTournaments = () => normalizeTournamentCollection(getStateCollect
  */
 const saveTournaments = async (io, tournaments, changedTournament = null) => {
   await replaceStateCollection('tournaments', tournaments);
-  if (changedTournament) {
-    broadcastStateSnapshot(io, 'tournaments', [sanitizeTournamentForBroadcast(changedTournament)]);
-  } else {
-    const storedTournaments = getStoredTournaments();
-    broadcastStateSnapshot(io, 'tournaments', storedTournaments.map(sanitizeTournamentForBroadcast));
+  const targets = changedTournament ? [changedTournament] : getStateCollection('tournaments');
+  // Par socket, comme pour les matchs : `isMe` est different par destinataire.
+  for (const socket of io.sockets.sockets.values()) {
+    const viewerId = socket.data?.session?.userId || null;
+    socket.emit('state:tournaments', {
+      items: targets.map((t) => sanitizeTournamentForBroadcast(t, viewerId)),
+    });
   }
   return getStoredTournaments();
 };
@@ -60,22 +62,58 @@ const buildMatchActionPayload = (match, userId) => {
   const user = getUserById(userId);
   return {
     ok: true,
-    match: sanitizeMatchForBroadcast(match),
+    match: sanitizeMatchForBroadcast(match, userId),
     user,
     wallet: user?.wallet || getServerWallet(userId),
   };
 };
 
 /**
- * Remove sensitive fields (e.g. roomPassword, screenshots, userId, system actor names) from a match before broadcasting.
- * @param {object} match - The match to sanitize
+ * Diffuser les matchs en calculant `isMe` POUR CHAQUE socket.
+ *
+ * Un `io.emit` global ne peut pas porter un `isMe` different par destinataire.
+ * On emet donc par socket : le nombre de sockets connectes est de l'ordre de
+ * la grandeur du jeu, et un match ne change que quelques fois par minute.
+ */
+const broadcastMatchesToSessions = (io, matches) => {
+  for (const socket of io.sockets.sockets.values()) {
+    const viewerId = socket.data?.session?.userId || null;
+    const viewer = viewerId ? getUserById(viewerId) : null;
+    // Filtre par peripherie ET visibilite : un `io.emit` global poussait
+    // aussi les matchs prives et ceux d'un autre appareil a tous les clients.
+    const visible = getPublicMatchesForUser(matches, viewer);
+    socket.emit('state:matches', {
+      items: visible.map((match) => sanitizeMatchForBroadcast(match, viewerId)),
+    });
+  }
+};
+
+/**
+ * Remove sensitive fields from a match before broadcasting.
+ *
+ * `userId` est retire (les UUID internes ne doivent pas fuiter), mais un
+ * drapeau `isMe` est AJOUTE par joueur : sans lui le client ne peut pas
+ * identifier son propre slot, donc `currentPlayer` restait `undefined` et les
+ * boutons "Confirmer ma presence" / "Je suis pret" ne s'affichaient jamais.
+ * `hasConfirmed` remplace l'acces a `result.confirmedByTeams`.
+ *
+ * @param {object} match - Match to sanitize
+ * @param {string|null} viewerId - userId du destinataire (null = anonyme)
  * @returns {object} A shallow copy with sensitive fields stripped
  */
-const sanitizeMatchForBroadcast = (match) => {
+const sanitizeMatchForBroadcast = (match, viewerId = null) => {
   const { roomPassword, roomName, screenshots, ...safe } = match;
   if (safe.arbiter) {
-    const { roomPassword: _ap, roomName: _an, ...safeArbiter } = safe.arbiter;
-    safe.arbiter = safeArbiter;
+    const { roomPassword: _ap, roomName: _an, userId: arbiterUserId, ...safeArbiter } = safe.arbiter;
+    safe.arbiter = { ...safeArbiter, isMe: Boolean(viewerId && arbiterUserId === viewerId) };
+  }
+  if (Array.isArray(safe.players)) {
+    const confirmed = Array.isArray(safe.result?.confirmedByTeams) ? safe.result.confirmedByTeams : [];
+    safe.players = safe.players.map(({ userId, ...rest }) => ({
+      ...rest,
+      isMe: Boolean(viewerId && userId === viewerId),
+      hasConfirmed: confirmed.includes(userId),
+    }));
   }
   if (Array.isArray(safe.players)) {
     safe.players = safe.players.map(({ userId, ...rest }) => rest);
@@ -96,20 +134,28 @@ const sanitizeMatchForBroadcast = (match) => {
  * @param {object} tournament - The tournament to sanitize
  * @returns {object} A sanitized copy safe for public broadcast
  */
-const sanitizeTournamentForBroadcast = (tournament) => {
+const sanitizeTournamentForBroadcast = (tournament, viewerId = null) => {
   const safe = { ...tournament };
   if (Array.isArray(safe.matches)) {
-    safe.matches = safe.matches.map(sanitizeMatchForBroadcast);
+    safe.matches = safe.matches.map((match) => sanitizeMatchForBroadcast(match, viewerId));
   }
   if (Array.isArray(safe.arbiters)) {
-    safe.arbiters = safe.arbiters.map(({ userId, ...rest }) => rest);
+    safe.arbiters = safe.arbiters.map(({ userId, ...rest }) => ({
+      ...rest,
+      isMe: Boolean(viewerId && userId === viewerId),
+    }));
   }
   if (Array.isArray(safe.entries)) {
     safe.entries = safe.entries.map((entry) => {
       const sanitized = { ...entry };
       delete sanitized.captainId;
       if (Array.isArray(sanitized.members)) {
-        sanitized.members = sanitized.members.map(({ userId, ...rest }) => rest);
+        // Comme pour les joueurs de match : `userId` retire, `isMe` ajoute,
+        // sinon le client ne peut pas reconnaitre son propre slot d'equipe.
+        sanitized.members = sanitized.members.map(({ userId, ...rest }) => ({
+          ...rest,
+          isMe: Boolean(viewerId && userId === viewerId),
+        }));
       }
       return sanitized;
     });
@@ -139,7 +185,7 @@ const buildTournamentActionPayload = (tournament, userId) => {
   const myArbiter = arbiters.find((arbiter) => arbiter?.userId === userId) || null;
   return {
     ok: true,
-    tournament: sanitizeTournamentForBroadcast(tournament),
+    tournament: sanitizeTournamentForBroadcast(tournament, userId),
     user,
     wallet: user?.wallet || getServerWallet(userId),
     myEntryId: myEntry?.id || null,

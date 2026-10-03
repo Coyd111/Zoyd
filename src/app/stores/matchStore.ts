@@ -22,7 +22,6 @@ export type ControllerRestriction = User['controllerType'] | 'open';
 export type DeviceRestriction = User['device'] | 'open';
 
 export interface MatchPlayer {
-  userId: string;
   pseudo: string;
   team: MatchTeam;
   joinedAt: string;
@@ -34,17 +33,37 @@ export interface MatchPlayer {
   isCheckedIn: boolean;
   checkedInAt?: string;
   isCaptain: boolean;
+  /**
+   * `true` si ce joueur est le demandeur de la réponse. Le serveur retire
+   * `userId` du payload (les UUID internes ne doivent pas fuiter) et le
+   * remplace par ce drapeau, calculé POUR chaque destinataire : c'est le seul
+   * moyen de retrouver son propre slot. Conséquence : sur un match observé par
+   * quelqu'un d'autre, `isMe` vaut `false` pour tout le monde.
+   */
+  isMe: boolean;
+  /**
+   * Le joueur a déjà confirmé le résultat. Remplace l'accès à
+   * `result.confirmedByTeams`, qui ne contient que des userId (illisibles ici).
+   */
+  hasConfirmed: boolean;
 }
 
 export interface MatchArbiter {
-  userId: string;
-  pseudo: string;
+/**
+ * `userId` n'est PLUS envoyé par le serveur (sanitizeMatchForBroadcast le
+ * retire comme pour les joueurs). Le garder dans le type autorisait le
+ * compilateur a valider `arbiter?.userId === user.id`, qui vaut toujours
+ * false a l'execution : un piege silencieux. Utiliser `isMe`.
+ */
+pseudo: string;
   assignedAt: string;
   trustScore: number;
   roomName?: string;
   roomPassword?: string;
   roomPublishedAt?: string;
   hasSubmittedResult: boolean;
+  /** Même contrat que `MatchPlayer.isMe` : calculé pour le demandeur. */
+  isMe?: boolean;
 }
 
 export interface MatchProofBundle {
@@ -454,18 +473,22 @@ export const useMatchStore = create<MatchState>()((set, get) => {
 
         getMatchById: (id) => get().matches.find((match) => match.id === id),
 
-        getMyActiveMatches: (userId) =>
+        // `userId` n'est plus lisible dans le payload : le serveur ne livre
+        // qu'un `isMe` par joueur, calculé pour le demandeur. La signature est
+        // conservée pour ne pas casser les appelants, la décision se prend sur
+        // `isMe`.
+        getMyActiveMatches: (_userId) =>
           get().matches.filter(
             (match) =>
               ACTIVE_STATUSES.includes(match.status) &&
-              (match.players.some((player) => player.userId === userId) || match.arbiter?.userId === userId)
+              (match.players.some((player) => player.isMe) || match.arbiter?.isMe === true)
           ),
 
-        getMatchHistory: (userId) =>
+        getMatchHistory: (_userId) =>
           get().matches.filter(
             (match) =>
               ['finished', 'cancelled', 'forfeited', 'disputed'].includes(match.status) &&
-              (match.players.some((player) => player.userId === userId) || match.arbiter?.userId === userId)
+              (match.players.some((player) => player.isMe) || match.arbiter?.isMe === true)
           ),
 
         canJoinAsArbiter: (matchId) => {
@@ -473,7 +496,7 @@ export const useMatchStore = create<MatchState>()((set, get) => {
           const currentUser = useAuthStore.getState().user;
           if (!match || !currentUser) return false;
           if (match.arbiter) return false;
-          if (match.players.some((player) => player.userId === currentUser.id)) return false;
+          if (match.players.some((player) => player.isMe)) return false;
           return !['finished', 'cancelled', 'forfeited'].includes(match.status);
         },
 

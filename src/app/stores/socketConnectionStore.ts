@@ -201,8 +201,8 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
         emitPresenceUpdate(currentUserPresence);
       }
 
-      const isParticipant = match.players.some((player) => player.userId === currentUser.id);
-      const isArbiter = match.arbiter?.userId === currentUser.id;
+      const isParticipant = match.players.some((player) => player.isMe);
+      const isArbiter = match.arbiter?.isMe === true;
 
       if (!isParticipant && !isArbiter) {
         continue;
@@ -212,7 +212,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
         isParticipant &&
         match.scheduledAt &&
         ACTIVE_STATUSES.includes(match.status) &&
-        !match.players.find((player) => player.userId === currentUser.id)?.isCheckedIn
+        !match.players.find((player) => player.isMe)?.isCheckedIn
       ) {
         const minutesUntilMatch = Math.round((new Date(match.scheduledAt).getTime() - now) / 60000);
         if (minutesUntilMatch <= 20) {

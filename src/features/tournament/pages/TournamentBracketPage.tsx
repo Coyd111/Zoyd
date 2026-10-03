@@ -78,7 +78,7 @@ const TournamentBracketPage: React.FC = () => {
     if (!tournament?.entries) return undefined;
     // Caller context from authenticated action responses (IDs are stripped from broadcast payloads).
     if (callerEntryId) return tournament.entries.find((entry) => entry.id === callerEntryId);
-    return tournament.entries.find((entry) => entry.members.some((member) => member.userId === user?.id));
+    return tournament.entries.find((entry) => entry.members.some((member) => member.isMe));
   }, [tournament?.entries, callerEntryId, user?.id]);
   const myArbiterSlot = useMemo(() => {
     if (!tournament?.arbiters) return undefined;

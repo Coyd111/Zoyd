@@ -138,6 +138,28 @@ test.describe('Match lifecycle', () => {
     expect(match.players).toHaveLength(1);
     expect(match.players[0].pseudo).toBe(creator.pseudo);
     expect(match.players[0].isCaptain).toBe(true);
+
+    // ── Le bug le plus grave du projet ──
+    // Le serveur retire `userId` (vie privée) mais AJOUTE `isMe`, calculé
+    // pour le demandeur. Sans ce drapeau, le client ne pouvait pas se
+    // reconnaître dans son match : `currentPlayer` restait undefined et les
+    // boutons « Confirmer ma présence » / « Je suis prêt » ne s'affichaient
+    // JAMAIS. On verrouille donc le contrat, y compris l'absence de fuite.
+    expect(match.players[0].isMe, 'le createur doit se reconnaitre').toBe(true);
+    expect(match.players[0].hasConfirmed).toBe(false);
+    // vue d'un tiers : isMe false partout, toujours aucun userId
+    const asArbiter = await call(arbiter, 'GET', `${BASE}/matches`);
+    const sameMatch = asArbiter.body.matches.find((m: any) => m.id === matchId);
+    expect(sameMatch).toBeTruthy();
+    for (const player of sameMatch.players) {
+      expect(player.userId, 'aucun userId ne doit fuiter').toBeUndefined();
+    }
+    expect(sameMatch.players.every((p: any) => p.isMe === false)).toBe(true);
+    // Pas d'arbitre tant que le match est en `recruiting` : rien a corriger.
+    if (sameMatch.arbiter) {
+      expect(sameMatch.arbiter.isMe).toBe(false);
+      expect(sameMatch.arbiter.userId).toBeUndefined();
+    }
     // Diffusion publique : ni userId interne, ni mot de passe de salle.
     expect(match.players[0].userId).toBeUndefined();
     expect(match.roomPassword).toBeUndefined();
@@ -193,9 +215,16 @@ test.describe('Match lifecycle', () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.match.arbiter.pseudo).toBe(arbiter.pseudo);
-    // Divergence relevée : `sanitizeMatchForBroadcast` retire `userId` aux
-    // JOUEURS mais le laisse sur l'arbitre. On fige le comportement observé.
-    expect(res.body.match.arbiter.userId).toBe(arbiter.id);
+    // `sanitizeMatchForBroadcast` retire `userId` (joueurs ET arbitre) et
+    // ajoute `isMe`, calcule pour le demandeur. C'est ce drapeau qui permet
+    // au client de s'identifier dans le match.
+    expect(res.body.match.arbiter.userId).toBeUndefined();
+    expect(res.body.match.arbiter.isMe).toBe(true);
+    // Cote joueur, aucun userId ne doit fuiter, mais isMe est present.
+    for (const player of res.body.match.players) {
+      expect(player.userId).toBeUndefined();
+      expect(typeof player.isMe).toBe('boolean');
+    }
     expect(res.body.match.arbiter.hasSubmittedResult).toBe(false);
     // Roster complet + arbitre => le match bascule en phase de check-in.
     expect(res.body.match.status).toBe('check_in');

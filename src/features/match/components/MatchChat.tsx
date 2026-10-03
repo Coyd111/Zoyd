@@ -105,7 +105,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             <div className="mt-3 flex flex-wrap gap-2">
               {presence.map((member) => (
                 <div
-                  key={`${member.userId}-${member.role}`}
+                  key={`${member.pseudo}-${member.role}`}
                   className={`px-2.5 py-1 border text-[10px] font-mono uppercase tracking-widest ${
                     member.isOnline
                       ? member.role === 'arbiter'

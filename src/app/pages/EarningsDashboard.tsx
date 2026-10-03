@@ -74,7 +74,7 @@ const EarningsDashboard: React.FC = () => {
   const summary = useMemo(() => {
     if (!user) return null;
     return buildCompetitiveSummary({
-      userId: user.id,
+      target: { isOwnProfile: true, pseudo: user.pseudo },
       overallTrustScore: user.trustScore,
       matches,
       tournaments,

@@ -52,7 +52,7 @@ const ConfirmationList = ({
     {players.length > 0 ? (
       <ul className="space-y-1.5">
         {players.map((player) => (
-          <li key={player.userId} className="flex items-center gap-2 text-xs text-white/75">
+          <li key={player.pseudo} className="flex items-center gap-2 text-xs text-white/75">
             {confirmed ? (
               <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
             ) : (
@@ -441,7 +441,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           </button>
         ) : (
           <p className="text-xs text-white/60">
-            {confirmation.waitingPlayers.some((player) => player.userId === user?.id)
+            {confirmation.waitingPlayers.some((player) => player.isMe)
               ? 'Tu as deja confirme ce resultat. On attend les autres joueurs.'
               : 'Tu n\'es pas joueur sur ce match : tu ne peux pas confirmer le resultat.'}
           </p>

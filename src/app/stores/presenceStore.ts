@@ -13,7 +13,13 @@ import {
 type PresenceRole = 'player' | 'arbiter' | 'spectator';
 
 export interface RoomPresenceMember {
-  userId: string;
+  /**
+   * Identifiant du compte, uniquement connu pour les membres que le serveur
+   * décrit lui-meme (snapshot de presence, join local). Les joueurs derives
+   * d'un MATCH n'en ont pas : le serveur retire leur `userId` du payload, donc
+   * `userId` reste `undefined` pour eux et le `pseudo` fait foi.
+   */
+  userId?: string;
   pseudo: string;
   role: PresenceRole;
   team?: 0 | 1;
@@ -55,20 +61,25 @@ const buildPresenceFromMatch = (
   activeChannelIds: string[],
   currentUserId?: string
 ): RoomPresenceMember[] => {
-  const currentPresenceMap = new Map(currentChannelPresence.map((member) => [member.userId, member]));
+  // Le `userId` d'un joueur de match n'est plus envoye par le serveur : la
+  // jointure avec la presence du canal se fait sur le `pseudo`, qui est unique
+  // et present dans les deux payloads.
+  const currentPresenceMap = new Map(currentChannelPresence.map((member) => [member.pseudo, member]));
   const channelIsActive = activeChannelIds.includes(match.channelId);
 
   const players = match.players.map<RoomPresenceMember>((player) => {
-    const existing = currentPresenceMap.get(player.userId);
+    const existing = currentPresenceMap.get(player.pseudo);
     const tacticallyPresent =
       Boolean(existing?.isOnline) ||
       player.isReady ||
       player.isCheckedIn ||
       match.status === 'in_progress' ||
-      (channelIsActive && currentUserId === player.userId);
+      (channelIsActive && player.isMe);
 
     return {
-      userId: player.userId,
+      // Seul le demandeur possede un userId cote client : le sien. Pour les
+      // autres, on reprend celui du snapshot de presence quand il existe.
+      userId: player.isMe ? currentUserId : existing?.userId,
       pseudo: player.pseudo,
       role: 'player',
       team: player.team,
@@ -79,33 +90,33 @@ const buildPresenceFromMatch = (
     };
   });
 
-  const arbiter = match.arbiter
-    ? [
-        {
-          userId: match.arbiter.userId,
-          pseudo: match.arbiter.pseudo,
-          role: 'arbiter' as const,
-          isCheckedIn: true,
-          isReady: match.status === 'ready' || match.status === 'in_progress',
-          isOnline:
-            Boolean(currentPresenceMap.get(match.arbiter.userId)?.isOnline) ||
-            match.status === 'ready' ||
-            match.status === 'in_progress' ||
-            Boolean(match.arbiter.roomPublishedAt) ||
-            (channelIsActive && currentUserId === match.arbiter.userId),
-          lastActiveAt:
-            currentPresenceMap.get(match.arbiter.userId)?.lastActiveAt ||
-            match.arbiter.roomPublishedAt ||
-            undefined,
-        },
-      ]
-    : [];
+  const arbiter: RoomPresenceMember[] = [];
+  if (match.arbiter) {
+    const existingArbiter = currentPresenceMap.get(match.arbiter.pseudo);
+    arbiter.push({
+      userId: match.arbiter.isMe ? currentUserId : existingArbiter?.userId,
+      pseudo: match.arbiter.pseudo,
+      role: 'arbiter',
+      isCheckedIn: true,
+      isReady: match.status === 'ready' || match.status === 'in_progress',
+      isOnline:
+        Boolean(existingArbiter?.isOnline) ||
+        match.status === 'ready' ||
+        match.status === 'in_progress' ||
+        Boolean(match.arbiter.roomPublishedAt) ||
+        (channelIsActive && match.arbiter.isMe === true),
+      lastActiveAt:
+        existingArbiter?.lastActiveAt ||
+        match.arbiter.roomPublishedAt ||
+        undefined,
+    });
+  }
 
   const viewers = currentChannelPresence.filter(
     (member) =>
       member.role === 'spectator' &&
-      !players.some((player) => player.userId === member.userId) &&
-      !arbiter.some((entry) => entry.userId === member.userId)
+      !players.some((player) => player.pseudo === member.pseudo) &&
+      !arbiter.some((entry) => entry.pseudo === member.pseudo)
   );
 
   return [...players, ...arbiter, ...viewers].map(normalizePresenceMember);
@@ -134,8 +145,8 @@ const capRecordKeys = <T>(record: Record<string, T>, max: number): Record<string
 };
 
 export const buildCurrentUserPresencePayload = (match: Match, currentUser: { id: string; pseudo: string }) => {
-  const player = match.players.find((entry) => entry.userId === currentUser.id);
-  const isArbiter = match.arbiter?.userId === currentUser.id;
+  const player = match.players.find((entry) => entry.isMe);
+  const isArbiter = match.arbiter?.isMe === true;
 
   if (!player && !isArbiter) {
     return null;

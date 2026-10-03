@@ -31,9 +31,21 @@ const PublicProfilPage = () => {
   const prefersReducedMotion = useReducedMotion();
 
   const friendRecord = friends.find((friend) => friend.id === id);
-  const observedPlayer = id ? getObservedPlayerSnapshot(id, matches) : undefined;
-  const observedArbiter = id
-    ? matches.find((match) => match.arbiter?.userId === id)?.arbiter
+  const ownProfile = !!currentUser && currentUser.id === id;
+  // Le serveur retire le `userId` des joueurs de match : le profil d'un tiers ne
+  // peut donc plus etre retrouve DANS un match que par son `pseudo`. Cote
+  // client, le seul pseudo associe a un `userId` tiers est celui de la liste
+  // d'amis. Pour un non-ami, aucune donnee ne relie son id a un pseudo :
+  // `createPublicProfile` renverra alors `null` et la page affiche deja son
+  // etat « profil public indisponible ». Pour son propre profil, `currentUser`
+  // fournit le pseudo et `isMe` suffit.
+  const targetPseudo = ownProfile ? currentUser?.pseudo : friendRecord?.pseudo;
+  const target = targetPseudo ? { isOwnProfile: ownProfile, pseudo: targetPseudo } : undefined;
+  const observedPlayer = target ? getObservedPlayerSnapshot(target, matches) : undefined;
+  const observedArbiter = target
+    ? matches.find((match) =>
+        target.isOwnProfile ? match.arbiter?.isMe === true : match.arbiter?.pseudo === target.pseudo
+      )?.arbiter
     : undefined;
 
   const publicProfile = useMemo(
@@ -51,15 +63,15 @@ const PublicProfilPage = () => {
   );
 
   const summary = useMemo(() => {
-    if (!id || !publicProfile) return null;
+    if (!id || !publicProfile || !targetPseudo) return null;
     return buildCompetitiveSummary({
-      userId: id,
+      target: { isOwnProfile: ownProfile, pseudo: targetPseudo },
       overallTrustScore: publicProfile.trustScore,
       matches,
       tournaments,
       dateJoined: publicProfile.dateJoined,
     });
-  }, [id, matches, publicProfile, tournaments]);
+  }, [id, matches, ownProfile, publicProfile, targetPseudo, tournaments]);
 
   if (!id) return null;
 
@@ -95,7 +107,6 @@ const PublicProfilPage = () => {
     );
   }
 
-  const ownProfile = currentUser?.id === id;
   const blocked = isBlocked(id);
   const alreadyFriend = isFriend(id);
 

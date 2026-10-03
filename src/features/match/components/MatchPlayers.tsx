@@ -33,7 +33,7 @@ const TeamCard = ({
     </div>
     <div className="space-y-3">
       {players.map((player) => (
-        <div key={player.userId} className="flex items-center justify-between border border-white/5 px-4 py-3 bg-black/40">
+        <div key={player.pseudo} className="flex items-center justify-between border border-white/5 px-4 py-3 bg-black/40">
           <div className="flex items-center gap-3">
             <div className={`w-2 h-2 rounded-full ${accent === 'blue' ? 'bg-zoyd-blue' : 'bg-white'}`} />
             <div>

@@ -21,7 +21,9 @@ import { Badge } from '../ui/Badge';
 import { ProgressBar } from '../ui/ProgressBar';
 import EmptyPanel from '../EmptyPanel';
 import type { CompetitiveSummary } from '../../../lib/profileMetrics';
+import { findTargetPlayerInMatch } from '../../../lib/profileMetrics';
 import { isMatchPayoutSettled } from '../../stores/matchStore';
+import { useAuthStore } from '../../stores/authStore';
 import { formatZC } from '../../../lib/utils';
 
 const levelConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -122,6 +124,7 @@ export default function ProfileView({
   codmTitle,
 }: ProfileViewProps) {
   const lvl = progression ? (levelConfig[progression.level] || levelConfig.BEGINNER) : null;
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const progressPercent =
     progression && progression.nextLevelXp > 0
       ? Math.min(100, Math.round((progression.xp / progression.nextLevelXp) * 100))
@@ -300,7 +303,14 @@ export default function ProfileView({
             ) : (
               <div className="space-y-3">
                 {summary.recentMatches.map((match) => {
-                  const player = match.players.find((entry) => entry.userId === userId);
+                  // MEME RESOLUTION QUE profileMetrics : `isMe` sur son propre
+                  // profil, `pseudo` sur le profil public d'un tiers (la vue
+                  // affichee n'est pas celle du demandeur, donc `isMe` y vaut
+                  // false partout).
+                  const player = findTargetPlayerInMatch(match, {
+                    isOwnProfile: !!currentUserId && currentUserId === userId,
+                    pseudo,
+                  });
                   // Versement pas encore effectué : afficher « +X ZC » sur un
                   // match qui n'a pas encore payé serait un gain fictif.
                   const payoutSettled = isMatchPayoutSettled(match);

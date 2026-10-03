@@ -22,8 +22,14 @@ export interface TournamentRules {
 }
 
 export interface TournamentEntryMember {
-  userId: string;
-  pseudo: string;
+/**
+ * `userId` n'est PLUS envoyé : `sanitizeTournamentForBroadcast` le retire.
+ * Le serveur ajoute `isMe` (calculé pour le demandeur). Utiliser `isMe`
+ * ou `pseudo` (unique) — jamais `userId`, qui serait toujours undefined.
+ */
+pseudo: string;
+/** Ce membre est le demandeur (calculé par le serveur). */
+isMe?: boolean;
   joinedAt: string;
   isCaptain: boolean;
   rankMJ?: string;

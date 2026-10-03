@@ -60,7 +60,7 @@ const platformCards = [
   {
     title: 'Wagers Sécurisés',
     description:
-      'Mise sur ton talent en 1v1 ou 2v2. Un arbitre ZOYD est toujours présent en jeu pour garantir l\'équité. Zéro scréénshot requis.',
+      'Mise sur ton talent en 1VS1 à 5VS5. Un arbitre ZOYD est toujours présent en jeu pour garantir l\'équité. Preuves obligatoires uniquement en cas de litige.',
     icon: ShieldCheck,
   },
   {
@@ -72,7 +72,7 @@ const platformCards = [
   {
     title: 'Mobile Money Intégré',
     description:
-      'Gère tes dépôts et retire tes gains instantanément via MTN, Moov ou Celtiis directement depuis ton téléphone.',
+      'Gère tes dépôts et retire tes gains par Mobile Money (MTN, Moov, Celtiis selon ton pays) directement depuis ton téléphone.',
     icon: Wallet,
   },
 ];
@@ -88,7 +88,7 @@ const playerJourney = [
   },
   {
     title: 'Le Match et les Gains',
-    body: 'Joue ta partie ou spectate-la. À la fin, le gagnant et l\'arbitre sont payés instantanément.',
+    body: 'Joue ta partie ou spectate-la. À la fin, les deux équipes confirment le résultat, puis le gagnant et l\'arbitre sont payés.',
   },
 ];
 
@@ -172,10 +172,10 @@ export default function LandingPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 max-w-2xl">
-                  <SignalStrip label="Gains" value="Mobile Money instantané" />
+                  <SignalStrip label="Gains" value="Mobile Money" />
                   <SignalStrip label="Sécurité" value="Arbitre en direct" />
                   <SignalStrip label="Classement" value="Elo strict" />
-                  <SignalStrip label="Formats" value="1v1, 2v2, Tournois" />
+                  <SignalStrip label="Formats" value="1VS1 à 5VS5" />
                 </div>
               </motion.div>
 
@@ -320,7 +320,7 @@ export default function LandingPage() {
               </p>
               <div className="space-y-3">
                 {[
-                  'Des wagers instantanés pour le cash rapide',
+                  'Des wagers sur tes pairs, réglés par confirmation des deux équipes',
                   'Des commissions réelles pour l\'arbitrage',
                   'Un écosystème sain et sans triche',
                   'Des opportunités de revenus pour tous',
@@ -346,7 +346,7 @@ export default function LandingPage() {
                     Le Joueur
                   </h3>
                   <p className="text-white/70 leading-relaxed max-w-xl">
-                    Mise sur ton propre talent dans des salons 1v1 ou 2v2. Monte dans le classement MMR africain et prouve que tu es une légende. ZOYD sécurise ton argent et gère tes gains.
+                    Mise sur ton propre talent dans des salons 1VS1 à 5VS5. Monte dans le classement Elo africain et prouve que tu es une légende. ZOYD sécurise ton argent et gère tes gains.
                   </p>
                 </div>
                 <div className="flex items-center justify-between pt-8 mt-8">

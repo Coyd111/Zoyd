@@ -1,5 +1,5 @@
 import { createLogger } from './logger.mjs';
-import { getUserById, updateUserAccount } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText } from './persistence.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
@@ -83,8 +83,14 @@ export const normalizeLeagueSeason = (season) => {
 
   return {
     ...season,
-    id: season?.id || `LS-${Date.now().toString(36).toUpperCase()}`,
-    cycleNumber: Number(season?.cycleNumber || 1),
+id: season?.id || `LS-${Date.now().toString(36).toUpperCase()}`,
+cycleNumber: Number(season?.cycleNumber || 1),
+// `name` DOIT etre conserve ici : normalizeLeagueSeason reconstruit l'objet
+// champ par champ, donc un `name` non liste disparaitait au rechargement
+// (et les notifications affichaient "undefined").
+name: sanitizeText(season?.name || `Cycle ${season?.cycleNumber || 1}`),
+format: season?.format || 'battle_royale',
+teamSize: Number(season?.teamSize || 1),
     status: season?.status || 'registering',
     entryFee: Number(season?.entryFee || LEAGUE_ENTRY_FEE),
     maxPlayers: Number(season?.maxPlayers || LEAGUE_MAX_PLAYERS),
@@ -209,10 +215,17 @@ export const createLeagueSeasonOnServer = (seasons, actor, input = {}) => {
   const totalPool = 0;
   const seasonId = `LS-${Date.now().toString(36).toUpperCase()}`;
 
-  const season = normalizeLeagueSeason({
-    id: seasonId,
-    cycleNumber,
-    status: 'registering',
+const season = normalizeLeagueSeason({
+id: seasonId,
+cycleNumber,
+status: 'registering',
+// Le nom est valide par la route (>= 3 caracteres) mais n'etait JAMAIS
+// persiste : les notifications affichaient « de la ligue "undefined" est en
+// cours ». `format` et `teamSize` valides par la route sont egalement ignores
+// par le moteur, qui ne modelise qu'un format BR solo.
+name: sanitizeText(input.name || `Cycle ${cycleNumber}`),
+format: input.format || 'battle_royale',
+teamSize: Number(input.teamSize) || 1,
     entryFee: LEAGUE_ENTRY_FEE,
     maxPlayers: LEAGUE_MAX_PLAYERS,
     registeredPlayers: [],
@@ -565,7 +578,13 @@ const applyLeagueSettlement = async (season) => {
   if (podium.first) {
     try {
       await withWalletMutex(podium.first, async () => {
-        await releaseWalletWinnings(podium.first, payout.first, `${season.id}-1ST`, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
+        // Cle de reservation = season.id, PAS `${season.id}-1ST` : le pass a ete
+        // bloque par lockEntryFee(..., seasonId). Avec une cle differente,
+        // `lockedEntries[matchId]` valait undefined -> `releasedAmount` 0 ->
+        // le verrou n'etait JAMAIS libere (pass gele a vie) et la mise bonus
+        // du champion etait convertie 100 % en cash retirable (contournement
+        // anti-blanchiment).
+        await releaseWalletWinnings(podium.first, payout.first, season.id, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
         await patchUserForLeagueOutcome(podium.first, (user) => {
           user.stats = {
             ...user.stats,
@@ -585,7 +604,7 @@ const applyLeagueSettlement = async (season) => {
   if (podium.second) {
     try {
       await withWalletMutex(podium.second, async () => {
-        await releaseWalletWinnings(podium.second, payout.second, `${season.id}-2ND`, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
+        await releaseWalletWinnings(podium.second, payout.second, season.id, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
         await patchUserForLeagueOutcome(podium.second, (user) => {
           user.stats = {
             ...user.stats,
@@ -604,7 +623,7 @@ const applyLeagueSettlement = async (season) => {
   if (podium.third) {
     try {
       await withWalletMutex(podium.third, async () => {
-        await releaseWalletWinnings(podium.third, payout.third, `${season.id}-3RD`, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
+        await releaseWalletWinnings(podium.third, payout.third, season.id, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
         await patchUserForLeagueOutcome(podium.third, (user) => {
           user.stats = {
             ...user.stats,

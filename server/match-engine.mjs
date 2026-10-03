@@ -349,8 +349,12 @@ export const createMatchOnServer = async (matches, actor, input) => {
     arbiterFee: roundAmount(prizePool * 0.02),
     visibility: input.visibility || 'public',
     privacy: input.visibility || 'public',
-    deviceRestriction: actorUser.device,
-    controllerRestriction: actorUser.controllerType,
+    // 'open' par defaut, ou la valeur demandee. On NE copie PLUS le device /
+    // controleur du createur : le front n'envoie pas ces champs, donc tous les
+    // matchs crees depuis l'UI etaient verrouilles sur l'appareil du createur
+    // (invisibles pour tout le monde d'autre -> MATCH_SEGMENT_MISMATCH).
+    deviceRestriction: input.deviceRestriction || 'open',
+    controllerRestriction: input.controllerRestriction || 'open',
     status: 'recruiting',
     players: [
       {

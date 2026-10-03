@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('./persistence.mjs', () => ({
-  getUserById: vi.fn(),
-  updateUserAccount: vi.fn(),
+getUserById: vi.fn(),
+updateUserAccount: vi.fn(),
+// normalizeLeagueSeason sanitize le nom de la ligue.
+sanitizeText: vi.fn((value) => String(value || '').trim()),
 }));
 
 vi.mock('./wallet-engine.mjs', () => ({

@@ -9,6 +9,7 @@ import { Eye, EyeOff, ShieldCheck, ChevronRight, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { loginWithBackend } from '../../lib/authApi';
+import { getApiUrl } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import ZoydLogo from '../../components/branding/ZoydLogo';
@@ -22,8 +23,35 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 const LoginPage: React.FC = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+const [showPassword, setShowPassword] = useState(false);
+const [isLoading, setIsLoading] = useState(false);
+
+// Chiffres réels via /api/stats (avant : « 2,847 joueurs actifs » et les
+// faux avatars S1/X2/ZK, codés en dur = fausse publicité, et en contradiction
+// avec la home qui lit la même API).
+const [livePlayerCount, setLivePlayerCount] = React.useState<string>('—');
+const [liveTags, setLiveTags] = React.useState<string[]>(['ZOYD']);
+
+React.useEffect(() => {
+let cancelled = false;
+fetch(getApiUrl('/api/stats'))
+.then((res) => (res.ok ? res.json() : Promise.reject(new Error('stats'))))
+.then((body) => {
+if (cancelled) return;
+const players = Number(body?.stats?.players);
+if (Number.isFinite(players) && players >= 0) {
+setLivePlayerCount(players.toLocaleString('fr-FR'));
+// Avatars dérivés des initiales du nom de marque, plus de faux joueurs.
+setLiveTags(['Z', 'O', 'Y']);
+}
+})
+.catch(() => {
+if (!cancelled) setLiveTags(['ZOYD']);
+});
+return () => {
+cancelled = true;
+};
+}, []);
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
@@ -162,16 +190,20 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Chiffres et avatars FAIBRICIES (« 2,847 joueurs actifs », tags
+                S1/X2/ZK presents comme de faux temoins sociaux) : c'est de
+                la fausse publicite, et ca contredit la home qui lit la vraie
+                API /api/stats. On affiche les donnees reelles. */}
             <div className="flex items-center gap-4 pt-4">
               <div className="flex -space-x-2">
-                {['S1', 'X2', 'ZK'].map((tag) => (
+                {liveTags.map((tag) => (
                   <div key={tag} className="w-8 h-8 border-2 border-zoyd-black bg-zoyd-surface flex items-center justify-center">
                     <span className="text-[10px] font-display font-black text-white/60 italic">{tag}</span>
                   </div>
                 ))}
               </div>
               <div className="text-[10px] font-mono text-white/70">
-                <span className="text-white/70 font-black">2,847</span> joueurs actifs
+                <span className="text-white/70 font-black">{livePlayerCount}</span> joueurs inscrits
               </div>
             </div>
           </motion.div>

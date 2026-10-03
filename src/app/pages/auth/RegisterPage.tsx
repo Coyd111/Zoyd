@@ -29,6 +29,7 @@ import {
   DEVICE_OPTIONS,
 } from '../../../lib/competition';
 import { registerWithBackend, type RegisterPayload, type AuthResponse } from '../../lib/authApi';
+import { getApiUrl } from '../../lib/apiClient';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { SEOHead } from '../../components/SEOHead';
 
@@ -109,11 +110,30 @@ const controllerIcons: Record<string, React.ElementType> = {
   other: Globe,
 };
 
+const formatCount = (n: number): string =>
+Number.isFinite(n) && n > 0 ? `${Math.floor(n).toLocaleString('fr-FR')}` : '0';
+
 const RegisterPage: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [acceptAdult, setAcceptAdult] = useState(false);
+const [currentStep, setCurrentStep] = useState(1);
+const [showPassword, setShowPassword] = useState(false);
+const [isLoading, setIsLoading] = useState(false);
+const [acceptAdult, setAcceptAdult] = useState(false);
+
+// Chiffres réels via /api/stats (avant : 12.4K / 847 / 2.8K codés en dur).
+const [liveStats, setLiveStats] = useState<{ players: number; matchesPlayed: number; zcDistributed: number } | null>(null);
+
+React.useEffect(() => {
+let cancelled = false;
+fetch(getApiUrl('/api/stats'))
+.then((res) => (res.ok ? res.json() : Promise.reject(new Error('stats'))))
+.then((body) => {
+if (!cancelled && body?.stats) setLiveStats(body.stats);
+})
+.catch(() => undefined);
+return () => {
+cancelled = true;
+};
+}, []);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [formData, setFormData] = useState<RegisterFormValues>({});
   const [selectedDevice, setSelectedDevice] = useState<string>('');
@@ -333,13 +353,19 @@ const RegisterPage: React.FC = () => {
             </p>
 
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/5">
+{/* Chiffres FABRIQUES en dur (« 12.4K matchs », « 847 tournois »,
+                « 2.8K joueurs ») alors que la base en compte 1. La home lit
+                la vraie API /api/stats : le visiteur voyait « 12.4K » ici et
+                « 0+ » la. On affiche le reel. */}
               {[
-                { label: 'Matchs', value: '12.4K' },
-                { label: 'Tournois', value: '847' },
-                { label: 'Joueurs', value: '2.8K' },
+                { label: 'Matchs', value: liveStats?.matchesPlayed },
+                { label: 'ZC distribués', value: liveStats ? formatCount(liveStats.zcDistributed) : undefined },
+                { label: 'Joueurs', value: liveStats ? liveStats.players.toLocaleString('fr-FR') : undefined },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
-                   <div className="text-lg md:text-xl font-display font-black text-white italic">{stat.value}</div>
+                  <div className="text-lg md:text-xl font-display font-black text-white italic">
+                    {stat.value ?? '—'}
+                  </div>
                   <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">{stat.label}</div>
                 </div>
               ))}

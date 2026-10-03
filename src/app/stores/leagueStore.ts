@@ -69,9 +69,13 @@ export interface LeagueFinalMatch {
 }
 
 export interface LeagueSeason {
-  id: string;
-  cycleNumber: number;
-  status: LeagueSeasonStatus;
+id: string;
+cycleNumber: number;
+/** Nom de la ligue. Le serveur l'acceptait mais ne le persistait pas. */
+name: string;
+format?: string;
+teamSize?: number;
+status: LeagueSeasonStatus;
   entryFee: number;
   maxPlayers: number;
   registeredPlayers: LeaguePlayer[];
@@ -104,9 +108,12 @@ export interface LeagueState {
 }
 
 interface StoredSeason {
-  id: string;
-  cycleNumber: number;
-  status?: LeagueSeasonStatus;
+id: string;
+cycleNumber: number;
+name?: string;
+format?: string;
+teamSize?: number;
+status?: LeagueSeasonStatus;
   entryFee?: number;
   maxPlayers?: number;
   registeredPlayers?: LeaguePlayer[];
@@ -135,9 +142,12 @@ const normalizePersistedSeason = (season: StoredSeason): LeagueSeason => {
     };
   }
 
-  return {
-    ...season,
-    status: season?.status || 'registering',
+return {
+...season,
+name: season?.name || `Cycle ${Number(season?.cycleNumber || 1)}`,
+format: season?.format || 'battle_royale',
+teamSize: Number(season?.teamSize || 1),
+status: season?.status || 'registering',
     entryFee: Number(season?.entryFee || 50),
     maxPlayers: Number(season?.maxPlayers || 500),
     registeredPlayers: Array.isArray(season?.registeredPlayers) ? season.registeredPlayers : [],

@@ -19,7 +19,7 @@ vi.mock('./mutex.mjs', () => ({
 
 import * as brEngine from './br-engine.mjs';
 import { getUserById } from './persistence.mjs';
-import { lockEntryFee, refundLockedEntry } from './wallet-engine.mjs';
+import { lockEntryFee, refundLockedEntry, releaseWalletWinnings, settleMatchLossWallet } from './wallet-engine.mjs';
 
 const admin = { id: 'admin-1', pseudo: 'Admin', role: 'admin', wallet: {} };
 const player = (id) => ({ id, pseudo: id.toUpperCase(), role: 'player', wallet: {} });
@@ -488,5 +488,162 @@ describe('br-engine - computeBrPayouts (argent)', () => {
     lobby.rankingMode = 'kills';
     const { payouts } = brEngine.computeBrPayouts(lobby);
     expect(payouts[0].userId).toBe('slasher');
+  });
+});
+
+describe('br-engine - settleBrLobbyOnServer (reglement)', () => {
+  /** Salon pret a etre regle : 7 joueurs, tous presents, pot bloque. */
+  const liveLobby = (overrides = {}) => {
+    // `createLobby` refuse une date passee (fenetre 24-48h) : on cree un salon
+    // valide puis on force `scheduledAt` dans le passe pour etre en `live`.
+    const lobby = { ...createLobby(), scheduledAt: new Date(Date.now() - 3600_000).toISOString() };
+    return {
+      ...lobby,
+      status: 'live',
+      pot: 350,
+      payout: defaultPayout,
+      ...overrides,
+      players: Array.from({ length: 7 }, (_, i) => ({
+        userId: `p${i}`, pseudo: `P${i}`, teamId: `T${i}`,
+        joinedAt: lobby.createdAt, checkedIn: true, alive: i < 4,
+        placement: i < 4 ? [4, 5, 6, 7][i] : null,
+        kills: i, absent: false, settled: false, winnings: 0,
+      })),
+      teams: [],
+    };
+  };
+
+  /** Les réservations wallet doivent etre indexees par l'ID DU SALON teste. */
+  const mockLockedEntry = (lobbyId, amount = 50) => {
+    getUserById.mockImplementation(() => ({ wallet: { lockedEntries: { [lobbyId]: { amount } } } }));
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('verse les gains du top 5 et consomme le pass des autres', async () => {
+    const lobby = liveLobby();
+    mockLockedEntry(lobby.id);
+    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+
+    expect(res.lobby.status).toBe('finished');
+    // 3 gains (4 survivants elimines + le vainqueur) sur 7 joueurs : top 5 recus,
+    // les 2 derniers elimines recoivent juste la perte de leur pass.
+    const winners = res.payouts.length;
+    expect(winners).toBe(5);
+    expect(releaseWalletWinnings).toHaveBeenCalledTimes(5);
+    // Les 2 non-gagnants ont leur pass consomme.
+    expect(settleMatchLossWallet).toHaveBeenCalledTimes(2);
+  });
+
+  it('couvre le vainqueur meme s\'il n\'a jamais ete elimine', async () => {
+    const lobby = liveLobby();
+    mockLockedEntry(lobby.id);
+    // 4 elimines + 3 encore alive : le reglement doit en choisir un vainqueur.
+    lobby.players[4].alive = true;
+    lobby.players[5].alive = true;
+    lobby.players[6].alive = true;
+    lobby.players[4].placement = null;
+    lobby.players[5].placement = null;
+    lobby.players[6].placement = null;
+    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+    const placements = res.payouts.map((p) => p.placement);
+    expect(placements).toContain(1);
+    expect(new Set(res.payouts.map((p) => p.userId)).size).toBe(5);
+  });
+
+  it('marque le salon en settling AVANT de payer (anti-doublon apres crash)', async () => {
+    const lobby = liveLobby();
+    mockLockedEntry(lobby.id);
+    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+    expect(res.lobby.status).toBe('finished');
+
+    // Relancer le reglement doit echouer : pas de second versement.
+    await expect(
+      brEngine.settleBrLobbyOnServer(res.lobbies, admin, lobby.id),
+    ).rejects.toThrow(/deja reglee/);
+  });
+
+  it('ne paie pas un joueur deja servi (retry partiel)', async () => {
+    const lobby = liveLobby();
+    mockLockedEntry(lobby.id);
+    lobby.players[0].settled = true;
+    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+    // p0 est deja marque : on ne le repaie pas.
+    const p0Calls = releaseWalletWinnings.mock.calls.filter((c) => c[0] === 'p0');
+    expect(p0Calls).toHaveLength(0);
+  });
+
+  it('consomme le pass des absents (penalite, pas remboursement)', async () => {
+    const lobby = liveLobby();
+    mockLockedEntry(lobby.id);
+    lobby.players[6].checkedIn = false;
+    lobby.players[6].absent = true;
+    lobby.players[6].alive = false;
+    lobby.players[6].placement = null;
+    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+
+    const absent = res.lobby.players.find((p) => p.userId === 'p6');
+    expect(absent.settled).toBe(true);
+    // Son pass est consomme, PAS rembourse.
+    const refundCalls = refundLockedEntry.mock.calls.filter((c) => c[0] === 'p6');
+    expect(refundCalls).toHaveLength(0);
+    const lossCalls = settleMatchLossWallet.mock.calls.filter((c) => c[0] === 'p6');
+    expect(lossCalls).toHaveLength(1);
+  });
+
+  it('rembourse tout si personne n\'a joue (seul cas de remboursement)', async () => {
+    const lobby = liveLobby();
+    mockLockedEntry(lobby.id);
+    for (const p of lobby.players) { p.absent = true; p.alive = false; }
+    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+    expect(res.lobby.status).toBe('cancelled');
+    expect(refundLockedEntry).toHaveBeenCalledTimes(7);
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+  });
+
+  it('refuse de regler une partie non lancee', async () => {
+    const lobby = { ...liveLobby(), status: 'scheduled' };
+    mockLockedEntry(lobby.id);
+    await expect(brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id))
+      .rejects.toThrow(/n'est pas en cours/);
+  });
+
+  it('paye la commission arbitre en plus des gains', async () => {
+    // L'arbitre DOIT etre un joueur distinct des concurrents : si on l'ajoute
+    // comme joueur encore vivant, il est couramment designe vainqueur et paye
+    // comme 1er (135.8 au lieu de la commission de 10.5). On le declare donc
+    // comme arbiter du salon, elimine, pour isoler la commission.
+    const lobby = liveLobby({ arbiterId: 'arbiter-1' });
+    mockLockedEntry(lobby.id);
+    lobby.players.push({
+      userId: 'arbiter-1', pseudo: 'ARB', teamId: 'T-ARB', joinedAt: lobby.createdAt,
+      checkedIn: true, alive: false, placement: 7, kills: 0, absent: false, settled: false, winnings: 0,
+    });
+    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+
+    expect(res.arbiter.userId).toBe('arbiter-1');
+    const arbiterCalls = releaseWalletWinnings.mock.calls.filter((c) => c[0] === 'arbiter-1');
+    // Une seule fois, et c'est la commission : 3% de 350 = 10.5.
+    expect(arbiterCalls).toHaveLength(1);
+    expect(arbiterCalls[0][1]).toBe(10.5);
+    expect(arbiterCalls[0][3]).toBe('arbitration_fee');
+  });
+
+  it('ne paie PAS de commission si l\'arbitre n\'a pas de pass bloque', async () => {
+    const lobby = liveLobby({ arbiterId: 'ghost' });
+    // `getUserById` ne renvoie aucune reservation pour l'arbitre fantome.
+    getUserById.mockImplementation((id) => (
+      id === 'ghost' ? { wallet: { lockedEntries: {} } }
+        : { wallet: { lockedEntries: { [lobby.id]: { amount: 50 } } } }
+    ));
+    lobby.players.push({
+      userId: 'ghost', pseudo: 'G', teamId: 'T-G', joinedAt: lobby.createdAt,
+      checkedIn: true, alive: false, placement: 7, kills: 0, absent: false, settled: false, winnings: 0,
+    });
+    await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+    const ghostCalls = releaseWalletWinnings.mock.calls.filter((c) => c[0] === 'ghost');
+    expect(ghostCalls).toHaveLength(0);
   });
 });

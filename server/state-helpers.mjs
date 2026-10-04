@@ -4,6 +4,7 @@ import { replaceStateCollection, getStateCollection, getUserById } from './persi
 import { normalizeTournamentCollection } from './tournament-engine.mjs';
 import { getPublicMatchesForUser, getProjectedPayouts } from './match-engine.mjs';
 import { normalizeLeagueCollection } from './league-engine.mjs';
+import { normalizeBrLobbyCollection } from './br-engine.mjs';
 import { getServerWallet } from './wallet-engine.mjs';
 
 /**
@@ -200,6 +201,26 @@ const buildTournamentActionPayload = (tournament, userId) => {
  * @returns {Array} Normalized league collection
  */
 const getStoredLeagues = () => normalizeLeagueCollection(getStateCollection('leagues'));
+
+/**
+ * Retrieve stored BR lobbies, normalized.
+ * @returns {Array} Normalized BR lobby collection
+ */
+const getStoredBrLobbies = () => normalizeBrLobbyCollection(getStateCollection('brLobbies'));
+
+/**
+ * Persist BR lobbies to state storage and push snapshot to clients.
+ * Uses the shared `state_snapshots` table (kind column), so no migration needed.
+ * @param {object} io - Socket.IO server instance
+ * @param {Array} lobbies - The BR lobbies to persist
+ * @returns {Promise<Array>} The stored lobbies
+ */
+const saveBrLobbies = async (io, lobbies) => {
+  await replaceStateCollection('brLobbies', lobbies);
+  const stored = getStoredBrLobbies();
+  broadcastStateSnapshot(io, 'brLobbies', stored);
+  return stored;
+};
 
 /**
  * Persist leagues (seasons) to state storage and push snapshot to clients.

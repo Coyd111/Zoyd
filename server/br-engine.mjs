@@ -534,7 +534,10 @@ export const eliminateBrPlayerOnServer = (
  * - `kills`         : kills d'abord, la survie ne sert qu'a departager.
  */
 export const computeBrRanking = (lobby) => {
-  const contenders = lobby.players.filter((p) => !p.absent);
+  // L'arbitre n'est PAS un concurrent : il supervise, il ne joue pas. Le
+  // laisser dans le classement lui donnerait une place payee sur le top 5
+  // (et le prochain joueur verrait sa part amputee).
+  const contenders = lobby.players.filter((p) => !p.absent && p.userId !== lobby.arbiterId);
   const maxPlacement = Math.max(1, ...contenders.map((p) => p.placement || 0));
   const maxKills = Math.max(0, ...contenders.map((p) => p.kills || 0));
 
@@ -571,6 +574,130 @@ export const computeBrRanking = (lobby) => {
       if ((b.kills || 0) !== (a.kills || 0)) return (b.kills || 0) - (a.kills || 0);
       return String(a.pseudo).localeCompare(String(b.pseudo));
     });
+};
+
+/**
+ * Regle la partie et distribue la cagnotte.
+ *
+ * Ordre IMPORTANT, pour qu'aucun doublon ne soit possible meme si le process
+ * meurt au milieu :
+ *  1. On marque le lobby `settling` AVANT tout versement. Un retry apres un
+ *     crash voit `settling` et refuse de re-payer.
+ *  2. Chaque joueur est verse avec `settled` positionne dans le lobby, donc un
+ *     retry ne repaie pas un joueur deja servi.
+ *  3. Les perdants sont debites de leur reservation (le pass disparait : c'est
+ *     le prix de la participation, PAS un remboursement).
+ *
+ * L'arbitre est paye avec `releaseWalletWinnings` uniquement s'il a lui-meme
+ * bloque un pass, sinon il n'a pas de reservation a liberer : on ne cree pas
+ * de transaction fantaisiste.
+ */
+export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
+  const actorUser = actor?.user || actor;
+  if (!actorUser) throw makeError('AUTH_REQUIRED', 'Session joueur requise.');
+
+  const nextLobbies = cloneLobbies(lobbies);
+  const lobby = findLobby(nextLobbies, lobbyId);
+  if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
+  if (lobby.status === 'finished' || lobby.status === 'settling') {
+    throw makeError('LOBBY_CLOSED', 'Partie deja reglee.');
+  }
+  if (lobby.status !== 'live') {
+    throw makeError('LOBBY_NOT_LIVE', 'La partie n\'est pas en cours.');
+  }
+
+  // 1. Verrou anti-doublon AVANT tout versement.
+  lobby.status = 'settling';
+  lobby.updatedAt = getNow();
+
+  const alive = lobby.players.filter((p) => p.alive);
+  const contenders = lobby.players.filter((p) => !p.absent && p.userId !== lobby.arbiterId);
+  if (contenders.length === 0) {
+    // Personne n'a joue : on rend tout, c'est le seul cas ou l'on rembourse.
+    lobby.status = 'cancelled';
+    lobby.finishedAt = getNow();
+    for (const player of lobby.players) {
+      await withWalletMutex(player.userId, async () => {
+        await refundLockedEntry(player.userId, lobby.id, `Salon BR annule ${lobby.name}`);
+      });
+    }
+    return { lobby, lobbies: nextLobbies, payouts: [], refunded: lobby.players.length };
+  }
+
+  // Le dernier vivant est le vainqueur (placement 1).
+  if (alive.length > 0) {
+    alive.sort((a, b) => String(a.pseudo).localeCompare(String(b.pseudo)));
+    alive[0].placement = 1;
+  }
+  const withoutPlacement = contenders.filter((p) => !p.placement);
+  if (withoutPlacement.length === 1) {
+    // Filet de securite : un joueur non elimine alors que d'autres l'ont ete
+    // est considere comme vainqueur.
+    withoutPlacement[0].placement = 1;
+  }
+
+  const { payouts, arbiter } = computeBrPayouts(lobby);
+
+  // 2. Versement des gains.
+  for (const prize of payouts) {
+    const player = lobby.players.find((p) => p.userId === prize.userId);
+    if (!player || player.settled) continue;
+    await withWalletMutex(prize.userId, async () => {
+      await releaseWalletWinnings(
+        prize.userId,
+        prize.amount,
+        lobby.id,
+        'prize_win',
+        `BR ${lobby.name} - ${prize.placement}e place (${prize.kills} kills)`,
+      );
+    });
+    player.settled = true;
+    player.winnings = prize.amount;
+  }
+
+  // 3. Commission arbitre (si l'arbitre a bien bloque un pass).
+  if (arbiter.userId && arbiter.amount > 0) {
+    const arbiterPlayer = lobby.players.find((p) => p.userId === arbiter.userId);
+    if (arbiterPlayer && !arbiterPlayer.settled) {
+      const arbiterUser = getUserById(arbiter.userId);
+      const reservation = arbiterUser?.wallet?.lockedEntries?.[lobby.id];
+      if (reservation) {
+        await withWalletMutex(arbiter.userId, async () => {
+          await releaseWalletWinnings(
+            arbiter.userId,
+            arbiter.amount,
+            lobby.id,
+            'arbitration_fee',
+            `Commission arbitrage BR ${lobby.name}`,
+          );
+        });
+        arbiterPlayer.settled = true;
+        arbiterPlayer.winnings = arbiter.amount;
+      }
+    }
+  }
+
+  // 4. Perdants et absents : le pass est consomme (penalite), pas rembourse.
+  for (const player of lobby.players) {
+    if (player.settled) continue;
+    const isAbsent = player.absent;
+    await withWalletMutex(player.userId, async () => {
+      await settleMatchLossWallet(
+        player.userId,
+        lobby.id,
+        isAbsent
+          ? `Pass BR non Presents - ${lobby.name} (penalite)`
+          : `BR ${lobby.name} - ${player.placement || '?'}e place`,
+      );
+    });
+    player.settled = true;
+  }
+
+  lobby.status = 'finished';
+  lobby.finishedAt = getNow();
+  lobby.updatedAt = lobby.finishedAt;
+
+  return { lobby, lobbies: nextLobbies, payouts, arbiter };
 };
 
 /**

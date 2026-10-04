@@ -269,6 +269,51 @@ test.describe('Wallet API', () => {
     expect(wallet.body.wallet.transactions.some((tx: any) => tx.type === 'withdraw')).toBe(false);
   });
 
+  test('GET /api/wallet/me — publie la politique de retrait (taux serveur)', async () => {
+    // Le taux etait code en dur dans le front (a deux endroits) et le net
+    // recalcule localement : l'aperci pouvait diverger du montant verse.
+    const res = await call(player, 'GET', `${BASE}/wallet/me`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.withdrawal).toBeTruthy();
+    expect(res.body.withdrawal.feeRate).toBe(0.02);
+    expect(res.body.withdrawal.minAmount).toBe(150);
+  });
+
+  test('GET /api/admin/commissions — refuse sans session et sans rôle admin', async () => {
+    const anon = await callAnonymous('GET', '/api/admin/commissions');
+    expect(anon.status).toBe(401);
+
+    const asPlayer = await call(player, 'GET', '/api/admin/commissions');
+    expect(asPlayer.status).toBe(403);
+  });
+
+  test('GET /api/admin/commissions — agrège les frais de retrait (2 %) réellement encaissés', async () => {
+    const before = await call(admin, 'GET', '/api/admin/commissions');
+    expect(before.status).toBe(200);
+    expect(typeof before.body.commissions.withdrawalFees).toBe('number');
+
+    // Un retrait honore doit apparaitre dans l'agregat. Le payout FedaPay
+    // n'etant pas testable hors-ligne, on verifie le contrat et le refus du
+    // double debit (le 409 ne doit rien ajouter a l'agregat).
+    const refused = await call(player, 'POST', `${BASE}/wallet/withdraw`, {
+      amount: 100_000,
+      method: MTN,
+      phone: BENIN_PHONE,
+      idempotencyKey: 'e2e-commissions-noop',
+    });
+    expect(refused.status).toBe(409);
+
+    const after = await call(admin, 'GET', '/api/admin/commissions');
+    expect(after.status).toBe(200);
+    // 2 % de 800 ZC = 16 ZC si un retrait avait abouti ; un refus ne cree rien.
+    expect(after.body.commissions.withdrawalFees).toBe(before.body.commissions.withdrawalFees);
+    expect(after.body.commissions.withdrawalCount).toBe(before.body.commissions.withdrawalCount);
+    expect(after.body.commissions.total).toBe(
+      Math.round((after.body.commissions.withdrawalFees + after.body.commissions.arbiterFees) * 100) / 100,
+    );
+  });
+
   test('POST /api/wallet/verify-fedapay — 401 sans session', async () => {
     const res = await callAnonymous('POST', `${BASE}/wallet/verify-fedapay`, { transactionId: '42' });
 

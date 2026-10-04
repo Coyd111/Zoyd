@@ -864,6 +864,61 @@ let publicStatsCacheAt = 0;
 const PUBLIC_STATS_TTL = 60_000;
 
 /**
+ * Commission ZOYD reellement encaissée (donnees sensibles : endpoint admin).
+ *
+ * Deux sources, parce que la carte « COMMISSIONS » du dashboard vaut 0 depuis
+ * toujours : elle sommailt `match.zoydFee`, un champ fige a 0 a la creation
+ * des matchs. Aucun revenu etait donc visible.
+ *
+ *  - frais de retrait : `metadata.feeAmount` des transactions `withdraw`
+ *    honorees (un payout en echec est rembourse en brut, donc sans fee).
+ *  - commissions d'arbitrage : le `arbiterFee` preleve sur le pot, qui part
+ *    chez l'arbitre et n'est donc PAS un revenu ZOYD. Expose a part pour que
+ *    le dashboard distingue les deux flux.
+ *
+ * @returns {{ withdrawalFees: number, arbiterFees: number, total: number, withdrawalCount: number }}
+ */
+export const getCommissionStats = () => {
+  let withdrawalFees = 0;
+  let withdrawalCount = 0;
+  let arbiterFees = 0;
+  for (const user of memoryUsers.values()) {
+    const txs = user.wallet?.transactions;
+    if (!Array.isArray(txs)) continue;
+    for (const tx of txs) {
+      if (tx?.type !== 'withdraw') continue;
+      // Payout echoue + rembourse : le joueur a recu son brut, la commission
+      // n'a jamais ete encaissee.
+      if (tx.metadata?.payoutStatus === 'failed') continue;
+      withdrawalFees += Number(tx.metadata?.feeAmount || 0);
+      withdrawalCount++;
+    }
+  }
+  try {
+    const matches = getStateCollection('matches');
+    if (Array.isArray(matches)) {
+      for (const match of matches) {
+        // `arbiterFee` est fige a la creation sur le pot theorique : on ne
+        // retient que les matchs regles ET arbitres, ou le montant a ete
+        // reellement preleve.
+        if (match?.status !== 'finished') continue;
+        if (match?.result?.payoutDistributed !== true) continue;
+        if (!match?.arbiter?.userId) continue;
+        arbiterFees += Number(match.arbiterFee || 0);
+      }
+    }
+  } catch { /* collections pas encore chargees : 0 par defaut */ }
+  const withdrawalTotal = Math.round(withdrawalFees * 100) / 100;
+  const arbiterTotal = Math.round(arbiterFees * 100) / 100;
+  return {
+    withdrawalFees: withdrawalTotal,
+    arbiterFees: arbiterTotal,
+    total: Math.round((withdrawalTotal + arbiterTotal) * 100) / 100,
+    withdrawalCount,
+  };
+};
+
+/**
  * Compute real platform stats from in-memory state (no PII exposed).
  * - players: active non-admin accounts
  * - matchesPlayed: matches live or finished

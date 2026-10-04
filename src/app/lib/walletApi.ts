@@ -24,11 +24,36 @@ export interface WalletSnapshot {
   lockedEntries: Record<string, { amount: number; cashAmount?: number; bonusAmount?: number; lockedAt: string }>;
 }
 
+/**
+ * Politique de retrait, publiee par le serveur (`/api/wallet/me`).
+ *
+ * Le taux etait code en dur a deux endroits dans le front, et le store
+ * recalculait le net localement apres un retrait reussi : la notification
+ * « X net envoyes » pouvait differer du montant reellement verse par FedaPay.
+ */
+export interface WithdrawalPolicy {
+  feeRate: number;
+  minAmount: number;
+}
+
+/** Montants d'un retrait, calcules par le serveur (source de verite). */
+export interface WithdrawalAmounts {
+  feeRate: number;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+}
+
 interface WalletResponse {
   ok: boolean;
   wallet: WalletSnapshot;
   user?: { id: string; pseudo: string; wallet?: WalletSnapshot };
   amount?: number;
+  withdrawal?: WithdrawalPolicy;
+  feeRate?: number;
+  grossAmount?: number;
+  feeAmount?: number;
+  netAmount?: number;
 }
 
 export const fetchWalletSnapshot = async (): Promise<WalletResponse> => {
@@ -65,4 +90,23 @@ export const withdrawWalletBalance = async (
 
 export const verifyFedaPayTransaction = async (transactionId: number | string): Promise<WalletResponse> => {
   return authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });
+};
+
+/**
+ * Commissions ZOYD encaissees, calculees par le serveur sur l'ensemble des
+ * portefeuilles. Donnee financiere sensible : la route exige la 2FA admin
+ * (`requireAdmin2fa`), donc l'appel echoue sans code valide.
+ */
+export interface CommissionStats {
+  /** Frais de 2 % preleves sur les retraits honores. */
+  withdrawalFees: number;
+  /** Commissions d'arbitrage prelevees sur les pots (part de l'arbitre). */
+  arbiterFees: number;
+  total: number;
+  withdrawalCount: number;
+}
+
+export const fetchAdminCommissions = async (): Promise<CommissionStats> => {
+  const response = await authorizedGet<{ ok: boolean; commissions: CommissionStats }>('/api/admin/commissions');
+  return response.commissions;
 };

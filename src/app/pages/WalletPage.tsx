@@ -17,8 +17,10 @@ import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCi
 import { verifyFedaPayTransaction } from '../lib/walletApi';
 import { SEOHead } from '../components/SEOHead';
 
-const MIN_WITHDRAWAL_ZC = 150;
-const WITHDRAWAL_FEE_RATE = 0.02;
+// Le minimum et le taux de frais viennent du serveur via le walletStore
+// (`withdrawalMinAmount`, `withdrawalFeeRate`, publie par `/api/wallet/me`) :
+// ils etaient codes en dur ici et dans le store, donc l'aperci pouvait
+// diverger du montant reellement verse.
 
 const FEDAPAY_SCRIPT_URL = 'https://cdn.fedapay.com/checkout.js';
 let fedaPayLoadPromise: Promise<boolean> | null = null;
@@ -78,6 +80,8 @@ const WalletPage: React.FC = () => {
   const lockedBalance = useWalletStore((s) => s.lockedBalance);
   const pendingWinnings = useWalletStore((s) => s.pendingWinnings);
   const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
+const withdrawalFeeRate = useWalletStore((s) => s.withdrawalFeeRate);
+const withdrawalMinAmount = useWalletStore((s) => s.withdrawalMinAmount);
   const { user } = useAuthStore();
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
 
@@ -103,8 +107,11 @@ const WalletPage: React.FC = () => {
   const presetAmounts = [150, 200, 500, 1000];
   const spendableBalance = getAvailableToSpend();
   const withdrawAmountNum = parseFloat(withdrawAmount) || 0;
-  // Arrondi 2 décimales — identique au roundAmount() backend (wallet-engine)
-  const withdrawFee = Math.round(withdrawAmountNum * WITHDRAWAL_FEE_RATE * 100) / 100;
+  // Taux publie par le serveur (voir `withdrawalFeeRate` du walletStore) :
+  // avant, `0.02` etait code en dur ici ET dans le store, et le net etait
+  // recalcule des deux cotes. L'aperci avant envoi reste necessaire, il est
+  // desormais aligne sur la valeur serveur.
+  const withdrawFee = Math.round(withdrawAmountNum * withdrawalFeeRate * 100) / 100;
   const withdrawNet = Math.round((withdrawAmountNum - withdrawFee) * 100) / 100;
   const fundingPrompt = useMemo(() => parseFundingPrompt(searchParams), [searchParams]);
   const fundingCopy = fundingPrompt ? getFundingPromptCopy(fundingPrompt.context) : null;
@@ -512,10 +519,10 @@ const WalletPage: React.FC = () => {
                 type="number"
                 value={withdrawAmount}
                 onChange={(event) => setWithdrawAmount(event.target.value)}
-                placeholder={`${MIN_WITHDRAWAL_ZC} ZC minimum (${MIN_WITHDRAWAL_ZC * 10} FCFA)`}
+                placeholder={`${withdrawalMinAmount} ZC minimum (${withdrawalMinAmount * 10} FCFA)`}
                 max={cashBalance}
               />
-              {withdrawAmountNum >= MIN_WITHDRAWAL_ZC && (
+              {withdrawAmountNum >= withdrawalMinAmount && (
                 <div className="mt-3 border border-white/10 bg-black/40 p-3 space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-white/60">Montant demandé</span>
@@ -582,7 +589,7 @@ const WalletPage: React.FC = () => {
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={!payoutCountry || isWithdrawing || !withdrawAmount || !withdrawOperator || !withdrawPhone.trim() || withdrawAmountNum < MIN_WITHDRAWAL_ZC || withdrawAmountNum > cashBalance}
+              disabled={!payoutCountry || isWithdrawing || !withdrawAmount || !withdrawOperator || !withdrawPhone.trim() || withdrawAmountNum < withdrawalMinAmount || withdrawAmountNum > cashBalance}
               aria-label="Confirmer le retrait"
             >
               {isWithdrawing ? 'Transfert en cours...' : 'Retirer mes gains'}

@@ -83,12 +83,13 @@ import {
   assertStrongPassword,
   tagWalletTransaction,
   getPublicStats,
+  getCommissionStats,
   markAdmin2faVerified,
 } from './persistence.mjs';
-import { depositToWallet, getServerWallet, withdrawFromWallet, calcWithdrawNet, MIN_WITHDRAWAL_ZC } from './wallet-engine.mjs';
+import { depositToWallet, getServerWallet, withdrawFromWallet, calcWithdrawNet, MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex } from './mutex.mjs';
 import { initCronJobs } from './cron.mjs';
-import { getNow } from './utils.mjs';
+import { getNow, roundAmount } from './utils.mjs';
 import {
   MATCH_AUTOMATION_INTERVAL_MS,
   assignArbiterOnServer,
@@ -136,6 +137,15 @@ import {
   refundLeaguePlayerOnServer,
   getLeaguePayments,
 } from './league-engine.mjs';
+
+/**
+ * Montants de retrait derives de la source de verdad (wallet-engine), renvoyes
+ * au client pour qu'il affiche exactement ce qui a ete debite et verse.
+ */
+const buildWithdrawalAmounts = (grossAmount) => {
+  const { feeAmount, netAmount } = calcWithdrawNet(grossAmount);
+  return { feeRate: WITHDRAWAL_FEE_RATE, grossAmount: roundAmount(grossAmount), feeAmount, netAmount };
+};
 
 const log = createLogger('realtime');
 const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
@@ -1102,7 +1112,15 @@ const handleRequest = async (req, res) => {
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const user = getUserById(session.user.id);
-      respondJson(res, 200, { ok: true, wallet: user?.wallet || getServerWallet(session.user.id), user });
+      respondJson(res, 200, {
+        ok: true,
+        wallet: user?.wallet || getServerWallet(session.user.id),
+        user,
+        // Politique de retrait publiee par le serveur : le front ne doit plus
+        // coder `0.02` en dur (il l'avait en dur a deux endroits, et la
+        // notification « X net » etait recalculee localement).
+        withdrawal: { feeRate: WITHDRAWAL_FEE_RATE, minAmount: MIN_WITHDRAWAL_ZC },
+      });
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du wallet.', code: 'LOAD_ERROR' });
     }
@@ -1218,7 +1236,15 @@ const handleRequest = async (req, res) => {
       return;
     }
     if (isDuplicate) {
-      respondJson(res, 200, { ok: true, wallet: debitedWallet, user: getUserById(session.user.id), duplicate: true });
+      respondJson(res, 200, {
+        ok: true,
+        wallet: debitedWallet,
+        user: getUserById(session.user.id),
+        duplicate: true,
+        // Meme montant que le premier appel : l'UI peut afficher le net sans
+        // le recalculer, et un retry ne change pas le message.
+        ...buildWithdrawalAmounts(body.amount),
+      });
       return;
     }
 
@@ -1260,7 +1286,15 @@ const handleRequest = async (req, res) => {
         log.error('Failed to tag payout metadata', { userId: session.user.id, txId: withdrawTxId, error: tagError.message });
       }
     }
-    respondJson(res, 200, { ok: true, wallet: getServerWallet(session.user.id), user: getUserById(session.user.id), payoutId: payoutResult.payoutId });
+    respondJson(res, 200, {
+      ok: true,
+      wallet: getServerWallet(session.user.id),
+      user: getUserById(session.user.id),
+      payoutId: payoutResult.payoutId,
+      // Montants autoritaires : le client ne doit plus refaire le calcul de la
+      // commission, sinon le « net » affiche peut differer du verse.
+      ...buildWithdrawalAmounts(body.amount),
+    });
     return;
   }
 
@@ -2297,6 +2331,22 @@ const handleRequest = async (req, res) => {
     } catch (err) {
       log.error('Admin reload failed', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du rechargement des donnees.', code: 'RELOAD_ERROR' });
+    }
+    return;
+  }
+
+  // Admin: commissions ZOYD encaissees (frais de retrait + arbitrages).
+  // Donnee financiere sensible -> 2FA obligatoire, comme les autres operations
+  //financieres. `/api/stats` reste public et ne l'expose PAS.
+  if (req.method === 'GET' && pathname === '/api/admin/commissions') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return;
+    try {
+      respondJson(res, 200, { ok: true, commissions: getCommissionStats() }, req);
+    } catch (err) {
+      log.error('Admin commissions failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du calcul des commissions.', code: 'COMMISSIONS_ERROR' }, req);
     }
     return;
   }

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { depositWalletBalance, fetchWalletSnapshot, type WalletSnapshot, withdrawWalletBalance } from '../lib/walletApi';
+import { depositWalletBalance, fetchWalletSnapshot, type WalletSnapshot, type WithdrawalPolicy, withdrawWalletBalance } from '../lib/walletApi';
 import { useAuthStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
 import { roundAmount, formatZC } from '../../lib/utils';
@@ -46,6 +46,14 @@ export interface WalletState {
   pendingWinnings: number;
   transactions: Transaction[];
   lockedEntries: Record<string, LockedEntry>;
+  /**
+   * Politique de retrait publiee par le serveur. `hydrateFromServer` ne la
+   * reçoit pas (elle ne voit que le snapshot) : c'est `fetchWalletSnapshot`
+   * qui l'applique via `applyWithdrawalPolicy`.
+   */
+  withdrawalFeeRate: number;
+  withdrawalMinAmount: number;
+  applyWithdrawalPolicy: (policy?: WithdrawalPolicy) => void;
   hydrateFromServer: (snapshot: WalletSnapshot) => void;
   refreshFromServer: (expectedUserId?: string) => Promise<void>;
   deposit: (amount: number, method: string) => Promise<void>;
@@ -61,8 +69,16 @@ export interface WalletState {
   getAvailableToSpend: () => number;
 }
 
+/**
+ * Valeurs de repli, uniquement avant la premiere reponse du serveur.
+ *
+ * Le taux et le minimum sont publies par le serveur dans `/api/wallet/me`
+ * (`withdrawal`) : les coder ici faisait diverger l'affichage du montant
+ * reellement verse. Ces constantes ne servent qu'a ne pas afficher un
+ * pourcentage faux pendant la premiere seconde de chargement.
+ */
 const MIN_WITHDRAWAL_ZC = 150;
-const WITHDRAWAL_FEE_RATE = 0.02;
+const FALLBACK_WITHDRAWAL_FEE_RATE = 0.02;
 
 export const useWalletStore = create<WalletState>()((set, get) => {
       const syncAuthBalance = () => {
@@ -93,6 +109,16 @@ export const useWalletStore = create<WalletState>()((set, get) => {
         pendingWinnings: 0,
         transactions: [],
         lockedEntries: {},
+        withdrawalFeeRate: FALLBACK_WITHDRAWAL_FEE_RATE,
+        withdrawalMinAmount: MIN_WITHDRAWAL_ZC,
+
+        applyWithdrawalPolicy: (policy) => {
+          if (!policy) return;
+          set(() => ({
+            withdrawalFeeRate: Number.isFinite(policy.feeRate) ? policy.feeRate : FALLBACK_WITHDRAWAL_FEE_RATE,
+            withdrawalMinAmount: Number.isFinite(policy.minAmount) ? policy.minAmount : MIN_WITHDRAWAL_ZC,
+          }));
+        },
 
         hydrateFromServer: (snapshot) => {
           set(() => ({
@@ -150,6 +176,9 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             return;
           }
           get().hydrateFromServer(payload.wallet);
+          // Politique de retrait : sans cela, le store garde le taux de repli
+          // et l'UI peut afficher un pourcentage different du serveur.
+          get().applyWithdrawalPolicy(payload.withdrawal);
           if (payload.user) {
             useAuthStore.getState().updateUser(payload.user);
           }
@@ -167,16 +196,27 @@ export const useWalletStore = create<WalletState>()((set, get) => {
 
         withdraw: async (amount, method, phone, country) => {
           const safeAmount = roundAmount(amount);
-          if (safeAmount < MIN_WITHDRAWAL_ZC) {
-            throw new Error(`Retrait minimum: ${MIN_WITHDRAWAL_ZC} ZC.`);
+          if (safeAmount < get().withdrawalMinAmount) {
+            throw new Error(`Retrait minimum: ${get().withdrawalMinAmount} ZC.`);
           }
           const payload = await withdrawWalletBalance(safeAmount, method, phone, country);
           get().hydrateFromServer(payload.wallet);
+          get().applyWithdrawalPolicy(payload.withdrawal);
           if (payload.user) {
             useAuthStore.getState().updateUser(payload.user);
           }
-          const netAmount = roundAmount(safeAmount - safeAmount * WITHDRAWAL_FEE_RATE);
-          pushWalletNotification('Retrait confirme', `${formatZC(netAmount)} net envoyés après frais.`);
+          // Le net vient du serveur : le recalculer ici pouvait afficher un
+          // montant different de celui reellement verse par FedaPay.
+          const netAmount = Number.isFinite(payload.netAmount)
+            ? Number(payload.netAmount)
+            : roundAmount(safeAmount - safeAmount * get().withdrawalFeeRate);
+          const feeAmount = Number.isFinite(payload.feeAmount) ? Number(payload.feeAmount) : null;
+          pushWalletNotification(
+            'Retrait confirme',
+            feeAmount !== null
+              ? `${formatZC(netAmount)} nets après ${formatZC(feeAmount)} de frais.`
+              : `${formatZC(netAmount)} net envoyés après frais.`,
+          );
         },
 
         addTransaction: (txData) => {

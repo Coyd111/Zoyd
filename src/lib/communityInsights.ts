@@ -703,8 +703,15 @@ export const buildAdminInsights = ({
   return {
     openDisputes,
     operationalMatches,
+    // `totalPrizePool` = cagnottes theoriques (maxPlayers * entryFee), utile
+    // pour l'activite.
     totalPrizePool: roundAmount(matches.reduce((sum, match) => sum + match.prizePool, 0)),
-    totalFees: roundAmount(matches.reduce((sum, match) => sum + match.zoydFee, 0)),
+    // `totalFees` ne doit PAS sommer `match.zoydFee` : ce champ est fige a 0 a
+    // la creation des matchs, donc la carte « COMMISSIONS » du dashboard
+    // affichait 0 en permanence. Les commissions reelles (frais de retrait,
+    // arbitrages) viennent de `/api/admin/commissions`, calculees par le
+    // serveur sur l'ensemble des portefeuilles.
+    totalFees: 0,
     recentEvents,
     flaggedUsers,
   };

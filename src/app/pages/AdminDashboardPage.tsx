@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router';
 import { Shield, Swords, AlertTriangle, TrendingUp, DollarSign, Users, Lock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { useTournamentStore } from '../stores/tournamentStore';
 import { buildAdminInsights, buildCommunityPlayers } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
 import type { WalletSnapshot } from '../lib/walletApi';
+import { fetchAdminCommissions, type CommissionStats } from '../lib/walletApi';
 import { FocusCard, StatCard } from '../components/admin/AdminTabShared';
 import AdminOverviewTab from '../components/admin/AdminOverviewTab';
 import AdminMatchesTab from '../components/admin/AdminMatchesTab';
@@ -42,6 +43,19 @@ const AdminDashboardPage: React.FC = () => {
   const [pendingResolve, setPendingResolve] = useState<{ matchId: string; type: 'alpha' | 'bravo' | 'none' } | null>(null);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
+  // Commissions ZOYD reellement encaissees, calculees par le serveur sur
+  // l'ensemble des portefeuilles (`/api/admin/commissions`, 2FA requise).
+  // Avant, la carte sommait `match.zoydFee`, fige a 0 a la creation des matchs :
+  // la carte affichait donc 0 en permanence, y compris apres des retraits.
+  const [commissions, setCommissions] = useState<CommissionStats>({ withdrawalFees: 0, arbiterFees: 0, total: 0, withdrawalCount: 0 });
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    let cancelled = false;
+    fetchAdminCommissions()
+      .then((data) => { if (!cancelled) setCommissions(data); })
+      .catch(() => { /* 2FA absente ou reseau : on garde 0 plutot que de mentir */ });
+    return () => { cancelled = true; };
+  }, [user?.role, matches.length]);
   const players = useMemo(() => buildCommunityPlayers({ currentUser: user, friends, reports, matches, tournaments }), [friends, matches, reports, tournaments, user]);
   const adminInsights = useMemo(() => buildAdminInsights({ players, matches, reports }), [matches, players, reports]);
   const playerById = useMemo(() => {
@@ -175,7 +189,7 @@ const AdminDashboardPage: React.FC = () => {
           <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" aria-hidden="true" />} label="MATCHS OUVERTS" value={adminInsights.operationalMatches.length.toString()} />
           <StatCard icon={<AlertTriangle className="w-5 h-5 text-red-400" aria-hidden="true" />} label="LITIGES OUVERTS" value={adminInsights.openDisputes.length.toString()} />
           <StatCard icon={<DollarSign className="w-5 h-5 text-zoyd-yellow" aria-hidden="true" />} label="PRIZEPOOLS" value={formatZC(adminInsights.totalPrizePool)} />
-          <StatCard icon={<TrendingUp className="w-5 h-5 text-green-400" aria-hidden="true" />} label="COMMISSIONS" value={formatZC(adminInsights.totalFees)} />
+          <StatCard icon={<TrendingUp className="w-5 h-5 text-green-400" aria-hidden="true" />} label="COMMISSIONS" value={formatZC(commissions.total)} />
         </div>
         <div role="tablist" className="flex flex-wrap gap-2 mb-8">
           {[

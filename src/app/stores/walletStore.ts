@@ -211,11 +211,16 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             ? Number(payload.netAmount)
             : roundAmount(safeAmount - safeAmount * get().withdrawalFeeRate);
           const feeAmount = Number.isFinite(payload.feeAmount) ? Number(payload.feeAmount) : null;
+          const feeRatePercent = Math.round(get().withdrawalFeeRate * 10000) / 100;
+          // Mention explicite des frais FedaPay : le net annonce est ce que
+          // ZOYD envoie a FedaPay, pas necessairement ce qui est credite sur
+          // le numero du joueur (FedaPay preleve son propre taux par-dessus).
+          const fedapayNote = 'FedaPay preleve encore ses propres frais de transfert, qui ne reviennent pas a ZOYD : le montant credite peut etre inferieur.';
           pushWalletNotification(
-            'Retrait confirme',
+            'Retrait envoye a FedaPay',
             feeAmount !== null
-              ? `${formatZC(netAmount)} nets après ${formatZC(feeAmount)} de frais.`
-              : `${formatZC(netAmount)} net envoyés après frais.`,
+              ? `${formatZC(netAmount)} nets apres ${formatZC(feeAmount)} de commission ZOYD (${feeRatePercent} %). ${fedapayNote}`
+              : `${formatZC(netAmount)} nets apres la commission ZOYD. ${fedapayNote}`,
           );
         },
 

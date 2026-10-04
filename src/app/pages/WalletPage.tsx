@@ -14,6 +14,7 @@ import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFundin
 import { getPayoutCountry, PAYOUT_COUNTRIES, type PayoutOperator } from '../../lib/payoutOperators';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { WithdrawalFeesNotice, useWithdrawalFeesNoticeDismissed } from '../components/wallet/WithdrawalFeesNotice';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
 import { SEOHead } from '../components/SEOHead';
 
@@ -82,6 +83,7 @@ const WalletPage: React.FC = () => {
   const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
 const withdrawalFeeRate = useWalletStore((s) => s.withdrawalFeeRate);
 const withdrawalMinAmount = useWalletStore((s) => s.withdrawalMinAmount);
+const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever, showAgain: showFeesNoticeAgain } = useWithdrawalFeesNoticeDismissed();
   const { user } = useAuthStore();
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
 
@@ -512,6 +514,18 @@ const withdrawalMinAmount = useWalletStore((s) => s.withdrawalMinAmount);
 
         <Modal isOpen={showWithdrawModal} onClose={closeWithdrawModal} title="Retirer mes ZC" size="md">
           <div className="space-y-6">
+            {/* Avertissement sur les deux frais (ZOYD + FedaPay). Masquable
+                definitivement, car les 2 % sont souvent lus comme le seul cout
+                alors que FedaPay preleve son propre taux en plus. */}
+            {!feesNoticeDismissed && withdrawAmountNum >= withdrawalMinAmount && (
+              <WithdrawalFeesNotice
+                zoydFeeRate={withdrawalFeeRate}
+                zoydFee={withdrawFee}
+                netAfterZoyd={withdrawNet}
+                onDismissForever={dismissFeesNoticeForever}
+              />
+            )}
+
             <div>
               <label htmlFor="withdraw-amount" className="block text-sm font-medium text-white mb-3">Montant à retirer</label>
               <Input
@@ -529,16 +543,27 @@ const withdrawalMinAmount = useWalletStore((s) => s.withdrawalMinAmount);
                     <span className="text-white font-mono">{formatZC(withdrawAmountNum)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-white/60">Frais (2%)</span>
+                    <span className="text-white/60">Commission ZOYD ({Math.round(withdrawalFeeRate * 10000) / 100}&nbsp;%)</span>
                     <span className="text-red-400 font-mono">-{formatZC(withdrawFee)}</span>
                   </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-white/60">Frais de transfert FedaPay</span>
+                    <span className="text-white/50 font-mono">appliqués par FedaPay</span>
+                  </div>
                   <div className="border-t border-white/10 pt-1 flex justify-between text-xs">
-                    <span className="text-white/80 font-semibold">Tu recevras</span>
+                    <span className="text-white/80 font-semibold">Envoyé à FedaPay</span>
                     <span className="text-green-400 font-mono font-bold">{formatZC(withdrawNet)} (~ {formatFCFA(withdrawNet)})</span>
                   </div>
+                  <p className="text-[10px] text-white/50 pt-1 leading-relaxed">
+                    Le montant crédité sur ton numéro sera inférieur ou égal à ce net : FedaPay
+                    prélève son propre taux sur le transfert, et ce taux ne revient pas à ZOYD.
+                  </p>
                 </div>
               )}
-              <p className="text-xs text-white/60 mt-2">Un retrait prend 2% de frais et sort de ton solde retirable.</p>
+              <p className="text-xs text-white/60 mt-2">
+                Le retrait débite ton solde retirable et la commission ZOYD de {Math.round(withdrawalFeeRate * 10000) / 100}&nbsp;%.
+                Les frais de transfert FedaPay s&apos;appliquent en plus.
+              </p>
             </div>
 
             <div>
@@ -594,6 +619,18 @@ const withdrawalMinAmount = useWalletStore((s) => s.withdrawalMinAmount);
             >
               {isWithdrawing ? 'Transfert en cours...' : 'Retirer mes gains'}
             </Button>
+
+            {/* Masquer l'avertissement ne doit pas le rendre inaccessible :
+                le joueur peut le reafficher s'il forget la commission ZOYD. */}
+            {feesNoticeDismissed && (
+              <button
+                type="button"
+                onClick={showFeesNoticeAgain}
+                className="w-full text-center text-[10px] font-mono uppercase tracking-wider text-white/50 hover:text-amber-400 transition-colors underline underline-offset-2 touch-target"
+              >
+                Rappeler les frais de retrait (ZOYD + FedaPay)
+              </button>
+            )}
           </div>
         </Modal>
       </div>

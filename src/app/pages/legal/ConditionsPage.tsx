@@ -73,9 +73,17 @@ const ConditionsPage: React.FC = () => (
     <LegalSection n="5" title="Retraits" >
       <p>
         Retrait <strong className="text-white">minimum : 150 ZC (1 500 FCFA)</strong> —{' '}
-        <strong className="text-white">frais : 2 %</strong> affichés avant validation (tu vois le montant net que tu
-        recevras) — <strong className="text-white">maximum : 1 000 000 FCFA par retrait</strong>. Le retrait part vers
-        le numéro Mobile Money du pays de ton profil, via FedaPay.
+        <strong className="text-white">commission ZOYD : 2 %</strong> affichés avant validation. Maximum :{' '}
+        <strong className="text-white">1 000 000 FCFA par retrait</strong>. Le retrait part vers le numéro
+        Mobile Money du pays de ton profil, via FedaPay.
+      </p>
+      <p>
+        <strong className="text-white">Deux frais distincts, à ne pas confondre.</strong> La commission de 2 %
+        est prélevée par ZOYD et constitue notre revenu : elle est déjà déduite du montant net affiché avant
+        validation. À ce net s'ajoute le <strong className="text-white">propre taux de FedaPay</strong>, prélevé
+        par FedaPay sur le transfert Mobile Money. Ce second taux est indépendant de ZOYD, ne nous revient pas,
+        et n'est pas fixé par ZOYD : le montant effectivement crédité sur ton numéro peut donc être inférieur
+        au net affiché. Le détail du taux appliqué t'est communiqué par ton opérateur Mobile Money.
       </p>
       <p>
         Délai habituel : de quelques minutes à 24 heures ouvrées. Si l'opérateur échoue le transfert, le montant est{' '}

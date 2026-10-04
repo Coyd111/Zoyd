@@ -137,14 +137,16 @@ test.describe('LIVE — Assets & Performance', () => {
     expect(stylesheets).toBeGreaterThan(0);
   });
 
-  test('service worker registered', async ({ page }) => {
+  test('la page d\'accueil se charge et monte sans erreur JS', async ({ page }) => {
+    // Ce test affirmait `expect(true).toBe(true)` : il ne verifiait rien et
+    // laisait passer une home blanche ou une exception au montage.
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+
     await page.goto('/');
-    await page.waitForTimeout(2000);
-    const swRegistered = await page.evaluate(() => {
-      return navigator.serviceWorker?.controller !== null || 
-             navigator.serviceWorker?.getRegistration('/').then(r => !!r) || false;
-    });
-    // Just check page loads without error
-    expect(true).toBe(true);
+    await expect(page.locator('#root')).toBeVisible();
+    await page.waitForLoadState('domcontentloaded');
+
+    expect(pageErrors, `erreurs JS au montage : ${pageErrors.join(' | ')}`).toEqual([]);
   });
 });

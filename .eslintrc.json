@@ -11,6 +11,18 @@
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended"
   ],
+  // `no-undef` (eslint:recommended) ne sert qu'ici : @typescript-eslint
+  // le desactive pour les .ts/.tsx, puisque TypeScript verifie deja les
+  // identifiants. Sans ces `env`, les 124 globals Node/navigateur des .mjs
+  // etaient signales comme indefinis, ce qui rendait `pnpm lint` inexploitable
+  // (et donc non exige en CI).
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "globals": {
+    "structuredClone": "readonly"
+  },
   "rules": {
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "@typescript-eslint/no-explicit-any": "warn",
@@ -20,6 +32,14 @@
   "overrides": [
     {
       "files": ["server/**/*.mjs"],
+      "env": {
+        "browser": false,
+        "node": true,
+        "es2022": true
+      },
+      "globals": {
+        "structuredClone": "readonly"
+      },
       "parserOptions": {
         "ecmaVersion": 2022,
         "sourceType": "module"
@@ -28,6 +48,12 @@
         "no-console": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-unused-vars": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.test.mjs", "src/test/**", "e2e/**"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
       }
     }
   ]

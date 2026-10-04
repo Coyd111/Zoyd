@@ -312,7 +312,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
     if (!user) return;
     try {
       await syncRealtimeState(kind, items, user);
-    } catch (error) {
+    } catch {
       set((state) => ({
         serverConnected: false,
         connectionLabel: state.isConnected ? 'syncing' : 'offline',
@@ -341,7 +341,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
         lastHeartbeatAt: bootstrap.timestamp || getNow(),
         bootstrapReady: true,
       });
-    } catch (error) {
+    } catch {
       set((state) => ({
         serverConnected: false,
         connectionLabel: state.isConnected ? 'syncing' : 'offline',

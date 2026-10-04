@@ -56,6 +56,29 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
+  lint:
+    name: ESLint (bloquant)
+    runs-on: ubuntu-latest
+    # Blocant depuis le 2026-10-04. `pnpm lint` existait mais n'était jamais
+    # exécuté en CI, et sa config ne déclarait aucun `env` : les 124 globals
+    # Node/navigateur des .mjs étaient signalés comme indéfinis, donc le
+    # script échouait et personne ne l'avait noticed. C'est exactement ce qui
+    # laissait passer deux ReferenceError en prod :
+    #   - GET /api/tournaments -> 500 (`session` non déclaré)
+    #   - POST /api/admin/matches/:id/award -> payload vide (`settled` inexistant)
+    # `--max-warnings 0` : un lint qui laisse passer les warnings dérive.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
   e2e:
     name: E2E API (playwright)
     runs-on: ubuntu-latest

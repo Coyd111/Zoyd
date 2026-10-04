@@ -231,7 +231,7 @@ test.describe('LIVE — compte jetable (inscription, session, suppression)', () 
     return res;
   };
 
-  test("inscription : cookie HttpOnly/Secure/SameSite=None, aucun token", async ({ request }) => {
+  test("inscription : cookie HttpOnly/Secure/SameSite=None, aucun token", async () => {
     // La lib de sérialisation normalise l'attribut en minuscules (`SameSite=none`).
     const setCookie = registered.setCookie;
     const attrs = setCookie.toLowerCase();

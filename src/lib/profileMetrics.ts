@@ -169,7 +169,10 @@ export const buildCompetitiveSummary = ({
 
   let wins = 0;
   let losses = 0;
-  let draws = 0;
+  // ZOYD n'a pas de nulle : un match est toujours attribue (winnerTeam 0 ou 1,
+  // y compris sur no-show). `draws` reste donc a 0 et traîne dans UserStats
+  // pour compatibilité avec le schéma.
+  const draws = 0;
   let matchEarnings = 0;
 
   for (const match of settledMatches) {

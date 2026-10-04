@@ -64,7 +64,7 @@ const FriendsWidget: React.FC = () => {
       await sendRequest(match.id, match.pseudo);
       toast.success(`Demande envoyée à ${match.pseudo}`);
       setInvitePseudo('');
-    } catch (e) {
+    } catch {
       toast.error('Erreur lors de l\'envoi.');
     } finally {
       setIsLoading(false);

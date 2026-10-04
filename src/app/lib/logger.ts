@@ -59,6 +59,9 @@ export function logWarning(message: string, context?: ErrorContext) {
 export function logInfo(message: string, context?: ErrorContext) {
   if (!isProd) {
     const payload: LogPayload = { level: 'info', message, context, timestamp: new Date().toISOString() };
+    // c'est le logger : la sortie console EST le comportement attendu, et
+    // uniquement hors production.
+    // eslint-disable-next-line no-console
     console.log('[ZOYD]', payload);
   }
 }

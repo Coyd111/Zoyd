@@ -282,15 +282,16 @@ export const mapPersistenceError = (error) => {
       return { status: 401, message, code };
     case 'ACCOUNT_LOCKED':
       return { status: 423, message, code };
+    // Sans LEGAL_NOT_ACCEPTED et INVALID_FORMAT dans ce groupe, ils tombaient
+    // dans le `default` → 500 « Erreur serveur inattendue » pour une simple
+    // erreur de saisie côté client (consentement 18+/CGU non coché, format de
+    // tournoi hors 1VS1-5VS5).
     case 'WEAK_PASSWORD':
     case 'RESET_FAILED':
     case 'INVALID_EMAIL':
     case 'INVALID_OPERATOR':
     case 'INVALID_PHONE':
     case 'INVALID_COUNTRY':
-    // Sans ces deux cas, ils tombaient dans le `default` → 500 « Erreur
-    // serveur inattendue » pour une simple erreur de saisie côté client
-    // (consentement 18+/CGU non coche, format de tournoi hors 1VS1-5VS5).
     case 'LEGAL_NOT_ACCEPTED':
     case 'INVALID_FORMAT':
       return { status: 400, message, code };

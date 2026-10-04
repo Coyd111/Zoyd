@@ -299,7 +299,6 @@ export const loginAdminWithout2fa = async (): Promise<Actor> => {
  */
 export const openAdminSession = async (): Promise<Actor> => {
   const actor = await loginAdminWithout2fa();
-  const context = actor.context;
 
   const status = await call<{ enabled: boolean }>(actor, 'GET', '/api/admin/2fa/status');
   if (status.status !== 200) {

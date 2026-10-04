@@ -139,10 +139,21 @@ import {
 } from './league-engine.mjs';
 
 /**
+ * Formatage d'un montant ZC pour les notifications serveur.
+ * Miroir de `formatZC` (src/lib/utils.ts) : 1 decimale, virgule francaise,
+ * suffixe « ZC ». Le serveur ne doit pas afficher « 123.4560000001 ZC ».
+ */
+const formatZcForNotification = (amount) => {
+  const rounded = Math.round(Number(amount) * 10) / 10;
+  if (!Number.isFinite(rounded)) return '0 ZC';
+  const display = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace('.', ',');
+  return `${display} ZC`;
+};
+
+/**
  * Montants de retrait derives de la source de verdad (wallet-engine), renvoyes
  * au client pour qu'il affiche exactement ce qui a ete debite et verse.
- */
-const buildWithdrawalAmounts = (grossAmount) => {
+ */const buildWithdrawalAmounts = (grossAmount) => {
   const { feeAmount, netAmount } = calcWithdrawNet(grossAmount);
   return { feeRate: WITHDRAWAL_FEE_RATE, grossAmount: roundAmount(grossAmount), feeAmount, netAmount };
 };
@@ -1923,6 +1934,26 @@ const handleRequest = async (req, res) => {
 
       const outcome = await verifyFedaPayTransactionAndCredit(transactionId, session.user);
       const wallet = getServerWallet(session.user.id);
+
+      // Le crédit FedaPay ne montrait qu'un toast éphémère : rien dans le
+      // centre de notifications. Un joueur qui recharge puis ferme l'onglet
+      // n'avait aucune trace du dépôt, et le reçu n'était consultable qu'en
+      // fouillant l'historique du portefeuille.
+      // `requireInteraction: false` : un dépôt réussi ne doit pas exiger une
+      // action du joueur, tout en restant dans le centre de notifications.
+      await deliverNotification(io, session.user.id, {
+        title: 'Depot credite',
+        body: `${formatZcForNotification(outcome.amountZC)} ajoutes a ton portefeuille via FedaPay.`,
+        url: '/wallet',
+        tag: `deposit-${transactionId}`,
+        type: 'wallet_update',
+        requireInteraction: false,
+      }).catch((notifyError) => {
+        // Une notification ratée ne doit jamais faire échouer le crédit :
+        // l'argent est déjà dans le portefeuille à ce stade.
+        log.error('Deposit notification failed', { userId: session.user.id, error: notifyError.message });
+      });
+
       respondJson(res, 200, { 
         ok: true, 
         amount: outcome.amountZC, 

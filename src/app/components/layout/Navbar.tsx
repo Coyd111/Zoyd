@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router';
-import { Settings, Wallet, LogOut } from 'lucide-react';
+import { Settings, Wallet } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useSocketStore } from '../../stores/socketStore';
 import { formatZC } from '../../../lib/utils';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import NotificationSettingsModal from '../notifications/NotificationSettingsModal';
-import { useLogout } from '../../hooks/useLogout';
 
 const Navbar: React.FC = React.memo(() => {
   const { user } = useAuthStore();
@@ -19,7 +18,6 @@ const Navbar: React.FC = React.memo(() => {
   const isConnected = useSocketStore((s) => s.isConnected);
   const serverConnected = useSocketStore((s) => s.serverConnected);
   const liveMatches = useSocketStore((s) => s.liveMatches);
-  const handleLogout = useLogout();
   const safeUser = user || { pseudo: 'ShadowX' };
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -84,13 +82,8 @@ const Navbar: React.FC = React.memo(() => {
             </div>
           </Link>
 
-          <button
-            onClick={handleLogout}
-            title="Se déconnecter"
-            className="touch-target flex items-center justify-center text-white/60 hover:text-red-400 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+          {/* Pas de bouton de déconnexion ici : il est déjà dans la Sidebar.
+              Le doublon mangeait de la largeur dans le header sur mobile. */}
         </div>
 
         <NotificationSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

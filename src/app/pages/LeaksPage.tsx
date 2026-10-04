@@ -7,7 +7,7 @@ import {
   Crosshair, Star, AlertTriangle, Gamepad2, Clock,
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
-import { fetchCODMStoreBundles, type CodashopBundle } from '../../lib/codmApi';
+import { fetchCODMStore, type CodashopBundle } from '../../lib/codmApi';
 import {
   WEAPON_DATA, WEAPON_CATEGORIES, TOTAL_WEAPONS,
   type WeaponCategory,
@@ -204,6 +204,11 @@ const LeaksPage: React.FC = () => {
   const [activeLiveTab, setActiveLiveTab] = useState<LiveTab>('bundles');
   const [bundles, setBundles] = useState<CodashopBundle[]>([]);
   const [bundlesLoading, setBundlesLoading] = useState(true);
+  // Devise reelle du catalogue Codashop (INR aujourd'hui) et faux si le prix
+  // n'est pas dans la devise du joueur : l'UI le dit plutot que d'afficher
+  // un montant en INR comme s'il etait en XOF.
+  const [catalogCurrency, setCatalogCurrency] = useState('INR');
+  const [priceIsLocal, setPriceIsLocal] = useState(false);
   const [selectedWeaponCategory, setSelectedWeaponCategory] = useState<WeaponCategory>('Assault Rifles');
   const [weaponSearch, setWeaponSearch] = useState('');
   const [expandedArticles, setExpandedArticles] = useState<Set<string>>(new Set());
@@ -224,9 +229,11 @@ const LeaksPage: React.FC = () => {
     (async () => {
       setBundlesLoading(true);
       try {
-        const data = await fetchCODMStoreBundles(toCountryIso(user?.country));
+        const data = await fetchCODMStore(toCountryIso(user?.country));
         if (!cancelled) {
-          setBundles(data);
+          setBundles(data.bundles);
+          setCatalogCurrency(data.catalogCurrency);
+          setPriceIsLocal(data.priceIsLocal);
           setBundlesLoading(false);
         }
       } catch {
@@ -332,7 +339,11 @@ const LeaksPage: React.FC = () => {
                   <h3 className="font-display font-black text-sm uppercase tracking-tighter italic text-white">
                     Offres en cours
                   </h3>
-                  <p className="text-[10px] font-mono text-white/60 mt-1">Donnees temps reel depuis le store CODM</p>
+                  <p className="text-[10px] font-mono text-white/60 mt-1">
+                    {priceIsLocal
+                      ? 'Donnees temps reel depuis le store CODM'
+                      : `Catalogue international Codashop (prix en ${catalogCurrency}). Le montant debite est affiche sur Codashop, dans la devise de votre pays.`}
+                  </p>
                 </div>
                 {bundlesLoading && (
                   <div className="flex items-center gap-2 text-[10px] font-mono text-white/60">

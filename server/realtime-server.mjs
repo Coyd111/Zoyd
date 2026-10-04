@@ -223,27 +223,16 @@ const handleRequest = async (req, res) => {
       const storeUrl = new URL(req.url, 'http://localhost');
       const rawCountry = (storeUrl.searchParams.get('country') || '').toUpperCase();
       const country = /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : 'BJ';
-      // shopLang par pays : Codashop sert les prix dans la devise du `shopLang`.
-      // En dur `en_in`, un joueur beninois voyait « 499.0 INR » : le `country`
-      // etait lu puis jete. Inconnu -> BJ (seule devise XOF reellement geree).
-      const shopLangByCountry = {
-        BJ: 'fr_bj',
-        SN: 'fr_sn',
-        CI: 'fr_ci',
-        ML: 'fr_ml',
-        BF: 'fr_bf',
-        CM: 'fr_cm',
-        TG: 'fr_tg',
-        CD: 'fr_cd',
-        CG: 'fr_cg',
-        GW: 'pt_gw',
-        FR: 'fr_fr',
-        NG: 'en_ng',
-        GH: 'en_gh',
-        ZA: 'en_za',
-        IN: 'en_in',
-      };
-      const shopLang = shopLangByCountry[country] || 'fr_bj';
+      // LIMITE CONNUE DE L'API CODASHOP (verifiee le 04/10/2026) :
+      // `getDynamicSkuInfo` renvoie le CATALOGUE INTERNATIONAL en INR quel que
+      // soit `shopLang` (fr_bj, en_ng, en_za... => 17 groupes, 99.0 INR) et quel
+      // que soit `whitelabelId` (1 a 14 => identique). Le schema GraphQL
+      // n'accepte aucun argument `countryCode`, et `api.codashop.com` ne repond
+      // pas. Donc pas de catalogue XOF disponible de ce cote : on ne pretend pas
+      // l'inverse, la page affiche la devise reelle (INR) et renvoie vers le
+      // checkout Codashop, qui facture dans la devise du pays du joueur.
+      // `country` est conserve : il sera utile des que Codashop l'exposera.
+      const shopLang = 'fr_bj';
       const deviceId = crypto.randomUUID();
 
       const graphqlBody = {
@@ -312,7 +301,19 @@ const handleRequest = async (req, res) => {
         };
       });
 
-      respondJson(res, 200, { ok: true, bundles, categories }, req);
+      // La devise du catalogue est celle reellement servie par Codashop
+      // (toujours INR aujourd'hui, cf. limite documentee plus haut). On la
+      // renvoie explicitement pour que le front affiche la bonne devise et
+      // n'impose pas une devise locale que l'API ne fournit pas.
+      const catalogCurrency = bundles.find((b) => !b.isFree)?.currency || 'INR';
+      respondJson(res, 200, {
+        ok: true,
+        bundles,
+        categories,
+        catalogCurrency,
+        priceIsLocal: false,
+        requestedCountry: country,
+      }, req);
     } catch (err) {
       log.error('codm store proxy error', { message: err.message });
       respondJson(res, 500, { ok: false, error: 'Failed to fetch store data.', code: 'STORE_PROXY_ERROR' }, req);
@@ -1302,7 +1303,10 @@ const handleRequest = async (req, res) => {
       const { limit, offset } = parseQueryParams(req.url);
       const all = getStoredTournaments();
       const { items: tournaments, hasMore } = paginate(
-        all.map((t) => sanitizeTournamentForBroadcast(t, session?.userId || null)),
+        // `session` n'existait pas ici : le `isMe` des membres/arbitres de
+        // tournois n'etait donc jamais calcule. ReferenceError capture par le
+        // `catch` => 500 des que la liste contient un tournoi.
+        all.map((t) => sanitizeTournamentForBroadcast(t, getAuthenticatedAppSession(req)?.userId || null)),
         { limit, offset }
       );
       respondJson(res, 200, { ok: true, tournaments, total: all.length, hasMore });
@@ -2437,7 +2441,10 @@ const handleRequest = async (req, res) => {
         log.error('Admin award settlement incomplete', { matchId: adminMatchAward[1] });
       }
       log.info('Admin action: award match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
-      respondJson(res, 200, buildMatchActionPayload(settled.match || outcome.match, session.user.id));
+      // `settled` n'existait pas ici (oublie lors du refactor du reglement) :
+      // le payload renvoye a l'admin etait donc vide apres une attribution
+      // reussie, et l'UI ne rafraichissait pas le match.
+      respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
       respondMappedError(res, error);

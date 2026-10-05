@@ -16,7 +16,7 @@
 
 ```
 VITE_REALTIME_URL=https://zoyd.onrender.com
-VITE_SUPABASE_URL=https://tgvvuapazfehmsbduilx.supabase.co
+VITE_SUPABASE_URL=https://<ton-project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
@@ -24,7 +24,7 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 
 ```
 PORT=10000
-SUPABASE_URL=https://tgvvuapazfehmsbduilx.supabase.co
+SUPABASE_URL=https://<ton-project-ref>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 JWT_SECRET=your-secret-key
 VAPID_PUBLIC_KEY=...

@@ -21,4 +21,11 @@ check-db.mjs
 guidelines/
 src/imports/
 
+# Rapports d'audit internes : ils décrivent l'architecture, les correctifs
+# appliqués et les faiblesses connues. Utiles en développement, mais le dépôt
+# est public : les garder donnerait une cartographie de la stack et un
+# historique des problems corrigés.
+AUDIT_*.md
+*_AUDIT.md
+
 test-results/

@@ -34,6 +34,8 @@ const tournoisLoader = async () => { const { default: Component } = await import
 const bracketLoader = async () => { const { default: Component } = await import('../features/tournament/pages/TournamentBracketPage'); return { Component }; };
 const leagueLoader = async () => { const { default: Component } = await import('../features/league/pages/LeaguePage'); return { Component }; };
 const leagueSeasonLoader = async () => { const { default: Component } = await import('../features/league/pages/LeagueSeasonPage'); return { Component }; };
+const brLoader = async () => { const { default: Component } = await import('../features/br/pages/BrPage'); return { Component }; };
+const brLobbyLoader = async () => { const { default: Component } = await import('../features/br/pages/BrLobbyDetailPage'); return { Component }; };
 const leaksLoader = async () => { const { default: Component } = await import('./pages/LeaksPage'); return { Component }; };
 const adminLoader = async () => { const { default: Component } = await import('./pages/AdminDashboardPage'); return { Component }; };
 const publicProfilLoader = async () => { const { default: Component } = await import('./pages/PublicProfilPage'); return { Component }; };
@@ -191,6 +193,17 @@ export const router = createBrowserRouter([
         children: [
           { index: true, lazy: leagueLoader },
           { path: ':seasonId', lazy: leagueSeasonLoader },
+        ],
+      },
+      {
+        // Battle Royale : salon unique, un seul match. Distinct de br-league
+        // (5 jours, top 40) et de mj (1v1-5v5).
+        path: 'br',
+        element: <AppLayout />,
+        errorElement: <RouteErrorBoundary />,
+        children: [
+          { index: true, lazy: brLoader },
+          { path: ':lobbyId', lazy: brLobbyLoader },
         ],
       },
       {

@@ -2020,7 +2020,15 @@ const handleRequest = async (req, res) => {
     const lobbyId = brLobbyAction[1];
     const action = brLobbyAction[2];
     const actor = { user: getUserById(session.user.id) || session.user };
-    if (!rateLimitGuard(res, getClientIp(req), action === 'start' || action === 'finish' ? 'admin' : 'match')) return;
+    // `join`/`leave` touchent l'argent MAIS restent sur le quota general :
+    // les mettre dans `wallet` (20 requetes / 10 min, partage avec les
+    // depots/retraits) rendait le produit inutilisable — un joueur qui
+    // s'inscrit puis se desinscrit de 3 salons epuisait le quota avant meme
+    // de pouvoir retirer ses gains.
+    const rateGroup = (action === 'start' || action === 'finish' || action === 'arbiter')
+      ? 'admin'
+      : 'default';
+    if (!rateLimitGuard(res, getClientIp(req), rateGroup)) return;
 
     try {
       const lobbies = getStoredBrLobbies();

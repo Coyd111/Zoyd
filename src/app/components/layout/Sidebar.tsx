@@ -9,7 +9,8 @@ import { useLogout } from '../../hooks/useLogout';
 const navItems = [
   { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
   { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
-  { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
+  { icon: Zap, label: 'BR SALON', path: '/br' },
+  { icon: ShieldCheck, label: 'BR LEAGUE', path: '/br-league' },
   { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
   { icon: TrendingUp, label: 'GAINS', path: '/earnings' },
   { icon: Newspaper, label: 'INFOS', path: '/infos' },

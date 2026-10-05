@@ -72,6 +72,10 @@
   <url>
     <loc>https://zoyd.vercel.app/br-league</loc>
     <lastmod>2026-08-30</lastmod>
+  </url>
+  <url>
+    <loc>https://zoyd.vercel.app/br</loc>
+    <lastmod>2026-10-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

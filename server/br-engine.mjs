@@ -253,6 +253,10 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
     payout,
     status: 'scheduled',
     scheduledAt: new Date(scheduledAtMs).toISOString(),
+    // Le createur est inscrit des la creation et son pass est bloque : il
+    // organise la partie, il doit donc y jouer (et sa presence conditionne le
+    // demarrage). Le verrouillage est fait par l'appelant, qui appelle
+    // ensuite `joinBrLobbyOnServer` pour l'admin.
     players: [],
     teams: [],
     pot: 0,
@@ -286,9 +290,9 @@ export const joinBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
   requireLobbyJoinable(lobby);
 
-  if (lobby.creatorId === actorUser.id) {
-    throw makeError('ALREADY_JOINED', 'Tu as cree ce salon, tu es deja inscrit.');
-  }
+  // Le createur n'est pas auto-inscrit par `createBrLobbyOnServer` : c'est
+  // l'appelant (la route) qui l'inscrit via cette fonction, comme tout le
+  // monde, pour que son pass soit reellement bloque.
   if (lobby.players.some((p) => p.userId === actorUser.id)) {
     throw makeError('ALREADY_JOINED', 'Tu es deja inscrit dans ce salon.');
   }
@@ -305,14 +309,20 @@ export const joinBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   // equipes : solo = 1 joueur par equipe, duo/squad = regroupement par
   // `squadKey` (le joueur peut fournir son pseudo d'equipe).
   const teamSize = BR_MODES[lobby.mode].teamSize;
-  const squadKey = String(actorUser.squadKey || actorUser.pseudo || actorUser.id).trim();
+  // En SOLO, chaque joueur est sa propre equipe. Sans ce cas, la `squadKey`
+  // par defaut (le pseudo) faisait Rejoindre le 2e joueur dans l'equipe du
+  // createur, qui est deja complete (teamSize 1) => tout le monde rec_Refused
+  // TEAM_FULL et le salon solo devenait impossible a remplir.
+  const squadKey = teamSize === 1
+    ? `solo-${actorUser.id}`
+    : String(actorUser.squadKey || actorUser.pseudo || actorUser.id).trim();
   let team = lobby.teams.find((t) => t.key === squadKey);
   if (!team) {
     team = { id: `T-${Date.now().toString(36).toUpperCase()}`, key: squadKey, members: [] };
     lobby.teams.push(team);
   }
   if (team.members.length >= teamSize) {
-    throw makeError('TEAM_FULL', `Ton equipe est complete (${teamSize} joueurs max).`);
+    throw makeError('TEAM_FULL', `Ton equipe est complete (${teamSize} joueur(s) max).`);
   }
   team.members.push(actorUser.id);
 

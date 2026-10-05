@@ -276,6 +276,11 @@ export const mapPersistenceError = (error) => {
     case 'NO_PLAYERS':
     case 'INVALID_DAY':
     case 'INVALID_RESULTS':
+    case 'INVALID_PAYOUT':
+    case 'INVALID_MODE':
+    case 'INVALID_MAP':
+    case 'INVALID_RANKING_MODE':
+    case 'INVALID_DATE':
       return { status: 400, message, code };
     case 'INVALID_CREDENTIALS':
     case 'UNAUTHORIZED':
@@ -346,7 +351,25 @@ export const mapPersistenceError = (error) => {
     case 'CHANNEL_NOT_FOUND':
     case 'PLAYER_NOT_FOUND':
     case 'USER_NOT_FOUND':
+    case 'LOBBY_NOT_FOUND':
       return { status: 404, message, code };
+    // ─── Battle Royale ────────────────────────────────────────────────────
+    // Conflits d'etat : le salon est deja plein/lance/regle, le joueur est
+    // deja inscrit ou elimine. 409 et non 400 : le client peut reessayer.
+    // (`ALREADY_JOINED` et `NOT_ENOUGH_PLAYERS` sont deja mappes plus haut.)
+    case 'ALREADY_CHECKED_IN':
+    case 'ALREADY_LIVE':
+    case 'ALREADY_ELIMINATED':
+    case 'ALREADY_FINISHED':
+    case 'TEAM_FULL':
+    case 'LOBBY_FULL':
+    case 'LOBBY_CLOSED':
+    case 'LOBBY_NOT_LIVE':
+    case 'PLAYER_DEAD':
+    case 'PLAYER_ABSENT':
+    case 'TOO_EARLY':
+    case 'NO_PRESENT':
+      return { status: 409, message, code };
     default:
       return { status: 500, message: 'Une erreur serveur est survenue.', code };
   }

@@ -10,7 +10,7 @@ import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs'
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
-import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload } from './state-helpers.mjs';
+import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies } from './state-helpers.mjs';
 import { deliverAuthCode } from './code-delivery.mjs';
 import { generateTotpSecret, verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
@@ -137,6 +137,25 @@ import {
   refundLeaguePlayerOnServer,
   getLeaguePayments,
 } from './league-engine.mjs';
+import {
+  BR_MAPS,
+  BR_MAP_IDS,
+  BR_MODES,
+  BR_MODE_IDS,
+  BR_RANKING_MODES,
+  BR_RANKING_MODE_IDS,
+  BR_ARBITER_MAX_RATE,
+  BR_PRIZED_PLACES,
+  createBrLobbyOnServer,
+  joinBrLobbyOnServer,
+  leaveBrLobbyOnServer,
+  checkInBrLobbyOnServer,
+  startBrLobbyOnServer,
+  eliminateBrPlayerOnServer,
+  settleBrLobbyOnServer,
+  computeBrRanking,
+  computeBrPayouts,
+} from './br-engine.mjs';
 
 /**
  * Formatage d'un montant ZC pour les notifications serveur.
@@ -1908,6 +1927,186 @@ const handleRequest = async (req, res) => {
     } catch (error) {
       respondMappedError(res, error);
     }
+    return;
+  }
+
+  // ─── Battle Royale (salon unique, un seul match) ─────────────────────────
+  // Voir server/br-engine.mjs. Regle commerciale centrale : le pass est bloque
+  // a l'inscription et n'est jamais rembourse une fois la partie lancee.
+
+  // Referentiel : maps, modes et variantes de classement, pour que le front ne
+  // code pas ses propres listes (source de verite unique).
+  if (req.method === 'GET' && pathname === '/api/br/config') {
+    respondJson(res, 200, {
+      ok: true,
+      maps: BR_MAPS,
+      mapIds: BR_MAP_IDS,
+      modes: BR_MODES,
+      modeIds: BR_MODE_IDS,
+      rankingModes: BR_RANKING_MODES,
+      rankingModeIds: BR_RANKING_MODE_IDS,
+      prizedPlaces: BR_PRIZED_PLACES,
+      arbiterMaxRate: BR_ARBITER_MAX_RATE,
+    }, req);
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/br/lobbies') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
+    const lobbies = getStoredBrLobbies();
+    // Les joueurs sont visibles (pseudo, presence) mais jamais les userId :
+    // le BR affiche le roster, comme un lobby de jeu.
+    const sanitized = lobbies.map((lobby) => ({
+      ...lobby,
+      players: lobby.players.map(({ userId, ...rest }) => rest),
+      teams: lobby.teams.map(({ members, ...rest }) => rest),
+    }));
+    respondJson(res, 200, { ok: true, lobbies: sanitized }, req);
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/br/lobbies') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
+      return;
+    }
+    if (!rateLimitGuard(res, getClientIp(req), 'match')) return;
+    try {
+      const body = await parseRequestBody(req);
+      const created = createBrLobbyOnServer(
+        getStoredBrLobbies(),
+        { user: getUserById(session.user.id) || session.user },
+        body,
+      );
+      // Le createur paie et joue son propre salon : on l'inscrit comme les
+      // autres, sinon il resterait dehors et sa presence ne compterait pas au
+      // demarrage. L'echec de ce verrouillage annule la creation.
+      let lobbies = created.lobbies;
+      let lobby = created.lobby;
+      try {
+        const joined = await joinBrLobbyOnServer(
+          created.lobbies,
+          { user: getUserById(session.user.id) || session.user },
+          created.lobby.id,
+        );
+        lobbies = joined.lobbies;
+        lobby = joined.lobby;
+      } catch (joinError) {
+        // On ne laisse pas trace d'un salon dont le createur n'a pas pu
+        // bloquer son pass : la cagnotte serait decalee d'un joueur.
+        log.error('BR creator join failed, lobby discarded', {
+          lobbyId: created.lobby.id, error: joinError.message,
+        });
+        respondMappedError(res, joinError);
+        return;
+      }
+      await saveBrLobbies(io, lobbies);
+      log.info('BR lobby created', { lobbyId: lobby.id, by: session.user.id });
+      respondJson(res, 201, { ok: true, lobby }, req);
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  const brLobbyAction = pathname.match(/^\/api\/br\/lobbies\/([^/]+)\/(join|leave|checkin|start|eliminate|finish|arbiter)$/);
+  if (brLobbyAction && req.method === 'POST') {
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
+      return;
+    }
+    const lobbyId = brLobbyAction[1];
+    const action = brLobbyAction[2];
+    const actor = { user: getUserById(session.user.id) || session.user };
+    if (!rateLimitGuard(res, getClientIp(req), action === 'start' || action === 'finish' ? 'admin' : 'match')) return;
+
+    try {
+      const lobbies = getStoredBrLobbies();
+      let outcome;
+      let status = 200;
+
+      if (action === 'join') {
+        outcome = await joinBrLobbyOnServer(lobbies, actor, lobbyId);
+      } else if (action === 'leave') {
+        outcome = await leaveBrLobbyOnServer(lobbies, actor, lobbyId);
+      } else if (action === 'checkin') {
+        outcome = checkInBrLobbyOnServer(lobbies, actor, lobbyId);
+      } else if (action === 'start') {
+        outcome = startBrLobbyOnServer(lobbies, actor, lobbyId);
+      } else if (action === 'eliminate') {
+        const body = await parseRequestBody(req);
+        if (!body.userId || typeof body.userId !== 'string') {
+          respondJson(res, 400, { ok: false, error: 'userId du joueur elimine requis.', code: 'INVALID_JSON' }, req);
+          return;
+        }
+        outcome = eliminateBrPlayerOnServer(lobbies, actor, lobbyId, body.userId, {
+          killerUserId: typeof body.killerUserId === 'string' ? body.killerUserId : null,
+          assists: Number(body.assists) || 0,
+        });
+      } else if (action === 'arbiter') {
+        // L'arbitre est un joueur inscrit (il paie son pass comme tout le
+        // monde) mais il est hors classement et touche une commission.
+        const adminSession = requireAdmin2fa(req, res);
+        if (!adminSession) return;
+        const next = lobbies.map((l) => (l.id === lobbyId ? { ...l, arbiterId: session.userId } : l));
+        outcome = { lobby: next.find((l) => l.id === lobbyId), lobbies: next };
+        if (!outcome.lobby) {
+          respondJson(res, 404, { ok: false, error: 'Salon introuvable.', code: 'LOBBY_NOT_FOUND' }, req);
+          return;
+        }
+      } else {
+        // `finish` distribue la cagnotte : operation financiere sensible.
+        const adminSession = requireAdmin2fa(req, res);
+        if (!adminSession) return;
+        outcome = await settleBrLobbyOnServer(lobbies, actor, lobbyId);
+        // Notification aux gagants.
+        for (const prize of outcome.payouts || []) {
+          await deliverNotification(io, prize.userId, {
+            title: `BR - ${prize.placement}e place`,
+            body: `${formatZcForNotification(prize.amount)} gagnes sur ${outcome.lobby.name} (${prize.kills} kills).`,
+            url: '/br',
+            tag: `br-prize-${outcome.lobby.id}-${prize.userId}`,
+            type: 'wallet_update',
+            requireInteraction: false,
+          }).catch(() => { /* l'argent est verse, la notification est secondary */ });
+        }
+      }
+
+      await saveBrLobbies(io, outcome.lobbies);
+      respondJson(res, status, {
+        ok: true,
+        lobby: outcome.lobby,
+        payouts: outcome.payouts || null,
+        arbiter: outcome.arbiter || null,
+        refunded: outcome.refunded || 0,
+      }, req);
+    } catch (error) {
+      respondMappedError(res, error);
+    }
+    return;
+  }
+
+  const brLobbyDetail = pathname.match(/^\/api\/br\/lobbies\/([^/]+)$/);
+  if (brLobbyDetail && req.method === 'GET') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
+    const lobby = getStoredBrLobbies().find((l) => l.id === brLobbyDetail[1]);
+    if (!lobby) {
+      respondJson(res, 404, { ok: false, error: 'Salon introuvable.', code: 'LOBBY_NOT_FOUND' }, req);
+      return;
+    }
+    const { payouts, arbiter } = computeBrPayouts(lobby);
+    respondJson(res, 200, {
+      ok: true,
+      lobby: {
+        ...lobby,
+        players: lobby.players.map(({ userId, ...rest }) => rest),
+        teams: lobby.teams.map(({ members, ...rest }) => rest),
+      },
+      ranking: computeBrRanking(lobby).slice(0, BR_PRIZED_PLACES).map(({ userId, ...rest }) => rest),
+      projectedPayouts: { payouts, arbiter },
+    }, req);
     return;
   }
 

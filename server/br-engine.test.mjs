@@ -193,6 +193,53 @@ describe('br-engine - joinBrLobbyOnServer', () => {
     await expect(brEngine.joinBrLobbyOnServer([finished], player('p1'), lobby.id))
       .rejects.toThrow(/plus d'inscriptions/);
   });
+
+  // Regression : en solo (teamSize 1), la `squadKey` par defaut etait le
+  // pseudo. Le 2e joueur rejoignait donc l'equipe du createur, deja complete,
+  // et recevait TEAM_FULL : un salon solo ne pouvait ACCEPTER aucun joueur
+  // apres son createur.
+  it('solo : chaque joueur a sa propre equipe (teamSize 1)', async () => {
+    let lobbies = [lobby];
+    for (const id of ['p1', 'p2', 'p3']) {
+      getUserById.mockReturnValue(player(id));
+      const res = await brEngine.joinBrLobbyOnServer(lobbies, player(id), lobby.id);
+      lobbies = res.lobbies;
+    }
+    const result = lobbies[0];
+    expect(result.players).toHaveLength(3);
+    // 3 joueurs => 3 equipes distinctes en solo.
+    expect(result.teams).toHaveLength(3);
+    expect(new Set(result.teams.map((t) => t.key)).size).toBe(3);
+  });
+
+  it('squad : les joueurs partageant une squadKey rejoignent la meme equipe', async () => {
+    const squadLobby = createLobby({ mode: 'squad' });
+    const withSquad = (id, key) => ({ ...player(id), squadKey: key });
+    let lobbies = [squadLobby];
+    for (const id of ['a', 'b', 'c']) {
+      getUserById.mockReturnValue(withSquad(id, 'ALPHA'));
+      const res = await brEngine.joinBrLobbyOnServer(lobbies, withSquad(id, 'ALPHA'), squadLobby.id);
+      lobbies = res.lobbies;
+    }
+    const result = lobbies[0];
+    expect(result.players).toHaveLength(3);
+    expect(result.teams).toHaveLength(1);
+    expect(result.teams[0].members).toHaveLength(3);
+  });
+
+  it('squad : refuse une 5e personne dans la meme equipe (teamSize 4)', async () => {
+    const squadLobby = createLobby({ mode: 'squad' });
+    const withSquad = (id) => ({ ...player(id), squadKey: 'ALPHA' });
+    let lobbies = [squadLobby];
+    for (const id of ['a', 'b', 'c', 'd']) {
+      getUserById.mockReturnValue(withSquad(id));
+      const res = await brEngine.joinBrLobbyOnServer(lobbies, withSquad(id), squadLobby.id);
+      lobbies = res.lobbies;
+    }
+    getUserById.mockReturnValue(withSquad('e'));
+    await expect(brEngine.joinBrLobbyOnServer(lobbies, withSquad('e'), squadLobby.id))
+      .rejects.toThrow(/complete/);
+  });
 });
 
 describe('br-engine - leaveBrLobbyOnServer', () => {

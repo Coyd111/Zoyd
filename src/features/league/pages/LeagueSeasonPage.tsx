@@ -17,7 +17,7 @@ import {
   reassignServerLeaguePlayer,
   refundServerLeaguePlayer,
 } from '../../../app/lib/leagueApi';
-import { toast } from 'sonner';
+import { toast } from '../../../app/lib/toast';
 import { formatZC, getRelativeTime } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
 import type { WalletSnapshot } from '../../../app/lib/walletApi';

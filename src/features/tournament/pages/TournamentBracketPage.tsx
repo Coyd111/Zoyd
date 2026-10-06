@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { toast } from 'sonner';
+import { toast } from '../../../app/lib/toast';
 import { AlertTriangle } from 'lucide-react';
 import {
   assignServerTournamentArbiter,

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Bell, Gamepad2, Save, Shield, User } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import { useAuthStore, type User as AuthUser } from '../stores/authStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { Input } from '../components/ui/Input';

@@ -12,7 +12,7 @@ import { Button } from '../components/ui/Button';
 import ProfileView from '../components/profile/ProfileView';
 import { buildCompetitiveSummary, createPublicProfile, getObservedPlayerSnapshot } from '../../lib/profileMetrics';
 import { sendServerFriendRequest } from '../lib/socialApi';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import { SEOHead } from '../components/SEOHead';
 
 const PublicProfilPage = () => {

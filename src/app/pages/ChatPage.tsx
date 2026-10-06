@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import {
   createServerChatChannel,
   fetchServerChatChannel,

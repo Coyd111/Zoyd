@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import { fetchCurrentUser, type AuthResponse } from '../lib/authApi';
 import { resetAllSessionStores } from '../lib/sessionReset';
 import { useAuthStore } from '../stores/authStore';

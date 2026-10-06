@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Check, ShieldCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '../../lib/toast';
 import { MJ_FORMATS, MJ_MAP_POOL, MJ_MODE_OPTIONS, getMapImage } from '../../../lib/competition';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { createServerMatch } from '../../lib/matchApi';

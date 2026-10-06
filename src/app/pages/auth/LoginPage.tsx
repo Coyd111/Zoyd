@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { toast } from 'sonner';
+import { toast } from '../../lib/toast';
 import { Eye, EyeOff, ShieldCheck, ChevronRight, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';

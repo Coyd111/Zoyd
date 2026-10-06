@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router';
 import { Shield, Swords, AlertTriangle, TrendingUp, DollarSign, Users, Lock, Scale } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
 import { adminAwardServerMatch, adminCancelServerMatch, adminResolveServerDispute } from '../lib/matchApi';
 import { applyServerAccountState } from '../lib/serverSync';
 import { useAuthStore, type User } from '../stores/authStore';

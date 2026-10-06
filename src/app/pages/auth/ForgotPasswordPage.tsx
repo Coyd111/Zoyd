@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
+import { toast } from '../../lib/toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';

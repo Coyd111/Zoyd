@@ -4,7 +4,7 @@ import type { LeagueSeason, LeagueDayKey } from '../../../app/stores/leagueStore
 import { DAY_KEYS, DAY_LABELS } from './leagueSeasonConstants';
 import { fetchServerLeaguePayments } from '../../../app/lib/leagueApi';
 import { formatZC } from '../../../lib/utils';
-import { toast } from 'sonner';
+import { toast } from '../../../app/lib/toast';
 
 interface PaymentInfo {
   userId: string;

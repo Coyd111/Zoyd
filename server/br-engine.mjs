@@ -86,6 +86,28 @@ export const BR_ARBITER_MAX_RATE = 0.05;
 export const BR_MIN_DELAY_MS = 24 * 60 * 60 * 1000;
 export const BR_MAX_DELAY_MS = 48 * 60 * 60 * 1000;
 
+/**
+ * Tolerance d'anticipation au lancement : on peut demarrer jusqu'a 10 min
+ * avant l'heure programmee, pas avant (le salon est affiche « a venir »).
+ *
+ * Surchargeable UNIQUEMENT dans l'E2E, avec la meme double condition que
+ * l'assouplissement du rate-limit : `NODE_ENV=test` ET `ALLOW_DEBUG_CODES=true`
+ * (jamais poses en production). Sans elle, la valeur reste 10 min.
+ *
+ * Pourquoi c'est necessaire : la creation impose 24 a 48 h d'avance, donc
+ * aucun salon cree par l'API n'est demarrable tout de suite. Sans cette
+ * surcharge, le cycle complet (lancement -> eliminations -> versement) ne
+ * serait testable qu'en unite, jamais via HTTP — et c'est precisement le
+ * chemin qui touche de l'argent.
+ */
+const BR_START_EARLY_TOLERANCE_MS = (
+  process.env.NODE_ENV === 'test'
+  && process.env.ALLOW_DEBUG_CODES === 'true'
+  && process.env.ZOYD_BR_START_EARLY_MS
+)
+  ? Number(process.env.ZOYD_BR_START_EARLY_MS)
+  : 10 * 60 * 1000;
+
 /** Part de survie dans le score `survie_kills` (le reste va aux kills). */
 const SURVIVAL_WEIGHT = 0.7;
 const KILL_WEIGHT = 0.3;
@@ -465,7 +487,7 @@ export const startBrLobbyOnServer = (lobbies, actor, lobbyId, { nowMs = getNowMs
   }
 
   // Fenetre de programmation : pas de lancement anticipatif force.
-  if (lobby.scheduledAt && nowMs < Date.parse(lobby.scheduledAt) - 10 * 60 * 1000) {
+  if (lobby.scheduledAt && nowMs < Date.parse(lobby.scheduledAt) - BR_START_EARLY_TOLERANCE_MS) {
     throw makeError(
       'TOO_EARLY',
       'Le salon ne peut pas demarrer plus de 10 min avant l\'heure programmee.',
@@ -660,9 +682,9 @@ export const computeBrRanking = (lobby) => {
  *  3. Les perdants sont debites de leur reservation (le pass disparait : c'est
  *     le prix de la participation, PAS un remboursement).
  *
- * L'arbitre est paye avec `releaseWalletWinnings` uniquement s'il a lui-meme
- * bloque un pass, sinon il n'a pas de reservation a liberer : on ne cree pas
- * de transaction fantaisiste.
+ * L'arbitre n'est pas joueur et n'a donc aucun pass bloque : sa part est
+ * prelevee sur la cagnotte comme les gains, avec `arbiterSettled` comme garde
+ * anti-double versement.
  */
 export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   const actorUser = actor?.user || actor;

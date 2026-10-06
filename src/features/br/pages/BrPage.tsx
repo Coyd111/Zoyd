@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Calendar, Map as MapIcon, Users, Swords, ChevronRight, AlertTriangle, Clock, Trophy } from 'lucide-react';
-import { toast } from 'sonner';
+
 import { useAuthStore } from '../../../app/stores/authStore';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import {
@@ -14,6 +14,7 @@ import {
 import { formatZC } from '../../../lib/utils';
 import { BrLobbyCreatePanel } from '../components/BrLobbyCreatePanel';
 import { SEOHead } from '../../../app/components/SEOHead';
+import { toast } from '../../../app/lib/toast';
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'INSCRIPTIONS', className: 'text-green-400 border-green-400/30 bg-green-400/10' },

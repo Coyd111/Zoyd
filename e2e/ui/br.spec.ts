@@ -55,6 +55,28 @@ const loginAdminWithCookie = async (page: Page) => {
   expect((await loginResponse).status(), 'connexion admin').toBe(200);
 };
 
+/**
+ * Salon BR avec 5 joueurs presents, prêt a etre lance par l'arbitre.
+ * L'arbitre n'est pas joueur : on ne l'inscrit donc pas.
+ */
+const liveReadyLobby = async (admin: Actor) => {
+  const created = await call(admin, 'POST', '/api/br/lobbies', {
+    name: 'Salon panneau', mode: 'solo', map: 'isolated',
+    entryFee: 50, scheduledAt: new Date(Date.now() + 30 * 3600_000).toISOString(),
+    rankingMode: 'survie_kills',
+    payout: { first: 0.4, second: 0.22, third: 0.15, fourth: 0.12, fifth: 0.08, arbiterRate: 0.03 },
+  });
+  expect(created.status).toBe(201);
+  const lobbyId = created.body.lobby.id;
+  for (let i = 0; i < 5; i++) {
+    const actor = await registerPlayer(`BRPAN${i}`);
+    await creditWallet(admin, actor.id, 500);
+    expect((await call(actor, 'POST', `/api/br/lobbies/${lobbyId}/join`)).status).toBe(200);
+    expect((await call(actor, 'POST', `/api/br/lobbies/${lobbyId}/checkin`)).status).toBe(200);
+  }
+  return lobbyId;
+};
+
 test.describe('Battle Royale UI', () => {
   test.describe.configure({ mode: 'serial' });
   const password = 'ZoydE2E!Player2026';
@@ -266,5 +288,85 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     // Et son solde est revenu a 500 : le seul cas de remboursement.
     const wallet = await call(player, 'GET', '/api/wallet/me');
     expect(wallet.body.wallet.cashBalance).toBe(500);
+  });
+
+  test('le panneau d\'arbitrage est reserve a l\'arbitre du salon', async ({ page }) => {
+    const lobbyId = await liveReadyLobby(admin);
+
+    // L'arbitre voit le panneau, avec la vue complete (userId).
+    await loginAdminWithCookie(page);
+    await gotoDetail(page, lobbyId);
+    await expect(page.getByRole('heading', { name: /^Arbitre$/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('button', { name: /Lancer la partie/i })).toBeVisible();
+
+    // Un joueur inscrit ne voit RIEN de tout ca : ni panneau, ni lancement.
+    const player = await registerPlayer('BRUIVIEW');
+    await creditWallet(admin, player.id, 500);
+    await call(player, 'POST', `/api/br/lobbies/${lobbyId}/join`);
+    await login(page, player.pseudo, password);
+    await gotoDetail(page, lobbyId);
+    await expect(page.getByRole('heading', { name: /^Joueurs \(\d+ \/ \d+\)$/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('heading', { name: /^Arbitre$/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Lancer la partie/i })).toHaveCount(0);
+  });
+
+  test('l\'arbitre lance la partie et saisit une elimination', async ({ page }) => {
+    const lobbyId = await liveReadyLobby(admin);
+    await loginAdminWithCookie(page);
+    await gotoDetail(page, lobbyId);
+
+    await expect(page.getByRole('heading', { name: /^Arbitre$/ })).toBeVisible({ timeout: 20_000 });
+
+    // Lancement : confirmation explicite, car les absents sont penalises.
+    page.once('dialog', (dialog) => void dialog.accept());
+    const startResponse = page.waitForResponse((r) => r.url().endsWith('/start'), { timeout: 20_000 });
+    await page.getByRole('button', { name: /Lancer la partie/i }).click();
+    expect((await startResponse).status()).toBe(200);
+
+    // Le panneau bascule en saisie.
+    await expect(page.getByLabel(/Joueur elimine/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByLabel(/Tue par/i)).toBeVisible();
+
+    // Elimination : le joueur choisi disparait du select (il est mort) et
+    // apparait dans la liste des elimines.
+    const options = await page.locator('#br-elim option').allInnerTexts();
+    expect(options.length).toBeGreaterThan(2);
+    const victim = options[1].replace(/\(\d+ kills?\)$/, '').trim();
+    await page.locator('#br-elim').selectOption({ index: 1 });
+
+    // Le tueur ne peut pas etre le joueur elimine.
+    const killerOptions = await page.locator('#br-killer option').allInnerTexts();
+    expect(killerOptions.join(' ')).not.toContain(victim);
+
+    page.once('dialog', (dialog) => void dialog.accept());
+    const killResponse = page.waitForResponse((r) => r.url().endsWith('/eliminate'), { timeout: 20_000 });
+    await page.getByRole('button', { name: /Enregistrer l'elimination/i }).click();
+    expect((await killResponse).status()).toBe(200);
+
+    await expect(page.getByText(new RegExp(`${victim}\\s+elimine`))).toBeVisible({ timeout: 20_000 });
+    // Le compteur « En vie » a baisse d'un cran.
+    const alive = await page.locator('dt', { hasText: /^En vie$/ }).locator('..').locator('dd').innerText();
+    expect(alive.trim()).toBe('4');
+  });
+
+  test('l\'arbitre ne peut pas eliminer un joueur deja mort ni double-cliquer', async ({ page }) => {
+    // Le serveur refuse : le panneau n'a pas a le deviner, mais il ne doit
+    // pas non plus envoyer une elimination impossible en boucle.
+    const lobbyId = await liveReadyLobby(admin);
+    await call(admin, 'POST', `/api/br/lobbies/${lobbyId}/start`);
+
+    await loginAdminWithCookie(page);
+    await gotoDetail(page, lobbyId);
+    await expect(page.getByLabel(/Joueur elimine/i)).toBeVisible({ timeout: 20_000 });
+
+    // Le bouton est inactif tant qu'aucun joueur n'est choisi.
+    const submit = page.getByRole('button', { name: /Enregistrer l'elimination/i });
+    await expect(submit).toBeDisabled();
+    await page.locator('#br-elim').selectOption({ index: 1 });
+    await expect(submit).toBeEnabled();
+
+    // Avec un seul vivant restant, la partie est finie : plus d'elimination.
+    const view = await call(admin, 'GET', `/api/br/lobbies/${lobbyId}/arbiter`);
+    expect(view.status).toBe(200);
   });
 });

@@ -158,6 +158,35 @@ import {
 } from './br-engine.mjs';
 
 /**
+ * ─── Battle Royale : confidentialite ────────────────────────────────────
+ *
+ * Le roster public ne doit JAMAIS contenir d'identifiant joueur. `userId`
+ * (et `killedBy`, qui en est un) sont retires, ainsi que `arbiterId` et
+ * `creatorId` : sinon un joueur pouvait relier un pseudo a un compte.
+ *
+ * L'UI n'a pas besoin de ces ids : elle recoit un booleen `isArbiter`, sur le
+ * meme modele que `match.arbiter.isMe` du multijoueur.
+ *
+ * Seul `GET /api/br/lobbies/:id/arbiter` rend les `userId`, et uniquement a
+ * l'arbitre designe : il doit choisir qui eliminer, et `eliminate` en exige un.
+ */
+const toPublicBrPlayer = ({ userId, killedBy, ...rest }) => rest;
+
+const toPublicBrLobby = (lobby, { isArbiter = false } = {}) => ({
+  ...lobby,
+  players: (lobby.players || []).map(toPublicBrPlayer),
+  // `key` contient le userId du joueur solo (`solo-<userId>`) : le retirer
+  // aussi, sinon le roster public livrait l'identifiant par un autre
+  // chemin. Le regroupement se fait via `players[].teamId`, qui est opaque.
+  teams: (lobby.teams || []).map(({ members, key, ...rest }) => rest),
+  arbiterId: undefined,
+  creatorId: undefined,
+  isArbiter,
+});
+
+const toPublicBrRanking = (rows) => (rows || []).map(toPublicBrPlayer);
+
+/**
  * Formatage d'un montant ZC pour les notifications serveur.
  * Miroir de `formatZC` (src/lib/utils.ts) : 1 decimale, virgule francaise,
  * suffixe « ZC ». Le serveur ne doit pas afficher « 123.4560000001 ZC ».
@@ -1956,10 +1985,10 @@ const handleRequest = async (req, res) => {
     const lobbies = getStoredBrLobbies();
     // Les joueurs sont visibles (pseudo, presence) mais jamais les userId :
     // le BR affiche le roster, comme un lobby de jeu.
-    const sanitized = lobbies.map((lobby) => ({
-      ...lobby,
-      players: lobby.players.map(({ userId, ...rest }) => rest),
-      teams: lobby.teams.map(({ members, ...rest }) => rest),
+    const session = getAuthenticatedAppSession(req);
+    const viewerId = session?.user?.id;
+    const sanitized = lobbies.map((lobby) => toPublicBrLobby(lobby, {
+      isArbiter: Boolean(viewerId && lobby.arbiterId === viewerId),
     }));
     respondJson(res, 200, { ok: true, lobbies: sanitized }, req);
     return;
@@ -1987,7 +2016,11 @@ const handleRequest = async (req, res) => {
       // exclure l'arbitre de la liste (il n'y est plus).
       await saveBrLobbies(io, created.lobbies);
       log.info('BR lobby created', { lobbyId: created.lobby.id, by: session.user.id });
-      respondJson(res, 201, { ok: true, lobby: created.lobby }, req);
+      respondJson(res, 201, {
+        ok: true,
+        // L'appelant est l'arbitre : il peut donc recevoir la vue complete.
+        lobby: toPublicBrLobby(created.lobby, { isArbiter: true }),
+      }, req);
     } catch (error) {
       respondMappedError(res, error);
     }
@@ -2058,11 +2091,16 @@ const handleRequest = async (req, res) => {
       }
 
       await saveBrLobbies(io, outcome.lobbies);
+      // Meme pour l'arbitre : il repasserait par `/arbiter` s'il a besoin des
+      // userId, et les reponses d'action restent publiques (un inscrit peut
+      // appeler join/leave/checkin).
       respondJson(res, status, {
         ok: true,
-        lobby: outcome.lobby,
-        payouts: outcome.payouts || null,
-        arbiter: outcome.arbiter || null,
+        lobby: toPublicBrLobby(outcome.lobby),
+        payouts: (outcome.payouts || []).map(toPublicBrPlayer),
+        arbiter: outcome.arbiter
+          ? { userId: undefined, rate: outcome.arbiter.rate, amount: outcome.arbiter.amount }
+          : null,
         refunded: outcome.refunded || 0,
       }, req);
     } catch (error) {
@@ -2079,15 +2117,71 @@ const handleRequest = async (req, res) => {
       respondJson(res, 404, { ok: false, error: 'Salon introuvable.', code: 'LOBBY_NOT_FOUND' }, req);
       return;
     }
+    const viewer = getAuthenticatedAppSession(req);
+    const viewerId = viewer?.user?.id;
+    const isArbiter = Boolean(viewerId && lobby.arbiterId === viewerId);
     const { payouts, arbiter } = computeBrPayouts(lobby);
     respondJson(res, 200, {
       ok: true,
-      lobby: {
-        ...lobby,
-        players: lobby.players.map(({ userId, ...rest }) => rest),
-        teams: lobby.teams.map(({ members, ...rest }) => rest),
+      lobby: toPublicBrLobby(lobby, { isArbiter }),
+      ranking: toPublicBrRanking(computeBrRanking(lobby).slice(0, BR_PRIZED_PLACES)),
+      projectedPayouts: {
+        payouts: (payouts || []).map(toPublicBrPlayer),
+        arbiter: arbiter ? { userId: undefined, rate: arbiter.rate, amount: arbiter.amount } : null,
       },
-      ranking: computeBrRanking(lobby).slice(0, BR_PRIZED_PLACES).map(({ userId, ...rest }) => rest),
+    }, req);
+    return;
+  }
+
+  /**
+   * Vue ARBITRE : la seule qui rend les `userId`.
+   *
+   * L'arbitre doit designer qui est elimine et par qui, et `eliminate` exige
+   * des `userId`. Les identifiers ne sont donc pas devines ni reconstruits
+   * depuis le roster public (qui les masque) : cette route est verifiee cote
+   * serveur, et refuse tout autre lecteur.
+   */
+  const brLobbyArbiterView = pathname.match(/^\/api\/br\/lobbies\/([^/]+)\/arbiter$/);
+  if (brLobbyArbiterView && req.method === 'GET') {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
+    const session = getAuthenticatedAppSession(req);
+    if (!session) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
+      return;
+    }
+    const lobby = getStoredBrLobbies().find((l) => l.id === brLobbyArbiterView[1]);
+    if (!lobby) {
+      respondJson(res, 404, { ok: false, error: 'Salon introuvable.', code: 'LOBBY_NOT_FOUND' }, req);
+      return;
+    }
+    const actorUser = getUserById(session.user.id) || session.user;
+    // Meme autorite que `eliminate`/`finish` : l'arbitre designe, ou son
+    // createur. Un inscrit lambda est refuse — c'est ce qui l'empechait de
+    // s'attribuer des kills et donc une part de cagnotte.
+    if (!lobby.arbiterId || (lobby.arbiterId !== actorUser.id && lobby.creatorId !== actorUser.id)) {
+      respondJson(res, 403, {
+        ok: false,
+        error: 'Vue reservee a l\'arbitre du salon.',
+        code: 'ARBITER_REQUIRED',
+      }, req);
+      return;
+    }
+    const ranking = computeBrRanking(lobby);
+    const { payouts, arbiter } = computeBrPayouts(lobby);
+    const present = lobby.players.filter((p) => p.checkedIn && !p.absent);
+    respondJson(res, 200, {
+      ok: true,
+      lobby: { ...lobby, isArbiter: true },
+      ranking: ranking.slice(0, BR_PRIZED_PLACES),
+      // Resume de fin de partie : combien de morts restent a saisir.
+      summary: {
+        total: lobby.players.length,
+        present: present.length,
+        alive: lobby.players.filter((p) => p.alive && !p.absent).length,
+        eliminated: lobby.players.filter((p) => !p.alive && !p.absent).length,
+        absent: lobby.players.filter((p) => p.absent).length,
+        pot: lobby.pot,
+      },
       projectedPayouts: { payouts, arbiter },
     }, req);
     return;

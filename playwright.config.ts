@@ -41,6 +41,12 @@ export default defineConfig({
         // requis au boot (seed du compte de contrôle) et doit passer la
         // politique de mot de passe fort, sinon le serveur ne démarre pas
         ZOYD_ADMIN_PASSWORD: process.env.ZOYD_ADMIN_PASSWORD || 'ZoydE2E!Admin2026',
+        // La creation d'un salon BR impose 24 a 48 h d'avance, donc aucun
+        // salon cree par l'API n'est demarrable immediatement. Sans cette
+        // surcharge (reservere aux tests par une double condition cote
+        // serveur), le cycle demarrage -> eliminations -> versement ne serait
+        // testable qu'en unite, jamais via HTTP.
+        ZOYD_BR_START_EARLY_MS: String(48 * 3600 * 1000),
       },
     },
     {

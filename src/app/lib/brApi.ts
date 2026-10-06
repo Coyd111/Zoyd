@@ -39,6 +39,23 @@ export interface BrLobbyPlayer {
   absent: boolean;
 }
 
+/**
+ * Joueur dans la VUE ARBITRE : seule vue qui porte les `userId`.
+ *
+ * `eliminate` exige un `userId`, et personne d'autre que l'arbitre ne peut
+ * l'obtenir — le roster public masque volontairement les identifiants.
+ */
+export interface BrArbiterPlayer extends BrLobbyPlayer {
+  userId: string;
+  /** Id du joueur qui l'a éliminé (`null` si mort/mort ou absent). */
+  killedBy: string | null;
+  eliminatedAt: string | null;
+  /** Absent au lancement : son pass est consommé, il ne peut pas tuer. */
+  settled: boolean;
+  winnings: number;
+  assists: number;
+}
+
 export interface BrPayout {
   first: number;
   second: number;
@@ -68,11 +85,37 @@ export interface BrLobby {
   pot: number;
   prizePool: number;
   notes: string;
-  creatorId: string | null;
+  /**
+   * Le lecteur courant est-il l'arbitre de ce salon ? C'est ce booléen qui
+   * remplace `arbiterId` dans l'API publique : un `userId` d'arbitre dans un
+   * roster partagé relierait un pseudo à un compte pour tout le monde.
+   */
+  isArbiter: boolean;
   creatorPseudo: string | null;
+  arbiterPseudo: string | null;
   createdAt: string;
-  /** Renseigné quand l'admin s'est déclaré arbitre du salon. */
-  arbiterId?: string | null;
+}
+
+/** Salon vu par son arbitre : porte les `userId` nécessaires aux éliminations. */
+export interface BrArbiterLobby extends Omit<BrLobby, 'players' | 'isArbiter'> {
+  players: BrArbiterPlayer[];
+  isArbiter: true;
+}
+
+export interface BrArbiterSummary {
+  total: number;
+  present: number;
+  alive: number;
+  eliminated: number;
+  absent: number;
+  pot: number;
+}
+
+export interface BrArbiterView {
+  lobby: BrArbiterLobby;
+  ranking: Array<BrArbiterPlayer & { score: number }>;
+  summary: BrArbiterSummary;
+  projectedPayouts: BrProjectedPayouts;
 }
 
 export interface BrConfig {
@@ -90,6 +133,15 @@ export interface BrPrizeProjection {
   placement: number;
   kills: number;
   amount: number;
+}
+
+/**
+ * Répartition projetée par le serveur (source de vérité) : les gains du top 5
+ * et la commission d'arbitre, calculés sur la cagnotte réellement bloquée.
+ */
+export interface BrProjectedPayouts {
+  payouts: BrPrizeProjection[];
+  arbiter: { rate: number; amount: number } | null;
 }
 
 /**
@@ -159,5 +211,56 @@ export const leaveBrLobby = async (lobbyId: string): Promise<BrLobby> => {
 
 export const checkInBrLobby = async (lobbyId: string): Promise<BrLobby> => {
   const response = await authorizedPost<{ ok: boolean; lobby: BrLobby }>(`/api/br/lobbies/${lobbyId}/checkin`);
+  return response.lobby;
+};
+
+/**
+ * Vue ARBITRE du salon (les `userId` sont inclus).
+ *
+ * Le serveur la refuse à quiconque n'est pas l'arbitre désigné : c'est la
+ * seule source des identifiants nécessaires pour saisir une élimination.
+ */
+export const fetchBrArbiterView = async (lobbyId: string): Promise<BrArbiterView> => {
+  const response = await authorizedGet<{ ok: boolean } & BrArbiterView>(
+    `/api/br/lobbies/${lobbyId}/arbiter`,
+  );
+  return response;
+};
+
+/**
+ * Lance la partie. Réservé à l'arbitre : c'est le moment où les absents sont
+ * pénalisés et où leur pass est consommé.
+ */
+export const startBrLobby = async (lobbyId: string): Promise<BrLobby> => {
+  const response = await authorizedPost<{ ok: boolean; lobby: BrLobby }>(`/api/br/lobbies/${lobbyId}/start`);
+  return response.lobby;
+};
+
+export interface EliminateBrPlayerPayload {
+  /** Le joueur éliminé. */
+  userId: string;
+  /** Son tueur, ou `null` pour une mort « mort/mort » / sans kill crédité. */
+  killerUserId?: string | null;
+  assists?: number;
+}
+
+export const eliminateBrPlayer = async (
+  lobbyId: string,
+  payload: EliminateBrPlayerPayload,
+): Promise<BrLobby> => {
+  const response = await authorizedPost<{ ok: boolean; lobby: BrLobby }>(
+    `/api/br/lobbies/${lobbyId}/eliminate`,
+    payload,
+  );
+  return response.lobby;
+};
+
+/**
+ * Clôture la partie : le serveur calcule le classement et verse la cagnotte.
+ *
+ * Money-out : la route exige la 2FA admin en plus du rôle d'arbitre.
+ */
+export const finishBrLobby = async (lobbyId: string): Promise<BrLobby> => {
+  const response = await authorizedPost<{ ok: boolean; lobby: BrLobby }>(`/api/br/lobbies/${lobbyId}/finish`);
   return response.lobby;
 };

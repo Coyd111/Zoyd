@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, Coins, Info, Map as MapIcon, Swords, Trophy, User, X } from 'lucide-react';
-import { toast } from 'sonner';
+
 import { useAuthStore } from '../../../app/stores/authStore';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import {
@@ -10,6 +10,7 @@ import {
   type BrPayout,
 } from '../../../app/lib/brApi';
 import { formatZC, formatFCFA } from '../../../lib/utils';
+import { toast } from '../../../app/lib/toast';
 
 /**
  * Creation d'un salon BR (admin).

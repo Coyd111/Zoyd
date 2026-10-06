@@ -249,6 +249,51 @@ describe('br-engine - permissions de l\'arbitre', () => {
     const res = brEngine.startBrLobbyOnServer([lobby], admin, lobby.id);
     expect(res.lobby.status).toBe('live');
   });
+
+  it('refuse un lancement trop tot (plus de 10 min avant l\'heure programmee)', () => {
+    // Regle de PRODUCTION : le salon est affiche « a venir » jusqu'a 10 min
+    // avant. La toleree n'est surchargable que sous NODE_ENV=test ET
+    // ALLOW_DEBUG_CODES (double condition cote serveur), donc ce test la
+    // verifie telle qu'elle est en exploitation.
+    const base = lobbyWith('arb');
+    const lobby = {
+      ...base,
+      status: 'scheduled',
+      scheduledAt: new Date(Date.now() + 2 * 3600_000).toISOString(),
+      players: [
+        ...base.players,
+        ...['p3', 'p4', 'p5'].map((id) => ({
+          userId: id, pseudo: id.toUpperCase(), teamId: `T-${id}`,
+          joinedAt: base.createdAt, checkedIn: true, alive: true,
+          placement: null, kills: 0, absent: false, settled: false, winnings: 0,
+        })),
+      ],
+    };
+    expect(() => brEngine.startBrLobbyOnServer([lobby], admin, lobby.id))
+      .toThrow(/10 min avant/);
+  });
+
+  it('accepte un lancement dans la fenetre de 10 min', () => {
+    const base = lobbyWith('arb');
+    const lobby = {
+      ...base,
+      status: 'scheduled',
+      scheduledAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      players: [
+        ...base.players,
+        ...['p3', 'p4', 'p5'].map((id) => ({
+          userId: id, pseudo: id.toUpperCase(), teamId: `T-${id}`,
+          joinedAt: base.createdAt, checkedIn: true, alive: true,
+          placement: null, kills: 0, absent: false, settled: false, winnings: 0,
+        })),
+      ],
+    };
+    getUserById.mockImplementation((id) => (id === admin.id
+      ? { ...admin, wallet: { lockedEntries: { [lobby.id]: { amount: 50 } } } }
+      : player(id)));
+    const res = brEngine.startBrLobbyOnServer([lobby], admin, lobby.id);
+    expect(res.lobby.status).toBe('live');
+  });
 });
 
 describe('br-engine - joinBrLobbyOnServer', () => {

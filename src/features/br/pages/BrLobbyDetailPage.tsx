@@ -4,7 +4,7 @@ import {
   ArrowLeft, Map as MapIcon, Users, Clock, CheckCircle2, AlertTriangle,
   Swords, Trophy, Shield, LogOut,
 } from 'lucide-react';
-import { toast } from 'sonner';
+
 import { useAuthStore } from '../../../app/stores/authStore';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import {
@@ -19,6 +19,8 @@ import {
 } from '../../../app/lib/brApi';
 import { formatZC, formatFCFA } from '../../../lib/utils';
 import { SEOHead } from '../../../app/components/SEOHead';
+import BrArbiterPanel from '../components/BrArbiterPanel';
+import { toast } from '../../../app/lib/toast';
 
 const countDown = (target: string | null): string => {
   if (!target) return '—';
@@ -184,6 +186,20 @@ const BrLobbyDetailPage: React.FC = () => {
             </span>
           </div>
         </header>
+
+        {/*
+          Panneau arbitre : reserve a l'arbitre designe (`isArbiter`, calcule
+          par le serveur). C'est le SEUL ecran ou les userId sont visibles,
+          et le seul ou l'on puisse lancer la partie, saisir une elimination
+          ou verser la cagnotte.
+        */}
+        {lobby.isArbiter && lobby.status !== 'cancelled' && (
+          <BrArbiterPanel
+            lobbyId={lobby.id}
+            status={lobby.status}
+            onChanged={load}
+          />
+        )}
 
         {lobby.notes && (
           <p className="text-xs text-white/70 border-l-2 border-white/20 pl-3 mb-6 leading-relaxed">
@@ -355,7 +371,7 @@ const BrLobbyDetailPage: React.FC = () => {
           )}
         </div>
 
-        {canStartWindow && (
+        {canStartWindow && !lobby.isArbiter && (
           <p className="text-[10px] font-mono text-zoyd-yellow mt-4 text-center">
             L'organisateur peut lancer la partie dans moins de 10 minutes.
           </p>

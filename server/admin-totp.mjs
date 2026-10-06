@@ -26,14 +26,6 @@ export const adminTotpSecrets = new Map();
 // ─── Helper functions ──────────────────────────────────────────────────────
 
 /**
- * Generate a random TOTP secret encoded as base64.
- * @returns {string} Random TOTP secret
- */
-export const generateTotpSecret = () => {
-  return crypto.randomBytes(20).toString('base64');
-};
-
-/**
  * Decode a Base32-encoded string into a Buffer.
  * @param {string} encoded - Base32-encoded string
  * @returns {Buffer} Decoded buffer

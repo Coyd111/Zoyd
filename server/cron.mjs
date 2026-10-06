@@ -1,7 +1,7 @@
 import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
-import { assignPlayersToDays } from './league-engine.mjs';
+import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer } from './match-engine.mjs';
 import { getNow } from './utils.mjs';
@@ -296,4 +296,78 @@ export const initCronJobs = () => {
   };
   setInterval(() => { void sweepPendingRefunds(); }, 6 * 60 * 60 * 1000);
   setTimeout(() => { void sweepPendingRefunds(); }, 20 * 1000);
+
+  // Ligues jamais lancees — libere les passes bloques (toutes les 6 h + au boot).
+  // Sans ce sweep, une saison restee 'registering' faute d'avoir atteint
+  // 10 inscrits (le cron de fermeture exige ce seuil) gardait l'entryFee de
+  // chaque inscrit bloque dans lockedEntries indefiniment : le joueur ne
+  // pouvait ni recuperer son argent ni quitter la ligue. C'etait la seule
+  // perte seche du catalogue sans aucun chemin de sortie.
+  let staleLeagueRunning = false;
+  const sweepStaleLeagues = async () => {
+    if (staleLeagueRunning) return;
+    staleLeagueRunning = true;
+    try {
+      await withLeagueMutex(async () => {
+        let seasons = getStateCollection('leagues');
+        const staleIds = getStaleLeagueSeasonIds(seasons);
+        if (staleIds.length === 0) return;
+
+        let totalRefunded = 0;
+        for (const id of staleIds) {
+          try {
+            const outcome = await cancelStaleLeagueSeasonOnServer(
+              seasons,
+              id,
+              'Ligue annulee automatiquement : pas assez d inscriptions avant la date de cloture.',
+            );
+            seasons = outcome.seasons;
+            totalRefunded += outcome.refunded;
+          } catch (error) {
+            log.error('Annulation de ligue expiree echouee', { seasonId: id, error: error.message });
+          }
+        }
+        await replaceStateCollection('leagues', seasons);
+        log.warn('Ligues expirees annulees', { count: staleIds.length, refunds: totalRefunded });
+      });
+    } catch (error) {
+      log.error('Erreur sweep ligues', error);
+    } finally {
+      staleLeagueRunning = false;
+    }
+  };
+  setInterval(() => { void sweepStaleLeagues(); }, 6 * 60 * 60 * 1000);
+  setTimeout(() => { void sweepStaleLeagues(); }, 22 * 1000);
+
+  // Reprise des remboursements de ligue restes en echec — toutes les 6 h + au
+  // boot. Meme raison que les tournois : un refund rate (compte supprime,
+  // mutex, panne Supabase) laissait l'argent bloque sans issue.
+  let leagueRefundRetryRunning = false;
+  const sweepPendingLeagueRefunds = async () => {
+    if (leagueRefundRetryRunning) return;
+    leagueRefundRetryRunning = true;
+    try {
+      await withLeagueMutex(async () => {
+        const seasons = getStateCollection('leagues');
+        const outstanding = countPendingLeagueRefunds(seasons);
+        if (outstanding === 0) return;
+        const outcome = await retryPendingLeagueRefunds(seasons);
+        if (outcome.retried > 0 || outcome.remaining !== outstanding) {
+          await replaceStateCollection('leagues', outcome.seasons);
+        }
+        if (outcome.retried > 0) {
+          log.warn('Remboursements de ligue rejoues', { retried: outcome.retried, remaining: outcome.remaining });
+        }
+        if (outcome.remaining > 0) {
+          log.error('Remboursements de ligue toujours en echec', { remaining: outcome.remaining });
+        }
+      });
+    } catch (error) {
+      log.error('Erreur reprise des remboursements de ligue', error);
+    } finally {
+      leagueRefundRetryRunning = false;
+    }
+  };
+  setInterval(() => { void sweepPendingLeagueRefunds(); }, 6 * 60 * 60 * 1000);
+  setTimeout(() => { void sweepPendingLeagueRefunds(); }, 24 * 1000);
 };

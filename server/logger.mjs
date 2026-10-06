@@ -8,19 +8,12 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 const formatTime = () => new Date().toISOString();
 
-const serialize = (obj) => {
-  if (obj instanceof Error) {
-    return { message: obj.message, stack: obj.stack, code: obj.code };
-  }
-  if (obj && typeof obj === 'object') {
-    try {
-      return JSON.parse(JSON.stringify(obj));
-    } catch {
-      return String(obj);
-    }
-  }
-  return obj;
-};
+/**
+ * Champs de structure du log : jamais ecrasables par `extra`.
+ * Un `log.info('x', { level: 'error' })` faisait passer l'entree pour une
+ * erreur, et `{ msg: ... }` reecrivait le message.
+ */
+const RESERVED_KEYS = new Set(['time', 'level', 'module', 'msg']);
 
 const write = (level, msg, extra, module) => {
   if (LEVELS[level] < currentLevel) return;
@@ -36,7 +29,17 @@ const write = (level, msg, extra, module) => {
     if (extra instanceof Error) {
       entry.err = { message: extra.message, stack: extra.stack, code: extra.code };
     } else if (typeof extra === 'object') {
-      Object.assign(entry, extra);
+      // `Object.assign` direct : un `extra` contenant `level`, `msg`, `time`
+      // ou `module` ecraseait la structure du log et le rendait
+      // illisible (ou forgeable). On protege ces cles reservees.
+      for (const [key, value] of Object.entries(extra)) {
+        if (RESERVED_KEYS.has(key)) {
+          entry.data = entry.data || {};
+          entry.data[key] = value;
+        } else {
+          entry[key] = value;
+        }
+      }
     } else {
       entry.data = extra;
     }

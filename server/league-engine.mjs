@@ -129,6 +129,13 @@ teamSize: Number(season?.teamSize || 1),
     createdAt,
     updatedAt,
     finishedAt: season?.finishedAt || null,
+    // Dette de remboursement d'une saison annulee. DOIT survivre au reload :
+    // sans ce champ, un remboursement en echec devenait invisible et les ZC
+    // restaient bloques sans aucun chemin pour les liberer (meme piege que le
+    // `name` perdu plus haut).
+    pendingRefunds: Array.isArray(season?.pendingRefunds) ? season.pendingRefunds : [],
+    cancelReason: season?.cancelReason || null,
+    cancelledAt: season?.cancelledAt || null,
   };
 };
 
@@ -692,6 +699,116 @@ const applyLeagueSettlement = async (season) => {
     }
   }
 };
+
+// ─── Saisons restées en inscription : libère les passes bloqués ───────────
+//
+// Le cron ne ferme automatiquement une saison que si elle atteint 10 inscrits.
+// En dessous, elle restait 'registering' INDEFINITEMENT et les pass des
+// inscrits restaient verrouilles dans `lockedEntries`, sans aucun chemin pour
+// les liberer : c'est exactement la perte seche que le sweeper des tournois a
+// ete ecrit pour empecher, mais aucun equivalent n'existait pour les ligues.
+
+/**
+ * Saisons en inscription dont la date de cloture est depassee depuis plus de
+ * `graceMs` : elles n'ont jamais demarre, leurs passes doivent etre liberes.
+ * @param {Array} seasons - Liste courante des saisons
+ * @param {number} graceMs - Tolerance apres la cloture des inscriptions
+ * @returns {Array<string>} IDs a annuler
+ */
+export const getStaleLeagueSeasonIds = (seasons, graceMs = 60 * 60 * 1000) => {
+  const now = Date.now();
+  return (Array.isArray(seasons) ? seasons : [])
+    .filter((season) => {
+      if (season?.status !== 'registering') return false;
+      const closesAt = season?.schedule?.registrationCloses;
+      if (!closesAt) return false;
+      const ts = new Date(closesAt).getTime();
+      if (!Number.isFinite(ts)) return false;
+      return ts + graceMs < now;
+    })
+    .map((season) => season.id);
+};
+
+/**
+ * Annule une saison restee en inscription et rembourse les inscrits.
+ *
+ * Un remboursement en echec n'est PAS perdu : il reste dans `pendingRefunds`
+ * et le cron de reprise le rejoue. Ne pas le conserver reviendrait a
+ * supprimer la preuve de la dette.
+ */
+export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason = 'Ligue annulee : pas assez d inscriptions avant la cloture.') => {
+  const nextSeasons = cloneLeagues(seasons);
+  const season = findSeason(nextSeasons, seasonId);
+  if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
+  if (season.status !== 'registering') {
+    throw makeError('MATCH_CLOSED', 'Seule une saison encore en inscription peut etre annulee ainsi.');
+  }
+
+  let refunded = 0;
+  const failed = [];
+  const players = Array.isArray(season.registeredPlayers) ? season.registeredPlayers : [];
+  for (const player of players) {
+    const userId = player?.userId || player?.id;
+    if (!userId) continue;
+    try {
+      await withWalletMutex(userId, async () => {
+        await refundLockedEntry(userId, season.id, `Remboursement du pass ${season.name}`);
+      });
+      refunded += 1;
+    } catch (error) {
+      log.error('League refund failed', { seasonId, userId, error: error.message });
+      failed.push({ userId, pseudo: player?.pseudo, lastError: error.message });
+    }
+  }
+
+  season.status = 'cancelled';
+  season.cancelReason = reason;
+  season.cancelledAt = getNow();
+  season.updatedAt = getNow();
+  season.pendingRefunds = failed;
+  // On ne retire que les inscriptions reellement remboursees : un joueur dont
+  // le remboursement echoue doit rester visible pour le support.
+  season.registeredPlayers = failed.map((item) => {
+    const original = players.find((p) => (p?.userId || p?.id) === item.userId);
+    return original || { userId: item.userId, pseudo: item.pseudo };
+  });
+
+  return { seasons: nextSeasons, season, refunded, pendingRefunds: failed.length };
+};
+
+/** Rejouer les remboursements restes en echec sur une saison annulee. */
+export const retryPendingLeagueRefunds = async (seasons) => {
+  const nextSeasons = cloneLeagues(seasons);
+  let retried = 0;
+  let remaining = 0;
+
+  for (const season of nextSeasons) {
+    const pending = Array.isArray(season.pendingRefunds) ? season.pendingRefunds : [];
+    if (pending.length === 0) continue;
+
+    const stillFailing = [];
+    for (const item of pending) {
+      try {
+        await withWalletMutex(item.userId, async () => {
+          await refundLockedEntry(item.userId, season.id, `Remboursement du pass ${season.name}`);
+        });
+        retried += 1;
+      } catch (error) {
+        log.warn('League refund retry failed', { seasonId: season.id, userId: item.userId, error: error.message });
+        stillFailing.push({ ...item, lastError: error.message });
+      }
+    }
+    season.pendingRefunds = stillFailing;
+    remaining += stillFailing.length;
+    if (stillFailing.length === 0) season.registeredPlayers = [];
+    season.updatedAt = getNow();
+  }
+
+  return { seasons: nextSeasons, retried, remaining };
+};
+
+export const countPendingLeagueRefunds = (seasons) => (Array.isArray(seasons) ? seasons : [])
+  .reduce((sum, s) => sum + (Array.isArray(s?.pendingRefunds) ? s.pendingRefunds.length : 0), 0);
 
 export const getLeagueLeaderboard = (seasons, seasonId) => {
   const season = seasons.find((s) => s.id === seasonId);

@@ -5,13 +5,6 @@ import { createLogger } from './logger.mjs';
 
 const log = createLogger('payment');
 
-class PaymentRollbackError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'PaymentRollbackError';
-  }
-}
-
 const getFedaPayConfig = () => {
   const key = process.env.FEDAPAY_SECRET_KEY;
   if (key && !FedaPay.apiKey) {
@@ -139,7 +132,6 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     };
   } catch (error) {
     log.error('FedaPay verification error', { message: error.message });
-    if (error instanceof PaymentRollbackError) throw error;
     // SERVER_BUSY doit remonter tel quel : c'est la Base indisponible, le
     // claim a été relâché et le joueur peut réessayer. Masqué en
     // FEDAPAY_API_ERROR, le message poussait à croire à un échec définitif

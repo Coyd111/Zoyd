@@ -211,6 +211,89 @@ describe('league-engine - leaveLeagueSeasonOnServer', () => {
   });
 });
 
+describe('league-engine - saisons restées en inscription (sweeper)', () => {
+  const staleSeason = (players) => makeSeason({
+    registeredPlayers: players.map((p) => ({
+      userId: p, pseudo: p.toUpperCase(), joinedAt: new Date().toISOString(), paid: true,
+    })),
+    schedule: {
+      registrationOpens: new Date(Date.now() - 3 * 3600_000).toISOString(),
+      registrationCloses: new Date(Date.now() - 2 * 3600_000).toISOString(),
+      qualifyingStarts: null,
+      qualifyingEnds: null,
+      finalAt: null,
+    },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockPlayer);
+    updateUserAccount.mockImplementation(async (_id, updater) => ({ wallet: updater({ lockedEntries: {} }) }));
+    refundLockedEntry.mockResolvedValue({});
+  });
+
+  it('detecte une saison dont la clôture des inscriptions est passée', () => {
+    const ids = leagueEngine.getStaleLeagueSeasonIds([staleSeason(['p1'])]);
+    expect(ids).toEqual(['LS-TEST']);
+  });
+
+  it('ignore une saison encore ouverte ou deja lancée', () => {
+    const open = makeSeason({
+      schedule: {
+        registrationOpens: new Date().toISOString(),
+        registrationCloses: new Date(Date.now() + 3600_000).toISOString(),
+        qualifyingStarts: null, qualifyingEnds: null, finalAt: null,
+      },
+    });
+    const launched = { ...staleSeason(['p1']), status: 'qualifying' };
+    expect(leagueEngine.getStaleLeagueSeasonIds([open, launched])).toEqual([]);
+  });
+
+  it('rembourse chaque inscrit et annule la saison', async () => {
+    const seasons = [staleSeason(['p1', 'p2', 'p3'])];
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer(seasons, 'LS-TEST');
+    expect(outcome.season.status).toBe('cancelled');
+    expect(outcome.refunded).toBe(3);
+    expect(refundLockedEntry).toHaveBeenCalledTimes(3);
+    // Remboursée : plus personne d inscrit, donc plus de pass bloque.
+    expect(outcome.season.registeredPlayers).toEqual([]);
+    expect(outcome.season.pendingRefunds).toEqual([]);
+  });
+
+  it('CONSERVE la dette quand un remboursement échoue, et la rejoue au retry', async () => {
+    // Perte sèche si on oublie : les ZC resteraient bloques sans trace.
+    refundLockedEntry.mockImplementation(async (userId) => {
+      if (userId === 'p2') throw new Error('SUPABASE_DOWN');
+      return {};
+    });
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer([staleSeason(['p1', 'p2'])], 'LS-TEST');
+    expect(outcome.refunded).toBe(1);
+    expect(outcome.season.status).toBe('cancelled');
+    expect(outcome.season.pendingRefunds).toHaveLength(1);
+    expect(outcome.season.pendingRefunds[0].userId).toBe('p2');
+    // L inscrit non remboursé reste visible pour le support.
+    expect(outcome.season.registeredPlayers).toHaveLength(1);
+    expect(leagueEngine.countPendingLeagueRefunds([outcome.season])).toBe(1);
+
+    // Le retry rejoue et solde la dette.
+    refundLockedEntry.mockResolvedValue({});
+    const retry = await leagueEngine.retryPendingLeagueRefunds([outcome.season]);
+    expect(retry.retried).toBe(1);
+    expect(retry.remaining).toBe(0);
+    expect(retry.seasons[0].registeredPlayers).toEqual([]);
+  });
+
+  it('la dette survit au rechargement depuis la base', () => {
+    // normalizeLeagueSeason reconstruit l objet champ par champ : sans
+    // `pendingRefunds` preserve, la preuve de la dette disparait au reload.
+    const reloaded = leagueEngine.normalizeLeagueSeason({
+      id: 'LS-1', status: 'cancelled', pendingRefunds: [{ userId: 'p9' }],
+    });
+    expect(reloaded.pendingRefunds).toHaveLength(1);
+    expect(leagueEngine.countPendingLeagueRefunds([reloaded])).toBe(1);
+  });
+});
+
 describe('league-engine - getLeagueLeaderboard', () => {
   it('should return standings for season', () => {
     const standings = [

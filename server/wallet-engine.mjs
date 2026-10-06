@@ -220,7 +220,10 @@ export const settleMatchLossWallet = async (userId, matchId, description) =>
       },
       {
         type: 'match_loss',
-        amount: 0,
+        // Le pass consomme vaut `amount` ET NON 0 : avec 0, la somme des
+        // transactions ne reconciliait plus les soldes, donc l'historique
+        // d'un portefeuille n'etait pas reconstituable depuis son ledger.
+        amount: -reservation.amount,
         description: description || `Pass consomme apres resultat ${matchId}`,
         status: 'completed',
         matchId,

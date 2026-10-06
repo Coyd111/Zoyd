@@ -1,4 +1,9 @@
+# pnpm 11 exige une decision explicite pour les paquets qui executent un script
+# d'installation (build natif). Sans elle, `pnpm install` bloque en CI.
+#
+# `canvas` n'est PAS une dependance de ce projet : sa ligne avait ete laissee
+# enPlaceholder (`set this to true or false`) par un `pnpm approve-builds`, ce
+# qui est invalide et fait echouer l'analyse du fichier.
 allowBuilds:
   '@tailwindcss/oxide': true
-  canvas: set this to true or false
   esbuild: true

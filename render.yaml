@@ -56,3 +56,8 @@ services:
       # Expéditeur affiché (doit être vérifié chez le provider).
       - key: EMAIL_FROM
         sync: false
+      # `/metrics` est protege par ce jeton (Bearer). SANS lui, la route
+      # repond 403 : tout le systeme de metriques etait donc inexploite en
+      # production, alors qu'il existe et tourne.
+      - key: METRICS_TOKEN
+        sync: false

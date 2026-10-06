@@ -42,6 +42,13 @@ export const setGauge = (name, value, labels = {}) => {
 
 export const incGauge = (name, labels = {}, amount = 1) => {
   const key = name + '|' + JSON.stringify(labels);
+  // Plafond comme pour les compteurs : sans ce garde, `incGauge` etait le seul
+  // chemin dAJOUT de jauge sans eviction, donc une cardinalite de labels qui
+  // grossit (un id par requete) faisait croitre la memoire sans borne.
+  if (!gauges.has(key) && gauges.size >= MAX_GAUGE_ENTRIES) {
+    const first = gauges.keys().next().value;
+    gauges.delete(first);
+  }
   const existing = gauges.get(key);
   const val = existing ? existing.value + amount : amount;
   gauges.set(key, { name, labels, value: val });

@@ -56,7 +56,8 @@ export const serializeAuthCookie = (value, maxAge) => {
 };
 
 /** @type {string[]} */
-const devOrigins = process.env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173'];export const ALLOWED_ORIGINS = [
+const devOrigins = process.env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+export const ALLOWED_ORIGINS = [
   ...(process.env.ZOYD_ALLOWED_ORIGINS
     ? process.env.ZOYD_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : devOrigins),
@@ -102,7 +103,10 @@ export const respondJson = (res, statusCode, payload, req = null) => {
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Vary': 'Origin',
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.fedapay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: ws: https://zoyd.onrender.com https://api.fedapay.com https://cdn.fedapay.com; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; frame-ancestors 'none';",
+    // PAS de Content-Security-Policy ici. Cette regle ne s'applique qu'aux
+    // DOCUMENTS : sur une reponse JSON elle est inerte. Celle qui compte est
+    // posee par vercel.json sur les fichiers HTML, et celle-la n'autorise
+    // `unsafe-inline` que pour `style-src` (le <style> inline de index.html).
   });
   res.end(JSON.stringify(payload));
 
@@ -149,12 +153,26 @@ export const BODY_SIZE_LIMIT = 1 * 1024 * 1024;
 export const parseRequestBody = async (req) => {
   const chunks = [];
   let totalSize = 0;
-  for await (const chunk of req) {
-    totalSize += chunk.length;
-    if (totalSize > BODY_SIZE_LIMIT) {
-      throw Object.assign(new Error('Payload trop volumineux (max 1MB).'), { code: 'PAYLOAD_TOO_LARGE' });
+  try {
+    for await (const chunk of req) {
+      totalSize += chunk.length;
+      if (totalSize > BODY_SIZE_LIMIT) {
+        // On coupe le socket : sans ca, le client continuait d'envoyer le
+        // corps et Node gardait le flux ouvert en memoire (le serveur pouvait
+        // etre sature par une seule requete de 1 Go).
+        req.destroy?.();
+        throw Object.assign(new Error('Payload trop volumineux (max 1MB).'), { code: 'PAYLOAD_TOO_LARGE' });
+      }
+      chunks.push(chunk);
     }
-    chunks.push(chunk);
+  } catch (error) {
+    if (error?.code === 'PAYLOAD_TOO_LARGE') throw error;
+    // Socket coupe par le client en cours de lecture : on ne remonte pas une
+    // erreur INVALIDE, `getAuthenticatedAppSession` la traiterait a tort.
+    if (error?.name === 'AbortError' || error?.code === 'ECONNRESET') {
+      throw Object.assign(new Error('Requete interrompue.'), { code: 'CLIENT_ABORTED' });
+    }
+    throw error;
   }
   const rawBody = Buffer.concat(chunks).toString('utf8');
   if (!rawBody) return {};
@@ -240,7 +258,14 @@ export const normalizePathForMetrics = (pathname) =>
     .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/*')
     .replace(/\/M-[A-Za-z0-9]+/g, '/M/*')
     .replace(/\/T-[A-Za-z0-9]+/g, '/T/*')
-    .replace(/\/FR-[A-Za-z0-9-]+/g, '/FR/*');
+    .replace(/\/FR-[A-Za-z0-9-]+/g, '/FR/*')
+    // Battle Royale : `BR-MUWJBH2Z-WI` et les ligues `LS-XXXX`. Sans ces
+    // motifs, chaque salon cree devenait une serie de metrique distincte :
+    // la cardinalite des labels explosait et les evictionenses de
+    // MAX_COUNTER_ENTRIES commencaient a perdre des compteurs.
+    .replace(/\/BR-[A-Za-z0-9-]+/g, '/BR/*')
+    .replace(/\/LS-[A-Za-z0-9-]+/g, '/LS/*')
+    .replace(/\/NOTIF-[A-Za-z0-9-]+/g, '/NOTIF/*');
 
 /**
  * Map a persistence-layer error code to an HTTP status and message.

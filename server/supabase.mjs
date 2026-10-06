@@ -12,14 +12,20 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '..', '.env.server') });
 
 const supabaseUrl = process.env.SUPABASE_URL;
-// SUPABASE_SERVICE_ROLE_KEY est le nom documenté dans DEPLOYMENT.md et celui
-// utilisé par le dashboard Supabase. Les deux autres sont acceptés pour
-// rétro-compatibilité : sans cela, un déploiement configuré selon la doc se
-// retrouvait en « mode dégradé » (supabase = null) et perdait toute persistance.
+// SUPABASE_SERVICE_ROLE_KEY est le nom documente dans DEPLOYMENT.md et celui
+// utilise par le dashboard Supabase. SUPABASE_SERVICE_KEY est aussi accepte
+// (c-est le nom dans render.yaml) pour retro-compatibilite : sans cela, un
+// deploiement configure selon la doc se retrouvait en mode degrade
+// (supabase = null) et perdait toute persistance.
+//
+// PAS de repli sur SUPABASE_ANON_KEY : ce code est concu pour ecrire avec le
+// role service_role, qui contourne les RLS. Avec une cle anon, chaque
+// ecriture echoue derriere un client qui se dit pourtant actif, et
+// l argent cesse d etre persiste sans la moindre alerte.
+//
 const supabaseKey =
   process.env.SUPABASE_SERVICE_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Opt-out explicite : la suite E2E doit démarrer en mode MÉMOIRE, sinon elle
 // dépend du réseau et des données de Supabase. `dotenv.config()` recharge

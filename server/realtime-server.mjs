@@ -12,7 +12,7 @@ import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChan
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
 import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies, toPublicBrLobby, toPublicBrRanking } from './state-helpers.mjs';
 import { deliverAuthCode } from './code-delivery.mjs';
-import { generateTotpSecret, verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
+import { verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
 import {
   activateUserAccount,

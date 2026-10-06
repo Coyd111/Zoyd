@@ -78,11 +78,42 @@ const cleanupRateLimits = () => {
 setInterval(cleanupRateLimits, 60 * 1000);
 
 /**
- * Validate that a string looks like an IPv4/IPv6 address.
+ * Validate that a string is a plausible IPv4/IPv6 address.
+ *
+ * Le motif precedent acceptait `...`, `deadbeef`, `:::::` : n'importe quelle
+ * chaîne made-up passait et devenait une CLE DE BUCKET. Ce n'etait pas une
+ * faille (un attaquant veut de toute facon des buckets distincts), mais cela
+ * consommait des slots du plafond `MAX_RATE_LIMIT_BUCKETS` avec des clefs
+ * inutiles. On exige maintenant une vraie adresse.
  * @param {string} ip
  * @returns {boolean}
  */
-const isValidIp = (ip) => /^[\d.:a-fA-F]+$/.test(ip);
+const isValidIp = (ip) => {
+  const value = String(ip || '').trim();
+  if (!value || value.length > 45) return false;
+  // IPv4 : 4 groupes 0-255.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(value)) {
+    return value.split('.').every((octet) => Number(octet) <= 255);
+  }
+  // IPv6 : uniquement des hexets, deux-points, un eventuel IPv4 integre et une
+  // zone (`%eth0`). `::1` et `::` doivent passer (loopback), `:::::` non.
+  if (!value.includes(':')) return false;
+  const [address] = value.split('%');
+  if (!/^[0-9a-f:.]+$/i.test(address)) return false;
+  if ((address.match(/::/g) || []).length > 1) return false; // compresse unique
+  if (address.includes(':::')) return false;
+  const groups = address.split(':').filter((g) => g !== '');
+  if (groups.length === 0) return true;                       // `::` seul
+  // Chaque groupe : 1-4 hexets, ou un IPv4 integre sur le dernier.
+  return groups.every((group, index) => {
+    if (group.includes('.')) {
+      return index === groups.length - 1
+        && /^\d{1,3}(\.\d{1,3}){3}$/.test(group)
+        && group.split('.').every((o) => Number(o) <= 255);
+    }
+    return /^[0-9a-f]{1,4}$/i.test(group);
+  });
+};
 
 /**
  * True if the direct TCP peer is a proxy/private hop (Render proxy, Docker,

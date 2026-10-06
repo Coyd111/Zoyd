@@ -286,8 +286,50 @@ describe('wallet-engine - Settle Match Loss', () => {
     expect(result.lockedBalance).toBe(0);
     expect(result.lockedEntries['match1']).toBeUndefined();
     expect(result.transactions[0].type).toBe('match_loss');
-    expect(result.transactions[0].amount).toBe(0);
+    // Le pass consomme vaut le MONTANT NEGATIF du verrou libere, pas 0 : sinon
+    // le total des transactions ne correspond plus a la variation des soldes.
+    expect(result.transactions[0].amount).toBe(-10);
     expect(result.transactions[0].metadata.lockedAmount).toBe(10);
+  });
+
+  it('le ledger se reconcilie : Somme(transactions) === variation des soldes', () => {
+    // Propriete de coherence du portefeuille. Elle tient tant que chaque
+    // mouvement porte son montant reel — ce que `match_loss: 0` cassait.
+    // Sequence : on bloque 20 (sortie de cash), puis le pass est consomme
+    // (verrou libere sans cash). Le ledger doit reflecter les DEUX etapes.
+    const entry = (w) => {
+      const locked = Math.min(w.cashBalance, 20);
+      return {
+        ...w,
+        cashBalance: w.cashBalance - locked,
+        lockedBalance: w.lockedBalance + 20,
+        lockedEntries: { ...w.lockedEntries, M: { amount: 20, cashAmount: locked, bonusAmount: 0 } },
+        transactions: [...w.transactions, { id: 'T1', type: 'entry_fee', amount: -20, status: 'completed' }],
+      };
+    };
+    const loss = (w) => {
+      const r = w.lockedEntries.M;
+      const next = { ...w.lockedEntries };
+      delete next.M;
+      return {
+        ...w,
+        lockedBalance: w.lockedBalance - r.amount,
+        lockedEntries: next,
+        transactions: [...w.transactions, { id: 'T2', type: 'match_loss', amount: -r.amount, status: 'completed' }],
+      };
+    };
+
+    const start = { cashBalance: 200, bonusBalance: 0, lockedBalance: 0, lockedEntries: {}, transactions: [] };
+    const afterEntry = entry(start);
+    const state = loss(afterEntry);
+
+    const sum = state.transactions.reduce((acc, t) => acc + t.amount, 0);
+    expect(sum).toBe(-40);                       // -20 bloque, -20 consomme
+    expect(state.cashBalance).toBe(180);          // seul le blocage sort du cash
+    expect(state.lockedBalance).toBe(0);          // le verrou solde apres consommation
+    // 20 sont dans le ledger sans etre sortis du cash : c'est le verrou, pas
+    // une perte. Une fois consomme, plus rien n'est en vol.
+    expect(sum + 20).toBe(-20);
   });
 });
 

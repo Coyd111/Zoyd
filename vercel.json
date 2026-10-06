@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/(auth|mode|mj|wallet|earnings|classements|chat|profil|parametres|br-league|infos|admin)(.*)",
+      "source": "/(auth|mode|mj|wallet|earnings|classements|chat|profil|parametres|br|br-league|infos|admin)(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
       ]
@@ -51,6 +51,7 @@
     { "source": "/profil(.*)", "destination": "/index.html" },
     { "source": "/parametres", "destination": "/index.html" },
     { "source": "/br-league(.*)", "destination": "/index.html" },
+    { "source": "/br(.*)", "destination": "/index.html" },
     { "source": "/infos", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" }
   ]

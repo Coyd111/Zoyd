@@ -876,7 +876,7 @@ const PUBLIC_STATS_TTL = 60_000;
  *    chez l'arbitre et n'est donc PAS un revenu ZOYD. Expose a part pour que
  *    le dashboard distingue les deux flux.
  *
- * @returns {{ withdrawalFees: number, arbiterFees: number, total: number, withdrawalCount: number }}
+ * @returns {{ revenue: number, withdrawalFees: number, withdrawalCount: number, arbiterPayouts: number }}
  */
 export const getCommissionStats = () => {
   let withdrawalFees = 0;
@@ -911,10 +911,20 @@ export const getCommissionStats = () => {
   const withdrawalTotal = Math.round(withdrawalFees * 100) / 100;
   const arbiterTotal = Math.round(arbiterFees * 100) / 100;
   return {
+    /**
+     * REVENU ZOYD. Seule source : la commission de retrait (2 %).
+     * C'est le seul chiffre a reporter comme chiffre d'affaires.
+     */
+    revenue: withdrawalTotal,
+    // Detail de la commission de retrait, pour le libelle de l'UI.
     withdrawalFees: withdrawalTotal,
-    arbiterFees: arbiterTotal,
-    total: Math.round((withdrawalTotal + arbiterTotal) * 100) / 100,
     withdrawalCount,
+    /**
+     * Sortie de tresorerie : part de cagnotte versee aux arbitres.
+     * Volontairement HORS du revenu — l'additionner donnait un
+     * « total de commissions » qui majorait le chiffre d'affaires.
+     */
+    arbiterPayouts: arbiterTotal,
   };
 };
 

@@ -729,27 +729,27 @@ export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
     player.winnings = prize.amount;
   }
 
-  // 3. Commission arbitre (si l'arbitre a bien bloque un pass).
-  if (arbiter.userId && arbiter.amount > 0) {
-    const arbiterPlayer = lobby.players.find((p) => p.userId === arbiter.userId);
-    if (arbiterPlayer && !arbiterPlayer.settled) {
-      const arbiterUser = getUserById(arbiter.userId);
-      const reservation = arbiterUser?.wallet?.lockedEntries?.[lobby.id];
-      if (reservation) {
-        await withWalletMutex(arbiter.userId, async () => {
-          await releaseWalletWinnings(
-            arbiter.userId,
-            arbiter.amount,
-            lobby.id,
-            'arbitration_fee',
-            `Commission arbitrage BR ${lobby.name}`,
-          );
-        });
-        arbiterPlayer.settled = true;
-        arbiterPlayer.winnings = arbiter.amount;
-      }
-    }
-  }
+// 3. Commission arbitre, prelevee sur la cagnotte.
+//
+// L'arbitre n'est PAS joueur et n'a donc aucun pass bloque : exiger une
+// reservation le payait ZERO (il ne pouvait plus jamais toucher sa part).
+// Sa commission sort de la cagnotte, comme les gains, et `releaseWalletWinnings`
+// credite directement en cash quand il n'y a pas de reservation.
+//
+// `arbiterSettled` (et non le flag du joueur) garantit l'idempotence : le
+// reglement peut etre rejoue sans verser deux fois.
+if (arbiter.userId && arbiter.amount > 0 && !lobby.arbiterSettled) {
+  await withWalletMutex(arbiter.userId, async () => {
+    await releaseWalletWinnings(
+      arbiter.userId,
+      arbiter.amount,
+      lobby.id,
+      'arbitration_fee',
+      `Commission arbitrage BR ${lobby.name}`,
+    );
+  });
+  lobby.arbiterSettled = true;
+}
 
   // 4. Perdants et absents : le pass est consomme (penalite), pas rembourse.
   for (const player of lobby.players) {

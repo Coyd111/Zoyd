@@ -93,17 +93,21 @@ export const verifyFedaPayTransaction = async (transactionId: number | string): 
 };
 
 /**
- * Commissions ZOYD encaissees, calculees par le serveur sur l'ensemble des
- * portefeuilles. Donnee financiere sensible : la route exige la 2FA admin
+ * Commission ZOYD, calculee par le serveur sur l'ensemble des portefeuilles.
+ * Donnee financiere sensible : la route exige la 2FA admin
  * (`requireAdmin2fa`), donc l'appel echoue sans code valide.
+ *
+ * Revenu et sortie sont volontairement dans deux champs distincts : le
+ * revenu ZOYD ne vient QUE des 2 % de retrait.
  */
 export interface CommissionStats {
-  /** Frais de 2 % preleves sur les retraits honores. */
+  /** Chiffre d'affaires ZOYD : la commission de retrait (2 %), et rien d'autre. */
+  revenue: number;
+  /** Detail de la commission de retrait, pour le libelle de l'UI. */
   withdrawalFees: number;
-  /** Commissions d'arbitrage prelevees sur les pots (part de l'arbitre). */
-  arbiterFees: number;
-  total: number;
   withdrawalCount: number;
+  /** Sortie : part de cagnotte versee aux arbitres. PAS un revenu. */
+  arbiterPayouts: number;
 }
 
 export const fetchAdminCommissions = async (): Promise<CommissionStats> => {

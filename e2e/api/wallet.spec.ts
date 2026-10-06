@@ -309,9 +309,21 @@ test.describe('Wallet API', () => {
     // 2 % de 800 ZC = 16 ZC si un retrait avait abouti ; un refus ne cree rien.
     expect(after.body.commissions.withdrawalFees).toBe(before.body.commissions.withdrawalFees);
     expect(after.body.commissions.withdrawalCount).toBe(before.body.commissions.withdrawalCount);
-    expect(after.body.commissions.total).toBe(
-      Math.round((after.body.commissions.withdrawalFees + after.body.commissions.arbiterFees) * 100) / 100,
-    );
+    expect(after.body.commissions.arbiterPayouts).toBe(before.body.commissions.arbiterPayouts);
+  });
+
+  test('GET /api/admin/commissions — le revenu est la commission de retrait, PAS les parts d\'arbitre', async () => {
+    // Le revenue est le seul chiffre a reporter comme chiffre d'affaires : le
+    // combiner aux commissions d'arbitre (une SORTIE de cagnotte) majorait le
+    // chiffre d'affaires. Ce test verrouille la separation.
+    const res = await call(admin, 'GET', '/api/admin/commissions');
+    expect(res.status).toBe(200);
+    const c = res.body.commissions;
+    expect(typeof c.revenue).toBe('number');
+    expect(c.revenue).toBe(c.withdrawalFees);
+    expect(typeof c.arbiterPayouts).toBe('number');
+    // Plus de champ « total » ambigu a trainer dans l'API.
+    expect(c.total).toBeUndefined();
   });
 
   test('POST /api/wallet/verify-fedapay — 401 sans session', async () => {

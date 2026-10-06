@@ -679,7 +679,11 @@ describe('br-engine - settleBrLobbyOnServer (reglement)', () => {
     // les 2 derniers elimines recoivent juste la perte de leur pass.
     const winners = res.payouts.length;
     expect(winners).toBe(5);
-    expect(releaseWalletWinnings).toHaveBeenCalledTimes(5);
+    // 5 gains + la commission d'arbitre : l'arbitre n'etant pas joueur, sa
+    // part sort de la cagnotte et n'est plus conditionnee a un pass bloque.
+    expect(releaseWalletWinnings).toHaveBeenCalledTimes(6);
+    const arbiterCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'arbitration_fee');
+    expect(arbiterCalls).toHaveLength(1);
     // Les 2 non-gagnants ont leur pass consomme.
     expect(settleMatchLossWallet).toHaveBeenCalledTimes(2);
   });
@@ -779,19 +783,24 @@ describe('br-engine - settleBrLobbyOnServer (reglement)', () => {
     expect(arbiterCalls[0][3]).toBe('arbitration_fee');
   });
 
-  it('ne paie PAS de commission si l\'arbitre n\'a pas de pass bloque', async () => {
+  it('paie la commission d\'arbitre meme sans pass bloque, et une seule fois', async () => {
+    // Regression : l'arbitre n'est pas joueur (cf. `createBrLobbyOnServer`),
+    // donc il n'a JAMAIS de reservation. Exiger une reservation le payait
+    // zero : sa part de cagnotte disparaitait en silence.
     const lobby = liveLobby({ arbiterId: 'ghost' });
-    // `getUserById` ne renvoie aucune reservation pour l'arbitre fantome.
     getUserById.mockImplementation((id) => (
       id === 'ghost' ? { wallet: { lockedEntries: {} } }
         : { wallet: { lockedEntries: { [lobby.id]: { amount: 50 } } } }
     ));
-    lobby.players.push({
-      userId: 'ghost', pseudo: 'G', teamId: 'T-G', joinedAt: lobby.createdAt,
-      checkedIn: true, alive: false, placement: 7, kills: 0, absent: false, settled: false, winnings: 0,
-    });
+    // L'arbitre ne fait PAS partie du roster.
+    expect(lobby.players.some((p) => p.userId === 'ghost')).toBe(false);
+
     await brEngine.settleBrLobbyOnServer([lobby], player('ghost'), lobby.id);
-    const ghostCalls = releaseWalletWinnings.mock.calls.filter((c) => c[0] === 'ghost');
-    expect(ghostCalls).toHaveLength(0);
+    const ghostCalls = releaseWalletWinnings.mock.calls.filter(
+      (c) => c[0] === 'ghost' && c[3] === 'arbitration_fee'
+    );
+    expect(ghostCalls).toHaveLength(1);
+    // Sa part est bien celle du taux du salon (5 % par defaut), pas nulle.
+    expect(Number(ghostCalls[0][1])).toBeGreaterThan(0);
   });
 });

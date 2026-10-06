@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
   registerPlayer, disposeActors, openAdminSession, creditWallet,
-  call, type Actor,
+  call, ADMIN_EMAIL, ADMIN_PASSWORD, type Actor,
 } from '../api/support/harness';
 
 // UI Battle Royale : liste des salons, regle "pas de remboursement" visible,
@@ -32,6 +32,29 @@ const login = async (page: Page, pseudo: string, password: string) => {
   expect((await loginResponse).status()).toBe(200);
 };
 
+/** Date locale au format `datetime-local`, a J+32 h (dans la fenetre 24-48 h). */
+const toLocalInputPlus32h = () => {
+  const d = new Date(Date.now() + 32 * 3600_000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+/**
+ * Connexion admin PAR LE FORMULAIRE.
+ *
+ * L'admin de test a son propre mot de passe (ZOYD_ADMIN_PASSWORD du serveur),
+ * pas celui des joueurs : passer par le formulaire evite de bricoler le cookie
+ * a la main et exerce le vrai chemin de l'utilisateur.
+ */
+const loginAdminWithCookie = async (page: Page) => {
+  await page.goto('/auth/login');
+  await page.getByPlaceholder(/ShadowX/).fill(ADMIN_EMAIL);
+  await page.getByPlaceholder(/^\.*$/).fill(ADMIN_PASSWORD);
+  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
+  await page.getByPlaceholder(/^\.*$/).press('Enter');
+  expect((await loginResponse).status(), 'connexion admin').toBe(200);
+};
+
 test.describe('Battle Royale UI', () => {
   test.describe.configure({ mode: 'serial' });
   const password = 'ZoydE2E!Player2026';
@@ -44,6 +67,77 @@ test.describe('Battle Royale UI', () => {
 
   test.afterAll(async () => {
     await disposeActors();
+  });
+
+  test('le formulaire de creation est reserve a l\'admin', async ({ page }) => {
+    const player = await registerPlayer('BRUI7');
+    await login(page, player.pseudo, password);
+    await page.goto('/br');
+    await expect(page.getByRole('heading', { name: /BR — UN SALON/i })).toBeVisible({ timeout: 15_000 });
+    // Un joueur ne doit pas pouvoir creer un salon.
+    await expect(page.getByRole('button', { name: /Creer un salon BR/i })).toHaveCount(0);
+  });
+
+  test('l\'admin voit le formulaire, valide la repartition et cree le salon', async ({ page }) => {
+    // L'admin de test a son propre mot de passe (celui du serveur), pas
+    // celui des joueurs : on se connecte via l'API puis on injecte le cookie.
+    await loginAdminWithCookie(page);
+    await page.goto('/br');
+
+    await page.getByRole('button', { name: /Creer un salon BR/i }).click();
+    await expect(page.getByRole('heading', { name: /Nouveau salon Battle Royale/i })).toBeVisible();
+
+    // La repartition par defaut est deja validee : le bouton est actif.
+    const submit = page.getByRole('button', { name: /Creer le salon/i });
+const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
+    await expect(totalLabel).toBeVisible({ timeout: 20_000 });
+    // La repartition proposee a l'ouverture est deja valide (100 %).
+    await expect(totalLabel).toHaveText('Total 100 %');
+    // Le bouton actif prouve aussi que l'admin peut payer son propre pass
+    // (le formulaire se bloque sinon sur `cashBalance < entryFee`).
+    await expect(submit).toBeEnabled();
+
+    // Casse volontairement la somme -> blocage immediat, sans aller-retour API.
+    await page.locator('#br-payout-second').fill('0.5');
+    await expect(page.getByText(/doit sommer a 100/i)).toBeVisible();
+    await expect(submit).toBeDisabled();
+
+    // Remise a la valeur d'origine (0.22) : le bouton redevient actif.
+    await page.locator('#br-payout-second').fill('0.22');
+    await expect(totalLabel).toHaveText('Total 100 %');
+    await expect(submit).toBeEnabled();
+
+    // Commission arbitre au-dela du plafond (5 %). Ce message doit etre
+    // prioritaire sur l'erreur de somme : c'est la vraie cause.
+    await page.locator('#br-payout-arbiter').fill('0.2');
+    await expect(page.getByText(/Commission arbitre plafonnee/i)).toBeVisible();
+    await expect(submit).toBeDisabled();
+    await page.locator('#br-payout-arbiter').fill('0.05');
+
+    // Maps proposees : Alcatraz absent.
+    const mapOptions = await page.locator('#br-map option').allInnerTexts();
+    expect(mapOptions.join(' ')).toContain('Isolated');
+    expect(mapOptions.join(' ')).not.toContain('Alcatraz');
+
+    // Plafond effectif = min(mode, map), affiche et mis a jour.
+    await page.locator('#br-map').selectOption('rebirth_island');
+    await expect(page.getByText(/Plafond effectif de ce salon : 40/)).toBeVisible();
+    await page.locator('#br-map').selectOption('isolated');
+
+    // Date hors fenetre refusee.
+    await page.locator('#br-date').fill('2020-01-01T10:00');
+    await expect(page.getByText(/au moins 24 h/i)).toBeVisible();
+
+    const created = page.waitForResponse((r) => r.url().endsWith('/api/br/lobbies') && r.request().method() === 'POST', { timeout: 20_000 });
+    await page.locator('#br-date').fill(toLocalInputPlus32h());
+    await submit.click();
+    const res = await created;
+    expect(res.status()).toBe(201);
+    // Le panneau se referme et la liste se recharge : le salon apparait.
+    // On verifie le resultat metier (le salon existe pour les joueurs), pas
+    // le toast : un toast depend d'un refresh de wallet qui peut echouer.
+    await expect(page.getByRole('heading', { name: /Nouveau salon Battle Royale/i })).toHaveCount(0);
+    await expect(page.getByText('Salon BR officiel').first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('la liste affiche le salon et la regle "pas de remboursement"', async ({ page }) => {
@@ -76,11 +170,27 @@ test.describe('Battle Royale UI', () => {
     await expect(page.getByText('Alcatraz')).toHaveCount(0);
   });
 
-  test('le detail affiche la repartition de cagnotte', async ({ page }) => {
+  /**
+ * Ouvre la page detail ET verifie que le salon a bien ete charge.
+ *
+ * Sans cette attente explicite, un 429 (la suite fait beaucoup de logins sur
+ * la meme IP) se manifeste par un « heading introuvable » trompeur, au lieu
+ * d'echouer sur la vraie cause.
+ */
+const gotoDetail = async (page: Page, lobbyId: string) => {
+  const detail = page.waitForResponse(
+    (r) => r.url().includes(`/api/br/lobbies/${lobbyId}`) && r.request().method() === 'GET',
+    { timeout: 25_000 },
+  );
+  await page.goto(`/br/${lobbyId}`);
+  expect((await detail).status(), `chargement du salon ${lobbyId}`).toBe(200);
+};
+
+test('le detail affiche la repartition de cagnotte', async ({ page }) => {
     const created = await newLobby(admin);
     const player = await registerPlayer('BRUI3');
     await login(page, player.pseudo, password);
-    await page.goto(`/br/${created.body.lobby.id}`);
+    await gotoDetail(page, created.body.lobby.id);
 
     await expect(page.getByRole('heading', { name: /Repartition de la cagnotte/i })).toBeVisible({ timeout: 15_000 });
     for (const place of ['1e place', '2e place', '3e place', '4e place', '5e place']) {
@@ -95,7 +205,7 @@ test.describe('Battle Royale UI', () => {
     const player = await registerPlayer('BRUI4');
     await creditWallet(admin, player.id, 500);
     await login(page, player.pseudo, password);
-    await page.goto(`/br/${created.body.lobby.id}`);
+    await gotoDetail(page, created.body.lobby.id);
 
     // L'information doit etre lue AVANT de payer, donc presente pour tous.
     await expect(page.getByText(/pas\s+rembourse/i).first()).toBeVisible({ timeout: 15_000 });
@@ -109,11 +219,12 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     await creditWallet(admin, player.id, 500);
     await login(page, player.pseudo, password);
 
-    await page.goto(`/br/${created.body.lobby.id}`);
+    await gotoDetail(page, created.body.lobby.id);
     // La page detail charge son lobby en async : on attend le roster (le
     // createur y est) avant de raisonner sur l'etat du bouton, sinon on agit
     // sur le rendu « Chargement du salon... ».
-    await expect(page.getByRole('heading', { name: 'Joueurs' })).toBeVisible({ timeout: 20_000 });
+    // Le titre porte le compteur (« Joueurs (1 / 40) ») : regex, pas egalite exacte.
+    await expect(page.getByRole('heading', { name: /^Joueurs \(\d+ \/ \d+\)$/ })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole('button', { name: /S'inscrire sur ce salon/i })).toBeVisible({ timeout: 20_000 });
     const joinResponse = page.waitForResponse((r) => r.url().includes('/join'), { timeout: 20_000 });
     await page.getByRole('button', { name: /S'inscrire sur ce salon/i }).click();
@@ -135,7 +246,7 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     await creditWallet(admin, player.id, 500);
     await login(page, player.pseudo, password);
 
-    await page.goto(`/br/${created.body.lobby.id}`);
+    await gotoDetail(page, created.body.lobby.id);
     // L'inscription se fait depuis la page du salon : on cible CE salon, pas
     // « le premier de la liste » (il y en a un par test et ils se cumulent).
     const joinResponse = page.waitForResponse((r) => r.url().includes('/join'), { timeout: 20_000 });

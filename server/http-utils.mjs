@@ -276,6 +276,7 @@ export const mapPersistenceError = (error) => {
     case 'NO_PLAYERS':
     case 'INVALID_DAY':
     case 'INVALID_RESULTS':
+    case 'INVALID_ARBITER':
     case 'INVALID_PAYOUT':
     case 'INVALID_MODE':
     case 'INVALID_MAP':
@@ -368,6 +369,7 @@ export const mapPersistenceError = (error) => {
     case 'PLAYER_DEAD':
     case 'PLAYER_ABSENT':
     case 'TOO_EARLY':
+    case 'ARBITER_REQUIRED':
     case 'NO_PRESENT':
       return { status: 409, message, code };
     default:

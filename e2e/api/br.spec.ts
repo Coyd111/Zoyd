@@ -66,10 +66,10 @@ test.describe('Battle Royale API', () => {
     expect(res.body.code).toBe('AUTH_REQUIRED');
   });
 
-  test('le createur paie et joue son propre salon (pass bloque)', async () => {
-    // Le createur est inscrit automatiquement et son pass DOIT etre bloque :
-    // c'est la regle commerciale du BR (pas de partie gratuite, donc pas de
-    // salon gratuit). L'admin de test n'a pas de solde : on le finance.
+  test('l\'arbitre cree le salon sans payer de pass ni etre joueur', async () => {
+    // Regle metier : le createur est l'ARBITRE, pas un joueur. Il ne paie
+    // aucun pass et ne figure pas dans le roster — sinon creer un salon
+    // coutait 50 ZC a l'admin et la cagnotte comptait un joueur non paye.
     const before = await call(admin, 'GET', '/api/wallet/me');
     const balanceBefore = before.body.wallet.cashBalance;
 
@@ -78,22 +78,21 @@ test.describe('Battle Royale API', () => {
       entryFee: 50, scheduledAt: in24h(), payout,
     });
     expect(res.status).toBe(201);
-    expect(res.body.lobby.players).toHaveLength(1);
+    expect(res.body.lobby.players).toHaveLength(0);
     expect(res.body.lobby.creatorId).toBe(admin.id);
+    expect(res.body.lobby.arbiterId).toBe(admin.id);
 
+    // Aucun debit : l'admin peut creer un salon meme sans solde.
     const after = await call(admin, 'GET', '/api/wallet/me');
-    expect(after.body.wallet.cashBalance).toBe(balanceBefore - 50);
+    expect(after.body.wallet.cashBalance).toBe(balanceBefore);
   });
 
-  test('refuse la creation si le createur ne peut pas payer son pass', async () => {
-    // On vide l'admin via une tentative impossible : le controle doit etre
-    // fait AVANT de persister le salon, sinon un salon sans createur existe.
+  test('refuse la creation a un non-administrateur', async () => {
+    // Un joueur ne peut pas creer de salon : il n'en serait pas l'arbitre.
     const broke = await registerPlayer('BRBROKE');
-    expect(broke).toBeTruthy();
     const res = await call(broke, 'POST', '/api/br/lobbies', {
       mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(), payout,
     });
-    // Non-admin : refuse avant meme le paiement.
     expect(res.status).toBe(403);
   });
 
@@ -146,6 +145,55 @@ test.describe('Battle Royale API', () => {
     expect(res.body.code).toBe('INVALID_MAP');
   });
 
+  test('le salon designe un arbitre a la creation', async () => {
+    const res = await call(admin, 'POST', '/api/br/lobbies', {
+      mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(), payout,
+    });
+    expect(res.status).toBe(201);
+    // Sans arbitre designe, personne ne pourrait saisir les resultats.
+    expect(res.body.lobby.arbiterId).toBe(admin.id);
+  });
+
+  test('refuse un arbitre qui n\'est pas administrateur', async () => {
+    const res = await call(admin, 'POST', '/api/br/lobbies', {
+      mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(),
+      payout, arbiterId: 'quelquun',
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('INVALID_ARBITER');
+  });
+
+  test('un joueur inscrit ne peut pas saisir les eliminations', async () => {
+    // Faille fermee : l'eliminate est reserve a l'arbitre du salon, sinon un
+    // joueur s'attribuait des kills et donc une part de cagnotte.
+    const created = await call(admin, 'POST', '/api/br/lobbies', {
+      mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(), payout,
+    });
+    const lobbyId = created.body.lobby.id;
+    const player = await registerPlayer('BRNOARB');
+    await creditWallet(admin, player.id, 300);
+    expect((await call(player, 'POST', `/api/br/lobbies/${lobbyId}/join`)).status).toBe(200);
+    expect((await call(player, 'POST', `/api/br/lobbies/${lobbyId}/checkin`)).status).toBe(200);
+
+    // Le salon est programme dans 24h : `eliminate` exige `live`.
+    const res = await call(player, 'POST', `/api/br/lobbies/${lobbyId}/eliminate`, { userId: 'x' });
+    // 409 (pas en cours) ou 403 (pas l'arbitre) : jamais 200.
+    expect([403, 409]).toContain(res.status);
+  });
+
+  test('un joueur inscrit ne peut pas lancer la partie', async () => {
+    const created = await call(admin, 'POST', '/api/br/lobbies', {
+      mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(), payout,
+    });
+    const lobbyId = created.body.lobby.id;
+    const player = await registerPlayer('BRNOSTART');
+    await creditWallet(admin, player.id, 300);
+    await call(player, 'POST', `/api/br/lobbies/${lobbyId}/join`);
+
+    const res = await call(player, 'POST', `/api/br/lobbies/${lobbyId}/start`);
+    expect([403, 409]).toContain(res.status);
+  });
+
   test('inscription : bloque le pass, puis refus du double et du pret depasse', async () => {
     const created = await call(admin, 'POST', '/api/br/lobbies', {
       name: 'Salon cycle de vie', mode: 'solo', map: 'isolated',
@@ -153,15 +201,15 @@ test.describe('Battle Royale API', () => {
     });
     expect(created.status).toBe(201);
     const lobbyId = created.body.lobby.id;
-    // Le createur est automatiquement inscrit.
-    expect(created.body.lobby.players).toHaveLength(1);
+    // L'arbitre n'est pas inscrit : le salon demarre vide.
+    expect(created.body.lobby.players).toHaveLength(0);
 
     const player = await registerPlayer('BRJOIN');
     await creditWallet(admin, player.id, 500);
 
     const join = await call(player, 'POST', `/api/br/lobbies/${lobbyId}/join`);
     expect(join.status).toBe(200);
-    expect(join.body.lobby.players).toHaveLength(2);
+    expect(join.body.lobby.players).toHaveLength(1);
 
     const wallet = await call(player, 'GET', '/api/wallet/me');
     // 500 - 50 de pass bloque.

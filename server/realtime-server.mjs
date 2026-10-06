@@ -1979,38 +1979,22 @@ const handleRequest = async (req, res) => {
         { user: getUserById(session.user.id) || session.user },
         body,
       );
-      // Le createur paie et joue son propre salon : on l'inscrit comme les
-      // autres, sinon il resterait dehors et sa presence ne compterait pas au
-      // demarrage. L'echec de ce verrouillage annule la creation.
-      let lobbies = created.lobbies;
-      let lobby = created.lobby;
-      try {
-        const joined = await joinBrLobbyOnServer(
-          created.lobbies,
-          { user: getUserById(session.user.id) || session.user },
-          created.lobby.id,
-        );
-        lobbies = joined.lobbies;
-        lobby = joined.lobby;
-      } catch (joinError) {
-        // On ne laisse pas trace d'un salon dont le createur n'a pas pu
-        // bloquer son pass : la cagnotte serait decalee d'un joueur.
-        log.error('BR creator join failed, lobby discarded', {
-          lobbyId: created.lobby.id, error: joinError.message,
-        });
-        respondMappedError(res, joinError);
-        return;
-      }
-      await saveBrLobbies(io, lobbies);
-      log.info('BR lobby created', { lobbyId: lobby.id, by: session.user.id });
-      respondJson(res, 201, { ok: true, lobby }, req);
+      // Le createur est l'ARBITRE du salon, pas un joueur : il ne paie aucun
+      // pass et ne figure pas dans le roster. Avant, on l'auto-inscrivait et on
+      // bloquait son pass — il devait donc avoir les moyens de payer pour creer
+      // un salon, et sa presence conditionnait le demarrage. La cagnotte ne
+      // contient plus que des joueurs payants, et le classement n'a plus a
+      // exclure l'arbitre de la liste (il n'y est plus).
+      await saveBrLobbies(io, created.lobbies);
+      log.info('BR lobby created', { lobbyId: created.lobby.id, by: session.user.id });
+      respondJson(res, 201, { ok: true, lobby: created.lobby }, req);
     } catch (error) {
       respondMappedError(res, error);
     }
     return;
   }
 
-  const brLobbyAction = pathname.match(/^\/api\/br\/lobbies\/([^/]+)\/(join|leave|checkin|start|eliminate|finish|arbiter)$/);
+  const brLobbyAction = pathname.match(/^\/api\/br\/lobbies\/([^/]+)\/(join|leave|checkin|start|eliminate|finish)$/);
   if (brLobbyAction && req.method === 'POST') {
     const session = getAuthenticatedAppSession(req);
     if (!session) {
@@ -2025,9 +2009,8 @@ const handleRequest = async (req, res) => {
     // depots/retraits) rendait le produit inutilisable — un joueur qui
     // s'inscrit puis se desinscrit de 3 salons epuisait le quota avant meme
     // de pouvoir retirer ses gains.
-    const rateGroup = (action === 'start' || action === 'finish' || action === 'arbiter')
-      ? 'admin'
-      : 'default';
+    // `finish` est reserve a l'arbitre et tire de l'argent : quota admin.
+    const rateGroup = action === 'finish' ? 'admin' : 'default';
     if (!rateLimitGuard(res, getClientIp(req), rateGroup)) return;
 
     try {
@@ -2053,19 +2036,11 @@ const handleRequest = async (req, res) => {
           killerUserId: typeof body.killerUserId === 'string' ? body.killerUserId : null,
           assists: Number(body.assists) || 0,
         });
-      } else if (action === 'arbiter') {
-        // L'arbitre est un joueur inscrit (il paie son pass comme tout le
-        // monde) mais il est hors classement et touche une commission.
-        const adminSession = requireAdmin2fa(req, res);
-        if (!adminSession) return;
-        const next = lobbies.map((l) => (l.id === lobbyId ? { ...l, arbiterId: session.userId } : l));
-        outcome = { lobby: next.find((l) => l.id === lobbyId), lobbies: next };
-        if (!outcome.lobby) {
-          respondJson(res, 404, { ok: false, error: 'Salon introuvable.', code: 'LOBBY_NOT_FOUND' }, req);
-          return;
-        }
       } else {
-        // `finish` distribue la cagnotte : operation financiere sensible.
+        // `finish` distribue la cagnotte. L'autorite est l'ARBITRE du salon
+        // (verifie dans le moteur), pas la 2FA admin : dans ce modele l'arbitre
+        // est le seul a avoir vu la partie. La 2FA reste demandee en plus, car
+        // de l'argent part.
         const adminSession = requireAdmin2fa(req, res);
         if (!adminSession) return;
         outcome = await settleBrLobbyOnServer(lobbies, actor, lobbyId);

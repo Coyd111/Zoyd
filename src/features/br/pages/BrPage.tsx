@@ -12,6 +12,7 @@ import {
   type BrLobby,
 } from '../../../app/lib/brApi';
 import { formatZC } from '../../../lib/utils';
+import { BrLobbyCreatePanel } from '../components/BrLobbyCreatePanel';
 import { SEOHead } from '../../../app/components/SEOHead';
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
@@ -251,30 +252,34 @@ const BrPage: React.FC = () => {
 
         {loading ? (
           <div className="text-center py-16 text-white/60 text-sm">Chargement des salons...</div>
-        ) : lobbies.length === 0 ? (
-          <div className="text-center py-16 border border-white/10 bg-zoyd-surface/20">
-            <Calendar className="w-10 h-10 text-white/20 mx-auto mb-4" aria-hidden="true" />
-            <p className="text-white/70 text-sm">
-              Aucun salon programme pour le moment.
-            </p>
-            <p className="text-white/50 text-xs mt-2">
-              Les salons sont ouverts 24 a 48 h a l'avance.
-            </p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {lobbies.map((lobby) => (
-              <BrLobbyCard
-                key={lobby.id}
-                lobby={lobby}
-                config={config || { maps: {}, modes: {}, rankingModes: {} } as unknown as BrConfig}
-                // Le roster public ne contient AUCUN userId (vie privée) : on
-                // compare donc sur le pseudo, seul identifiant visible ici.
-                joined={Boolean(user?.pseudo) && lobby.players.some((p) => p.pseudo === user?.pseudo)}
-                isLoading={joiningId === lobby.id}
-                onJoin={handleJoin}
-              />
-            ))}
+          <div className="space-y-6">
+            {/* Formulaire de creation : reserve a l'admin, qui sera aussi
+                l'arbitre du salon qu'il cree. */}
+            <BrLobbyCreatePanel onCreated={() => void load()} />
+
+            {lobbies.length === 0 ? (
+              <div className="text-center py-16 border border-white/10 bg-zoyd-surface/20">
+                <Calendar className="w-10 h-10 text-white/20 mx-auto mb-4" aria-hidden="true" />
+                <p className="text-white/70 text-sm">Aucun salon programme pour le moment.</p>
+                <p className="text-white/50 text-xs mt-2">Les salons sont ouverts 24 a 48 h a l'avance.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {lobbies.map((lobby) => (
+                  <BrLobbyCard
+                    key={lobby.id}
+                    lobby={lobby}
+                    config={config || { maps: {}, modes: {}, rankingModes: {} } as unknown as BrConfig}
+                    // Le roster public ne contient AUCUN userId (vie privée) : on
+                    // compare donc sur le pseudo, seul identifiant visible ici.
+                    joined={Boolean(user?.pseudo) && lobby.players.some((p) => p.pseudo === user?.pseudo)}
+                    isLoading={joiningId === lobby.id}
+                    onJoin={handleJoin}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

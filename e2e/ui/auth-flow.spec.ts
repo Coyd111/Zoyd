@@ -53,7 +53,9 @@ test.describe('Login Page', () => {
 test.describe('Register Page', () => {
   test('renders the register form step 1', async ({ page }) => {
     await page.goto('/auth/register');
-    await expect(page.locator('text=Creer un compte').first()).toBeVisible();
+    // Le titre reel est accentue (« Créer un compte ») : on tolere les deux
+// ecritures plutot que de casser des que la copie FR est corrigee.
+await expect(page.getByRole('heading', { name: /Cr[eé]er un compte/ }).first()).toBeVisible();
     await expect(page.locator('input[name="pseudo"]').first()).toBeVisible();
     await expect(page.locator('input[name="email"]').first()).toBeVisible();
     await expect(page.locator('input[name="phone"]').first()).toBeVisible();

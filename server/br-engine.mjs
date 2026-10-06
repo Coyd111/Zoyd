@@ -65,6 +65,17 @@ export const BR_RANKING_MODES = {
 };
 export const BR_RANKING_MODE_IDS = Object.keys(BR_RANKING_MODES);
 
+/**
+ * Repartition par defaut d'un salon. SOMME EXACTEMENT 100 %
+ * (40 + 22 + 13 + 12 + 8 + 5). Exportee pour que le formulaire admin
+ * propose exactement la meme chose : les deux defauts avaient derive
+ * (15/3 ici, 13/5 la-bas), donc l'admin voyait une repartition que le
+ * serveur ne proposerait jamais.
+ */
+export const BR_DEFAULT_PAYOUT = Object.freeze({
+  first: 0.4, second: 0.22, third: 0.13, fourth: 0.12, fifth: 0.08, arbiterRate: 0.05,
+});
+
 /** Combien de joueurs sont payes. Le reste repart dans la cagnotte (absents). */
 export const BR_PRIZED_PLACES = 5;
 
@@ -114,12 +125,12 @@ export const normalizeBrLobby = (lobby) => {
     entryFee: roundAmount(Number(lobby?.entryFee) || 0),
     rankingMode: BR_RANKING_MODES[lobby?.rankingMode] ? lobby.rankingMode : 'survie_kills',
     payout: {
-      first: Number(lobby?.payout?.first ?? 0.4),
-      second: Number(lobby?.payout?.second ?? 0.22),
-      third: Number(lobby?.payout?.third ?? 0.15),
-      fourth: Number(lobby?.payout?.fourth ?? 0.12),
-      fifth: Number(lobby?.payout?.fifth ?? 0.08),
-      arbiterRate: Number(lobby?.payout?.arbiterRate ?? 0.03),
+      first: Number(lobby?.payout?.first ?? BR_DEFAULT_PAYOUT.first),
+      second: Number(lobby?.payout?.second ?? BR_DEFAULT_PAYOUT.second),
+      third: Number(lobby?.payout?.third ?? BR_DEFAULT_PAYOUT.third),
+      fourth: Number(lobby?.payout?.fourth ?? BR_DEFAULT_PAYOUT.fourth),
+      fifth: Number(lobby?.payout?.fifth ?? BR_DEFAULT_PAYOUT.fifth),
+      arbiterRate: Number(lobby?.payout?.arbiterRate ?? BR_DEFAULT_PAYOUT.arbiterRate),
     },
     status: lobby?.status || 'scheduled',
     scheduledAt: lobby?.scheduledAt || null,
@@ -239,12 +250,28 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
 
   const payout = validateBrPayout(input.payout || {});
 
+  // L'arbitre est designe A LA CREATION, pas apres : sinon un joueur inscrit
+  // pourrait s'auto-designer arbitre via POST /arbiter et saisir lui-meme
+  // ses eliminations. Il doit etre inscrit au salon.
+  const arbiterId = typeof input.arbiterId === 'string' && input.arbiterId.trim()
+    ? input.arbiterId.trim()
+    : actorUser.id;
+  const arbiter = getUserById(arbiterId);
+  if (!arbiter || arbiter.role !== 'admin') {
+    throw makeError(
+      'INVALID_ARBITER',
+      'L\'arbitre doit etre un administrateur existant et inscrit au salon.',
+    );
+  }
+
   const now = getNow();
   const lobby = normalizeBrLobby({
     id: `BR-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1296).toString(36).toUpperCase().padStart(2, '0')}`,
     name: input.name,
     creatorId: actorUser.id,
     creatorPseudo: actorUser.pseudo,
+    arbiterId,
+    arbiterPseudo: arbiter.pseudo,
     mode,
     map,
     maxPlayers: resolveMaxPlayers(mode, map),
@@ -253,10 +280,9 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
     payout,
     status: 'scheduled',
     scheduledAt: new Date(scheduledAtMs).toISOString(),
-    // Le createur est inscrit des la creation et son pass est bloque : il
-    // organise la partie, il doit donc y jouer (et sa presence conditionne le
-    // demarrage). Le verrouillage est fait par l'appelant, qui appelle
-    // ensuite `joinBrLobbyOnServer` pour l'admin.
+    // L'arbitre (createur par defaut) n'est PAS un joueur : il ne paie aucun
+    // pass et ne figure pas dans `players`. Le roster ne contient donc que des
+    // joueurs payants, et la cagnotte ne peut pas etre decalee par l'organisateur.
     players: [],
     teams: [],
     pot: 0,
@@ -427,6 +453,17 @@ export const startBrLobbyOnServer = (lobbies, actor, lobbyId, { nowMs = getNowMs
   if (lobby.status === 'live') throw makeError('ALREADY_LIVE', 'Partie deja en cours.');
   if (lobby.status === 'finished') throw makeError('LOBBY_CLOSED', 'Partie terminee.');
 
+  // Le lancement declenche la perte des absents (leur pass est consomme) :
+  // seuls l'arbitre et le createur peuvent le faire, pas un inscrit lambda.
+  const isArbiter = lobby.arbiterId && lobby.arbiterId === actorUser.id;
+  const isCreator = lobby.creatorId === actorUser.id;
+  if (!isArbiter && !isCreator) {
+    throw makeError(
+      'FORBIDDEN',
+      'Seul l\'organisateur ou l\'arbitre peut lancer la partie.',
+    );
+  }
+
   // Fenetre de programmation : pas de lancement anticipatif force.
   if (lobby.scheduledAt && nowMs < Date.parse(lobby.scheduledAt) - 10 * 60 * 1000) {
     throw makeError(
@@ -475,6 +512,29 @@ export const startBrLobbyOnServer = (lobbies, actor, lobbyId, { nowMs = getNowMs
 };
 
 /**
+ * L'acteur DOIT etre l'arbitre designe du salon.
+ *
+ * Securite critique : sans ce controle, n'importe quel joueur inscrit
+ * pouvait appeler `eliminate` et s'attribuer des kills (donc un classement
+ * favorable et une part de cagnotte). Le modele met est le meme que le MJ :
+ * celui qui n'est pas dans la partie saisit les resultats, personne d'autre.
+ */
+const requireLobbyArbiter = (lobby, actorUser) => {
+  if (!lobby.arbiterId) {
+    throw makeError(
+      'ARBITER_REQUIRED',
+      'Aucun arbitre designe pour ce salon : la saisie des resultats est impossible.',
+    );
+  }
+  if (lobby.arbiterId !== actorUser.id) {
+    throw makeError(
+      'FORBIDDEN',
+      'Seul l\'arbitre de ce salon peut saisir les resultats ou le regler.',
+    );
+  }
+};
+
+/**
  * Enregistre une elimination.
  *
  * `kills` est porte par l'elimine, `assists` par le joueur credited. On
@@ -495,6 +555,8 @@ export const eliminateBrPlayerOnServer = (
   const lobby = findLobby(nextLobbies, lobbyId);
   if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
   if (lobby.status !== 'live') throw makeError('LOBBY_NOT_LIVE', 'La partie n\'est pas en cours.');
+  // AVANT toute mutation : un joueur non-arbitre ne doit rien pouvoir changer.
+  requireLobbyArbiter(lobby, actorUser);
 
   const eliminated = lobby.players.find((p) => p.userId === eliminatedUserId);
   if (!eliminated) throw makeError('PLAYER_NOT_FOUND', 'Joueur introuvable dans ce salon.');
@@ -615,6 +677,8 @@ export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   if (lobby.status !== 'live') {
     throw makeError('LOBBY_NOT_LIVE', 'La partie n\'est pas en cours.');
   }
+  // Le reglement verse la cagnotte : reserves a l'arbitre du salon.
+  requireLobbyArbiter(lobby, actorUser);
 
   // 1. Verrou anti-doublon AVANT tout versement.
   lobby.status = 'settling';

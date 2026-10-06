@@ -362,15 +362,18 @@ const BrLobbyDetailPage: React.FC = () => {
         )}
 
         {lobby.status === 'live' && (
-          <section className="mt-6 border border-zoyd-yellow/30 bg-zoyd-yellow/5 p-5">
-            <h2 className="text-[10px] font-display font-black text-zoyd-yellow uppercase tracking-[0.3em] mb-3 flex items-center gap-2">
+          <section className="mt-6 border border-white/10 bg-zoyd-surface/20 p-5">
+            <h2 className="text-[10px] font-display font-black text-white/70 uppercase tracking-[0.3em] mb-3 flex items-center gap-2">
               <Trophy className="w-4 h-4" aria-hidden="true" />
-              Partie en cours
+              Partie lancee
             </h2>
-            <p className="text-xs text-white/70">
-              Les eliminations sont enregistrees en direct. Le classement final
-              et la repartition de la cagnotte sont calcules par le serveur a la
-              cloture.
+            {/* Pas de suivi en direct : personne ne joue dans la plateforme, et
+                seul l'arbitre a vu la partie. Le classement et la repartition
+                apparaissent apres sa saisie, a la cloture. */}
+            <p className="text-xs text-white/70 leading-relaxed">
+              Le salon est lance. Rien ne s'affiche en direct : les eliminations
+              sont saisies par l'arbitre a la fin de la partie, puis le serveur
+              calcule le classement et repartit la cagnotte.
             </p>
           </section>
         )}

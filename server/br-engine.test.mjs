@@ -30,6 +30,9 @@ const inWindow = () => new Date(Date.now() + 30 * 60 * 60 * 1000).toISOString();
 const defaultPayout = { first: 0.4, second: 0.22, third: 0.15, fourth: 0.12, fifth: 0.08, arbiterRate: 0.03 };
 
 const createLobby = (overrides = {}) => {
+  // L'arbitre est designe a la creation : `getUserById` doit connaitre
+  // l'admin, sinon la creation leve INVALID_ARBITER.
+  getUserById.mockImplementation((id) => (id === admin.id ? admin : player(id)));
   const { lobby } = brEngine.createBrLobbyOnServer([], admin, {
     name: 'Salon test',
     mode: 'solo',
@@ -104,7 +107,12 @@ describe('br-engine - validateBrPayout', () => {
 });
 
 describe('br-engine - createBrLobbyOnServer', () => {
-  beforeEach(() => vi.clearAllMocks());
+  // L'arbitre est designe a la creation : le mock doit donc connaitre
+  // l'admin, sinon `createBrLobbyOnServer` leve INVALID_ARBITER.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockImplementation((id) => (id === admin.id ? admin : player(id)));
+  });
 
   it('cree un salon programme avec les valeurs par defaut', () => {
     const lobby = createLobby();
@@ -148,6 +156,98 @@ describe('br-engine - createBrLobbyOnServer', () => {
   it('applique le plafond min(mode, map) : Rebirth Island + squad = 25', () => {
     const lobby = createLobby({ map: 'rebirth_island', mode: 'squad' });
     expect(lobby.maxPlayers).toBe(25);
+  });
+
+  it('designe le createur comme arbitre par defaut', () => {
+    const lobby = createLobby();
+    expect(lobby.arbiterId).toBe(admin.id);
+  });
+
+  it('refuse un arbitre inexistant ou non-admin', () => {
+    // La creation est synchrone : `expect(...).toThrow()`, pas `.rejects`.
+    expect(() => createLobby({ arbiterId: 'fantome' })).toThrow(/administrateur/);
+    expect(() => createLobby({ arbiterId: 'p1' })).toThrow(/administrateur/);
+  });
+});
+
+// ─── Sécurité : qui a le droit de saisir et de régler ─────────────────────
+// Sans ces garde-fous, un joueur inscrit pouvait s'attribuer des kills
+// (donc un classement favorable et une part de cagnotte) ou lancer la partie
+// pour consommer les pass des absents.
+describe('br-engine - permissions de l\'arbitre', () => {
+  const lobbyWith = (arbiterId) => {
+    const lobby = createLobby();
+    return {
+      ...lobby,
+      status: 'live',
+      scheduledAt: new Date(Date.now() - 3600_000).toISOString(),
+      arbiterId,
+      players: [
+        { userId: 'arb', pseudo: 'ARB', teamId: 'T1', joinedAt: lobby.createdAt, checkedIn: true, alive: false, placement: 5, kills: 0, absent: false, settled: false, winnings: 0 },
+        { userId: 'p1', pseudo: 'P1', teamId: 'T2', joinedAt: lobby.createdAt, checkedIn: true, alive: true, placement: null, kills: 0, absent: false, settled: false, winnings: 0 },
+        { userId: 'p2', pseudo: 'P2', teamId: 'T3', joinedAt: lobby.createdAt, checkedIn: true, alive: true, placement: null, kills: 0, absent: false, settled: false, winnings: 0 },
+      ],
+      teams: [],
+    };
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockImplementation((id) => (id === admin.id ? admin : player(id)));
+  });
+
+  it('refuse une elimination saisie par un joueur inscrit (pas l\'arbitre)', () => {
+    const lobby = lobbyWith('arb');
+    expect(() => brEngine.eliminateBrPlayerOnServer([lobby], player('p1'), lobby.id, 'p2', { killerUserId: 'p1' }))
+      .toThrow(/arbitre/);
+  });
+
+  it('refuse le reglement par un joueur inscrit (pas l\'arbitre)', async () => {
+    const lobby = lobbyWith('arb');
+    await expect(brEngine.settleBrLobbyOnServer([lobby], player('p1'), lobby.id))
+      .rejects.toThrow(/arbitre/);
+  });
+
+  it('refuse toute saisie si le salon n\'a pas d\'arbitre designe', () => {
+    const lobby = lobbyWith(null);
+    expect(() => brEngine.eliminateBrPlayerOnServer([lobby], player('p1'), lobby.id, 'p2'))
+      .toThrow(/Aucun arbitre/);
+  });
+
+  it('accepte l\'elimination saisie par l\'arbitre du salon', () => {
+    const lobby = lobbyWith('arb');
+    const res = brEngine.eliminateBrPlayerOnServer([lobby], player('arb'), lobby.id, 'p2', { killerUserId: 'p1' });
+    expect(res.lobby.players.find((p) => p.userId === 'p2').alive).toBe(false);
+    expect(res.lobby.players.find((p) => p.userId === 'p1').kills).toBe(1);
+  });
+
+  it('refuse le lancement par un joueur inscrit lambda', () => {
+    const lobby = { ...lobbyWith('arb'), status: 'scheduled' };
+    expect(() => brEngine.startBrLobbyOnServer([lobby], player('p1'), lobby.id))
+      .toThrow(/organisateur ou l'arbitre/);
+  });
+
+  it('accepte le lancement par le createur', () => {
+    // Le lancement exige au moins BR_PRIZED_PLACES (5) joueurs presents.
+    const base = lobbyWith('arb');
+    const lobby = {
+      ...base,
+      status: 'scheduled',
+      players: [
+        ...base.players,
+        ...['p3', 'p4', 'p5'].map((id) => ({
+          userId: id, pseudo: id.toUpperCase(), teamId: `T-${id}`,
+          joinedAt: base.createdAt, checkedIn: true, alive: true,
+          placement: null, kills: 0, absent: false, settled: false, winnings: 0,
+        })),
+      ],
+    };
+    // Le start recalcule la cagnotte depuis les reservations wallet.
+    getUserById.mockImplementation((id) => (id === admin.id
+      ? { ...admin, wallet: { lockedEntries: { [lobby.id]: { amount: 50 } } } }
+      : player(id)));
+    const res = brEngine.startBrLobbyOnServer([lobby], admin, lobby.id);
+    expect(res.lobby.status).toBe('live');
   });
 });
 
@@ -668,7 +768,8 @@ describe('br-engine - settleBrLobbyOnServer (reglement)', () => {
       userId: 'arbiter-1', pseudo: 'ARB', teamId: 'T-ARB', joinedAt: lobby.createdAt,
       checkedIn: true, alive: false, placement: 7, kills: 0, absent: false, settled: false, winnings: 0,
     });
-    const res = await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+    // L'acteur du reglement est l'arbitre du salon, impose par le serveur.
+    const res = await brEngine.settleBrLobbyOnServer([lobby], player('arbiter-1'), lobby.id);
 
     expect(res.arbiter.userId).toBe('arbiter-1');
     const arbiterCalls = releaseWalletWinnings.mock.calls.filter((c) => c[0] === 'arbiter-1');
@@ -689,7 +790,7 @@ describe('br-engine - settleBrLobbyOnServer (reglement)', () => {
       userId: 'ghost', pseudo: 'G', teamId: 'T-G', joinedAt: lobby.createdAt,
       checkedIn: true, alive: false, placement: 7, kills: 0, absent: false, settled: false, winnings: 0,
     });
-    await brEngine.settleBrLobbyOnServer([lobby], admin, lobby.id);
+    await brEngine.settleBrLobbyOnServer([lobby], player('ghost'), lobby.id);
     const ghostCalls = releaseWalletWinnings.mock.calls.filter((c) => c[0] === 'ghost');
     expect(ghostCalls).toHaveLength(0);
   });

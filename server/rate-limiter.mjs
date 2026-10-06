@@ -15,6 +15,32 @@ const RATE_LIMIT_CONFIG = {
 };
 
 /**
+ * Assouplissement EXCLUSIVEMENT pour les tests automatises.
+ *
+ * L'E2E rejoue des dizaines de scenarios depuis une seule IP (127.0.0.1) :
+ * le bucket `default` (60/min) le bloquait, et les echecs 429 faisaient
+ * echouer des tests au hasard — au point qu'un test qui passait devait etre
+ * relance pour « fonctionner ». On ne teste pas la logique metier ici.
+ *
+ * Double condition :
+ *   - `NODE_ENV=test` : la production tourne en `NODE_ENV=production` (Render),
+ *     donc la branche est inatteignable chez nous meme si quelqu'un pose
+ *     `ALLOW_DEBUG_CODES` par erreur.
+ *   - `ALLOW_DEBUG_CODES=true`, qui n'est pose que par le harness E2E.
+ *
+ * Sans ces deux variables, la configuration ci-dessus s'applique telle quelle.
+ */
+const TEST_ONLY_RELAXATION = process.env.NODE_ENV === 'test'
+  && process.env.ALLOW_DEBUG_CODES === 'true';
+
+if (TEST_ONLY_RELAXATION) {
+  for (const group of Object.keys(RATE_LIMIT_CONFIG)) {
+    RATE_LIMIT_CONFIG[group].max = Number(process.env.ZOYD_RATE_LIMIT_MAX || 100000);
+    RATE_LIMIT_CONFIG[group].windowMs = 1;
+  }
+}
+
+/**
  * Check whether the given IP has exceeded the rate limit for a group.
  * @param {string} ip
  * @param {string} [group='default']

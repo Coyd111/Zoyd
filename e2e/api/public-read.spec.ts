@@ -17,9 +17,14 @@ import { callAnonymous, call, registerPlayer, disposeActors, type Actor } from '
 const PUBLIC_READ_ROUTES = [
   '/api/matches',
   '/api/tournaments',
-  '/api/leagues',
   '/api/stats',
 ];
+
+// `/api/leagues` n'est PLUS public : la saison contient le `userId` de chaque
+// joueur inscrit, et la page `/br-league` est deja derriere `AppLayout` (donc
+// inaccessible sans compte). Exiger une session ferme l'exposition anonyme
+// des identifiants sans toucher au client.
+const AUTHENTICATED_READ_ROUTES = ['/api/leagues'];
 
 const uniqueName = () => `Tournoi Fumee ${Date.now().toString(36)}`;
 
@@ -35,6 +40,31 @@ test.describe('API publique - routes de lecture', () => {
       expect(res.body?.ok).toBe(true);
     });
   }
+
+  for (const route of AUTHENTICATED_READ_ROUTES) {
+    test(`GET ${route} refuse l anonyme et accepte une session`, async () => {
+      // Regression : la saison expose le userId de tous les joueurs de ligue.
+      const anonymous = await callAnonymous('GET', route);
+      expect(anonymous.status).toBe(401);
+      expect(anonymous.body?.code).toBe('AUTH_REQUIRED');
+
+      const actor: Actor = await registerPlayer('league-read');
+      const authenticated = await call(actor, 'GET', route);
+      expect(authenticated.status).toBe(200);
+      expect(Array.isArray(authenticated.body?.seasons)).toBe(true);
+    });
+  }
+
+  test('GET /api/leagues/:id refuse aussi l anonyme', async () => {
+    // Une saison isolee ne doit pas servir de raccourci pour contourner la
+    // fermeture de la liste.
+    const actor: Actor = await registerPlayer('league-read-one');
+    const list = await call(actor, 'GET', '/api/leagues');
+    const seasonId = list.body?.seasons?.[0]?.id;
+
+    const anonymous = await callAnonymous('GET', `/api/leagues/${seasonId || 'inconnue'}`);
+    expect(anonymous.status).toBe(401);
+  });
 
   test('GET /api/tournaments répond 200 AVEC un tournoi (isMe calculé)', async () => {
     const actor: Actor = await registerPlayer('pubread-t');

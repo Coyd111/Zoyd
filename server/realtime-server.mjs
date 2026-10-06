@@ -1679,6 +1679,20 @@ await withWalletMutex(session.user.id, async () => {
   // ─── League Endpoints ───────────────────────────────────────────────────
 
   if (req.method === 'GET' && pathname === '/api/leagues') {
+    // Session obligatoire.
+    //
+    // La page `/br-league` est deja derriere `AppLayout`, qui redirige vers
+    // la connexion : aucun visiteur anonyme ne peut la consulter. En revanche
+    // la reponse renvoyait la saison EN CLAIR, avec le `userId` de chaque
+    // joueur inscrit. L'anonymat ne servait donc a rien sinon a livrer a
+    // tout internet la liste des-inscriptions d'une ligue (une carte sociale
+    // de tes adversaires, pseudo -> identifiant de compte).
+    // Le modele `isMe` complet est prevu plus tard ; exiger une session
+    // ferme desormais l'exposition anonyme sans toucher au client.
+    if (!getAuthenticatedAppSession(req)) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
+      return;
+    }
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const { limit, offset } = parseQueryParams(req.url);
@@ -1691,7 +1705,7 @@ await withWalletMutex(session.user.id, async () => {
         }
         return safe;
       });
-      respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore });
+      respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore }, req);
     } catch (error) {
       respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des ligues.', code: 'LOAD_ERROR' });
     }
@@ -1700,6 +1714,12 @@ await withWalletMutex(session.user.id, async () => {
 
   const leagueGetOne = pathname.match(/^\/api\/leagues\/([^/]+)$/);
   if (req.method === 'GET' && leagueGetOne) {
+    // Meme garde que la liste : une saison isolee ne doit pas devenir un
+    // raccourci pour sortir les userId quand la liste est fermee.
+    if (!getAuthenticatedAppSession(req)) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
+      return;
+    }
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const seasons = getStoredLeagues();

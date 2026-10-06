@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useReducedMotion } from 'motion/react';
 import { ChevronRight, LogOut } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useLogout } from '../hooks/useLogout';
 import { useMatchStore } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
 import { Button } from '../components/ui/Button';
@@ -15,6 +16,11 @@ const ProfilPage = () => {
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   const prefersReducedMotion = useReducedMotion();
+  // Passe par `useLogout`, PAS par `useAuthStore.logout()` : ce dernier ne
+  // fait que vider l'etat local. Le cookie httpOnly restait donc valide
+  // (un simple rechargement reconnectait) et les stores du compte precedent
+  // restaient en memoire — visibles pour qui se connecte ensuite.
+  const logout = useLogout();
 
   if (!user) {
     return (
@@ -73,7 +79,7 @@ const ProfilPage = () => {
             Modifier le profil <ChevronRight className="w-3 h-3" aria-hidden="true" />
           </Link>
           <button
-            onClick={() => useAuthStore.getState().logout()}
+            onClick={() => logout()}
             className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-red-400 hover:text-red-400 touch-target"
           >
             <LogOut className="w-3 h-3" aria-hidden="true" />

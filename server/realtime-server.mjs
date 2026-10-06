@@ -10,7 +10,7 @@ import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs'
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
-import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies } from './state-helpers.mjs';
+import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies, toPublicBrLobby, toPublicBrRanking } from './state-helpers.mjs';
 import { deliverAuthCode } from './code-delivery.mjs';
 import { generateTotpSecret, verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
@@ -82,6 +82,10 @@ import {
   withRegistrationMutex,
   assertStrongPassword,
   tagWalletTransaction,
+  hasActiveWithdrawalKey,
+  trackWithdrawalKey,
+  forgetWithdrawalKey,
+  hydrateWithdrawalKeys,
   getPublicStats,
   getCommissionStats,
   markAdmin2faVerified,
@@ -156,35 +160,6 @@ import {
   computeBrRanking,
   computeBrPayouts,
 } from './br-engine.mjs';
-
-/**
- * ─── Battle Royale : confidentialite ────────────────────────────────────
- *
- * Le roster public ne doit JAMAIS contenir d'identifiant joueur. `userId`
- * (et `killedBy`, qui en est un) sont retires, ainsi que `arbiterId` et
- * `creatorId` : sinon un joueur pouvait relier un pseudo a un compte.
- *
- * L'UI n'a pas besoin de ces ids : elle recoit un booleen `isArbiter`, sur le
- * meme modele que `match.arbiter.isMe` du multijoueur.
- *
- * Seul `GET /api/br/lobbies/:id/arbiter` rend les `userId`, et uniquement a
- * l'arbitre designe : il doit choisir qui eliminer, et `eliminate` en exige un.
- */
-const toPublicBrPlayer = ({ userId, killedBy, ...rest }) => rest;
-
-const toPublicBrLobby = (lobby, { isArbiter = false } = {}) => ({
-  ...lobby,
-  players: (lobby.players || []).map(toPublicBrPlayer),
-  // `key` contient le userId du joueur solo (`solo-<userId>`) : le retirer
-  // aussi, sinon le roster public livrait l'identifiant par un autre
-  // chemin. Le regroupement se fait via `players[].teamId`, qui est opaque.
-  teams: (lobby.teams || []).map(({ members, key, ...rest }) => rest),
-  arbiterId: undefined,
-  creatorId: undefined,
-  isArbiter,
-});
-
-const toPublicBrRanking = (rows) => (rows || []).map(toPublicBrPlayer);
 
 /**
  * Formatage d'un montant ZC pour les notifications serveur.
@@ -286,7 +261,16 @@ const handleRequest = async (req, res) => {
   // ─── CODM STORE PROXY ────────────────────────────────────────────────────
   // Proxies requests to the Codashop GraphQL API to avoid CORS issues.
   // GET /api/codm/store?country=IN
+  //
+  // Session obligatoire : ces endpoints ne contiennent aucun secret, mais
+  // sans garde le serveur devenait un proxy Codashop gratuit pour tout
+  // Internet, sur le quota du forfait Render gratuit. L'usage metier est de
+  // rattacher le compte CODM d'un JOUEUR a son profil : un compte suffit.
   if (req.method === 'GET' && pathname === '/api/codm/store') {
+    if (!getAuthenticatedAppSession(req)) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
+      return;
+    }
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const storeUrl = new URL(req.url, 'http://localhost');
@@ -394,6 +378,12 @@ const handleRequest = async (req, res) => {
   // Proxies player lookup to the Codashop validation API.
   // GET /api/codm/player/:id?country=IN
   if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
+    // Meme garde que le proxy store : la verification d'un UID CODM est un
+    // acte de compte (rattacher son profil), pas une API publique.
+    if (!getAuthenticatedAppSession(req)) {
+      respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
+      return;
+    }
     if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     try {
       const userId = pathname.split('/api/codm/player/')[1];
@@ -1271,14 +1261,34 @@ const handleRequest = async (req, res) => {
     let withdrawTxId = null;
     let isDuplicate = false;
     try {
-      await withWalletMutex(session.user.id, async () => {
+await withWalletMutex(session.user.id, async () => {
         // Check idempotency INSIDE mutex to prevent TOCTOU race.
-        // Les tentatives marquées payoutStatus:'failed' (payout raté + remboursé)
-        // sont EXCLUES : un retry avec la même clé doit relancer un vrai payout.
+        // L'index dedie (`hasActiveWithdrawalKey`) ne depend PAS de
+        // l'historique de transactions, plafonne a 200 entrees : au-dela, la
+        // cle disparait de l'historique et un retry redébitait.
+        //
+        // Deux etats a distinguer :
+        //   - payout CONFIRME  (un payoutId existe) -> doublon strict, on
+        //     renvoie l'etat existant, aucun second transfert.
+        //   - payout AMBIGU (debit fait, aucun payoutId, pas de tag 'failed')
+        //     -> FedaPay a pu envoyer l'argent sans que la reponse arrive.
+        //     Relancer automatiquement risquerait un DOUBLE PAIEMENT. On
+        //     refuse donc : seule la moderation tranche apres verification.
         if (cleanKey) {
-          const existingTx = (getUserById(session.user.id)?.wallet?.transactions || [])
-            .find((tx) => tx.metadata?.idempotencyKey === cleanKey && tx.type === 'withdraw' && tx.metadata?.payoutStatus !== 'failed');
-          if (existingTx) {
+          const userRecord = getUserById(session.user.id);
+          const priorTx = (userRecord?.wallet?.transactions || []).find(
+            (tx) => tx?.metadata?.idempotencyKey === cleanKey && tx.type === 'withdraw',
+          );
+          if (hasActiveWithdrawalKey(session.user.id, cleanKey, userRecord?.wallet?.transactions)) {
+            if (priorTx && !priorTx.metadata?.payoutId && priorTx.metadata?.payoutStatus !== 'failed') {
+              respondJson(res, 409, {
+                ok: false,
+                error: 'Un retrait avec cette cle est deja engage et son transfert n\'est pas confirme. Contacte le support avant de reessayer.',
+                code: 'PAYOUT_PENDING_REVIEW',
+                idempotencyKey: cleanKey,
+              }, req);
+              return;
+            }
             debitedWallet = getServerWallet(session.user.id);
             isDuplicate = true;
             return;
@@ -1289,6 +1299,7 @@ const handleRequest = async (req, res) => {
           cleanKey ? { idempotencyKey: cleanKey } : {},
         );
         withdrawTxId = debitedWallet?.transactions?.[0]?.id || null;
+        if (cleanKey) trackWithdrawalKey(session.user.id, cleanKey);
       });
     } catch (error) {
       respondMappedError(res, error);
@@ -1328,11 +1339,30 @@ const handleRequest = async (req, res) => {
         await withWalletMutex(session.user.id, async () => {
           await depositToWallet(session.user.id, body.amount, `Remboursement retrait echoue (${body.amount} ZC)`);
         });
-        if (withdrawTxId) {
-          await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed' }).catch(() => {});
-        }
       } catch (refundError) {
-        log.error('CRITICAL: Refund also failed', { userId: session.user.id, error: refundError.message });
+        // Perte sèche : l'argent est parti sans que le remboursement passe.
+        // On le laisse CRISSER dans les logs plutôt que de l'avaler.
+        log.error('CRITICAL: Refund also failed — balance to reconcile manually', {
+          userId: session.user.id,
+          amount: body.amount,
+          idempotencyKey: cleanKey,
+          error: refundError.message,
+        });
+      }
+      if (withdrawTxId) {
+        try {
+          await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed' });
+          // La clé est libérée : le joueur a été remboursé, un retry doit
+          // pouvoir relancer un vrai payout.
+          forgetWithdrawalKey(session.user.id, cleanKey);
+        } catch (tagError) {
+          // Avant : `.catch(() => {})`. Avalé, le retrait restait NON marqué
+          // 'failed', donc compté dans les commissions ZOYD alors que la
+          // somme avait été remboursée — et la clé restait bloquée.
+          log.error('CRITICAL: payoutStatus not tagged — commission may be over-counted', {
+            userId: session.user.id, txId: withdrawTxId, error: tagError.message,
+          });
+        }
       }
       respondMappedError(res, payoutError);
       return;
@@ -2097,7 +2127,7 @@ const handleRequest = async (req, res) => {
       respondJson(res, status, {
         ok: true,
         lobby: toPublicBrLobby(outcome.lobby),
-        payouts: (outcome.payouts || []).map(toPublicBrPlayer),
+        payouts: toPublicBrRanking(outcome.payouts),
         arbiter: outcome.arbiter
           ? { userId: undefined, rate: outcome.arbiter.rate, amount: outcome.arbiter.amount }
           : null,
@@ -2126,7 +2156,7 @@ const handleRequest = async (req, res) => {
       lobby: toPublicBrLobby(lobby, { isArbiter }),
       ranking: toPublicBrRanking(computeBrRanking(lobby).slice(0, BR_PRIZED_PLACES)),
       projectedPayouts: {
-        payouts: (payouts || []).map(toPublicBrPlayer),
+        payouts: toPublicBrRanking(payouts),
         arbiter: arbiter ? { userId: undefined, rate: arbiter.rate, amount: arbiter.amount } : null,
       },
     }, req);
@@ -2782,9 +2812,15 @@ const handleRequest = async (req, res) => {
       const currentMatches = getStateCollection('matches');
       const targetMatch = currentMatches.find((entry) => entry.id === adminMatchAward[1]);
       const defaultScores = body.winnerTeam === 0 ? { team0: 1, team1: 0 } : { team0: 0, team1: 1 };
-      // Décision de modération = décision finale : on persistE puis on règle
-      // immédiatement, SANS fenêtre de confirmation (l'admin arbitre, les
-      // joueurs n'ont plus à confirmer). D'où deferSettlement: false.
+      // Décision de modération = décision finale : pas de fenêtre de
+      // confirmation (l'admin arbitre, les joueurs n'ont plus à confirmer).
+      //
+      // MAIS en DEUX PHASES, comme le chemin joueur. `deferSettlement: true`
+      // persiste d'abord `payoutDistributed: 'pending'`, et le versement a
+      // lieu ensuite. Avec `false`, les portefeuilles étaient crédités AVANT
+      // `saveMatches` : un crash ou un 503 d'écriture Supabase entre les deux
+      // laissait l'argent parti sans trace, et l'admin pouvait attribuer une
+      // seconde fois. Le job de reprise du cron doit pouvoir voir le match.
       const outcome = await submitMatchResultOnServer(currentMatches, session.user, adminMatchAward[1], {
         winnerTeam: body.winnerTeam,
         scores: targetMatch?.result?.scores || defaultScores,
@@ -2792,9 +2828,16 @@ const handleRequest = async (req, res) => {
         proofs: targetMatch?.result?.proofs,
         arbiterNotes: body.arbiterNotes || 'Resolution admin depuis le command center.',
         submittedBy: 'admin-dashboard',
-      }, { deferSettlement: false });
+      }, { deferSettlement: true });
+
+      // Phase 1 : le résultat est persisté avec `payoutDistributed:'pending'`.
       await saveMatches(io, outcome.matches, outcome.match);
-      if (outcome.match.result?.payoutDistributed !== true) {
+
+      // Phase 2 : le versement, maintenant que l'état est en base.
+      const settled = await settlePendingMatchResult(outcome.matches, adminMatchAward[1]);
+      await saveMatches(io, settled.matches, settled.match);
+
+      if (settled.match?.result?.payoutDistributed !== true) {
         log.error('Admin award settlement incomplete', { matchId: adminMatchAward[1] });
       }
       log.info('Admin action: award match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
@@ -3231,6 +3274,22 @@ const io = new SocketIOServer(server, {
 const socketConnectionCounts = new Map();
 const SOCKET_CONNECTION_LIMIT = 10;
 const SOCKET_CONNECTION_WINDOW = 60 * 1000;
+
+/**
+ * IP reelle du client pour le handshake Socket.IO.
+ *
+ * `handshake.address` est l'adresse TCP du pair : derriere le LB Render
+ * c'est celle du load balancer, donc TOUS les joueurs tombaient dans le
+ * meme compteur (10 connexions/minute pour toute la plateforme).
+ * `getClientIp` applique deja les bonnes regles (XFF de confiance, dernier
+ * saut). On lui fabrique donc un objet `{ socket, headers }` minimal plutot
+ * que de reimplementer la resolution ici.
+ */
+const getClientIpFromHandshake = (handshake) =>
+  getClientIp({
+    socket: { remoteAddress: handshake?.address },
+    headers: handshake?.headers || {},
+  });
 const MAX_SOCKET_CONNECTION_ENTRIES = 10000;
 
 const cleanupSocketConnectionCounts = () => {
@@ -3254,7 +3313,11 @@ const cleanupSocketConnectionCounts = () => {
 setInterval(cleanupSocketConnectionCounts, 5 * 60 * 1000);
 
 io.use(async (socket, next) => {
-  const ip = socket.handshake.address || '127.0.0.1';
+  // Même résolution que le rate-limit HTTP : derrière le LB Render, le peer
+  // TCP est l'IP du load balancer, pas celle du joueur. Compter par `peer`
+  // faisait partager UN SEUL compteur à toute la plateforme (10 connexions
+  // / min au total), et le 11e visiteur se faisait refuser.
+  const ip = getClientIpFromHandshake(socket.handshake);
   const now = Date.now();
   const entry = socketConnectionCounts.get(ip);
   if (!entry || now - entry.start > SOCKET_CONNECTION_WINDOW) {
@@ -3302,7 +3365,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:join', (payload = {}) => {
-    const ip = socket.handshake.address || '127.0.0.1';
+    const ip = getClientIpFromHandshake(socket.handshake);
     const { allowed } = checkRateLimit(ip, 'chat');
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
@@ -3330,7 +3393,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:update', (payload = {}) => {
-    const ip = socket.handshake.address || '127.0.0.1';
+    const ip = getClientIpFromHandshake(socket.handshake);
     const { allowed } = checkRateLimit(ip, 'chat');
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
@@ -3375,7 +3438,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('presence:leave', (payload = {}) => {
-    const ip = socket.handshake.address || '127.0.0.1';
+    const ip = getClientIpFromHandshake(socket.handshake);
     const { allowed } = checkRateLimit(ip, 'chat');
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
@@ -3387,7 +3450,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('channel:seen', (payload = {}) => {
-    const ip = socket.handshake.address || '127.0.0.1';
+    const ip = getClientIpFromHandshake(socket.handshake);
     const { allowed } = checkRateLimit(ip, 'chat');
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
@@ -3407,7 +3470,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing:update', (payload = {}) => {
-    const ip = socket.handshake.address || '127.0.0.1';
+    const ip = getClientIpFromHandshake(socket.handshake);
     const { allowed } = checkRateLimit(ip, 'chat');
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
@@ -3437,7 +3500,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('notification:push', async (payload = {}) => {
-    const ip = socket.handshake.address || '127.0.0.1';
+    const ip = getClientIpFromHandshake(socket.handshake);
     const { allowed } = checkRateLimit(ip, 'default');
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
@@ -3503,6 +3566,12 @@ const start = async () => {
 
   ensureGlobalChatChannel();
   syncMatchChatChannels(getStateCollection('matches'));
+
+  // Index des cles d'idempotence de retrait, reconstruit depuis les
+  // portefeuilles charges : sans lui, une cle anterieure au redemarrage
+  // serait inconnue et un retry redébitait le joueur.
+  hydrateWithdrawalKeys();
+
   initCronJobs();
 
   matchAutomationIntervalId = setInterval(async () => {

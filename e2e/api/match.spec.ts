@@ -372,7 +372,10 @@ test.describe('Match lifecycle', () => {
     expect(match.result.scores).toEqual({ team0: 10, team1: 3 });
     expect(match.result.resolutionType).toBe('played');
     expect(match.result.payoutDistributed).toBe('pending');
-    expect(match.result.confirmedByTeams).toEqual([]);
+    // `confirmedByTeams` est un tableau de userIds : c'est exactement le type
+    // de donnee qui ne doit JAMAIS sortir vers le client (meme ligne que
+    // `proofs`/`screenshots` ci-dessous).
+    expect(match.result.confirmedByTeams).toBeUndefined();
     expect(match.confirmationDeadline).toBeTruthy();
     expect(typeof match.result.proofHash).toBe('string');
     // Les preuves ne sont jamais rediffusées dans la charge utile publique.

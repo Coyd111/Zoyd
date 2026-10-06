@@ -124,7 +124,11 @@ const sanitizeMatchForBroadcast = (match, viewerId = null) => {
     safe.submittedBy = null;
   }
   if (safe.result) {
-    const { screenshots: _rs, proofs: _rp, ...safeResult } = safe.result;
+    // `confirmedByTeams` est un tableau de userIds. Il sert uniquement au
+    // calcul de `hasConfirmed` ci-dessus ; laissé dans le payload, il
+    // livrait à chaque socket l'identifiant interne de tous les joueurs
+    // ayant confirmé — exactement ce que le roster masque par ailleurs.
+    const { screenshots: _rs, proofs: _rp, confirmedByTeams: _cb, ...safeResult } = safe.result;
     safe.result = safeResult;
   }
   return safe;
@@ -203,6 +207,37 @@ const buildTournamentActionPayload = (tournament, userId) => {
 const getStoredLeagues = () => normalizeLeagueCollection(getStateCollection('leagues'));
 
 /**
+ * ─── Battle Royale : confidentialite ────────────────────────────────────
+ *
+ * Le roster public ne doit JAMAIS contenir d'identifiant joueur. `userId`
+ * (et `killedBy`, qui en est un) sont retires, ainsi que `arbiterId` et
+ * `creatorId` : sinon un joueur pouvait relier un pseudo a un compte.
+ * `teams[].key` est retire aussi : il vaut `solo-<userId>`.
+ *
+ * L'UI n'a pas besoin de ces ids : elle recoit un booleen `isArbiter`, sur
+ * le meme modele que `match.arbiter.isMe` du multijoueur.
+ *
+ * Seul `GET /api/br/lobbies/:id/arbiter` rend les `userId`, et uniquement a
+ * l'arbitre designe : il doit choisir qui eliminer, et `eliminate` en exige un.
+ *
+ * Ces fonctions servent DEUX sorties : la reponse HTTP ET la diffusion
+ * socket. C'etait le defaut avant : `saveBrLobbies` diffusait l'etat brut via
+ * `io.emit`, donc la sanitisation HTTP ne protegeait rien.
+ */
+const toPublicBrPlayer = ({ userId, killedBy, ...rest }) => rest;
+
+const toPublicBrLobby = (lobby, { isArbiter = false } = {}) => ({
+  ...lobby,
+  players: (lobby.players || []).map(toPublicBrPlayer),
+  teams: (lobby.teams || []).map(({ members, key, ...rest }) => rest),
+  arbiterId: undefined,
+  creatorId: undefined,
+  isArbiter,
+});
+
+const toPublicBrRanking = (rows) => (rows || []).map(toPublicBrPlayer);
+
+/**
  * Retrieve stored BR lobbies, normalized.
  * @returns {Array} Normalized BR lobby collection
  */
@@ -218,7 +253,7 @@ const getStoredBrLobbies = () => normalizeBrLobbyCollection(getStateCollection('
 const saveBrLobbies = async (io, lobbies) => {
   await replaceStateCollection('brLobbies', lobbies);
   const stored = getStoredBrLobbies();
-  broadcastStateSnapshot(io, 'brLobbies', stored);
+  broadcastStateSnapshot(io, 'brLobbies', stored.map((lobby) => toPublicBrLobby(lobby)));
   return stored;
 };
 
@@ -264,4 +299,6 @@ export {
   buildLeagueActionPayload,
   getStoredBrLobbies,
   saveBrLobbies,
+  toPublicBrLobby,
+  toPublicBrRanking,
 };

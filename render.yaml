@@ -29,6 +29,17 @@ services:
         sync: false
       - key: ZOYD_ADMIN_PASSWORD
         sync: false
+      # Identite du compte de moderation. Les valeurs par defaut du code
+      # (admin@zoyd.com / ZOYD Control / admin-zoyd-control) sont publiques :
+      # le depot est public, donc la cible du compte qui deplace de l'argent
+      # est devinable. A surcharger AVANT de deploiement, avec un mot de passe
+      # fort et different de tout autre service.
+      - key: ZOYD_ADMIN_EMAIL
+        sync: false
+      - key: ZOYD_ADMIN_PSEUDO
+        sync: false
+      - key: ZOYD_ADMIN_ID
+        sync: false
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY

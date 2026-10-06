@@ -39,20 +39,31 @@ export const withLeagueMutex = async (fn) => {
   }
 };
 
+/**
+ * Evict the oldest IDLE mutex when at capacity.
+ *
+ * Un mutex VERROILLE est expressement ecarte. Supprimer celui d'un joueur
+ * en cours d'operation creeait un nouveau Mutex au prochain appel : deux
+ * ecritures concurrentes sur le meme portefeuille — exactement ce que le
+ * mutex doit empecher (double debit, double credit).
+ */
 const evictOldestMutex = (map, timestamps) => {
-  if (map.size >= MUTEX_MAX_SIZE) {
-    let oldestKey = null;
-    let oldestTime = Infinity;
-    for (const [key, ts] of timestamps) {
-      if (ts < oldestTime) {
-        oldestTime = ts;
-        oldestKey = key;
-      }
+  if (map.size < MUTEX_MAX_SIZE) return;
+  let oldestKey = null;
+  let oldestTime = Infinity;
+  for (const [key, ts] of timestamps) {
+    const mutex = map.get(key);
+    // On saute les verrous actifs : le plafond est une limite de memoroire,
+    // pas une raison de perdre l'exclusion mutuelle.
+    if (!mutex || mutex.isLocked()) continue;
+    if (ts < oldestTime) {
+      oldestTime = ts;
+      oldestKey = key;
     }
-    if (oldestKey) {
-      map.delete(oldestKey);
-      timestamps.delete(oldestKey);
-    }
+  }
+  if (oldestKey) {
+    map.delete(oldestKey);
+    timestamps.delete(oldestKey);
   }
 };
 

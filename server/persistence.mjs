@@ -1058,6 +1058,73 @@ export const updateWalletSnapshot = async (userId, updater) =>
     return user;
   });
 
+// ─── Idempotence des retraits ───────────────────────────────────────────────
+//
+// L'historique de transactions est plafonne a 200 entrees par joueur (voir
+// `withTransaction`). La cle d'idempotence d'un retrait y etait cherchee :
+// au-dela de 200 transactions, elle disparait, et un retry avec la MEME cle
+// redébitait le joueur et relancait un second payout Mobile Money.
+//
+// On tient donc un index dedie, independant de l'historique affiche.
+// La cle est retiree quand le retrait est definitivement annule (payout rate
+// + remboursement), et hydratee au chargement depuis les portefeuilles deja
+// persistes — donc elle survit aussi a un redemarrage.
+const memoryWithdrawalKeys = new Map(); // userId -> Set<idempotencyKey>
+const MAX_TRACKED_WITHDRAWAL_KEYS = 500;
+
+const getWithdrawalKeys = (userId) => {
+  if (!memoryWithdrawalKeys.has(userId)) memoryWithdrawalKeys.set(userId, new Set());
+  return memoryWithdrawalKeys.get(userId);
+};
+
+/**
+ * La cle a-t-elle deja servi pour un retrait NON rate (donc rejouable) ?
+ * Un retrait marque `payoutStatus: 'failed'` est deliberement exclu : son
+ * pass a ete rembourse, un retry doit pouvoir relancer un vrai payout.
+ */
+export const hasActiveWithdrawalKey = (userId, key, transactions = []) => {
+  const active = getWithdrawalKeys(userId).has(key);
+  const inHistory = (Array.isArray(transactions) ? transactions : [])
+    .some((tx) => tx?.metadata?.idempotencyKey === key
+      && tx.type === 'withdraw'
+      && tx.metadata?.payoutStatus !== 'failed');
+  return active || inHistory;
+};
+
+/** Enregistre une cle au moment du debit. */
+export const trackWithdrawalKey = (userId, key) => {
+  if (!key) return;
+  const set = getWithdrawalKeys(userId);
+  // Garde-fou memoire : un joueur tres actif ne doit pas faire croitre l'index
+  // indefiniment. On repart de la valeur recente, pas de l'historique infini.
+  if (set.size >= MAX_TRACKED_WITHDRAWAL_KEYS) {
+    const oldest = set.values().next().value;
+    set.delete(oldest);
+  }
+  set.add(key);
+};
+
+/** Retire une cle : le payout a echoue et le joueur a ete rembourse. */
+export const forgetWithdrawalKey = (userId, key) => {
+  if (!key) return;
+  memoryWithdrawalKeys.get(userId)?.delete(key);
+};
+
+/** Reconstruit l'index depuis les portefeuilles charges (apredemarrage). */
+export const hydrateWithdrawalKeys = () => {
+  memoryWithdrawalKeys.clear();
+  for (const [userId, user] of memoryUsers.entries()) {
+    const txs = user?.wallet?.transactions;
+    if (!Array.isArray(txs)) continue;
+    for (const tx of txs) {
+      if (tx?.type !== 'withdraw') continue;
+      const key = tx.metadata?.idempotencyKey;
+      if (!key || tx.metadata?.payoutStatus === 'failed') continue;
+      trackWithdrawalKey(userId, key);
+    }
+  }
+};
+
 /**
  * Merge metadata into an existing wallet transaction and persist (memory + Supabase).
  * Used to tag a withdraw with payoutId/payoutStatus AFTER the FedaPay payout succeeds.
@@ -2009,14 +2076,36 @@ export const getStateEntity = (kind, entityId) => {
 
 // Upsert a single entity (avoids full collection replacement)
 export const upsertStateEntity = async (kind, entity) => {
+  // Mêmes verrous que `replaceStateCollection` : écrire pendant un rechargement
+  // ou sur un état non fiable produirait une divergence invisible.
+  if (reloadInProgress) {
+    throw makeError('SERVER_BUSY', 'Rechargement en cours, reessaie dans un instant.');
+  }
+  if (!stateTrusted) {
+    throw makeError(
+      'SERVER_BUSY',
+      'Base de donnees indisponible, ecriture refusee pour eviter une perte de donnees.',
+    );
+  }
+
   if (!memoryStateByKind.has(kind)) memoryStateByKind.set(kind, new Map());
   const kindMap = memoryStateByKind.get(kind);
-  // Cap : l'évincé doit aussi disparaître en base, sinon reload = résurrection.
+
+  // Plafond mémoire : on évince le plus ancien de la MÉMOIRE seulement.
+  //
+  // Le code supprimait aussi la ligne en base. C'était une perte sèche : à
+  // 10 000 entités d'un kind (matchs, ligues…), l'éviction supprimait
+  // définitivement un enregistrement — alors qu'un match porte une cagnotte et
+  // un historique de règlement. Entre une divergence mémoire/base sur une
+  // entité ancienne et la destruction de données financières, on choisit la
+  // divergence, et on la rend visible dans les logs.
   if (kindMap.size >= MAX_STATE_PER_KIND && !kindMap.has(entity.id)) {
     const oldest = kindMap.keys().next().value;
     kindMap.delete(oldest);
     memoryStateSnapshots.delete(`${kind}:${oldest}`);
-    sbFire('evictStateEntity', () => sbDeleteKindEntities(kind, [oldest]));
+    log.warn('State entity evicted from memory (kept in database)', {
+      kind, entityId: oldest, cap: MAX_STATE_PER_KIND,
+    });
   }
   kindMap.set(entity.id, entity);
   memoryStateSnapshots.set(`${kind}:${entity.id}`, entity);
@@ -2338,9 +2427,30 @@ export const loadAdminTotpSecrets = async () => {
  * message qui ne mentionnait pas la variable responsable.
  */
 const ensureSeedAdmin = async () => {
-  const adminEmail = normalizeEmailKey('admin@zoyd.com');
+  // Identite du compte de controle : surchargeable par variables
+  // d'environnement. Les valeurs par defaut sont DANS LE CODE, donc visibles
+  // de tous (le depot est public) : `admin@zoyd.com` et `admin-zoyd-control`
+  // donnaient a quiconque la cible exacte d'un compte qui deplace de l'argent
+  // (award, litiges, retraits). Surcharger ces variables rend la cible
+  // inconnaissable ; si elles restent sur leurs valeurs par defaut en
+  // production, on le dit explicitement dans les logs.
+  const seedEmail = process.env.ZOYD_ADMIN_EMAIL || 'admin@zoyd.com';
+  const seedPseudo = process.env.ZOYD_ADMIN_PSEUDO || 'ZOYD Control';
+  const seedId = process.env.ZOYD_ADMIN_ID || 'admin-zoyd-control';
+  const usesDefaultIdentity = !process.env.ZOYD_ADMIN_EMAIL
+    && !process.env.ZOYD_ADMIN_PSEUDO
+    && !process.env.ZOYD_ADMIN_ID;
+
+  const adminEmail = normalizeEmailKey(seedEmail);
   for (const user of memoryUsers.values()) {
-    if (normalizeEmailKey(user.email) === adminEmail) return;
+    if (normalizeEmailKey(user.email) === adminEmail) {
+      if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
+        log.warn('[SECURITY] Le compte admin utilise l identite PAR DEFAUT (connue : depot public).', {
+          hint: 'Renseigne ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID sur ton hebergeur.',
+        });
+      }
+      return;
+    }
   }
 
   const password = process.env.ZOYD_ADMIN_PASSWORD;
@@ -2351,8 +2461,8 @@ const ensureSeedAdmin = async () => {
 
   try {
     await insertUser({
-      id: 'admin-zoyd-control', role: 'admin',
-      pseudo: 'ZOYD Control', email: 'admin@zoyd.com', phone: '+22960000000',
+      id: seedId, role: 'admin',
+      pseudo: seedPseudo, email: seedEmail, phone: process.env.ZOYD_ADMIN_PHONE || '+22960000000',
       password,
       gameId: 'ADMIN-ZOYD-0001', controllerType: 'touch', device: 'pc',
       levelCODM: 150, rankMJ: 'Legendary', rankBR: 'Legendary', country: 'Benin',
@@ -2361,6 +2471,11 @@ const ensureSeedAdmin = async () => {
       achievements: ['Control Room'], bio: 'Compte de moderation ZOYD.',
     });
     log.warn('Admin de controle cree depuis ZOYD_ADMIN_PASSWORD — change ce mot de passe.');
+    if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
+      log.warn('[SECURITY] Ce compte utilise une identite PAR DEFAUT, connue de tous.', {
+        hint: 'Fixe ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID avant le prochain redemarrage.',
+      });
+    }
   } catch (error) {
     // Ex. mot de passe admin trop faible. On ne coupe pas le serveur : le jeu
     // reste accessible, seul le compte de modération manque.

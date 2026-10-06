@@ -108,6 +108,17 @@ const isTrustedProxyPeer = (remoteAddress) => {
 /**
  * Extract the real client IP from a request. X-Forwarded-For is honored
  * only when the direct peer is a trusted proxy (Render).
+ *
+ * ⚠️ On prend la DERNIÈRE valeur de X-Forwarded-For, pas la première.
+ * Un proxy n'efface pas l'en-tête : il APPENDA son IP. Un client peut donc
+ * envoyer `X-Forwarded-For: 1.2.3.4` et le proxy produit
+ * `1.2.3.4, <IP reelle du client>`. Lire `[0]` rendait cette valeur
+ * entièrement contrôlable par l'appelant : il suffisait de changer
+ * d'en-tête à chaque requête pour obtenir un bucket neuf et contourner
+ * complètement le rate-limit (donc le anti-bruteforce des 50 essais / 15 min).
+ * La dernière valeur est celle qu'a posée le proxy de confiance, donc la
+ * seule que l'appelant ne contrôle pas.
+ *
  * @param {import('node:http').IncomingMessage} req
  * @returns {string}
  */
@@ -116,8 +127,13 @@ const getClientIp = (req) => {
   if (isTrustedProxyPeer(peer)) {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      const firstIp = forwarded.split(',')[0].trim();
-      if (isValidIp(firstIp)) return firstIp;
+      const hops = forwarded
+        .split(',')
+        .map((hop) => hop.trim())
+        .filter(Boolean);
+      // Le dernier saut est le plus proche du client et donc non falsifiable.
+      const lastHop = hops[hops.length - 1];
+      if (lastHop && isValidIp(lastHop)) return lastHop;
     }
   }
   return peer || '127.0.0.1';

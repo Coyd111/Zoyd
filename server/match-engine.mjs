@@ -767,7 +767,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
     // NE PAS VERSER. Le resultat part en attente de confirmation des DEUX
     // equipes : c'est le seul moment ou le perdant peut encore contester
     // (openDispute l'autorise sur 'awaiting_confirmation') sans que la
-    // cagnotte ait deja quitt� le compte du gagnant.
+    // cagnotte ait deja quitte le compte du gagnant.
     match.status = fullResult.resolutionType === 'forfeit' ? 'awaiting_confirmation' : 'awaiting_confirmation';
     match.confirmationDeadline = new Date(Date.now() + CONFIRMATION_WINDOW_MS).toISOString();
     match.finishedAt = null;

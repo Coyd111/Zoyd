@@ -565,6 +565,17 @@ export const getHealthInfo = () => ({
   adminsInMemory: memoryAdminIds.size,
   channelsInMemory: memoryChatChannels.size,
   snapshotsInMemory: memoryStateSnapshots.size,
+  // Dernier controle d'integrite connu (cf. verifyDataIntegrity). Expose pour
+  // que /api/health et les metriques puissent dire "l'etat diverge" au lieu de
+  // le laisser nuray dans les logs au demarrage.
+  integrity: integrityCache
+    ? {
+      ok: integrityCache.ok,
+      checkedAt: new Date(integrityCacheAt).toISOString(),
+      stateMismatches: (integrityCache.stateMismatches || []).length,
+      walletIssues: (integrityCache.walletIssues || []).length,
+    }
+    : null,
 });
 
 // Verify data integrity — compares memory count vs Supabase count (cached 60s)
@@ -573,9 +584,22 @@ let integrityCacheAt = 0;
 const INTEGRITY_CACHE_TTL = 60_000;
 
 /**
- * Verify data integrity by comparing in-memory user count vs Supabase count.
+ * Verify data integrity: row counts in memory vs Supabase, plus the wallet
+ * invariant.
+ *
+ * Le controle ne portait que sur `app_users`. Une divergence sur les matchs,
+ * tournois, ligues ou lobbies BR passait totalement inaperçue alors que ce
+ * sont précisément les collections que `replaceStateCollection` remplace en
+ * bloc — donc celles qu'un batch interrompu peut tronquer.
+ *
+ * Les invariants de portefeuille sont eux verifies en memoire, sans requete :
+ * `lockedBalance` doit egaler la somme des `lockedEntries`. Un ecart signifie
+ * qu'une mise est bloquee sans reservation (argent perdu) ou qu'une reservation
+ * subsiste apres liberation (argent fantome). C'est l'invariant d'argent le
+ * plus utile et il ne coute rien a calculer.
+ *
  * Results are cached for 60 seconds to avoid hammering the DB.
- * @returns {Promise<{ ok: boolean, memoryUsers?: number, dbUsers?: number, reason?: string }>}
+ * @returns {Promise<{ ok: boolean, memoryUsers?: number, dbUsers?: number, state?: object, walletIssues?: object[], reason?: string }>}
  */
 export const verifyDataIntegrity = async () => {
   const now = Date.now();
@@ -592,20 +616,76 @@ export const verifyDataIntegrity = async () => {
 
     if (error) return { ok: false, reason: error.message };
 
+    // Comptage par kind : une seule requete, un `head: true` par collection.
+    const stateCounts = {};
+    const stateMismatches = [];
+    for (const kind of memoryStateByKind.keys()) {
+      stateCounts[kind] = memoryStateByKind.get(kind).size;
+    }
+    const { data: stateRows, error: stateError } = await supabase
+      .from('state_snapshots')
+      .select('kind');
+
+    if (stateError) {
+      log.error('State snapshot count failed', { message: stateError.message });
+    } else {
+      const dbByKind = {};
+      for (const row of stateRows || []) {
+        dbByKind[row.kind] = (dbByKind[row.kind] || 0) + 1;
+      }
+      const kinds = new Set([...Object.keys(stateCounts), ...Object.keys(dbByKind)]);
+      for (const kind of kinds) {
+        const mem = stateCounts[kind] || 0;
+        const db = dbByKind[kind] || 0;
+        if (mem !== db) stateMismatches.push({ kind, memory: mem, db, diff: db - mem });
+      }
+    }
+
+    // Invariant d'argent, purely local.
+    const walletIssues = [];
+    for (const [userId, user] of memoryUsers) {
+      const wallet = user?.wallet;
+      if (!wallet) continue;
+      const entriesTotal = roundAmount(Object.values(wallet.lockedEntries || {})
+        .reduce((sum, reservation) => sum + (Number(reservation?.amount) || 0), 0));
+      const lockedBalance = roundAmount(wallet.lockedBalance || 0);
+      if (Math.abs(entriesTotal - lockedBalance) > 0.01) {
+        walletIssues.push({ userId, lockedBalance, entriesTotal, diff: roundAmount(lockedBalance - entriesTotal) });
+      }
+      if (lockedBalance < -0.01) {
+        walletIssues.push({ userId, reason: 'NEGATIVE_LOCKED_BALANCE', lockedBalance });
+      }
+    }
+
     const memoryCount = memoryUsers.size;
-    const match = memoryCount === dbUserCount;
+    const match = memoryCount === dbUserCount
+      && stateMismatches.length === 0
+      && walletIssues.length === 0;
 
     if (!match) {
       log.error('DATA INTEGRITY MISMATCH', {
         memoryUsers: memoryCount,
         dbUsers: dbUserCount,
         diff: dbUserCount - memoryCount,
+        stateMismatches,
+        walletIssues: walletIssues.slice(0, 20),
+        walletIssueCount: walletIssues.length,
       });
     } else {
-      log.info('Data integrity OK', { users: memoryCount });
+      log.info('Data integrity OK', {
+        users: memoryCount,
+        state: stateCounts,
+      });
     }
 
-    integrityCache = { ok: match, memoryUsers: memoryCount, dbUsers: dbUserCount };
+    integrityCache = {
+      ok: match,
+      memoryUsers: memoryCount,
+      dbUsers: dbUserCount,
+      state: stateCounts,
+      stateMismatches,
+      walletIssues,
+    };
     integrityCacheAt = now;
     return integrityCache;
   } catch (err) {

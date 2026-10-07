@@ -1,4 +1,4 @@
-import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests } from './persistence.mjs';
+import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests, verifyDataIntegrity } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds } from './league-engine.mjs';
@@ -144,6 +144,38 @@ export const initCronJobs = () => {
       log.error('Erreur nettoyage mémoire', error);
     }
   }, 60 * 60 * 1000);
+
+  // Contrôle d'intégrité — toutes les heures.
+  //
+  // Le contrôle ne tournait qu'au démarrage : une divergence survenue ensuite
+  // (batch `replaceStateCollection` interrompu, mise d'argent orpheline) ne
+  // remontait que dans les logs, et le cache de 60 s rendait le démarrage trop
+  // peu fréquent pour servir d'alerte. Le résultat est aussi exposé par
+  // `getHealthInfo`, donc lisible via /api/health et les métriques.
+  let integrityRunning = false;
+  const runIntegrityCheck = async () => {
+    if (integrityRunning) return;
+    integrityRunning = true;
+    try {
+      const integrity = await verifyDataIntegrity();
+      if (!integrity.ok) {
+        log.error('Intégrité des données compromise', {
+          memoryUsers: integrity.memoryUsers,
+          dbUsers: integrity.dbUsers,
+          stateMismatches: integrity.stateMismatches,
+          walletIssueCount: (integrity.walletIssues || []).length,
+          walletIssues: (integrity.walletIssues || []).slice(0, 10),
+        });
+      }
+    } catch (error) {
+      log.error('Erreur contrôle intégrité', error);
+    } finally {
+      integrityRunning = false;
+    }
+  };
+  setInterval(() => { void runIntegrityCheck(); }, 60 * 60 * 1000);
+  // Premier passage différé : le contrôle de démarrage vient de tourner, inutile de le refaire.
+  setTimeout(() => { void runIntegrityCheck(); }, 30 * 1000).unref?.();
 
   // Tournois jamais démarrés — libère les passes bloqués (toutes les 6 h).
   // Sans ça, un tournoi resté 'recruiting' (pas assez d'arbitres/équipes)

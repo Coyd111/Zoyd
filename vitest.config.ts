@@ -19,6 +19,13 @@ export default defineConfig({
       '**/playwright-report/**',
       '**/test-results/**',
     ],
+    // 5 s par defaut est trop juste : un simple `await import('./rate-limiter.mjs')`
+    // peut depasser ce seuil sous contention CPU alors que rien n'a echoue. Les
+    // modules serveur font du scrypt au chargement, ce qui sature les workers
+    // quand plusieurs fichiers tournent en meme temps. Le timeout doit rendre
+    // compte de la contention, pas d'un defaut de navigateur — un vrai blocage
+    // hangait jusqu'a ce plafond, lui aussi.
+    testTimeout: 20_000,
   },
   globals: true,
   environment: 'jsdom',

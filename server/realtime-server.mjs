@@ -3585,7 +3585,9 @@ const start = async () => {
     adminTotpSecrets.set(userId, entry);
   }
 
-  // Verify data integrity after full load
+  // Verify data integrity after full load.
+  // Le résultat reste consultable via /api/health (getHealthInfo) et il est
+  // rejoué toutes les heures par le cron.
   const integrity = await verifyDataIntegrity();
   if (!integrity.ok) {
     log.error('DATA INTEGRITY CHECK FAILED at startup', integrity);

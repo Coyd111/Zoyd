@@ -1481,6 +1481,10 @@ await withWalletMutex(session.user.id, async () => {
   }
 
   if (req.method === 'POST' && pathname === '/api/tournaments') {
+    // Le mutex serialise les tournois entre eux mais ne limite rien dans le
+    // temps : sans ce garde, un joueur authentifie cree des tournois en boucle
+    // et chaque creation immobilise le mutex pour tous les autres.
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -1516,6 +1520,7 @@ await withWalletMutex(session.user.id, async () => {
 
   const tournamentRegister = pathname.match(/^\/api\/tournaments\/([^/]+)\/register$/);
   if (req.method === 'POST' && tournamentRegister) {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -1535,6 +1540,7 @@ await withWalletMutex(session.user.id, async () => {
 
   const tournamentLeave = pathname.match(/^\/api\/tournaments\/([^/]+)\/leave$/);
   if (req.method === 'POST' && tournamentLeave) {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -1653,6 +1659,7 @@ await withWalletMutex(session.user.id, async () => {
 
   const tournamentResult = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/result$/);
   if (req.method === 'POST' && tournamentResult) {
+    if (!rateLimitGuard(res, getClientIp(req), 'default')) return;
     const session = getAuthenticatedAppSession(req);
     if (!session) {
       respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });

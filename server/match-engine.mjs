@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { createLogger } from './logger.mjs';
-import { getUserById, updateUserAccount, sanitizeText } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText, DEFAULT_TRUST_SCORE } from './persistence.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
@@ -259,7 +259,11 @@ const applyResultSettlement = async (match, result) => {
             user.rankMJ = getRankFromElo(nextStats.elo);
             user.progression = addXpToProgression(user.progression, 120);
             if (result.resolutionType === 'forfeit') {
-              user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) + 2));
+               // `?? DEFAULT_TRUST_SCORE` : avec `|| 0`, un compte sans score
+               // demarreait a 0+2 au lieu de 100+2 — l'un des deux chemins de
+               // resolution attribuait donc des points de confiance differents
+               // pour la meme sanction.
+               user.trustScore = Math.max(0, Math.min(100, (user.trustScore ?? DEFAULT_TRUST_SCORE) + 2));
             }
             return user;
           });
@@ -278,7 +282,7 @@ const applyResultSettlement = async (match, result) => {
             user.rankMJ = getRankFromElo(nextStats.elo);
             user.progression = addXpToProgression(user.progression, 35);
             if (result.resolutionType === 'forfeit' && result.forfeitTeam === player.team) {
-              user.trustScore = Math.max(0, Math.min(100, Number(user.trustScore || 0) - 12));
+               user.trustScore = Math.max(0, Math.min(100, (user.trustScore ?? DEFAULT_TRUST_SCORE) - 12));
             }
             return user;
           });

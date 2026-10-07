@@ -108,6 +108,35 @@ Le fichier `render.yaml` définit automatiquement :
 - `app_notifications` : Notifications push
 - `app_push_subscriptions` : Abonnements web-push
 
+### Migrations à exécuter en production
+
+Le fichier `supabase/schema.sql` est cumulatif et idempotent
+(`CREATE TABLE IF NOT EXISTS`) : le réexécuter est sans risque.
+
+Table ajoutée récemment — **à créer avant ou au déploiement** :
+
+```sql
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0,
+  locked_until TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_updated ON login_attempts(updated_at);
+```
+
+Sans cette table, le verrouillage de connexion reste correct en mémoire mais
+ redevient volatil à chaque redéploiement : le code dégrade proprement (il
+n'échoue jamais une connexion parce que la table manque).
+
+Deux points de sécurité sur les tables de session :
+
+- `auth_sessions.token` et `realtime_sessions.token` contiennent le **SHA-256**
+  du jeton, pas le jeton. Un dump de la base ne donne donc aucune session
+  réutilisable. Les lignes écrites avant cette correction contiennent encore
+  des jetons en clair : pour les purger sans déconnecter personne, un simple
+  `DELETE FROM auth_sessions;` (les joueurs se reconnectent une fois).
+
 ## Monitoring
 
 ### Logs serveur

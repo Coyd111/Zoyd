@@ -137,6 +137,29 @@ export const normalizeWalletSnapshot = (wallet) => ({
   transactions: Array.isArray(wallet?.transactions) ? wallet.transactions : [],
 });
 
+/**
+ * Valeurs par defaut d'un compte neuf.
+ *
+ * `trustScore` et `levelCODM` doivent partager UNE source de verite : avant,
+ * la creation prenait 100 pendant que la normalisation retombait sur 0, donc
+ * un compte dont le champ disparait au rechargement changeait de score sans
+ * aucune decision de jeu. `levelCODM` vaut 1 (niveau de depart CODM).
+ */
+export const DEFAULT_TRUST_SCORE = 100;
+export const DEFAULT_LEVEL_CODM = 1;
+
+/**
+ * Lit un nombre en respectant un 0 VOLONTAIRE.
+ * `Number(x || defaut)` transforme un 0 decide en valeur par defaut : un
+ * score de confiance a 0 (compte suspendu) remontait a 100 a la construction
+ * du compte. `??` ne remplace que null/undefined/NaN.
+ */
+const numberOr = (value, fallback) => {
+  if (value === null || value === undefined || value === '') return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 export const sanitizeUserPayload = (payload) => {
   if (!payload) return null;
   const wallet = normalizeWalletSnapshot(payload.wallet);
@@ -144,8 +167,8 @@ export const sanitizeUserPayload = (payload) => {
     ...payload,
     wallet,
     walletBalance: roundAmount(wallet.cashBalance + wallet.bonusBalance),
-    trustScore: Number(payload.trustScore || 0),
-    levelCODM: Number(payload.levelCODM || 1),
+    trustScore: numberOr(payload.trustScore, DEFAULT_TRUST_SCORE),
+    levelCODM: numberOr(payload.levelCODM, DEFAULT_LEVEL_CODM),
   };
 };
 
@@ -154,8 +177,8 @@ export const sanitizePublicUserPayload = (payload) => {
   const { wallet, walletBalance, email, phone, legal, ...publicFields } = payload;
   return {
     ...publicFields,
-    trustScore: Number(payload.trustScore || 0),
-    levelCODM: Number(payload.levelCODM || 1),
+    trustScore: numberOr(payload.trustScore, DEFAULT_TRUST_SCORE),
+    levelCODM: numberOr(payload.levelCODM, DEFAULT_LEVEL_CODM),
   };
 };
 
@@ -611,13 +634,13 @@ export const buildUserPayload = (input, role = 'player') => {
     isActive: input.isActive !== false,
     controllerType: input.controllerType || 'touch',
     device: input.device || 'phone',
-    levelCODM: Number(input.levelCODM || 1),
+    levelCODM: numberOr(input.levelCODM, DEFAULT_LEVEL_CODM),
     rankMJ: input.rankMJ || 'Bronze', rankBR: input.rankBR || 'Bronze',
     country: input.country || 'Benin',
     streamerPseudo: streamerMode ? input.streamerPseudo?.trim() || '' : '',
     streamerMode, wallet,
     walletBalance: roundAmount(wallet.cashBalance + wallet.bonusBalance),
-    trustScore: Number(input.trustScore || 100),
+    trustScore: numberOr(input.trustScore, DEFAULT_TRUST_SCORE),
     stats: input.stats || { ...defaultStats },
     progression: input.progression || { ...defaultProgression },
     achievements: input.achievements || [],
@@ -854,7 +877,7 @@ export const getLeaderboard = () => {
       totalMatches: u.stats?.totalMatches || 0,
       totalEarnings: u.stats?.totalEarnings || 0,
       wins: u.stats?.wins || 0,
-      trustScore: u.trustScore || 0,
+      trustScore: numberOr(u.trustScore, DEFAULT_TRUST_SCORE),
       controllerType: u.controllerType,
       rankMJ: u.rankMJ,
       isOnline: u.isOnline || false,
@@ -1175,8 +1198,8 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
   const phk = normalizePhoneKey(trimmed);
   const lookupKey = pk || ek || phk;
 
-  // Check account lockout
-  const attempt = loginAttempts.get(lookupKey);
+  // Verrouillage de compte : lu en base pour survivre a un redemarrage.
+  const attempt = await readLoginAttempt(lookupKey);
   if (attempt?.lockedUntil && Date.now() < attempt.lockedUntil) {
     throw makeError('ACCOUNT_LOCKED', 'Compte temporairement bloque. Reessayez dans 15 minutes.');
   }
@@ -1186,19 +1209,19 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
 
   const [userId, passwordHash] = hash;
   if (!(await verifyPassword(password, passwordHash))) {
-    // Track failed attempt
-    const prev = loginAttempts.get(lookupKey) || { count: 0 };
-    const newCount = prev.count + 1;
-    if (newCount >= MAX_LOGIN_ATTEMPTS) {
-      loginAttempts.set(lookupKey, { count: 0, lockedUntil: Date.now() + LOCKOUT_DURATION_MS });
-    } else {
-      loginAttempts.set(lookupKey, { count: newCount, lockedUntil: null });
-    }
+    // Echec note : on persiste aussitot. Perdre ce compteur, c'est rendre le
+    // verrouillage decoratif.
+    const newCount = (attempt?.count || 0) + 1;
+    const next = newCount >= MAX_LOGIN_ATTEMPTS
+      ? { count: 0, lockedUntil: Date.now() + LOCKOUT_DURATION_MS }
+      : { count: newCount, lockedUntil: null };
+    loginAttempts.set(lookupKey, next);
+    writeLoginAttempt(lookupKey, next);
     throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
   }
 
-  // Reset failed attempts on success
-  loginAttempts.delete(lookupKey);
+  // Connexion reussie : le compteur retombe a zero.
+  clearLoginAttempt(lookupKey);
 
   const user = memoryUsers.get(userId);
   if (!user) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
@@ -1214,6 +1237,69 @@ const memoryPasswordHashes = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const loginAttempts = new Map(); // identifier -> { count, lockedUntil }
+
+// ─── Verrouillage de connexion persiste ─────────────────────────────────────
+//
+// Le compteur vivait dans un Map local : chaque redeploiement Render le
+// remettait a zero. Un attaquant pouvait doncessayer autant de mots de passe
+// qu'il le voulait, soit en forcant des rededeploiements, soit simplement en
+// attendant qu'un deploiement tombe au mauvais moment — 5 essais grants tous
+// les 15 minutes n'etaient donc pas garantis.
+//
+// On persiste donc l'etat de verrouillage dans `login_attempts`, avec la
+// CLE DE LA LIGNE = hash de l'identifiant. Jamais l'identifiant en clair :
+// la table ne doit pas devenir un annuaire des identifiants essayes.
+//
+// Le cache memoire reste la source de lecture (chemin chaud) ; la base est
+// la reference. Une lecture qui n'a pas encore vu la ligne ( premiere
+// connexion apres un redemarrage) retombe sur le comportement d'avant, ce qui
+// laisse au pire une fenetre de 5 essais — le meme ordre de grandeur qu'avant
+// la correction.
+const hashLockoutKey = (lookupKey) =>
+  crypto.createHash('sha256').update(`zoyd-lockout:${lookupKey}`).digest('hex');
+
+/** Lit l'etat de verrouillage, en memoire d'abord puis en base. */
+const readLoginAttempt = async (lookupKey) => {
+  const cached = loginAttempts.get(lookupKey);
+  if (cached) return cached;
+  try {
+    const rows = await sbSelect('login_attempts', { id: hashLockoutKey(lookupKey) });
+    const row = rows?.[0];
+    if (!row) return null;
+    const restored = { count: Number(row.count) || 0, lockedUntil: row.locked_until ? new Date(row.locked_until).getTime() : null };
+    loginAttempts.set(lookupKey, restored);
+    return restored;
+  } catch (err) {
+    log.error('login_attempts read error', { message: err?.message });
+    return null;
+  }
+};
+
+/** Ecrit l'etat de verrouillage. Fire-and-forget : un echec n'empeche pas l'authentification. */
+const writeLoginAttempt = (lookupKey, attempt) => {
+  sbFire('writeLoginAttempt', () => sbUpsert('login_attempts', {
+    id: hashLockoutKey(lookupKey),
+    count: attempt.count,
+    locked_until: attempt.lockedUntil ? new Date(attempt.lockedUntil).toISOString() : null,
+    updated_at: getNow(),
+  }));
+};
+
+const clearLoginAttempt = (lookupKey) => {
+  loginAttempts.delete(lookupKey);
+  sbFire('clearLoginAttempt', () => sbDelete('login_attempts', { id: hashLockoutKey(lookupKey) }));
+};
+
+/** Purge les lignes expirees : un verrou qui ne rend plus n'a plus de sens a etre conserve. */
+const purgeStaleLoginAttempts = () => {
+  const now = Date.now();
+  for (const [key, attempt] of loginAttempts) {
+    if (attempt.lockedUntil && attempt.lockedUntil <= now) loginAttempts.delete(key);
+  }
+  sbFire('purgeLoginAttempts', () => supabase
+    ? supabase.from('login_attempts').delete().lt('updated_at', new Date(now - 24 * 60 * 60 * 1000).toISOString())
+    : Promise.resolve());
+};
 
 const storePasswordHash = (userId, passwordHash, pseudo, email, phone) => {
   memoryPasswordHashes.set(userId, [userId, passwordHash]);
@@ -1542,6 +1628,11 @@ export const deleteUserAccount = async (userId) => withUserMutex(userId, async (
   if (user.phone) memoryPasswordHashes.delete(normalizePhoneKey(user.phone));
   if (user.email) memoryActivationCodes.delete(normalizeEmailKey(user.email));
   memoryPasswordResetCodes.delete(userId);
+  // Verrouillage de connexion : sinon un compte supprime laisse ses lignes de
+  // tentatives en base, et son identifiant pourrirait dans `login_attempts`.
+  for (const candidate of [user.pseudo, user.email, user.phone]) {
+    if (candidate) clearLoginAttempt(normalizePseudoKey(candidate) || normalizeEmailKey(candidate) || normalizePhoneKey(candidate));
+  }
   revokeAuthSessionsForUser(userId);
   deleteRealtimeSessionsForUser(userId);
   for (const [endpoint, sub] of memoryPushSubscriptions) {
@@ -1726,6 +1817,10 @@ const SESSION_ROTATION_MS = 30 * 60 * 1000;
 setInterval(() => {
   cleanupExpired(memoryAuthSessions);
   cleanupExpired(memoryRealtimeSessions);
+
+  // Purge des verrous de connexion expires (une table qui ne fait que
+  // grossir n'a pas de securite en memoire, elle en consomme).
+  purgeStaleLoginAttempts();
 
   // Purge old friend requests (>30 days)
   const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();

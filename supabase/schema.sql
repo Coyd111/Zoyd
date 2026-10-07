@@ -37,6 +37,24 @@ CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at);
 
 -- ============================================================
+-- 2b. VERROUILLAGE DE CONNEXION
+-- ============================================================
+-- Le compteur d'echecs vivait en RAM : chaque redemarrage Render le remettait
+-- a zero et le verrouillage devenait decoratif. Cette table le rend durable.
+--
+-- `id` est le SHA-256 de l'identifiant normalise, JAMAIS l'identifiant en
+-- clair : la table ne doit pas devenir un annuaire des pseudos et emails
+-- essayes en force.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0,
+  locked_until TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_updated ON login_attempts(updated_at);
+
+-- ============================================================
 -- 3. REALTIME SESSIONS
 -- ============================================================
 CREATE TABLE IF NOT EXISTS realtime_sessions (

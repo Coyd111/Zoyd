@@ -142,11 +142,45 @@ describe('persistence - User Payload Sanitization', () => {
       gameId: '674292618',
     };
     const user = persistence.sanitizeUserPayload(input);
-    
+
     expect(user.id).toBe('user1');
     expect(user.walletBalance).toBe(0);
+    // Attendait 0 avant la correction. La creation d'un compte prenait
+    // trustScore=100 alors que la normalisation retombait sur 0 : le meme
+    // compte valait 100 a l'inscription et 0 apres rechargement. Les deux
+    // lectures doivent partir de la meme constante.
+    expect(user.trustScore).toBe(persistence.DEFAULT_TRUST_SCORE);
+    expect(user.levelCODM).toBe(persistence.DEFAULT_LEVEL_CODM);
+  });
+
+  it('conserve un trustScore a 0 (compte sanctionne)', () => {
+    // Le piege du `||` : Number(0 || 100) vaut 100. Un score reellement nul —
+    // donc une sanction affichee a 100 — se lit maintenant comme un zero.
+    const user = persistence.sanitizeUserPayload({ id: 'sanctionne', trustScore: 0 });
     expect(user.trustScore).toBe(0);
-    expect(user.levelCODM).toBe(1);
+  });
+
+  it('aligne creation, normalisation et profil public sur le meme defaut', () => {
+    const input = { id: 'u1', pseudo: 'P', email: 'a@b.c', phone: '+22900000000', gameId: 'g1' };
+    const full = persistence.buildUserPayload(input, 'player');
+    const sanitized = persistence.sanitizeUserPayload(full);
+    const publicView = persistence.sanitizePublicUserPayload(full);
+
+    expect(full.trustScore).toBe(persistence.DEFAULT_TRUST_SCORE);
+    expect(sanitized.trustScore).toBe(full.trustScore);
+    expect(publicView.trustScore).toBe(full.trustScore);
+  });
+
+  it('remonte un trustScore stocke en chaine', () => {
+    // JSON/SQL peut renvoyer "85" : il doit redevenir un nombre, pas NaN.
+    const user = persistence.sanitizeUserPayload({ id: 'u2', trustScore: '85' });
+    expect(user.trustScore).toBe(85);
+    expect(Number.isNaN(user.trustScore)).toBe(false);
+  });
+
+  it('retombe sur le defaut si la valeur est inexploitable', () => {
+    const user = persistence.sanitizeUserPayload({ id: 'u3', trustScore: 'nawak' });
+    expect(user.trustScore).toBe(persistence.DEFAULT_TRUST_SCORE);
   });
 
   it('should calculate wallet balance correctly', () => {

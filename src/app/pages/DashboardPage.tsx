@@ -562,7 +562,10 @@ const DashboardPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Trust</div>
-                <div className="font-display font-black text-sm text-white italic">{user.trustScore || 50}</div>
+                {/* `??` et non `||` : un trustScore a 0 est une valeur reelle
+                    (compte sanctionne), pas une absence. Avec `||` il
+                    s'affichait 50. Le defaut 100 reste aligne sur le serveur. */}
+                <div className="font-display font-black text-sm text-white italic">{user.trustScore ?? 100}</div>
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Taux de victoire</div>

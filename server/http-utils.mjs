@@ -91,6 +91,22 @@ export const getCorsOrigin = (req) => {
 export const respondJson = (res, statusCode, payload, req = null) => {
   const effectiveReq = req || res._req;
   const origin = effectiveReq ? getCorsOrigin(effectiveReq) : ALLOWED_ORIGINS[0];
+
+  // Rotation de session : la session d'origine a ete renouvellee pendant le
+  // traitement. Le nouveau token voyage dans le Set-Cookie de cette reponse —
+  // c'est ce qui manquait pour que la rotation soit operante en cookie.
+  // Une seule tentative par requete : la rotation est asynchrone, l'en-tete
+  // doit etre pose avant `writeHead`.
+  const rotatedToken = effectiveReq?._authRotation;
+  if (rotatedToken && !res.headersSent) {
+    try {
+      res.setHeader('Set-Cookie', serializeAuthCookie(rotatedToken, 6 * 60 * 60));
+      effectiveReq._authRotation = null;
+    } catch (err) {
+      log.error('Failed to attach rotated session cookie', err);
+    }
+  }
+
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': origin,
@@ -209,19 +225,26 @@ export const readBearerToken = (req) => {
 
 /**
  * Resolve the authenticated app session from the request token.
- * Header Authorization = rotation active ; cookie seul = pas de rotation
- * (le navigateur ne recevrait jamais le nouveau token).
+ *
+ * La rotation est active sur les deux chemins. Le nouveau token est depose
+ * dans `req._authRotation`, que `respondJson` convertit en Set-Cookie : c'est
+ * ce qui manquait pour que la rotation ne casse pas le cookie. Le chemin
+ * `Authorization: Bearer` ne peut pas etre renouvelle par un cookie — le
+ * nouveau token est donc expose en reponse pour un client qui sait le
+ * consommer ; a defaut il garde l'ancien pendant la fenetre de grace.
+ *
  * @param {import('node:http').IncomingMessage} req
  * @returns {object|null}
  */
 export const getAuthenticatedAppSession = (req) => {
+  const emitToken = (token) => { req._authRotation = token; };
   const authorization = req.headers.authorization || '';
   if (authorization.startsWith('Bearer ')) {
     const token = authorization.slice('Bearer '.length).trim();
-    return token ? getAuthSession(token) : null;
+    return token ? getAuthSession(token, { emitToken }) : null;
   }
   const token = readBearerToken(req);
-  return token ? getAuthSession(token, { skipRotation: true }) : null;
+  return token ? getAuthSession(token, { emitToken }) : null;
 };
 
 /**

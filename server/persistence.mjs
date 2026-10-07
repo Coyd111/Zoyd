@@ -321,16 +321,22 @@ export const loadFromSupabase = async () => {
     }
     log.info('Users loaded', { count: memoryUsers.size });
 
-    // Auth sessions
+    // Auth sessions. La colonne `token` contient l'empreinte SHA-256 du
+    // token, pas le token : une session deja expiree est ignoree plutot que
+    // rechargee.
     const authSessions = await fetchAllRows('auth_sessions');
     for (const s of authSessions) {
-      memoryAuthSessions.set(s.token, { token: s.token, userId: s.user_id, issuedAt: s.issued_at, expiresAt: s.expires_at });
+      if (!s.token || !s.user_id) continue;
+      if (s.expires_at && new Date(s.expires_at) <= new Date()) continue;
+      memoryAuthSessions.set(s.token, { tokenHash: s.token, userId: s.user_id, issuedAt: s.issued_at, expiresAt: s.expires_at });
     }
 
     // Realtime sessions
     const rtSessions = await fetchAllRows('realtime_sessions');
     for (const s of rtSessions) {
-      memoryRealtimeSessions.set(s.token, { token: s.token, userId: s.user_id, pseudo: s.pseudo, role: s.role, issuedAt: s.issued_at, expiresAt: s.expires_at });
+      if (!s.token || !s.user_id) continue;
+      if (s.expires_at && new Date(s.expires_at) <= new Date()) continue;
+      memoryRealtimeSessions.set(s.token, { tokenHash: s.token, userId: s.user_id, pseudo: s.pseudo, role: s.role, issuedAt: s.issued_at, expiresAt: s.expires_at });
     }
 
     // Chat channels
@@ -1472,9 +1478,18 @@ export const resetPasswordWithCode = async (identifier, code, newPassword) => {
  */
 export const revokeAuthSessionsForUser = (userId) => {
   if (!userId) return;
-  for (const [token, record] of memoryAuthSessions) {
-    if (record?.userId === userId) memoryAuthSessions.delete(token);
+  const hashes = [];
+  for (const [tokenHash, record] of memoryAuthSessions) {
+    if (record?.userId === userId) hashes.push(tokenHash);
   }
+  for (const tokenHash of hashes) {
+    // `pendingToken` garde le successeur en clair : il doit disparaitre avec la
+    // session, sinon une rotation en vol pourrait le republier.
+    delete memoryAuthSessions.get(tokenHash)?.pendingToken;
+    memoryAuthSessions.delete(tokenHash);
+  }
+  // La requete porte sur TOUTES les sessions du joueur, filles comprises (une
+  // rotation cree une ligne distincte pour la meme personne).
   sbFire('revokeAuthSessionsForUser', () => sbDelete('auth_sessions', { user_id: userId }));
 };
 
@@ -1628,31 +1643,84 @@ export const activateUserAccount = async (userId) => {
 };
 
 // ─── Auth Sessions ──────────────────────────────────────────────────────────
+//
+// Persistance : les sessions sont ecrites dans `auth_sessions` /
+// `realtime_sessions` ET rechargees au boot par `loadFromSupabase`. Une seule
+// instance est supposee : une session creee apres le boot n'est pas visible
+// d'une autre instance avant son redemarrage.
+//
+// Les tokens ne sont PAS stockes en clair. La colonne `token` contient le
+// SHA-256 du token ; les cartes memoire sont donc indexees par empreinte.
+// Consequence : un vol de la base (dump, acces anon, sauvegarde) ne donne plus
+// aucune session exploitable pendant les 6 h de validite. Consequence
+// assumee : les sessions creees avant ce changement (en clair) deviennent
+// introuvables — les utilisateurs se reconnectent une fois.
+//
+// ATTENTION : `realtime_sessions.token` sert de cle etrangere pour le
+// realtime ; le charger tel quel en base laisserait un jeton en clair dans le
+// stockage, ce qu'on evite ici.
+/**
+ * Empreinte d'un token de session (SHA-256, hex).
+ * @param {string} token
+ * @returns {string}
+ */
+const hashSessionToken = (token) =>
+  crypto.createHash('sha256').update(String(token || '')).digest('hex');
+
 const createTokenRecord = async (type, userId, extra = {}) => {
   const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = hashSessionToken(token);
   const issuedAt = getNow();
   const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
-  const record = { token, userId, issuedAt, expiresAt, ...extra };
+  // `tokenHash` seulement : le token en clair ne doit jamais vivre en memoire
+  // (il ne sert plus apres la reponse qui le transmet au client).
+  const record = { tokenHash, userId, issuedAt, expiresAt, ...extra };
 
   if (type === 'auth') {
     evictOldest(memoryAuthSessions, MAX_AUTH_SESSIONS);
-    memoryAuthSessions.set(token, record);
-    await sbUpsert('auth_sessions', { token, user_id: userId, issued_at: issuedAt, expires_at: expiresAt });
+    memoryAuthSessions.set(tokenHash, record);
+    await sbUpsert('auth_sessions', { token: tokenHash, user_id: userId, issued_at: issuedAt, expires_at: expiresAt });
   } else {
     evictOldest(memoryRealtimeSessions, MAX_REALTIME_SESSIONS);
-    memoryRealtimeSessions.set(token, record);
-    await sbUpsert('realtime_sessions', { token, user_id: userId, pseudo: extra.pseudo, role: extra.role, issued_at: issuedAt, expires_at: expiresAt });
+    memoryRealtimeSessions.set(tokenHash, record);
+    await sbUpsert('realtime_sessions', { token: tokenHash, user_id: userId, pseudo: extra.pseudo, role: extra.role, issued_at: issuedAt, expires_at: expiresAt });
   }
 
-  return record;
+  // Le token en clair n'est renvoye qu'ici, a l'appelant qui doit le
+  // transmettre au client (cookie httpOnly ou reponse de connexion).
+  // `tokenHash` reste interne : il ne doit pas fuiter dans une reponse.
+  const { tokenHash: _internalHash, ...publicFields } = record;
+  return { ...publicFields, token };
 };
 
 const cleanupExpired = (map) => {
-  const now = getNow();
-  for (const [token, session] of map) {
-    if (session.expiresAt <= now) map.delete(token);
+  const now = Date.now();
+  for (const [tokenHash, session] of map) {
+    if (!session.expiresAt) continue;
+    if (new Date(session.expiresAt).getTime() <= now) map.delete(tokenHash);
+    // Session supplantee par rotation : on la garde le temps que le client
+    // recupere le nouveau cookie, puis on la retire (fenetre de grace).
+    else if (session.supersededAt && Date.now() - session.supersededAt > ROTATION_GRACE_MS) {
+      // Le token successeur en clair ne survit pas a la grace.
+      delete session.pendingToken;
+      map.delete(tokenHash);
+    }
   }
 };
+
+/**
+ * Fenetre de grace d'une session supplantee.
+ *
+ * Une rotation ne peut pas supprimer l'ancien token immediatement : la
+ * reponse qui porte le nouveau cookie peut arriver apres la requete suivante
+ * du client (le navigateur n'a pas encore recu le Set-Cookie). Sans grace, un
+ * simple rotation cassait la session — c'est exactement pourquoi la rotation
+ * etait desactivee sur le chemin cookie.
+ */
+const ROTATION_GRACE_MS = 10 * 60 * 1000;
+
+/** Delai au-dela duquel une session est renouvelee. */
+const SESSION_ROTATION_MS = 30 * 60 * 1000;
 
 // Timer-based session cleanup (every 5 minutes instead of per-request)
 setInterval(() => {
@@ -1689,77 +1757,142 @@ export const createAuthSession = async (userId) => {
 
 /**
  * Get an auth session by token, auto-deleting if expired or user not found.
- * @param {string} token - Session token
- * @param {object} [opts] - { skipRotation: true } pour le flow cookie httpOnly
- *   (le navigateur ne peut pas recevoir le nouveau token mid-request ; la TTL
- *   absolue de 6h reste le garde-fou).
- * @returns {{ token: string, userId: string, user: object }|null} Session with user or null
+ * @param {string} token - Session token (en clair, tel que recu par le client)
+ * @param {object} [opts] - { skipRotation: true } pour un appelant qui ne peut
+ *   pas transmettre le nouveau cookie (ex. verification TOTP : si la rotation
+ *   y emettait un Set-Cookie, le cookie de la 2FA serait ecrase par celui de la
+ *   session mere).
+ * @returns {{ userId: string, user: object }|null} Session with user or null
  */
 export const getAuthSession = (token, opts = {}) => {
   if (!token) return null;
-  const session = memoryAuthSessions.get(token);
+  const tokenHash = hashSessionToken(token);
+  const session = memoryAuthSessions.get(tokenHash);
   if (!session) return null;
   if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
-    memoryAuthSessions.delete(token);
+    memoryAuthSessions.delete(tokenHash);
     return null;
   }
   const user = getUserById(session.userId);
-  if (!user) { memoryAuthSessions.delete(token); return null; }
+  if (!user) { memoryAuthSessions.delete(tokenHash); return null; }
 
-  // Session rotation: if session is older than 30 minutes, fire-and-forget rotation.
-  // Skipped for cookie flow (see opts) — le client ne recevrait jamais le nouveau token.
+  // Rotation apres 30 min. Elle ne supprime pas l'ancien token : elle le
+  // supplante pendant une fenetre de grace et renvoie le nouveau token a
+  // l'appelant via `opts.emitToken`, qui le transmet au navigateur dans le
+  // Set-Cookie de la reponse en cours.
   if (!opts.skipRotation) {
-    const sessionAge = Date.now() - new Date(session.issuedAt).getTime();
-    if (sessionAge > 30 * 60 * 1000) {
-      rotateAuthSession(session, user).catch(err => log.error('Session rotation failed', err));
+    // Session deja renouvellee dont le client n'a toujours pas recupere le
+    // nouveau cookie : on le represente. Ce cas est distinct de la rotation
+    // initiale (verrouillee par `rotationEmittedAt`), sinon le client resterait
+    // bloque sur un token qu'il n'a pas encore remplace.
+    if (session.pendingToken) {
+      if (typeof opts.emitToken === 'function') opts.emitToken(session.pendingToken);
+    } else if (!session.rotationEmittedAt) {
+      const sessionAge = Date.now() - new Date(session.issuedAt).getTime();
+      if (sessionAge > SESSION_ROTATION_MS) {
+        // Anti-tempete : sans ce verrou, deux requetes paralleles declenchent
+        // deux rotations et la seconde ecrase le cookie de la premiere.
+        session.rotationEmittedAt = Date.now();
+        rotateAuthSession(session, user)
+          .then((newToken) => { if (newToken && typeof opts.emitToken === 'function') opts.emitToken(newToken); })
+          .catch(err => { delete session.rotationEmittedAt; log.error('Session rotation failed', err); });
+      }
     }
   }
 
-  return { ...session, user };
+  // La copie retournee ne doit jamais’exposer le successeur en clair.
+  const { pendingToken: _pending, ...safeSession } = session;
+  return { ...safeSession, user };
 };
 
 /**
- * Rotate an auth session: create a new token, delete the old one.
- * Called as fire-and-forget from getAuthSession.
+ * Rotate an auth session: issue a successor token and keep the previous one
+ * valid for a grace window.
+ * @param {object} session - session entry (indexee par empreinte)
+ * @returns {Promise<string|null>} the new token, to be delivered to the client
  */
 const rotateAuthSession = async (session, user) => {
   const newSession = await createTokenRecord('auth', session.userId);
-  memoryAuthSessions.delete(session.token);
-  await sbDelete('auth_sessions', { token: session.token });
-  // Pre-populate the new session in memory so the caller's next request uses it
-  const entry = memoryAuthSessions.get(newSession.token);
-  if (entry) entry.user = user;
+  const newHash = hashSessionToken(newSession.token);
+  const newEntry = memoryAuthSessions.get(newHash);
+
+  // La session mere a pu etre supprimee pendant l'ecriture (deconnexion,
+  // changement de mot de passe, suppression de compte). Sans ce controle, la
+  // rotation en vol recreait une session valide de 6 h apres le logout.
+  if (!memoryAuthSessions.has(session.tokenHash)) {
+    memoryAuthSessions.delete(newHash);
+    sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token: newHash }));
+    log.info('Session rotation discarded: session revoked in the meantime');
+    return null;
+  }
+
+  if (newEntry) {
+    newEntry.user = user;
+    // La session mere herite du marquage 2FA : sans ca, exiger un nouveau
+    // code TOTP a chaque rotation alors que la session vient d'etre validee.
+    if (session.admin2faVerified && session.admin2faExpires > Date.now()) {
+      newEntry.admin2faVerified = true;
+      newEntry.admin2faExpires = session.admin2faExpires;
+    }
+  }
+  // La session mere reste valable le temps que le client recupere le nouveau
+  // cookie. Elle est supprimee par `cleanupExpired` au dela de la grace.
+  session.supersededAt = Date.now();
+  session.supersededBy = newHash;
+  // Le token successeur est memorise EN CLAIR, uniquement en RAM et pour la
+  // duree de la grace. La rotation est asynchrone : elle se termine souvent
+  // apres l'ecriture de la reponse qui devait porter le Set-Cookie. Sans cette
+  // memorisation, le nouveau token serait perdu et le client resterait
+  // indefiniment sur l'ancien — la rotation ne servirait a rien.
+  session.pendingToken = newSession.token;
+  return newSession.token;
 };
 
 /**
  * Delete an auth session from memory and Supabase.
- * @param {string} token - Session token to delete
+ * @param {string} token - Session token (en clair)
  */
 export const deleteAuthSession = (token) => {
-  memoryAuthSessions.delete(token);
-  sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token }));
+  if (!token) return;
+  const tokenHash = hashSessionToken(token);
+  const session = memoryAuthSessions.get(tokenHash);
+  // Une session supplantee doit entrainer sa fille : sinon la rotation
+  // deviendrait un contournement de la deconnexion.
+  const hashes = session?.supersededBy ? [tokenHash, session.supersededBy] : [tokenHash];
+  for (const h of hashes) {
+    memoryAuthSessions.delete(h);
+    sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token: h }));
+  }
 };
 
 /**
  * Mark the STORED auth session as 2FA-verified (5-minute window).
  * Must mutate the stored entry — getAuthSession() returns a copy,
  * so setting flags on its result never persists (admin 2FA bypass bug).
- * @param {string} token - Session token
+ * @param {string} token - Session token (en clair)
  * @returns {boolean} true if the session was found and marked
  */
 export const markAdmin2faVerified = (token) => {
   if (!token) return false;
-  const stored = memoryAuthSessions.get(token);
+  const stored = memoryAuthSessions.get(hashSessionToken(token));
   if (!stored) return false;
+  const expires = Date.now() + 5 * 60 * 1000;
   stored.admin2faVerified = true;
-  stored.admin2faExpires = Date.now() + 5 * 60 * 1000;
+  stored.admin2faExpires = expires;
+  // Suivre la chaine de succession : si une rotation a deja ete emise, le
+  // client peut porter le nouveau token et sinon redemander un code.
+  let successor = stored.supersededBy ? memoryAuthSessions.get(stored.supersededBy) : null;
+  if (successor) {
+    successor.admin2faVerified = true;
+    successor.admin2faExpires = expires;
+  }
   return true;
 };
 
 /**
  * Create a realtime (WebSocket) session with a 6-hour TTL.
  * @param {object} params - { userId, pseudo, role }
- * @returns {{ token: string, userId: string, pseudo: string, role: string, expiresAt: string }}
+ * @returns {{ token: string, tokenHash: string, userId: string, pseudo: string, role: string, expiresAt: string }}
  */
 export const createRealtimeSession = async ({ userId, pseudo, role }) => {
   return await createTokenRecord('realtime', userId, { pseudo, role });
@@ -1767,10 +1900,11 @@ export const createRealtimeSession = async ({ userId, pseudo, role }) => {
 
 export const getRealtimeSession = (token) => {
   if (!token) return null;
-  const s = memoryRealtimeSessions.get(token);
+  const tokenHash = hashSessionToken(token);
+  const s = memoryRealtimeSessions.get(tokenHash);
   if (!s) return null;
   if (s.expiresAt && new Date(s.expiresAt) < new Date()) {
-    memoryRealtimeSessions.delete(token);
+    memoryRealtimeSessions.delete(tokenHash);
     return null;
   }
   return s;
@@ -1783,24 +1917,31 @@ export const getRealtimeSession = (token) => {
 export const getOrCreateRealtimeSessionForUser = async (userId) => {
   const now = new Date();
   for (const s of memoryRealtimeSessions.values()) {
-    if (s.userId === userId && s.expiresAt && new Date(s.expiresAt) > now) return s;
+    if (s.userId === userId && s.expiresAt && new Date(s.expiresAt) > now) {
+      // Copie sans l'empreinte interne : la valeur de retour part au client
+      // (`{ session }` sur la route de bootstrap).
+      const { tokenHash: _hash, ...safe } = s;
+      return safe;
+    }
   }
   const user = getUserById(userId);
   return await createRealtimeSession({ userId, pseudo: user?.pseudo || 'Joueur', role: user?.role || 'player' });
 };
 
 export const deleteRealtimeSession = (token) => {
-  memoryRealtimeSessions.delete(token);
-  sbFire('deleteRealtimeSession', () => sbDelete('realtime_sessions', { token }));
+  if (!token) return;
+  const tokenHash = hashSessionToken(token);
+  memoryRealtimeSessions.delete(tokenHash);
+  sbFire('deleteRealtimeSession', () => sbDelete('realtime_sessions', { token: tokenHash }));
 };
 
 export const deleteRealtimeSessionsForUser = (userId) => {
-  const tokensToDelete = [];
-  for (const [token, session] of memoryRealtimeSessions) {
-    if (session.userId === userId) tokensToDelete.push(token);
+  const hashes = [];
+  for (const [tokenHash, session] of memoryRealtimeSessions) {
+    if (session.userId === userId) hashes.push(tokenHash);
   }
-  for (const token of tokensToDelete) {
-    memoryRealtimeSessions.delete(token);
+  for (const tokenHash of hashes) {
+    memoryRealtimeSessions.delete(tokenHash);
   }
   sbFire('deleteRealtimeSessionsForUser', () => sbDelete('realtime_sessions', { user_id: userId }));
 };

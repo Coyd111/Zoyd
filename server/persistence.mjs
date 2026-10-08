@@ -604,7 +604,11 @@ export const getHealthInfo = () => ({
     : null,
   // false = le verrouillage de connexion ne survit PAS a un redemarrage tant que
   // la migration `login_attempts` n'est pas jouee. null = pas encore sonde.
+  // `rows` distingue une table creee et vide d'une table reellement en service ;
+  // `error` donne la cause exacte quand la sonde echoue.
   loginLockoutPersisted: loginAttemptsPersisted,
+  loginAttemptRows: loginAttemptsRows,
+  loginAttemptError: loginAttemptsError,
 });
 
 // Verify data integrity — compares memory count vs Supabase count (cached 60s)
@@ -1379,21 +1383,28 @@ const hashLockoutKey = (lookupKey) =>
  * verifiable SANS connexion SQL : `/api/health` suffit.
  */
 let loginAttemptsPersisted = null; // null = pas encore sonde
+let loginAttemptsRows = null;
+let loginAttemptsError = null;
 
 const probeLoginAttemptsTable = async () => {
   if (!supabase) { loginAttemptsPersisted = false; return; }
   try {
-    const { error } = await supabase
+    const { count, error } = await supabase
       .from('login_attempts')
       .select('id', { count: 'exact', head: true });
     loginAttemptsPersisted = !error;
+    loginAttemptsRows = typeof count === 'number' ? count : null;
+    loginAttemptsError = error?.message || null;
     if (error) {
-      log.warn('Table login_attempts absente : verrouillage de connexion NON persiste (migration en attente).');
+      log.warn('Table login_attempts absente : verrouillage de connexion NON persiste (migration en attente).', { message: error.message });
     } else {
-      log.info('Table login_attempts presente : verrouillage de connexion persiste.');
+      // Le nombre de lignes distingue « table creee et vide » de « table en
+      // service » : sans lui, un booléen ne prouve que la presence, pas l'usage.
+      log.info('Table login_attempts presente : verrouillage de connexion persiste.', { rows: loginAttemptsRows });
     }
   } catch (err) {
     loginAttemptsPersisted = false;
+    loginAttemptsError = err?.message || null;
     log.warn('Sonde login_attempts impossible', { message: err?.message });
   }
 };

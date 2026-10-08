@@ -1389,11 +1389,17 @@ let loginAttemptsError = null;
 const probeLoginAttemptsTable = async () => {
   if (!supabase) { loginAttemptsPersisted = false; return; }
   try {
+    // `limit(1)` et non `head: true` : avec head, cette version du SDK
+    // renvoie `error` mais laisse `count` vide, et le nombre de lignes — ce
+    // qui distingue une table creee d'une table en service — restait
+    // inexploitable. Une seule ligne ramenee, le compte exact est dans
+    // l'en-tete Content-Range.
     const { count, error } = await supabase
       .from('login_attempts')
-      .select('id', { count: 'exact', head: true });
+      .select('id', { count: 'exact' })
+      .limit(1);
     loginAttemptsPersisted = !error;
-    loginAttemptsRows = typeof count === 'number' ? count : null;
+    loginAttemptsRows = Number.isFinite(count) ? count : null;
     loginAttemptsError = error?.message || null;
     if (error) {
       log.warn('Table login_attempts absente : verrouillage de connexion NON persiste (migration en attente).', { message: error.message });

@@ -5,6 +5,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // comparaison, pas le mock lui-même.
 let dbUsers = [];
 let dbStateRows = [];
+// Tables « absentes » : on simule une migration qui n'a pas encore ete jouee.
+let missingTables = new Set();
 
 vi.mock('./supabase.mjs', () => {
   // Chaine generique vide : `loadFromSupabase` Balaye plusieurs tables et
@@ -27,6 +29,18 @@ vi.mock('./supabase.mjs', () => {
   };
 
   return { supabase: { from: vi.fn((table) => {
+      if (missingTables.has(table)) {
+        // PostgREST sur une table absente : erreur 42P01, pas d'exception.
+        const fail = () => Promise.resolve({ data: null, error: { message: `relation "public.${table}" does not exist`, code: '42P01' } });
+        const missing = {
+          then: (onOk, onErr) => fail().then(onOk, onErr),
+          range: vi.fn(() => fail()),
+          eq: vi.fn(() => missing),
+          order: vi.fn(() => missing),
+          select: vi.fn(() => missing),
+        };
+        return missing;
+      }
       if (table === 'app_users') {
         return {
           select: vi.fn(() => ({
@@ -105,6 +119,7 @@ beforeEach(async () => {
   Date.now = () => NATIVE_NOW() + clockShift;
   dbUsers = [];
   dbStateRows = [];
+  missingTables = new Set();
   // Le chargement marque l'etat comme fiable : sans ca, upsertStateEntity
   // refuse toute ecriture (garde-fou anti-purge).
   await persistence.loadFromSupabase();
@@ -241,6 +256,32 @@ describe("verifyDataIntegrity : invariant des portefeuilles", () => {
     await createUser();
     const result = await persistence.verifyDataIntegrity();
     expect(result.walletIssues).toHaveLength(0);
+  });
+});
+
+describe('table login_attempts absente : degrade sans casser le serveur', () => {
+  it('ne met PAS stateTrusted a false', async () => {
+    // Le piege : `fetchAllRows` leve sur une table absente, et l'echec remettait
+    // `stateTrusted = false`, ce qui REFUSE toute ecriture d'etat. Le serveur
+    // demarrerait en lecture seule a cause d'une migration en attente, alors
+    // que la base est saine.
+    missingTables.add('login_attempts');
+    await persistence.loadFromSupabase();
+
+    const health = persistence.getHealthInfo();
+    expect(health.stateTrusted).toBe(true);
+    expect(health.stateLoadError).toBeNull();
+  });
+
+  it('signale que le verrouillage n\'est pas persiste', async () => {
+    missingTables.add('login_attempts');
+    await persistence.loadFromSupabase();
+    expect(persistence.getHealthInfo().loginLockoutPersisted).toBe(false);
+  });
+
+  it('signale le verrouillage comme persiste quand la table existe', async () => {
+    await persistence.loadFromSupabase();
+    expect(persistence.getHealthInfo().loginLockoutPersisted).toBe(true);
   });
 });
 

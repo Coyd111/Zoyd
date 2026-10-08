@@ -113,7 +113,12 @@ Le fichier `render.yaml` définit automatiquement :
 Le fichier `supabase/schema.sql` est cumulatif et idempotent
 (`CREATE TABLE IF NOT EXISTS`) : le réexécuter est sans risque.
 
-Table ajoutée récemment — **à créer avant ou au déploiement** :
+Le DDL n'est pas accessible depuis l'application : PostgREST ne fait que du
+CRUD, et la clé `service_role` n'exécute pas de SQL arbitraire. Une migration se
+joue donc dans l'éditeur SQL du tableau de bord Supabase (ou via un Personal
+Access Token et l'API Management).
+
+#### `login_attempts` — verrouillage de connexion persistant
 
 ```sql
 CREATE TABLE IF NOT EXISTS login_attempts (
@@ -125,11 +130,31 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 CREATE INDEX IF NOT EXISTS idx_login_attempts_updated ON login_attempts(updated_at);
 ```
 
-Sans cette table, le verrouillage de connexion reste correct en mémoire mais
- redevient volatil à chaque redéploiement : le code dégrade proprement (il
-n'échoue jamais une connexion parce que la table manque).
+`id` est le SHA-256 de l'identifiant normalisé (préfixe `zoyd-lockout:`),
+jamais l'identifiant en clair : la table ne doit pas devenir un annuaire des
+pseudos et emails essayés en force.
 
-Deux points de sécurité sur les tables de session :
+**Vérifier sans connexion SQL** — le serveur sonde la table au démarrage et
+publie le résultat :
+
+```bash
+curl -s https://zoyd.onrender.com/api/health | grep -o '"loginLockoutPersisted":[a-z]*'
+```
+
+`true` = migration jouée. `false` = elle ne l'est pas encore.
+
+**Si la table est absente, ce qui se passe** — et ce qui ne se passe pas :
+
+- Le verrouillage de connexion continue de fonctionner, en mémoire.
+- Il ne survit plus à un redémarrage : un attaquant n'a qu'à attendre un
+  déploiement pour repartir de cinq essais.
+- **Aucune connexion n'est refusée** à cause de la migration manquante. La
+  table est sondée hors du `try/catch` global volontairement : traitée comme
+  une table ordinaire, son absence remit `stateTrusted` à `false` et le serveur
+  refusait alors *toute écriture d'état* — lecture seule totale, pour une base
+  parfaitement saine.
+
+#### Sessions
 
 - `auth_sessions.token` et `realtime_sessions.token` contiennent le **SHA-256**
   du jeton, pas le jeton. Un dump de la base ne donne donc aucune session

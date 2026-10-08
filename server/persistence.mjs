@@ -459,6 +459,15 @@ export const loadFromSupabase = async () => {
       memoryProcessedTransactions.add(p.transaction_id);
     }
 
+    // Probe `login_attempts` AVANT le log de fin de chargement, et hors du
+    // try/catch global : cette table est OPTIONNELLE. Elle porte l'etat de
+    // verrouillage de connexion, qui doit survivre a un redemarrage. Si elle
+    // n'existe pas encore, `fetchAllRows` leve (table absente = erreur de
+    // requete) et entrainnerait `stateTrusted = false` : TOUTES les ecritures
+    // d'etat seraient refusees alors que la base est parfaitement saine. Le
+    // serveur demarrerait en lecture seule a cause d'une migration en attente.
+    await probeLoginAttemptsTable();
+
     log.info('Loaded from Supabase', { durationMs: Date.now() - t0, users: memoryUsers.size, channels: memoryChatMessages.size || memoryChatChannels.size, snapshots: memoryStateSnapshots.size });
   } catch (err) {
     // Un échec de table NE doit pas laisser le serveur démarrer « à moitié » :
@@ -593,6 +602,9 @@ export const getHealthInfo = () => ({
       walletIssues: (integrityCache.walletIssues || []).length,
     }
     : null,
+  // false = le verrouillage de connexion ne survit PAS a un redemarrage tant que
+  // la migration `login_attempts` n'est pas jouee. null = pas encore sonde.
+  loginLockoutPersisted: loginAttemptsPersisted,
 });
 
 // Verify data integrity — compares memory count vs Supabase count (cached 60s)
@@ -1354,6 +1366,37 @@ const loginAttempts = new Map(); // identifier -> { count, lockedUntil }
 // la correction.
 const hashLockoutKey = (lookupKey) =>
   crypto.createHash('sha256').update(`zoyd-lockout:${lookupKey}`).digest('hex');
+
+/**
+ * La table `login_attempts` existe-t-elle ?
+ *
+ * Elle est creee par une migration manuelle (Supabase SQL editor) : le DDL n'est
+ * pas accessible depuis l'API. Tant qu'elle manque, le verrouillage de
+ * connexion fonctionne mais ne survit pas a un redemarrage — un attaquant
+ * n'a qu'a attendre un deploiement pour repartir de zero.
+ *
+ * On expose cet etat dans `getHealthInfo` pour que la migration soit
+ * verifiable SANS connexion SQL : `/api/health` suffit.
+ */
+let loginAttemptsPersisted = null; // null = pas encore sonde
+
+const probeLoginAttemptsTable = async () => {
+  if (!supabase) { loginAttemptsPersisted = false; return; }
+  try {
+    const { error } = await supabase
+      .from('login_attempts')
+      .select('id', { count: 'exact', head: true });
+    loginAttemptsPersisted = !error;
+    if (error) {
+      log.warn('Table login_attempts absente : verrouillage de connexion NON persiste (migration en attente).');
+    } else {
+      log.info('Table login_attempts presente : verrouillage de connexion persiste.');
+    }
+  } catch (err) {
+    loginAttemptsPersisted = false;
+    log.warn('Sonde login_attempts impossible', { message: err?.message });
+  }
+};
 
 /** Lit l'etat de verrouillage, en memoire d'abord puis en base. */
 const readLoginAttempt = async (lookupKey) => {

@@ -215,7 +215,24 @@ export const verifyPassword = async (password, passwordHash) => {
 const sbCatch = (label, err) => { log.error(`[SB] ${label}`, { error: err?.message || String(err) }); };
 
 /** Fire-and-forget: sbUpsert that won't throw even if unawaited. */
-export const sbFire = (label, fn) => { fn().catch((e) => sbCatch(label, e)); };
+/**
+ * Execute un effet Supabase best-effort sans jamais bloquer l'appelant.
+ *
+ * `Promise.resolve()` encapsule le retour : les query builders PostgREST sont
+ * des thenables (`.then` uniquement dans @supabase/postgrest-js 2.x, pas de
+ * `.catch`). Les passer directement provoquait `fn(...).catch is not a
+ * function` — une exception non rattrapee dans un setInterval, donc
+ * `process.exit(1)` via le gestionnaire uncaughtException, et un crash en
+ * boucle du service. Mieux vaut une fonction qui echoue silencieusement
+ * qu'un arret de production.
+ */
+export const sbFire = (label, fn) => {
+  try {
+    Promise.resolve().then(() => fn()).catch((e) => sbCatch(label, e));
+  } catch (e) {
+    sbCatch(label, e);
+  }
+};
 
 export const sbUpsert = async (table, data) => {
   if (!supabase) return;
@@ -1371,14 +1388,20 @@ const clearLoginAttempt = (lookupKey) => {
 };
 
 /** Purge les lignes expirees : un verrou qui ne rend plus n'a plus de sens a etre conserve. */
-const purgeStaleLoginAttempts = () => {
+const purgeStaleLoginAttempts = async () => {
   const now = Date.now();
   for (const [key, attempt] of loginAttempts) {
     if (attempt.lockedUntil && attempt.lockedUntil <= now) loginAttempts.delete(key);
   }
-  sbFire('purgeLoginAttempts', () => supabase
-    ? supabase.from('login_attempts').delete().lt('updated_at', new Date(now - 24 * 60 * 60 * 1000).toISOString())
-    : Promise.resolve());
+  // `sbFire` attend une fonction renvoyant une PROMESSE. Renvoyer le builder
+  // PostgREST (.then mais pas .catch dans @supabase/postgrest-js 2.x) faisait
+  // echouer `fn().catch` — exception non rattrapee dans le setInterval, donc
+  // process.exit(1) via le gestionnaire uncaughtException, toutes les 5 min.
+  if (!supabase) return;
+  await supabase
+    .from('login_attempts')
+    .delete()
+    .lt('updated_at', new Date(now - 24 * 60 * 60 * 1000).toISOString());
 };
 
 const storePasswordHash = (userId, passwordHash, pseudo, email, phone) => {

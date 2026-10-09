@@ -16,6 +16,15 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
+  // `onClose` est presque toujours une arrow function : nouvelle référence à
+  // chaque rendu du parent. Le garder dans l'effet en dépendance faisait
+  // rejouer l'effet à chaque frappe au clavier — le cleanup rendait le focus
+  // au déclencheur, le champ perdait le focus, et sur mobile le clavier se
+  // fermait à chaque caractère saisi. Une ref évite ce cycle sansmemforcer le
+  // parent à memoïser ses callbacks.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; });
+
   const sizeClasses = {
     sm: 'max-w-md',
     md: 'max-w-lg',
@@ -25,6 +34,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
 
   useEffect(() => {
     if (!isOpen) return;
+    // Capturé à l'ouverture : le « déclencheur » est l'élément qui était actif
+    // avant l'ouverture de la modale.
     triggerRef.current = document.activeElement;
     // Focus initial sur le panneau
     const t = window.setTimeout(() => {
@@ -34,7 +45,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       // Focus trap minimal : Tab reste dans la modale
@@ -57,7 +68,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
       document.removeEventListener('keydown', onKeyDown, true);
       (triggerRef.current as HTMLElement | null)?.focus?.();
     };
-  }, [isOpen, onClose]);
+    // Uniquement `isOpen` : toute autre dépendance rejoue le cleanup et donc
+    // la restitution du focus, y compris pendant la saisie.
+  }, [isOpen]);
 
   return (
     <AnimatePresence>

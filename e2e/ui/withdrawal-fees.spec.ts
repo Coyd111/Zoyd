@@ -59,6 +59,90 @@ test.describe('Avertissement frais de retrait', () => {
     return modal;
   };
 
+  test('la saisie du numero garde le focus (clavier mobile qui ne se ferme pas)', async ({ page }) => {
+    await login(page);
+    const modal = await openWithdrawModal(page);
+
+    // Régression du signalement « le clavier se ferme à chaque frappe ».
+    //
+    // Le `Modal` avait `useEffect(..., [isOpen, onClose])`. Comme `onClose`
+    // est une arrow function, sa référence changeait à chaque rendu du parent :
+    // chaque frappe rejouait l'effet, dont le CLEANUP, qui rendait le focus au
+    // déclencheur. Le champ perdait le focus — invisible sur desktop, mais sur
+    // mobile cela ferme le clavier à chaque caractère saisi.
+    //
+    // On vérifie donc que le focus SURVIT à la saisie, caractère par caractère.
+    const phone = modal.locator('#withdraw-phone');
+    await phone.click();
+    // Le champ est PRÉ-REMPLI avec le numéro du profil : on le vide d'abord,
+    // sinon la saisie s'ajoute à l'existant et l'assertion n'aurait aucun sens.
+    await phone.fill('');
+    await phone.click();
+
+    for (const digit of ['0', '1', '6', '5']) {
+      await phone.press(digit);
+      await expect
+        .poll(async () => phone.evaluate((el) => el === document.activeElement), {
+          message: `le focus doit rester dans le champ après la frappe « ${digit} »`,
+        })
+        .toBe(true);
+    }
+
+    // Et le format est bien appliqué : le joueur n'a tapé que des chiffres.
+    await expect(phone).toHaveValue('01 65');
+    await expect(phone).toHaveValue(/^[\d ]*$/);
+  });
+
+  test('le pavé numérique suffit : aucun espace nécessaire', async ({ page }) => {
+    await login(page);
+    const modal = await openWithdrawModal(page);
+
+    // Le pavé d'un téléphone n'a PAS de touche espace, alors que le placeholder
+    // affichait « +229 01 61 00 00 01 ». Le champ doit donc se formater seul.
+    const phone = modal.locator('#withdraw-phone');
+    await phone.click();
+    // Saisie « brute », uniquement des chiffres, avec l'indicatif collé.
+    await phone.fill('+2290165240654');
+
+    await expect(phone).toHaveValue('+229 01 65 24 06 54');
+    // Le format affiché est accepté par la validation : pas d'erreur en ligne.
+    // `Input` omet l'attribut quand tout va bien, on vérifie donc l'absence
+    // de `aria-invalid="true"` plutôt qu'une valeur.
+    await expect(phone).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(modal.locator('#withdraw-phone-error')).toHaveCount(0);
+  });
+
+  test('un numero mal saisit affiche une raison, jamais un clic muet', async ({ page }) => {
+    await login(page);
+    const modal = await openWithdrawModal(page);
+
+    // Le bouton n'était plus `disabled` sur une condition inexpliquée : le
+    // joueur cliquait et rien ne se passait. Il doit donc TOUJOURS répondre.
+    const submit = page.getByRole('button', { name: /confirmer le retrait/i });
+    await expect(submit).toBeEnabled();
+
+    const phone = modal.locator('#withdraw-phone');
+    // L'ordre de résolution suit le formulaire : opérateur, puis montant, puis
+    // numéro. L'écran doit dire où le joueur en est, pas tout d'un coup.
+    await expect(modal.getByText(/Choisis ton opérateur/i)).toBeVisible();
+    await submit.click();
+    await expect(page.getByText(/opérateur Mobile Money/i).first()).toBeVisible();
+
+    // Opérateur choisi : la raison devient le numéro, et elle doit dire
+    // COMBIEN de chiffres sont attendus — sinon le joueur reformate au hasard.
+    await modal.getByRole('button', { name: /Retirer via/i }).first().click();
+    await phone.fill('+2290165240'); // 7 chiffres : trop court
+
+    // Le champ porte le message d'erreur, pas seulement un toast.
+    await expect(phone).toHaveAttribute('aria-invalid', 'true');
+    const error = modal.locator('#withdraw-phone-error');
+    await expect(error).toBeVisible();
+    await expect(error).toContainText('10 chiffres');
+
+    // Et la raison de blocage, affichée avant le clic, reprend la même info.
+    await expect(modal.getByRole('status')).toContainText('10 chiffres');
+  });
+
   test('la page wallet distingue la commission ZOYD des frais FedaPay', async ({ page }) => {
     await login(page);
     const modal = await openWithdrawModal(page);

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { toast } from '../lib/toast';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -191,14 +191,23 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
     }
   }, [fundingKey, fundingPrefillKey, fundingPrompt]);
 
-  // Pré-remplit le numéro de retrait depuis le profil à l'ouverture de la modale.
-  // Mis en forme pour rester lisible (le pavé numérique n'a pas de touche
-  // espace, le joueur ne peut donc pas taper le format du placeholder).
+  // Pré-remplit le numéro de retrait depuis le profil, UNE SEULE FOIS par
+  // ouverture. Mis en forme pour rester lisible : le pavé numérique n'a pas de
+  // touche espace, le joueur ne peut donc pas taper le format du placeholder.
+  //
+  // La garde précédente `!withdrawPhone` le rendait « remplir si vide », donc
+  // VIDER le champ le remplissait à nouveau aussitôt : impossible de saisir un
+  // numéro différent de celui du profil.
+  const withdrawalPrefilled = useRef(false);
   useEffect(() => {
-    if (showWithdrawModal && !withdrawPhone && user?.phone) {
-      setWithdrawPhone(formatPhoneInput(user.phone, payoutCountry));
+    if (!showWithdrawModal) {
+      withdrawalPrefilled.current = false;
+      return;
     }
-  }, [showWithdrawModal, withdrawPhone, user?.phone, payoutCountry]);
+    if (withdrawalPrefilled.current) return;
+    withdrawalPrefilled.current = true;
+    if (user?.phone) setWithdrawPhone(formatPhoneInput(user.phone, payoutCountry));
+  }, [showWithdrawModal, user?.phone, payoutCountry]);
 
   const closeDepositModal = () => {
     setShowDepositModal(false);

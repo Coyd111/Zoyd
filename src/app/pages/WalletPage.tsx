@@ -11,7 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useSocketStore } from '../stores/socketStore';
 import { Skeleton } from '../components/ui/Skeleton';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
-import { getPayoutCountry, PAYOUT_COUNTRIES, type PayoutOperator } from '../../lib/payoutOperators';
+import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormatError, type PayoutOperator } from '../../lib/payoutOperators';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { WithdrawalFeesNotice, useWithdrawalFeesNoticeDismissed } from '../components/wallet/WithdrawalFeesNotice';
@@ -284,8 +284,11 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
       return;
     }
     const cleanPhone = withdrawPhone.trim();
-    if (!cleanPhone || cleanPhone.replace(/[\s\-().]/g, '').length < 8) {
-      toast.error('Numéro de téléphone invalide.');
+    // Validation miroir du serveur. Sinon un numéro mal formé partait en
+    // payout et le joueur découvrait l'erreur devant un bandeau server,
+    // alors que le formulaire l'avait laissé passer.
+    if (!isValidPhoneForCountry(cleanPhone, payoutCountry)) {
+      toast.error(phoneFormatError(payoutCountry));
       return;
     }
     setIsWithdrawing(true);

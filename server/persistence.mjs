@@ -9,6 +9,9 @@ const scryptAsync = promisify(crypto.scrypt);
 import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
 import { roundAmount, getNow, makeError } from './utils.mjs';
+// Module feuille : les regles pays/telephone doivent etre accessibles ici sans
+// cycle d'import (payment-engine importe persistence).
+import { isAnySupportedPhone, phoneFormatError } from './payout-countries.mjs';
 import { withUserMutex, withChannelMutex } from './mutex.mjs';
 import { Mutex } from 'async-mutex';
 
@@ -807,6 +810,14 @@ export const checkProfileUniqueness = (userId, { pseudo, email, phone } = {}) =>
 const insertUser = async ({ password, role = 'player', ...input }) => {
   if (!input.pseudo?.trim() || !input.email?.trim() || !input.phone?.trim() || !input.gameId?.trim()) {
     throw makeError('INVALID_REGISTRATION', 'Informations joueur incompletes.');
+  }
+  // Le telephone doit etre un numero que ZOYD pourra PAYER un jour.
+  // Avant, seule la non-vacuite etait verifiee : `+2290165240654` (dix
+  // chiffres apres l'indicatif, au lieu de huit) etait stocke, et l'echec
+  // n'apparaittait qu'au moment du retrait. Le front ne protegeait rien :
+  // l'API est la frontiere de confiance, pas le formulaire.
+  if (!isAnySupportedPhone(input.phone)) {
+    throw makeError('INVALID_PHONE', phoneFormatError());
   }
   assertStrongPassword(password);
   // Conformité : 18+ et CGU obligatoires (sauf compte admin système).

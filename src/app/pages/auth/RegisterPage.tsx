@@ -30,6 +30,7 @@ import {
 } from '../../../lib/competition';
 import { registerWithBackend, type RegisterPayload, type AuthResponse } from '../../lib/authApi';
 import { getApiUrl } from '../../lib/apiClient';
+import { isAnySupportedPhone } from '../../../lib/payoutOperators';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { SEOHead } from '../../components/SEOHead';
 
@@ -68,7 +69,17 @@ const step1Schema = registerFormBaseSchema
   .extend({
     pseudo: z.string().min(3, 'Minimum 3 caractères').max(20, 'Maximum 20 caractères').optional(),
     email: z.string().email('Email invalide').optional(),
-    phone: z.string().min(8, 'Numéro invalide').optional(),
+    // `.min(8)` laissait passer `+2290165240654` : dix chiffres après l'indicatif
+// alors qu'un mobile béninois en compte huit. Le compte était stocké avec un
+// numéro que ZOYD ne pouvait jamais payer, et l'erreur n'apparaissait qu'au
+// moment du retrait. Même règle que le serveur, appliquée à la saisie.
+phone: z
+  .string()
+  .min(1, 'Numéro requis')
+  .refine((value) => isAnySupportedPhone(value), {
+    message: 'Numéro invalide. Exemple : +229 61 00 00 01',
+  })
+  .optional(),
     password: z
       .string()
       .min(8, 'Minimum 8 caractères')

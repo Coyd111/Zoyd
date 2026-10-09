@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { updateServerAccount, deleteOwnAccount, fetchAdmin2faStatus, setupAdmin2fa, enableAdmin2fa, verifyAdmin2fa } from '../lib/authApi';
 import { CODM_RANGS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
+import { isAnySupportedPhone } from '../../lib/payoutOperators';
 import { SEOHead } from '../components/SEOHead';
 
 const tabs = [
@@ -110,8 +111,11 @@ const ParametresPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (form.phone && !/^\+?[\d\s-]{7,15}$/.test(form.phone)) {
-      toast.error('Numéro de téléphone invalidé.');
+if (form.phone && !isAnySupportedPhone(form.phone)) {
+      // On n'impose pas un pays — un joueur peut enregistrer un numéro
+      // ivoirien tout en ayant le pays Bénin — mais on écarte les formats
+      // qu'aucun retrait ne pourra jamais payer.
+      toast.error('Numéro invalide. Exemple : +229 61 00 00 01, ou le numéro d’un pays de retrait.');
       return;
     }
     setIsSaving(true);

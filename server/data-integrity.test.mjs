@@ -85,7 +85,10 @@ const createUser = async (overrides = {}) => {
   const created = await persistence.createUserAccount({
     pseudo: `Int${id.replace(/\W/g, '')}`,
     email: `int-${id}@test.local`,
-    phone: `+22506${String(Date.now() % 10000000).padStart(7, '0')}${stamp}`,
+    // 10 chiffres après +225 (longueur Côte d'Ivoire) : l'inscription refuse
+// désormais les numéros qu'aucun retrait ne pourrait pas payer, donc un
+// numéro de test doit être valide pour un pays de retrait.
+phone: `+22507${String((Date.now() + stamp) % 100000000).padStart(8, '0')}`,
     gameId: `CO-INT-${id}`,
     password: 'MotDePasse!Solide2026',
     acceptAdult: true,

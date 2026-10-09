@@ -11,7 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useSocketStore } from '../stores/socketStore';
 import { Skeleton } from '../components/ui/Skeleton';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
-import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormatError, type PayoutOperator } from '../../lib/payoutOperators';
+import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormatError, formatPhoneInput, type PayoutOperator } from '../../lib/payoutOperators';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { WithdrawalFeesNotice, useWithdrawalFeesNoticeDismissed } from '../components/wallet/WithdrawalFeesNotice';
@@ -95,6 +95,7 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawPhone, setWithdrawPhone] = useState('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isDepositing, setIsDepositing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'deposit' | 'withdraw' | 'prize_win'>('all');
   const [fundingPrefillKey, setFundingPrefillKey] = useState('');
   const [searchParams] = useSearchParams();
@@ -115,6 +116,60 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
   // desormais aligne sur la valeur serveur.
   const withdrawFee = Math.round(withdrawAmountNum * withdrawalFeeRate * 100) / 100;
   const withdrawNet = Math.round((withdrawAmountNum - withdrawFee) * 100) / 100;
+
+  // ── Pourquoi le retrait est-il bloqué ? ──────────────────────────────────
+  // Le bouton de confirmation etait `disabled` sur sept conditions, sans jamais
+  // conditions, sans jamais dire laquelle. Un bouton mort ne donne AUCUN
+  // retour : le joueur cliquait et rien ne se passait, sans message. Le blocage
+  // est donc calcule ici, affiché sous le formulaire, et le bouton reste
+  // cliquable pour renvoyer la raison au clic.
+  const withdrawAmountError = (() => {
+    if (!withdrawAmount.trim()) return null;
+    if (withdrawAmountNum <= 0) return 'Montant invalide.';
+    if (withdrawAmountNum < withdrawalMinAmount) {
+      return `Retrait minimum : ${withdrawalMinAmount} ZC (${formatFCFA(withdrawalMinAmount)}).`;
+    }
+    if (withdrawAmountNum > cashBalance) {
+      return `Tu n'as que ${formatZC(cashBalance)} retirables.`;
+    }
+    return null;
+  })();
+
+  const withdrawPhoneError = (() => {
+    if (!withdrawPhone.trim()) return null;
+    if (!isValidPhoneForCountry(withdrawPhone, payoutCountry)) {
+      return phoneFormatError(payoutCountry);
+    }
+    return null;
+  })();
+
+  // Ordre = ordre de résolution attendu du joueur.
+  const withdrawBlocker = (() => {
+    if (!payoutCountry) return 'Retraits indisponibles pour ton pays.';
+    if (!withdrawOperator) return 'Choisis ton opérateur Mobile Money.';
+    if (!withdrawAmount.trim()) return 'Indique le montant à retirer.';
+    if (withdrawAmountError) return withdrawAmountError;
+    if (!withdrawPhone.trim()) return 'Indique le numéro Mobile Money.';
+    if (withdrawPhoneError) return withdrawPhoneError;
+    return null;
+  })();
+
+  const depositAmountError = (() => {
+    if (!depositAmount.trim()) return null;
+    const value = parseFloat(depositAmount);
+    if (Number.isNaN(value) || value <= 0) return 'Montant invalide.';
+    return null;
+  })();
+
+  const depositBlocker = (() => {
+    if (!depositAmount.trim()) return 'Choisis un montant à ajouter.';
+    if (depositAmountError) return depositAmountError;
+    if (!selectedOperator) return 'Choisis ton opérateur Mobile Money.';
+    return null;
+  })();
+
+  /** Retire la mise en forme d'affichage : le serveur attend le numéro brut. */
+  const stripPhoneFormatting = (value: string) => value.replace(/\s/g, '');
   const fundingPrompt = useMemo(() => parseFundingPrompt(searchParams), [searchParams]);
   const fundingCopy = fundingPrompt ? getFundingPromptCopy(fundingPrompt.context) : null;
   const canResumeFundingFlow =
@@ -136,12 +191,14 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
     }
   }, [fundingKey, fundingPrefillKey, fundingPrompt]);
 
-  // Pré-remplit le numéro de retrait depuis le profil à l'ouverture de la modale
+  // Pré-remplit le numéro de retrait depuis le profil à l'ouverture de la modale.
+  // Mis en forme pour rester lisible (le pavé numérique n'a pas de touche
+  // espace, le joueur ne peut donc pas taper le format du placeholder).
   useEffect(() => {
     if (showWithdrawModal && !withdrawPhone && user?.phone) {
-      setWithdrawPhone(user.phone);
+      setWithdrawPhone(formatPhoneInput(user.phone, payoutCountry));
     }
-  }, [showWithdrawModal, withdrawPhone, user?.phone]);
+  }, [showWithdrawModal, withdrawPhone, user?.phone, payoutCountry]);
 
   const closeDepositModal = () => {
     setShowDepositModal(false);
@@ -170,15 +227,12 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
   }, [filter, transactions]);
 
   const handleDeposit = async () => {
-    if (!depositAmount) {
-      toast.error('Entre un montant à ajouter.');
+    // Un clic doit toujours produire un retour, comme pour le retrait.
+    if (depositBlocker) {
+      toast.error(depositBlocker);
       return;
     }
     const depositAmountNum = parseFloat(depositAmount);
-    if (isNaN(depositAmountNum) || depositAmountNum <= 0) {
-      toast.error('Montant invalide.');
-      return;
-    }
     const amountFCFA = depositAmountNum * 10; // 1 ZC = 10 FCFA
 
     const publicKey = import.meta.env.VITE_FEDAPAY_PUBLIC_KEY;
@@ -191,7 +245,11 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
     // Check if FedaPay is loaded (via window — safe en module ESM)
     let fedapay = getFedaPay();
     if (!fedapay) {
+      // Chargement du script : c'était invisible côté joueur. Le bouton
+      // affiche désormais l'attente.
+      setIsDepositing(true);
       const loaded = await loadFedaPayScript();
+      setIsDepositing(false);
       fedapay = loaded ? getFedaPay() : null;
       if (!fedapay) {
         toast.error("Le service de paiement FedaPay n'est pas disponible. Recharge la page ou essaie plus tard.");
@@ -271,26 +329,19 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
       toast.error('Session expirée. Reconnecte-toi.');
       return;
     }
-    if (!withdrawAmount) {
-      toast.error('Entre un montant à retirer.');
+    // Un clic doit TOUJOURS produire un retour. Le blocage est calculé au
+    // préalable (`withdrawBlocker`) et renvoyé ici : plus de bouton mort.
+    if (withdrawBlocker) {
+      toast.error(withdrawBlocker);
       return;
     }
-    if (!payoutCountry) {
+if (!payoutCountry) {
       toast.error(`Retraits bientôt disponibles pour ton pays (${user?.country || 'inconnu'}).`);
       return;
     }
-    if (!withdrawOperator) {
-      toast.error('Choisis un opérateur Mobile Money.');
-      return;
-    }
-    const cleanPhone = withdrawPhone.trim();
-    // Validation miroir du serveur. Sinon un numéro mal formé partait en
-    // payout et le joueur découvrait l'erreur devant un bandeau server,
-    // alors que le formulaire l'avait laissé passer.
-    if (!isValidPhoneForCountry(cleanPhone, payoutCountry)) {
-      toast.error(phoneFormatError(payoutCountry));
-      return;
-    }
+    // Numéro brut : le serveur sait déjà retirer les séparateurs, mais le
+    // feedback doit montrer exactement ce qui a été envoyé.
+    const cleanPhone = stripPhoneFormatting(withdrawPhone.trim());
     setIsWithdrawing(true);
     try {
       const amount = parseFloat(withdrawAmount);
@@ -302,6 +353,8 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
       toast.success(`Retrait lancé vers ${cleanPhone} via ${withdrawOperator}.`);
       closeWithdrawModal();
     } catch (err) {
+      // Ne jamais laisser le joueur sans retour : même une erreur inconnue
+      // remonte avec son message.
       toast.error(err instanceof Error ? err.message : 'Erreur de retrait.');
     } finally {
       setIsWithdrawing(false);
@@ -485,7 +538,16 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
                   </button>
                 ))}
               </div>
-              <Input id="deposit-amount" type="number" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} placeholder="Montant personnalisé" />
+              <Input
+                id="deposit-amount"
+                type="number"
+                inputMode="numeric"
+                value={depositAmount}
+                onChange={(event) => setDepositAmount(event.target.value)}
+                placeholder="Montant personnalisé"
+                error={depositAmountError || undefined}
+                helperText="1 ZC = 10 FCFA. Le montant est débité par FedaPay sur ton opérateur."
+              />
             </div>
 
             <div>
@@ -509,8 +571,17 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
               </div>
             </div>
 
-            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={!selectedOperator || !depositAmount} aria-label="Confirmer le dépôt">
-              Ajouter ces ZC
+            {depositBlocker && (
+              <p
+                role="status"
+                className="text-xs text-zoyd-yellow border border-zoyd-yellow/25 bg-zoyd-yellow/5 p-3"
+              >
+                {depositBlocker}
+              </p>
+            )}
+
+            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={isDepositing} aria-label="Confirmer le dépôt">
+              {isDepositing ? 'Ouverture du paiement…' : 'Ajouter ces ZC'}
             </Button>
           </div>
         </Modal>
@@ -534,11 +605,30 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
               <Input
                 id="withdraw-amount"
                 type="number"
+                inputMode="numeric"
                 value={withdrawAmount}
                 onChange={(event) => setWithdrawAmount(event.target.value)}
                 placeholder={`${withdrawalMinAmount} ZC minimum (${withdrawalMinAmount * 10} FCFA)`}
+                error={withdrawAmountError || undefined}
                 max={cashBalance}
               />
+              {/* Le seuil et le solde étaient deux `disabled` invisibles. On les
+                  affiche en clair, avec un raccourci « tout retirer ». */}
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="text-white/60">
+                  Retirable : <span className="text-white font-mono">{formatZC(cashBalance)}</span>
+                  {' · '}minimum <span className="text-white font-mono">{formatZC(withdrawalMinAmount)}</span>
+                </span>
+                {cashBalance >= withdrawalMinAmount && (
+                  <button
+                    type="button"
+                    onClick={() => setWithdrawAmount(String(cashBalance))}
+                    className="font-mono uppercase tracking-wider text-zoyd-yellow hover:text-white underline underline-offset-2 min-h-[44px] px-2"
+                  >
+                    Tout retirer
+                  </button>
+                )}
+              </div>
               {withdrawAmountNum >= withdrawalMinAmount && (
                 <div className="mt-3 border border-white/10 bg-black/40 p-3 space-y-1">
                   <div className="flex justify-between text-xs">
@@ -605,19 +695,37 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
               <Input
                 id="withdraw-phone"
                 type="tel"
+                inputMode="tel"
                 value={withdrawPhone}
-                onChange={(event) => setWithdrawPhone(event.target.value)}
-                placeholder={payoutCountry?.placeholder || '+229 61 00 00 01'}
+                // Le pavé numérique n'a pas de touche espace : on applique le
+                // format tout seul, le joueur tape uniquement des chiffres.
+                onChange={(event) => setWithdrawPhone(formatPhoneInput(event.target.value, payoutCountry))}
+                placeholder={payoutCountry?.placeholder || '+229 01 61 00 00 01'}
                 autoComplete="tel"
+                error={withdrawPhoneError || undefined}
+                helperText={!withdrawPhoneError
+                  ? `Le numéro Mobile Money où recevoir les fonds${payoutCountry ? ` (${payoutCountry.label}, ${payoutCountry.prefix}…)` : ''}.`
+                  : undefined}
               />
-              <p className="text-xs text-white/60 mt-2">Le numéro Mobile Money où recevoir les fonds{payoutCountry ? ` (${payoutCountry.label}, ${payoutCountry.prefix}...)` : ''}.</p>
             </div>
+
+            {/* Raison du blocage, toujours visible AVANT le clic. Le bouton
+                reste actif : cliquer renverra le même message en toast, donc
+                plus aucun clic sans retour. */}
+            {withdrawBlocker && (
+              <p
+                role="status"
+                className="text-xs text-zoyd-yellow border border-zoyd-yellow/25 bg-zoyd-yellow/5 p-3"
+              >
+                {withdrawBlocker}
+              </p>
+            )}
 
             <Button
               variant="primary"
               fullWidth
               onClick={handleWithdraw}
-              disabled={!payoutCountry || isWithdrawing || !withdrawAmount || !withdrawOperator || !withdrawPhone.trim() || withdrawAmountNum < withdrawalMinAmount || withdrawAmountNum > cashBalance}
+              disabled={isWithdrawing}
               aria-label="Confirmer le retrait"
             >
               {isWithdrawing ? 'Transfert en cours...' : 'Retirer mes gains'}

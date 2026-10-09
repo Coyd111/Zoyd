@@ -133,9 +133,13 @@ export const isValidPhoneForCountry = (rawPhone: string, country: PayoutCountry 
   if (!country || !rawPhone) return false;
   const cleaned = rawPhone.replace(/[\s\-().]/g, '');
   if (!cleaned) return false;
+  // `prefix` vaut « +229 » côté front mais « 229 » côté serveur. L'utiliser tel
+  // quel produisait `^\+?+229` → SyntaxError « Nothing to repeat » au premier
+  // appel. On ne garde donc que les chiffres de l'indicatif.
+  const prefixDigits = (country.prefix || '').replace(/\D/g, '');
   const lengths = [country.localLength, ...(country.legacyLengths || [])];
   return lengths.some((len) => (
-    new RegExp(`^\\+?${country.prefix}(\\d{${len}})$`).test(cleaned)
+    (prefixDigits && new RegExp(`^\\+?${prefixDigits}(\\d{${len}})$`).test(cleaned))
     || new RegExp(`^\\d{${len}}$`).test(cleaned)
   ));
 };
@@ -158,3 +162,39 @@ export const phoneFormatError = (country?: PayoutCountry | null): string =>
   country
     ? `Numéro invalide. Format attendu : ${country.prefix} suivi de ${country.localLength} chiffres (ex. ${country.placeholder}).`
     : 'Numéro de téléphone invalide.';
+
+/**
+ * Met en forme un numéro pendant la saisie, par groupes de deux.
+ *
+ * Le pavé numérique d'un téléphone n'a PAS de touche espace. Or le
+ * placeholder affichait `+229 01 61 00 00 01` : le joueur ne pouvait donc pas
+ * taper l'exemple qu'on lui montrait, et les trois validations acceptaient
+ * pourtant les espaces. On applique donc le format tout seul : le joueur tape
+ * uniquement des chiffres, l'affichage reste lisible.
+ *
+ * `+2290165240654` → `+229 01 65 24 06 54`
+ * `0165240654`     → `01 65 24 06 54`
+ */
+export const formatPhoneInput = (raw: string, country?: PayoutCountry | null): string => {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '';
+  // `(+229)` ou `00229` : le `+` n'est pas forcément le premier caractère.
+  const withPlus = trimmed.includes('+') || /^\s*00/.test(trimmed);
+
+  let digits = trimmed.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (!digits) return withPlus ? '+' : '';
+
+  const prefixDigits = (country?.prefix || '').replace(/\D/g, '');
+  // L'indicatif n'est traité comme tel que lorsqu'il est ENTIEREMENT saisi.
+  // Sinon, taper « +2 » injecterait « +229 » devant : le champ réécrivait la
+  // saisie en cours et le joueur perdait le focus de ce qu'il tapes.
+  const hasFullPrefix = Boolean(prefixDigits) && digits.startsWith(prefixDigits);
+  const rest = hasFullPrefix ? digits.slice(prefixDigits.length) : digits;
+  const groups = (rest.match(/.{1,2}/g) || []).join(' ');
+
+  if (!rest) return hasFullPrefix ? `+${prefixDigits}` : (withPlus ? '+' : '');
+  if (hasFullPrefix) return `+${prefixDigits} ${groups}`;
+  // Indicatif encore incomplet : pas d'espace après le « + ».
+  return withPlus ? `+${groups}` : groups;
+};

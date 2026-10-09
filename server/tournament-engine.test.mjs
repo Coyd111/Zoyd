@@ -15,6 +15,9 @@ vi.mock('./wallet-engine.mjs', () => ({
   refundLockedEntry: vi.fn(),
   releaseWalletWinnings: vi.fn(),
   settleMatchLossWallet: vi.fn(),
+  // Copie de la vraie implementation : le contrat de classification fait
+  // partie du comportement teste, un stub le rendrait invisible.
+  isUnrecoverableRefundError: (error) => error?.code === 'USER_NOT_FOUND' || error?.code === 'USER_DELETED',
 }));
 
 import * as tournamentEngine from './tournament-engine.mjs';
@@ -507,9 +510,11 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
   it('conserve la dette et la rejoue quand un refund echoue', async () => {
     // Le bug historique : l'erreur etait loguee puis `entries = []`
     // detruisait la preuve => entryFee bloques a jamais.
+    // Erreur TRANSITORE : c'est celle-la qui doit etre rejouee.
+    const transient = Object.assign(new Error('Base indisponible'), { code: 'SUPABASE_DOWN' });
     refundLockedEntry
       .mockResolvedValueOnce({ cashBalance: 100 })
-      .mockRejectedValueOnce(new Error('USER_NOT_FOUND'));
+      .mockRejectedValueOnce(transient);
 
     const cancelled = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
     expect(cancelled.refunded).toBe(1);
@@ -517,7 +522,7 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     expect(cancelled.tournament.entries.map((e) => e.captainId)).toEqual(['player-2']);
     expect(cancelled.tournament.pendingRefunds[0].captainId).toBe('player-2');
 
-    // Le retry rejoue le refund raté.
+    // Le retry rejoue le refund rate.
     refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
     const retried = await tournamentEngine.retryPendingTournamentRefunds([cancelled.tournament]);
     expect(retried.retried).toBe(1);
@@ -526,8 +531,80 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     expect(retried.tournaments[0].entries).toHaveLength(0);
   });
 
+  it('clot la dette sans la rejouer quand le compte a ete supprime', async () => {
+    // `USER_NOT_FOUND` ne se resoudra jamais : il n'y a plus de portefeuille a
+    // crediter. Le garder en `pendingRefunds` le rejouait toutes les 6 h,
+    // pour toujours, et noyait les echecs recuperables sous une boucle de WARN
+    // identiques — ceux-la seuls meritent une alerte.
+    const deleted = Object.assign(new Error('Compte joueur introuvable'), { code: 'USER_NOT_FOUND' });
+    refundLockedEntry
+      .mockResolvedValueOnce({ cashBalance: 100 })
+      .mockRejectedValueOnce(deleted);
+
+    const cancelled = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
+    expect(cancelled.refunded).toBe(1);
+    expect(cancelled.pendingRefunds).toBe(0);
+    expect(cancelled.uncollectableRefunds).toBe(1);
+    // Trace conservee : la dette est close, pas oubliee.
+    expect(cancelled.tournament.uncollectableRefunds[0].captainId).toBe('player-2');
+    expect(cancelled.tournament.uncollectableRefunds[0].reason).toBe('ACCOUNT_DELETED');
+
+    // Un second passage ne doit plus rien rejouer : c'est tout l'objet.
+    refundLockedEntry.mockClear();
+    const retried = await tournamentEngine.retryPendingTournamentRefunds([cancelled.tournament]);
+    expect(refundLockedEntry).not.toHaveBeenCalled();
+    expect(retried.retried).toBe(0);
+    expect(retried.remaining).toBe(0);
+    expect(retried.abandoned).toBe(0);
+  });
+
+  it('clot une dette deja en attente quand le compte disparait entre-temps', async () => {
+    // Cas observe en production : le joueur etait present a l'annulation, puis
+    // a supprime son compte avant la reprise 6 h plus tard.
+    const deleted = Object.assign(new Error('Compte joueur introuvable'), { code: 'USER_NOT_FOUND' });
+    refundLockedEntry.mockRejectedValue(deleted);
+
+    const cancelled = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
+    expect(cancelled.pendingRefunds).toBe(0);
+
+    // Depart propre : une dette enregistree pour une erreur TRANSITORE, dont
+    // le joueur a disparu depuis. La reprise doit la cloturer sans boucle.
+    const makePending = () => tournamentEngine.normalizeTournamentCollection([{
+      ...makeTournament(),
+      status: 'cancelled',
+      cancelReason: 'Annule : pas assez d\'inscriptions',
+      pendingRefunds: [
+        { captainId: 'player-1', entryId: 'ENTRY-1', lastError: 'Base indisponible' },
+        { captainId: 'player-2', entryId: 'ENTRY-2', lastError: 'Base indisponible' },
+      ],
+    }]);
+    const fresh = makePending();
+    expect(fresh[0].pendingRefunds).toHaveLength(2);
+    expect(tournamentEngine.countUncollectableTournamentRefunds([fresh])).toBe(0);
+
+    refundLockedEntry.mockImplementation(async (captainId) => {
+      if (captainId === 'player-2') throw Object.assign(new Error('Compte joueur introuvable'), { code: 'USER_NOT_FOUND' });
+      return { cashBalance: 100 };
+    });
+    const retried = await tournamentEngine.retryPendingTournamentRefunds(fresh);
+    expect(retried.retried).toBe(1);
+    expect(retried.remaining).toBe(0);
+    expect(retried.abandoned).toBe(1);
+    expect(retried.tournaments[0].uncollectableRefunds).toHaveLength(1);
+    expect(retried.tournaments[0].uncollectableRefunds[0].captainId).toBe('player-2');
+    expect(tournamentEngine.countUncollectableTournamentRefunds(retried.tournaments)).toBe(1);
+
+    // Un troisieme passage ne refait rien : c'est tout l'objet de la correction.
+    refundLockedEntry.mockClear();
+    const again = await tournamentEngine.retryPendingTournamentRefunds(retried.tournaments);
+    expect(refundLockedEntry).not.toHaveBeenCalled();
+    expect(again.remaining).toBe(0);
+    expect(again.abandoned).toBe(0);
+  });
+
   it('garde la dette si le retry echoue encore', async () => {
-    refundLockedEntry.mockRejectedValue(new Error('STILL_DOWN'));
+    const stillDown = Object.assign(new Error('toujours indisponible'), { code: 'SUPABASE_DOWN' });
+    refundLockedEntry.mockRejectedValue(stillDown);
     const cancelled = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
     expect(cancelled.pendingRefunds).toBe(2);
 

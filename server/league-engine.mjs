@@ -5,6 +5,7 @@ import {
   refundLockedEntry,
   releaseWalletWinnings,
   settleMatchLossWallet,
+  isUnrecoverableRefundError,
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
@@ -134,6 +135,10 @@ teamSize: Number(season?.teamSize || 1),
     // restaient bloques sans aucun chemin pour les liberer (meme piege que le
     // `name` perdu plus haut).
     pendingRefunds: Array.isArray(season?.pendingRefunds) ? season.pendingRefunds : [],
+    // Dettes closes sans remboursement possible (compte supprime). Conserve
+    // pour la meme raison que pendingRefunds : la preuve doit survivre au
+    // rechargement, sinon on perd le trace de ce qui n'a pas ete honore.
+    uncollectableRefunds: Array.isArray(season?.uncollectableRefunds) ? season.uncollectableRefunds : [],
     cancelReason: season?.cancelReason || null,
     cancelledAt: season?.cancelledAt || null,
   };
@@ -746,6 +751,7 @@ export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason 
 
   let refunded = 0;
   const failed = [];
+  const uncollectable = [];
   const players = Array.isArray(season.registeredPlayers) ? season.registeredPlayers : [];
   for (const player of players) {
     const userId = player?.userId || player?.id;
@@ -756,6 +762,13 @@ export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason 
       });
       refunded += 1;
     } catch (error) {
+      // Compte supprime : le remboursement est definitivement impossible. On
+      // le trace separement plutot que de le laisser en reprise perpetuelle.
+      if (isUnrecoverableRefundError(error)) {
+        log.error('League refund impossible: compte supprime, dette close', { seasonId, userId, pseudo: player?.pseudo });
+        uncollectable.push({ userId, pseudo: player?.pseudo, reason: 'ACCOUNT_DELETED', at: getNow() });
+        continue;
+      }
       log.error('League refund failed', { seasonId, userId, error: error.message });
       failed.push({ userId, pseudo: player?.pseudo, lastError: error.message });
     }
@@ -766,14 +779,24 @@ export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason 
   season.cancelledAt = getNow();
   season.updatedAt = getNow();
   season.pendingRefunds = failed;
+  // Preuve conservee, hors reprise : la dette est close parce qu'elle ne peut
+  // pas etre honoree, pas parce qu'elle a ete oubliee.
+  season.uncollectableRefunds = [...(season.uncollectableRefunds || []), ...uncollectable];
   // On ne retire que les inscriptions reellement remboursees : un joueur dont
-  // le remboursement echoue doit rester visible pour le support.
+  // le remboursement echoue doit rester visible pour le support. Un compte
+  // supprime n'a plus de profil a contacter : il sort de la liste.
   season.registeredPlayers = failed.map((item) => {
     const original = players.find((p) => (p?.userId || p?.id) === item.userId);
     return original || { userId: item.userId, pseudo: item.pseudo };
   });
 
-  return { seasons: nextSeasons, season, refunded, pendingRefunds: failed.length };
+  return {
+    seasons: nextSeasons,
+    season,
+    refunded,
+    pendingRefunds: failed.length,
+    uncollectableRefunds: uncollectable.length,
+  };
 };
 
 /** Rejouer les remboursements restes en echec sur une saison annulee. */
@@ -781,12 +804,14 @@ export const retryPendingLeagueRefunds = async (seasons) => {
   const nextSeasons = cloneLeagues(seasons);
   let retried = 0;
   let remaining = 0;
+  let abandoned = 0;
 
   for (const season of nextSeasons) {
     const pending = Array.isArray(season.pendingRefunds) ? season.pendingRefunds : [];
     if (pending.length === 0) continue;
 
     const stillFailing = [];
+    const uncollectable = [];
     for (const item of pending) {
       try {
         await withWalletMutex(item.userId, async () => {
@@ -794,21 +819,37 @@ export const retryPendingLeagueRefunds = async (seasons) => {
         });
         retried += 1;
       } catch (error) {
+        // Le joueur a ete supprime entre-temps : ca n'est plus un echec de
+        // remboursement mais une dette impossible a honorer. La remettre dans
+        // `pendingRefunds` la rejouerait a chaque cycle, pour toujours.
+        if (isUnrecoverableRefundError(error)) {
+          log.error('League refund abandon: compte supprime, dette close', { seasonId: season.id, userId: item.userId });
+          uncollectable.push({ userId: item.userId, pseudo: item.pseudo, reason: 'ACCOUNT_DELETED', at: getNow() });
+          abandoned += 1;
+          continue;
+        }
         log.warn('League refund retry failed', { seasonId: season.id, userId: item.userId, error: error.message });
         stillFailing.push({ ...item, lastError: error.message });
       }
     }
     season.pendingRefunds = stillFailing;
+    if (uncollectable.length > 0) {
+      season.uncollectableRefunds = [...(season.uncollectableRefunds || []), ...uncollectable];
+    }
     remaining += stillFailing.length;
     if (stillFailing.length === 0) season.registeredPlayers = [];
     season.updatedAt = getNow();
   }
 
-  return { seasons: nextSeasons, retried, remaining };
+  return { seasons: nextSeasons, retried, remaining, abandoned };
 };
 
 export const countPendingLeagueRefunds = (seasons) => (Array.isArray(seasons) ? seasons : [])
   .reduce((sum, s) => sum + (Array.isArray(s?.pendingRefunds) ? s.pendingRefunds.length : 0), 0);
+
+/** Dettes closes sans remboursement possible (compte supprime). */
+export const countUncollectableLeagueRefunds = (seasons) => (Array.isArray(seasons) ? seasons : [])
+  .reduce((sum, s) => sum + (Array.isArray(s?.uncollectableRefunds) ? s.uncollectableRefunds.length : 0), 0);
 
 export const getLeagueLeaderboard = (seasons, seasonId) => {
   const season = seasons.find((s) => s.id === seasonId);

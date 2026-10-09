@@ -12,6 +12,9 @@ vi.mock('./wallet-engine.mjs', () => ({
   refundLockedEntry: vi.fn(),
   releaseWalletWinnings: vi.fn(),
   settleMatchLossWallet: vi.fn(),
+  // Copie de la vraie implementation : le contrat de classification fait
+  // partie du comportement teste, un stub le rendrait invisible.
+  isUnrecoverableRefundError: (error) => error?.code === 'USER_NOT_FOUND' || error?.code === 'USER_DELETED',
 }));
 
 import * as leagueEngine from './league-engine.mjs';
@@ -281,6 +284,74 @@ describe('league-engine - saisons restées en inscription (sweeper)', () => {
     expect(retry.retried).toBe(1);
     expect(retry.remaining).toBe(0);
     expect(retry.seasons[0].registeredPlayers).toEqual([]);
+  });
+
+  it('clot la dette sans la rejouer quand le compte a ete supprime', async () => {
+    // Log observe en production : `League refund retry failed ... Compte joueur
+    // introuvable`, repete toutes les 6 h, indefiniment.
+    const deleted = Object.assign(new Error('Compte joueur introuvable'), { code: 'USER_NOT_FOUND' });
+    refundLockedEntry.mockImplementation(async (userId) => {
+      if (userId === 'p2') throw deleted;
+      return {};
+    });
+
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer([staleSeason(['p1', 'p2'])], 'LS-TEST');
+    expect(outcome.refunded).toBe(1);
+    expect(outcome.pendingRefunds).toBe(0);
+    expect(outcome.uncollectableRefunds).toBe(1);
+    // Trace conservee : dette close, pas oubliee.
+    expect(outcome.season.uncollectableRefunds[0]).toMatchObject({ userId: 'p2', reason: 'ACCOUNT_DELETED' });
+    // Le joueur supprime n'a plus de profil a contacter, il sort de la liste.
+    expect(outcome.season.registeredPlayers).toEqual([]);
+    expect(leagueEngine.countPendingLeagueRefunds([outcome.season])).toBe(0);
+
+    // Second passage : plus rien a rejouer. C'est tout l'objet.
+    refundLockedEntry.mockClear();
+    const retry = await leagueEngine.retryPendingLeagueRefunds([outcome.season]);
+    expect(refundLockedEntry).not.toHaveBeenCalled();
+    expect(retry.remaining).toBe(0);
+    expect(retry.abandoned).toBe(0);
+  });
+
+  it('clot une dette en attente quand le compte disparait avant la reprise', async () => {
+    // Dette enregistree pour une panne passagere, puis le joueur supprime son
+    // compte avant le passage du cron 6 h plus tard.
+    const fresh = leagueEngine.normalizeLeagueSeason({
+      ...staleSeason(['p1', 'p2'])[0],
+      status: 'cancelled',
+      cancelReason: 'Annule',
+      pendingRefunds: [
+        { userId: 'p1', lastError: 'SUPABASE_DOWN' },
+        { userId: 'p2', lastError: 'SUPABASE_DOWN' },
+      ],
+    });
+    expect(leagueEngine.countUncollectableLeagueRefunds([fresh])).toBe(0);
+
+    refundLockedEntry.mockImplementation(async (userId) => {
+      if (userId === 'p2') throw Object.assign(new Error('Compte joueur introuvable'), { code: 'USER_NOT_FOUND' });
+      return {};
+    });
+    const retry = await leagueEngine.retryPendingLeagueRefunds([fresh]);
+    expect(retry.retried).toBe(1);
+    expect(retry.remaining).toBe(0);
+    expect(retry.abandoned).toBe(1);
+    expect(retry.seasons[0].uncollectableRefunds).toHaveLength(1);
+    expect(leagueEngine.countUncollectableLeagueRefunds(retry.seasons)).toBe(1);
+
+    // Et la trace elle-meme survit au rechargement, sinon la dette disparait
+    // sans que personne ne sache qu'elle n'a jamais ete honoree.
+    const reloaded = leagueEngine.normalizeLeagueSeason(retry.seasons[0]);
+    expect(reloaded.uncollectableRefunds).toHaveLength(1);
+    expect(reloaded.uncollectableRefunds[0].reason).toBe('ACCOUNT_DELETED');
+  });
+
+  it('ne classe en definitive qu\'un echec par CODE, pas par libelle', async () => {
+    // Un message contenant USER_NOT_FOUND sans code n'est pas une preuve :
+    // la classification se fait sur `error.code`, seul contrat fiable.
+    refundLockedEntry.mockRejectedValue(Object.assign(new Error('weird'), { code: 'LOCK_TIMEOUT' }));
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer([staleSeason(['p1'])], 'LS-TEST');
+    expect(outcome.pendingRefunds).toBe(1);
+    expect(outcome.uncollectableRefunds).toBe(0);
   });
 
   it('la dette survit au rechargement depuis la base', () => {

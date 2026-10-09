@@ -1,8 +1,8 @@
 import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests, verifyDataIntegrity } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
-import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds } from './league-engine.mjs';
-import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds } from './tournament-engine.mjs';
+import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds } from './league-engine.mjs';
+import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer } from './match-engine.mjs';
 import { getNow } from './utils.mjs';
 
@@ -316,7 +316,16 @@ export const initCronJobs = () => {
         if (outcome.retried > 0) {
           log.warn('Remboursements de tournoi rejoues', { retried: outcome.retried, remaining: outcome.remaining });
         }
+        if (outcome.abandoned > 0) {
+          // Capitaine supprime : dette close, signalee une fois puis sortie de la
+          // file de reprise.
+          log.error('Remboursements de tournoi abandonnes: compte supprime', {
+            abandoned: outcome.abandoned,
+            uncollectableTotal: countUncollectableTournamentRefunds(outcome.tournaments),
+          });
+        }
         if (outcome.remaining > 0) {
+          // Ne subsiste que des echecs recuperables, qui meritent une alerte.
           log.error('Remboursements de tournoi toujours en echec', { remaining: outcome.remaining });
         }
       });
@@ -390,7 +399,17 @@ export const initCronJobs = () => {
         if (outcome.retried > 0) {
           log.warn('Remboursements de ligue rejoues', { retried: outcome.retried, remaining: outcome.remaining });
         }
+        if (outcome.abandoned > 0) {
+          // Dettes closes : le compte du joueur a ete supprime, il n'y a plus
+          // de portefeuille a crediter. Signale UNE fois, puis la ligne sort de
+          // `pendingRefunds` — la boucle de WARN identiques est terminée.
+          log.error('Remboursements de ligue abandons: compte supprime', {
+            abandoned: outcome.abandoned,
+            uncollectableTotal: countUncollectableLeagueRefunds(outcome.seasons),
+          });
+        }
         if (outcome.remaining > 0) {
+          // Ne subsiste que des echecs RECUPERABLES : ceux-la meritent une alerte.
           log.error('Remboursements de ligue toujours en echec', { remaining: outcome.remaining });
         }
       });

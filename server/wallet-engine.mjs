@@ -159,6 +159,29 @@ export const lockEntryFee = async (userId, amount, matchId) => {
 };
 
 /**
+ * Un echec de remboursement est-il RECUPERABLE ?
+ *
+ * Le cron de reprise rejouait TOUS les echecs toutes les 6 h, sans distinction.
+ * Un compte supprime echoue avec `USER_NOT_FOUND` a jamais : la reprise le
+ * rejouait indefiniment, en remplacant les logs par une boucle de WARN
+ * identiques. Le bruit masquait ensuite les echecs qui comptent vraiment
+ * (`SUPABASE_DOWN`), les seuls pour lesquels une reprise a un sens.
+ *
+ * `USER_NOT_FOUND` est donc definitif : il n'y a plus de portefeuille a
+ * crediter. L'argent a disparu avec le compte, ce qui est deja le comportement
+ * assume lors d'une suppression de compte (`forfeitedCash`). Reinscrire une
+ * dette impossible ne la rend pasolvable, ca la rend invisible.
+ *
+ * Tout le reste — base indisponible, contention, erreur reseau transitoire —
+ * reste recuperable et doit etre rejoue.
+ *
+ * @param {unknown} error
+ * @returns {boolean} true si l'echec ne se resoudra pas seul
+ */
+export const isUnrecoverableRefundError = (error) =>
+  error?.code === 'USER_NOT_FOUND' || error?.code === 'USER_DELETED';
+
+/**
  * Refund a locked entry fee back to the user's cash and bonus balances.
  * Used when a match is cancelled or the user leaves before start.
  * @param {string} userId - ID of the user.

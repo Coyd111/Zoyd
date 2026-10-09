@@ -7,6 +7,7 @@ import {
   refundLockedEntry,
   releaseWalletWinnings,
   settleMatchLossWallet,
+  isUnrecoverableRefundError,
 } from './wallet-engine.mjs';
 
 const log = createLogger('tournament');
@@ -126,6 +127,17 @@ const normalizeTournamentSnapshot = (tournament) => {
           captainId: item?.captainId,
           entryId: item?.entryId,
           lastError: item?.lastError,
+        })).filter((item) => item.captainId)
+      : [],
+    // Dettes closes sans remboursement possible (compte supprime). Préservées
+    // pour la même raison : la trace de ce qui n'a pas été honoré doit
+    // survivre au rechargement.
+    uncollectableRefunds: Array.isArray(tournament?.uncollectableRefunds)
+      ? tournament.uncollectableRefunds.map((item) => ({
+          captainId: item?.captainId,
+          entryId: item?.entryId,
+          reason: item?.reason || 'ACCOUNT_DELETED',
+          at: item?.at,
         })).filter((item) => item.captainId)
       : [],
     createdAt,
@@ -866,6 +878,7 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
 
   let refunded = 0;
   const failedCaptains = [];
+  const uncollectable = [];
   for (const entry of tournament.entries) {
     if (!entry.captainId) continue;
     try {
@@ -874,6 +887,12 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
       });
       refunded += 1;
     } catch (error) {
+      // Compte supprime : dette impossible a honorer, close separement.
+      if (isUnrecoverableRefundError(error)) {
+        log.error('Tournament refund impossible: compte supprime, dette close', { tournamentId, captainId: entry.captainId });
+        uncollectable.push({ captainId: entry.captainId, entryId: entry.id, reason: 'ACCOUNT_DELETED', at: getNow() });
+        continue;
+      }
       // NE PAS perdre la trace : l'entrée reste dans pendingRefunds et le
       // cron de reprise la réessaie. Avant, l'erreur était loguée puis
       // `entries = []` détruisait la preuve de la dette : les ZC restaient
@@ -889,12 +908,19 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
   tournament.updatedAt = getNow();
   // Dette conservée : le retry la reprend, et /health peut l'alerter.
   tournament.pendingRefunds = failedCaptains;
+  tournament.uncollectableRefunds = [...(tournament.uncollectableRefunds || []), ...uncollectable];
   // On ne retire que les entrées réellement remboursées.
   tournament.entries = failedCaptains.length > 0
     ? tournament.entries.filter((e) => failedCaptains.some((f) => f.entryId === e.id))
     : [];
 
-  return { tournaments: nextTournaments, tournament, refunded, pendingRefunds: failedCaptains.length };
+  return {
+    tournaments: nextTournaments,
+    tournament,
+    refunded,
+    pendingRefunds: failedCaptains.length,
+    uncollectableRefunds: uncollectable.length,
+  };
 };
 
 /**
@@ -907,12 +933,14 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
   const nextTournaments = cloneTournaments(tournaments);
   let retried = 0;
   let remaining = 0;
+  let abandoned = 0;
 
   for (const tournament of nextTournaments) {
     const pending = Array.isArray(tournament.pendingRefunds) ? tournament.pendingRefunds : [];
     if (pending.length === 0) continue;
 
     const stillFailing = [];
+    const uncollectable = [];
     for (const item of pending) {
       try {
         await withWalletMutex(item.captainId, async () => {
@@ -920,6 +948,14 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
         });
         retried += 1;
       } catch (error) {
+        // Capitaine supprime : dette impossible a honorer. La remettre dans
+        // `pendingRefunds` la rejouerait a chaque cycle, pour toujours.
+        if (isUnrecoverableRefundError(error)) {
+          log.error('Tournament refund abandon: compte supprime, dette close', { tournamentId: tournament.id, captainId: item.captainId });
+          uncollectable.push({ captainId: item.captainId, entryId: item.entryId, reason: 'ACCOUNT_DELETED', at: getNow() });
+          abandoned += 1;
+          continue;
+        }
         log.warn('Tournament refund retry failed', {
           tournamentId: tournament.id, captainId: item.captainId, error: error.message,
         });
@@ -927,6 +963,9 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
       }
     }
     tournament.pendingRefunds = stillFailing;
+    if (uncollectable.length > 0) {
+      tournament.uncollectableRefunds = [...(tournament.uncollectableRefunds || []), ...uncollectable];
+    }
     remaining += stillFailing.length;
     // Une dette remboursée doit disparaître des entries, sinon le joueur
     // verrait encore son équipe dans un tournoi annulé.
@@ -936,7 +975,7 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
     tournament.updatedAt = getNow();
   }
 
-  return { tournaments: nextTournaments, retried, remaining };
+  return { tournaments: nextTournaments, retried, remaining, abandoned };
 };
 
 /**
@@ -947,6 +986,13 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
 export const countPendingTournamentRefunds = (tournaments) =>
   tournaments.reduce(
     (sum, t) => sum + (Array.isArray(t.pendingRefunds) ? t.pendingRefunds.length : 0),
+    0,
+  );
+
+/** Dettes closes sans remboursement possible (compte supprime). */
+export const countUncollectableTournamentRefunds = (tournaments) =>
+  (Array.isArray(tournaments) ? tournaments : []).reduce(
+    (sum, t) => sum + (Array.isArray(t?.uncollectableRefunds) ? t.uncollectableRefunds.length : 0),
     0,
   );
 

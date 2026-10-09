@@ -11,9 +11,23 @@
 // - Sénégal : Orange (orange_sn), Wave (wave_sn)
 // - Togo : Moov (moov_tg), Togocel (togocel)
 // Pas de mode Orange/Wave au Bénin, pas de payout FedaPay pour CM/GA/CD/NG/GH.
+//
+// BENIN : 10 chiffres, pas 8.
+// L'ARCEP Bénin a fait passer le plan national de 8 à 10 chiffres le
+// 30 novembre 2024, en ajoutant le préfixe `01` devant les numéros existants
+// (`95 99 20 00` → `01 95 99 20 00`). L'UIT précise que le `0` initial est
+// OBLIGATOIRE depuis l'extérieur : format international `+229 0ZXXXXXXXX`.
+// Notre configuration portait encore 8 chiffres : tout joueur béninois était
+// refusé au retrait alors que son numéro était parfaitement valide.
 export const PAYOUT_COUNTRY_CONFIG = {
   bj: {
-    prefix: '229', localLength: 8, label: 'Bénin',
+    prefix: '229',
+    localLength: 10,
+    // Le format 8 chiffres est antérieur à la migration ARCEP. On continue de
+    // l'accepter : des enregistrements plus anciens existent (et le numéro
+    // admin par défaut en est un), et FedaPay reste l'arbitre final.
+    legacyLengths: [8],
+    label: 'Bénin',
     operators: { 'MTN MoMo': 'mtn_open', 'Moov Money': 'moov', 'Celtiis': 'sbin' },
   },
   ci: {
@@ -64,8 +78,14 @@ export const normalizePayoutCountry = (country) => {
 };
 
 /**
+ * Longueurs acceptées pour un pays : la longueur courante, plus les formats
+ * historiques listés dans `legacyLengths`.
+ */
+const acceptedLengths = (cfg) => [cfg.localLength, ...(cfg.legacyLengths || [])];
+
+/**
  * Parse a phone number string into FedaPay format for a given payout country.
- * Accepts international (+229XXXXXXXX) or local (XXXXXXXX) forms.
+ * Accepts international (+2290165240654) or local (0165240654) forms.
  * @param {string} rawPhone - Raw phone input
  * @param {string} [countryIso='bj'] - Payout country iso
  * @returns {{ number: string, country: string }} number='' quand invalide
@@ -74,13 +94,12 @@ export const parsePhoneForFedaPay = (rawPhone, countryIso = 'bj') => {
   const cfg = PAYOUT_COUNTRY_CONFIG[countryIso];
   if (!rawPhone || typeof rawPhone !== 'string' || !cfg) return { number: '', country: countryIso || 'bj' };
   const cleaned = rawPhone.replace(/[\s\-().]/g, '');
-  const len = cfg.localLength;
 
-  const matchPrefix = cleaned.match(new RegExp(`^\\+?${cfg.prefix}(\\d{${len}})$`));
-  if (matchPrefix) return { number: matchPrefix[1], country: countryIso };
-
-  const localRe = new RegExp(`^\\d{${len}}$`);
-  if (localRe.test(cleaned)) return { number: cleaned, country: countryIso };
+  for (const len of acceptedLengths(cfg)) {
+    const matchPrefix = cleaned.match(new RegExp(`^\\+?${cfg.prefix}(\\d{${len}})$`));
+    if (matchPrefix) return { number: matchPrefix[1], country: countryIso };
+    if (new RegExp(`^\\d{${len}}$`).test(cleaned)) return { number: cleaned, country: countryIso };
+  }
 
   return { number: '', country: countryIso };
 };

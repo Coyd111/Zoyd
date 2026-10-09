@@ -21,17 +21,24 @@ export interface PayoutCountry {
   prefix: string;
   /** Nombre de chiffres ATTENDUS apres l'indicatif pays. */
   localLength: number;
+  /** Longueurs historiques encore acceptees (plan de numerotation precedent). */
+  legacyLengths?: number[];
   placeholder: string;
   operators: PayoutOperator[];
 }
 
 export const PAYOUT_COUNTRIES: Record<string, PayoutCountry> = {
+  // BENIN : 10 chiffres depuis le 30 novembre 2024 (ARCEP), le prefixe `01`
+  // ayant ete ajoute devant tous les numeros existants. L'UIT precise que le
+  // `0` initial est obligatoire depuis l'etranger. Le format 8 chiffres reste
+  // accepte pour les enregistrements anterieurs a la migration.
   bj: {
     iso: 'bj',
     label: 'Bénin',
     prefix: '+229',
-    localLength: 8,
-    placeholder: '+229 61 00 00 01',
+    localLength: 10,
+    legacyLengths: [8],
+    placeholder: '+229 01 61 00 00 01',
     operators: [
       { id: 'MTN MoMo', name: 'MTN MoMo', logo: '/operators/mtn.svg', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
       { id: 'Moov Money', name: 'Moov Money', bg: '#009EE2', fg: '#FFFFFF', mark: 'moov' },
@@ -126,10 +133,11 @@ export const isValidPhoneForCountry = (rawPhone: string, country: PayoutCountry 
   if (!country || !rawPhone) return false;
   const cleaned = rawPhone.replace(/[\s\-().]/g, '');
   if (!cleaned) return false;
-  const withPrefix = new RegExp(`^\\+?${country.prefix}(\\d{${country.localLength}})$`);
-  if (withPrefix.test(cleaned)) return true;
-  // Numéro local sans indicatif : accepté, le serveur en déduit le pays.
-  return new RegExp(`^\\d{${country.localLength}}$`).test(cleaned);
+  const lengths = [country.localLength, ...(country.legacyLengths || [])];
+  return lengths.some((len) => (
+    new RegExp(`^\\+?${country.prefix}(\\d{${len}})$`).test(cleaned)
+    || new RegExp(`^\\d{${len}}$`).test(cleaned)
+  ));
 };
 
 /**

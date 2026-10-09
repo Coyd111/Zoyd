@@ -2872,7 +2872,7 @@ const ensureSeedAdmin = async () => {
   try {
     await insertUser({
       id: seedId, role: 'admin',
-      pseudo: seedPseudo, email: seedEmail, phone: process.env.ZOYD_ADMIN_PHONE || '+22960000000',
+      pseudo: seedPseudo, email: seedEmail, phone: process.env.ZOYD_ADMIN_PHONE || '+2290161000001',
       password,
       gameId: 'ADMIN-ZOYD-0001', controllerType: 'touch', device: 'pc',
       levelCODM: 150, rankMJ: 'Legendary', rankBR: 'Legendary', country: 'Benin',

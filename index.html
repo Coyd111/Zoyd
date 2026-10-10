@@ -4,9 +4,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <!--
+      Chargement direct, sans l'astuce `preload` + `onload` qui faisait
+      basculer `rel="stylesheet"` en JavaScript inline.
+
+      Deux raisons de l'avoir retirée :
+
+      1. CSP : un attribut `onload=` est un HANDLER INLINE. Le durcissement de
+         `script-src` (retrait de `unsafe-inline`) le bloquait — erreur CSP
+         en console sur chaque chargement.
+      2. Les deux symptômes n'en formaient qu'un : le handler bloqué
+         empêchait le `rel` de basculer, donc la police n'était JAMAIS
+         appliquée, et le navigateur signalait « preloaded but not used ».
+         Le durcissement CSP avait cassé la police en silence.
+
+      Une balise `stylesheet` classique est neutre CSP et applique réellement
+      la police. `display=swap` conserve un rendu immédiat avec la police de
+      repli : pas de page blanche pendant le chargement.
+    -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" />
     <meta name="description" content="La plateforme de référence pour les compétiteurs de Call of Duty Mobile en Afrique." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

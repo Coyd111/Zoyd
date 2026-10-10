@@ -167,6 +167,70 @@ export const maskPhone = (number) => {
 };
 
 /**
+ * Extrait la VRAIE raison d'un refus FedaPay.
+ *
+ * Le SDK stocke l'explication du prestataire à part du message axios :
+ *   - `error.errorMessage` ← `data.message` de la réponse
+ *   - `error.errors`        ← détail par champ
+ *   - `error.httpResponse.data` ← corps brut, si les deux premiers manquent
+ *
+ * Lire `error.message` seul donnait « Request failed with status code: 403 »
+ * — c'est-à-dire RIEN. Le motif réel (paiements non activés sur le compte,
+ * numéro refusé, solde insuffisant) était dans la réponse et partait à la
+ * poubelle. Sans cela, ni le joueur ni le support ne pouvait dire quoi que ce
+ * soit, et le retrait échouait sans explication.
+ *
+ * @param {unknown} error
+ * @returns {{ status: number|null, raison: string, details: string[] }}
+ */
+export const extraireErreurFedaPay = (error) => {
+  const status = error?.httpStatus ?? error?.response?.status ?? null;
+  const body = error?.httpResponse?.data ?? error?.response?.data ?? null;
+
+  const raison = [
+    error?.errorMessage,
+    body?.message,
+    body?.error,
+    typeof body === 'string' ? body : null,
+  ].find((value) => typeof value === 'string' && value.trim())
+    ?.trim() || '';
+
+  const rawErrors = error?.errors ?? body?.errors;
+  const details = Array.isArray(rawErrors)
+    ? rawErrors.map((item) => (typeof item === 'string' ? item : item?.message || item?.field)).filter(Boolean)
+    : [];
+
+  return { status, raison, details };
+};
+
+/**
+ * Message actionnable pour le joueur et le support.
+ *
+ * Un 403 n'est PAS dans la liste d'erreurs documentee par FedaPay (400 / 401 /
+ * 404 / 500) : c'est un refus d'AUTORISATION, pas une requête malformée. Avec
+ * un dépôt qui fonctionne, la clé est donc valide et valide pour l'encaissement
+ * — c'est le COMPTE MARCHAND qui n'est pas autorisé à émettre des transferts.
+ * Cela se règle auprès de FedaPay, pas dans le code.
+ */
+const messagePayout = ({ status, raison, details }, step) => {
+  // L'étape change le diagnostic : un refus à la création parle du compte,
+  // un refus à l'envoi parle du bénéficiaire. Les nommer évite de faire
+  // diagnostiquer la mauvaise chose.
+  const ou = step === 'envoi' ? " à l'envoi du transfert" : ' à la création du transfert';
+  if (status === 403) {
+    return `FedaPay refuse le transfert (403)${ou} : ton compte marchand n'est pas autorisé à émettre des retraits. À activer auprès de FedaPay — les dépôts, eux, fonctionnent.${raison ? ` (${raison})` : ''}`;
+  }
+  if (status === 401) {
+    return `Clé FedaPay refusée (401) : la clé secrète utilisée pour les retraits est invalide ou absente de l'environnement.${raison ? ` (${raison})` : ''}`;
+  }
+  if (status === 429) {
+    return 'FedaPay limite le nombre de transferts (429). Réessaie dans quelques minutes.';
+  }
+  const detail = details.length ? ` — ${details.slice(0, 3).join(', ')}` : '';
+  return `Échec du transfert Mobile Money (${step})${raison ? ` : ${raison}` : ''}${detail}`;
+};
+
+/**
  * Initiate a FedaPay payout (Mobile Money transfer to user).
  * Creates the payout and sends it immediately.
  *
@@ -212,6 +276,11 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
 
   log.info('Initiating FedaPay payout', { amountFCFA, method, mode, country: countryIso, phone: maskPhone(phoneInfo.number), merchantReference });
 
+  // On distingue l'étape : un 403 sur `create` et un 403 sur `start` ne
+  // désignent pas la même chose (autorisation du compte vs. refus du
+  // bénéficiaire), et le payoutId permet de retrouver la trace côté FedaPay.
+  let step = 'création';
+  let createdPayoutId = null;
   try {
     // 1. Create the payout
     const payout = await Payout.create({
@@ -227,8 +296,10 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
         phone_number: phoneInfo,
       },
     });
+    createdPayoutId = payout?.id ?? null;
 
     // 2. Send immediately
+    step = 'envoi';
     await payout.sendNow({
       phone_number: phoneInfo,
     });
@@ -241,8 +312,22 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
       status: payout.status,
       amountFCFA,
     };
-  } catch (error) {
-    log.error('FedaPay payout failed', { message: error.message, amountFCFA, method, phone: maskPhone(phoneInfo.number) });
-    throw makeError('PAYOUT_FAILED', `Échec du transfert Mobile Money: ${error.message || 'Erreur inconnue'}`);
+} catch (error) {
+    const diagnostic = extraireErreurFedaPay(error);
+    log.error('FedaPay payout failed', {
+      step,
+      status: diagnostic.status,
+      // La raison du prestataire : sans elle, le log ne disait que « 403 ».
+      raison: diagnostic.raison || undefined,
+      details: diagnostic.details.length ? diagnostic.details : undefined,
+      payoutId: createdPayoutId,
+      amountFCFA,
+      method,
+      mode,
+      country: countryIso,
+      phone: maskPhone(phoneInfo.number),
+      raw: error?.message,
+    });
+    throw makeError('PAYOUT_FAILED', messagePayout(diagnostic, step));
   }
 };

@@ -115,19 +115,16 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Extrait la raison du refus renvoyée par FedaPay.
+ * Raccourcit un message de refus pour l'affichage.
  *
- * Le serveur répond `Échec du transfert Mobile Money: <raison FedaPay>`. On ne
- * garde que cette partie, en une ligne et sans trace volumineuse : le but est
- * que le joueur puisse lire « numéro refusé » ou « opérateur indisponible » au
- * lieu d'un message qui ne l'aide pas.
+ * Le serveur compose le message : partie rassurante (« solde restauré »)
+ * puis la raison du prestataire et l'étape. On tronque seulement si c'est
+ * anormalement long — la raison est précisément ce qu'on veut montrer.
  */
-export const extraireRaisonPayout = (message: string): string => {
+export const resumerMessagePayout = (message: string, max = 300): string => {
   if (!message) return '';
-  const apres = message.split('Mobile Money:').slice(1).join('Mobile Money:').trim();
-  const raison = (apres || message).split('\n')[0].trim();
-  // Trop long = trace technique : on tronque proprement.
-  return raison.length > 140 ? `${raison.slice(0, 137)}…` : raison;
+  const ligne = message.split('\n')[0].trim();
+  return ligne.length > max ? `${ligne.slice(0, max - 1)}…` : ligne;
 };
 
 export const readJson = async <T>(response: Response): Promise<T> => {
@@ -139,15 +136,12 @@ export const readJson = async <T>(response: Response): Promise<T> => {
     const serverMessage = payload.error || 'Une erreur réseau est survenue.';
     let friendlyMessage = ERROR_MESSAGES[code] || serverMessage;
 
-    // PAYOUT_FAILED : le message rassurant (« solde restauré ») est bon, mais
-    // il MASQUAIT la raison réelle du refus FedaPay. Le joueur ne pouvait ni
-    // comprendre ni rapporter quoi que ce soit, et l'écran n apprenait rien.
-    // On conserve l'info utile : la raison du prestataire, en une ligne.
-    // Elle porte sur la transaction du joueur (numero, operateur, montant) —
-    // rien qui ne sorte de ce qu'il vient de saisir.
+// Le serveur compose déjà un message qui porte la raison du prestataire et
+    // l'étape (« création » / « envoi »). On ne le tronque que s'il est
+    // anormalement long, et on ne masque plus ce qui explique l'échec.
     if (code === 'PAYOUT_FAILED' && serverMessage) {
-      const raison = extraireRaisonPayout(serverMessage);
-      if (raison) friendlyMessage = `${friendlyMessage} (${raison})`;
+      const raison = resumerMessagePayout(serverMessage);
+      friendlyMessage = `${friendlyMessage} ${raison}`;
     }
 
     // 401/403 : préserve le vrai code serveur au lieu de tout écraser.

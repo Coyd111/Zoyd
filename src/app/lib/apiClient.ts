@@ -1,20 +1,33 @@
 import { useAuthStore } from '../stores/authStore';
-import { resetAllSessionStores } from './sessionReset';
+import { getBaseUrl, getApiUrl } from './apiUrl';
 
 let logoutQueued = false;
 
-// M-01: Named VITE_REALTIME_URL because backend serves both REST API and Socket.io (realtime).
-// This is the single backend URL for all communication.
-export const getBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_REALTIME_URL;
-  if (typeof envUrl === 'string' && envUrl.length > 0) {
-    return envUrl;
-  }
+// `getBaseUrl`/`getApiUrl` vivent dans `apiUrl.ts` (module feuille) pour ne
+// pas boucler le graphe d'imports. On les reexporte ici : tous les appels
+// existants continuent de fonctionner.
+export { getBaseUrl, getApiUrl };
 
-  return window.location.origin;
+/**
+ * Purge les stores de session — chargé À LA DEMANDE, jamais statiquement.
+ *
+ * `sessionReset` tire le store socket, qui tire `realtimeClient`. Comme ce
+ * module est importé par le client HTTP lui-même, l'import statique fermait
+ * un cycle : apiClient -> sessionReset -> socketStore -> socketConnectionStore
+ * -> ... -> apiClient. Rolldown le signalait (« circular dependency between
+ * chunks », risque d'ordre d'exécution cassé).
+ *
+ * Le chemin est rare et terminal (session expirée / 401), donc un import
+ * dynamique ne coûte rien en pratique et supprime complètement l'arête.
+ */
+const purgeSessionStores = () => {
+  void import('./sessionReset')
+    .then(({ resetAllSessionStores }) => resetAllSessionStores())
+    .catch(() => {
+      // Le module ne doit jamais faire échouer une déconnexion : au pire,
+      // l'état est purgé au rechargement suivant.
+    });
 };
-
-export const getApiUrl = (path: string) => `${getBaseUrl()}${path}`;
 
 export const getAuthHeaders = () => {
   // Cookie-only : le token vit dans le cookie httpOnly `zoyd_auth`,
@@ -47,7 +60,7 @@ const handleAuthError = (status: number, code?: string) => {
         logoutQueued = false;
         // Purge aussi les données de session (solde, matchs, chat, amis) :
         // sinon elles restent visibles pour un compte connecté ensuite.
-        resetAllSessionStores();
+        purgeSessionStores();
         useAuthStore.getState().logout();
       });
     }

@@ -1,7 +1,10 @@
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import type { User } from '../stores/authStore';
-import { getApiUrl, getBaseUrl } from './apiClient';
+// `./apiUrl` et non `./apiClient` : apiClient tire sessionReset -> socketStore
+// -> socketConnectionStore -> nous-memes. Passer par le module feuille casse
+// le cycle (cf. apiUrl.ts).
+import { getApiUrl, getBaseUrl } from './apiUrl';
 import type { ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import type { Match } from '../stores/matchStore';
 import type { Tournament } from '../stores/tournamentStore';

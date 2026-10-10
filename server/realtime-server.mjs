@@ -1337,7 +1337,15 @@ await withWalletMutex(session.user.id, async () => {
       log.error('Payout failed, refunding wallet', { userId: session.user.id, error: payoutError.message });
       try {
         await withWalletMutex(session.user.id, async () => {
-          await depositToWallet(session.user.id, body.amount, `Remboursement retrait echoue (${body.amount} ZC)`);
+          // `type: 'refund'` et non `deposit` : dans l'historique, un
+          // remboursement d'un retrait echoue doit se lire comme tel. Ecrit
+          // comme un depot, il laissait croire a un versement que personne
+          // n'avait effectue.
+          await depositToWallet(session.user.id, body.amount, 'Remboursement', {
+            type: 'refund',
+            description: `Remboursement — retrait echoue (${body.amount} ZC rendus)`,
+            metadata: { reason: 'PAYOUT_FAILED', idempotencyKey: cleanKey },
+          });
         });
       } catch (refundError) {
         // Perte sèche : l'argent est parti sans que le remboursement passe.
@@ -1351,7 +1359,10 @@ await withWalletMutex(session.user.id, async () => {
       }
       if (withdrawTxId) {
         try {
-          await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed' });
+          // `status: 'failed'` ETANT `payoutStatus` : le statut est ce que
+          // l'historique affiche. Sans lui, un retrait refuse par FedaPay
+          // restait « completed » avec une coche verte.
+          await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed', status: 'failed' });
           // La clé est libérée : le joueur a été remboursé, un retry doit
           // pouvoir relancer un vrai payout.
           forgetWithdrawalKey(session.user.id, cleanKey);

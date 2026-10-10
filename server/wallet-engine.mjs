@@ -43,27 +43,32 @@ export const getServerWallet = (userId) => getWalletSnapshot(userId);
  * @param {string} [method] - Payment method (e.g. 'Mobile Money').
  * @returns {Promise<Object>} Updated wallet snapshot.
  */
-export const depositToWallet = async (userId, amount, method = 'Mobile Money') => {
+export const depositToWallet = async (userId, amount, method = 'Mobile Money', options = {}) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
     throw makeError('INVALID_AMOUNT', 'Le montant du depot est invalide.');
   }
 
-  return (await updateWalletSnapshot(userId, (wallet) =>
-    withTransaction(
+return (await updateWalletSnapshot(userId, (wallet) => {
+    return withTransaction(
       {
         ...wallet,
         cashBalance: roundAmount(wallet.cashBalance + safeAmount),
       },
       {
-        type: 'deposit',
+        // Un remboursement de retrait N'EST PAS un dépôt. Écrit `deposit`, il
+        // apparaissait dans l'historique comme « Depot ZC via Remboursement… »
+        // à côté d'un retrait marqué « completed » : le joueur lisait des
+        // retraits réussis qui n'avaient jamais eu lieu. `type` et
+        // `description` sont donc surchargeables.
+        type: options.type || 'deposit',
         amount: safeAmount,
-        description: `Depot ZC via ${method}`,
-        status: 'completed',
-        metadata: { method },
+        description: options.description || `Depot ZC via ${method}`,
+        status: options.status || 'completed',
+        metadata: { method, ...(options.metadata || {}) },
       }
-    )
-  )).wallet;
+    );
+  })).wallet;
 };
 
 /**

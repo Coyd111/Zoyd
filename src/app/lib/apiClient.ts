@@ -114,6 +114,22 @@ const ERROR_MESSAGES: Record<string, string> = {
   PAYMENT_NOT_CONFIGURED: 'Paiement temporairement indisponible.',
 };
 
+/**
+ * Extrait la raison du refus renvoyée par FedaPay.
+ *
+ * Le serveur répond `Échec du transfert Mobile Money: <raison FedaPay>`. On ne
+ * garde que cette partie, en une ligne et sans trace volumineuse : le but est
+ * que le joueur puisse lire « numéro refusé » ou « opérateur indisponible » au
+ * lieu d'un message qui ne l'aide pas.
+ */
+export const extraireRaisonPayout = (message: string): string => {
+  if (!message) return '';
+  const apres = message.split('Mobile Money:').slice(1).join('Mobile Money:').trim();
+  const raison = (apres || message).split('\n')[0].trim();
+  // Trop long = trace technique : on tronque proprement.
+  return raison.length > 140 ? `${raison.slice(0, 137)}…` : raison;
+};
+
 export const readJson = async <T>(response: Response): Promise<T> => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -121,7 +137,18 @@ export const readJson = async <T>(response: Response): Promise<T> => {
     handleAuthError(response.status, code);
 
     const serverMessage = payload.error || 'Une erreur réseau est survenue.';
-    const friendlyMessage = ERROR_MESSAGES[code] || serverMessage;
+    let friendlyMessage = ERROR_MESSAGES[code] || serverMessage;
+
+    // PAYOUT_FAILED : le message rassurant (« solde restauré ») est bon, mais
+    // il MASQUAIT la raison réelle du refus FedaPay. Le joueur ne pouvait ni
+    // comprendre ni rapporter quoi que ce soit, et l'écran n apprenait rien.
+    // On conserve l'info utile : la raison du prestataire, en une ligne.
+    // Elle porte sur la transaction du joueur (numero, operateur, montant) —
+    // rien qui ne sorte de ce qu'il vient de saisir.
+    if (code === 'PAYOUT_FAILED' && serverMessage) {
+      const raison = extraireRaisonPayout(serverMessage);
+      if (raison) friendlyMessage = `${friendlyMessage} (${raison})`;
+    }
 
     // 401/403 : préserve le vrai code serveur au lieu de tout écraser.
     // Avant, un mauvais mot de passe affichait "Session expiree" (trompeur).

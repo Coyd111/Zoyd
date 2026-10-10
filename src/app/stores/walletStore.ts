@@ -140,7 +140,12 @@ export const useWalletStore = create<WalletState>()((set, get) => {
                   description: tx.description ?? '',
                   status: tx.status,
                   metadata: tx.metadata,
-                  timestamp: tx.created_at || new Date().toISOString(),
+                  // Le serveur écrit `timestamp` (wallet-engine.buildTransaction). Lire
+              // `created_at` — inexistant — faisait retomber sur
+              // `new Date()` : TOUTES les transactions affichaient « à
+              // l'instant », quel que soit leur âge. `created_at` reste
+              // accepté pour les lignes plus anciennes.
+              timestamp: tx.timestamp || tx.created_at || '',
                 }))
               : [],
             // Le serveur rend `cashAmount`/`bonusAmount` optionnels (une passe

@@ -863,6 +863,20 @@ const TransactionRow = React.memo(({ type, amount, description, status, timestam
     );
 
   const timeValue = timestamp ? new Date(timestamp).getTime() : NaN;
+  // Le statut brut est un mot anglais technique affiché au joueur. On le
+  // traduit, et surtout on distingue « ÉCHOUÉ » : un retrait refusé par FedaPay
+  // qui s'affichait « completed » était indiscernable d'un retrait réussi.
+  const statusLabel = status === 'completed'
+    ? 'Réussi'
+    : status === 'failed'
+      ? 'Échoué'
+      : status === 'cancelled'
+        ? 'Annulé'
+        : status === 'pending'
+          ? 'En cours'
+          : status === 'frozen'
+            ? 'Bloqué'
+            : status;
   const timeLabel = Number.isFinite(timeValue) ? getRelativeTime(timestamp) : '—';
   const feeValue = Number(metadata?.feeAmount ?? 0);
   const feeLabel = Number.isFinite(feeValue) && feeValue > 0 ? ` / frais ${feeValue.toFixed(1)} ZC` : '';
@@ -880,11 +894,14 @@ const TransactionRow = React.memo(({ type, amount, description, status, timestam
         </div>
       </div>
       <div className="text-right shrink-0">
-        <div className={`font-display font-black text-lg ${isPositive ? 'text-green-400' : 'text-white'}`}>
-          {isPositive ? '+' : ''}{formatZC(Math.abs(safeAmount))}
+        <div className={`font-display font-black text-lg ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+          {/* Le signe compte : un retrait affichait « 200 ZC » sans moins, donc
+              visuellement identique à un dépôt de 200 ZC. L'historique
+              présentait des sorties d'argent comme des entrées. */}
+          {isPositive ? '+' : '−'}{formatZC(Math.abs(safeAmount))}
         </div>
         <Badge variant={status === 'completed' ? 'success' : status === 'pending' ? 'yellow' : 'disabled'}>
-          {status}
+          {statusLabel ?? status}
         </Badge>
       </div>
     </div>

@@ -1295,6 +1295,14 @@ export const tagWalletTransaction = async (userId, txId, patch) => {
     const tx = txs.find((t) => t?.id === txId);
     if (tx) {
       tx.metadata = { ...(tx.metadata || {}), ...patch };
+      // `payoutStatus: 'failed'` doit REFLETER l'echec dans le statut affiche.
+      // Sans cela, un retrait que FedaPay a refuse restait `completed` avec une
+      // coche verte dans l'historique : le joueur lisait des retraits reussis
+      // qui n avaient jamais eu lieu, a cote du remboursement qui traisait la
+      // realite. Le `status` est la seule information que l'UI lit.
+      if (patch.status && typeof patch.status === 'string') {
+        tx.status = patch.status;
+      }
       tagged = true;
     }
     return user;

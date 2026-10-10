@@ -12,7 +12,10 @@ export interface WalletTransaction {
   description?: string;
   status: TransactionStatus;
   metadata?: Record<string, unknown>;
-  created_at: string;
+  /** Champ écrit par le serveur (`buildTransaction`). `created_at` est
+   *  toléré pour les lignes plus anciennes. */
+  timestamp?: string;
+  created_at?: string;
 }
 
 export interface WalletSnapshot {

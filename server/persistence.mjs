@@ -204,6 +204,24 @@ export const hashPassword = async (password) => {
  * @param {string} passwordHash - Stored hash in "salt:digest" format
  * @returns {Promise<boolean>} True if password matches
  */
+/**
+ * L'email est-il disponible pour CE compte (unicite) ?
+ *
+ * L'index d'authentification est deja cle par email : si une autre personne
+ * l'occupe, la reponse doit le dire AVANT d'ecrire, sinon deux comptes se
+ * partageraient un identifiant de connexion.
+ *
+ * @param {string} email
+ * @param {string} userId - compte qui demande (exclu du controle)
+ * @returns {boolean}
+ */
+export const isEmailAvailable = (email, userId) => {
+  const key = normalizeEmailKey(String(email || ''));
+  if (!key) return false;
+  const owner = memoryPasswordHashes.get(key)?.[0];
+  return !owner || owner === userId;
+};
+
 export const verifyPassword = async (password, passwordHash) => {
   if (!passwordHash?.includes(':')) return false;
   const [salt, expectedDigest] = passwordHash.split(':');

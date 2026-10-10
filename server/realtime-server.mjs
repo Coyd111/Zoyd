@@ -79,6 +79,8 @@ import {
   sbFire,
   getPublicUserById,
   checkProfileUniqueness,
+  isEmailAvailable,
+  normalizeEmailKey,
   withRegistrationMutex,
   assertStrongPassword,
   tagWalletTransaction,
@@ -786,6 +788,38 @@ const handleRequest = async (req, res) => {
             value = value.slice(0, 30);
           }
           safeUpdate[field] = value;
+        }
+      }
+
+      // Changement d'email de connexion : opération sensible, traitée à part.
+      //
+      // L'email est l'IDENTIFIANT du compte. Le changer sans prouver son mot
+      // de passe permettrait à une session volée (XSS, poste partagé) de prendre
+      // la main définitivement : l'ancien mot de passe ne servirait plus à rien
+      // pour revenir. D'où la reauthentification obligatoire.
+      if (typeof body.email === 'string' && body.email.trim()) {
+        const nextEmail = body.email.trim().toLowerCase();
+        const currentEmail = normalizeEmailKey(getUserById(session.user.id)?.email || '');
+        if (nextEmail !== currentEmail) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(nextEmail) || nextEmail.length > 120) {
+            respondJson(res, 400, { ok: false, error: 'Email invalide.', code: 'INVALID_EMAIL' });
+            return;
+          }
+          if (!isEmailAvailable(nextEmail, session.user.id)) {
+            respondJson(res, 409, { ok: false, error: 'Cet email est deja rattache a un compte ZOYD.', code: 'DUPLICATE_EMAIL' });
+            return;
+          }
+          // `verifyPassword` part dans scrypt : un `undefined` le ferait
+          // exploser en 500 au lieu de repondre 403.
+          if (
+            typeof body.currentPassword !== 'string'
+            || !body.currentPassword
+            || !(await verifyUserPassword(session.user.id, body.currentPassword))
+          ) {
+            respondJson(res, 403, { ok: false, error: 'Mot de passe incorrect : confirmation requise pour changer d’email.', code: 'PASSWORD_CONFIRMATION_REQUIRED' });
+            return;
+          }
+          safeUpdate.email = nextEmail;
         }
       }
       const updatedUser = await withRegistrationMutex(() => updateUserAccount(session.user.id, (user) => {

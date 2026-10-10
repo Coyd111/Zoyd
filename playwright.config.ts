@@ -15,7 +15,11 @@ export default defineConfig({
       command: 'node server/realtime-server.mjs',
       port: 4001,
       reuseExistingServer: true,
-      timeout: 30_000,
+      // Vite met ~21 s a démarrer sur un disque lent (exFAT : lecture de
+      // thousands de fichiers sans cache OS), et `npx` ajoute son propre
+      // overhead de resolution. 30 s laissait passer le boot a peine et
+      // echouait de facon aleatoire, ce qui masquait les vrais echecs de test.
+      timeout: 120_000,
       // Les specs lisent body.token après login/register. Depuis le passage en
       // cookie-only, le token n'est renvoyé que si ALLOW_DEBUG_CODES=true
       // (jamais en prod). Sans ça, TOUTES les assertions de token échouent en
@@ -53,7 +57,7 @@ export default defineConfig({
       command: 'npx vite --port 5173',
       port: 5173,
       reuseExistingServer: true,
-      timeout: 30_000,
+      timeout: 120_000,
     },
   ],
   projects: [

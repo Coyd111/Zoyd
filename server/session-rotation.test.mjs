@@ -332,7 +332,14 @@ describe('realtime sessions : meme regle de hachage', () => {
   it('ne se laisse pas retrouver par son empreinte', async () => {
     const session = await createRealtimeSession({ userId: USER_ID, pseudo: 'B', role: 'player' });
     expect(getRealtimeSession(sha256(session.token))).toBeNull();
-    expect(getRealtimeSession(`${session.token.slice(0, -1)}0`)).toBeNull();
+
+    // Il faut INVERTER le dernier caractère, pas le remplacer par '0' : si le
+    // token tiré au hasard se termine déjà par '0', la mutation ne changeait
+    // rien et le test échouait par intermittence (~1/64 des exécutions).
+    const lastChar = session.token.slice(-1);
+    const flipped = (lastChar === 'a' ? 'b' : 'a') + session.token.slice(0, -1);
+    expect(flipped).not.toBe(session.token);
+    expect(getRealtimeSession(flipped)).toBeNull();
     deleteRealtimeSession(session.token);
   });
 

@@ -62,7 +62,9 @@ export const logoutFromBackend = async () => {
   return authorizedPost<{ ok: boolean }>('/api/auth/logout');
 };
 
-export const updateServerAccount = async (updates: Partial<User>): Promise<{ ok: boolean; user: User }> => {
+export const updateServerAccount = async (
+  updates: Partial<User> & { currentPassword?: string }
+): Promise<{ ok: boolean; user: User }> => {
   return authorizedPatch<{ ok: boolean; user: User }>('/api/auth/me', updates);
 };
 

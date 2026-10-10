@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Bell, Gamepad2, Save, Shield, User } from 'lucide-react';
 import { toast } from '../lib/toast';
-import { useAuthStore, type User as AuthUser } from '../stores/authStore';
+import { useAuthStore, type User as AuthUser, type User } from '../stores/authStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -32,6 +32,7 @@ type SettingsForm = Pick<
   | 'levelCODM'
   | 'rankMJ'
   | 'rankBR'
+  | 'email'
 > & {
   // Le formulaire normalise en chaîne les deux champs optionnels du profil
   // (`user.bio || ''`, `user.streamerPseudo || ''`) : ils ne sont jamais
@@ -64,6 +65,13 @@ const ParametresPage: React.FC = () => {
   });
   const [form, setForm] = useState<SettingsForm | null>(null);
 
+  // L'email est l'IDENTIFIANT de connexion : le serveur exige le mot de passe
+  // actuel pour l'accepter. On ne l'affiche que si la valeur change vraiment,
+  // sinon il faudrait le saisir a chaque enregistrement de profil.
+  const [emailConfirmPassword, setEmailConfirmPassword] = useState('');
+  const normalizedFormEmail = (form?.email || '').trim().toLowerCase();
+  const isEmailChanged = Boolean(user) && normalizedFormEmail !== (user?.email || '').trim().toLowerCase();
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -75,6 +83,7 @@ const ParametresPage: React.FC = () => {
     setForm({
       phone: user.phone,
       country: user.country,
+      email: user.email,
       bio: user.bio || '',
       streamerMode: user.streamerMode,
       streamerPseudo: user.streamerPseudo || '',
@@ -120,7 +129,7 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
     }
     setIsSaving(true);
     try {
-      const updates = {
+      const updates: Partial<User> & { currentPassword?: string } = {
         phone: form.phone,
         country: form.country,
         bio: form.bio.trim() || undefined,
@@ -133,9 +142,18 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
         rankBR: form.rankBR,
         notifications: notificationToggles,
       };
+      if (isEmailChanged) {
+        if (!emailConfirmPassword) {
+          toast.error('Saisis ton mot de passe actuel pour confirmer le nouvel email.');
+          return;
+        }
+        updates.email = normalizedFormEmail;
+        updates.currentPassword = emailConfirmPassword;
+      }
       const response = await updateServerAccount(updates);
       if (response.ok) {
         updateUser(response.user);
+        setEmailConfirmPassword('');
         toast.success('Tes préférences ont bien été enregistrées.');
       } else {
         toast.error('Impossible d\'enregistrer tes paramètres. Réessaye plus tard.');
@@ -254,8 +272,29 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
                 <SectionTitle title="Ton compte" />
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input label="Pseudo" value={user.pseudo} disabled helperText="Le nom qui t'identifie sur ZOYD." />
-                  <Input label="Email" value={user.email} disabled helperText="Ton email de connexion." />
+                  <Input
+                    label="Email"
+                    type="email"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={(event) => updateForm('email', event.target.value)}
+                    helperText="Ton email de connexion. Le changer demande de confirmer ton mot de passe."
+                    error={isEmailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedFormEmail) ? 'Email invalide.' : undefined}
+                  />
                 </div>
+                {isEmailChanged ? (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Input
+                      label="Mot de passe actuel"
+                      type="password"
+                      autoComplete="current-password"
+                      value={emailConfirmPassword}
+                      onChange={(event) => setEmailConfirmPassword(event.target.value)}
+                      helperText="Confirmation obligatoire : c'est ton email de connexion."
+                      required
+                    />
+                  </div>
+                ) : null}
                 <div className="grid md:grid-cols-2 gap-4">
                   <Input
                     label="Téléphone"

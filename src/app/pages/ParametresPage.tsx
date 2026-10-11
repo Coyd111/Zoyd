@@ -9,6 +9,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { updateServerAccount, deleteOwnAccount, fetchAdmin2faStatus, setupAdmin2fa, enableAdmin2fa, verifyAdmin2fa } from '../lib/authApi';
+import { ApiError } from '../lib/apiClient';
 import { CODM_RANGS, CONTROLLER_OPTIONS, COUNTRY_OPTIONS, DEVICE_OPTIONS } from '../../lib/competition';
 import { isAnySupportedPhone } from '../../lib/payoutOperators';
 import { SEOHead } from '../components/SEOHead';
@@ -24,6 +25,7 @@ type ActiveTab = (typeof tabs)[number]['id'];
 
 type SettingsForm = Pick<
   AuthUser,
+  | 'pseudo'
   | 'phone'
   | 'country'
   | 'streamerMode'
@@ -72,15 +74,38 @@ const ParametresPage: React.FC = () => {
   const normalizedFormEmail = (form?.email || '').trim().toLowerCase();
   const isEmailChanged = Boolean(user) && normalizedFormEmail !== (user?.email || '').trim().toLowerCase();
 
+  // Le pseudo est libre (un joueur change de pseudo en jeu), mais il reste
+  // l'identifiant affiché aux adversaires ET une clé de connexion : d'où la
+  // validation immédiate, plutôt qu'un aller-retour serveur pour découvrir
+  // qu'on est trop long.
+  const normalizedFormPseudo = (form?.pseudo || '').trim();
+  const isPseudoChanged = Boolean(user) && normalizedFormPseudo !== (user?.pseudo || '').trim();
+  const pseudoError = !isPseudoChanged
+    ? ''
+    : !normalizedFormPseudo
+      ? 'Le pseudo ne peut pas etre vide.'
+      : normalizedFormPseudo.length > 30
+        ? 'Maximum 30 caracteres.'
+        : '';
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Initialisation une seule fois par COMPTE, pas à chaque `user`.
+  //
+  // Le hook était branché sur `[user]` : toute mise à jour du profil en
+  // socket (solde, trustScore, résultat de match) créait un nouvel objet et
+  // réinitialisait tout le formulaire. Sur un champ que l'on saisit en
+  // continu — le pseudo — cela mangeait la saisie en cours. On dépend donc
+  // de l'IDENTITÉ du compte, et la resynchronisation explicite après
+  // enregistrement se fait dans le handler de sauvegarde.
   useEffect(() => {
     if (!user) return;
     setForm({
+      pseudo: user.pseudo,
       phone: user.phone,
       country: user.country,
       email: user.email,
@@ -93,17 +118,21 @@ const ParametresPage: React.FC = () => {
       rankMJ: user.rankMJ,
       rankBR: user.rankBR,
     });
-    // Load notification settings from user.notifications if available
-    if (user.notifications && typeof user.notifications === 'object') {
-      setNotificationToggles({
-        matchStart: user.notifications.matchStart ?? true,
-        results: user.notifications.results ?? true,
-        messages: user.notifications.messages ?? true,
-        tournaments: user.notifications.tournaments ?? true,
-        referrals: user.notifications.referrals ?? false,
-      });
-    }
-  }, [user]);
+  }, [user?.id]);
+
+  // Les notifications arrivent séparément : elles ne doivent surtout pas
+  // partager le cycle de vie du formulaire ci-dessus.
+  useEffect(() => {
+    const notifications = user?.notifications;
+    if (!notifications || typeof notifications !== 'object') return;
+    setNotificationToggles({
+      matchStart: notifications.matchStart ?? true,
+      results: notifications.results ?? true,
+      messages: notifications.messages ?? true,
+      tournaments: notifications.tournaments ?? true,
+      referrals: notifications.referrals ?? false,
+    });
+  }, [user?.notifications]);
 
   if (!user || !form) {
     return (
@@ -129,6 +158,10 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
     }
     setIsSaving(true);
     try {
+      if (pseudoError) {
+        toast.error(pseudoError);
+        return;
+      }
       const updates: Partial<User> & { currentPassword?: string } = {
         phone: form.phone,
         country: form.country,
@@ -142,6 +175,9 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
         rankBR: form.rankBR,
         notifications: notificationToggles,
       };
+      if (isPseudoChanged) {
+        updates.pseudo = normalizedFormPseudo;
+      }
       if (isEmailChanged) {
         if (!emailConfirmPassword) {
           toast.error('Saisis ton mot de passe actuel pour confirmer le nouvel email.');
@@ -154,12 +190,24 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
       if (response.ok) {
         updateUser(response.user);
         setEmailConfirmPassword('');
+        // Resynchronise le formulaire sur la VRAIE valeur enregistrée (le
+        // serveur peut normaliser/tronquer) : sans ça, `isPseudoChanged`
+        // resterait vrai et le mode « dirty » ne se calmerait jamais.
+        setForm((prev) => (prev ? { ...prev, pseudo: response.user.pseudo } : prev));
         toast.success('Tes préférences ont bien été enregistrées.');
       } else {
         toast.error('Impossible d\'enregistrer tes paramètres. Réessaye plus tard.');
       }
-    } catch {
-      toast.error('Erreur lors de la sauvegarde de tes paramètres.');
+    } catch (error) {
+      // Un pseudo déjà pris remonte en 409 DUPLICATE_PSEUDO : c'est la seule
+      // vraie erreur métier attendue ici, elle mérite son message plutôt
+      // qu'un « réessaye plus tard » qui ne sert à rien.
+      const code = error instanceof ApiError ? error.code : '';
+      if (code === 'DUPLICATE_PSEUDO') {
+        toast.error('Ce pseudo est déjà utilisé par un autre joueur.');
+      } else {
+        toast.error('Erreur lors de la sauvegarde de tes paramètres.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -271,7 +319,14 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
               <div role="tabpanel" id="panel-account" aria-labelledby="tab-account">
                 <SectionTitle title="Ton compte" />
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Input label="Pseudo" value={user.pseudo} disabled helperText="Le nom qui t'identifie sur ZOYD." />
+                  <Input
+                    label="Pseudo"
+                    value={form.pseudo}
+                    onChange={(event) => updateForm('pseudo', event.target.value)}
+                    maxLength={30}
+                    helperText="Le nom qui t'identifie sur ZOYD. L'arbitre s'en sert pour dire qui a gagne : garde celui que tu utilises en jeu."
+                    error={pseudoError || undefined}
+                  />
                   <Input
                     label="Email"
                     type="email"

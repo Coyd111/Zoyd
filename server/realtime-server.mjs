@@ -787,6 +787,14 @@ const handleRequest = async (req, res) => {
           if (field === 'pseudo' && typeof value === 'string' && value.length > 30) {
             value = value.slice(0, 30);
           }
+          // Un pseudo vide effacerait l'identité du joueur : il disparaît des
+          // matchs en cours, des classements et de la file de l'arbitre.
+          // `checkProfileUniqueness` ignoreait justement les valeurs vides, le
+          // compte restait donc « valide »… sans nom.
+          if (field === 'pseudo' && !String(value || '').trim()) {
+            respondJson(res, 400, { ok: false, error: 'Le pseudo ne peut pas etre vide.', code: 'PSEUDO_REQUIRED' });
+            return;
+          }
           safeUpdate[field] = value;
         }
       }

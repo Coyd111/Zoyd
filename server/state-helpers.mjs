@@ -90,6 +90,20 @@ const broadcastMatchesToSessions = (io, matches) => {
 };
 
 /**
+ * Statuts pendant lesquels le pseudo affiche suit le compte en direct.
+ *
+ * La frontiere est posee sur la soumission du resultat : tant que le match
+ * n'est pas fini, l'arbitre doit savoir qui a gagne sous le nom que le
+ * joueur porte MAINTENANT. A partir de `awaiting_confirmation`, le resultat
+ * est gele et l'appel sera tranche sur l'identite du moment du match : on ne
+ * reecrit donc plus l'historique (un joueur ne peut pas renommer apres une
+ * defaite pour la faire disparaitre, ni apres une victoire pour la revendiquer).
+ */
+const LIVE_IDENTITY_STATUSES = new Set([
+  'recruiting', 'full', 'check_in', 'ready', 'in_progress',
+]);
+
+/**
  * Remove sensitive fields from a match before broadcasting.
  *
  * `userId` est retire (les UUID internes ne doivent pas fuiter), mais un
@@ -98,23 +112,36 @@ const broadcastMatchesToSessions = (io, matches) => {
  * boutons "Confirmer ma presence" / "Je suis pret" ne s'affichaient jamais.
  * `hasConfirmed` remplace l'acces a `result.confirmedByTeams`.
  *
+ * Pour un match encore en cours, `pseudo` est relu sur le compte : le joueur
+ * peut changer de pseudo (comme en jeu), et l'arbitre doit voir le nom
+ * actuel. `gameId` l'accompagne comme repere STABLE — le pseudo est libre et
+ * modifiable, le gameId ne l'est pas, et il est deja public (il figure dans
+ * les payloads de profil public).
+ *
  * @param {object} match - Match to sanitize
  * @param {string|null} viewerId - userId du destinataire (null = anonyme)
  * @returns {object} A shallow copy with sensitive fields stripped
  */
-const sanitizeMatchForBroadcast = (match, viewerId = null) => {
-  const { roomPassword, roomName, screenshots, ...safe } = match;
+const sanitizeMatchForBroadcast = (match, viewerId = null) => {  const { roomPassword, roomName, screenshots, ...safe } = match;
   if (safe.arbiter) {
     const { roomPassword: _ap, roomName: _an, userId: arbiterUserId, ...safeArbiter } = safe.arbiter;
     safe.arbiter = { ...safeArbiter, isMe: Boolean(viewerId && arbiterUserId === viewerId) };
   }
   if (Array.isArray(safe.players)) {
     const confirmed = Array.isArray(safe.result?.confirmedByTeams) ? safe.result.confirmedByTeams : [];
-    safe.players = safe.players.map(({ userId, ...rest }) => ({
-      ...rest,
-      isMe: Boolean(viewerId && userId === viewerId),
-      hasConfirmed: confirmed.includes(userId),
-    }));
+    const liveIdentity = LIVE_IDENTITY_STATUSES.has(safe.status);
+    safe.players = safe.players.map(({ userId, ...rest }) => {
+      const account = liveIdentity ? getUserById(userId) : null;
+      return {
+        ...rest,
+        // Le snapshot sert de repli : un joueur supprime entre-temps ne doit
+        // pas faire disparaitre son nom de la liste.
+        ...(account?.pseudo ? { pseudo: account.pseudo } : {}),
+        gameId: account?.gameId || rest.gameId || null,
+        isMe: Boolean(viewerId && userId === viewerId),
+        hasConfirmed: confirmed.includes(userId),
+      };
+    });
   }
   // Partition calculee par le serveur (meme base que applyResultSettlement :
   // cagnotte reellement verrouillee). Evite au front de recalculer un
@@ -132,6 +159,29 @@ const sanitizeMatchForBroadcast = (match, viewerId = null) => {
     safe.result = safeResult;
   }
   return safe;
+};
+
+/**
+ * Rediffuse les matchs EN COURS où figure ce joueur.
+ *
+ * Appelée après un changement de pseudo : sans ça, l'arbitre connecté verrait
+ * l'ancien nom jusqu'au prochain mouvement de match (check-in, prêt, résultat),
+ * alors que le joueur vient justement de se renommer. Même sémantique de delta
+ * que `saveMatches` : le client fusionne, il ne remplace pas sa liste.
+ *
+ * @param {object} io - Socket.IO server instance
+ * @param {string} userId - compte dont le pseudo a changé
+ * @returns {number} nombre de matchs rediffusés
+ */
+const refreshLiveMatchIdentities = (io, userId) => {
+  const affected = getStateCollection('matches').filter((match) => (
+    LIVE_IDENTITY_STATUSES.has(match?.status)
+    && Array.isArray(match?.players)
+    && match.players.some((player) => player?.userId === userId)
+  ));
+  if (affected.length === 0) return 0;
+  broadcastMatchesToSessions(io, affected);
+  return affected.length;
 };
 
 /**
@@ -288,6 +338,8 @@ const buildLeagueActionPayload = (season, userId) => {
 
 export {
   saveMatches,
+  broadcastMatchesToSessions,
+  refreshLiveMatchIdentities,
   getStoredTournaments,
   saveTournaments,
   buildMatchActionPayload,

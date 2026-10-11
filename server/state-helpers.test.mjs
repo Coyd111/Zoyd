@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // `state-helpers.mjs` tire `push-notifications.mjs` -> `vapid-keys.mjs`, qui
 // leve au chargement si les cles VAPID ne sont pas definies (cas du test
@@ -8,6 +8,14 @@ vi.mock('./push-notifications.mjs', () => ({
   broadcastStateSnapshot: vi.fn(),
   deliverNotification: vi.fn(),
 }));
+
+// Comptes simules pour tester la resolution du pseudo VIVANT. On garde le
+// reste du module reel : seul `getUserById` est remplace.
+const accounts = new Map();
+vi.mock('./persistence.mjs', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, getUserById: (id) => accounts.get(id) || null };
+});
 
 const { sanitizeMatchForBroadcast, toPublicBrLobby } = await import('./state-helpers.mjs');
 
@@ -66,6 +74,73 @@ describe('sanitizeMatchForBroadcast — aucune fuite de userId', () => {
     expect(raw).not.toContain('secret');
     expect(raw).not.toContain('SALLE-1');
     expect(raw).not.toContain('preuve');
+  });
+});
+
+/**
+ * Un joueur peut renommer son pseudo comme en jeu. L'arbitre doit voir le nom
+ * ACTUEL tant que le match n'est pas termine, et un repere STABLE a cote,
+ * parce qu'un nom libre ne prouve rien : n'importe qui peut s'appeler comme
+ * quelqu'un d'autre. Une fois le resultat soumis, l'historique ne se
+ * reecrit pas — sinon on pourrait renommer apres une defaite pour la
+ * disparaitre.
+ */
+describe('sanitizeMatchForBroadcast — identite des joueurs', () => {
+  beforeEach(() => {
+    accounts.clear();
+    accounts.set(PLAYER_ID, { id: PLAYER_ID, pseudo: 'NouveauNom', gameId: 'CO-777' });
+    accounts.set(OTHER_ID, { id: OTHER_ID, pseudo: 'Invaincu', gameId: 'CO-888' });
+  });
+
+  const matchWith = (status) => ({
+    id: 'M-2',
+    status,
+    players: [
+      { userId: PLAYER_ID, pseudo: 'AncienNom', isCheckedIn: true },
+      { userId: OTHER_ID, pseudo: 'Invaincu', isCheckedIn: false },
+    ],
+  });
+
+  it.each(['recruiting', 'full', 'check_in', 'ready', 'in_progress'])(
+    'suit le pseudo vivant en %s',
+    (status) => {
+      const safe = sanitizeMatchForBroadcast(matchWith(status), PLAYER_ID);
+      expect(safe.players[0].pseudo).toBe('NouveauNom');
+    },
+  );
+
+  it.each(['awaiting_confirmation', 'finished', 'disputed', 'cancelled', 'forfeited'])(
+    'fige le pseudo en %s',
+    (status) => {
+      const safe = sanitizeMatchForBroadcast(matchWith(status), PLAYER_ID);
+      expect(safe.players[0].pseudo).toBe('AncienNom');
+    },
+  );
+
+  it('expose le gameId comme repere stable', () => {
+    const safe = sanitizeMatchForBroadcast(matchWith('in_progress'), PLAYER_ID);
+    expect(safe.players[0].gameId).toBe('CO-777');
+    expect(safe.players[1].gameId).toBe('CO-888');
+  });
+
+  it('ne laisse pas disparaitre un joueur dont le compte a disparu', () => {
+    accounts.delete(PLAYER_ID);
+    const safe = sanitizeMatchForBroadcast(matchWith('in_progress'), PLAYER_ID);
+    expect(safe.players[0].pseudo).toBe('AncienNom');
+  });
+
+  it('ne laisse pas fuir le userId en ajoutant le pseudo vivant', () => {
+    const raw = JSON.stringify(sanitizeMatchForBroadcast(matchWith('in_progress'), PLAYER_ID));
+    expect(raw).not.toContain(PLAYER_ID);
+    expect(raw).not.toContain(OTHER_ID);
+  });
+
+  it('garde le vrai gameId et pas un gameId injectable par le client', () => {
+    const match = matchWith('in_progress');
+    // Un snapshot forger par un client ne doit pas pouvoir maquiller l'ID.
+    match.players[0].gameId = 'CO-FAUX';
+    const safe = sanitizeMatchForBroadcast(match, PLAYER_ID);
+    expect(safe.players[0].gameId).toBe('CO-777');
   });
 });
 

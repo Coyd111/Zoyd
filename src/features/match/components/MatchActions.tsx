@@ -60,6 +60,9 @@ const ConfirmationList = ({
               <Clock className="w-3.5 h-3.5 text-zoyd-yellow shrink-0" />
             )}
             <span className="truncate">{player.pseudo}</span>
+            {player.gameId ? (
+              <span className="text-white/30 font-mono tracking-wider">{player.gameId}</span>
+            ) : null}
             <span className="text-white/40 font-mono uppercase tracking-wider">{teamLabels[player.team]}</span>
           </li>
         ))}

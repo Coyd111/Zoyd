@@ -10,7 +10,7 @@ import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs'
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
-import { saveMatches, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies, toPublicBrLobby, toPublicBrRanking } from './state-helpers.mjs';
+import { saveMatches, refreshLiveMatchIdentities, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies, toPublicBrLobby, toPublicBrRanking } from './state-helpers.mjs';
 import { deliverAuthCode } from './code-delivery.mjs';
 import { verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
@@ -836,6 +836,18 @@ const handleRequest = async (req, res) => {
         checkProfileUniqueness(session.user.id, safeUpdate);
         return { ...user, ...safeUpdate };
       }));
+      // Un pseudo n'est pas figé dans les matchs en cours : l'arbitre doit voir
+      // le nouveau nom sans attendre le prochain mouvement de match.
+      if (safeUpdate.pseudo) {
+        try {
+          refreshLiveMatchIdentities(io, session.user.id);
+        } catch (broadcastError) {
+          // Le renregistrement est déjà écrit : un échec de diffusion ne doit
+          // pas faire répondre 500 au client (le rattrapageira au prochain
+          // broadcast de match).
+          log.warn('Renvoi des matchs apres changement de pseudo impossible', { error: String(broadcastError?.message || broadcastError) });
+        }
+      }
       respondJson(res, 200, { ok: true, user: updatedUser }, req);
     } catch (error) {
       respondMappedError(res, error);

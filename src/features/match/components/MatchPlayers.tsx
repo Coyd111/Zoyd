@@ -44,6 +44,12 @@ const TeamCard = ({
               <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
                 {player.isCheckedIn ? 'Présence confirmée' : 'En attente'}
               </div>
+              {/* Repère stable : le pseudo bouge, ce numéro reste le même. */}
+              {player.gameId ? (
+                <div className="text-[10px] font-mono tracking-widest text-white/40">
+                  ID {player.gameId}
+                </div>
+              ) : null}
             </div>
           </div>
           <div className={`text-[10px] font-mono uppercase tracking-widest ${player.isReady ? 'text-green-400' : 'text-white/60'}`}>

@@ -123,13 +123,15 @@ export const DisputeStat = ({ label, value }: { label: string; value: string }) 
   </div>
 );
 
-export const PlayerPill = ({ label, team }: { label: string; team: 0 | 1 }) => (
+export const PlayerPill = ({ label, team, gameId }: { label: string; team: 0 | 1; gameId?: string | null }) => (
   <span
     className={`px-3 py-2 text-[10px] font-mono uppercase tracking-widest ${
       team === 0 ? 'text-zoyd-blue' : 'text-zoyd-yellow'
     }`}
   >
     {team === 0 ? 'A' : 'B'} / {label}
+    {/* Repère stable : un joueur qui se renomme reste identifiable. */}
+    {gameId ? <span className="ml-2 text-white/35">{gameId}</span> : null}
   </span>
 );
 

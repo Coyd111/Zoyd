@@ -23,6 +23,14 @@ export type DeviceRestriction = User['device'] | 'open';
 
 export interface MatchPlayer {
   pseudo: string;
+  /**
+   * Repère STABLE du joueur, à côté d'un pseudo librement modifiable.
+   *
+   * `gameId` est fixé à l'inscription et n'est pas modifiable, et il figure
+   * déjà dans les profils publics : l'afficher permet à l'arbitre de distinguer
+   * deux joueurs même si l'un d'eux se renomme en cours de route.
+   */
+  gameId?: string | null;
   team: MatchTeam;
   joinedAt: string;
   trustScore: number;

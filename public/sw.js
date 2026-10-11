@@ -1,11 +1,14 @@
-const CACHE_NAME = 'zoyd-v5';
+const CACHE_NAME = 'zoyd-v6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
 ];
 
-const DYNAMIC_CACHE = 'zoyd-dynamic-v2';
+// Cache des assets non-API (hashed JS/CSS, polices). Renommé pour purger
+// les entrées `/api/` depositées par les versions précédentes : `activate`
+// supprime tous les caches dont le nom diffère de CACHE_NAME.
+const DYNAMIC_CACHE = 'zoyd-assets-v3';
 
 // Install : cache shell
 self.addEventListener('install', (event) => {
@@ -45,23 +48,32 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // API calls : network first, cache fallback (skip auth/sensitive endpoints)
+  // API : JAMAIS de cache. Réseau direct, ou 503 explicite si hors ligne.
+  //
+  // Avant, une liste de denylist essayait de filtrer (`/auth/`, `/wallet`,
+  // `/chat`...) et s'appuyait sur l'absence d'en-tête `Authorization`.
+  // Ce garde est mort depuis le passage en cookie httpOnly : le navigateur
+  // n'envoie plus d'en-tête, donc la condition était toujours vraie et ne
+  // filtrait plus rien. Restaient en cache :
+  //   - /api/realtime/state/bootstrap -> amis, demandes, blocages,
+  //     notifications et matchs de CE joueur
+  //   - /api/social/friends, /api/social/pending -> cercle social
+  //   - /api/notifications, /api/admin/commissions, /api/admin/2fa/status
+  //
+  // Conséquences réelles : sur un appareil partagé, le joueur suivant —
+  // ou le même joueur hors ligne — voit l'état du précédent ; et comme la
+  // clé de cache est l'URL, une réponse 401/200 Pinvalidée peut réapparaître
+  // après le changement de compte. Une entrée de menu, pas une information
+  // périmée.
+  //
+  // Le service worker garde ce qui justifie son existence : le shell et les
+  // assets hashés, disponibles hors ligne et chargés au cache d'abord.
   if (url.pathname.startsWith('/api/')) {
-    const safeToCache = !request.headers.has('authorization') &&
-      !url.pathname.includes('/auth/') &&
-      !url.pathname.includes('/wallet') &&
-      !url.pathname.includes('/earnings') &&
-      !url.pathname.includes('/chat');
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (safeToCache && response.status === 200) {
-            const clone = response.clone();
-            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request).then(cached => cached || new Response(JSON.stringify({ error: "Serveur injoignable ou hors ligne" }), { status: 503, headers: { 'Content-Type': 'application/json' } })))
+      fetch(request).catch(() => new Response(
+        JSON.stringify({ ok: false, error: 'Serveur injoignable ou hors ligne', code: 'OFFLINE' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      )),
     );
     return;
   }

@@ -91,6 +91,7 @@ import {
   getPublicStats,
   getCommissionStats,
   markAdmin2faVerified,
+  onWalletUpdated,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet, calcWithdrawNet, MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE } from './wallet-engine.mjs';
 import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex } from './mutex.mjs';
@@ -3360,6 +3361,14 @@ const io = new SocketIOServer(server, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
+});
+
+// Chaque onglet du joueur rejoint la room `user:<id>` (voir le handshake plus
+// bas). On y pousse le portefeuille a chaque mutation : sans ca, un retrait
+// fait dans un onglet laissait les autres afficher l'ancien solde jusqu'au
+// rechargement complet de la page.
+onWalletUpdated((userId, wallet) => {
+  io.to(`user:${userId}`).emit('wallet:update', { wallet });
 });
 
 // Socket.io connection rate limit per IP

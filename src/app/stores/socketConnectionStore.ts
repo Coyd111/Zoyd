@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { User } from './authStore';
+import { useAuthStore } from './authStore';
+import { useWalletStore } from './walletStore';
 import { useChatStore } from './chatStore';
 import type { Match } from './matchStore';
 import type { Tournament } from './tournamentStore';
@@ -148,6 +150,15 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
       },
       onLeaguesSnapshot: (seasons) => {
         useLeagueStore.getState().hydrateFromServer(seasons);
+        set({ lastHeartbeatAt: getNow() });
+      },
+      onWalletUpdate: (wallet) => {
+        if (!wallet) return;
+        // Garde-fou multi-compte : l'événement peut arriver après un logout
+        // suivi d'une autre connexion. Sans ce contrôle, le solde du compte
+        // précédent s'écrirait dans le wallet du nouveau joueur.
+        if (useAuthStore.getState().user?.id !== user.id) return;
+        useWalletStore.getState().applyRemoteWallet(wallet);
         set({ lastHeartbeatAt: getNow() });
       },
       onChatChannel: (channel) => {

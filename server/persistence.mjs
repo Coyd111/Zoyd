@@ -1222,12 +1222,51 @@ export const updateUserAccount = async (userId, updater) => {
  */
 export const getWalletSnapshot = (userId) => getUserById(userId)?.wallet || normalizeWalletSnapshot(defaultWallet);
 
-export const updateWalletSnapshot = async (userId, updater) =>
-  updateUserAccount(userId, (user) => {
+export const updateWalletSnapshot = async (userId, updater) => {
+  const result = await updateUserAccount(userId, (user) => {
     user.wallet = normalizeWalletSnapshot(updater(structuredClone(user.wallet || defaultWallet), structuredClone(user)));
     user.walletBalance = roundAmount(user.wallet.cashBalance + user.wallet.bonusBalance);
     return user;
   });
+  notifyWalletUpdated(userId, result);
+  return result;
+};
+
+// ─── Diffusion temps réel du portefeuille ───────────────────────────────────
+//
+// Toutes les mutations de solde convergent ici : retraits, versements de
+// cagnotte, remises de liga/tournoi/BR, litiges, fim de match. Le serveur
+// n'émettait pourtant RIEN : un joueur qui retirait dans un onglet voyait
+// l'autre onglet afficher l'ancien solde jusqu'au rechargement complet.
+//
+// Le montant de cash seule n'aurait pas suffi : une cagnotte figée, des
+// entrées en séquestre ou un historique qui bouge changent l'écran sans que
+// `walletBalance` soit réécrit. On diffuse donc le portefeuille entier, et le
+// client recalcule son total.
+let walletUpdateListener = null;
+
+/**
+ * Branche la diffusion temps réel (appelé UNE fois au démarrage du serveur).
+ *
+ * `persistence.mjs` n'a pas accès à `io` : on enregistre donc un rappel plutot
+ * que d'y émettre directement.
+ *
+ * @param {(userId: string, wallet: object) => void} listener
+ */
+export const onWalletUpdated = (listener) => {
+  walletUpdateListener = typeof listener === 'function' ? listener : null;
+};
+
+const notifyWalletUpdated = (userId, user) => {
+  if (!walletUpdateListener) return;
+  try {
+    walletUpdateListener(userId, user?.wallet || null);
+  } catch (error) {
+    // Une diffusion ratée ne doit JAMAIS faire échouer une mutation de solde :
+    // l'argent est déjà écrit, l'affichage rattrapera au prochain rafraîchissement.
+    log.warn('Diffusion temps reel du portefeuille impossible', { userId, error: String(error?.message || error) });
+  }
+};
 
 // ─── Idempotence des retraits ───────────────────────────────────────────────
 //

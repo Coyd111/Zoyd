@@ -10,6 +10,7 @@ import type { Match } from '../stores/matchStore';
 import type { Tournament } from '../stores/tournamentStore';
 import type { LeagueSeason } from '../stores/leagueStore';
 import type { FriendRequestStatus } from '../stores/friendsStore';
+import type { WalletSnapshot } from './walletApi';
 
 export interface ServerPresenceSnapshot {
   channelId: string;
@@ -61,6 +62,14 @@ interface RealtimeHandlers {
   onMatchesSnapshot?: (matches: Match[]) => void;
   onTournamentsSnapshot?: (tournaments: Tournament[]) => void;
   onLeaguesSnapshot?: (seasons: LeagueSeason[]) => void;
+  /**
+   * Portefeuille mis à jour par le serveur après une mutation (retrait,
+   * cagnotte, remise, litige).
+   *
+   * Sans cet événement, un joueur qui retirait dans un onglet voyait tous les
+   * autres afficher l'ancien solde jusqu'au rechargement de la page.
+   */
+  onWalletUpdate?: (wallet: WalletSnapshot) => void;
   onChatChannel?: (channel: ChatChannelDef) => void;
   onChatMessage?: (payload: { channel: ChatChannelDef; message: ChatMessage }) => void;
   onChatRead?: (payload: { channelId: string; userId: string; readAt: string }) => void;
@@ -164,6 +173,7 @@ export const bindRealtimeHandlers = (handlers: RealtimeHandlers) => {
   currentSocket.on('state:matches', (payload) => handlers.onMatchesSnapshot?.(payload.items || []));
   currentSocket.on('state:tournaments', (payload) => handlers.onTournamentsSnapshot?.(payload.items || []));
   currentSocket.on('state:leagues', (payload) => handlers.onLeaguesSnapshot?.(payload.items || []));
+  currentSocket.on('wallet:update', (payload) => handlers.onWalletUpdate?.(payload?.wallet));
   currentSocket.on('chat:channel', (payload) => handlers.onChatChannel?.(payload.channel));
   currentSocket.on('chat:message', (payload) => handlers.onChatMessage?.(payload));
   currentSocket.on('chat:read', (payload) => handlers.onChatRead?.(payload));

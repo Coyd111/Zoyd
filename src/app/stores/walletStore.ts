@@ -55,6 +55,15 @@ export interface WalletState {
   withdrawalMinAmount: number;
   applyWithdrawalPolicy: (policy?: WithdrawalPolicy) => void;
   hydrateFromServer: (snapshot: WalletSnapshot) => void;
+  /**
+   * Applique un portefeuille venu du serveur en temps réel (`wallet:update`).
+   *
+   * Distingué de `hydrateFromServer` : on ne touche QUE les soldes. Les
+   * transactions ne sont pas dans l'événement, et les remplacer par une liste
+   * vide ferait disparaître l'historique à chaque gain. Elles se rechargent
+   * par `fetchWalletSnapshot` quand l'utilisateur ouvre son portefeuille.
+   */
+  applyRemoteWallet: (wallet: Partial<Pick<WalletState, 'cashBalance' | 'bonusBalance' | 'lockedBalance' | 'pendingWinnings'>>) => void;
   refreshFromServer: (expectedUserId?: string) => Promise<void>;
   deposit: (amount: number, method: string) => Promise<void>;
   withdraw: (amount: number, method: string, phone: string, country?: string) => Promise<void>;
@@ -125,8 +134,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
             cashBalance: roundAmount(snapshot.cashBalance ?? 0),
             bonusBalance: roundAmount(snapshot.bonusBalance ?? 0),
             lockedBalance: roundAmount(snapshot.lockedBalance ?? 0),
-            pendingWinnings: roundAmount(snapshot.pendingWinnings ?? 0),
-            // Le serveur envoie `created_at`, le store utilise `timestamp`.
+            pendingWinnings: roundAmount(snapshot.pendingWinnings ?? 0),            // Le serveur envoie `created_at`, le store utilise `timestamp`.
             // On liste les champs explicitement (pas de `...tx`) : le spread
             // laissait fuiter `created_at` hors du type `Transaction`.
             transactions: Array.isArray(snapshot.transactions)
@@ -165,6 +173,20 @@ export const useWalletStore = create<WalletState>()((set, get) => {
               ])
             ),
           }));
+          syncAuthBalance();
+        },
+
+        applyRemoteWallet: (wallet) => {
+          if (!wallet) return;
+          set(() => ({
+            cashBalance: roundAmount(wallet.cashBalance ?? 0),
+            bonusBalance: roundAmount(wallet.bonusBalance ?? 0),
+            lockedBalance: roundAmount(wallet.lockedBalance ?? 0),
+            pendingWinnings: roundAmount(wallet.pendingWinnings ?? 0),
+          }));
+          // Le bandeau de la navbar lit `walletBalance` sur le store d'auth :
+          // sans cette synchro, l'en-tête afficherait encore l'ancien total
+          // alors que la page portefeuille est deja a jour.
           syncAuthBalance();
         },
 

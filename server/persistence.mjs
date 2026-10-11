@@ -2862,7 +2862,7 @@ export const loadAdminTotpSecrets = async () => {
  * (FATAL "Unhandled promise rejection") et TOUTE l'API était down, avec un
  * message qui ne mentionnait pas la variable responsable.
  */
-const ensureSeedAdmin = async () => {
+export const ensureSeedAdmin = async () => {
   // Identite du compte de controle : surchargeable par variables
   // d'environnement. Les valeurs par defaut sont DANS LE CODE, donc visibles
   // de tous (le depot est public) : `admin@zoyd.com` et `admin-zoyd-control`
@@ -2887,6 +2887,23 @@ const ensureSeedAdmin = async () => {
       }
       return;
     }
+  }
+
+  // Garde-fou : le seed ne doit JAMAIS réécrire un compte existant.
+  //
+  // `insertUser` fait un `sbUpsert` sur `ZOYD_ADMIN_ID`. Si ce compte existe
+  // déjà — cas normal dès qu'on change `ZOYD_ADMIN_EMAIL` sans encore l'avoir
+  // appliqué dans l'application — l'upsert ÉCRASE toute la ligne avec les
+  // valeurs par défaut du seed : solde remis à 0, mot de passe remplacé,
+  // stats et bio perdues. On s'arrête donc ici et on le dit.
+  const existingById = memoryUsers.get(seedId);
+  if (existingById) {
+    log.error('[FATAL] Compte admin introuvable par email mais ID deja pris — aucune ecriture.', {
+      hint: 'Applique le nouvel email depuis Parametres, OU remets ZOYD_ADMIN_EMAIL sur l\'email actuel du compte. Ne surtout pas laisser cet etat se prolonger.',
+      idOccupedBy: normalizeEmailKey(existingById.email || ''),
+      configuredEmail: seedEmail,
+    });
+    return;
   }
 
   const password = process.env.ZOYD_ADMIN_PASSWORD;

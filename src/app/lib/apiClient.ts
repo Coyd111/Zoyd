@@ -1,5 +1,6 @@
 import { useAuthStore } from '../stores/authStore';
 import { getBaseUrl, getApiUrl } from './apiUrl';
+import { purgeSessionStores } from './sessionPurge';
 
 let logoutQueued = false;
 
@@ -7,27 +8,6 @@ let logoutQueued = false;
 // pas boucler le graphe d'imports. On les reexporte ici : tous les appels
 // existants continuent de fonctionner.
 export { getBaseUrl, getApiUrl };
-
-/**
- * Purge les stores de session — chargé À LA DEMANDE, jamais statiquement.
- *
- * `sessionReset` tire le store socket, qui tire `realtimeClient`. Comme ce
- * module est importé par le client HTTP lui-même, l'import statique fermait
- * un cycle : apiClient -> sessionReset -> socketStore -> socketConnectionStore
- * -> ... -> apiClient. Rolldown le signalait (« circular dependency between
- * chunks », risque d'ordre d'exécution cassé).
- *
- * Le chemin est rare et terminal (session expirée / 401), donc un import
- * dynamique ne coûte rien en pratique et supprime complètement l'arête.
- */
-const purgeSessionStores = () => {
-  void import('./sessionReset')
-    .then(({ resetAllSessionStores }) => resetAllSessionStores())
-    .catch(() => {
-      // Le module ne doit jamais faire échouer une déconnexion : au pire,
-      // l'état est purgé au rechargement suivant.
-    });
-};
 
 export const getAuthHeaders = () => {
   // Cookie-only : le token vit dans le cookie httpOnly `zoyd_auth`,

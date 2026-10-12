@@ -2,7 +2,21 @@ import { useEffect, useRef } from 'react';
 import { toast } from '../lib/toast';
 import { fetchCurrentUser, type AuthResponse } from '../lib/authApi';
 import { resetAllSessionStores } from '../lib/sessionReset';
+import { setSessionPurgeHandler } from '../lib/sessionPurge';
 import { useAuthStore } from '../stores/authStore';
+
+// `apiClient` ne peut pas importer `sessionReset` : le module tire le store
+// socket, ce qui refermait le graphe d'imports
+// apiClient -> sessionReset -> socketStore -> socketConnectionStore ->
+// realtimeClient -> apiClient.
+//
+// On lui passe donc la purge par registre. L'enregistrement se fait AU
+// CHARGEMENT de ce module, appele au top-level de `App.tsx` : il est donc
+// garanti avant le premier rendu et avant toute requête réseau, et la purge
+// reste synchrone — un import dynamique l'aurait retardee d'un tick, ce qui
+// laissait une fenêtre où une reconnexion pouvait écrire ses propres données
+// avant que la purge de l'ancienne session ne tombe.
+setSessionPurgeHandler(resetAllSessionStores);
 
 // Cookie-only : au chargement, la session est revalidée via GET /api/auth/me
 // (le cookie httpOnly part automatiquement). Pas de token en JS.

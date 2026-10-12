@@ -69,12 +69,28 @@ export default defineConfig({
     {
       name: 'ui',
       testDir: './e2e/ui',
+      // Prechauffage de Vite AVANT les tests : sans ca, le premier `goto` de la
+      // suite paie le pre-bundling esbuild et expire son propre budget.
+      globalSetup: './e2e/ui/globalSetup.ts',
+      // Vite sert les modules A LA DEMANDE et pre-bundle ses dependances au
+      // tout premier requete : sur un disque lent, le premier `page.goto`
+      // d'un test depassait le budget du fichier, et le test echouait en
+      // "Timeout" sans qu'une seule assertion n'ait ete evaluee. Budget double
+      // pour le projet ui ; les assertions, elles, ne sont pas relachees.
+      //
+      // `timeout` et `expect` se placent AU NIVEAU DU PROJET, pas dans `use` :
+      // places dans `use`, ils sont silencieusement ignores et les 60 s / 5 s
+      // par defaut restent en vigueur.
+      timeout: 120_000,
+      expect: { timeout: 15_000 },
       use: {
         baseURL: 'http://localhost:5173',
         browserName: 'chromium',
         headless: true,
         screenshot: 'only-on-failure',
         trace: 'on-first-retry',
+        navigationTimeout: 60_000,
+        actionTimeout: 30_000,
       },
     },
     {

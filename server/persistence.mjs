@@ -630,6 +630,13 @@ export const getHealthInfo = () => ({
   loginLockoutPersisted: loginAttemptsPersisted,
   loginAttemptRows: loginAttemptsRows,
   loginAttemptError: loginAttemptsError,
+  // Quel commit tourne EN CE MOMENT. Sans ca, un deploiement manuel en
+  // retard est indiscernable d'un probleme : on lisait un log de deploiement
+  // d'une version ancienne et on en concluait que le correctif n'etait pas
+  // en ligne. Render injecte RENDER_GIT_COMMIT / RENDER_GIT_BRANCH.
+  deployedCommit: process.env.RENDER_GIT_COMMIT || null,
+  deployedCommitShort: process.env.RENDER_GIT_COMMIT?.slice(0, 7) || null,
+  deployedBranch: process.env.RENDER_GIT_BRANCH || null,
 });
 
 // Verify data integrity — compares memory count vs Supabase count (cached 60s)

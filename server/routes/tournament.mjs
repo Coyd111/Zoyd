@@ -1,0 +1,254 @@
+import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import {
+  getAuthenticatedAppSession,
+  parseRequestBody,
+  respondJson,
+  respondMappedError,
+} from '../http-utils.mjs';
+import { withTournamentMutex } from '../mutex.mjs';
+import {
+  createTournamentOnServer,
+  registerForTournamentOnServer,
+  leaveTournamentOnServer,
+  assignTournamentArbiterOnServer,
+  startTournamentOnServer,
+  setTournamentMatchRoomDetailsOnServer,
+  setTournamentMatchLiveOnServer,
+  submitTournamentMatchResultOnServer,
+} from '../tournament-engine.mjs';
+import {
+  saveTournaments,
+  getStoredTournaments,
+  sanitizeTournamentForBroadcast,
+  buildTournamentActionPayload,
+} from '../state-helpers.mjs';
+import { deliverNotification } from '../push-notifications.mjs';
+import { createLogger } from '../logger.mjs';
+
+const log = createLogger('tournament-routes');
+
+export const handleTournamentRoutes = async ({ req, res, pathname, io }) => {
+// La declaration du motif precedait de quelques lignes le premier `if` du
+// bloc : elle en fait partie, sinon `tournamentDetail` serait indefini ici.
+const tournamentDetail = pathname.match(/^\/api\/tournaments\/([^/]+)$/);
+
+if (req.method === 'GET' && tournamentDetail) {
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  try {
+    const tournament = getStoredTournaments().find((entry) => entry.id === tournamentDetail[1]);
+    if (!tournament) {
+      respondJson(res, 404, { ok: false, error: 'Tournoi introuvable.', code: 'TOURNAMENT_NOT_FOUND' });
+      return true;
+    }
+    respondJson(res, 200, { ok: true, tournament: sanitizeTournamentForBroadcast(tournament) });
+  } catch (error) {
+    respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du tournoi.', code: 'LOAD_ERROR' });
+  }
+  return true;
+}
+
+if (req.method === 'POST' && pathname === '/api/tournaments') {
+  // Le mutex serialise les tournois entre eux mais ne limite rien dans le
+  // temps : sans ce garde, un joueur authentifie cree des tournois en boucle
+  // et chaque creation immobilise le mutex pour tous les autres.
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const body = await parseRequestBody(req);
+    if (!body.name || typeof body.name !== 'string' || body.name.trim().length < 3) {
+      respondJson(res, 400, { ok: false, error: 'Nom du tournoi requis (3-100 caractères).', code: 'INVALID_TOURNAMENT_NAME' });
+      return true;
+    }
+    if (!body.format || typeof body.format !== 'string') {
+      respondJson(res, 400, { ok: false, error: 'Format requis.', code: 'INVALID_FORMAT' });
+      return true;
+    }
+    if (body.maxEntries && (typeof body.maxEntries !== 'number' || body.maxEntries < 2 || body.maxEntries > 256)) {
+      respondJson(res, 400, { ok: false, error: 'maxEntries doit être entre 2 et 256.', code: 'INVALID_MAX_ENTRIES' });
+      return true;
+    }
+    if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || !Number.isFinite(body.entryFee) || body.entryFee < 0)) {
+      respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
+      return true;
+    }
+    const outcome = createTournamentOnServer(getStoredTournaments(), session.user, body);
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 201, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentRegister = pathname.match(/^\/api\/tournaments\/([^/]+)\/register$/);
+if (req.method === 'POST' && tournamentRegister) {
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const body = await parseRequestBody(req);
+    const outcome = await registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentLeave = pathname.match(/^\/api\/tournaments\/([^/]+)\/leave$/);
+if (req.method === 'POST' && tournamentLeave) {
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const outcome = await leaveTournamentOnServer(getStoredTournaments(), session.user, tournamentLeave[1]);
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentArbiter = pathname.match(/^\/api\/tournaments\/([^/]+)\/arbiter$/);
+if (req.method === 'POST' && tournamentArbiter) {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const outcome = assignTournamentArbiterOnServer(getStoredTournaments(), session.user, tournamentArbiter[1]);
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentStart = pathname.match(/^\/api\/tournaments\/([^/]+)\/start$/);
+if (req.method === 'POST' && tournamentStart) {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const outcome = startTournamentOnServer(getStoredTournaments(), session.user, tournamentStart[1]);
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+
+    const tournament = outcome.tournament;
+    const participantIds = [...new Set(
+      (tournament.entries || []).flatMap(entry => (entry.members || []).map(m => m.userId))
+    )];
+    for (const uid of participantIds) {
+      deliverNotification(io, uid, {
+        type: 'tournament_started',
+        title: 'Tournoi demarre',
+        body: `Le tournoi "${tournament.name}" a commence !`,
+        url: `/mj/tournois/${tournament.id}`,
+        requireInteraction: false
+      }).catch(err => log.error('Notification delivery failed', err));
+    }
+
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentRoom = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/room$/);
+if (req.method === 'POST' && tournamentRoom) {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const body = await parseRequestBody(req);
+    const outcome = setTournamentMatchRoomDetailsOnServer(
+      getStoredTournaments(),
+      session.user,
+      tournamentRoom[1],
+      tournamentRoom[2],
+      body.roomName,
+      body.roomPassword
+    );
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentLive = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/live$/);
+if (req.method === 'POST' && tournamentLive) {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const outcome = setTournamentMatchLiveOnServer(
+      getStoredTournaments(),
+      session.user,
+      tournamentLive[1],
+      tournamentLive[2]
+    );
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentResult = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/result$/);
+if (req.method === 'POST' && tournamentResult) {
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    const body = await parseRequestBody(req);
+    const outcome = await submitTournamentMatchResultOnServer(
+      getStoredTournaments(),
+      session.user,
+      tournamentResult[1],
+      tournamentResult[2],
+      body
+    );
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+  return false;
+};

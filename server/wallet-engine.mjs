@@ -16,6 +16,26 @@ export const calcWithdrawNet = (amount) => {
   const feeAmount = roundAmount(gross * WITHDRAWAL_FEE_RATE);
   return { feeAmount, netAmount: roundAmount(gross - feeAmount) };
 };
+
+/**
+ * Montants de retrait renvoyes au client.
+ *
+ * Vivait dans `realtime-server.mjs`, alors que les routes de portefeuille sont
+ * dans `routes/wallet.mjs`. Le calcul derive de `calcWithdrawNet` — la source de
+ * verite du moteur — donc il vit ici, a cote.
+ *
+ * @param {number} grossAmount - Montant brut en ZC
+ * @returns {{ feeRate: number, grossAmount: number, feeAmount: number, netAmount: number }}
+ */
+export const buildWithdrawalAmounts = (grossAmount) => {
+  const { feeAmount, netAmount } = calcWithdrawNet(grossAmount);
+  return {
+    feeRate: WITHDRAWAL_FEE_RATE,
+    grossAmount: roundAmount(grossAmount),
+    feeAmount,
+    netAmount,
+  };
+};
 import { roundAmount, getNow, makeError } from './utils.mjs';
 
 const buildTransaction = (tx) => ({

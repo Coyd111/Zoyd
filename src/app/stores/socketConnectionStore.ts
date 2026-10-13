@@ -86,6 +86,9 @@ interface SocketConnectionState {
   serverConnected: boolean;
   connectionLabel: 'offline' | 'syncing' | 'live';
   bootstrapReady: boolean;
+  // Passe a true quand une coupure est survenue. Au retour du socket, on
+  // resynchronise : les deltas emis pendant la coupure ont ete perdus.
+  dirtySinceDisconnect: boolean;
   lastHeartbeatAt?: string;
   liveMatches: LiveMatchSnapshot[];
   remoteMatchSnapshots: Match[];
@@ -97,10 +100,11 @@ interface SocketConnectionState {
   bootstrapServerState: (user?: User | null) => Promise<void>;
 }
 
-export const useSocketConnectionStore = create<SocketConnectionState>((set) => ({
+export const useSocketConnectionStore = create<SocketConnectionState>((set, get) => ({
   isConnected: false,
   serverConnected: false,
   bootstrapReady: false,
+  dirtySinceDisconnect: false,
   connectionLabel: 'offline',
   lastHeartbeatAt: undefined,
   liveMatches: [],
@@ -120,16 +124,27 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
 
     bindRealtimeHandlers({
       onConnect: () => {
+        const { dirtySinceDisconnect, bootstrapReady } = get();
         set({
           isConnected: true,
           serverConnected: true,
           connectionLabel: 'live',
           lastHeartbeatAt: getNow(),
         });
+        // Le socket ne diffuse QUE des deltas, et n'envoie aucun etat initial a
+        // la connexion (juste `server:hello`). Tout ce qui s'est passe pendant
+        // la coupure est donc perdu : un resultat de match, une demande d'ami,
+        // une notification. Sans cette resynchronisation, l'interface
+        // affiche « live » en vert tout en servant un etat perime — le joueur
+        // croit que tout va bien alors que l'etat affiche est faux.
+        if (dirtySinceDisconnect && bootstrapReady) {
+          void get().bootstrapServerState(user);
+        }
       },
       onDisconnect: () => {
         set((state) => ({
           serverConnected: false,
+          dirtySinceDisconnect: true,
           connectionLabel: state.isConnected ? 'syncing' : 'offline',
           lastHeartbeatAt: getNow(),
         }));
@@ -186,6 +201,10 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
       isConnected: false,
       serverConnected: false,
       connectionLabel: 'offline',
+      // Deconnexion volontaire (logout / unmount) : ce n'est pas une coupure.
+      // L'etat repart a zero, la prochaine session bootstrape normalement.
+      bootstrapReady: false,
+      dirtySinceDisconnect: false,
     });
   },
 
@@ -351,6 +370,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set) => (
         remoteTournamentSnapshots: bootstrap.tournaments || [],
         lastHeartbeatAt: bootstrap.timestamp || getNow(),
         bootstrapReady: true,
+        dirtySinceDisconnect: false,
       });
     } catch {
       set((state) => ({

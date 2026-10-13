@@ -14,6 +14,7 @@ routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
 | 1 | Sécurité & secrets | **fait** | 25 variables d'environnement non documentées |
 | 2 | Argent & intégrité financière | **fait** | fenêtre de double crédit sur les dépôts FedaPay |
 | 3 | Données & persistance | **fait** | `user_reports` sans DDL ; signalements jamais relus |
+| 4 | Concurrence & temps réel | **fait** | après coupure, l'interface affiche « live » avec un état périmé ; config de tests décrivant un environnement inexistant |
 | 4 | Concurrence & temps réel | à faire | — |
 | 5 | Performance & bundle | à faire | — |
 | 6 | Qualité, tests & dépendances | à faire | — |
@@ -67,6 +68,7 @@ ils ne sont pas à refaire.
 - [01 - Securite & secrets](01-securite.md)
 - [02 — Argent et intégrité financière](02-argent.md)
 - [03 - Donnees et persistance](03-donnees.md)
+- [04 - Concurrence et temps reel](04-concurrence.md)
 
 ## Méthode
 

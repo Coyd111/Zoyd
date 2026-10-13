@@ -28,7 +28,15 @@ export default defineConfig({
     testTimeout: 20_000,
   },
   globals: true,
-  environment: 'jsdom',
+  // Node, et c'est VOLONTAIRE : cette ligne annoncait `jsdom`, mais jsdom
+  // n'est pas dans les dependances. Vitest retombait silencieusement sur
+  // node, donc les 500+ tests passaient dans un environnement qui n'existait
+  // pas dans la config. Une config qui decrit un environnement faux est pire
+  // qu'une config honnete : on croit couvrir le DOM alors qu'on ne le couvre
+  // pas. Les stores client sont du zustand pur, sans DOM, et le build +
+  // les 41 tests Playwright UI sont la vraie couverture navigateur.
+  // Si un test a besoin du DOM, il faut installer jsdom explicitement.
+  environment: 'node',
   setupFiles: ['./src/test/setup.ts'],
   coverage: {
     provider: 'v8',

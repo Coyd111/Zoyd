@@ -77,6 +77,15 @@ export default defineConfig({
           if (/node_modules\/lucide/.test(id)) {
             return 'vendor-icons'
           }
+          // `clsx` est partage entre l'entree et recharts. Rollup le rangeait
+          // dans le chunk `vendor-charts`, donc l'entree importait
+          // statiquement 364 kB de graphiques pour disposer d'un utilitaire
+          // d'1 kB : le chunk entier etait sur le chemin critique du premier
+          // affichage, alors que les graphiques ne servent qu'a deux pages.
+          // Son isolement rend `vendor-charts` purement paresseux.
+          if (/node_modules\/(clsx|tailwind-merge|react-is)/.test(id)) {
+            return 'vendor-utils'
+          }
           if (/node_modules\/recharts/.test(id)) {
             return 'vendor-charts'
           }

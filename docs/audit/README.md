@@ -4,7 +4,7 @@ Audit en 8 étapes, par risque décroissant. Chaque étape a son document et
 son propre lot de correctifs, committés séparément.
 
 Projet : ~60 000 lignes de code (hors images), 100 routes HTTP, 11 modules de
-routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
+routes, 525 tests unitaires, 135 E2E API, 41 E2E UI.
 
 ## Avancement
 
@@ -15,8 +15,7 @@ routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
 | 2 | Argent & intégrité financière | **fait** | fenêtre de double crédit sur les dépôts FedaPay |
 | 3 | Données & persistance | **fait** | `user_reports` sans DDL ; signalements jamais relus |
 | 4 | Concurrence & temps réel | **fait** | après coupure, l'interface affiche « live » avec un état périmé ; config de tests décrivant un environnement inexistant |
-| 4 | Concurrence & temps réel | à faire | — |
-| 5 | Performance & bundle | à faire | — |
+| 5 | Performance & bundle | **fait** | 364 kB de graphiques sur le chemin critique ; 12,8 Mo de doublons d'images ; fonds 4K à 13,1 Mo |
 | 6 | Qualité, tests & dépendances | à faire | — |
 | 7 | Produit & accessibilité | à faire | — |
 | 8 | Documentation & exploitation | à faire | — |
@@ -31,9 +30,14 @@ routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
 | Info | `lockFunds`/`unlockFunds` : code mort d'UI optimiste sur des fonds | `src/app/stores/walletStore.ts` | **supprimé** — doublait le verrouillage serveur |
 | Info | 4 canaux d'envoi de code coexistent (Resend, Brevo, SMTP, webhook) | `server/code-delivery.mjs` | documenter la precedence |
 | Info | Conversion FedaPay `amount / 10` non confirmée en réel | `server/payment-engine.mjs` | bloqué : clés live requises |
-| Info | Verrous en mémoire, corrects pour un processus ; un déploiement est une fenêtre à deux instances | ensemble des moteurs | à traiter à l'étape 4 |
+| Info | Verrous en mémoire, corrects pour un processus ; un déploiement est une fenêtre à deux instances | ensemble des moteurs | **documenté** (étape 4) — risque résiduel faible, parades listées |
 | Moyenne | `user_reports` utilisée par le code sans DDL dans le dépôt | `supabase/schema.sql` | **corrigé** — DDL et index ajoutés |
 | Moyenne | Les signalements sont écrits en base mais **jamais relus** : le tableau de bord admin n'affiche que ceux faits dans ce navigateur | `friendsStore`, `AdminDashboardPage` | **décision produit** — il manque une route de lecture admin |
+| Haute | Après une coupure socket, l'interface repassait « live » sans resynchroniser : tout le delta perdu était définitif | `socketConnectionStore`, `useRealtimeHeartbeat` | **corrigé** — reprise au retour du socket |
+| Moyenne | `vitest.config.ts` déclarait `jsdom`, qui n'est pas installé : les tests tournaient en Node sans le dire | `vitest.config.ts` | **corrigé** — mode `node` explicite |
+| Faible | `POST /api/realtime/state/sync` renvoie 409 ou 400 pour tout, et son appelant n'est jamais utilisé | `server/routes/realtime.mjs` | documenté — suppression = changement de contrat |
+| Haute | 364 kB de graphiques sur le chemin critique : `clsx` partagé tirait tout le chunk `recharts` | `vite.config.ts` | **corrigé** — chunk `vendor-utils` isolé |
+| Haute | 12,8 Mo d'images livrées en double, et fonds 4K à 13,1 Mo dont la page de connexion | `public/assets/` | **corrigé** — 26,5 Mo ramenés à 2,1 Mo |
 
 ## Points vérifiés et conformes
 
@@ -69,6 +73,7 @@ ils ne sont pas à refaire.
 - [02 — Argent et intégrité financière](02-argent.md)
 - [03 - Donnees et persistance](03-donnees.md)
 - [04 - Concurrence et temps reel](04-concurrence.md)
+- [05 - Performance et bundle](05-performance.md)
 
 ## Méthode
 

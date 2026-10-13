@@ -33,17 +33,15 @@ test.describe('Routes sociales', () => {
     // La demande apparaît chez le receveur.
     const pendingBob = await call(bob, 'GET', '/api/social/pending');
     expect(pendingBob.body?.requests.length).toBeGreaterThan(0);
+    expect(pendingBob.body?.requests[0].targetId).toBe(bob.id);
 
-    // ATTENTION — comportement OBSERVÉ, pas souhaité : l'endpoint renvoie
-    // aussi les demandes ENVOYÉES. `getFriendRequestsForUser` garde les deux
-    // directions, et la route ne filtre que sur `status`. `FriendsWidget`
-    // ne filtre pas davantage : un joueur voit donc ses propres demandes dans
-    // son onglet « Demandes d'ami ». Le test fixe la réalité constatée pour
-    // qu'une évolution soit visible ; corriger le comportement est une
-    // décision produit à part.
+    // Et chez l'expéditeur, RIEN : l'endpoint ne renvoie que les demandes
+    // reçues. Avant correction, il renvoyait aussi les outgoing, et
+    // `FriendsWidget` — qui affiche `senderPseudo` avec « Accepter / Refuser »
+    // — présentait au joueur ses propres demandes, avec les boutons pour les
+    // accepter lui-même.
     const pendingAlice = await call(alice, 'GET', '/api/social/pending');
-    expect(pendingAlice.body?.requests.length).toBeGreaterThan(0);
-    expect(pendingAlice.body?.requests[0].targetId).toBe(bob.id);
+    expect(pendingAlice.body?.requests).toHaveLength(0);
 
     // Acceptation.
     const requete = pendingBob.body.requests[0];

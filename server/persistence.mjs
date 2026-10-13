@@ -2598,10 +2598,29 @@ export const upsertStateEntity = async (kind, entity) => {
 };
 
 // ─── Social ─────────────────────────────────────────────────────────────────
+/**
+ * Demandes d'ami RECUES par ce joueur.
+ *
+ * Le nom etait ambigu et l'implémentation suivait : elle gardait les demandes
+ * ou le joueur etait expediteur OU destinataire. `/api/social/pending` et le
+ * bootstrap temps reel servaient donc aussi les demandes envoyees, et
+ * `FriendsWidget` — qui affiche `senderPseudo` avec « Accepter / Refuser » —
+ * presentait au joueur ses propres demandes, avec des boutons pour les
+ * accepter lui-meme.
+ *
+ * On filtre donc sur la direction : seul celui qui a recu la demande peut y
+ * repondre. Rien d'autre n'a besoin des demandes sortantes (`pendingId` est
+ * transitoire, et le profil public ne derive aucun etat « envoyee » de cette
+ * liste).
+ *
+ * @param {string} userId - destinataire des demandes cherchees
+ * @returns {Array<object>} demandes recues, normalisees pour le front
+ */
 export const getFriendRequestsForUser = (userId) => {
   const results = [];
   for (const fr of memoryFriendRequests.values()) {
-    if (fr.target_id !== userId && fr.sender_id !== userId) continue;
+    // Direction INBOUND uniquement : voir le commentaire de la fonction.
+    if (fr.target_id !== userId) continue;
     // Normalisation vers la forme consommée par le front (`senderPseudo`,
     // `timestamp`). On renvoyait la ligne DB brute (`sender_id`,
     // `created_at`) : le composant affichait "undefined veut t'ajouter".

@@ -288,3 +288,25 @@ VALUES (
   now(),
   now()
 ) ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- 15. USER REPORTS (signalements de joueurs)
+--
+-- AJOUTE APRES COUPE : la table etait utilisee par /api/social/report
+-- sans qu'aucun .sql du depot ne la declare. Sur un environnement neuf,
+-- rien ne la creait et les signalements etaient perdus en silence.
+--
+-- MEME FORME que state_snapshots : le code ecrit `{ id, payload, created_at }`.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_reports (
+  id TEXT PRIMARY KEY,
+  reporter_id TEXT,
+  target_id TEXT,
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  payload JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_reports_status ON user_reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_reports_target ON user_reports(target_id, created_at DESC);

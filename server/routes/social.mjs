@@ -195,7 +195,26 @@ if (req.method === 'POST' && pathname === '/api/social/report') {
       status: 'pending',
       createdAt: getNow(),
     };
-    sbFire('user_reports', () => sbUpsert('user_reports', { id: report.id, payload: report, created_at: getNow() }));
+    // Ecriture AWAITEE, pas `sbFire`.
+    //
+    // En best-effort, la route repondait 201 AVANT que l'ecriture n'aboutisse :
+    // si la table manquait ou si la base etait indisponible, le joueur lisait
+    // « Signalement envoye » et le signalement disparaitait. Or c'est une
+    // information de moderation — un signalement perdu, c'est un joueur qui
+    // continue a harceler en croyant avoir ete ecoute.
+    //
+    // `sbUpsert` renvoie `undefined` quand aucun client Supabase n'est configure
+    // (mode memoire) : ce n'est pas un echec. `false` signifie une ecriture
+    // reellement refusee.
+    const written = await sbUpsert('user_reports', { id: report.id, payload: report, created_at: getNow() });
+    if (written === false) {
+      respondJson(res, 503, {
+        ok: false,
+        error: "Signalement non enregistre, reessaie dans un instant.",
+        code: 'SERVER_BUSY',
+      });
+      return true;
+    }
     respondJson(res, 201, { ok: true, report });
   } catch (error) {
     respondMappedError(res, error);

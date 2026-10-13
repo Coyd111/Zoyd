@@ -13,7 +13,7 @@ routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
 | 0 | Cartographie | fait | 5 zones, dette faible (3 TODO) |
 | 1 | Sécurité & secrets | **fait** | 25 variables d'environnement non documentées |
 | 2 | Argent & intégrité financière | **fait** | fenêtre de double crédit sur les dépôts FedaPay |
-| 3 | Données & persistance | à faire | — |
+| 3 | Données & persistance | **fait** | `user_reports` sans DDL ; signalements jamais relus |
 | 4 | Concurrence & temps réel | à faire | — |
 | 5 | Performance & bundle | à faire | — |
 | 6 | Qualité, tests & dépendances | à faire | — |
@@ -31,6 +31,8 @@ routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
 | Info | 4 canaux d'envoi de code coexistent (Resend, Brevo, SMTP, webhook) | `server/code-delivery.mjs` | documenter la precedence |
 | Info | Conversion FedaPay `amount / 10` non confirmée en réel | `server/payment-engine.mjs` | bloqué : clés live requises |
 | Info | Verrous en mémoire, corrects pour un processus ; un déploiement est une fenêtre à deux instances | ensemble des moteurs | à traiter à l'étape 4 |
+| Moyenne | `user_reports` utilisée par le code sans DDL dans le dépôt | `supabase/schema.sql` | **corrigé** — DDL et index ajoutés |
+| Moyenne | Les signalements sont écrits en base mais **jamais relus** : le tableau de bord admin n'affiche que ceux faits dans ce navigateur | `friendsStore`, `AdminDashboardPage` | **décision produit** — il manque une route de lecture admin |
 
 ## Points vérifiés et conformes
 
@@ -62,8 +64,9 @@ ils ne sont pas à refaire.
 
 ## Documents
 
-- [01 — Sécurité & secrets](01-securite.md)
+- [01 - Securite & secrets](01-securite.md)
 - [02 — Argent et intégrité financière](02-argent.md)
+- [03 - Donnees et persistance](03-donnees.md)
 
 ## Méthode
 

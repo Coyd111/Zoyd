@@ -1,4 +1,7 @@
 import { respondJson } from './http-utils.mjs';
+import { createLogger } from './logger.mjs';
+
+const log = createLogger('rate-limiter');
 
 /** @type {Map<string, { windowStart: number, attempts: number, group: string }>} */
 const rateLimitBuckets = new Map();
@@ -31,7 +34,24 @@ const RATE_LIMIT_CONFIG = {
  * Sans ces deux variables, la configuration ci-dessus s'applique telle quelle.
  */
 const TEST_ONLY_RELAXATION = process.env.NODE_ENV === 'test'
-  && process.env.ALLOW_DEBUG_CODES === 'true';
+  && process.env.ALLOW_DEBUG_CODES === 'true'
+  // Troisieme condition, et SEULE qui compte vraiment : un service connecte a
+  // une base reelle ne peut pas se mettre en mode detendu, meme si NODE_ENV et
+  // ALLOW_DEBUG_CODES se retrouvaient poses par megarde. Sans cela, une seule
+  // variable erronee neutralise TOUS les garde-fous anti-bruteforce — auth,
+  // retraits, signalements — sans le moindre signal dans les logs.
+  //
+  // On teste `ZOYD_DISABLE_SUPABASE` et NON l'absence de SUPABASE_URL : le
+  // fichier .env.server local est charge meme en mode memoire, donc l'absence
+  // d'URL ne prouve rien, et empechait la suite E2E de tourner.
+  && process.env.ZOYD_DISABLE_SUPABASE === 'true';
+
+if (process.env.NODE_ENV === 'test' && process.env.ALLOW_DEBUG_CODES === 'true' && !TEST_ONLY_RELAXATION) {
+  log.warn(
+    'Relachement du rate limiting DEMANDE mais REFUSE : ce service est configure avec une base reelle.',
+    { disableSupabase: process.env.ZOYD_DISABLE_SUPABASE === 'true' },
+  );
+}
 
 if (TEST_ONLY_RELAXATION) {
   for (const group of Object.keys(RATE_LIMIT_CONFIG)) {

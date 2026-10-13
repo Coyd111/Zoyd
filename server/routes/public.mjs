@@ -1,4 +1,5 @@
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import {
   getAuthenticatedAppSession,
   paginate,
@@ -32,6 +33,28 @@ import { getNow } from '../utils.mjs';
 import { createLogger } from '../logger.mjs';
 
 const log = createLogger('public-routes');
+
+/**
+ * Comparaison de secrets en temps constant.
+ *
+ * `a !== b` s'arrete au premier caractere different : le temps de reponse
+ * depend donc du nombre de caracteres corrects, ce qui constitue un canal
+ * temporel. Sur un jeton de 256 bits, l'exploiter reellement demanderait de
+ * mesurer des centaines de requetes a travers un reseau — c'est peu probable,
+ * mais la correction coute trois lignes et supprime la classe de probleme.
+ *
+ * `timingSafeEqual` exige deux tampons de meme taille : on compare donc des
+ * hachages de longueur fixe, ce qui evite aussi de fuiter la taille du secret.
+ *
+ * @param {string} a - Valeur fournie par l'appelant
+ * @param {string} b - Valeur attendue
+ * @returns {boolean}
+ */
+const secretsEqual = (a, b) => {
+  const ha = createHash('sha256').update(String(a)).digest();
+  const hb = createHash('sha256').update(String(b)).digest();
+  return timingSafeEqual(ha, hb);
+};
 
 export const handlePublicRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'GET' && pathname === '/api/health') {
@@ -288,7 +311,7 @@ if (req.method === 'GET' && pathname === '/metrics') {
   }
   const authHeader = req.headers.authorization || '';
   const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (provided !== metricsToken) {
+  if (!secretsEqual(provided, metricsToken)) {
     respondJson(res, 401, { ok: false, error: 'Unauthorized.', code: 'UNAUTHORIZED' });
     return true;
   }

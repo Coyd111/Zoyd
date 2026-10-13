@@ -4,7 +4,7 @@ Audit en 8 étapes, par risque décroissant. Chaque étape a son document et
 son propre lot de correctifs, committés séparément.
 
 Projet : ~60 000 lignes de code (hors images), 100 routes HTTP, 11 modules de
-routes, 525 tests unitaires, 135 E2E API, 41 E2E UI.
+routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
 
 ## Avancement
 
@@ -16,7 +16,7 @@ routes, 525 tests unitaires, 135 E2E API, 41 E2E UI.
 | 3 | Données & persistance | **fait** | `user_reports` sans DDL ; signalements jamais relus |
 | 4 | Concurrence & temps réel | **fait** | après coupure, l'interface affiche « live » avec un état périmé ; config de tests décrivant un environnement inexistant |
 | 5 | Performance & bundle | **fait** | 364 kB de graphiques sur le chemin critique ; 12,8 Mo de doublons d'images ; fonds 4K à 13,1 Mo |
-| 6 | Qualité, tests & dépendances | à faire | — |
+| 6 | Qualité, tests & dépendances | **fait** | couverture jamais mesurable (outil absent) ; 2FA admin et fusion des deltas sans aucun test |
 | 7 | Produit & accessibilité | à faire | — |
 | 8 | Documentation & exploitation | à faire | — |
 
@@ -38,6 +38,10 @@ routes, 525 tests unitaires, 135 E2E API, 41 E2E UI.
 | Faible | `POST /api/realtime/state/sync` renvoie 409 ou 400 pour tout, et son appelant n'est jamais utilisé | `server/routes/realtime.mjs` | documenté — suppression = changement de contrat |
 | Haute | 364 kB de graphiques sur le chemin critique : `clsx` partagé tirait tout le chunk `recharts` | `vite.config.ts` | **corrigé** — chunk `vendor-utils` isolé |
 | Haute | 12,8 Mo d'images livrées en double, et fonds 4K à 13,1 Mo dont la page de connexion | `public/assets/` | **corrigé** — 26,5 Mo ramenés à 2,1 Mo |
+| Moyenne | `test:coverage` échouait : `@vitest/coverage-v8` absent malgré une config qui l'exige | `vitest.config.ts`, `package.json` | **corrigé** — dépendance ajoutée, couverture mesurée |
+| Haute | La 2FA de l'admin — clé de voûte de toute opération financière — n'avait aucun test | `server/admin-totp.mjs` | **corrigé** — 15 tests, vecteurs RFC 6238, conforme |
+| Moyenne | Le contrat « delta → fusion » des matchs n'était protégé que par un commentaire | `src/app/stores/matchStore.ts` | **corrigé** — 10 tests, 14 % → 39 % |
+| Info | Les stores client ne sont couverts qu'à 33 % (`friendsStore` 3 %) | `src/app/stores/` | constat ouvert — suite à donner |
 
 ## Points vérifiés et conformes
 
@@ -74,6 +78,7 @@ ils ne sont pas à refaire.
 - [03 - Donnees et persistance](03-donnees.md)
 - [04 - Concurrence et temps reel](04-concurrence.md)
 - [05 - Performance et bundle](05-performance.md)
+- [06 - Qualite, tests et dependances](06-qualite.md)
 
 ## Méthode
 

@@ -4,8 +4,6 @@ import { useAuthStore } from './authStore';
 import { useNotificationStore } from './notificationStore';
 import { roundAmount, formatZC } from '../../lib/utils';
 
-let lockFundsInFlight = false;
-
 export type TransactionType =
   | 'deposit'
   | 'withdraw'
@@ -67,11 +65,6 @@ export interface WalletState {
   refreshFromServer: (expectedUserId?: string) => Promise<void>;
   deposit: (amount: number, method: string) => Promise<void>;
   withdraw: (amount: number, method: string, phone: string, country?: string) => Promise<void>;
-  // TODO: lockFunds/unlockFunds are optimistic-UI helpers; they should be
-  // driven by server confirmations via socket events in production.
-  // lockFunds returns a revert function on success, false when funds are insufficient.
-  lockFunds: (amount: number, entryKey: string) => false | (() => void);
-  unlockFunds: (amount: number, entryKey: string) => void;
   addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
   getTotalBalance: () => number;
   getAvailableCash: () => number;
@@ -256,88 +249,6 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           set((state) => {
             const next = [tx, ...state.transactions];
             return { transactions: next.length > 100 ? next.slice(0, 100) : next };
-          });
-        },
-
-        // Optimistic-UI: lock funds immediately while the server confirms.
-        // On server confirmation, hydrateFromServer will overwrite this state.
-        // Returns a revert function to roll back if server rejects.
-        lockFunds: (amount, entryKey) => {
-          if (lockFundsInFlight) return false;
-          lockFundsInFlight = true;
-          try {
-            const state = get();
-            const safeAmount = roundAmount(amount);
-            const available = roundAmount(state.cashBalance + state.bonusBalance);
-            if (available < safeAmount) return false;
-
-            const cashUsed = Math.min(state.cashBalance, safeAmount);
-            const bonusUsed = roundAmount(safeAmount - cashUsed);
-            const previousCash = state.cashBalance;
-            const previousBonus = state.bonusBalance;
-            const previousLocked = state.lockedBalance;
-            const previousEntries = { ...state.lockedEntries };
-
-            set((s) => ({
-              cashBalance: roundAmount(s.cashBalance - cashUsed),
-              bonusBalance: roundAmount(s.bonusBalance - bonusUsed),
-              lockedBalance: roundAmount(s.lockedBalance + safeAmount),
-              lockedEntries: {
-                ...s.lockedEntries,
-                [entryKey]: {
-                  amount: safeAmount,
-                  cashAmount: cashUsed,
-                  bonusAmount: bonusUsed,
-                  lockedAt: new Date().toISOString(),
-                },
-              },
-            }));
-
-            get().addTransaction({
-              type: 'entry_fee',
-              amount: -safeAmount,
-              description: `Mise bloquée (${entryKey})`,
-              status: 'completed',
-            });
-
-            return () => {
-              set({
-                cashBalance: previousCash,
-                bonusBalance: previousBonus,
-                lockedBalance: previousLocked,
-                lockedEntries: previousEntries,
-              });
-            };
-          } finally {
-            lockFundsInFlight = false;
-          }
-        },
-
-        // Optimistic-UI: restore funds if registration is cancelled.
-        // Note: amount is informational — the reservation stored in lockedEntries is authoritative.
-        unlockFunds: (_amount, entryKey) => {
-          const state = get();
-          const reservation = state.lockedEntries[entryKey];
-          if (!reservation) return;
-
-          const cashToRefund = reservation.cashAmount ?? reservation.amount;
-          const bonusToRefund = reservation.bonusAmount ?? 0;
-
-          set((s) => {
-            const { [entryKey]: _, ...rest } = s.lockedEntries;
-            return {
-              cashBalance: roundAmount(s.cashBalance + cashToRefund),
-              bonusBalance: roundAmount(s.bonusBalance + bonusToRefund),
-              lockedBalance: roundAmount(Math.max(0, s.lockedBalance - reservation.amount)),
-              lockedEntries: rest,
-            };
-          });
-
-          get().addTransaction({
-            type: 'refund',
-            amount: roundAmount(reservation.amount),
-            description: `Mise debloquée (${entryKey})`,
-            status: 'completed',
           });
         },
 

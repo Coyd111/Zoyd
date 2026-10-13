@@ -11,8 +11,8 @@ routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
 | # | Étape | Statut | Constat principal |
 |---|-------|--------|-------------------|
 | 0 | Cartographie | fait | 5 zones, dette faible (3 TODO) |
-| 1 | Sécurité & secrets | **en cours** | 25 variables d'environnement non documentées |
-| 2 | Argent & intégrité financière | à faire | — |
+| 1 | Sécurité & secrets | **fait** | 25 variables d'environnement non documentées |
+| 2 | Argent & intégrité financière | **fait** | fenêtre de double crédit sur les dépôts FedaPay |
 | 3 | Données & persistance | à faire | — |
 | 4 | Concurrence & temps réel | à faire | — |
 | 5 | Performance & bundle | à faire | — |
@@ -24,11 +24,13 @@ routes, 512 tests unitaires, 135 E2E API, 41 E2E UI.
 
 | Sév. | Constat | Où | Action |
 |------|---------|-----|--------|
-| Moyenne | 25 variables d'environnement sur 30 ne sont documentées ni dans `DEPLOYMENT.md` ni dans `README.md` ; 13 seulement sont déclarées dans `render.yaml` | dépôt | compléter la référence (étape 1) |
-| Faible | La comparaison du jeton `/metrics` n'est pas en temps constant (`!==`) | `server/routes/public.mjs` | `crypto.timingSafeEqual` |
-| Faible | `NODE_ENV=test` **et** `ALLOW_DEBUG_CODES=true` désactivent tout le rate limiting ; un `NODE_ENV` erroné en production rend la protection inopérante | `server/rate-limiter.mjs` | garde supplémentaire |
-| Info | `lockFunds`/`unlockFunds` ne sont appelées que par les tests : code mort portant un TODO d'UI optimiste sur des fonds | `src/app/stores/walletStore.ts` | supprimer ou brancher sur le socket |
+| Moyenne | 25 variables d'environnement sur 30 ne sont documentées ni dans `DEPLOYMENT.md` ni dans `README.md` ; 13 seulement sont déclarées dans `render.yaml` | dépôt | compléter la référence (étape 8) |
+| Faible | La comparaison du jeton `/metrics` n'est pas en temps constant (`!==`) | `server/routes/public.mjs` | **corrigé** — comparaison de hachages |
+| Faible | `NODE_ENV=test` **et** `ALLOW_DEBUG_CODES=true` désactivent tout le rate limiting | `server/rate-limiter.mjs` | **corrigé** — exige en plus une base désactivée |
+| Info | `lockFunds`/`unlockFunds` : code mort d'UI optimiste sur des fonds | `src/app/stores/walletStore.ts` | **supprimé** — doublait le verrouillage serveur |
 | Info | 4 canaux d'envoi de code coexistent (Resend, Brevo, SMTP, webhook) | `server/code-delivery.mjs` | documenter la precedence |
+| Info | Conversion FedaPay `amount / 10` non confirmée en réel | `server/payment-engine.mjs` | bloqué : clés live requises |
+| Info | Verrous en mémoire, corrects pour un processus ; un déploiement est une fenêtre à deux instances | ensemble des moteurs | à traiter à l'étape 4 |
 
 ## Points vérifiés et conformes
 
@@ -51,10 +53,17 @@ ils ne sont pas à refaire.
 - **Seed admin** : ne peut plus écraser un compte existant.
 - **Verrous de portefeuille** : toutes les mutations passent par
   `withWalletMutex`, puis `updateUserAccount`.
+- **Dépôt FedaPay** : réservation atomique *avant* le crédit, libération si
+  l'écriture échoue ; anti-vol par appartenance de la transaction.
+- **Règlement des matchs** en deux phases (`payoutDistributed: 'pending'`
+  avant versement), donc pas de versement orphelin après un crash.
+- **Idempotence des retraits** : index dédié, hydraté au chargement, donc
+  elle survit à un redémarrage.
 
 ## Documents
 
 - [01 — Sécurité & secrets](01-securite.md)
+- [02 — Argent et intégrité financière](02-argent.md)
 
 ## Méthode
 

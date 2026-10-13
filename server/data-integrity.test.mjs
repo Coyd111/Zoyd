@@ -301,10 +301,74 @@ describe('getHealthInfo publie le dernier controle', () => {
 
   it('expose un KO avec le nombre d\'anomalies', async () => {
     const user = await createUser();
+    // 77 verrouilles, 0 reserve correspondante, 0 possede : cet etat fabrique
+    // viole DEUX invariants distincts, d'ou deux anomalies et non une.
     await setWallet(user.id, { ...{ cashBalance: 0, bonusBalance: 0, lockedBalance: 77, pendingWinnings: 0, lockedEntries: {}, transactions: [] } });
     await persistence.verifyDataIntegrity();
     const health = persistence.getHealthInfo();
     expect(health.integrity.ok).toBe(false);
-    expect(health.integrity.walletIssues).toBe(1);
+    expect(health.integrity.walletIssues).toBe(2);
+  });
+});
+
+// Les invariants d'argent ne verifiaient que deux choses : `lockedBalance`
+//egalait la somme des entrees, et `lockedBalance` etait positif. Un solde
+// CASH negatif, une reservation superieure a ce qu'on possede, ou un total
+// affiche desynchronise des soldes passaient totalement inapercus — jusqu'a
+// ce que le joueur y voie.
+describe('invariants de portefeuille', () => {
+  const walletValide = {
+    cashBalance: 100,
+    bonusBalance: 20,
+    lockedBalance: 30,
+    pendingWinnings: 0,
+    lockedEntries: { match1: { amount: 30, cashAmount: 30, bonusAmount: 0, lockedAt: '2026-01-01T00:00:00.000Z' } },
+    transactions: [],
+  };
+
+  const anomalies = async (patch) => {
+    const user = await createUser();
+    await setWallet(user.id, { ...structuredClone(walletValide), ...patch });
+    await persistence.verifyDataIntegrity();
+    return persistence.getHealthInfo().integrity.walletIssues;
+  };
+
+  it('un portefeuille sain ne declenche rien', async () => {
+    expect(await anomalies({})).toBe(0);
+  });
+
+  it('detecte un solde cash negatif', async () => {
+    expect(await anomalies({ cashBalance: -5, lockedBalance: 30, lockedEntries: {} })).toBeGreaterThan(0);
+  });
+
+  it('detecte un solde bonus negatif', async () => {
+    expect(await anomalies({ bonusBalance: -1 })).toBeGreaterThan(0);
+  });
+
+  it('detecte un verrouillage superieur a ce qu on possede', async () => {
+    // 30 bloques alors qu on n a que 120 : l invariant ne declenche pas. On
+    // monte le verrouillage au-dela du disponible, entrees coherentes.
+    expect(await anomalies({
+      cashBalance: 10,
+      lockedBalance: 500,
+      lockedEntries: { m: { amount: 500, cashAmount: 500, bonusAmount: 0, lockedAt: '2026-01-01T00:00:00.000Z' } },
+    })).toBeGreaterThan(0);
+  });
+
+  it('detecte un total affiche desynchronise des soldes', async () => {
+    const user = await createUser();
+    await setWallet(user.id, structuredClone(walletValide));
+    // `updateUserAccount` RECALCULE `walletBalance` a chaque ecriture : on ne
+    // peut donc pas desynchroniser le total par l'API. C'est une bonne
+    // nouvelle — le champ est toujours derive — et cet invariant reste utile
+    // contre une payload corrompue chargee depuis la base (ou une edition
+    // directe dans Supabase), que le code ne peut pas produire mais que le
+    // control d'integrite voit au demarrage.
+    await persistence.updateUserAccount(user.id, (u) => ({ ...u, walletBalance: 999 }));
+    const u = persistence.getUserById(user.id);
+    expect(u.walletBalance).toBeCloseTo(120, 2); // recalcule, pas 999
+
+    await persistence.verifyDataIntegrity();
+    expect(persistence.getHealthInfo().integrity.ok).toBe(true);
   });
 });

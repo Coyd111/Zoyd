@@ -5,15 +5,13 @@
  * refactor. All business-logic mutations (releaseWinnings, settleMatchLoss,
  * deductEntryFee, addBonus) are now handled exclusively by persistence.mjs.
  * The store only exposes:
- *   - hydrateFromServer  : full state replacement from a server snapshot
- *   - lockFunds          : optimistic-UI helper to lock entry fees locally
- *   - unlockFunds        : optimistic-UI helper to revert a lock on cancellation
- *   - addTransaction     : append a transaction record
+ *   - hydrateFromServer : full state replacement from a server snapshot
  *   - deposit / withdraw : async calls that go through the API
  *   - getTotalBalance / getAvailableCash / getAvailableToSpend : selectors
+ *   - addTransaction : append a transaction record
  *
- * TODO: Once the WebSocket layer emits wallet_update events, replace the
- * lockFunds / unlockFunds tests with socket-driven integration tests.
+ * Le verrouillage des fonds est desormais integralement serveur : la copie
+ * client `lockFunds`/`unlockFunds` a ete supprimee (voir docs/audit/02-argent.md).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useWalletStore } from './walletStore';
@@ -25,21 +23,12 @@ const EMPTY_WALLET = {
   cashBalance: 0,
   bonusBalance: 0,
   lockedBalance: 0,
-  pendingWinnings: 0,
-  transactions: [],
-  lockedEntries: {},
-};
+pendingWinnings: 0,
+    transactions: [],
+    lockedEntries: {},
+  };
 
-const FUNDED_WALLET = {
-  cashBalance: 100,
-  bonusBalance: 50,
-  lockedBalance: 0,
-  pendingWinnings: 0,
-  transactions: [],
-  lockedEntries: {},
-};
-
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 // Hydration
 // ---------------------------------------------------------------------------
 describe('walletStore - Hydration', () => {
@@ -111,99 +100,6 @@ describe('walletStore - Hydration', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Optimistic-UI fund locking (lockFunds)
-// ---------------------------------------------------------------------------
-describe('walletStore - Optimistic Fund Locking', () => {
-  beforeEach(() => {
-    useWalletStore.setState({ ...FUNDED_WALLET });
-  });
-
-  it('should lock funds from cash when cash is sufficient', () => {
-    const result = useWalletStore.getState().lockFunds(30, 'match1');
-
-    expect(typeof result).toBe('function');
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(70);
-    expect(state.bonusBalance).toBe(50);
-    expect(state.lockedBalance).toBe(30);
-    expect(state.lockedEntries['match1']).toBeDefined();
-    expect(state.lockedEntries['match1'].amount).toBe(30);
-  });
-
-  it('should lock funds from bonus when cash is insufficient', () => {
-    useWalletStore.setState({ cashBalance: 10, bonusBalance: 50, lockedBalance: 0, lockedEntries: {} });
-    const result = useWalletStore.getState().lockFunds(30, 'match1');
-
-    expect(typeof result).toBe('function');
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(0);
-    expect(state.bonusBalance).toBe(30);
-    expect(state.lockedBalance).toBe(30);
-  });
-
-  it('should return false and not mutate state when total funds are insufficient', () => {
-    useWalletStore.setState({ cashBalance: 10, bonusBalance: 5, lockedBalance: 0, lockedEntries: {} });
-    const result = useWalletStore.getState().lockFunds(30, 'match1');
-
-    expect(result).toBe(false);
-    expect(useWalletStore.getState().lockedBalance).toBe(0);
-  });
-
-  it('should create an entry_fee transaction when locking', () => {
-    useWalletStore.getState().lockFunds(30, 'match1');
-
-    const state = useWalletStore.getState();
-    const entryFeeTx = state.transactions.find((tx) => tx.type === 'entry_fee');
-    expect(entryFeeTx).toBeDefined();
-    expect(entryFeeTx?.amount).toBe(-30);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Optimistic-UI fund unlocking (unlockFunds)
-// ---------------------------------------------------------------------------
-describe('walletStore - Optimistic Fund Unlocking', () => {
-  beforeEach(() => {
-    useWalletStore.setState({
-      cashBalance: 70,
-      bonusBalance: 45,
-      lockedBalance: 30,
-      pendingWinnings: 0,
-      transactions: [],
-      lockedEntries: {
-        match1: { amount: 30, cashAmount: 25, bonusAmount: 5, lockedAt: '2024-01-01' },
-      },
-    });
-  });
-
-  it('should restore cash and bonus on unlock', () => {
-    useWalletStore.getState().unlockFunds(30, 'match1');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(95);   // 70 + 25
-    expect(state.bonusBalance).toBe(50);  // 45 + 5
-    expect(state.lockedBalance).toBe(0);
-    expect(state.lockedEntries['match1']).toBeUndefined();
-  });
-
-  it('should do nothing when entry key has no reservation', () => {
-    useWalletStore.getState().unlockFunds(30, 'unknown');
-
-    const state = useWalletStore.getState();
-    expect(state.cashBalance).toBe(70);
-    expect(state.lockedBalance).toBe(30);
-  });
-
-  it('should create a refund transaction on unlock', () => {
-    useWalletStore.getState().unlockFunds(30, 'match1');
-
-    const state = useWalletStore.getState();
-    const refundTx = state.transactions.find((tx) => tx.type === 'refund');
-    expect(refundTx).toBeDefined();
-    expect(refundTx?.amount).toBe(30);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Balance selectors

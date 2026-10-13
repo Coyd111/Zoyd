@@ -265,6 +265,36 @@ export const sbUpsert = async (table, data) => {
   return true;
 };
 
+/**
+ * INSERT qui REFUSE un doublon, la ou `sbUpsert` le reecrit.
+ *
+ * Un upsert sur une cle primaire met a jour la ligne existante et renvoie
+ * donc succes. Pour une reservation idempotente, c'est exactement l'inverse
+ * de ce qu'on veut : deuxtraitements concurrents du meme identifiant
+ * „gagneraient" tous les deux la reservation, et le second ecraserait la
+ * premiere au lieu d'echouer.
+ *
+ * L'upsert n'etait sur que par une fenetre entre le SELECT de verification
+ * et l'ecriture. Le verrou en memoire ne la fermait qu'a l'interieur d'un
+ * SEUL processus : or un deploiement Render laisse un instant l'ancienne et
+ * la nouvelle instance servir en parallele, et les deux pouvait crediter la
+ * meme transaction.
+ *
+ * Le code 23505 est la violation d'unicite Postgres : c'est le signal
+ * attendu, pas une panne.
+ *
+ * @returns {Promise<boolean>} `true` si la ligne a ete inseree, `false` si
+ * elle existait deja ou si l'ecriture a echoue
+ */
+const sbInsert = async (table, data) => {
+  if (!supabase) return;
+  const { error } = await supabase.from(table).insert(data);
+  if (!error) return true;
+  if (error.code === '23505') return false; // deja traite : doublon attendu
+  log.error(`${table} insert error`, { message: error.message, code: error.code, detail: error.detail });
+  return false;
+};
+
 const sbDelete = async (table, filters) => {
   if (!supabase) return;
   let q = supabase.from(table).delete();
@@ -715,6 +745,44 @@ export const verifyDataIntegrity = async () => {
       }
       if (lockedBalance < -0.01) {
         walletIssues.push({ userId, reason: 'NEGATIVE_LOCKED_BALANCE', lockedBalance });
+      }
+      // Defence en profondeur : les trois chemins de debit (retrait, pass BR,
+      // debit match) verifient le solde avant d'ecrire, donc un solde negatif
+      // ne devrait jamais exister. Mais rien ne le verifiait a l'echelle du
+      // portefeuille : une future voie de debit oubliee, ou un import
+      ///corruption en base, serait invisible jusqu'a ce que le joueur voie un
+      // solde negatif. On le detecte ici plutot que dans son ticket.
+      const cash = roundAmount(wallet.cashBalance || 0);
+      const bonus = roundAmount(wallet.bonusBalance || 0);
+      if (cash < -0.01) {
+        walletIssues.push({ userId, reason: 'NEGATIVE_CASH_BALANCE', cashBalance: cash });
+      }
+      if (bonus < -0.01) {
+        walletIssues.push({ userId, reason: 'NEGATIVE_BONUS_BALANCE', bonusBalance: bonus });
+      }
+      // On ne peut pas verrouiller plus que ce qu'on possede : la somme des
+      // reservations ne peut pas depasser le total disponible.
+      const disponible = roundAmount(cash + bonus);
+      if (lockedBalance > disponible + 0.01) {
+        walletIssues.push({
+          userId,
+          reason: 'LOCKED_EXCEEDS_BALANCE',
+          lockedBalance,
+          available: disponible,
+          diff: roundAmount(lockedBalance - disponible),
+        });
+      }
+      // Le total affiche est derive des deux soldes : un ecart signifie
+      // qu'une ecriture a modifie l'un sans recomputer l'autre.
+      const total = roundAmount((user.walletBalance === undefined ? disponible : Number(user.walletBalance)) || 0);
+      if (Math.abs(total - disponible) > 0.01) {
+        walletIssues.push({
+          userId,
+          reason: 'WALLET_BALANCE_MISMATCH',
+          walletBalance: roundAmount(total),
+          derived: disponible,
+          diff: roundAmount(total - disponible),
+        });
       }
     }
 
@@ -2871,9 +2939,16 @@ export const claimTransaction = async (transactionId, userId, amountZC) => {
     memoryProcessedTransactions.delete(first);
   }
   // CRITIQUE : la revendication d'idempotence doit survivre au redémarrage.
-  // Si lupsert échoue et qu'on la laisse en RAM, la même transaction FedaPay
-  // est créditée une SECONDE fois au prochain boot.
-  const claimed = await sbUpsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
+  // Si l'ecriture echoue et qu'on la laisse en RAM, la même transaction
+  // FedaPay est créditée une SECONDE fois au prochain boot.
+  //
+  // `insert` et non `upsert` : sur une cle primaire, l'upsert MET A JOUR la
+  // ligne existante et renvoie donc succes. Deux instances concurrentes
+  // passeraient toutes deux la revendication, et la seconde ecraserait la
+  // premiere au lieu d'echouer — double credit. L'insert echoue (23505) sur
+  // doublon, ce qui est le comportement voulu. Le verrou en memoire ne ferme
+  // cette fenetre qu'a l'interieur d'un seul processus.
+  const claimed = await sbInsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
   if (supabase && !claimed) {
     memoryProcessedTransactions.delete(transactionId);
     throw makeError('SERVER_BUSY', 'Verification du paiement impossible, reessaie.');

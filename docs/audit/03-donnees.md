@@ -85,14 +85,17 @@ eu lieu.
   **est** dans le dépôt. Son absence en base avait été signalée par
   `/api/health` plutôt que d'être silencieuse — le bon modèle.
 
-## 5. À vérifier en production
-
-La présence effective de `user_reports` dans la base Supabase n'a pas pu être
-vérifiée depuis ici (aucun accès API). Deux gestes :
+## 5. Verifie en production — table creee le 14/10/2026
 
 ```sql
 SELECT to_regclass('public.user_reports');
 ```
 
-Si la réponse est nulle, la table manque et les signalements sont perdus —
-auquel cas exécuter le DDL ajouté dans `supabase/schema.sql`.
+La premiere execution a renvoye **NULL** : la table manquait bien en base,
+et les signalements etaient reellement perdus — ce n etait pas une menace
+theorique. Le DDL de la section 1 a ete applique sur le projet de
+production, puis la verification a renvoye `user_reports` et
+`SELECT ... FROM user_reports` repond `0 rows` : table vide.
+
+Aucun redeploiement n etait necessaire. La correction de la section 3 rend la
+reponse honnete, elle n avait pas besoin de la table pour l etre.

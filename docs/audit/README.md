@@ -17,7 +17,7 @@ routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
 | 4 | Concurrence & temps réel | **fait** | après coupure, l'interface affiche « live » avec un état périmé ; config de tests décrivant un environnement inexistant |
 | 5 | Performance & bundle | **fait** | 364 kB de graphiques sur le chemin critique ; 12,8 Mo de doublons d'images ; fonds 4K à 13,1 Mo |
 | 6 | Qualité, tests & dépendances | **fait** | couverture jamais mesurable (outil absent) ; 2FA admin et fusion des deltas sans aucun test |
-| 7 | Produit & accessibilité | à faire | — |
+| 7 | Produit & accessibilité | **fait** | audit axe-core : 0 blocage sur les 5 pages publiques ; animations JS ignorant la préférence système |
 | 8 | Documentation & exploitation | à faire | — |
 
 ## Constats ouverts
@@ -38,6 +38,10 @@ routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
 | Faible | `POST /api/realtime/state/sync` renvoie 409 ou 400 pour tout, et son appelant n'est jamais utilisé | `server/routes/realtime.mjs` | documenté — suppression = changement de contrat |
 | Haute | 364 kB de graphiques sur le chemin critique : `clsx` partagé tirait tout le chunk `recharts` | `vite.config.ts` | **corrigé** — chunk `vendor-utils` isolé |
 | Haute | 12,8 Mo d'images livrées en double, et fonds 4K à 13,1 Mo dont la page de connexion | `public/assets/` | **corrigé** — 26,5 Mo ramenés à 2,1 Mo |
+| Moyenne | Les animations JavaScript (26 composants) ignoraient `prefers-reduced-motion`, respecté uniquement pour le CSS | `src/app/App.tsx` | **corrigé** — `MotionConfig reducedMotion="user"` |
+| Info | Audit axe-core réel : **0 violation** bloquante sur accueil, connexion, inscription, mot de passe oublié, sélection de mode | `e2e/ui/accessibility.spec.ts` | conformité mesurée et verrouillée par un test |
+| Info | Polices chargées depuis Google Fonts : dépendance tierce, feuille bloquante, et bascule visible si le CDN est inaccessible | `index.html` | non corrigé — auto-hébergement à trancher |
+
 | Moyenne | `test:coverage` échouait : `@vitest/coverage-v8` absent malgré une config qui l'exige | `vitest.config.ts`, `package.json` | **corrigé** — dépendance ajoutée, couverture mesurée |
 | Haute | La 2FA de l'admin — clé de voûte de toute opération financière — n'avait aucun test | `server/admin-totp.mjs` | **corrigé** — 15 tests, vecteurs RFC 6238, conforme |
 | Moyenne | Le contrat « delta → fusion » des matchs n'était protégé que par un commentaire | `src/app/stores/matchStore.ts` | **corrigé** — 10 tests, 14 % → 39 % |
@@ -79,6 +83,7 @@ ils ne sont pas à refaire.
 - [04 - Concurrence et temps reel](04-concurrence.md)
 - [05 - Performance et bundle](05-performance.md)
 - [06 - Qualite, tests et dependances](06-qualite.md)
+- [07 - Produit et accessibilite](07-produit.md)
 
 ## Méthode
 

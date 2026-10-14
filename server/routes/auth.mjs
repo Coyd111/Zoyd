@@ -38,6 +38,7 @@ import {
   updateUserAccount,
   verifyActivationCode,
   verifyUserPassword,
+  getBlockingSanction,
   withRegistrationMutex,
 } from '../persistence.mjs';
 import { deliverAuthCode } from '../code-delivery.mjs';
@@ -104,7 +105,36 @@ if (req.method === 'POST' && pathname === '/api/auth/login') {
       identifier: body.identifier || '',
       password: body.password || '',
     });
-    
+
+    // Sanction bloquante : message DEDIE, jamais un echec d'identifiants
+    // generique. Un joueur banni qui voit « identifiants invalides » croit a
+    // un mot de passe oublie et le redemande, ou contacte le support sans
+    // savoir pourquoi. Le code distinct permet aussi au client de proposer
+    // le bon geste.
+    const sanction = getBlockingSanction(user.id);
+    if (sanction) {
+      const permanente = sanction.kind === 'permanent_ban';
+      const jusquAu = sanction.expiresAt
+        ? new Date(sanction.expiresAt).toLocaleDateString('fr-FR')
+        : null;
+      respondJson(res, 403, {
+        ok: false,
+        code: 'ACCOUNT_SANCTIONED',
+        error: permanente
+          ? 'Ce compte est banni definitivement.'
+          : `Ce compte est suspendu jusqu'au ${jusquAu}.`,
+        sanction: {
+          kind: sanction.kind,
+          expiresAt: sanction.expiresAt || null,
+          // La raison est un MOTIF de sanction, pas une sanction a son tour :
+          // une sanction levee reste lisible, c'est l historique.
+          reason: sanction.reason || '',
+          issuedAt: sanction.issuedAt,
+        },
+      });
+      return true;
+    }
+
     const session = await createAuthSession(user.id);
 
     // Cookie httpOnly = seul credential du navigateur (plus de token en JS).

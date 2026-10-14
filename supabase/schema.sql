@@ -310,3 +310,48 @@ CREATE TABLE IF NOT EXISTS user_reports (
 
 CREATE INDEX IF NOT EXISTS idx_user_reports_status ON user_reports(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_reports_target ON user_reports(target_id, created_at DESC);
+
+-- ============================================================
+-- 16. USER SANCTIONS (historique de sanction)
+--
+-- Table DEDIEE plutot que des colonnes sur app_users : une sanction doit
+-- etre un evenement traceable, reversible et consultable. Un joueur peut
+-- avoir recu plusieurs avertissements puis un bannissement temporaire, puis
+-- une levee de sanction. Ecraser un `status` ne raconterait rien de tout cela,
+-- et la seule trace « qui a tranche, quand » disparaitrait.
+--
+-- `revoked_at` non nul = sanction levee. La ligne n'est jamais supprimee :
+-- c'est l'historique qui fait foi.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_sanctions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  reason TEXT,
+  note TEXT,
+  report_id TEXT,
+  issued_by TEXT NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  revoked_by TEXT
+);
+
+-- Index des sanctions ACTIVES par joueur : c'est la seule requete du chemin
+-- d'authentification, elle doit rester une lecture de cle.
+CREATE INDEX IF NOT EXISTS idx_user_sanctions_active ON user_sanctions(user_id) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_user_sanctions_user ON user_sanctions(user_id, issued_at DESC);
+
+-- ============================================================
+-- 17. MODERATION DES SIGNALEMENTS
+--
+-- Colonnes ajoutees apres coup sur la table creee le 14/10/2026. `ALTER TABLE
+-- ... IF NOT EXISTS` est idempotent, donc le bloc se rejoue sans risque.
+-- ============================================================
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS severity TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS resolution TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS sanction_id TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_user_reports_queue ON user_reports(status, severity) WHERE status = 'pending';

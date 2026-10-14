@@ -13,6 +13,7 @@ import { roundAmount, getNow, makeError } from './utils.mjs';
 // cycle d'import (payment-engine importe persistence).
 import { isAnySupportedPhone, phoneFormatError } from './payout-countries.mjs';
 import { withUserMutex, withChannelMutex } from './mutex.mjs';
+import { computeExpiry, isSanctionActive } from './moderation.mjs';
 import { Mutex } from 'async-mutex';
 
 const log = createLogger('persistence');
@@ -575,6 +576,15 @@ export const loadFromSupabase = async () => {
     // serveur demarrerait en lecture seule a cause d'une migration en attente.
     await probeLoginAttemptsTable();
 
+    // Idem pour l'historique de sanctions : tolerant a l'absence de table.
+    // Un joueur banni ne doit PAS redevenir jouable parce que le serveur a
+    // demarre sans la table — mais mieux vaut demarrer et le signaler dans
+    // `/api/health` que refuser de démarrer.
+    sanctionsPersisted = await loadSanctions();
+    if (!sanctionsPersisted) {
+      log.warn('user_sanctions non chargee : les bannissements ne survivront pas au redemarrage');
+    }
+
     log.info('Loaded from Supabase', { durationMs: Date.now() - t0, users: memoryUsers.size, channels: memoryChatMessages.size || memoryChatChannels.size, snapshots: memoryStateSnapshots.size });
   } catch (err) {
     // Un échec de table NE doit pas laisser le serveur démarrer « à moitié » :
@@ -714,6 +724,7 @@ export const getHealthInfo = () => ({
   // `rows` distingue une table creee et vide d'une table reellement en service ;
   // `error` donne la cause exacte quand la sonde echoue.
   loginLockoutPersisted: loginAttemptsPersisted,
+    sanctionsPersisted,
   loginAttemptRows: loginAttemptsRows,
   loginAttemptError: loginAttemptsError,
   // Quel commit tourne EN CE MOMENT. Sans ca, un deploiement manuel en
@@ -2241,6 +2252,22 @@ export const getAuthSession = (token, opts = {}) => {
   const user = getUserById(session.userId);
   if (!user) { memoryAuthSessions.delete(tokenHash); return null; }
 
+  // Sanction bloquante : la session est detruite, pas seulement refusee.
+  //
+  // Sans ce controle, un bannissement ne prendrait effet qu'a la prochaine
+  // connexion, alors que les sessions durent des heures : un joueur banni
+  // continuerait de jouer, de signer des matchs et de.manoeuvrer de l'argent
+  // avec une session deja ouverte. Supprimer la session ferme aussi toutes
+  // les sessions en cours, pas seulement celle-ci — c'est le comportement
+  // attendu d'un bannissement.
+  //
+  // Un avertissement ou un simple classement ne bloquent rien : seuls
+  // `temporary_ban` et `permanent_ban` arretent la session.
+  if (getBlockingSanction(session.userId)) {
+    memoryAuthSessions.delete(tokenHash);
+    return null;
+  }
+
   // Rotation apres 30 min. Elle ne supprime pas l'ancien token : elle le
   // supplante pendant une fenetre de grace et renvoie le nouveau token a
   // l'appelant via `opts.emitToken`, qui le transmet au navigateur dans le
@@ -3046,6 +3073,278 @@ export const loadAdminTotpSecrets = async () => {
     }
   } catch { /* table may not exist yet */ }
   return result;
+};
+
+// ─── Sanctions (moderation) ─────────────────────────────────────────────────
+// Map en memoire par joueur, rechargee au demarrage : c'est ce qui rend
+// l application immediate, sans requete en base a chaque appel authentifie.
+const memorySanctions = new Map();
+const MAX_SANCTIONS = 200000;
+
+/**
+ * Etat de persistance des sanctions, expose dans `/api/health` comme
+ * `loginLockoutPersisted`. Une table absente se voit donc SANS connexion SQL.
+ * `null` = pas encore sonde.
+ */
+let sanctionsPersisted = null;
+
+const normalizeSanctionRow = (row) => ({
+  id: row.id,
+  userId: row.user_id,
+  kind: row.kind,
+  reason: row.reason || '',
+  note: row.note || '',
+  reportId: row.report_id || null,
+  issuedBy: row.issued_by,
+  issuedAt: row.issued_at,
+  expiresAt: row.expires_at || null,
+  revokedAt: row.revoked_at || null,
+  revokedBy: row.revoked_by || null,
+});
+
+/**
+ * Recharge l historique de sanctions en memoire.
+ *
+ * Volontairement tolerant a l absence de table : au premier deploiement, ou
+ * sur une base de developpement, `user_sanctions` peut ne pas exister encore.
+ * Un echec ici ne doit pas empecher le serveur de demarrer — le service
+ * demarre simplement SANS historique, ce qui est degrade mais lisible.
+ *
+ * @returns {Promise<boolean>} `true` si la table a pu etre lue
+ */
+export const loadSanctions = async () => {
+  memorySanctions.clear();
+  if (!supabase) return false;
+  try {
+    const rows = await sbSelect('user_sanctions');
+    if (!rows) return false;
+    for (const row of rows) {
+      const sanction = normalizeSanctionRow(row);
+      if (!memorySanctions.has(sanction.userId)) memorySanctions.set(sanction.userId, []);
+      memorySanctions.get(sanction.userId).push(sanction);
+    }
+    return true;
+  } catch (err) {
+    log.warn('user_sanctions indisponible', { message: err?.message });
+    return false;
+  }
+};
+
+/**
+ * Sanctions ACTIVES d un joueur : ni levees, ni echues.
+ *
+ * L expiration est evaluee a la lecture plutot que par une tache de fond : un
+ * joueur ne doit pas rester banni parce qu un nettoyage n a pas tourne, et
+ * l application doit etre exacte immediatement apres un redemarrage.
+ *
+ * @param {string} userId
+ * @returns {Array<object>}
+ */
+export const getActiveSanctions = (userId) => {
+  const list = memorySanctions.get(userId);
+  if (!list) return [];
+  return list.filter((s) => isSanctionActive(s));
+};
+
+/**
+ * Sanction BLOQUANTE eventuelle : celle qui doit interdire au joueur de
+ * rester connecte. Un avertissement ou un simple classement ne bloquent rien.
+ *
+ * @param {string} userId
+ * @returns {object|null}
+ */
+export const getBlockingSanction = (userId) => {
+  const active = getActiveSanctions(userId);
+  // Un definitif prime sur un temporaire : c'est la sanction la plus forte.
+  return (
+    active.find((s) => s.kind === 'permanent_ban') ||
+    active.find((s) => s.kind === 'temporary_ban') ||
+    null
+  );
+};
+
+/**
+ * Historique complet des sanctions d un joueur, sanctions levees et echues
+ * comprises. C'est la vue « dossier » du joueur.
+ *
+ * @param {string} userId
+ * @returns {Array<object>}
+ */
+export const listSanctionsForUser = (userId) =>
+  [...(memorySanctions.get(userId) || [])].sort((a, b) =>
+    new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime()
+  );
+
+/**
+ * Applique une sanction et la persiste.
+ *
+ * La memoire est mise a jour AVANT l ecriture base, comme le reste du projet :
+ * l application doit etre immediate, et l erreur d ecriture est remontee.
+ * Une sanction en base mais absente de la memoire laisserait un joueur
+ * connecté jusqu au prochain redemarrage.
+ *
+ * @param {object} params
+ * @returns {Promise<{ ok: boolean, sanction?: object }>}
+ */
+export const createSanction = async ({
+  userId,
+  kind,
+  reason = '',
+  note = '',
+  reportId = null,
+  issuedBy,
+  durationDays,
+}) => {
+  if (!userId || !kind || !issuedBy) return { ok: false };
+
+  const sanction = {
+    id: `SN-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+    userId,
+    kind,
+    reason,
+    note,
+    reportId,
+    issuedBy,
+    issuedAt: getNow(),
+    expiresAt: computeExpiry(kind, durationDays),
+    revokedAt: null,
+    revokedBy: null,
+  };
+
+  if (!memorySanctions.has(userId)) memorySanctions.set(userId, []);
+  const list = memorySanctions.get(userId);
+  list.push(sanction);
+  if (list.length > MAX_SANCTIONS) list.splice(0, list.length - MAX_SANCTIONS);
+
+  const written = await sbUpsert('user_sanctions', {
+    id: sanction.id,
+    user_id: sanction.userId,
+    kind: sanction.kind,
+    reason: sanction.reason,
+    note: sanction.note,
+    report_id: sanction.reportId,
+    issued_by: sanction.issuedBy,
+    issued_at: sanction.issuedAt,
+    expires_at: sanction.expiresAt,
+    revoked_at: null,
+    revoked_by: null,
+  });
+
+  if (written === false) {
+    list.pop();
+    return { ok: false };
+  }
+  return { ok: true, sanction };
+};
+
+/**
+ * Leve une sanction. La ligne n'est jamais supprimee : c'est l'historique
+ * qui fait foi.
+ *
+ * @param {string} sanctionId
+ * @param {string} revokedBy
+ * @returns {Promise<boolean>}
+ */
+export const revokeSanction = async (sanctionId, revokedBy) => {
+  let target = null;
+  for (const list of memorySanctions.values()) {
+    const found = list.find((s) => s.id === sanctionId);
+    if (found) { target = found; break; }
+  }
+  if (!target || target.revokedAt) return false;
+
+  target.revokedAt = getNow();
+  target.revokedBy = revokedBy;
+
+  const written = await sbUpsert('user_sanctions', {
+    id: target.id,
+    user_id: target.userId,
+    kind: target.kind,
+    reason: target.reason,
+    note: target.note,
+    report_id: target.reportId,
+    issued_by: target.issuedBy,
+    issued_at: target.issuedAt,
+    expires_at: target.expiresAt,
+    revoked_at: target.revokedAt,
+    revoked_by: target.revokedBy,
+  });
+
+  if (written === false) {
+    target.revokedAt = null;
+    target.revokedBy = null;
+    return false;
+  }
+  return true;
+};
+
+/**
+ * Resout un signalement : trace du traitement, puis sanction si elle est
+ * demandee.
+ *
+ * Ordre deliberé — la sanction d'abord, le statut ensuite. Si l'ecriture du
+ * statut echoue apres une sanction appliquee, l'admin voit encore le
+ * signalement en attente et peut le rejouer : un doublon de sanction. Dans
+ * l'ordre inverse, un statut « resolu » sans sanction appliquee serait
+ * DEFINITIF et invisible : c'est le cas le plus grave, parce qu'un joueur
+ * resterait impuni sans que personne ne puisse s en apercuvoir.
+ *
+ * La sanction etant elle-meme persistee avant le statut, un echec de cette
+ * derniere ecriture laisse au moins une trace consultable dans
+ * `user_sanctions`.
+ *
+ * @param {object} params
+ * @returns {Promise<{ ok: boolean, code?: string, sanction?: object }>}
+ */
+export const resolveReport = async ({ reportId, resolution, adminId, note = '', durationDays }) => {
+  if (!reportId || !resolution || !adminId) return { ok: false, code: 'INVALID_INPUT' };
+
+  const rows = await sbSelect('user_reports', { id: reportId });
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return { ok: false, code: 'REPORT_NOT_FOUND' };
+  if (row.status && row.status !== 'pending') {
+    // Deja traite : rejouer creerait une seconde sanction pour le meme
+    // fait. L'idempotence est une exigence de securite ici, pas un
+    // detail de confort.
+    return { ok: false, code: 'ALREADY_REVIEWED' };
+  }
+
+  const finalStatus = resolution === 'dismissed' ? 'resolved' : 'resolved';
+  let sanction = null;
+
+  if (resolution !== 'dismissed') {
+    const created = await createSanction({
+      userId: row.target_id || (row.payload && row.payload.targetId),
+      kind: resolution,
+      reason: (row.payload && row.payload.reason) || row.reason || '',
+      note,
+      reportId,
+      issuedBy: adminId,
+      durationDays,
+    });
+    if (!created.ok) return { ok: false, code: 'SANCTION_FAILED' };
+    sanction = created.sanction;
+  }
+
+  const written = await sbUpsert('user_reports', {
+    id: reportId,
+    reporter_id: row.reporter_id || null,
+    target_id: row.target_id || null,
+    reason: row.reason || null,
+    status: finalStatus,
+    severity: row.severity || null,
+    resolution,
+    sanction_id: sanction ? sanction.id : null,
+    reviewed_by: adminId,
+    reviewed_at: getNow(),
+    payload: row.payload || null,
+    created_at: row.created_at,
+  });
+
+  if (written === false) {
+    return { ok: false, code: 'UPDATE_FAILED', sanction };
+  }
+  return { ok: true, sanction };
 };
 
 // ─── Seed data ──────────────────────────────────────────────────────────────

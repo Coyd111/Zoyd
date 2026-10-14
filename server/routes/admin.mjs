@@ -39,7 +39,10 @@ import {
   resolveDisputeOnServer,
   cancelMatchOnServer,
 } from '../match-engine.mjs';
-import { saveMatches, buildMatchActionPayload } from '../state-helpers.mjs';
+  import { sanitizeText, resolveReport } from '../persistence.mjs';
+  import { isSanctionKind } from '../moderation.mjs';
+  import { getNow } from '../utils.mjs';
+  import { saveMatches, buildMatchActionPayload } from '../state-helpers.mjs';
 import { withMatchMutex } from '../mutex.mjs';
 import { createLogger } from '../logger.mjs';
 
@@ -139,6 +142,75 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     } catch (err) {
       log.error('Admin reports failed', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture des signalements.', code: 'REPORTS_ERROR' }, req);
+    }
+    return true;
+  }
+
+  // Traitement d'un signalement — file d'attente de moderation.
+  //
+  // Chaque resolution porte une TRACE : qui a tranche (adminId), quand
+  // (reviewed_at), avec quoi (resolution) et sur quelle base (report_id lie a
+  // la sanction). Un signalement traite sans trace ne vaut rien en cas de
+  // contestation : le joueur doit pouvoir demander le motif.
+  //
+  // La sanction appliquee depend de la GRAVITE, mais elle est CHOISIE par
+  // l admin, pas declenchee automatiquement. Bannir sur un signalement unique
+  // reviendrait a laisser n'importe quel joueur faire bannir un rival.
+  if (req.method === 'POST' && pathname.match(/^\/api\/admin\/reports\/([^/]+)\/resolve$/)) {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return true;
+    const reportId = decodeURIComponent(pathname.match(/^\/api\/admin\/reports\/([^/]+)\/resolve$/)[1]);
+    try {
+      const body = await parseRequestBody(req);
+      const resolution = String(body?.resolution || '').trim();
+      if (!isSanctionKind(resolution)) {
+        respondJson(res, 400, {
+          ok: false,
+          error: 'Resolution inconnue.',
+          code: 'INVALID_RESOLUTION',
+        }, req);
+        return true;
+      }
+
+      const result = await resolveReport({
+        reportId,
+        resolution,
+        adminId: session.user.id,
+        note: sanitizeText(body?.note || ''),
+        durationDays: body?.durationDays,
+      });
+
+      if (!result.ok) {
+        // Un signalement deja traite ne se rejoue pas : rejouer creerait une
+        // seconde sanction pour le meme fait.
+        const code = result.code === 'ALREADY_REVIEWED' ? 409 : result.code === 'REPORT_NOT_FOUND' ? 404 : 500;
+        respondJson(res, code, {
+          ok: false,
+          error: code === 409
+            ? 'Ce signalement a deja ete traite.'
+            : code === 404
+              ? 'Signalement introuvable.'
+              : 'Le traitement a echoue.',
+          code: result.code,
+        }, req);
+        return true;
+      }
+
+      respondJson(res, 200, {
+        ok: true,
+        reportId,
+        resolution,
+        status: 'resolved',
+        sanction: result.sanction
+          ? { id: result.sanction.id, kind: result.sanction.kind, expiresAt: result.sanction.expiresAt }
+          : null,
+        reviewedBy: session.user.id,
+        reviewedAt: getNow(),
+      }, req);
+    } catch (err) {
+      log.error('Admin resolve report failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du traitement du signalement.', code: 'RESOLVE_ERROR' }, req);
     }
     return true;
   }

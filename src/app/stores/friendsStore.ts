@@ -8,6 +8,7 @@ import {
   unblockServerUser,
   reportServerUser,
 } from '../lib/socialApi';
+import type { StoredReport } from '../lib/socialApi';
 import { useToastStore } from './toastStore';
 
 export type FriendStatus = 'online' | 'offline' | 'in_match' | 'in_lobby';
@@ -63,6 +64,19 @@ export interface FriendsState {
     requests: Array<Omit<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'> & Partial<Pick<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'>>>,
     blockedIds: string[]
   ) => void;
+  /**
+   * Remplace les signalements par la lecture serveur.
+   *
+   * `hydrateFromServer` rechargeait amis, demandes et blocages — jamais les
+   * signalements. Le tableau de bord n'affichait donc que ceux faits dans ce
+   * navigateur : un admin qui ouvrait sa session ailleurs, ou apres un
+   * rechargement, n'en voyait aucun. La table accumulait, personne ne lisait.
+   *
+   * Un adaptateur est necessaire : la forme stockee et la forme consommee par
+   * `communityInsights` n'ont pas les memes champs (`createdAt` contre
+   * `timestamp`, `reason` ouvert ici contre union la-bas).
+   */
+  hydrateReportsFromServer: (stored: StoredReport[]) => void;
   sendRequest: (targetId: string, targetPseudo: string, message?: string) => void;
   acceptRequest: (requestId: string) => void;
   declineRequest: (requestId: string) => void;
@@ -82,6 +96,35 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
   blockedIds: [],
   reports: [],
   pendingId: null,
+
+  hydrateReportsFromServer: (stored) => {
+    const knownReasons: Report['reason'][] = [
+      'toxic_behavior',
+      'cheating',
+      'no_show',
+      'harassment',
+      'other',
+    ];
+    const knownStatuses: Report['status'][] = ['pending', 'reviewed', 'resolved'];
+
+    set({
+      reports: (stored || []).map((report) => ({
+        id: report.id,
+        targetId: report.targetId || '',
+        // Le serveur accepte un `reason` libre ; l'union de `Report` est
+        // fermee. Une valeur inconnue ne doit pas disparaitre : elle devient
+        // `other`, qui reste affichee et donc traitable.
+        reason: (knownReasons.includes(report.reason as Report['reason'])
+          ? report.reason
+          : 'other') as Report['reason'],
+        description: report.description || '',
+        timestamp: report.createdAt || new Date().toISOString(),
+        status: (knownStatuses.includes(report.status as Report['status'])
+          ? report.status
+          : 'pending') as Report['status'],
+      })),
+    });
+  },
 
   hydrateFromServer: (friends, requests, blockedIds) => {
     // Le serveur renvoie des profils publics (id/pseudo/country/trustScore/…)
@@ -206,13 +249,19 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
     if (get().pendingId) return;
     set({ pendingId: targetId });
     try {
-      await reportServerUser(targetId, reason, description);
+      const response = await reportServerUser(targetId, reason, description);
+      // On utilise le signalement RENVOYE PAR LE SERVEUR, pas un objet
+      // fabrique ici. Avant, l'identifiant local etait `RP-<Date.now()>`
+      // alors que le serveur produit `RP-<base36> majuscule` : apres
+      // hydratation, la meme ligne apparaitrait deux fois, et celle qui
+      // reste en memoire serait un signalement que personne n'a jamais lu.
+      const created = response?.report;
       const report: Report = {
-        id: `RP-${Date.now()}`,
-        targetId,
+        id: created?.id || `RP-${Date.now()}`,
+        targetId: created?.targetId || targetId,
         reason,
         description,
-        timestamp: new Date().toISOString(),
+        timestamp: created?.createdAt || new Date().toISOString(),
         status: 'pending',
       };
       set((state) => ({ reports: [report, ...state.reports] }));

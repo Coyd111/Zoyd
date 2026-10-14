@@ -20,6 +20,7 @@ import { verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa }
 import {
   respondJson,
   parseRequestBody,
+  parseQueryParams,
   readBearerToken,
   respondMappedError,
 } from '../http-utils.mjs';
@@ -30,6 +31,7 @@ import {
   saveAdminTotpSecret,
   markAdmin2faVerified,
   getStateCollection,
+  listUserReports,
 } from '../persistence.mjs';
 import {
   submitMatchResultOnServer,
@@ -83,6 +85,60 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     } catch (err) {
       log.error('Admin commissions failed', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du calcul des commissions.', code: 'COMMISSIONS_ERROR' }, req);
+    }
+    return true;
+  }
+
+  // Signalements de joueurs — LECTURE SEULE.
+  //
+  // Ces lignes etaient ecrites depuis le debut, mais rien ne les relisait :
+  // le tableau de bord n'affichait que les signalements faits dans le
+  // navigateur courant. Un admin qui ouvrait son tableau de bord ailleurs, ou
+  // apres un rechargement, n'en voyait aucun. Cette route ferme la boucle.
+  //
+  // 2FA obligatoire, comme `/api/admin/commissions` : un signalement accuse
+  // une personne, et le contenu releve des identites de joueurs.
+  if (req.method === 'GET' && pathname === '/api/admin/reports') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return true;
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const { limit, offset } = parseQueryParams(req.url);
+      const status = (url.searchParams.get('status') || '').trim();
+      const targetId = (url.searchParams.get('targetId') || '').trim();
+
+      const result = await listUserReports({
+        status: status || undefined,
+        targetId: targetId || undefined,
+        limit,
+        offset,
+      });
+
+      // Erreur de base -> 503. Jamais `[]` : l admin doit pouvoir distinguer
+      // « aucun signalement » de « table injoignable ».
+      if (!result.ok) {
+        respondJson(res, 503, {
+          ok: false,
+          error: 'Signalements indisponibles, reessaie dans un instant.',
+          code: 'SERVER_BUSY',
+        }, req);
+        return true;
+      }
+
+      respondJson(res, 200, {
+        ok: true,
+        reports: result.reports,
+        total: result.total,
+        limit,
+        offset,
+        // Signale explicitement que la base est absente, plutot que de
+        // laisser croire a une file de moderation vide.
+        degraded: result.degraded === true,
+      }, req);
+    } catch (err) {
+      log.error('Admin reports failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture des signalements.', code: 'REPORTS_ERROR' }, req);
     }
     return true;
   }

@@ -1,4 +1,4 @@
-import { authorizedPost, authorizedDelete } from './apiClient';
+import { authorizedPost, authorizedDelete, authorizedGet } from './apiClient';
 import type { Friend, FriendRequest } from '../stores/friendsStore';
 
 export interface Report {
@@ -38,4 +38,38 @@ export const unblockServerUser = async (targetId: string) => {
 
 export const reportServerUser = async (targetId: string, reason: string, description: string) => {
   return authorizedPost<{ ok: boolean; report: Report }>('/api/social/report', { targetId, reason, description });
+};
+
+/**
+ * Signalements tels que le serveur les stocke. `Report` (plus haut) est la
+ * forme d'echange ; celle-ci est la forme de lecture pour la moderation.
+ */
+export interface StoredReport extends Report {
+  reporterId: string | null;
+}
+
+/**
+ * Lecture paginee des signalements — reservee a l administration.
+ *
+ * `degraded` signale que le serveur tourne sans base : la liste est alors
+ * vide pour une raison qui n'a rien a voir avec l'absence de signalement.
+ * L'appelant doit pouvoir le dire a l'admin, sinon il conclurait que tout va
+ * bien alors que la table est peut-etre tombee.
+ */
+export interface AdminReportsPage {
+  ok: boolean;
+  reports: StoredReport[];
+  total: number;
+  limit: number;
+  offset: number;
+  degraded?: boolean;
+}
+
+export const fetchAdminReports = async (options: { status?: string; targetId?: string; limit?: number; offset?: number } = {}) => {
+  const params = new URLSearchParams();
+  if (options.status) params.set('status', options.status);
+  if (options.targetId) params.set('targetId', options.targetId);
+  params.set('limit', String(options.limit ?? 100));
+  params.set('offset', String(options.offset ?? 0));
+  return authorizedGet<AdminReportsPage>(`/api/admin/reports?${params.toString()}`);
 };

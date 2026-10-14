@@ -12,6 +12,7 @@ import { buildAdminInsights, buildCommunityPlayers } from '../../lib/communityIn
 import { formatZC } from '../../lib/utils';
 import type { WalletSnapshot } from '../lib/walletApi';
 import { fetchAdminCommissions, type CommissionStats } from '../lib/walletApi';
+import { fetchAdminReports } from '../lib/socialApi';
 import { FocusCard, StatCard } from '../components/admin/AdminTabShared';
 import AdminOverviewTab from '../components/admin/AdminOverviewTab';
 import AdminMatchesTab from '../components/admin/AdminMatchesTab';
@@ -48,12 +49,29 @@ const AdminDashboardPage: React.FC = () => {
   // Avant, la carte sommait `match.zoydFee`, fige a 0 a la creation des matchs :
   // la carte affichait donc 0 en permanence, y compris apres des retraits.
   const [commissions, setCommissions] = useState<CommissionStats>({ revenue: 0, withdrawalFees: 0, withdrawalCount: 0, arbiterPayouts: 0 });
+  // Les signalements ne venaient que du navigateur courant : la table
+  // accumulait sans que rien ne la lise. Un etat `reportsUnavailable` permet
+  // d'afficher un echec de lecture, et non une liste vide qui se lirait
+  // comme « personne ne signale rien ».
+  const [reportsUnavailable, setReportsUnavailable] = useState(false);
+  const hydrateReportsFromServer = useFriendsStore((s) => s.hydrateReportsFromServer);
   useEffect(() => {
     if (user?.role !== 'admin') return;
     let cancelled = false;
     fetchAdminCommissions()
       .then((data) => { if (!cancelled) setCommissions(data); })
       .catch(() => { /* 2FA absente ou reseau : on garde 0 plutot que de mentir */ });
+    fetchAdminReports()
+      .then((data) => {
+        if (cancelled) return;
+        hydrateReportsFromServer(data.reports || []);
+        setReportsUnavailable(data.degraded === true);
+      })
+      .catch(() => {
+        // 503 (table injoignable) ou reseau : mieux vaut le dire que
+        // laisser croire a une file de moderation vide.
+        if (!cancelled) setReportsUnavailable(true);
+      });
     return () => { cancelled = true; };
   }, [user?.role, matches.length]);
   const players = useMemo(() => buildCommunityPlayers({ currentUser: user, friends, reports, matches, tournaments }), [friends, matches, reports, tournaments, user]);
@@ -218,6 +236,21 @@ const AdminDashboardPage: React.FC = () => {
             </button>
           ))}
         </div>
+        {/*
+          Une liste de signalements vide et une table injoignable sont
+          identiques a l'ecran. Sans cet avertissement, l admin verrait
+          « 0 signalement » et en conclurait que personne ne signale rien —
+          alors que la lecture a peut-etre echoue. C'est la meme raison qui
+          fait repondre 503 a la route plutot que `[]`.
+        */}
+        {reportsUnavailable && (
+          <div className="mb-4 border border-orange-500/30 bg-orange-500/10 p-3 text-xs text-orange-200 flex items-start gap-2" role="status">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+            <span>
+              Signalements indisponibles : la table n'a pas pu etre lue. Les compteurs ci-dessous ne reflètent pas la file reelle — ne conclu pas que personne ne signale.
+            </span>
+          </div>
+        )}
         {activeTab === 'overview' && <AdminOverviewTab priorityQueue={priorityQueue} readyMatchesCount={matchQueues.ready.length} liveMatchesCount={matchQueues.live.length} pendingReportsCount={pendingReports.length} recentEvents={adminInsights.recentEvents} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
         {activeTab === 'matches' && <AdminMatchesTab filteredMatches={filteredMatches} matchFilter={matchFilter} onFilterChange={setMatchFilter} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
         {activeTab === 'disputes' && <AdminUrgencyTab filteredDisputes={filteredDisputes} disputeFilter={disputeFilter} onFilterChange={setDisputeFilter} escalatedCount={escalatedDisputes.length} totalCount={adminInsights.openDisputes.length} pendingResolve={pendingResolve} onSetPendingResolve={setPendingResolve} onRequestCancel={(matchId) => setConfirmAction(matchId)} onResolveWinner={handleResolveWinner} onResolveDisputeOnly={handleResolveDisputeOnly} loadingAction={loadingAction} />}

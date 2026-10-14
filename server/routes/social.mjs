@@ -206,7 +206,20 @@ if (req.method === 'POST' && pathname === '/api/social/report') {
     // `sbUpsert` renvoie `undefined` quand aucun client Supabase n'est configure
     // (mode memoire) : ce n'est pas un echec. `false` signifie une ecriture
     // reellement refusee.
-    const written = await sbUpsert('user_reports', { id: report.id, payload: report, created_at: getNow() });
+    const written = await sbUpsert('user_reports', {
+      id: report.id,
+      // Les colonnes denormalisees ne sont pas de la redondance inutile :
+      // ce sont elles que filtre la lecture de moderation, via les index de
+      // `supabase/schema.sql`. Les laisser a NULL rendrait ces index
+      // inexploitables et forcerait a filtrer sur `payload`, donc a tout
+      // charger en memoire pour trier en JavaScript.
+      reporter_id: report.reporterId,
+      target_id: report.targetId,
+      reason: report.reason,
+      status: report.status,
+      payload: report,
+      created_at: report.createdAt,
+    });
     if (written === false) {
       respondJson(res, 503, {
         ok: false,

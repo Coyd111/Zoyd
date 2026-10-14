@@ -345,6 +345,62 @@ const sbSelect = async (table, filters = {}, columns = '*') => {
   return data || [];
 };
 
+/**
+ * Lecture paginee des signalements pour la moderation.
+ *
+ * Volontairement DISTINTE de `sbSelect` : ici, une erreur de base doit
+ * remonter. `sbSelect` renvoie `[]` en cas d echec, ce qui est correct pour
+ * une liste de commodite mais inacceptable ici : une liste de signalements
+ * vide et une table injoignable sont INDISTINGUABLES. L'admin conclurait
+ * « personne ne signale rien » alors que la table est peut-etre tombee — et
+ * il arreterait de moderer. C'est le meme raisonnement que l ecriture du
+ * signalement, qui repond 503 au lieu de « Signalement envoye ».
+ *
+ * Les colonnes (`status`, `target_id`, `reporter_id`, `reason`) sont
+ * renseignees a l ecriture precisement pour que les index de
+ * `supabase/schema.sql` servent. Le filtre porte sur ces colonnes, pas sur
+ * `payload`, dont l extraction JSONB n utilise aucun index.
+ *
+ * @param {{ status?: string, targetId?: string, limit?: number, offset?: number }} opts
+ * @returns {Promise<{ ok: boolean, reports: Array<object>, total: number, degraded?: boolean }>}
+ */
+export const listUserReports = async ({ status, targetId, limit = 50, offset = 0 } = {}) => {
+  // Mode memoire : il n y a aucune table. On le dit plutot que de renvoyer
+  // une liste vide que l admin lirait comme « aucune sanction en cours ».
+  if (!supabase) return { ok: true, reports: [], total: 0, degraded: true };
+
+  let q = supabase.from('user_reports').select('id, payload, created_at', { count: 'exact' });
+  if (status) q = q.eq('status', status);
+  if (targetId) q = q.eq('target_id', targetId);
+  const { data, error, count } = await q
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    log.error('user_reports select error', { message: error.message, code: error.code });
+    return { ok: false, reports: [], total: 0 };
+  }
+
+  const reports = (data || []).map((row) => {
+    const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
+    return {
+      id: row.id,
+      // Le payload est la source de verite historique ; les colonnes servent
+      // au filtrage. On lit le payload et on complete avec la colonne, ce qui
+      // rend la lecture robuste aux lignes ecrites avant leur remplissage.
+      reporterId: payload.reporterId ?? row.reporter_id ?? null,
+      reporterPseudo: payload.reporterPseudo ?? '',
+      targetId: payload.targetId ?? row.target_id ?? null,
+      reason: payload.reason ?? row.reason ?? 'other',
+      description: payload.description ?? '',
+      status: row.status || payload.status || 'pending',
+      createdAt: row.created_at || payload.createdAt || null,
+    };
+  });
+
+  return { ok: true, reports, total: typeof count === 'number' ? count : reports.length };
+};
+
 // ─── Load from Supabase on startup ──────────────────────────────────────────
 /**
  * Load all data from Supabase into in-memory Maps on startup.

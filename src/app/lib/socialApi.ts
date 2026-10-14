@@ -46,6 +46,12 @@ export const reportServerUser = async (targetId: string, reason: string, descrip
  */
 export interface StoredReport extends Report {
   reporterId: string | null;
+  /** Gravite calculee par le serveur a l ecriture, jamais par le client. */
+  severity?: string | null;
+  resolution?: string | null;
+  sanctionId?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
 }
 
 /**
@@ -72,4 +78,31 @@ export const fetchAdminReports = async (options: { status?: string; targetId?: s
   params.set('limit', String(options.limit ?? 100));
   params.set('offset', String(options.offset ?? 0));
   return authorizedGet<AdminReportsPage>(`/api/admin/reports?${params.toString()}`);
+};
+
+/**
+ * Traitement d'un signalement : applique la sanction et trace qui a tranche.
+ *
+ * Le definitif passe par la meme route, mais l interface exige une
+ * confirmation explicite avant de l'envoyer.
+ */
+export const resolveAdminReport = async (
+  reportId: string,
+  resolution: string,
+  note: string,
+  durationDays?: number
+) => {
+  return authorizedPost<{
+    ok: boolean;
+    reportId: string;
+    resolution: string;
+    status: string;
+    sanction: { id: string; kind: string; expiresAt: string | null } | null;
+    reviewedBy: string;
+    reviewedAt: string;
+  }>(`/api/admin/reports/${encodeURIComponent(reportId)}/resolve`, {
+    resolution,
+    note,
+    ...(durationDays ? { durationDays } : {}),
+  });
 };

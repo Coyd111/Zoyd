@@ -26,6 +26,7 @@ import {
 } from '../persistence.mjs';
 import { deliverNotification } from '../push-notifications.mjs';
 import { withUserMutex } from '../mutex.mjs';
+import { severityForReason } from '../moderation.mjs';
 import { getNow } from '../utils.mjs';
 import { createLogger } from '../logger.mjs';
 
@@ -217,6 +218,12 @@ if (req.method === 'POST' && pathname === '/api/social/report') {
       target_id: report.targetId,
       reason: report.reason,
       status: report.status,
+      // La gravite est CALCULEE par le serveur au depot, a partir du seul
+      // motif connu. Elle decide de la sanction recommandee dans la file :
+      // la calculer plus tard obligerait a la deviner de nouveau, et le
+      // joueur pourrait changer d'avis sur le motif entre le depot et le
+      // traitement.
+      severity: severityForReason(report.reason),
       payload: report,
       created_at: report.createdAt,
     });

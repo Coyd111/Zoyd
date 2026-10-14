@@ -13,7 +13,7 @@ import { roundAmount, getNow, makeError } from './utils.mjs';
 // cycle d'import (payment-engine importe persistence).
 import { isAnySupportedPhone, phoneFormatError } from './payout-countries.mjs';
 import { withUserMutex, withChannelMutex } from './mutex.mjs';
-import { computeExpiry, isSanctionActive } from './moderation.mjs';
+import { computeExpiry, isSanctionActive, severityForReason } from './moderation.mjs';
 import { Mutex } from 'async-mutex';
 
 const log = createLogger('persistence');
@@ -370,7 +370,14 @@ export const listUserReports = async ({ status, targetId, limit = 50, offset = 0
   // une liste vide que l admin lirait comme « aucune sanction en cours ».
   if (!supabase) return { ok: true, reports: [], total: 0, degraded: true };
 
-  let q = supabase.from('user_reports').select('id, payload, created_at', { count: 'exact' });
+  // Les colonnes de moderation sont SELECTIONNEES : `status` et `severity`
+  // sont utilisees plus bas, et la file d affichage s en sert pour classer
+  // le plus grave en premier. Sans elles dans le SELECT, PostgREST ne les
+  // renverrait pas et la gravite tomberait toujours a « a qualifier ».
+  let q = supabase.from('user_reports').select(
+    'id, payload, created_at, status, severity, resolution, sanction_id, reviewed_by, reviewed_at',
+    { count: 'exact' }
+  );
   if (status) q = q.eq('status', status);
   if (targetId) q = q.eq('target_id', targetId);
   const { data, error, count } = await q
@@ -394,7 +401,15 @@ export const listUserReports = async ({ status, targetId, limit = 50, offset = 0
       targetId: payload.targetId ?? row.target_id ?? null,
       reason: payload.reason ?? row.reason ?? 'other',
       description: payload.description ?? '',
+      // Gravite calculee a l ecriture. Absente sur les lignes plus
+      // anciennes : elle est alors recalculee a la lecture, ce qui evite
+      // d afficher « a qualifier » pour un harcelement deja signale.
+      severity: row.severity || severityForReason(payload.reason ?? row.reason ?? 'other'),
       status: row.status || payload.status || 'pending',
+      resolution: row.resolution || null,
+      sanctionId: row.sanction_id || null,
+      reviewedBy: row.reviewed_by || null,
+      reviewedAt: row.reviewed_at || null,
       createdAt: row.created_at || payload.createdAt || null,
     };
   });

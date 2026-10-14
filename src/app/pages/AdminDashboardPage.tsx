@@ -12,10 +12,11 @@ import { buildAdminInsights, buildCommunityPlayers } from '../../lib/communityIn
 import { formatZC } from '../../lib/utils';
 import type { WalletSnapshot } from '../lib/walletApi';
 import { fetchAdminCommissions, type CommissionStats } from '../lib/walletApi';
-import { fetchAdminReports } from '../lib/socialApi';
+import { fetchAdminReports, resolveAdminReport } from '../lib/socialApi';
 import { FocusCard, StatCard } from '../components/admin/AdminTabShared';
 import AdminOverviewTab from '../components/admin/AdminOverviewTab';
 import AdminMatchesTab from '../components/admin/AdminMatchesTab';
+import AdminReportsTab, { type Resolution, type QueueReport } from '../components/admin/AdminReportsTab';
 import AdminUrgencyTab from '../components/admin/AdminUrgencyTab';
 import AdminUsersTab from '../components/admin/AdminUsersTab';
 import type { MatchFilter, UserFilter, DisputeFilter } from '../components/admin/AdminTabShared';
@@ -37,7 +38,7 @@ const AdminDashboardPage: React.FC = () => {
   const matches = useMatchStore((s) => s.matches);
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
   const tournaments = useTournamentStore((s) => s.tournaments);
-  const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'disputes' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'disputes' | 'users' | 'reports'>('overview');
   const [matchFilter, setMatchFilter] = useState<MatchFilter>('priority');
   const [userFilter, setUserFilter] = useState<UserFilter>('critical');
   const [disputeFilter, setDisputeFilter] = useState<DisputeFilter>('escalated');
@@ -54,6 +55,7 @@ const AdminDashboardPage: React.FC = () => {
   // d'afficher un echec de lecture, et non une liste vide qui se lirait
   // comme « personne ne signale rien ».
   const [reportsUnavailable, setReportsUnavailable] = useState(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const hydrateReportsFromServer = useFriendsStore((s) => s.hydrateReportsFromServer);
   useEffect(() => {
     if (user?.role !== 'admin') return;
@@ -74,7 +76,69 @@ const AdminDashboardPage: React.FC = () => {
       });
     return () => { cancelled = true; };
   }, [user?.role, matches.length]);
+  const reloadReports = async () => {
+    try {
+      const data = await fetchAdminReports();
+      hydrateReportsFromServer(data.reports || []);
+      setReportsUnavailable(data.degraded === true);
+    } catch {
+      setReportsUnavailable(true);
+    }
+  };
+
+  // Applique la sanction et trace la decision. La liste est rechargee
+  // depuis le serveur apres coup : le statut local prevaudrait sinon, et un
+  // echec partiel (sanction appliquee, statut non ecrit) resterait invisible.
+  const handleResolveReport = async (reportId: string, resolution: Resolution, note: string, durationDays?: number) => {
+    setResolvingId(reportId);
+    try {
+      await resolveAdminReport(reportId, resolution, note, durationDays);
+      toast.success(
+        'Signalement traité',
+        resolution === 'dismissed'
+          ? 'Classé, aucune sanction appliquée.'
+          : `Sanction appliquée : ${resolution.replace('_', ' ')}.`
+      );
+      await reloadReports();
+    } catch (err) {
+      // `apiClient` rejette avec une `Error` enrichie d'un `code` serveur.
+      // On lit le code sans_typer le tout en `any` : le message exact
+      // determine ce qu'on affiche a l admin.
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? String((err as { code?: unknown }).code ?? '')
+          : '';
+      toast.error(
+        'Traitement impossible',
+        code === 'ALREADY_REVIEWED'
+          ? 'Ce signalement a déjà été traité.'
+          : code === 'AUTH_REQUIRED' || code === '2FA_REQUIRED'
+            ? 'Session ou 2FA expirée, reconnecte-toi.'
+            : 'Le traitement a échoué, réessaie dans un instant.'
+      );
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
   const players = useMemo(() => buildCommunityPlayers({ currentUser: user, friends, reports, matches, tournaments }), [friends, matches, reports, tournaments, user]);
+  const queueReports: QueueReport[] = reports.map((r) => ({
+    id: r.id,
+    targetId: r.targetId,
+    targetPseudo: players.find((p) => p.userId === r.targetId)?.pseudo || r.targetId,
+    reporterId: null,
+    reporterPseudo: r.reporterPseudo || '',
+    reason: r.reason,
+    description: r.description,
+    status: r.status,
+    severity: r.severity || 'a_qualifier',
+    createdAt: r.timestamp,
+    resolution: r.resolution,
+    reviewedBy: r.reviewedBy,
+    reviewedAt: r.reviewedAt,
+  }));
+
+
   const adminInsights = useMemo(() => buildAdminInsights({ players, matches, reports }), [matches, players, reports]);
   const playerById = useMemo(() => {
     const index = new Map<string, (typeof players)[number]>();
@@ -229,6 +293,7 @@ const AdminDashboardPage: React.FC = () => {
             { id: 'matches', label: 'matchs', count: filteredMatches.length },
             { id: 'disputes', label: 'litiges', count: adminInsights.openDisputes.length, urgent: escalatedDisputes.length },
             { id: 'users', label: 'utilisateurs', count: filteredUsers.length },
+            { id: 'reports', label: 'signalements', count: pendingReports.length },
           ].map((tab: { id: string; label: string; count: number; urgent?: number }) => (
             <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} aria-label={`${tab.label} (${tab.count}${tab.urgent ? `, ${tab.urgent} urgents` : ''})`} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${activeTab === tab.id ? 'bg-white text-black' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
               {tab.label} <span className="opacity-60">({tab.count})</span>
@@ -255,6 +320,7 @@ const AdminDashboardPage: React.FC = () => {
         {activeTab === 'matches' && <AdminMatchesTab filteredMatches={filteredMatches} matchFilter={matchFilter} onFilterChange={setMatchFilter} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
         {activeTab === 'disputes' && <AdminUrgencyTab filteredDisputes={filteredDisputes} disputeFilter={disputeFilter} onFilterChange={setDisputeFilter} escalatedCount={escalatedDisputes.length} totalCount={adminInsights.openDisputes.length} pendingResolve={pendingResolve} onSetPendingResolve={setPendingResolve} onRequestCancel={(matchId) => setConfirmAction(matchId)} onResolveWinner={handleResolveWinner} onResolveDisputeOnly={handleResolveDisputeOnly} loadingAction={loadingAction} />}
         {activeTab === 'users' && <AdminUsersTab filteredUsers={filteredUsers} userFilter={userFilter} onFilterChange={setUserFilter} />}
+        {activeTab === 'reports' && <AdminReportsTab reports={queueReports} unavailable={reportsUnavailable} resolvingId={resolvingId} onResolve={handleResolveReport} />}
       </main>
 
       {confirmAction && (

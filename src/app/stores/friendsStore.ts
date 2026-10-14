@@ -50,6 +50,16 @@ export interface Report {
   description: string;
   timestamp: string;
   status: 'pending' | 'reviewed' | 'resolved';
+  /**
+   * Champs de moderation, absents sur un signalement fabrique localement et
+   * sur les lignes plus anciennes. Optionnels pour que les consommateurs
+   * existants (`communityInsights`) n aient pas a les traiter.
+   */
+  severity?: 'grave' | 'moyenne' | 'legere' | 'a_qualifier';
+  reporterPseudo?: string;
+  resolution?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
 }
 
 export interface FriendsState {
@@ -122,6 +132,11 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
         status: (knownStatuses.includes(report.status as Report['status'])
           ? report.status
           : 'pending') as Report['status'],
+        severity: report.severity as Report['severity'] | undefined,
+        reporterPseudo: report.reporterPseudo,
+        resolution: report.resolution ?? null,
+        reviewedBy: report.reviewedBy ?? null,
+        reviewedAt: report.reviewedAt ?? null,
       })),
     });
   },

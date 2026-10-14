@@ -21,8 +21,11 @@ services:
         value: "true"
       - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
+        # PAS de SUPABASE_ANON_KEY : le code ne la lit pas, volontairement.
+        # Tout passe par la cle service_role, qui contourne les RLS. Avec une
+        # cle anon, chaque ecriture echouerait derriere un client pourtant
+        # annonce actif. La garder ici ferait saisir une cle dans le tableau
+        # de bord Render sans aucun effet.
       - key: SUPABASE_SERVICE_KEY
         sync: false
       - key: FEDAPAY_SECRET_KEY

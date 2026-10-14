@@ -18,13 +18,13 @@ routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
 | 5 | Performance & bundle | **fait** | 364 kB de graphiques sur le chemin critique ; 12,8 Mo de doublons d'images ; fonds 4K à 13,1 Mo |
 | 6 | Qualité, tests & dépendances | **fait** | couverture jamais mesurable (outil absent) ; 2FA admin et fusion des deltas sans aucun test |
 | 7 | Produit & accessibilité | **fait** | audit axe-core : 0 blocage sur les 5 pages publiques ; animations JS ignorant la préférence système |
-| 8 | Documentation & exploitation | à faire | — |
+| 8 | Documentation & exploitation | **fait** | la doc décrivait un déploiement inexistant : 9 variables documentées que le code ne lit pas |
 
 ## Constats ouverts
 
 | Sév. | Constat | Où | Action |
 |------|---------|-----|--------|
-| Moyenne | 25 variables d'environnement sur 30 ne sont documentées ni dans `DEPLOYMENT.md` ni dans `README.md` ; 13 seulement sont déclarées dans `render.yaml` | dépôt | compléter la référence (étape 8) |
+| Moyenne | 25 variables d'environnement sur 30 n'étaient documentées nulle part ; 13 seulement déclarées dans `render.yaml` | dépôt | **corrigé** (étape 8) — les 40 variables sont documentées avec leur comportement par défaut |
 | Faible | La comparaison du jeton `/metrics` n'est pas en temps constant (`!==`) | `server/routes/public.mjs` | **corrigé** — comparaison de hachages |
 | Faible | `NODE_ENV=test` **et** `ALLOW_DEBUG_CODES=true` désactivent tout le rate limiting | `server/rate-limiter.mjs` | **corrigé** — exige en plus une base désactivée |
 | Info | `lockFunds`/`unlockFunds` : code mort d'UI optimiste sur des fonds | `src/app/stores/walletStore.ts` | **supprimé** — doublait le verrouillage serveur |
@@ -46,6 +46,10 @@ routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
 | Haute | La 2FA de l'admin — clé de voûte de toute opération financière — n'avait aucun test | `server/admin-totp.mjs` | **corrigé** — 15 tests, vecteurs RFC 6238, conforme |
 | Moyenne | Le contrat « delta → fusion » des matchs n'était protégé que par un commentaire | `src/app/stores/matchStore.ts` | **corrigé** — 10 tests, 14 % → 39 % |
 | Info | Les stores client ne sont couverts qu'à 33 % (`friendsStore` 3 %) | `src/app/stores/` | constat ouvert — suite à donner |
+| Haute | `DEPLOYMENT.md` documentait 9 variables que le code ne lit pas (`ALLOWED_ORIGINS` au lieu de `ZOYD_ALLOWED_ORIGINS`, `JWT_SECRET` inexistant, `VITE_SUPABASE_*` non utilisées) | `DEPLOYMENT.md` | **corrigé** — référence complète des 40 variables, avec le comportement si absente |
+| Moyenne | `SUPABASE_ANON_KEY` exigée par Render mais jamais lue : attire une clé dans le tableau de bord pour rien | `render.yaml` | **corrigé** — entrée retirée, raison documentée |
+| Moyenne | `user_reports` absente des migrations documentées, alors qu'elle a été jouée manuellement le 14/10 | `DEPLOYMENT.md` | **corrigé** — DDL et vérification ajoutés |
+| Info | Aucun secret dans le dépôt : `.env*` non suivis, placeholder `sk_live_`fausse alerte | dépôt | conforme |
 
 ## Points vérifiés et conformes
 
@@ -84,6 +88,7 @@ ils ne sont pas à refaire.
 - [05 - Performance et bundle](05-performance.md)
 - [06 - Qualite, tests et dependances](06-qualite.md)
 - [07 - Produit et accessibilite](07-produit.md)
+- [08 - Documentation et exploitation](08-exploitation.md)
 
 ## Méthode
 

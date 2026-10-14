@@ -12,29 +12,122 @@
 
 ## Variables d'environnement
 
-### Frontend (.env)
+> Cette section a été réécrite à partir du code, pas à partir de souvenirs.
+> Les valeurs ci-dessous sont celles que le serveur lit réellement, avec leur
+> comportement quand elles sont absentes. La version précédente documentait
+> neuf variables que le code ne lit pas : les suivre produisait une
+> configuration en partie inerte, sans le moindre avertissement.
 
-```
-VITE_REALTIME_URL=https://zoyd.onrender.com
-VITE_SUPABASE_URL=https://<ton-project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
-```
+### Backend — obligatoire en production
 
-### Backend (.env.server)
+| Variable | Effet si absente | Rôle |
+|----------|------------------|------|
+| `SUPABASE_URL` | **mode mémoire** : l'état vit et meurt avec le processus, les données sont perdues au redémarrage | Point d'entrée Supabase |
+| `SUPABASE_SERVICE_KEY` | **mode mémoire**, même conséquence | Clé `service_role`. `SUPABASE_SERVICE_ROLE_KEY` est accepté en alias |
+| `FEDAPAY_SECRET_KEY` | dépôts et retraits refusés | Clé serveur FedaPay |
+| `ZOYD_ADMIN_PASSWORD` | l'admin est créé avec le mot de passe **public du dépôt** | Mot de passe du compte d'administration |
+| `METRICS_TOKEN` | `/metrics` répond 403 | Jeton Bearer d'accès aux métriques |
 
-```
-PORT=10000
-SUPABASE_URL=https://<ton-project-ref>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-JWT_SECRET=your-secret-key
-VAPID_PUBLIC_KEY=...
-VAPID_PRIVATE_KEY=...
-VAPID_EMAIL=mailto:admin@zoyd.com
-FEDAPAY_PUBLIC_KEY=...
-FEDAPAY_SECRET_KEY=...
-FEDAPAY_ENVIRONMENT=test
-ALLOWED_ORIGINS=https://zoyd.vercel.app
-```
+`SUPABASE_ANON_KEY` **n'est pas utilisé et ne doit pas être défini.** Tout
+l'accès à la base passe par la clé `service_role`, qui contourne les RLS :
+avec une clé `anon`, chaque écriture échouerait derrière un client pourtant
+annoncé actif, et l'argent cesserait d'être persisté sans la moindre alerte.
+
+### Backend — behaviour réseau et journalisation
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `PORT` | `ZOYD_REALTIME_PORT`, sinon `4001` | Port HTTP. **Render injecte `PORT` et l'impose** |
+| `ZOYD_REALTIME_PORT` | `4001` | Port de repli quand `PORT` est absent |
+| `LOG_LEVEL` | `info` | `error` \| `warn` \| `info` \| `debug`. En production Render est sur `warn` |
+| `TRUST_PROXY` | `false` | À mettre à `true` **derrière un load balancer**, sinon tous les utilisateurs partagent un seul bucket de rate limit |
+| `ZOYD_ALLOWED_ORIGINS` | les 3 domaines de production, codés en dur | Origines CORS supplémentaires, séparées par des virgules |
+
+> **Attention, erreur corrigée dans cette version.** L'ancien document
+> indiquait `ALLOWED_ORIGINS`, que le code ne lit pas. Le nom réel est
+> `ZOYD_ALLOWED_ORIGINS`. Les trois domaines de production (`zoyd.vercel.app`,
+> `zoyd.africa`, `www.zoyd.africa`) sont de toute façon autorisés en repli, donc
+> l'erreur n'était pas bloquante — mais ajouter un nouveau domaine en suivant
+> l'ancienne doc produirait un blocage CORS muet.
+
+### Backend — identité de l'admin
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `ZOYD_ADMIN_EMAIL` | `admin@zoyd.com` (**public dans le dépôt**) | Compte d'administration |
+| `ZOYD_ADMIN_PSEUDO` | `ZOYD Control` | Pseudo affiché |
+| `ZOYD_ADMIN_ID` | identifiant interne | Doit correspondre au compte réellement créé |
+| `ZOYD_ADMIN_PHONE` | `+2290161000001` (**par défaut en dur**) | Numéro de l'admin, pour les notifications |
+
+> `ensureSeedAdmin` ne peut pas écraser un compte existant. Si l'email de la
+> variable ne correspond plus au compte déjà en base, aucun compte n'est créé et
+> le serveur démarre sans administrateur — c'est le comportement voulu, mais il
+> faut le savoir avant de changer la variable.
+
+### Backend — ajuster le comportement
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `ZOYD_RATE_LIMIT_MAX` | `100000` | Plafond global. **N'agit que si `NODE_ENV=test` et `ALLOW_DEBUG_CODES=true`** |
+| `ZOYD_BR_START_EARLY_MS` | — | Avance le démarrage d'une partie BR, en millisecondes |
+| `ZOYD_API_KEY_ROTATION_DAYS` | `90` | Âge au-delà duquel une clé d'API est signalée à renouveler |
+| `ALLOW_DEBUG_CODES` | `false` | **Nernels jamais en production** : expose les codes de vérification dans les réponses |
+
+### Intégrations facultatives
+
+Toutes facultatives : le service démarre sans, la fonction concernée est
+simplement indisponible.
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `RESEND_API_KEY` | — | Envoi d'e-mails, canal recommandé |
+| `BREVO_API_KEY` | — | Envoi d'e-mails, alternative |
+| `EMAIL_FROM` / `SMTP_FROM` | `ZOYD <onboarding@resend.dev>` | Expéditeur affiché |
+| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | port `587` | Envoi d'e-mails par SMTP |
+| `SMTP_PORT` | `587` | — |
+| `SMTP_SECURE` | `true` si le port est `465` | Chiffrement du transport |
+| `CODE_DELIVERY_WEBHOOK` | — | Webhook de livraison des codes |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | — | Notifications push. Sans elles, `/api/realtime/push/public-key` répond 503 |
+| `ZOYD_ALLOWED_ORIGINS` | — | voir plus haut |
+
+> **Priorité d'envoi** : Resend, puis Brevo, puis SMTP, puis le webhook.
+
+### Frontend — lues au build, pas à l'exécution
+
+| Variable | Rôle |
+|----------|------|
+| `VITE_FEDAPAY_PUBLIC_KEY` | Clé publique FedaPay, utilisée par la page Portefeuille |
+| `VITE_REALTIME_URL` | URL du serveur temps réel |
+
+Les variables `VITE_*` sont **intégrées dans le bundle au moment du build** :
+les modifier sur Render ne change rien tant que le frontend n'est pas
+reconstruit. Ne jamais y placer de secret — il serait public.
+
+### Fournies automatiquement par Render
+
+`RENDER_GIT_COMMIT` et `RENDER_GIT_BRANCH` sont injectés par la plateforme et
+sert à `/api/health`, qui expose `persistence.deployedCommitShort`. C'est le
+moyen fiable de vérifier quel commit tourne réellement en production.
+
+### Tests et développement local uniquement
+
+| Variable | Défaut | Rôle |
+|----------|--------|------|
+| `ZOYD_DISABLE_SUPABASE` | `false` | Force le mode mémoire. **La suite E2E en dépend** : sans elle, les tests dépendent du réseau et des données Supabase |
+| `ZOYD_DEV_URL` | `http://localhost:5173` | Cible des tests UI |
+
+### Corrigé : variables de l'ancienne documentation que le code ne lit pas
+
+`ALLOWED_ORIGINS`, `JWT_SECRET`, `VAPID_EMAIL`, `FEDAPAY_ENVIRONMENT`,
+`FEDAPAY_PUBLIC_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
+`SUPABASE_ANON_KEY`, `CACHE_NAME`.
+
+Les deux dernières catégories sont particulièrement trompeuses :
+
+- `JWT_SECRET` donne l'impression qu'une clé de signature de session existe.
+  Il n'y en a pas : les sessions reposent sur d'autres mécanismes.
+- `VITE_SUPABASE_*` suggère un accès direct du navigateur à Supabase. Il n'y
+  en a pas : tout passe par le serveur.
 
 ## Installation locale
 
@@ -153,6 +246,44 @@ curl -s https://zoyd.onrender.com/api/health | grep -o '"loginLockoutPersisted":
   une table ordinaire, son absence remit `stateTrusted` à `false` et le serveur
   refusait alors *toute écriture d'état* — lecture seule totale, pour une base
   parfaitement saine.
+
+#### `user_reports` — signalements de joueurs
+
+Ajoutée le 14/10/2026. La table était utilisée par `POST /api/social/report`
+sans qu'aucun fichier SQL du dépôt ne la déclare : sur un environnement neuf,
+rien ne la créait et les signalements disparaissaient.
+
+```sql
+CREATE TABLE IF NOT EXISTS user_reports (
+  id TEXT PRIMARY KEY,
+  reporter_id TEXT,
+  target_id TEXT,
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  payload JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_user_reports_status ON user_reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_reports_target ON user_reports(target_id, created_at DESC);
+```
+
+Le code écrit `{ id, payload, created_at }`, d'où la colonne `payload` JSONB.
+
+**Vérifier sans connexion SQL :**
+
+```bash
+curl -s https://zoyd.onrender.com/api/health
+```
+
+**Si la table est absente** : la route `/api/social/report` répond `503` au
+joueur au lieu de « Signalement envoyé ». Le message est exact — c'est
+volontaire : mieux vaut un signalement annoncé comme échoué qu'un signalement
+annoncé comme pris et perdu.
+
+Les deux index servent à la future lecture par la modération. Tant qu'aucun
+endpoint ne relit la table, ils ne sont pas utilisés : le tableau de bord
+d'administration n'affiche aujourd'hui que les signalements faits **dans le
+navigateur courant**.
 
 #### Sessions
 

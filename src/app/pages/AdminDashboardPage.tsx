@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router';
-import { Shield, Swords, AlertTriangle, TrendingUp, DollarSign, Users, Lock, Scale } from 'lucide-react';
+import { Shield, Swords, AlertTriangle, TrendingUp, DollarSign, Users, Lock, Scale, Download } from 'lucide-react';
 import { toast } from '../lib/toast';
-import { adminAwardServerMatch, adminCancelServerMatch, adminResolveServerDispute } from '../lib/matchApi';
+import { adminAwardServerMatch, adminCancelServerMatch, adminResolveServerDispute, downloadMatchHistory } from '../lib/matchApi';
 import { applyServerAccountState } from '../lib/serverSync';
 import { useAuthStore, type User } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
@@ -58,6 +58,7 @@ const AdminDashboardPage: React.FC = () => {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [sanctions, setSanctions] = useState<ActiveSanction[]>([]);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const hydrateReportsFromServer = useFriendsStore((s) => s.hydrateReportsFromServer);
   useEffect(() => {
     if (user?.role !== 'admin') return;
@@ -81,6 +82,17 @@ const AdminDashboardPage: React.FC = () => {
       });
     return () => { cancelled = true; };
   }, [user?.role, matches.length]);
+  const handleExportHistory = async (format: 'csv' | 'json') => {
+    setExporting(true);
+    try {
+      const filename = await downloadMatchHistory(undefined, undefined, format);
+      toast.success('Export prêt', `${filename} téléchargé. Range-le hors de ce projet.`);
+    } catch (err) {
+      toast.error('Export impossible', err instanceof Error ? err.message : 'Réessaie dans un instant.');
+    } finally {
+      setExporting(false);
+    }
+  };
   const reloadReports = async () => {
     try {
       const [data, actifs] = await Promise.all([fetchAdminReports(), fetchActiveSanctions()]);
@@ -308,6 +320,36 @@ const AdminDashboardPage: React.FC = () => {
             hint="Part de cagnotte versée aux arbitres (sortie, pas revenu)"
           />
         </div>
+
+        {/*
+          Sauvegarde periodique. L historique reste dans la base, mais une
+          base n est pas une sauvegarde tant que personne n a produit de copie
+          a conserver ailleurs — et le fichier doit pouvoir etre genere
+          SANS connexion SQL ni intervention du developpeur.
+        */}
+        <div className="flex flex-wrap items-center gap-2 mb-8 border border-white/10 p-3">
+          <button
+            type="button"
+            onClick={() => handleExportHistory('csv')}
+            disabled={exporting}
+            className="flex items-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest hover:bg-white/10 disabled:opacity-40"
+          >
+            <Download className="w-3.5 h-3.5" aria-hidden="true" />
+            {exporting ? 'EXPORT...' : 'EXPORTER L HISTORIQUE (CSV)'}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExportHistory('json')}
+            disabled={exporting}
+            className="border border-white/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest hover:bg-white/10 disabled:opacity-40"
+          >
+            JSON
+          </button>
+          <span className="text-[10px] text-white/50">
+            Sauvegarde a faire tous les 3 mois. 2FA requise.
+          </span>
+        </div>
+
         <div role="tablist" className="flex flex-wrap gap-2 mb-8">
           {[
             { id: 'overview', label: 'vue d\'ensemble', count: priorityQueue.length },

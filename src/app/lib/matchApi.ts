@@ -2,6 +2,7 @@ import type { Match } from '../stores/matchStore';
 import type { User } from '../stores/authStore';
 import type { WalletSnapshot } from './walletApi';
 import { authorizedGet, authorizedPost } from './apiClient';
+import { getApiUrl } from './apiUrl';
 
 interface MatchResponse {
   ok: boolean;
@@ -159,4 +160,53 @@ export const addServerDisputeEvidence = async (matchId: string, evidence: string
 
 export const escalateServerDispute = async (matchId: string) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/dispute/escalate`, {});
+};
+
+/**
+ * Historique des matchs en fichier telechargeable.
+ *
+ * Le telechargement ne passe PAS par `authorizedGet` : la reponse est un CSV,
+ * pas du JSON, et le client d'API chercherait a la parser. D'ou un `fetch` nu
+ * suivi d un Blob — et la liberation de l URL objet, sans quoi le fichier
+ * reste en memoire jusqu au rechargement de la page.
+ */
+export const downloadMatchHistory = async (
+  from?: string,
+  to?: string,
+  format: 'csv' | 'json' = 'csv'
+) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  params.set('format', format);
+
+  const response = await fetch(`${getApiUrl('/api/admin/matches/export')}?${params.toString()}`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    let message = 'Export indisponible.';
+    try {
+      const body = await response.json();
+      if (body?.error) message = body.error;
+    } catch {
+      /* reponse non JSON : on garde le message par defaut */
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('content-disposition') || '';
+  const found = /filename="([^"]+)"/.exec(disposition);
+  const filename = found ? found[1] : `zoyd-matchs.${format}`;
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  return filename;
 };

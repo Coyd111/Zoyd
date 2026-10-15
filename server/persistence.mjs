@@ -3387,6 +3387,62 @@ export const resolveReport = async ({ reportId, resolution, adminId, note = '', 
   return { ok: true, sanction };
 };
 
+/**
+ * Historique des matchs sur une periode, lu EN BASE.
+ *
+ * Volontairement depuis `state_snapshots` et non depuis la collection en
+ * memoire : celle-ci est plafonnee a `MAX_STATE_PER_KIND` et evacue les plus
+ * anciens. Un historique de trois mois deborderait, et l export serait
+ * silencieusement incomplet — le pire defaut possible pour une sauvegarde.
+ *
+ * Le filtre porte sur `finishedAt`, puis `createdAt` : `state_snapshots`
+ * n'a que `updated_at`, qui bouge a chaque ecriture. Un match de l an
+ * dernier relu aujourd'hui apparaitrait dans la periode a tort.
+ *
+ * @param {{ from?: string, to?: string }} [opts] bornes ISO, inclusives
+ * @returns {Promise<{ ok: boolean, matches: Array<object>, total: number, degraded?: boolean }>}
+ */
+export const exportMatchHistory = async ({ from, to } = {}) => {
+  // Mode memoire : on le DIT. Un historique vide sans explication se lirait
+  // comme « aucun match joue sur la periode ».
+  if (!supabase) return { ok: true, matches: [], total: 0, degraded: true };
+
+  const debut = from ? new Date(from).getTime() : null;
+  const fin = to ? new Date(to).getTime() + 86_399_999 : null;
+
+  const { data, error } = await supabase
+    .from('state_snapshots')
+    .select('entity_id, payload, updated_at')
+    .eq('kind', 'matches');
+
+  if (error) {
+    log.error('match history export error', { message: error.message, code: error.code });
+    return { ok: false, matches: [], total: 0 };
+  }
+
+  const debutMs = Number.isFinite(debut) ? debut : null;
+  const finMs = Number.isFinite(fin) ? fin : null;
+
+  const matches = (data || [])
+    .map((row) => (row.payload && typeof row.payload === 'object' ? row.payload : null))
+    .filter(Boolean)
+    .filter((match) => {
+      // `finishedAt` decrit l evenement de jeu ; a defaut `createdAt` evite
+      // de perdre un match archive jamais cloture.
+      const brut = match.finishedAt || match.createdAt || match.scheduledAt;
+      if (!brut) return false;
+      const ts = new Date(brut).getTime();
+      if (!Number.isFinite(ts)) return false;
+      if (debutMs !== null && ts < debutMs) return false;
+      if (finMs !== null && ts > finMs) return false;
+      return true;
+    })
+    // Recent d abord : un export qu on ouvre doit commencer par le plus recent.
+    .sort((a, b) => new Date(b.finishedAt || b.createdAt || 0).getTime() - new Date(a.finishedAt || a.createdAt || 0).getTime());
+
+  return { ok: true, matches, total: matches.length };
+};
+
 // ─── Seed data ──────────────────────────────────────────────────────────────
 /**
  * Créer le compte admin de contrôle s'il n'existe pas.

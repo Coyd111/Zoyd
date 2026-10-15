@@ -39,7 +39,7 @@ import {
   resolveDisputeOnServer,
   cancelMatchOnServer,
 } from '../match-engine.mjs';
-  import { sanitizeText, resolveReport, listActiveSanctions, revokeSanction, getUserById } from '../persistence.mjs';
+  import { sanitizeText, resolveReport, listActiveSanctions, revokeSanction, getUserById, exportMatchHistory } from '../persistence.mjs';
   import { isSanctionKind } from '../moderation.mjs';
   import { getNow } from '../utils.mjs';
   import { saveMatches, buildMatchActionPayload } from '../state-helpers.mjs';
@@ -47,6 +47,56 @@ import { withMatchMutex } from '../mutex.mjs';
 import { createLogger } from '../logger.mjs';
 
 const log = createLogger('admin-routes');
+
+/**
+ * Cellule CSV.
+ *
+ * Un pseudo ou une description peut contenir une virgule, un guillemet ou un
+ * retour a la ligne. Sans echappement, la ligne se decale et tout l export
+ * devient illisible a partir de la premiere virgule parasite — silencieusement.
+ *
+ * Le BOM UTF-8 est prefixe : sans lui, Excel casse les accents, et un fichier
+ * d'historique ouvert par un non-technique parait corrupt.
+ */
+const csvCell = (value) => {
+  if (value === null || value === undefined) return '';
+  const s = String(value);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+const buildMatchesCsv = (matches) => {
+  const columns = [
+    'id', 'format', 'status', 'createdAt', 'finishedAt', 'scheduledAt',
+    'entryFee', 'prizePool', 'zoydFee', 'arbiterFee', 'creatorPseudo',
+    'players', 'winner', 'payouts',
+  ];
+
+  const rows = matches.map((match) => {
+    const payouts = Array.isArray(match.payouts)
+      ? match.payouts
+          .map((p) => `${p.userId || ''}:${p.pseudo || ''}:${p.amount ?? ''}`)
+          .join(' | ')
+      : '';
+    return [
+      match.id,
+      match.format,
+      match.status,
+      match.createdAt,
+      match.finishedAt || '',
+      match.scheduledAt || '',
+      match.entryFee ?? '',
+      match.prizePool ?? '',
+      match.zoydFee ?? '',
+      match.arbiterFee ?? '',
+      match.creatorPseudo || '',
+      Array.isArray(match.players) ? match.players.map((p) => p?.pseudo || p?.userId || '').join(' | ') : '',
+      match.winner ?? '',
+      payouts,
+    ].map(csvCell).join(',');
+  });
+
+  return `\uFEFF${columns.join(',')}\n${rows.join('\n')}\n`;
+};
 
 /**
  * Traite les routes `/api/admin/*`.
@@ -277,6 +327,77 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     } catch (err) {
       log.error('Admin revoke sanction failed', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors de la levee de la sanction.', code: 'REVOKE_ERROR' }, req);
+    }
+    return true;
+  }
+
+  // Export de l'historique des matchs.
+  //
+  // Sert a la sauvegarde periodique : l'historique reste dans la base, mais
+  // une base n'est pas une sauvegarde tant que personne n'a produit de copie
+  // a conserver ailleurs.
+  //
+  // 2FA obligatoire : l'export contient des cagnottes, des frais et des
+  // resultats de reglement.
+  //
+  // CSV par defaut (ouvrable dans un tableur), JSON si `format=json` — le
+  // JSON preserve la structure complete, le CSV se lit sans outil.
+  if (req.method === 'GET' && pathname === '/api/admin/matches/export') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return true;
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const from = (url.searchParams.get('from') || '').trim() || undefined;
+      const to = (url.searchParams.get('to') || '').trim() || undefined;
+      const format = (url.searchParams.get('format') || 'csv').toLowerCase();
+
+      const result = await exportMatchHistory({ from, to });
+
+      if (!result.ok) {
+        respondJson(res, 503, {
+          ok: false,
+          error: 'Export indisponible, reessaie dans un instant.',
+          code: 'SERVER_BUSY',
+        }, req);
+        return true;
+      }
+
+      if (result.degraded) {
+        // Base absente : le CSV serait vide et se lirait comme « aucun match ».
+        respondJson(res, 503, {
+          ok: false,
+          error: 'Aucune base configuree : rien a exporter. Historique indisponible, pas vide.',
+          code: 'SERVER_BUSY',
+        }, req);
+        return true;
+      }
+
+      const stamp = getNow().slice(0, 10);
+      const filename = `zoyd-matchs-${from || 'debut'}_${to || stamp}.${format === 'json' ? 'json' : 'csv'}`;
+
+      if (format === 'json') {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.end(JSON.stringify({
+          ok: true,
+          exportedAt: getNow(),
+          from: from || null,
+          to: to || null,
+          total: result.total,
+          matches: result.matches,
+        }, null, 2));
+        return true;
+      }
+
+      const csv = buildMatchesCsv(result.matches);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.end(csv);
+      log.info('Admin export historique matchs', { adminId: session.user.id, total: result.total, format });
+    } catch (err) {
+      log.error('Admin export matches failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de l export.', code: 'EXPORT_ERROR' }, req);
     }
     return true;
   }

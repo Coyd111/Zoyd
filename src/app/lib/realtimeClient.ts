@@ -335,28 +335,11 @@ interface BootstrapNotification {
   };
 };
 
-export const syncRealtimeState = async (
-  kind: 'matches' | 'tournaments',
-  items: Match[] | Tournament[],
-  user: User
-) => {
-  const headers = await buildAuthHeaders(user);
-  const response = await fetch(getApiUrl('/api/realtime/state/sync'), {
-    method: 'POST',
-    headers: {
-      ...headers,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ kind, items }),
-    signal: AbortSignal.timeout(15000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Unable to sync realtime ${kind}.`);
-  }
-
-  return response.json();
-};
+// `syncRealtimeState` et la route `/api/realtime/state/sync` ont ete
+// supprimes : le serveur refusait tout (409 pour les tournois, 400 sinon), et
+// rien ne l appelait. La fonction avait l air de fonctionner, ce qui en
+// faisait un piege : la rebrancher produisait un 400 sans explication.
+// La synchronisation passe par les routes API dediees.
 
 const urlBase64ToUint8Array = (base64String: string) => {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);

@@ -15,7 +15,6 @@ vi.mock('../lib/realtimeClient', () => ({
   emitPresenceUpdate: vi.fn(),
   fetchRealtimeBootstrap,
   isRealtimeSocketConnected: vi.fn(() => true),
-  syncRealtimeState: vi.fn(),
 }));
 
 // `connect()` court-circuite sur `typeof window === 'undefined'` : les tests

@@ -85,26 +85,19 @@ const allMatches = getStateCollection('matches');
   return true;
 }
 
-if (req.method === 'POST' && pathname === '/api/realtime/state/sync') {
-  const session = getAuthenticatedRealtimeSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
-    return true;
-  }
-
-  try {
-    const body = await parseRequestBody(req);
-    if (body?.kind === 'tournaments') {
-      respondJson(res, 409, { ok: false, error: 'Tournoi gere par les routes API dediees.', code: 'DEPRECATED_ROUTE' });
-      return true;
-    }
-
-    respondJson(res, 400, { ok: false, error: 'Payload de synchronisation invalide.', code: 'INVALID_PAYLOAD' });
-  } catch (error) {
-    respondJson(res, 500, { ok: false, error: 'Impossible de valider la synchronisation.', code: 'SYNC_ERROR' });
-  }
-  return true;
-}
+// `POST /api/realtime/state/sync` a ete SUPPRIME.
+//
+// Cette route ne pouvait rien accepter : les tournois repondaient 409, tout le
+// reste 400. Elle ne servait donc a rien, et son appelant cote client
+// (`syncRealtimeState` puis `syncServerState`) n etait appele par personne.
+//
+// Elle avait surtout un cout invisible : la fonction client ressemblait a un
+// appel qui marche. Un developpeur pouvait la rebrancher, decouvrir un 400 en
+// production, et perdre du temps a comprendre pourquoi — le serveur ne
+// signalait rien.
+//
+// La synchronisation d etat passe par les routes API dediees, et le socket ne
+// transporte que des deltas, fusionnes par `hydrateFromServer`.
 
 if (req.method === 'POST' && pathname === '/api/realtime/push/subscribe') {
   const session = getAuthenticatedRealtimeSession(req);

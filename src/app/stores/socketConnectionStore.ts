@@ -17,7 +17,6 @@ import {
   emitPresenceUpdate,
   fetchRealtimeBootstrap,
   isRealtimeSocketConnected,
-  syncRealtimeState,
   type PushDeliveryPayload,
 } from '../lib/realtimeClient';
 
@@ -96,7 +95,6 @@ interface SocketConnectionState {
   connect: (user?: User | null) => void;
   disconnect: () => void;
   syncFromMatches: (matches: Match[], currentUser?: User | null) => void;
-  syncServerState: (kind: 'matches' | 'tournaments', items: Match[] | Tournament[], user?: User | null) => Promise<void>;
   bootstrapServerState: (user?: User | null) => Promise<void>;
 }
 
@@ -338,18 +336,9 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
     }));
   },
 
-  syncServerState: async (kind, items, user) => {
-    if (!user) return;
-    try {
-      await syncRealtimeState(kind, items, user);
-    } catch {
-      set((state) => ({
-        serverConnected: false,
-        connectionLabel: state.isConnected ? 'syncing' : 'offline',
-      }));
-    }
-  },
-
+  // `syncServerState` etait appele par PERSONNE et appelait une route qui
+  // refusait tout. Supprime avec elle : c etait une action exposee dans le
+  // store public, donc un piege pour le prochain qui aurait cru s en servir.
   bootstrapServerState: async (user) => {
     if (!user) return;
     try {

@@ -4,7 +4,7 @@ Audit en 8 étapes, par risque décroissant. Chaque étape a son document et
 son propre lot de correctifs, committés séparément.
 
 Projet : ~60 000 lignes de code (hors images), 100 routes HTTP, 11 modules de
-routes, 628 tests unitaires, 154 E2E API, 48 E2E UI, 7 tests d accessibilite.
+routes, 690 tests unitaires, 154 E2E API, 48 E2E UI, 7 tests d accessibilite.
 
 ## Avancement
 
@@ -47,7 +47,9 @@ routes, 628 tests unitaires, 154 E2E API, 48 E2E UI, 7 tests d accessibilite.
 | Moyenne | `test:coverage` échouait : `@vitest/coverage-v8` absent malgré une config qui l'exige | `vitest.config.ts`, `package.json` | **corrigé** — dépendance ajoutée, couverture mesurée |
 | Haute | La 2FA de l'admin — clé de voûte de toute opération financière — n'avait aucun test | `server/admin-totp.mjs` | **corrigé** — 15 tests, vecteurs RFC 6238, conforme |
 | Moyenne | Le contrat « delta → fusion » des matchs n'était protégé que par un commentaire | `src/app/stores/matchStore.ts` | **corrigé** — 10 tests, 14 % → 39 % |
-| Info | Les stores client ne sont couverts qu'à 33 % (`friendsStore` 3 %) | `src/app/stores/` | constat ouvert — suite à donner |
+| Moyenne | Les stores client n'étaient couverts qu'à 33 % (`leagueStore` 9 %,
+`presenceStore` 11 %, `tournamentStore` 12 %) | `src/app/stores/` | **corrigé** — 66 tests ;
+ils passent à 100 % / 61 % / 97 % |
 | Haute | `DEPLOYMENT.md` documentait 9 variables que le code ne lit pas (`ALLOWED_ORIGINS` au lieu de `ZOYD_ALLOWED_ORIGINS`, `JWT_SECRET` inexistant, `VITE_SUPABASE_*` non utilisées) | `DEPLOYMENT.md` | **corrigé** — référence complète des 40 variables, avec le comportement si absente |
 | Moyenne | `SUPABASE_ANON_KEY` exigée par Render mais jamais lue : attire une clé dans le tableau de bord pour rien | `render.yaml` | **corrigé** — entrée retirée, raison documentée |
 | Moyenne | `user_reports` absente des migrations documentées, alors qu'elle a été jouée manuellement le 14/10 | `DEPLOYMENT.md` | **corrigé** — DDL et vérification ajoutés |

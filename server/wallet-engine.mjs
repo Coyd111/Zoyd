@@ -292,12 +292,35 @@ export const settleMatchLossWallet = async (userId, matchId, description) =>
  * @param {string} [description] - Transaction description.
  * @returns {Promise<Object>} Updated wallet snapshot.
  */
-export const releaseWalletWinnings = async (userId, amount, matchId, type = 'prize_win', description) => {
+export const releaseWalletWinnings = async (userId, amount, matchId, type = 'prize_win', description, options = {}) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount < 0) {
     throw makeError('INVALID_AMOUNT', 'Le montant des gains ne peut pas etre negatif.');
   }
+  // Cle d'idempotence.
+  //
+  // Un joueur ne peut legitimement percevoir qu'UN gain de type donne pour une
+  // competition donnee : `match-engine` paie le vainqueur et la commission
+  // d'arbitre (deux types distincts), `league-engine` le podium d'une saison,
+  // `tournament-engine` le capitaine puis l'arbitre, `br-engine` chaque
+  // gagnant puis l'arbitre. La paire type + competition identifie donc un
+  // versement de facon unique, pour un joueur donne.
+  //
+  // SANS cette garde, un second appel ne retrouve plus la reservation
+  // (`lockedEntries[matchId]` deja supprimee) : `releasedAmount` vaut 0 et
+  // `cashCredit` retombe sur le montant EN ENTIER. Le joueur etait donc credite
+  // deux fois, et l'ecart passait inapercu — aucun invariant ne compare le
+  // solde au journal.
+  const idempotencyKey = options.idempotencyKey || `${type}:${matchId}`;
   return (await updateWalletSnapshot(userId, (wallet) => {
+    const dejaVerse = (Array.isArray(wallet.transactions) ? wallet.transactions : [])
+      .some((tx) => tx && tx.status === 'completed' && `${tx.type}:${tx.matchId}` === idempotencyKey);
+    if (dejaVerse) {
+      // Versement deja effectue : on rend le portefeuille intact. Rethrow
+      // n'est pas une option : l'appelant (reglement BR, ligue, tournoi)
+      // compterait cet etape comme traitee.
+      return wallet;
+    }
     const reservation = wallet.lockedEntries?.[matchId];
     const releasedAmount = reservation?.amount ?? 0;
     const nextLockedEntries = { ...wallet.lockedEntries };

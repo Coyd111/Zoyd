@@ -613,22 +613,42 @@ const applyTournamentSettlement = async (tournament) => {
     }
   }
 
-  const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbitersNeeded);
-  if (arbiterShare > 0) {
-    for (const arbiter of tournament.arbiters) {
-      if (!arbiter.userId) continue;
-      await withWalletMutex(arbiter.userId, async () => {
-        await releaseWalletWinnings(
-          arbiter.userId,
-          arbiterShare,
-          `${tournament.id}-ARB-${arbiter.slot}`,
-          'arbitration_fee',
-          `Commission arbitre ${tournament.name}`
-        );
-      });
+const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbitersNeeded);
+    if (arbiterShare > 0) {
+      for (const arbiter of tournament.arbiters) {
+        if (!arbiter.userId) continue;
+        // Meme traitement que la boucle des capitaines, et c'etait le manque.
+        //
+        // Une exception ici remontait hors de la fonction : la route ne
+        // persistait donc PAS le tournoi, alors que les capitaines etaient
+        // deja payes. L'arbitre resoumettait, `wasCompleted` repassait a
+        // false, et le reglement REJOUAIT — les capitaines payes deux fois.
+        //
+        // La repetition est desormais bloquee en aval par la cle
+        // d'idempotence de `releaseWalletWinnings`, mais un abandon silencieux
+        // n'a pas sa place dans un reglement : l'erreur est tracee et les
+        // arbitres suivants sont quand meme servis.
+        try {
+          await withWalletMutex(arbiter.userId, async () => {
+            await releaseWalletWinnings(
+              arbiter.userId,
+              arbiterShare,
+              `${tournament.id}-ARB-${arbiter.slot}`,
+              'arbitration_fee',
+              `Commission arbitre ${tournament.name}`
+            );
+          });
+        } catch (err) {
+          log.error('Tournament arbiter settlement failed', {
+            tournamentId: tournament.id,
+            arbiterId: arbiter.userId,
+            slot: arbiter.slot,
+            error: err.message,
+          });
+        }
+      }
     }
-  }
-};
+  };
 
 /**
  * Create a new tournament with validated dates, format, and rules.

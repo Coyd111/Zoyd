@@ -6,11 +6,13 @@ const leagueMutex = new Mutex();
 const walletMutex = new Map();
 const userMutex = new Map();
 const channelMutex = new Map();
+const brLobbyMutex = new Map();
 const WALLET_MUTEX_MAX_AGE = 30 * 60 * 1000; // 30 minutes
 const MUTEX_MAX_SIZE = 10000;
 const walletMutexTimestamps = new Map();
 const userMutexTimestamps = new Map();
 const channelMutexTimestamps = new Map();
+const brLobbyMutexTimestamps = new Map();
 
 export const withMatchMutex = async (fn) => {
   const release = await matchMutex.acquire();
@@ -64,6 +66,35 @@ const evictOldestMutex = (map, timestamps) => {
   if (oldestKey) {
     map.delete(oldestKey);
     timestamps.delete(oldestKey);
+  }
+};
+
+/**
+ * Verrou par salon Battle Royale.
+ *
+ * Les actions de salon (`join`, `leave`, `checkin`, `start`, `eliminate`,
+ * `finish`) font toutes un read-modify-write sur la collection `brLobbies`.
+ * Sans sérialisation, deux requêtes simultanées lisent le même instantané :
+ * les deux modifient le même clone, et seule la dernière écriture est conservée.
+ *
+ * Sur `finish`, cela ne perdait pas qu'un joueur : les deux appels passaient le
+ * garde `status === 'settling'` — evalue sur le clone, jamais persiste — et
+ * versaient donc la cagnotte DEUX FOIS. Le rate limiter (20 requêtes / 5 min)
+ * laisse largement passer un double-clic.
+ *
+ * Le verrou est PAR SALON, et non global comme `withMatchMutex` : deux salons
+ * distincts peuvent regler en meme temps, ce qui est le cas normal.
+ */
+export const withBrLobbyMutex = async (lobbyId, fn) => {
+  evictOldestMutex(brLobbyMutex, brLobbyMutexTimestamps);
+  if (!brLobbyMutex.has(lobbyId)) brLobbyMutex.set(lobbyId, new Mutex());
+  const mutex = brLobbyMutex.get(lobbyId);
+  const release = await mutex.acquire();
+  brLobbyMutexTimestamps.set(lobbyId, Date.now());
+  try {
+    return await fn();
+  } finally {
+    release();
   }
 };
 

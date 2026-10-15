@@ -7,6 +7,9 @@ import {
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { makeError, getNow, roundAmount } from './utils.mjs';
+import { createLogger } from './logger.mjs';
+
+const log = createLogger('br-engine');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ZOYD Battle Royale — salon unique, un seul match.
@@ -686,39 +689,76 @@ export const computeBrRanking = (lobby) => {
  * prelevee sur la cagnotte comme les gains, avec `arbiterSettled` comme garde
  * anti-double versement.
  */
-export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
+export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId, options = {}) => {
   const actorUser = actor?.user || actor;
   if (!actorUser) throw makeError('AUTH_REQUIRED', 'Session joueur requise.');
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
 
   const nextLobbies = cloneLobbies(lobbies);
   const lobby = findLobby(nextLobbies, lobbyId);
   if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
-  if (lobby.status === 'finished' || lobby.status === 'settling') {
+  // Un salon `finished` est regle : on refuse.
+  //
+  // Un salon `settling`, en revanche, est REPRENABLE. C'est la suite du
+  // correctif : le statut est desormais persiste AVANT les versements, donc
+  // un arret de processus au milieu laisse le salon dans cet etat. Refuser
+  // rendrait definitivement les joueurs non payes ; l'accepter, avec les
+  // drapeaux `settled` deja persistes, les repai sans double credit.
+  if (lobby.status === 'finished') {
     throw makeError('LOBBY_CLOSED', 'Partie deja reglee.');
   }
-  if (lobby.status !== 'live') {
+  if (lobby.status !== 'live' && lobby.status !== 'settling') {
     throw makeError('LOBBY_NOT_LIVE', 'La partie n\'est pas en cours.');
   }
   // Le reglement verse la cagnotte : reserves a l'arbitre du salon.
   requireLobbyArbiter(lobby, actorUser);
 
-  // 1. Verrou anti-doublon AVANT tout versement.
+  // 1. Verrou anti-doublon, PERSISTE AVANT tout versement.
+  //
+  // L'ecriture precedait le reglement dans la route, donc apres la boucle de
+  // versement : si `releaseWalletWinnings` levait (compte supprime, ecriture
+  // Supabase en echec), l'exception remontait, rien n'etait persiste, et le
+  // salon restait `live` avec `settled = false`. L'arbitre relancait, et les
+  // joueurs deja payes l'etaient une seconde fois.
   lobby.status = 'settling';
   lobby.updatedAt = getNow();
+  if (onProgress) await onProgress(nextLobbies);
 
   const alive = lobby.players.filter((p) => p.alive);
   const contenders = lobby.players.filter((p) => !p.absent && p.userId !== lobby.arbiterId);
-  if (contenders.length === 0) {
-    // Personne n'a joue : on rend tout, c'est le seul cas ou l'on rembourse.
-    lobby.status = 'cancelled';
-    lobby.finishedAt = getNow();
-    for (const player of lobby.players) {
-      await withWalletMutex(player.userId, async () => {
-        await refundLockedEntry(player.userId, lobby.id, `Salon BR annule ${lobby.name}`);
-      });
+if (contenders.length === 0) {
+      // Personne n'a joue : on rend tout, c'est le seul cas ou l'on rembourse.
+      //
+      // Meme garde qu'au versement : un remboursement en echec ne doit ni
+      // bloquer definitivement le salon, ni disparaitre derriere un statut
+      // « annule » qui dirait l'inverse a l'arbitre.
+      const refundErrors = [];
+      for (const player of lobby.players) {
+        if (player.settled) continue;
+        try {
+          await withWalletMutex(player.userId, async () => {
+            await refundLockedEntry(player.userId, lobby.id, `Salon BR annule ${lobby.name}`);
+          });
+          player.settled = true;
+        } catch (error) {
+          refundErrors.push({ userId: player.userId, step: 'refund', error: error?.message });
+          log.error('BR refund failed', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
+        }
+        if (onProgress) await onProgress(nextLobbies);
+      }
+
+      lobby.finishedAt = getNow();
+      lobby.updatedAt = lobby.finishedAt;
+      if (refundErrors.length === 0) {
+        lobby.status = 'cancelled';
+        if (onProgress) await onProgress(nextLobbies);
+        return { lobby, lobbies: nextLobbies, payouts: [], refunded: lobby.players.length };
+      }
+      throw makeError(
+        'BR_SETTLEMENT_INCOMPLETE',
+        `Remboursement BR incomplet : ${refundErrors.length} joueur(s) en echec. Reprends la fin pour les solder.`,
+      );
     }
-    return { lobby, lobbies: nextLobbies, payouts: [], refunded: lobby.players.length };
-  }
 
   // Le dernier vivant est le vainqueur (placement 1).
   if (alive.length > 0) {
@@ -734,22 +774,38 @@ export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
 
   const { payouts, arbiter } = computeBrPayouts(lobby);
 
-  // 2. Versement des gains.
-  for (const prize of payouts) {
-    const player = lobby.players.find((p) => p.userId === prize.userId);
-    if (!player || player.settled) continue;
-    await withWalletMutex(prize.userId, async () => {
-      await releaseWalletWinnings(
-        prize.userId,
-        prize.amount,
-        lobby.id,
-        'prize_win',
-        `BR ${lobby.name} - ${prize.placement}e place (${prize.kills} kills)`,
-      );
-    });
-    player.settled = true;
-    player.winnings = prize.amount;
-  }
+// 2. Versement des gains.
+    //
+    // Chaque versement est suivi de sa PERSISTATION. Sans cela, un arret de
+    // processus apres le joueur 2 laissait `settled = false` en base pour lui :
+    // le nouvel essai le repayait. La progression est donc ecrite au fur et a
+    // mesure, et un reglement interrompu se reprend la ou il s etait arrete.
+    //
+    // L'erreur est absorbee pour un joueur, elle n'interrompt pas les autres :
+    // une exception non rattrapee remontait hors de la fonction, la route ne
+    // persistait rien, et le saloon restait `live` — donc rejouable.
+    const settlementErrors = [];
+    for (const prize of payouts) {
+      const player = lobby.players.find((p) => p.userId === prize.userId);
+      if (!player || player.settled) continue;
+      try {
+        await withWalletMutex(prize.userId, async () => {
+          await releaseWalletWinnings(
+            prize.userId,
+            prize.amount,
+            lobby.id,
+            'prize_win',
+            `BR ${lobby.name} - ${prize.placement}e place (${prize.kills} kills)`,
+          );
+        });
+        player.settled = true;
+        player.winnings = prize.amount;
+      } catch (error) {
+        settlementErrors.push({ userId: prize.userId, step: 'prize', error: error?.message });
+        log.error('BR prize payout failed', { lobbyId: lobby.id, userId: prize.userId, error: error?.message });
+      }
+      if (onProgress) await onProgress(nextLobbies);
+    }
 
 // 3. Commission arbitre, prelevee sur la cagnotte.
 //
@@ -761,40 +817,65 @@ export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
 // `arbiterSettled` (et non le flag du joueur) garantit l'idempotence : le
 // reglement peut etre rejoue sans verser deux fois.
 if (arbiter.userId && arbiter.amount > 0 && !lobby.arbiterSettled) {
-  await withWalletMutex(arbiter.userId, async () => {
-    await releaseWalletWinnings(
-      arbiter.userId,
-      arbiter.amount,
-      lobby.id,
-      'arbitration_fee',
-      `Commission arbitrage BR ${lobby.name}`,
-    );
-  });
-  lobby.arbiterSettled = true;
-}
+      try {
+        await withWalletMutex(arbiter.userId, async () => {
+          await releaseWalletWinnings(
+            arbiter.userId,
+            arbiter.amount,
+            lobby.id,
+            'arbitration_fee',
+            `Commission arbitrage BR ${lobby.name}`,
+          );
+        });
+        lobby.arbiterSettled = true;
+      } catch (error) {
+        settlementErrors.push({ userId: arbiter.userId, step: 'arbiter', error: error?.message });
+        log.error('BR arbiter payout failed', { lobbyId: lobby.id, userId: arbiter.userId, error: error?.message });
+      }
+      if (onProgress) await onProgress(nextLobbies);
+    }
 
-  // 4. Perdants et absents : le pass est consomme (penalite), pas rembourse.
-  for (const player of lobby.players) {
-    if (player.settled) continue;
-    const isAbsent = player.absent;
-    await withWalletMutex(player.userId, async () => {
-      await settleMatchLossWallet(
-        player.userId,
-        lobby.id,
-        isAbsent
-          ? `Pass BR non Presents - ${lobby.name} (penalite)`
-          : `BR ${lobby.name} - ${player.placement || '?'}e place`,
+// 4. Perdants et absents : le pass est consomme (penalite), pas rembourse.
+    for (const player of lobby.players) {
+      if (player.settled) continue;
+      const isAbsent = player.absent;
+      try {
+        await withWalletMutex(player.userId, async () => {
+          await settleMatchLossWallet(
+            player.userId,
+            lobby.id,
+            isAbsent
+              ? `Pass BR non Presents - ${lobby.name} (penalite)`
+              : `BR ${lobby.name} - ${player.placement || '?'}e place`,
+          );
+        });
+        player.settled = true;
+      } catch (error) {
+        settlementErrors.push({ userId: player.userId, step: 'forfeit', error: error?.message });
+        log.error('BR forfeit failed', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
+      }
+      if (onProgress) await onProgress(nextLobbies);
+    }
+
+    lobby.finishedAt = getNow();
+    lobby.updatedAt = lobby.finishedAt;
+    // Le salon ne passe `finished` que si TOUT a ete verse. Sinon il reste
+    // `settling`, donc reprenable : le moindre gain non verse ne doit pas
+    // pouvoir disparaitre derriere un statut « regle ».
+    if (settlementErrors.length === 0) {
+      lobby.status = 'finished';
+    }
+    if (onProgress) await onProgress(nextLobbies);
+
+    if (settlementErrors.length > 0) {
+      throw makeError(
+        'BR_SETTLEMENT_INCOMPLETE',
+        `Reglement BR incomplet : ${settlementErrors.length} versement(s) en echec. Reprends la fin pour les solder.`,
       );
-    });
-    player.settled = true;
-  }
+    }
 
-  lobby.status = 'finished';
-  lobby.finishedAt = getNow();
-  lobby.updatedAt = lobby.finishedAt;
-
-  return { lobby, lobbies: nextLobbies, payouts, arbiter };
-};
+    return { lobby, lobbies: nextLobbies, payouts, arbiter };
+  };
 
 /**
  * Repartition de la cagnotte (fonction pure, testable).

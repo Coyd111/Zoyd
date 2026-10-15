@@ -6,7 +6,7 @@ import {
   respondMappedError,
 } from '../http-utils.mjs';
 import { requireAdmin2fa } from '../admin-totp.mjs';
-import { withMatchMutex, withWalletMutex } from '../mutex.mjs';
+import { withBrLobbyMutex } from '../mutex.mjs';
 import {
   BR_MAPS,
   BR_MAP_IDS,
@@ -123,37 +123,63 @@ if (brLobbyAction && req.method === 'POST') {
   const rateGroup = action === 'finish' ? 'admin' : 'default';
   if (!rateLimitGuard(res, getClientIp(req), rateGroup)) { return true; }
 
+  // Toute action de salon est serialisee PAR SALON.
+  //
+  // `getStoredBrLobbies()` renvoie le meme instantane a deux requetes
+  // simultanees. Les deux calculaient leur reponse dessus, et seule la derniere
+  // ecriture survivait : sur `join`, le joueur evince avait paye son pass et
+  // n'existait plus en base (reservation ni remboursee ni consommee). Sur
+  // `finish`, les deux appels passaient le garde `settling` — teste sur le
+  // clone, jamais persiste — et versaient la cagnotte deux fois.
+  //
+  // Le snapshot est donc relu DANS le verrou : sans cela, le second appel
+  // partirait encore de l instantane d avant le premier.
   try {
-    const lobbies = getStoredBrLobbies();
-    let outcome;
-    let status = 200;
+    const outcome = await withBrLobbyMutex(lobbyId, async () => {
+      const lobbies = getStoredBrLobbies();
+      let status = 200;
 
-    if (action === 'join') {
-      outcome = await joinBrLobbyOnServer(lobbies, actor, lobbyId);
-    } else if (action === 'leave') {
-      outcome = await leaveBrLobbyOnServer(lobbies, actor, lobbyId);
-    } else if (action === 'checkin') {
-      outcome = checkInBrLobbyOnServer(lobbies, actor, lobbyId);
-    } else if (action === 'start') {
-      outcome = startBrLobbyOnServer(lobbies, actor, lobbyId);
-    } else if (action === 'eliminate') {
-      const body = await parseRequestBody(req);
-      if (!body.userId || typeof body.userId !== 'string') {
-        respondJson(res, 400, { ok: false, error: 'userId du joueur elimine requis.', code: 'INVALID_JSON' }, req);
-        return true;
+      if (action === 'join') {
+        return { outcome: await joinBrLobbyOnServer(lobbies, actor, lobbyId) };
       }
-      outcome = eliminateBrPlayerOnServer(lobbies, actor, lobbyId, body.userId, {
-        killerUserId: typeof body.killerUserId === 'string' ? body.killerUserId : null,
-        assists: Number(body.assists) || 0,
-      });
-    } else {
+      if (action === 'leave') {
+        return { outcome: await leaveBrLobbyOnServer(lobbies, actor, lobbyId) };
+      }
+      if (action === 'checkin') {
+        return { outcome: checkInBrLobbyOnServer(lobbies, actor, lobbyId) };
+      }
+      if (action === 'start') {
+        return { outcome: startBrLobbyOnServer(lobbies, actor, lobbyId) };
+      }
+      if (action === 'eliminate') {
+        const body = await parseRequestBody(req);
+        if (!body.userId || typeof body.userId !== 'string') {
+          respondJson(res, 400, { ok: false, error: 'userId du joueur elimine requis.', code: 'INVALID_JSON' }, req);
+          return { aborted: true };
+        }
+        return {
+          outcome: eliminateBrPlayerOnServer(lobbies, actor, lobbyId, body.userId, {
+            killerUserId: typeof body.killerUserId === 'string' ? body.killerUserId : null,
+            assists: Number(body.assists) || 0,
+          }),
+        };
+      }
+
       // `finish` distribue la cagnotte. L'autorite est l'ARBITRE du salon
       // (verifie dans le moteur), pas la 2FA admin : dans ce modele l'arbitre
       // est le seul a avoir vu la partie. La 2FA reste demandee en plus, car
       // de l'argent part.
       const adminSession = requireAdmin2fa(req, res);
-      if (!adminSession) { return true; }
-      outcome = await settleBrLobbyOnServer(lobbies, actor, lobbyId);
+      if (!adminSession) return { aborted: true };
+
+      // Le reglement persiste sa progression a chaque versement. Si le
+      // processus meurt au milieu, le salon est deja marque `settling` et les
+      // joueurs deja payes le sont dans l'etat : un nouvel essai les saute au
+      // lieu de les payer une seconde fois.
+      const outcome = await settleBrLobbyOnServer(lobbies, actor, lobbyId, {
+        onProgress: (progress) => saveBrLobbies(io, progress),
+      });
+
       // Notification aux gagants.
       for (const prize of outcome.payouts || []) {
         await deliverNotification(io, prize.userId, {
@@ -165,20 +191,23 @@ if (brLobbyAction && req.method === 'POST') {
           requireInteraction: false,
         }).catch(() => { /* l'argent est verse, la notification est secondary */ });
       }
-    }
+      return { outcome, status };
+    });
 
-    await saveBrLobbies(io, outcome.lobbies);
+    if (outcome.aborted) return true;
+    const result = outcome.outcome;
+    await saveBrLobbies(io, result.lobbies);
     // Meme pour l'arbitre : il repasserait par `/arbiter` s'il a besoin des
     // userId, et les reponses d'action restent publiques (un inscrit peut
     // appeler join/leave/checkin).
-    respondJson(res, status, {
+    respondJson(res, outcome.status || 200, {
       ok: true,
-      lobby: toPublicBrLobby(outcome.lobby),
-      payouts: toPublicBrRanking(outcome.payouts),
-      arbiter: outcome.arbiter
-        ? { userId: undefined, rate: outcome.arbiter.rate, amount: outcome.arbiter.amount }
+      lobby: toPublicBrLobby(result.lobby),
+      payouts: toPublicBrRanking(result.payouts),
+      arbiter: result.arbiter
+        ? { userId: undefined, rate: result.arbiter.rate, amount: result.arbiter.amount }
         : null,
-      refunded: outcome.refunded || 0,
+      refunded: result.refunded || 0,
     }, req);
   } catch (error) {
     respondMappedError(res, error);

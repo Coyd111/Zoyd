@@ -187,3 +187,29 @@ test.describe('Routes de sanctions', () => {
     await disposeActors();
   });
 });
+
+test.describe('POST /api/admin/2fa/setup', () => {
+  // La route exige desormais le mot de passe admin.
+  //
+  // Avant, une session admin volee suffisait : l'attaquant s'enrolait un code
+  // TOTP valide et obtenait l'acces financier complet. Le garde anti-takeover
+  // ne protégeait que si le Map en memoire etait deja rempli — au demarrage du
+  // processus, il ne l'est pas.
+  test('refuse sans mot de passe', async () => {
+    const admin = await loginAdminWithout2fa();
+    const res = await call(admin, 'POST', '/api/admin/2fa/setup');
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('INVALID_PASSWORD');
+    await disposeActors();
+  });
+
+  test('refuse un mot de passe faux', async () => {
+    const admin = await loginAdminWithout2fa();
+    const res = await call(admin, 'POST', '/api/admin/2fa/setup', {
+      currentPassword: 'MauvaisMotDePasse2026!',
+    });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('INVALID_PASSWORD');
+    await disposeActors();
+  });
+});

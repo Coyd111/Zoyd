@@ -139,8 +139,11 @@ export const fetchAdmin2faStatus = async (): Promise<Admin2faStatusResponse> => 
   return authorizedGet<Admin2faStatusResponse>('/api/admin/2fa/status');
 };
 
-export const setupAdmin2fa = async (): Promise<Admin2faSetupResponse> => {
-  return authorizedPost<Admin2faSetupResponse>('/api/admin/2fa/setup', {});
+export const setupAdmin2fa = async (currentPassword: string): Promise<Admin2faSetupResponse> => {
+  // Le mot de passe admin est exige : l'endpoint ne doit pas pouvoir etre
+  // appelle avec la seule session, sinon un attaquant ayant vole le cookie
+  // s'en-role sa propre 2FA et recupere l'acces financier.
+  return authorizedPost<Admin2faSetupResponse>('/api/admin/2fa/setup', { currentPassword });
 };
 
 export const enableAdmin2fa = async (code: string): Promise<{ ok: boolean }> => {

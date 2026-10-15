@@ -162,7 +162,7 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
         toast.error(pseudoError);
         return;
       }
-      const updates: Partial<User> & { currentPassword?: string } = {
+      const updates: Partial<AuthUser> & { currentPassword?: string } = {
         phone: form.phone,
         country: form.country,
         bio: form.bio.trim() || undefined,
@@ -688,6 +688,8 @@ const Admin2faSection: React.FC = () => {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [period, setPeriod] = useState(30);
+  // Mot de passe admin, exige une seule fois pour confirmer l enrolement 2FA.
+  const [setupPassword, setSetupPassword] = useState('');
   const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
   // Secondes restantes avant que le code affiche ne soit plus accepte.
   //
@@ -739,9 +741,14 @@ const Admin2faSection: React.FC = () => {
   }, []);
 
   const handleSetup = async () => {
+    if (!setupPassword) {
+      toast.error('Saisis ton mot de passe admin pour confirmer.');
+      return;
+    }
     setBusy(true);
     try {
-      const res = await setupAdmin2fa();
+      const res = await setupAdmin2fa(setupPassword);
+      setSetupPassword('');
       const match = /secret=([A-Z2-7]+)/i.exec(res.otpauthUrl || '');
       if (!match) {
         toast.error('Secret introuvable dans la réponse.');
@@ -824,9 +831,28 @@ const Admin2faSection: React.FC = () => {
       {status === 'disabled' ? (
         <div className="space-y-4">
           {!secret ? (
-            <Button variant="secondary" size="sm" onClick={handleSetup} disabled={busy}>
-              {busy ? 'GÉNÉRATION...' : 'GÉNÉRER UN SECRET'}
-            </Button>
+            <div className="space-y-2">
+              <div className="max-w-md">
+                <label htmlFor="admin2fa-setup-password" className="block text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-2">
+                  Confirme ton mot de passe admin
+                </label>
+                <Input
+                  id="admin2fa-setup-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={setupPassword}
+                  onChange={(event) => setSetupPassword(event.target.value)}
+                  placeholder="Mot de passe"
+                  aria-label="Mot de passe admin, requis pour activer la double authentification"
+                />
+                <p className="text-[10px] text-white/50 mt-1">
+                  Exigé : sans lui, un cookie volé suffirait à s enrolling sa propre 2FA.
+                </p>
+              </div>
+              <Button variant="secondary" size="sm" onClick={handleSetup} disabled={busy}>
+                {busy ? 'GÉNÉRATION...' : 'GÉNÉRER UN SECRET'}
+              </Button>
+            </div>
           ) : (
             <>
               <div>

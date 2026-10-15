@@ -121,7 +121,12 @@ describe('verrouillage de connexion : ce qui part en base', () => {
     expect(serialized).not.toContain(ident.email);
     expect(serialized).not.toContain(ident.phone);
     expect(row.payload.id).toMatch(/^[0-9a-f]{64}$/);
-    expect(row.payload.id).toBe(lockoutKeyOf(ident.pseudo.trim().toLowerCase()));
+    // La cle est le HACHAGE de l'identifiant du COMPTE resolu, plus celui de
+    // l'identifiant SAISI. C'est ce qui rend le verrouilllage insensible au
+    // format : quatre facons d'ecrire le meme telephone ne creent plus quatre
+    // compteurs. Le test le verifie en confrontant les deux representations.
+    expect(row.payload.id).toBe(lockoutKeyOf(userId));
+    expect(row.payload.id).not.toBe(lockoutKeyOf(ident.pseudo.trim().toLowerCase()));
   });
 
   it('purge le verrou apres une connexion reussie', async () => {

@@ -39,7 +39,7 @@ import {
   resolveDisputeOnServer,
   cancelMatchOnServer,
 } from '../match-engine.mjs';
-  import { sanitizeText, resolveReport, listActiveSanctions, revokeSanction, getUserById, exportMatchHistory } from '../persistence.mjs';
+  import { sanitizeText, resolveReport, listActiveSanctions, revokeSanction, getUserById, exportMatchHistory, verifyUserPassword } from '../persistence.mjs';
   import { isSanctionKind } from '../moderation.mjs';
   import { getNow } from '../utils.mjs';
   import { saveMatches, buildMatchActionPayload } from '../state-helpers.mjs';
@@ -413,15 +413,42 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   }
 
   // SEC-R4: Admin 2FA setup — generate TOTP secret for admin
-  if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
-    const session = requireAdmin(req, res);
-    if (!session) return true;
-    // Anti-takeover : ré-enrôler une 2FA déjà ACTIVE imposerait de connaitre
-    // le secret courant. Sans ce garde, un attaquant ayant le seul mot de passe
-    // admin remplaçait le secret, s'auto-validait un code et obtenait l'accès
-    // financier complet.
-    const existing = adminTotpSecrets.get(session.user.id);
+if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
+      if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+      const session = requireAdmin(req, res);
+      if (!session) return true;
+
+      // Mot de passe OBLIGATOIRE.
+      //
+      // Avant, cette route n'exigeait qu'une session. Son garde anti-takeover
+      // reposait sur `adminTotpSecrets`, un Map EN MEMOIRE : si la ligne
+      // `admin_2fa_secrets` manquait — echec d'ecriture non bloquant, table
+      // absente, le Map est vide au demarrage — le garde voyait `undefined`,
+      // renvoyait un nouveau secret, et un attaquant disposant du seul mot de
+      // passe admin s'auto-enrolait un code valide. Acces financier complet.
+      //
+      // L'exigence est la MEME que pour un changement d'email, qui demande
+      // deja le mot de passe actuel : une asymétrie de protection sur deux
+      // operations de la meme gravite n'a pas de sens.
+      const setupBody = await parseRequestBody(req).catch(() => ({}));
+      if (
+        typeof setupBody.currentPassword !== 'string'
+        || !setupBody.currentPassword
+        || !(await verifyUserPassword(session.user.id, setupBody.currentPassword))
+      ) {
+        respondJson(res, 403, {
+          ok: false,
+          error: 'Mot de passe admin incorrect.',
+          code: 'INVALID_PASSWORD',
+        }, req);
+        return true;
+      }
+
+      // Anti-takeover : ré-enrôler une 2FA déjà ACTIVE imposerait de connaitre
+      // le secret courant. Sans ce garde, un attaquant ayant le seul mot de passe
+      // admin remplaçait le secret, s'auto-validait un code et obtenait l'accès
+      // financier complet.
+      const existing = adminTotpSecrets.get(session.user.id);
     if (existing?.enabled) {
       respondJson(res, 409, {
         ok: false,

@@ -1542,7 +1542,25 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
   const pk = normalizePseudoKey(trimmed);
   const ek = normalizeEmailKey(trimmed);
   const phk = normalizePhoneKey(trimmed);
-  const lookupKey = pk || ek || phk;
+
+  // La cle de verrouillage est l IDENTITE RESOLUE, plus `pk || ek || phk`.
+  //
+  // `normalizePseudoKey` ne conserve QUE la casse et les espaces : la
+  // ponctuation y reste. `pk` etait donc toujours vrai, et la cle de
+  // verrouillage prenait toujours la forme de l'identifiant saisi. Or quatre
+  // facons d'ecrire le meme telephone donnaient quatre cles differentes pour
+  // un seul compte :
+  //   +2290165240654 / +229 01 65 24 06 54 / 2290165240654 / +229-01-65...
+  // Le compteur d'echecs repartait de zero a chaque variation de format, et le
+  // verrou de 5 tentatives ne bloquait plus rien.
+  //
+  // On resout donc le compte d'abord, et on verrouille sur son identifiant :
+  // la cle devient independante du format saisi.
+  const hash = memoryPasswordHashes.get(pk) || memoryPasswordHashes.get(ek) || memoryPasswordHashes.get(phk);
+  if (!hash) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
+
+  const [userId, passwordHash] = hash;
+  const lookupKey = userId;
 
   // Verrouillage de compte : lu en base pour survivre a un redemarrage.
   const attempt = await readLoginAttempt(lookupKey);
@@ -1550,10 +1568,6 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
     throw makeError('ACCOUNT_LOCKED', 'Compte temporairement bloque. Reessayez dans 15 minutes.');
   }
 
-  const hash = memoryPasswordHashes.get(pk) || memoryPasswordHashes.get(ek) || memoryPasswordHashes.get(phk);
-  if (!hash) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
-
-  const [userId, passwordHash] = hash;
   if (!(await verifyPassword(password, passwordHash))) {
     // Echec note : on persiste aussitot. Perdre ce compteur, c'est rendre le
     // verrouillage decoratif.
@@ -2154,16 +2168,47 @@ export const activateUserAccount = async (userId) => {
 const hashSessionToken = (token) =>
   crypto.createHash('sha256').update(String(token || '')).digest('hex');
 
-const createTokenRecord = async (type, userId, extra = {}) => {
+/**
+ * Duree de vie d'un jeton entre deux rotations (glissante).
+ */
+const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Duree de vie ABSOLUE d'une session, Toutes rotations confondues.
+ *
+ * `SESSION_TTL_MS` est glissant : chaque rotation repart de +6 h. Un jeton vole
+ * utilise en continu obtenait donc une session renouvelee indefiniment — le
+ * cookie n expirait que si le client devenait inactif.
+ *
+ * Ce plafond borne la vie de la session meme si elle ne cesse jamais d etre
+ * renouvlee. Il est RECALCULE et PERSISTE a chaque rotation (via `expires_at`),
+ * donc il survit a un redemarrage.
+ */
+const SESSION_ABSOLUTE_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * @param {number} [absoluteExpiresAt] borne absolue ms de la famille de session
+ */
+const createTokenRecord = async (type, userId, extra = {}, absoluteDeadline = null) => {
   const token = crypto.randomBytes(32).toString('hex');
   const tokenHash = hashSessionToken(token);
   const issuedAt = getNow();
-  const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
+  const ttl = type === 'auth' ? SESSION_TTL_MS : 6 * 60 * 60 * 1000;
+  const sliding = Date.now() + ttl;
+  const expiresAt = new Date(
+    absoluteDeadline ? Math.min(sliding, Date.parse(absoluteDeadline)) : sliding
+  ).toISOString();
   // `tokenHash` seulement : le token en clair ne doit jamais vivre en memoire
   // (il ne sert plus apres la reponse qui le transmet au client).
   const record = { tokenHash, userId, issuedAt, expiresAt, ...extra };
 
   if (type === 'auth') {
+    // La borne absolue est CALCULEE UNE SEULE FOIS, a la creation, et
+    // portee de session en session. La recalculer depuis `expiresAt` a chaque
+    // rotation la ferait avancer de 6 h par rotation : ce ne serait plus un
+    // plafond, seulement une expiration glissante de plus.
+    const absoluteExpiresAt = Date.parse(absoluteDeadline ?? '') || (Date.now() + SESSION_ABSOLUTE_LIFETIME_MS);
+    record.absoluteExpiresAt = new Date(absoluteExpiresAt).toISOString();
     evictOldest(memoryAuthSessions, MAX_AUTH_SESSIONS);
     memoryAuthSessions.set(tokenHash, record);
     await sbUpsert('auth_sessions', { token: tokenHash, user_id: userId, issued_at: issuedAt, expires_at: expiresAt });
@@ -2319,9 +2364,15 @@ export const getAuthSession = (token, opts = {}) => {
  * @returns {Promise<string|null>} the new token, to be delivered to the client
  */
 const rotateAuthSession = async (session, user) => {
-  const newSession = await createTokenRecord('auth', session.userId);
-  const newHash = hashSessionToken(newSession.token);
-  const newEntry = memoryAuthSessions.get(newHash);
+    // La borne absolue est heritee de la session mere et NON recalculee : c est
+    // elle qui empeche une session renouvelee de vivre indefiniment. Elle est
+    // stockee dans `expiresAt` de la mere, donc elle survit a un redemarrage.
+// La borne est HERITEE de la mere, jamais recalculee depuis `expiresAt` : le
+  // recalculer la ferait avancer de 6 h a chaque rotation, et ce ne serait plus
+  // un plafond mais une expiration glissante de plus.
+  const newSession = await createTokenRecord('auth', session.userId, {}, session.absoluteExpiresAt);
+    const newHash = hashSessionToken(newSession.token);
+    const newEntry = memoryAuthSessions.get(newHash);
 
   // La session mere a pu etre supprimee pendant l'ecriture (deconnexion,
   // changement de mot de passe, suppression de compte). Sans ce controle, la
@@ -2333,8 +2384,13 @@ const rotateAuthSession = async (session, user) => {
     return null;
   }
 
-  if (newEntry) {
-    newEntry.user = user;
+if (newEntry) {
+      newEntry.user = user;
+      // Ligne de filiation vers la session mere. SANS elle, une deconnexion
+      // faite avec le jeton FILS (le cas normal apres rotation) ne supprimait
+      // que le fils : la mere demeurait valable jusqu au prochain nettoyage,
+      // et un cookie vole survivait au logout de la victime.
+      newEntry.supersedes = session.tokenHash;
     // La session mere herite du marquage 2FA : sans ca, exiger un nouveau
     // code TOTP a chaque rotation alors que la session vient d'etre validee.
     if (session.admin2faVerified && session.admin2faExpires > Date.now()) {
@@ -2363,14 +2419,35 @@ export const deleteAuthSession = (token) => {
   if (!token) return;
   const tokenHash = hashSessionToken(token);
   const session = memoryAuthSessions.get(tokenHash);
-  // Une session supplantee doit entrainer sa fille : sinon la rotation
-  // deviendrait un contournement de la deconnexion.
-  const hashes = session?.supersededBy ? [tokenHash, session.supersededBy] : [tokenHash];
-  for (const h of hashes) {
-    memoryAuthSessions.delete(h);
-    sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token: h }));
-  }
-};
+// Une session supplantee doit entrainer TOUTE sa descendance, et non pas
+    // seulement son successeur direct.
+    //
+    // Le code supprimait `[jeton presente, son successeur immediat]`. Presents
+    // le jeton mere A apres une rotation A->B, il supprimait A et B : correct.
+    // Mais presenter le jeton FILS B — le cas normal a la deconnexion, puisque
+    // c'est le cookie courant — ne supprimait que B, et A demeurait valable
+    // jusqu au prochain `cleanupExpired`. Un cookie vole survivait donc au
+    // logout de la victime.
+    //
+    // On remonte la chaine par `supersedes`, et on retire au passage toute
+    // fille encore rattachee au jeton present.
+    const hashes = new Set([tokenHash]);
+    {
+      let cursor = memoryAuthSessions.get(tokenHash);
+      const garde = new Set([tokenHash]);
+      while (cursor?.supersedes && !garde.has(cursor.supersedes)) {
+        hashes.add(cursor.supersedes);
+        garde.add(cursor.supersedes);
+        cursor = memoryAuthSessions.get(cursor.supersedes);
+      }
+      const present = memoryAuthSessions.get(tokenHash);
+      if (present?.supersededBy) hashes.add(present.supersededBy);
+    }
+    for (const h of hashes) {
+      memoryAuthSessions.delete(h);
+      sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token: h }));
+    }
+  };
 
 /**
  * Mark the STORED auth session as 2FA-verified (5-minute window).

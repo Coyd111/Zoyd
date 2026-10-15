@@ -306,7 +306,11 @@ export const openAdminSession = async (): Promise<Actor> => {
   }
 
   if (!status.body.enabled) {
-    const setup = await call<{ otpauthUrl: string }>(actor, 'POST', '/api/admin/2fa/setup');
+    // `/setup` exige le mot de passe admin : sans lui, une session volee
+    // suffisait a activer la 2FA et donc a s emparer du compte.
+    const setup = await call<{ otpauthUrl: string }>(actor, 'POST', '/api/admin/2fa/setup', {
+      currentPassword: ADMIN_PASSWORD,
+    });
     if (setup.status !== 200 || !setup.body?.otpauthUrl) {
       throw new Error(`2FA setup -> ${setup.status} ${JSON.stringify(setup.body)}`);
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Bell, Gamepad2, Save, Shield, User } from 'lucide-react';
@@ -687,13 +687,48 @@ const Admin2faSection: React.FC = () => {
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [period, setPeriod] = useState(30);
   const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
+  // Secondes restantes avant que le code affiche ne soit plus accepte.
+  //
+  // La fenetre TOTP est passee de 90 s a 30 s : c'est la bonne tradeoff pour
+  // la securite, mais un code lu sur le telephone a la 28e seconde n'a plus
+  // que 2 s. Sans ce decompte, l admin resubmitait en croyant a une panne.
+  //
+  // Calcule sur l horloge SERVEUR : c est celle qui valide. L horloge du
+  // telephone peut deriver, celle du navigateur aussi — seule celle du
+  // serveur fait foi.
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const clockSkewRef = useRef(0);
+
+  useEffect(() => {
+    if (status !== 'enabled' || period <= 0) {
+      setRemaining(null);
+      return;
+    }
+    const tick = () => {
+      const nowServer = Date.now() + clockSkewRef.current;
+      const elapsed = Math.floor(nowServer / 1000) % period;
+      // +1 parce que la seconde 0 existe deja.
+      setRemaining(period - elapsed);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [status, period]);
 
   useEffect(() => {
     let cancelled = false;
     fetchAdmin2faStatus()
       .then((res) => {
-        if (!cancelled) setStatus(res.enabled ? 'enabled' : 'disabled');
+        if (cancelled) return;
+        setStatus(res.enabled ? 'enabled' : 'disabled');
+        if (res.period) setPeriod(res.period);
+        // Mesure du decalage entre l horloge du navigateur et celle du
+        // serveur, au moment de la reponse.
+        if (typeof res.serverTime === 'number') {
+          clockSkewRef.current = res.serverTime - Date.now();
+        }
       })
       .catch(() => {
         if (!cancelled) setStatus('error');
@@ -851,6 +886,17 @@ const Admin2faSection: React.FC = () => {
               {busy ? '...' : 'Vérifier'}
             </Button>
           </div>
+          {remaining !== null && (
+            <p
+              className={`text-xs font-mono ${remaining <= 5 ? 'text-orange-400' : 'text-white/50'}`}
+              role="status"
+              aria-live="polite"
+            >
+              {remaining <= 5
+                ? `Il expire dans ${remaining} s — attends le code suivant.`
+                : `Code valide encore ${remaining} s.`}
+            </p>
+          )}
         </div>
       ) : null}
 

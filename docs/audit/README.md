@@ -4,7 +4,7 @@ Audit en 8 étapes, par risque décroissant. Chaque étape a son document et
 son propre lot de correctifs, committés séparément.
 
 Projet : ~60 000 lignes de code (hors images), 100 routes HTTP, 11 modules de
-routes, 617 tests unitaires, 149 E2E API, 48 E2E UI, 7 tests d accessibilite.
+routes, 619 tests unitaires, 149 E2E API, 48 E2E UI, 7 tests d accessibilite.
 
 ## Avancement
 

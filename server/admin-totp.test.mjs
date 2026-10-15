@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { verifyTotp, toBase32, base32Decode, TOTP_DIGITS, TOTP_PERIOD } from './admin-totp.mjs';
+import { verifyTotp, toBase32, base32Decode, TOTP_DIGITS, TOTP_PERIOD, TOTP_WINDOW_STEPS } from './admin-totp.mjs';
 
 /**
  * RFC 6238 (TOTP) — vecteurs de test officiels, appendix B, SHA-1.
@@ -60,28 +60,52 @@ describe('admin-totp — vecteurs officiels RFC 6238', () => {
   });
 });
 
-describe('admin-totp — fenetre de tolerance', () => {
+describe('admin-totp — fenêtre réduite au pas courant', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('accepte le code du pas de temps precedent (clock skew -1)', () => {
-    const code = RFC_VECTORS[2].code;
-    const t = RFC_VECTORS[2].time;
-    const accepted = atTime(t + TOTP_PERIOD, () => verifyTotp(RFC_SECRET_BASE32, code));
-    expect(accepted).toBe(true);
+  it('TOTP_WINDOW_STEPS vaut 0 : un code ne vit que 30 s', () => {
+    // Choix explicite : 90 s (fenetre ±1) laissait un code rejouable trois
+    // fois. Le prix — un appareil a l horloge derivee se voit refuser un code
+    // valide — est couvert par le decompte dans l interface.
+    expect(TOTP_WINDOW_STEPS).toBe(0);
   });
 
-  it('accepte le code du pas de temps suivant (clock skew +1)', () => {
+  it('refuse le code du pas de temps PRECEDENT', () => {
     const code = RFC_VECTORS[2].code;
     const t = RFC_VECTORS[2].time;
-    const accepted = atTime(t - TOTP_PERIOD, () => verifyTotp(RFC_SECRET_BASE32, code));
-    expect(accepted).toBe(true);
-  });
-
-  it('refuse un code hors fenetre (au-dela de +/- 1 pas)', () => {
-    const code = RFC_VECTORS[2].code;
-    const t = RFC_VECTORS[2].time;
-    const refused = atTime(t + 2 * TOTP_PERIOD, () => verifyTotp(RFC_SECRET_BASE32, code));
+    // Avant, avec une fenetre ±1, ce code etait accepte 30 s trop tot : il
+    // restait donc rejouable bien apres son affichage.
+    const refused = atTime(t + TOTP_PERIOD, () => verifyTotp(RFC_SECRET_BASE32, code));
     expect(refused).toBe(false);
+  });
+
+  it('refuse le code du pas de temps SUIVANT', () => {
+    // Un code valide jusqu a 90 s signifiait qu un attaquant pouvait le
+    // reutiliser pendant 60 s apres avoir expire.
+    const code = RFC_VECTORS[2].code;
+    const t = RFC_VECTORS[2].time;
+    const refused = atTime(t - TOTP_PERIOD, () => verifyTotp(RFC_SECRET_BASE32, code));
+    expect(refused).toBe(false);
+  });
+
+  it('accepte encore le code de son propre pas de temps', () => {
+    const code = RFC_VECTORS[2].code;
+    const t = RFC_VECTORS[2].time;
+    expect(atTime(t, () => verifyTotp(RFC_SECRET_BASE32, code))).toBe(true);
+  });
+
+  it('refuse des la premiere seconde du pas suivant', () => {
+    // Le basculement est net : au franchissement de la borne, l ancien code
+    // ne fonctionne plus. Pas de chevauchement.
+    //
+    // La borne se calcule depuis le PAS REEL qui contient `t` : les
+    // vecteurs de la RFC ne sont pas alignes sur une frontiere de 30 s.
+    const code = RFC_VECTORS[2].code;
+    const t = RFC_VECTORS[2].time;
+    const borne = (Math.floor(t / TOTP_PERIOD) + 1) * TOTP_PERIOD;
+
+    expect(atTime(borne - 1, () => verifyTotp(RFC_SECRET_BASE32, code))).toBe(true);
+    expect(atTime(borne, () => verifyTotp(RFC_SECRET_BASE32, code))).toBe(false);
   });
 });
 

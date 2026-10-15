@@ -58,7 +58,7 @@ describe('POST /api/realtime/state/sync — contrat verrouille', () => {
     expect(definitSyncServerState, 'la fonction existe mais doit rester non appelee').toBe(true);
 
     // On compte les usages hors definition : il doit y en avoir zero.
-    const horsDefinition = store.replace(/syncServerState: async[\s\S]*?\n  \},/, '');
+    const horsDefinition = store.replace(/syncServerState: async[\s\S]*?\n {2}\},/, '');
     expect(horsDefinition).not.toContain('syncServerState(');
   });
 });

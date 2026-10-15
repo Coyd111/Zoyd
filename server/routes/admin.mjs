@@ -16,7 +16,7 @@
 import crypto from 'node:crypto';
 
 import { rateLimitGuard, getClientIp } from '../rate-limiter.mjs';
-import { verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from '../admin-totp.mjs';
+import { verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa, TOTP_PERIOD } from '../admin-totp.mjs';
 import {
   respondJson,
   parseRequestBody,
@@ -287,7 +287,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     const session = requireAdmin(req, res);
     if (!session) return true;
     const entry = adminTotpSecrets.get(session.user.id);
-    respondJson(res, 200, { ok: true, enabled: !!entry?.enabled });
+    respondJson(res, 200, { ok: true, enabled: !!entry?.enabled, serverTime: Date.now(), period: TOTP_PERIOD });
     return true;
   }
 

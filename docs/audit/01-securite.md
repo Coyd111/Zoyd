@@ -51,6 +51,27 @@ environnement de test, démarre un service incomplet qui ne le signale pas.
 | session temps réel | 6 |
 | session (token lu directement) | 5 |
 | admin + 2FA | 8 |
+
+### Fenêtre TOTP : de 90 s à 30 s
+
+Le code 2FA n'est accepté que pendant SON pas de 30 s, au lieu de la
+fenêtre ±1 pas (90 s) d'avant. Un code ne peut donc plus être rejoué
+pendant une minute après son expiration.
+
+Le prix, assumé : un téléphone dont l'horloge dérive de plus d'une
+quinzaine de secondes verra son code refusé alors qu’il est affiché.
+Pour que ce risque ne devienne pas un blocage, interface affiche le temps
+restant, calculé sur **l'horloge du serveur** — celle qui valide. L'admin
+voit « il expire dans 4 s — attends le code suivant » au lieu de
+resoumettre un code périmé en croyant à une panne.
+
+Le réglage est une constante unique, `TOTP_WINDOW_STEPS` dans
+`server/admin-totp.mjs`. Passer à `1` rétablit les 90 s si un appareil
+dérive trop.
+
+Vérifié par les vecteurs officiels RFC 6238, plus deux tests qui prouvent
+le basculement net : à la seconde 29 d'un pas le code passe encore, à la
+seconde 30 il ne passe plus.
 | admin | 4 |
 | jeton métriques | 1 |
 | **aucune — public par nature** | **8** |

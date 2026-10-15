@@ -124,6 +124,10 @@ export const resetPasswordWithCode = (
 interface Admin2faStatusResponse {
   ok: boolean;
   enabled: boolean;
+  /** Horodatage serveur au moment de la reponse, en ms. */
+  serverTime?: number;
+  /** Duree de validite d'un code, en secondes. */
+  period?: number;
 }
 
 interface Admin2faSetupResponse {

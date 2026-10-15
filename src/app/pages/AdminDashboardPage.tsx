@@ -12,7 +12,7 @@ import { buildAdminInsights, buildCommunityPlayers } from '../../lib/communityIn
 import { formatZC } from '../../lib/utils';
 import type { WalletSnapshot } from '../lib/walletApi';
 import { fetchAdminCommissions, type CommissionStats } from '../lib/walletApi';
-import { fetchAdminReports, resolveAdminReport } from '../lib/socialApi';
+import { fetchAdminReports, resolveAdminReport, fetchActiveSanctions, revokeAdminSanction, type ActiveSanction } from '../lib/socialApi';
 import { FocusCard, StatCard } from '../components/admin/AdminTabShared';
 import AdminOverviewTab from '../components/admin/AdminOverviewTab';
 import AdminMatchesTab from '../components/admin/AdminMatchesTab';
@@ -56,6 +56,8 @@ const AdminDashboardPage: React.FC = () => {
   // comme « personne ne signale rien ».
   const [reportsUnavailable, setReportsUnavailable] = useState(false);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [sanctions, setSanctions] = useState<ActiveSanction[]>([]);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const hydrateReportsFromServer = useFriendsStore((s) => s.hydrateReportsFromServer);
   useEffect(() => {
     if (user?.role !== 'admin') return;
@@ -63,10 +65,13 @@ const AdminDashboardPage: React.FC = () => {
     fetchAdminCommissions()
       .then((data) => { if (!cancelled) setCommissions(data); })
       .catch(() => { /* 2FA absente ou reseau : on garde 0 plutot que de mentir */ });
-    fetchAdminReports()
-      .then((data) => {
+    // Signalements ET sanctions en cours : la vue de moderation doit montrer
+    // qui est actuellement sanctionne, pas seulement la file a traiter.
+    Promise.all([fetchAdminReports(), fetchActiveSanctions()])
+      .then(([data, actifs]) => {
         if (cancelled) return;
         hydrateReportsFromServer(data.reports || []);
+        setSanctions(actifs.sanctions || []);
         setReportsUnavailable(data.degraded === true);
       })
       .catch(() => {
@@ -78,11 +83,27 @@ const AdminDashboardPage: React.FC = () => {
   }, [user?.role, matches.length]);
   const reloadReports = async () => {
     try {
-      const data = await fetchAdminReports();
+      const [data, actifs] = await Promise.all([fetchAdminReports(), fetchActiveSanctions()]);
       hydrateReportsFromServer(data.reports || []);
+      setSanctions(actifs.sanctions || []);
       setReportsUnavailable(data.degraded === true);
     } catch {
       setReportsUnavailable(true);
+    }
+  };
+
+  // Levee d'une sanction. La liste est rechargee apres coup : la sanction
+  // disparait de la vue « en cours » sans qu'on ait a le deviner.
+  const handleRevokeSanction = async (sanctionId: string) => {
+    setRevokingId(sanctionId);
+    try {
+      await revokeAdminSanction(sanctionId);
+      toast.success('Sanction levée', 'Le joueur retrouve immédiatement accès.');
+      await reloadReports();
+    } catch {
+      toast.error('Levée impossible', 'La sanction a peut-être déjà été levée, ou la session a expiré.');
+    } finally {
+      setRevokingId(null);
     }
   };
 
@@ -320,7 +341,7 @@ const AdminDashboardPage: React.FC = () => {
         {activeTab === 'matches' && <AdminMatchesTab filteredMatches={filteredMatches} matchFilter={matchFilter} onFilterChange={setMatchFilter} onNavigateToTab={(tab) => setActiveTab(tab as typeof activeTab)} />}
         {activeTab === 'disputes' && <AdminUrgencyTab filteredDisputes={filteredDisputes} disputeFilter={disputeFilter} onFilterChange={setDisputeFilter} escalatedCount={escalatedDisputes.length} totalCount={adminInsights.openDisputes.length} pendingResolve={pendingResolve} onSetPendingResolve={setPendingResolve} onRequestCancel={(matchId) => setConfirmAction(matchId)} onResolveWinner={handleResolveWinner} onResolveDisputeOnly={handleResolveDisputeOnly} loadingAction={loadingAction} />}
         {activeTab === 'users' && <AdminUsersTab filteredUsers={filteredUsers} userFilter={userFilter} onFilterChange={setUserFilter} />}
-        {activeTab === 'reports' && <AdminReportsTab reports={queueReports} unavailable={reportsUnavailable} resolvingId={resolvingId} onResolve={handleResolveReport} />}
+        {activeTab === 'reports' && <AdminReportsTab reports={queueReports} unavailable={reportsUnavailable} resolvingId={resolvingId} sanctions={sanctions} revokingId={revokingId} onResolve={handleResolveReport} onRevoke={handleRevokeSanction} />}
       </main>
 
       {confirmAction && (

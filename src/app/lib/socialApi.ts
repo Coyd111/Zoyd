@@ -80,6 +80,38 @@ export const fetchAdminReports = async (options: { status?: string; targetId?: s
   return authorizedGet<AdminReportsPage>(`/api/admin/reports?${params.toString()}`);
 };
 
+// ─── Sanctions (moderation) ─────────────────────────────────────────────────
+
+export interface ActiveSanction {
+  id: string;
+  userId: string;
+  targetPseudo: string;
+  kind: 'warning' | 'temporary_ban' | 'permanent_ban';
+  reason: string;
+  note: string;
+  reportId: string | null;
+  issuedBy: string;
+  issuedAt: string;
+  expiresAt: string | null;
+}
+
+/** Sanctions en cours, tous joueurs confondus. Necessaire pour lever une erreur. */
+export const fetchActiveSanctions = async (userId?: string) => {
+  const params = new URLSearchParams();
+  if (userId) params.set('userId', userId);
+  params.set('limit', '200');
+  return authorizedGet<{ ok: boolean; sanctions: ActiveSanction[]; limit: number }>(
+    `/api/admin/sanctions?${params.toString()}`
+  );
+};
+
+/** Leve une sanction. Le joueur retrouve acces immediatement. */
+export const revokeAdminSanction = async (sanctionId: string) => {
+  return authorizedPost<{ ok: boolean; sanctionId: string; revokedBy: string; revokedAt: string }>(
+    `/api/admin/sanctions/${encodeURIComponent(sanctionId)}/revoke`,
+    {}
+  );
+};
 /**
  * Traitement d'un signalement : applique la sanction et trace qui a tranche.
  *

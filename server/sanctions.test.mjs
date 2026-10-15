@@ -51,6 +51,7 @@ import {
   getBlockingSanction,
   getActiveSanctions,
   listSanctionsForUser,
+  listActiveSanctions,
   resolveReport,
 } from './persistence.mjs';
 
@@ -237,5 +238,84 @@ describe('resolveReport — la trace du traitement', () => {
     ]).then((rs) => {
       expect(rs.every((r) => r.ok === false && r.code === 'INVALID_INPUT')).toBe(true);
     });
+  });
+});
+
+describe('listActiveSanctions — la vue qui permet de corriger une erreur', () => {
+  it('regroupe les sanctions en cours de tous les joueurs', async () => {
+    // C'est le CONTRE-POIDS du bannissement : sans cette vue, une sanction
+    // erronee ne se corrige que par une requete SQL manuelle.
+    await createSanction({ userId: 'V1', kind: 'temporary_ban', issuedBy: 'A1', durationDays: 5 });
+    await createSanction({ userId: 'V2', kind: 'permanent_ban', issuedBy: 'A1' });
+    await createSanction({ userId: 'V3', kind: 'warning', issuedBy: 'A1' });
+
+    const ids = listActiveSanctions().map((s) => s.userId);
+    expect(ids).toContain('V1');
+    expect(ids).toContain('V2');
+    // Un avertissement APPARAIT ici : c est une sanction en cours, et elle
+    // est levable comme les autres. Ce qui distingue « bloquant » de
+    // « consultatif » est `getBlockingSanction`, pas cette vue.
+    expect(ids).toContain('V3');
+    // ...mais il ne bloque toujours pas le joueur.
+    expect(getBlockingSanction('V3')).toBeNull();
+    expect(getBlockingSanction('V1')).not.toBeNull();
+  });
+
+  it('filtre par joueur', async () => {
+    await createSanction({ userId: 'W1', kind: 'temporary_ban', issuedBy: 'A1', durationDays: 5 });
+    await createSanction({ userId: 'W2', kind: 'temporary_ban', issuedBy: 'A1', durationDays: 5 });
+
+    const pourW1 = listActiveSanctions({ userId: 'W1' });
+    expect(pourW1).toHaveLength(1);
+    expect(pourW1[0].userId).toBe('W1');
+  });
+
+  it('retire une sanction levee de la vue active', async () => {
+    const created = await createSanction({ userId: 'X1', kind: 'permanent_ban', issuedBy: 'A1' });
+    expect(listActiveSanctions().some((s) => s.userId === 'X1')).toBe(true);
+
+    await revokeSanction(created.sanction.id, 'A2');
+
+    expect(listActiveSanctions().some((s) => s.userId === 'X1')).toBe(false);
+    // ...mais elle reste dans l'historique du joueur.
+    expect(listSanctionsForUser('X1')).toHaveLength(1);
+    expect(getBlockingSanction('X1')).toBeNull();
+  });
+
+  it('ne rend pas une sanction echue comme active', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    await createSanction({ userId: 'X2', kind: 'temporary_ban', issuedBy: 'A1', durationDays: 2 });
+    expect(listActiveSanctions().some((s) => s.userId === 'X2')).toBe(true);
+
+    vi.setSystemTime(new Date('2026-01-10T00:00:00.000Z'));
+    expect(listActiveSanctions().some((s) => s.userId === 'X2')).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('borne le nombre rendu', async () => {
+    for (let i = 0; i < 8; i++) {
+      await createSanction({ userId: 'Y' + i, kind: 'temporary_ban', issuedBy: 'A1', durationDays: 5 });
+    }
+    expect(listActiveSanctions({ limit: 3 })).toHaveLength(3);
+    expect(listActiveSanctions({ limit: 99999 }).length).toBeGreaterThanOrEqual(8);
+  });
+
+it('trie de la plus recente a la plus ancienne', async () => {
+    vi.useFakeTimers();
+    // Duree de 30 jours pour que les DEUX sanctions restent actives a la
+    // seconde date : sinon la plus ancienne a expire et disparait de la vue,
+    // ce qui teste l expiration et non le tri.
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    await createSanction({ userId: 'Z1', kind: 'temporary_ban', issuedBy: 'A1', durationDays: 30 });
+    vi.setSystemTime(new Date('2026-01-20T00:00:00.000Z'));
+    await createSanction({ userId: 'Z2', kind: 'temporary_ban', issuedBy: 'A1', durationDays: 30 });
+
+    // On filtre sur NOS joueurs : l historique en memoire est partage par
+    // tous les tests du fichier, donc un ordre global dependrait de l ordre
+    // d execution — un test qui casse selon les voisins ne teste rien.
+    const miens = listActiveSanctions({ limit: 500 }).filter((s) => s.userId.startsWith('Z'));
+    expect(miens.map((s) => s.userId)).toEqual(['Z2', 'Z1']);
+    vi.useRealTimers();
   });
 });

@@ -23,19 +23,46 @@ const PAGES = [
   { name: 'Selection de mode', path: '/selection-mode' },
 ];
 
+/**
+ * Attend que l'application ait PUBLIE la preference systeme resolue.
+ *
+ * Un delai fixe ne prouve rien : sous charge, React peut monter apres
+ * 2,5 s et l attribut n'existe pas encore — le test echouait alors que
+ * l application fonctionnait tres bien. Attendre la condition rend le test
+ * deterministe, et supprime le seul vrai flake de la suite UI.
+ */
+const waitForMotionPreference = async (page: import('@playwright/test').Page) => {
+  await page.waitForFunction(
+    () => document.documentElement.dataset.reducedMotion !== undefined,
+    undefined,
+    { timeout: 30_000 }
+  );
+};
+
 test.describe('Accessibilite (axe-core, violations serious/critical)', () => {
   for (const target of PAGES) {
     test(`${target.name} — aucun blocage`, async ({ page }) => {
+      // L'accueil est de loin le test le plus lourd de la suite : vidéo de
+      // hero, fonds de 350 ko, et il arrive en premier donc le serveur de dev
+      // est encore froid. Budget propre — une VRAIE violation axe échoue sur
+      // l'assertion, pas sur le délai, donc rien n'est masqué.
+      test.setTimeout(target.path === '/' ? 240_000 : 120_000);
+
       // On n'attend PAS l'evenement `load` : il exige TOUTES les ressources, video
       // de hero et images de fond comprises, et la navigation de l'accueil
       // depasse alors 45 s. axe n'analyse que le DOM : on attend donc
       // `domcontentloaded`, puis on bloque jusqu a ce que React ait rendu.
       // Attendre un evenement plus large rendait le test instable.
       await page.goto(target.path, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+      // 45 s, aligné sur la navigation : sous charge (suite répétée, serveur de dev
+      // qui transforme les modules à la volée), le premier rendu de l'accueil
+      // dépasse 30 s. Ce n'est pas un défaut de l'application, c'est le coût
+      // du serveur de dev — mais un budget plus court produirait un faux
+      // échec qui ferait ignorer ce test.
       await page.waitForFunction(() => {
         const root = document.querySelector('#root');
         return Boolean(root && root.childElementCount > 0);
-      }, undefined, { timeout: 30_000 });
+      }, undefined, { timeout: 45_000 });
       await page.waitForTimeout(1_000);
 
       const results = await new AxeBuilder({ page })
@@ -69,7 +96,7 @@ test.describe('Preference systeme de mouvement reduit', () => {
   test('les animations animees en JavaScript respectent prefers-reduced-motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 45_000 });
-    await page.waitForTimeout(2_500);
+    await waitForMotionPreference(page);
 
     // L'application publie sur <html> la preference systeme qu'elle a
     // resolue. On verifie le comportement constate, pas la configuration
@@ -81,7 +108,7 @@ test.describe('Preference systeme de mouvement reduit', () => {
   test('sans preference systeme, les animations restent actives', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 45_000 });
-    await page.waitForTimeout(2_500);
+    await waitForMotionPreference(page);
 
     const resolved = await page.evaluate(() => document.documentElement.dataset.reducedMotion);
     expect(resolved).toBe('false');

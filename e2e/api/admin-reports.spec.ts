@@ -114,3 +114,76 @@ test.describe('GET /api/admin/reports', () => {
     await disposeActors();
   });
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// Sanctions : lecture et levée.
+//
+// Bannir sans pouvoir lever enfermerait un joueur sans recours, et l'admin
+// n'aurait qu'une requete SQL manuelle pour y remedier. Ces routes sont le
+// contre-poids du bannissement : elles doivent exister, être gardées, et
+// refuser proprement ce qu'elles ne peuvent pas faire.
+//
+// PORTEE : la suite E2E tourne en mode memoire, donc aucune sanction n'est
+// reellement creee ici. Ce qui est verifie, c'est le cablage et le refus
+// propre. L'application et la levée sont couvertes en test unitaire sur un
+// faux client PostgREST.
+// ────────────────────────────────────────────────────────────────────────────
+test.describe('Routes de sanctions', () => {
+  test('GET /api/admin/sanctions — refuse sans session', async () => {
+    const res = await callAnonymous('GET', '/api/admin/sanctions');
+    expect(res.status).toBe(401);
+  });
+
+  test('GET /api/admin/sanctions — refuse a un joueur non admin', async () => {
+    const joueur = await registerPlayer('JoueurSanctions');
+    const res = await call(joueur, 'GET', '/api/admin/sanctions');
+    expect(res.status).toBe(403);
+    await disposeActors();
+  });
+
+  test('GET /api/admin/sanctions — exige la 2FA', async () => {
+    const adminSans2fa = await loginAdminWithout2fa();
+    const res = await call(adminSans2fa, 'GET', '/api/admin/sanctions');
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('2FA_REQUIRED');
+    await disposeActors();
+  });
+
+  test('GET /api/admin/sanctions — renvoie la forme attendue', async () => {
+    const admin = await openAdminSession();
+    const res = await call(admin, 'GET', '/api/admin/sanctions');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.sanctions)).toBe(true);
+    await disposeActors();
+  });
+
+  test('GET /api/admin/sanctions — filtre par joueur sans erreur', async () => {
+    const admin = await openAdminSession();
+    const joueur = await registerPlayer('FiltreSanctions');
+    const res = await call(admin, 'GET', `/api/admin/sanctions?userId=${joueur.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.sanctions).toEqual([]);
+    await disposeActors();
+  });
+
+  test('POST .../revoke — refuse sans session, puis exige la 2FA', async () => {
+    const anonyme = await callAnonymous('POST', '/api/admin/sanctions/SN-INEXISTANTE/revoke', {});
+    expect(anonyme.status).toBe(401);
+
+    const adminSans2fa = await loginAdminWithout2fa();
+    const res = await call(adminSans2fa, 'POST', '/api/admin/sanctions/SN-INEXISTANTE/revoke', {});
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('2FA_REQUIRED');
+    await disposeActors();
+  });
+
+  test('POST .../revoke — 404 sur une sanction inconnue', async () => {
+    // Une levée fantôme laisserait croire que le joueur est libéré alors
+    // qu'aucune trace n'a été écrite.
+    const admin = await openAdminSession();
+    const res = await call(admin, 'POST', '/api/admin/sanctions/SN-INEXISTANTE/revoke', {});
+    expect(res.status).toBe(404);
+    expect(res.body.code).toBe('SANCTION_NOT_FOUND');
+    await disposeActors();
+  });
+});

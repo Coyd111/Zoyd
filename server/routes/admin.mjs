@@ -39,7 +39,7 @@ import {
   resolveDisputeOnServer,
   cancelMatchOnServer,
 } from '../match-engine.mjs';
-  import { sanitizeText, resolveReport } from '../persistence.mjs';
+  import { sanitizeText, resolveReport, listActiveSanctions, revokeSanction, getUserById } from '../persistence.mjs';
   import { isSanctionKind } from '../moderation.mjs';
   import { getNow } from '../utils.mjs';
   import { saveMatches, buildMatchActionPayload } from '../state-helpers.mjs';
@@ -211,6 +211,72 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     } catch (err) {
       log.error('Admin resolve report failed', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du traitement du signalement.', code: 'RESOLVE_ERROR' }, req);
+    }
+    return true;
+  }
+
+  // Sanctions en cours — tous joueurs confondus.
+  //
+  // Cette route est le CONTRE-POIDS de `POST .../resolve`. Bannir sans
+  // pouvoir lever, c'est une sanction irreversible : une erreur de
+  // moderation enfermerait un joueur sans recours, et l admin n'aurait qu'une
+  // requete SQL manuelle pour y remedier.
+  if (req.method === 'GET' && pathname === '/api/admin/sanctions') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return true;
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const userId = (url.searchParams.get('userId') || '').trim();
+      const { limit } = parseQueryParams(req.url);
+      const sanctions = listActiveSanctions({ userId: userId || undefined, limit });
+      // Le pseudo est resolu cote serveur : la sanction stocke un identifiant,
+      // et une liste de UUID sans nom serait illisible a l'ecran.
+      respondJson(res, 200, {
+        ok: true,
+        sanctions: sanctions.map((s) => {
+          const target = getUserById(s.userId);
+          return {
+            ...s,
+            targetPseudo: target ? target.pseudo : '',
+          };
+        }),
+        limit,
+      }, req);
+    } catch (err) {
+      log.error('Admin sanctions list failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture des sanctions.', code: 'SANCTIONS_ERROR' }, req);
+    }
+    return true;
+  }
+
+  // Levee d'une sanction.
+  //
+  // 2FA obligatoire, comme les autres operations de moderation. Une levee
+  // redonne immediateMENT la main au joueur : sa prochaine requete
+  // authentifiee repartira, sans attendre une reconnexion.
+  if (req.method === 'POST' && pathname.match(/^\/api\/admin\/sanctions\/([^/]+)\/revoke$/)) {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return true;
+    const sanctionId = decodeURIComponent(pathname.match(/^\/api\/admin\/sanctions\/([^/]+)\/revoke$/)[1]);
+    try {
+      const revoked = await revokeSanction(sanctionId, session.user.id);
+      if (!revoked) {
+        // 404 : sanction inconnue, ou deja levee. Dans les deux cas, ne pas
+        // reecrire une trace de levee qui n existe pas.
+        respondJson(res, 404, {
+          ok: false,
+          error: 'Sanction introuvable ou deja levee.',
+          code: 'SANCTION_NOT_FOUND',
+        }, req);
+        return true;
+      }
+      log.warn('Admin sanction levee', { adminId: session.user.id, sanctionId });
+      respondJson(res, 200, { ok: true, sanctionId, revokedBy: session.user.id, revokedAt: getNow() }, req);
+    } catch (err) {
+      log.error('Admin revoke sanction failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la levee de la sanction.', code: 'REVOKE_ERROR' }, req);
     }
     return true;
   }

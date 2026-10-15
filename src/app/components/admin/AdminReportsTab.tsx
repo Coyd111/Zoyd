@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Ban, Clock, ShieldAlert, Check, Gavel } from 'lucide-react';
+import type { ActiveSanction } from '../../lib/socialApi';
 
 /**
  * File d'attente de moderation.
@@ -70,10 +71,21 @@ interface Props {
   reports: QueueReport[];
   unavailable: boolean;
   resolvingId: string | null;
+  sanctions: ActiveSanction[];
+  revokingId: string | null;
   onResolve: (reportId: string, resolution: Resolution, note: string, durationDays?: number) => void;
+  onRevoke: (sanctionId: string) => void;
 }
 
-const AdminReportsTab: React.FC<Props> = ({ reports, unavailable, resolvingId, onResolve }) => {
+const AdminReportsTab: React.FC<Props> = ({
+  reports,
+  unavailable,
+  resolvingId,
+  sanctions,
+  revokingId,
+  onResolve,
+  onRevoke,
+}) => {
   const [note, setNote] = useState<Record<string, string>>({});
   const [days, setDays] = useState<Record<string, number>>({});
   const [confirmPermanent, setConfirmPermanent] = useState<string | null>(null);
@@ -253,6 +265,48 @@ const AdminReportsTab: React.FC<Props> = ({ reports, unavailable, resolvingId, o
             );
           })}
         </ul>
+      )}
+
+      {sanctions.length > 0 && (
+        <section className="border border-white/10 p-4">
+          <h2 className="text-xs font-mono font-black uppercase tracking-widest text-white/70 mb-3 flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4" aria-hidden="true" />
+            Sanctions en cours ({sanctions.length})
+          </h2>
+          <p className="text-xs text-white/50 mb-3">
+            Bannir sans pouvoir lever enfermerait un joueur sans recours. Une erreur de moderation se corrige ici.
+          </p>
+          <ul className="space-y-2">
+            {sanctions.map((sanction) => (
+              <li
+                key={sanction.id}
+                className="flex flex-wrap items-center gap-3 border-b border-white/5 pb-2 text-sm"
+              >
+                <span className="text-white">{sanction.targetPseudo || sanction.userId}</span>
+                <span className="text-[10px] font-mono font-black uppercase tracking-widest text-white/50">
+                  {sanction.kind.replace('_', ' ')}
+                </span>
+                {sanction.expiresAt && (
+                  <span className="text-xs text-white/50">
+                    jusqu&apos;au {formatWhen(sanction.expiresAt)}
+                  </span>
+                )}
+                {sanction.reason && (
+                  <span className="text-xs text-white/50 italic">{sanction.reason}</span>
+                )}
+                <span className="text-xs text-white/40">{formatWhen(sanction.issuedAt)}</span>
+                <button
+                  type="button"
+                  disabled={revokingId === sanction.id}
+                  onClick={() => onRevoke(sanction.id)}
+                  className="ml-auto border border-green-500/40 px-3 py-1.5 text-[10px] font-display font-black uppercase tracking-widest text-green-400 hover:bg-green-500/10 disabled:opacity-40"
+                >
+                  {revokingId === sanction.id ? 'Levee…' : 'Lever'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {traites.length > 0 && (

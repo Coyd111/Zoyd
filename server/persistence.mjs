@@ -3253,6 +3253,31 @@ export const createSanction = async ({
 };
 
 /**
+ * Vue moderation : toutes les sanctions BLOQUANTES en cours, tous joueurs
+ * confondus, de la plus recente a la plus ancienne.
+ *
+ * C'est la vue qui permet a l admin de voir qui est actuellement banni, et
+ * surtout de LEVER une sanction par erreur. Sans elle, une sanction erronee
+ * n'est rattrapable que par une requete SQL manuelle — un defaut, pas un
+ * choix de conception.
+ *
+ * @param {{ userId?: string, limit?: number }} [opts]
+ * @returns {Array<object>}
+ */
+export const listActiveSanctions = ({ userId, limit = 200 } = {}) => {
+  const out = [];
+  for (const [id, list] of memorySanctions) {
+    if (userId && id !== userId) continue;
+    for (const sanction of list) {
+      if (isSanctionActive(sanction)) out.push(sanction);
+    }
+  }
+  return out
+    .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())
+    .slice(0, Math.max(1, Math.min(limit, 500)));
+};
+
+/**
  * Leve une sanction. La ligne n'est jamais supprimee : c'est l'historique
  * qui fait foi.
  *

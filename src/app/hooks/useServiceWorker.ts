@@ -28,6 +28,17 @@ export function useServiceWorker() {
 
     let mounted = true;
 
+    // Etat AVANT enregistrement : un `controllerchange` ne vaut rechargement
+    // que s'il remplace un service worker deja actif.
+    //
+    // Sans cette distinction, la PREMIERE visite de chaque visiteur — ou
+    // chaque ouverture dans un navigateur vierge — rechargeait la page juste
+    // apres l'affichage. Un aller-retour visible pour rien, puisque le
+    // nouveau controleur n remplace aucun ancien contenu. C'est aussi ce qui
+    // faisait echouer les tests : le contexte d'execution etait detruit entre
+    // le montage et la lecture de l'etat.
+    const hadControllerAtLoad = Boolean(navigator.serviceWorker.controller);
+
     registerServiceWorker()
       .then((registration) => {
         if (!mounted) return;
@@ -55,7 +66,11 @@ export function useServiceWorker() {
         logWarning('SW Registration failed', { component: 'useServiceWorker', message: err?.message || String(err) });
       });
 
-    const onControllerChange = () => window.location.reload();
+    const onControllerChange = () => {
+      // Premiere installation : rien a remplacer, on ne recharge pas.
+      if (!hadControllerAtLoad) return;
+      window.location.reload();
+    };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
     controllerChangeRef.current = () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
 

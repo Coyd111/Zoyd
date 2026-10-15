@@ -4,7 +4,7 @@ Audit en 8 étapes, par risque décroissant. Chaque étape a son document et
 son propre lot de correctifs, committés séparément.
 
 Projet : ~60 000 lignes de code (hors images), 100 routes HTTP, 11 modules de
-routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
+routes, 617 tests unitaires, 149 E2E API, 48 E2E UI, 7 tests d accessibilite.
 
 ## Avancement
 
@@ -13,7 +13,7 @@ routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
 | 0 | Cartographie | fait | 5 zones, dette faible (3 TODO) |
 | 1 | Sécurité & secrets | **fait** | 25 variables d'environnement non documentées |
 | 2 | Argent & intégrité financière | **fait** | fenêtre de double crédit sur les dépôts FedaPay |
-| 3 | Données & persistance | **fait** | `user_reports` sans DDL ; signalements jamais relus |
+| 3 | Données & persistance | **fait** | `user_reports` sans DDL ; signalements jamais relus (corrigé depuis) |
 | 4 | Concurrence & temps réel | **fait** | après coupure, l'interface affiche « live » avec un état périmé ; config de tests décrivant un environnement inexistant |
 | 5 | Performance & bundle | **fait** | 364 kB de graphiques sur le chemin critique ; 12,8 Mo de doublons d'images ; fonds 4K à 13,1 Mo |
 | 6 | Qualité, tests & dépendances | **fait** | couverture jamais mesurable (outil absent) ; 2FA admin et fusion des deltas sans aucun test |
@@ -32,7 +32,9 @@ routes, 540 tests unitaires, 135 E2E API, 41 E2E UI.
 | Info | Conversion FedaPay `amount / 10` non confirmée en réel | `server/payment-engine.mjs` | bloqué : clés live requises |
 | Info | Verrous en mémoire, corrects pour un processus ; un déploiement est une fenêtre à deux instances | ensemble des moteurs | **documenté** (étape 4) — risque résiduel faible, parades listées |
 | Moyenne | `user_reports` utilisée par le code sans DDL dans le dépôt | `supabase/schema.sql` | **corrigé** — DDL et index ajoutés |
-| Moyenne | Les signalements sont écrits en base mais **jamais relus** : le tableau de bord admin n'affiche que ceux faits dans ce navigateur | `friendsStore`, `AdminDashboardPage` | **décision produit** — il manque une route de lecture admin |
+| Moyenne | Les signalements etaient ecrits en base mais **jamais relus** : le tableau de bord n affichait que ceux faits dans ce navigateur | `friendsStore`, `AdminDashboardPage` | **corrige** - `GET /api/admin/reports` + file de moderation |
+| Haute | Aucun mécanisme de bannissement n'existait : `app_users` n'a ni `status` ni `banned_until`, et rien n'opposait une sanction à une session ouverte | `server/persistence.mjs` | **corrigé** — `user_sanctions`, contrôle dans `getAuthSession` |
+| Haute | Le bannissement était **irréversible** : `revokeSanction` existait mais aucune route ni interface ne l'exposait | `server/routes/admin.mjs` | **corrigé** — `POST /api/admin/sanctions/:id/revoke` + bouton « Lever » |
 | Haute | Après une coupure socket, l'interface repassait « live » sans resynchroniser : tout le delta perdu était définitif | `socketConnectionStore`, `useRealtimeHeartbeat` | **corrigé** — reprise au retour du socket |
 | Moyenne | `vitest.config.ts` déclarait `jsdom`, qui n'est pas installé : les tests tournaient en Node sans le dire | `vitest.config.ts` | **corrigé** — mode `node` explicite |
 | Faible | `POST /api/realtime/state/sync` renvoie 409 ou 400 pour tout, et son appelant n'est jamais utilisé | `server/routes/realtime.mjs` | documenté — suppression = changement de contrat |

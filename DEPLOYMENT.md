@@ -285,6 +285,64 @@ endpoint ne relit la table, ils ne sont pas utilisés : le tableau de bord
 d'administration n'affiche aujourd'hui que les signalements faits **dans le
 navigateur courant**.
 
+#### `user_sanctions` — historique de sanction
+
+Ajoutée le 14/10/2026 avec la modération. Sans elle, aucun bannissement ne
+pouvait exister : `app_users` n'a ni `status` ni `banned_until`, et rien
+n'opposait une sanction à une session déjà ouverte.
+
+```sql
+CREATE TABLE IF NOT EXISTS user_sanctions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  reason TEXT,
+  note TEXT,
+  report_id TEXT,
+  issued_by TEXT NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  revoked_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_user_sanctions_active
+  ON user_sanctions(user_id) WHERE revoked_at IS NULL;
+```
+
+Table d'**historique**, pas un statut : la ligne n'est jamais supprimée,
+`revoked_at` non nul signale une levée. C'est ce qui permet de rejouer une
+sanction et de répondre à une contestation.
+
+Colonnes de modération ajoutées sur `user_reports` :
+
+```sql
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS severity TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS resolution TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS sanction_id TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+```
+
+**Vérifier sans connexion SQL :** `/api/health` expose `sanctionsPersisted`.
+
+```bash
+curl -s https://<ton-backend>/api/health | grep -o '"sanctionsPersisted":[a-z]*'
+```
+
+`true` = migration jouée. **`false` = le serveur démarre sans historique de
+sanctions** : les bannissements en cours ne survivent pas au redémarrage, et
+un joueur banni redevient jouable au prochain déploiement. Le serveur
+démarre volontairement quand même, en signalant l'état dans les logs —
+refuser de démarrer serait pire.
+
+Routes de modération, toutes en 2FA obligatoire :
+
+| Route | Effet |
+|-------|-------|
+| `GET /api/admin/reports` | file des signalements, filtrable |
+| `POST /api/admin/reports/:id/resolve` | applique la sanction et trace |
+| `GET /api/admin/sanctions` | sanctions en cours, tous joueurs |
+| `POST /api/admin/sanctions/:id/revoke` | lève une sanction |
 #### Sessions
 
 - `auth_sessions.token` et `realtime_sessions.token` contiennent le **SHA-256**
@@ -293,6 +351,30 @@ navigateur courant**.
   des jetons en clair : pour les purger sans déconnecter personne, un simple
   `DELETE FROM auth_sessions;` (les joueurs se reconnectent une fois).
 
+## Envoi des codes — ordre de priorité
+
+Quatre canaux coexistent. Ils sont essayés **dans cet ordre**, et le premier
+qui réussit gagne. Un canal non configuré est sauté sans erreur ; un canal
+configuré mais en échec est journalisé puis le suivant est tenté.
+
+| Ordre | Canal | Variable | Note |
+|-------|-------|----------|------|
+| 1 | Resend | `RESEND_API_KEY` + `EMAIL_FROM` | HTTPS/443, le seul praticable sur Render gratuit |
+| 2 | Brevo | `BREVO_API_KEY` + `EMAIL_FROM` | HTTPS/443 |
+| 3 | SMTP | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | **Ports bloqués sur Render gratuit** |
+| 4 | Webhook | `CODE_DELIVERY_WEBHOOK` | `POST { to, code, purpose }`, délai 5 s |
+
+La réponse HTTP indique le canal utilisé, et les échecs sont journalisés
+avec la destination masquée. Si aucun canal ne répond, l'utilisateur voit
+un échec — le code n'est jamais annoncé comme envoyé alors qu'il ne l'est
+pas.
+
+**Piège courant** : configurer SMTP sur Render gratuit sans lire la ligne
+du dessus. Le serveur tente, expire, journalise un avertissement, puis passe
+au canal suivant — la.delivery finit par réussir mais on perd plusieurs
+plusieurs delais a chaque envoi, et le joueur attend.
+
+Si tu veux forcer un canal précis, ne configure que celui-là.
 ## Monitoring
 
 ### Logs serveur
@@ -360,6 +442,6 @@ npx playwright test
 | `pnpm install` échoue sur exFAT | `CI=true pnpm install --config.node-linker=hoisted` |
 | Build Vite timeout | Augmenter le timeout (300s) |
 | Backend Render dort | Premier appel = ~30s de warmup |
-| SW cache stale | Bump `CACHE_NAME` dans `sw.js` |
+| SW cache stale | Bump de la version dans `sw.js` (`CACHE_NAME` n existe plus) |
 | Token expiré | Le client redirige vers `/auth/login` automatiquement |
-| CORS error | Vérifier `ALLOWED_ORIGINS` dans `.env.server` |
+| CORS error | Vérifier **`ZOYD_ALLOWED_ORIGINS`** (pas `ALLOWED_ORIGINS`, que le code ne lit pas) |

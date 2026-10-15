@@ -94,6 +94,7 @@ ils ne sont pas à refaire.
 - [07 - Produit et accessibilite](07-produit.md)
 - [08 - Documentation et exploitation](08-exploitation.md)
 - [09 - Procedures d exploitation](09-procedures.md)
+- [10 - Lecture exhaustive du code](10-lecture-exhaustive.md)
 
 ## Méthode
 

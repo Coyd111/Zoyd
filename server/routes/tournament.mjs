@@ -1,4 +1,5 @@
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { roundAmount } from '../utils.mjs';
 import {
   getAuthenticatedAppSession,
   parseRequestBody,
@@ -76,7 +77,19 @@ if (req.method === 'POST' && pathname === '/api/tournaments') {
       respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
       return true;
     }
-    const outcome = createTournamentOnServer(getStoredTournaments(), session.user, body);
+    // Le tarif est arrondi a 2 decimales AVANT tout calcul de pot.
+    //
+    // La cagnotte est calculee sur un PRODUIT (entryFee x entrees x taille),
+    // alors que l argent reellement bloque est une SOMME d arrondis par equipe.
+    // Les deux coincident tant que le tarif a au plus 2 decimales — au-dela,
+    // le produit et la somme divergent de quelques centimes, et le reglement
+    // cree ou detruit de la monnaie. Le tarif n etait valide que comme
+    // « nombre positif », donc 10.005 passait.
+    const normalizedBody = body.entryFee === undefined
+      ? body
+      : { ...body, entryFee: roundAmount(body.entryFee) };
+
+    const outcome = createTournamentOnServer(getStoredTournaments(), session.user, normalizedBody);
     await saveTournaments(io, outcome.tournaments, outcome.tournament);
     respondJson(res, 201, buildTournamentActionPayload(outcome.tournament, session.user.id));
   }); } catch (error) {

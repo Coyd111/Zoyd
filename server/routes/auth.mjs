@@ -260,16 +260,27 @@ if (req.method === 'POST' && pathname === '/api/auth/forgot-password') {
     if (result.found) {
       delivery = await deliverAuthCode({ to: identifier, code: result.code, purpose: 'password-reset' });
     }
+    // Reponse IDENTIQUE que le compte existe ou non.
+    //
+    // La reponse disait `found: false` ET un message different (« Aucun compte
+    // associe a cet identifiant »). C etait un oracle d enumeration gratuit :
+    // il suffisait de soumettre un email pour savoir s il etait inscrit.
+    //
+    // Ici, contrairement a l inscription, rien n excuse de repondre : during
+    // l inscription, le joueur doit savoir quel champ est deja pris. Pour une
+    // reinitialisation, l attaquant n a aucun besoin legitime de le savoir, et
+    // l inscription d un compte inexistant ne peut pas « echouer » puisque
+    // rien n est cree a ce stade.
+    //
+    // Le detail de l envoi n est pas non plus divulgue : repondre « le code a
+    // ete envoye » quand rien n a ete envoye guiderait un attaquant vers les
+    // providers et %{ transporterait l'information par un canal secondaire.
     respondJson(res, 200, {
       ok: true,
-      found: result.found,
-      message: result.found
-        ? (delivery.delivered
-          ? 'Code envoyé. Vérifie ta boîte de réception (et tes spams).'
-          : "Code généré mais l'envoi automatique a échoué : réessaie dans un instant ou contacte le support.")
-        : 'Aucun compte associé à cet identifiant.',
-      ...(result.found && { delivery: delivery.delivered ? 'sent' : 'pending-provider' }),
-      ...(result.found && ALLOW_DEBUG_CODES && { resetCode: result.code }),
+      // Conserve pour compatibilite, mais toujours a `true`.
+      found: true,
+      message: 'Si un compte est associe a cet identifiant, un code vient d etre envoye. Verifie ta boite de reception.',
+      ...(ALLOW_DEBUG_CODES && result.found && { resetCode: result.code }),
     });
   } catch (error) {
     respondMappedError(res, error);

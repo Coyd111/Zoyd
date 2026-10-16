@@ -5,6 +5,7 @@ import {
   respondMappedError,
 } from '../http-utils.mjs';
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { roundAmount } from '../utils.mjs';
 import { withMatchMutex, withWalletMutex } from '../mutex.mjs';
 import {
   createMatchOnServer,
@@ -62,8 +63,18 @@ if (req.method === 'POST' && pathname === '/api/matches') {
       respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
       return true;
     }
+    // Le tarif est arrondi a 2 decimales AVANT tout calcul de pot.
+    //
+    // Meme raison que pour les tournois : le pot est un produit (entryFee x
+    // joueurs), alors que l argent reellement bloque est une somme d arrondis.
+    // Au-dela de 2 decimales, les deux divergent de quelques centimes et le
+    // reglement cree ou detruit de la monnaie.
+    const normalizedBody = body.entryFee === undefined
+      ? body
+      : { ...body, entryFee: roundAmount(body.entryFee) };
+
     const outcome = await withWalletMutex(session.user.id, async () =>
-      createMatchOnServer(getStateCollection('matches'), session.user, body)
+      createMatchOnServer(getStateCollection('matches'), session.user, normalizedBody)
     );
     await saveMatches(io, outcome.matches, outcome.match);
     respondJson(res, 201, buildMatchActionPayload(outcome.match, session.user.id));

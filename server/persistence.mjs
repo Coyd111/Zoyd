@@ -2610,6 +2610,16 @@ export const getRealtimeSession = (token) => {
     memoryRealtimeSessions.delete(tokenHash);
     return null;
   }
+  // Sanction bloquante : le socket est detruit, comme pour `getAuthSession`.
+  //
+  // Sans ce controle, un joueur banni gardait sa connexion temps reel pendant
+  // toute sa duree de vie (6 h). Le rechargement cookie du handshake, lui,
+  // passait par `getAuthSession` : seules les sockets DEJA ouvertes
+  // survivaient au bannissement — et l'ecart etait invisible.
+  if (getBlockingSanction(s.userId)) {
+    memoryRealtimeSessions.delete(tokenHash);
+    return null;
+  }
   return s;
 };
 

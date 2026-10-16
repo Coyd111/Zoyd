@@ -184,9 +184,6 @@ const tournoiSolde = () => ({
   pendingPayouts: [],
 });
 
-describe('Tournois — les gains non verses se reprennent', () => {
-});
-
 describe('Tournois — la dette est ecrite AU moment du reglement', () => {
   it('un gain en echec est consigne dans `pendingPayouts`', async () => {
     // C'est le seul endroit ou la dette nait. Si ce lien disparait, le systeme

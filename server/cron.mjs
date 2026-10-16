@@ -1,7 +1,7 @@
 import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests, verifyDataIntegrity } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
-import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds } from './league-engine.mjs';
+import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds, retryPendingLeaguePayouts, countPendingLeaguePayouts } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer } from './match-engine.mjs';
 import { getNow } from './utils.mjs';
@@ -370,6 +370,37 @@ export const initCronJobs = () => {
   };
   setInterval(() => { void sweepPendingTournamentPayouts(); }, 6 * 60 * 60 * 1000);
   setTimeout(() => { void sweepPendingTournamentPayouts(); }, 25 * 1000);
+  // Gains de ligue non verses (6 h + au boot).
+  //
+  // Les ligues avaient DEUX files de reprise (remboursements de saisons
+  // annulees, saisons perimees) et AUCUNE pour les gains : c'etait le seul des
+  // trois systemes de reglement du projet sans reprise des versements. Un gain
+  // de ligue rate etait definitivement perdu.
+  let leaguePayoutRetryRunning = false;
+  const sweepPendingLeaguePayouts = async () => {
+    if (leaguePayoutRetryRunning) return;
+    leaguePayoutRetryRunning = true;
+    try {
+      await withLeagueMutex(async () => {
+        const leagues = getStateCollection('leagues');
+        const outstanding = countPendingLeaguePayouts(leagues);
+        if (outstanding === 0) return;
+        const outcome = await retryPendingLeaguePayouts(leagues);
+        if (outcome.retried > 0 || outcome.remaining !== outstanding) {
+          await replaceStateCollection('leagues', outcome.leagues);
+        }
+        if (outcome.remaining > 0) {
+          log.error('Gains de ligue toujours en echec', { remaining: outcome.remaining });
+        }
+      });
+    } catch (error) {
+      log.error('Erreur reprise des gains de ligue', error);
+    } finally {
+      leaguePayoutRetryRunning = false;
+    }
+  };
+  setInterval(() => { void sweepPendingLeaguePayouts(); }, 6 * 60 * 60 * 1000);
+  setTimeout(() => { void sweepPendingLeaguePayouts(); }, 30 * 1000);
 
   // Ligues jamais lancees — libere les passes bloques (toutes les 6 h + au boot).
   // Sans ce sweep, une saison restee 'registering' faute d'avoir atteint

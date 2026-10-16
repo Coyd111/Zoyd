@@ -119,7 +119,7 @@ teamSize: Number(season?.teamSize || 1),
       second: season?.podium?.second || null,
       third: season?.podium?.third || null,
     },
-    payout: season?.payout || buildLeaguePayout(registeredPlayers.length * LEAGUE_ENTRY_FEE),
+    payout: season?.payout || buildLeaguePayout(registeredPlayers.length * (Number(season?.entryFee) || LEAGUE_ENTRY_FEE)),
     schedule: {
       registrationOpens: season?.schedule?.registrationOpens || createdAt,
       registrationCloses: season?.schedule?.registrationCloses || null,
@@ -135,6 +135,9 @@ teamSize: Number(season?.teamSize || 1),
     // restaient bloques sans aucun chemin pour les liberer (meme piege que le
     // `name` perdu plus haut).
     pendingRefunds: Array.isArray(season?.pendingRefunds) ? season.pendingRefunds : [],
+    // Dette de GAINS : meme raison, meme piege. Sans ce champ au rechargement,
+    // un gain rate entre l'echec et la reprise serait perdu definitivement.
+    pendingPayouts: Array.isArray(season?.pendingPayouts) ? season.pendingPayouts : [],
     // Dettes closes sans remboursement possible (compte supprime). Conserve
     // pour la meme raison que pendingRefunds : la preuve doit survivre au
     // rechargement, sinon on perd le trace de ce qui n'a pas ete honore.
@@ -614,10 +617,29 @@ const getPlacementXp = (placement) => {
   return 30;
 };
 
-const applyLeagueSettlement = async (season) => {
-  if (season.status !== 'completed') return;
+/**
+ * Reglement des gains d'une saison de ligue terminee.
+ *
+ * Exporte pour etre teste directement : c'est le seul endroit ou la dette
+ * `pendingPayouts` nait, comme pour les tournois.
+ */
+export const applyLeagueSettlement = async (season) => {
+    if (season.status !== 'completed') return;
 
-  const { payout, podium } = season;
+    // Dette de GAINS.
+    //
+    // Avant, les quatre `catch` ne faisaient qu'un `log.error` : un versement
+    // rate (Supabase indisponible, timeout, contention) etait DEFINITIVEMENT
+    // perdu. Aucun cron ne reprenait les ligues — les deux sweeps existants ne
+    // traitent que les REMBOURSEMENTS — et le garde de route
+    // `season.status !== 'final'` interdisait toute resoumission apres solde.
+    //
+    // C'etait le SEUL des trois systemes de reglement sans reprise, alors que
+    // le fichier avait deja deux files de reprise pour les remboursements.
+    const pendingPayouts = [];
+    const consigner = (item) => pendingPayouts.push({ ...item, lastError: item.error, at: getNow() });
+
+    const { payout, podium } = season;
 
   if (podium.first) {
     try {
@@ -642,6 +664,7 @@ const applyLeagueSettlement = async (season) => {
       });
     } catch (err) {
       log.error('League settlement error for 1st place', { seasonId: season.id, userId: podium.first, error: err.message });
+      consigner({ kind: 'prize', place: 1, userId: podium.first, amount: payout.first });
     }
   }
 
@@ -661,6 +684,7 @@ const applyLeagueSettlement = async (season) => {
       });
     } catch (err) {
       log.error('League settlement error for 2nd place', { seasonId: season.id, userId: podium.second, error: err.message });
+      consigner({ kind: 'prize', place: 2, userId: podium.second, amount: payout.second });
     }
   }
 
@@ -680,6 +704,7 @@ const applyLeagueSettlement = async (season) => {
       });
     } catch (err) {
       log.error('League settlement error for 3rd place', { seasonId: season.id, userId: podium.third, error: err.message });
+      consigner({ kind: 'prize', place: 3, userId: podium.third, amount: payout.third });
     }
   }
 
@@ -699,11 +724,73 @@ const applyLeagueSettlement = async (season) => {
           });
         });
       }
-    } catch (err) {
+} catch (err) {
       log.error('League settlement error for player', { seasonId: season.id, playerId: player.userId, error: err.message });
+      consigner({ kind: 'forfeit', userId: player.userId, amount: 0 });
     }
   }
+
+  // La dette est ecrite AU REGLEMENT. Le declencheur est a usage unique, donc
+  // si cette liste disparait, la reprise n'aura jamais lieu.
+  season.pendingPayouts = [
+    ...(Array.isArray(season.pendingPayouts) ? season.pendingPayouts : []),
+    ...pendingPayouts,
+  ];
 };
+
+/**
+ * Reprise des GAINS de ligue non verses.
+ *
+ * Pendant de `retryPendingTournamentPayouts` : meme principe, meme fichier de
+ * reprise. Rejouer un versement est sans risque, la garde d'idempotence de
+ * `releaseWalletWinnings` ignorant tout gain deja verse pour cette saison.
+ */
+export const retryPendingLeaguePayouts = async (leagues) => {
+  const nextLeagues = cloneLeagues(leagues);
+  let retried = 0;
+  let remaining = 0;
+
+  for (const season of nextLeagues) {
+    const pending = Array.isArray(season.pendingPayouts) ? season.pendingPayouts : [];
+    if (pending.length === 0) continue;
+
+    const stillFailing = [];
+    for (const item of pending) {
+      try {
+        await withWalletMutex(item.userId, async () => {
+          if (item.kind === 'forfeit') {
+            await settleMatchLossWallet(item.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
+            return;
+          }
+          await releaseWalletWinnings(
+            item.userId,
+            roundAmount(item.amount),
+            season.id,
+            'prize_win',
+            `Gain ligue cycle ${season.cycleNumber} (${item.place}e place)`
+          );
+        });
+        retried += 1;
+      } catch (error) {
+        log.warn('League payout retry failed', { seasonId: season.id, userId: item.userId, error: error.message });
+        stillFailing.push({ ...item, lastError: error.message });
+      }
+    }
+    season.pendingPayouts = stillFailing;
+    remaining += stillFailing.length;
+    season.updatedAt = getNow();
+  }
+
+  if (retried > 0) log.warn('Gains de ligue rejoues', { retried, remaining });
+  return { leagues: nextLeagues, retried, remaining };
+};
+
+/** Total des gains de ligue en attente (sante). */
+export const countPendingLeaguePayouts = (leagues) =>
+  leagues.reduce(
+    (sum, s) => sum + (Array.isArray(s.pendingPayouts) ? s.pendingPayouts.length : 0),
+    0,
+  );
 
 // ─── Saisons restées en inscription : libère les passes bloqués ───────────
 //
@@ -881,16 +968,24 @@ export const updateLeagueSettingsOnServer = (seasons, actor, seasonId, settings)
 
   if (settings.entryFee !== undefined) {
     const newFee = Number(settings.entryFee);
-    if (newFee < 0 || newFee > 500) {
-      throw makeError('INVALID_REGISTRATION', 'Le pass d entree doit etre entre 0 et 500 ZC.');
+    // `NaN < 0` ET `NaN > 500` sont tous deux `false` : un `entryFee: "abc"`
+    // passait la validation et posait `season.entryFee = NaN`. Le pot comme
+    // tous les calculs deversaient alors `NaN` en silence.
+    if (!Number.isFinite(newFee) || newFee < 0 || newFee > 500) {
+      throw makeError('INVALID_REGISTRATION', 'Le pass d entree doit etre un nombre entre 0 et 500 ZC.');
     }
+    // Le tarif est arrondi a 2 decimales : la cagnotte est un produit
+    // (inscrits x tarif) alors que l argent bloque est une somme d arrondis par
+    // inscription. Au-dela de 2 decimales, les deux divergent de quelques
+    // centimes et le reglement cree ou detruit de la monnaie.
+    const roundedFee = roundAmount(newFee);
     // Anti-détournement : le tarif est figé dès la première inscription —
     // les mises déjà bloquées ne correspondraient plus au pot affiché.
-    if (season.registeredPlayers.length > 0 && newFee !== season.entryFee) {
+if (season.registeredPlayers.length > 0 && roundedFee !== season.entryFee) {
       throw makeError('REGISTRATION_CLOSED', 'Pass figé : des joueurs sont déjà inscrits à ce tarif.');
     }
-    season.entryFee = newFee;
-    season.payout = buildLeaguePayout(season.registeredPlayers.length * newFee);
+    season.entryFee = roundedFee;
+    season.payout = buildLeaguePayout(season.registeredPlayers.length * roundedFee);
   }
 
   if (settings.registrationOpens !== undefined) {

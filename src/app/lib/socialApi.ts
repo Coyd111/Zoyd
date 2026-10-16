@@ -43,8 +43,12 @@ export const reportServerUser = async (targetId: string, reason: string, descrip
 /**
  * Signalements tels que le serveur les stocke. `Report` (plus haut) est la
  * forme d'echange ; celle-ci est la forme de lecture pour la moderation.
+ *
+ * `reporterId` est nullable ici, alors qu'il est obligatoire dans `Report` :
+ * un signalement anonyme a un auteur null. On retire donc le champ de la
+ * base avant d'etendre, sinon l'heritage se contredit.
  */
-export interface StoredReport extends Report {
+export interface StoredReport extends Omit<Report, 'reporterId'> {
   reporterId: string | null;
   /** Gravite calculee par le serveur a l ecriture, jamais par le client. */
   severity?: string | null;

@@ -158,7 +158,7 @@ const AdminDashboardPage: React.FC = () => {
   const queueReports: QueueReport[] = reports.map((r) => ({
     id: r.id,
     targetId: r.targetId,
-    targetPseudo: players.find((p) => p.userId === r.targetId)?.pseudo || r.targetId,
+    targetPseudo: players.find((p) => p.primaryUserId === r.targetId)?.pseudo || r.targetId,
     reporterId: null,
     reporterPseudo: r.reporterPseudo || '',
     reason: r.reason,

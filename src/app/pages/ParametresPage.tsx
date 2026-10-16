@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
+// L icone `User` vient de lucide, le TYPE `User` d authStore : les deux
+// portaient le meme nom, ce que TypeScript refuse. Le type est donc aliase.
 import { AlertTriangle, Bell, Gamepad2, Save, Shield, User } from 'lucide-react';
 import { toast } from '../lib/toast';
-import { useAuthStore, type User as AuthUser, type User } from '../stores/authStore';
+import { useAuthStore, type User as AuthUser } from '../stores/authStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';

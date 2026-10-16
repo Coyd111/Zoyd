@@ -195,6 +195,40 @@ décrit.
 
 ---
 
+## ÉTAT APRÈS CORRECTIFS — 2026-10-16
+
+Cette section remplace les statuts « constatés » ci-dessus : les faits sont
+conservés pour la traçabilité, mais la colonne **état** fait foi.
+
+| # | Constat | État | Correctif |
+|---|---|---|---|
+| 1 | Battle Royale : aucun verrou sur les actions de salon | **corrigé** | `withBrLobbyMutex` (par salon) ; snapshot relu dans le verrou |
+| 2 | `settling` persisté après les versements | **corrigé** | persisté avant ; progression par versement ; `settling` reprenable, seul `finished` est refusé |
+| 3 | Tournois : boucle des arbitres sans `try/catch` | **corrigé** | `try/catch` aligné sur celle des capitaines |
+| 4 | Verrouillage contournable par le format du téléphone | **corrigé** | verrou sur l'identité résolue ; test de mutation |
+| 5 | Matches : règlement partiel jamais rejoué (`false` vs `'pending`) | **corrigé** | `payoutFlagAfterSettlement` ; cron rejoue ; garde anti-litige ; clôture d'un match `disputed` |
+| 6 | Matches : la commission d'arbitre gelait un match déjà payé | **corrigé** | erreurs d'arbitre séparées ; créance tracée dans `pendingArbiterFee` |
+| 7 | Tournois : aucune reprise des gains | **corrigé** | `pendingPayouts` + `retryPendingTournamentPayouts` + sweep cron |
+| 8 | Double crédit : `releaseWalletWinnings` sans idempotence | **corrigé** | clé `${type}:${competition}`, index dédié hors historique |
+| 9 | Idempotence bornée à 200 transactions | **corrigé, limite documentée** | index dédié ; l'hydratation relit l'historique, donc un gain sorti des 200 dernières reste inconnu après redémarrage |
+| 10 | `PATCH /api/auth/me` : téléphone non validé | **corrigé** | `isAnySupportedPhone` ; la clé unique vide ne peut plus être occupée |
+| 11 | `logout` consommait le quota `auth` | **corrigé** | groupe `auth_logout` |
+| 12 | `login` : oracle de temps sur l'existence d'un compte | **corrigé** | scrypt et lecture du compteur toujours exécutés (empreinte factice) |
+
+### Pistes vérifiées puis écartées
+
+- `getClientIp` et `X-Forwarded-For` : **non confirmée**. Le dernier saut est pris et le pair de confiance est vérifié (`rate-limiter.test.mjs`).
+- Codes d'activation indexés sur l'email brut : **bug réel, non exploitable**. `isActive` vaut toujours `true` (`insertUser:1015`), donc `activation-email` répond systématiquement `409`.
+
+### Limites assumées
+
+- **Reprise des gains de tournoi** : le lien « la dette est écrite au moment du règlement » n'est pas couvert par un test — `applyTournamentSettlement` est interne au moteur. La reprise, la conservation au rechargement et la sortie de file le sont.
+- **Quota de logout** : le test unitaire prouve que les compteurs sont séparés, mais rien ne prouve que la route appelle bien `auth_logout`. Un test E2E ne le pourrait pas : le rate limiter est assoupli en test automatisé.
+- **Idempotence après redémarrage** : voir ligne 9.
+- **Gain BR raté** : si le versement d'un gagnant échoue, la boucle des perdants le solde comme un perdant — il perd son gain. Aucun double gain, mais un gain perdu.
+
+---
+
 ## RAPPORTÉS, NON REVÉRIFIÉS — à traiter comme pistes
 
 Les lecteurs automatiques ont relevé ceci ; je ne l'ai **pas** confirmé et ne

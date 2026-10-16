@@ -34,31 +34,48 @@ export interface ToastOptions {
 const DEFAULT_SUCCESS_MS = 4500;
 const ERROR_MS = 8000;
 
+/**
+ * Second argument des toasts.
+ *
+ * La forme `string` est un raccourci pour `{ description }`. Elle est
+ * ACCEPTEE parce que c'est l'usage dominant : presque tous les appels Provide
+ * ecrivent `toast.error('Titre', 'Que s'est-il passe ?')`. Sans elle, chacun
+ * devait ecrire `{ description: '...' }`, et une chaine passee directement
+ * dehors compilait en erreur.
+ */
+export type ToastSecondArg = ToastOptions | string;
+
+const normalizeToastOptions = (options?: ToastSecondArg): ToastOptions => {
+  if (typeof options === 'string') return { description: options };
+  return options ?? {};
+};
+
 const push = (
   type: 'success' | 'error' | 'warning' | 'info',
   title: string,
-  options: ToastOptions = {},
+  options?: ToastSecondArg,
 ) => {
-  const duration = options.duration ?? (type === 'error' ? ERROR_MS : DEFAULT_SUCCESS_MS);
+  const opts = normalizeToastOptions(options);
+  const duration = opts.duration ?? (type === 'error' ? ERROR_MS : DEFAULT_SUCCESS_MS);
   useToastStore.getState().addToast({
     type,
     title: String(title),
-    message: options.description,
-    action: options.action,
-    id: options.id,
+    message: opts.description,
+    action: opts.action,
+    id: opts.id,
     duration,
   });
 };
 
 export const toast = {
-  success: (title: string, options?: ToastOptions) => push('success', title, options),
+  success: (title: string, options?: ToastSecondArg) => push('success', title, options),
   // Une erreur reste affichee plus longtemps : elle doit etre lisible.
-  error: (title: string, options?: ToastOptions) => push('error', title, options),
-  warning: (title: string, options?: ToastOptions) => push('warning', title, options),
-  info: (title: string, options?: ToastOptions) => push('info', title, options),
+  error: (title: string, options?: ToastSecondArg) => push('error', title, options),
+  warning: (title: string, options?: ToastSecondArg) => push('warning', title, options),
+  info: (title: string, options?: ToastSecondArg) => push('info', title, options),
   /** Attente en cours : pas d'auto-fermeture, a fermer via `dismiss()`. */
-  loading: (title: string, options?: ToastOptions) =>
-    push('info', title, { duration: 0, ...options }),
+  loading: (title: string, options?: ToastSecondArg) =>
+    push('info', title, { duration: 0, ...normalizeToastOptions(options) }),
   /** Ferme le(s) toast(s) ouvert(s), comme `toast.dismiss()` de sonner. */
   dismiss: () => useToastStore.getState().clearAll(),
 };

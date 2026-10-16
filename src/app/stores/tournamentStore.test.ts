@@ -16,9 +16,9 @@ import { useAuthStore } from './authStore';
 const tournament = (over: Record<string, unknown> = {}) =>
   ({
     id: 'TO-1',
-    title: 'Open #1',
-    format: 'solo',
-    status: 'open',
+    name: 'Open #1',
+    format: '1VS1',
+    status: 'recruiting',
     deviceRestriction: 'open',
     controllerRestriction: 'open',
     entries: [],
@@ -161,28 +161,28 @@ describe('tournamentStore — filtres de liste', () => {
   beforeEach(() => {
     reset();
     useTournamentStore.getState().replaceFromServer([
-      tournament({ id: 'SOLO', format: 'solo', status: 'open' }),
-      tournament({ id: 'DUO', format: 'duo', status: 'finished' }),
+      tournament({ id: 'SOLO', format: '1VS1', status: 'recruiting' }),
+      tournament({ id: 'DUO', format: '2VS2', status: 'completed' }),
     ]);
   });
 
   it('filtre sur le format', () => {
-    useTournamentStore.getState().setFilters({ format: 'duo' });
+    useTournamentStore.getState().setFilters({ format: '2VS2' });
     expect(useTournamentStore.getState().getFilteredTournaments().map((t) => t.id)).toEqual(['DUO']);
   });
 
   it('filtre sur le statut', () => {
-    useTournamentStore.getState().setFilters({ status: 'open' });
+    useTournamentStore.getState().setFilters({ status: 'recruiting' });
     expect(useTournamentStore.getState().getFilteredTournaments().map((t) => t.id)).toEqual(['SOLO']);
   });
 
   it('cumule les deux filtres', () => {
-    useTournamentStore.getState().setFilters({ format: 'duo', status: 'open' });
+    useTournamentStore.getState().setFilters({ format: '2VS2', status: 'recruiting' });
     expect(useTournamentStore.getState().getFilteredTournaments()).toHaveLength(0);
   });
 
   it('retrouve un tournoi par identite', () => {
-    expect(useTournamentStore.getState().getTournamentById('SOLO')?.title).toBe('Open #1');
+    expect(useTournamentStore.getState().getTournamentById('SOLO')?.name).toBe('Open #1');
   });
 
   it('renvoie undefined pour un identifiant inconnu', () => {

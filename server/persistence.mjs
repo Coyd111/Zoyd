@@ -1625,18 +1625,40 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
   // On resout donc le compte d'abord, et on verrouille sur son identifiant :
   // la cle devient independante du format saisi.
   const hash = memoryPasswordHashes.get(pk) || memoryPasswordHashes.get(ek) || memoryPasswordHashes.get(phk);
-  if (!hash) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
 
-  const [userId, passwordHash] = hash;
+  // ─── Cout constant : l existence d'un compte ne doit pas se lire au chrono ───
+  //
+  // Avant, `if (!hash) throw` partait AVANT toute derivation. Un compte
+  // inexistant repondait instantanement, un compte existant payait scrypt puis
+  // un aller-retour Supabase. L'ecart se mesurait : la page de connexion
+  // devenait un oracle d'enumeration, utilisable pour lister les pseudos et
+  // les emails inscrits.
+  //
+  // On paie donc TOUJOURS le meme travail avant de decider :
+  //   - scrypt, contre le vrai hash ou contre une empreinte factice ;
+  //   - la lecture du compteur d'echecs, avec une cle factice si besoin.
+  //
+  // C'est la parade classique : on ne rend pas l'information inaccessible, on
+  // rend les deux branches indiscernables.
+  const compteExiste = Boolean(hash);
+  const [userId, passwordHash] = hash || [null, DUMMY_PASSWORD_HASH];
+
+  const motDePasseValide = await verifyPassword(password, passwordHash);
+  const attempt = await readLoginAttempt(compteExiste ? userId : DUMMY_LOGIN_KEY);
+
+  // L'echec est rendu APRES le travail, jamais avant.
+  if (!compteExiste) {
+    throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
+  }
+
   const lookupKey = userId;
 
   // Verrouillage de compte : lu en base pour survivre a un redemarrage.
-  const attempt = await readLoginAttempt(lookupKey);
   if (attempt?.lockedUntil && Date.now() < attempt.lockedUntil) {
     throw makeError('ACCOUNT_LOCKED', 'Compte temporairement bloque. Reessayez dans 15 minutes.');
   }
 
-  if (!(await verifyPassword(password, passwordHash))) {
+  if (!motDePasseValide) {
     // Echec note : on persiste aussitot. Perdre ce compteur, c'est rendre le
     // verrouillage decoratif.
     const newCount = (attempt?.count || 0) + 1;
@@ -1663,6 +1685,11 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
 // Password hash lookup: identifier -> [userId, hash]
 const memoryPasswordHashes = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
+
+//Empreinte et cle factices, pour que le chemin « compte inexistant » paie
+// exactement le meme travail que le chemin « compte existant ».
+const DUMMY_PASSWORD_HASH = `${crypto.randomBytes(16).toString('hex')}:${crypto.randomBytes(64).toString('hex')}`;
+const DUMMY_LOGIN_KEY = '__absent__';
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const loginAttempts = new Map(); // identifier -> { count, lockedUntil }
 

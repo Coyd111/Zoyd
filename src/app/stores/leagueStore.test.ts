@@ -16,7 +16,7 @@ import { useAuthStore } from './authStore';
 const season = (over: Record<string, unknown> = {}) =>
   ({
     id: 'LS-1',
-    title: 'Saison 1',
+    name: 'Saison 1',
     status: 'registering',
     registeredPlayers: [],
     days: [],
@@ -51,18 +51,18 @@ describe('leagueStore — hydrateFromServer (fusion de deltas)', () => {
     } as never);
 
     useLeagueStore.getState().hydrateFromServer([
-      season({ id: 'LS-2', title: 'Saison 2 modifiee', updatedAt: '2026-01-11T00:00:00.000Z' }),
+      season({ id: 'LS-2', name: 'Saison 2 modifiee', updatedAt: '2026-01-11T00:00:00.000Z' }),
     ]);
 
     expect(useLeagueStore.getState().seasons.map((s) => s.id).sort()).toEqual(['LS-1', 'LS-2', 'LS-3']);
   });
 
   it('applique le changement venu du delta', () => {
-    useLeagueStore.setState({ seasons: [season({ id: 'LS-1', title: 'Avant' })] } as never);
+    useLeagueStore.setState({ seasons: [season({ id: 'LS-1', name: 'Avant' })] } as never);
     useLeagueStore.getState().hydrateFromServer([
-      season({ id: 'LS-1', title: 'Apres', updatedAt: '2026-02-01T00:00:00.000Z' }),
+      season({ id: 'LS-1', name: 'Apres', updatedAt: '2026-02-01T00:00:00.000Z' }),
     ]);
-    expect(useLeagueStore.getState().seasons[0].title).toBe('Apres');
+    expect(useLeagueStore.getState().seasons[0].name).toBe('Apres');
   });
 
   it('un delta plus ancien ne perime pas l etat local', () => {
@@ -127,13 +127,13 @@ describe('leagueStore — filtres', () => {
     reset();
     useLeagueStore.getState().replaceFromServer([
       season({ id: 'LS-1', status: 'registering' }),
-      season({ id: 'LS-2', status: 'live' }),
-      season({ id: 'LS-3', status: 'finished' }),
+      season({ id: 'LS-2', status: 'qualifying' }),
+      season({ id: 'LS-3', status: 'completed' }),
     ]);
   });
 
   it('filtre sur un statut precis', () => {
-    useLeagueStore.getState().setFilters({ status: 'live' });
+    useLeagueStore.getState().setFilters({ status: 'qualifying' });
     expect(useLeagueStore.getState().getFilteredSeasons().map((s) => s.id)).toEqual(['LS-2']);
   });
 
@@ -145,9 +145,9 @@ describe('leagueStore — filtres', () => {
   it('un filtre remplace le precedent sans ecraser les autres cles', () => {
     // `setFilters` fusionne : passer `{ status }` ne doit pas perdre une autre
     // cle de filtre introduite plus tard.
-    useLeagueStore.getState().setFilters({ status: 'live' });
-    useLeagueStore.getState().setFilters({ status: 'finished' });
-    expect(useLeagueStore.getState().filters.status).toBe('finished');
+    useLeagueStore.getState().setFilters({ status: 'qualifying' });
+    useLeagueStore.getState().setFilters({ status: 'completed' });
+    expect(useLeagueStore.getState().filters.status).toBe('completed');
   });
 });
 
@@ -157,7 +157,7 @@ describe('leagueStore — acces par identite', () => {
     setUser(undefined);
     useLeagueStore.getState().replaceFromServer([
       season({ id: 'LS-1', status: 'registering' }),
-      season({ id: 'LS-2', status: 'live' }),
+      season({ id: 'LS-2', status: 'qualifying' }),
       season({ id: 'LS-3', status: 'completed' }),
     ]);
   });

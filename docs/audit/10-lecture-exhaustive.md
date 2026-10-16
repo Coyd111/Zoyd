@@ -222,10 +222,12 @@ conservés pour la traçabilité, mais la colonne **état** fait foi.
 
 ### Limites assumées
 
-- **Reprise des gains de tournoi** : le lien « la dette est écrite au moment du règlement » n'est pas couvert par un test — `applyTournamentSettlement` est interne au moteur. La reprise, la conservation au rechargement et la sortie de file le sont.
-- **Quota de logout** : le test unitaire prouve que les compteurs sont séparés, mais rien ne prouve que la route appelle bien `auth_logout`. Un test E2E ne le pourrait pas : le rate limiter est assoupli en test automatisé.
-- **Idempotence après redémarrage** : voir ligne 9.
-- **Gain BR raté** : si le versement d'un gagnant échoue, la boucle des perdants le solde comme un perdant — il perd son gain. Aucun double gain, mais un gain perdu.
+Aucune des quatre limites signalées à l'étape précédente ne subsiste :
+
+- **Idempotence après redémarrage** : **corrigée**. Les clés vivent dans `wallet.winningsKeys`, donc dans le payload du compte — ni plafonnées comme l'historique de 200 entrées, ni perdues au redémarrage. `hydrateWinningsKeys` se recharge dessus, avec l'historique en repli pour les portefeuilles plus anciens.
+- **Reprise des gains de tournoi** : **corrigée**. `applyTournamentSettlement` est exportée et testée directement ; c'est le seul endroit où la dette naît, c'est donc désormais couvert.
+- **Quota de logout** : **corrigé**. Le test appelle la vraie fonction de route avec l'assouplissement de test neutralisé (`NODE_ENV=production`), seul niveau qui relie le groupe choisi par la route à l'effet sur le quota de `login`. Le test E2E, lui, ne prouve rien — le rate limiter y est désactivé — et ne pretended donc plus le contraire.
+- **Gain BR raté** : **corrigé**. Un gagnant dont le versement échoue n'est plus déclassé en perdant : la boucle des perdants l'écarte explicitement, son dossier reste ouvert et la reprise ne le sert que pour sa prime.
 
 ---
 

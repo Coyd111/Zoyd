@@ -185,16 +185,16 @@ describe('Constat 3 — une erreur de versement n arrete pas les autres', () => 
     await brEngine.settleBrLobbyOnServer([persisted], admin, lobby.id);
 
     const parDestinataire = versePar(releaseWalletWinnings);
-    // Personne n'est re-paye. C'est LA garantie du constat 2 : l'arbitre peut
-    // relancer sans creer d'argent.
-    //
-    // Note sur p2 : son gain avait echoue, donc il n'etait pas marque verse par
-    // la boucle des gagnants. La boucle des perdants l'a ensuite solde comme un
-    // perdant (pass consomme). Un gain rate degrade donc en pass perdu plutot
-    // qu'en paiement fantome — un default a corriger separement, mais qui ne
-    // double-verse rien.
-    for (const [key, count] of parDestinataire) {
-      expect(count, `${key} ne doit etre verse qu une seule fois`).toBe(1);
+
+    // Un gagnant dont le gain avait echoue est RELANCE : il avait paye son
+    // pass pour une prime, il doit la recevoir.
+    expect(parDestinataire.get('p2:prize_win'), 'p2 doit etre servi au second essai').toBe(2);
+    expect(settleMatchLossWallet.mock.calls.some((c) => c[0] === 'p2'),
+      'p2 ne doit jamais etre solde comme un perdant : il a gagne').toBe(false);
+
+    // Les gains deja verses ne sont pas rejoues.
+    for (const joueur of ['p1', 'p3', 'p4', 'p5']) {
+      expect(parDestinataire.get(`${joueur}:prize_win`)).toBe(1);
     }
   });
 });

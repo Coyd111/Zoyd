@@ -593,7 +593,16 @@ const getPlacementXp = (placement) => {
   return 45;
 };
 
-const applyTournamentSettlement = async (tournament) => {
+/**
+ * Reglement des gains d'un tournoi termine.
+ *
+ * Exporte pour etre teste directement : c'est le SEUL endroit ou la dette
+ * "pendingPayouts" est ecrite, donc le seul lien critique a couvrir. Tant
+ * qu'elle etait interne, un test aurait du monter un tournoi complet pour y
+ * acceder - et ce lien, sans test, pouvait disparaitre sans que rien ne le
+ * signale. Les appelants internes n'ont pas change.
+ */
+export const applyTournamentSettlement = async (tournament) => {
     if (tournament.status !== 'completed') return;
 
     // Dette de GAINS, en miroir de `pendingRefunds`.

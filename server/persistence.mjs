@@ -139,6 +139,16 @@ export const normalizeWalletSnapshot = (wallet) => ({
   pendingWinnings: roundAmount(wallet?.pendingWinnings ?? 0),
   lockedEntries: wallet?.lockedEntries && typeof wallet.lockedEntries === 'object' ? wallet.lockedEntries : {},
   transactions: Array.isArray(wallet?.transactions) ? wallet.transactions : [],
+  // Cles d'idempotence des gains, TENUES A PART des transactions.
+  //
+  // L'historique est plafonne a 200 entrees : une cle qui y logeait disparaissait
+  // chez un joueur actif, et la garde d'idempotence devenait inopérante. Ce
+  // tableau n'est pas plafonne de la meme facon et n'est pas borne par
+  // l'activite du joueur : un gain par competition et par type.
+  //
+  // Il vit DANS le portefeuille, donc dans le payload du compte en base : il
+  // survit a un redemarrage, ce que ne faisait pas l historique.
+  winningsKeys: Array.isArray(wallet?.winningsKeys) ? wallet.winningsKeys.slice(-MAX_TRACKED_WINNINGS_KEYS) : [],
 });
 
 /**
@@ -1526,11 +1536,19 @@ const getWinningsKeys = (userId) => {
   return memoryWinningsKeys.get(userId);
 };
 
-/** Un gain de cette cle a-t-il deja ete verse a ce joueur ? */
-export const hasSettledWinningsKey = (userId, key, transactions = []) => {
+/**
+ * Un gain de cette cle a-t-il deja ete verse a ce joueur ?
+ *
+ * La source de verite est `wallet.winningsKeys`, qui vit dans le payload du
+ * compte : il survit a un redemarrage et n'est pas plafonne comme
+ * l'historique. L'historique n'est consulte qu'en repli, pour un portefeuille
+ * enregistre avant que ce champ existe.
+ */
+export const hasSettledWinningsKey = (userId, key, wallet = {}) => {
   if (!key) return false;
+  if (Array.isArray(wallet?.winningsKeys) && wallet.winningsKeys.includes(key)) return true;
   const inIndex = getWinningsKeys(userId).has(key);
-  const inHistory = (Array.isArray(transactions) ? transactions : [])
+  const inHistory = (Array.isArray(wallet?.transactions) ? wallet.transactions : [])
     .some((tx) => tx?.status === 'completed'
       && WINNINGS_TX_TYPES.has(tx?.type)
       && `${tx.type}:${tx.matchId}` === key);
@@ -1551,6 +1569,12 @@ export const trackWinningsKey = (userId, key) => {
 export const hydrateWinningsKeys = () => {
   memoryWinningsKeys.clear();
   for (const [userId, user] of memoryUsers.entries()) {
+    const winningsKeys = user?.wallet?.winningsKeys;
+    if (Array.isArray(winningsKeys)) {
+      for (const key of winningsKeys) trackWinningsKey(userId, key);
+    }
+    // Repli pour les portefeuilles enregistres avant l existence de ce champ :
+    // seules les transactions encore visibles dans la fenetre de 200.
     const txs = user?.wallet?.transactions;
     if (!Array.isArray(txs)) continue;
     for (const tx of txs) {

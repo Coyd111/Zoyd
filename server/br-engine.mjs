@@ -836,8 +836,24 @@ if (arbiter.userId && arbiter.amount > 0 && !lobby.arbiterSettled) {
     }
 
 // 4. Perdants et absents : le pass est consomme (penalite), pas rembourse.
+    //
+    // Un gagnant dont le GAIN a echoue est explicitement ecarte.
+    //
+    // Il n'est pas marque `settled` — son versement a echoue — donc cette
+    // boucle le prenait pour un perdant et lui CONSUMAIT son pass. Il perdait
+    // donc sa prime, sans avoir jamais recu ni gain ni remboursement. Aucun
+    // double gain, mais une perte seche pour le joueur, et un salon affiche
+    // « regle » alors qu'une prime n'a jamais ete versee.
+    //
+    // L ecarter laisse son dossier ouvert : le salon reste `settling`, et la
+    // reprise ne le touchera que pour lui servir SA prime.
+    const primesEnEchec = new Set(settlementErrors
+      .filter((e) => e.step === 'prize')
+      .map((e) => e.userId));
+
     for (const player of lobby.players) {
       if (player.settled) continue;
+      if (primesEnEchec.has(player.userId)) continue;
       const isAbsent = player.absent;
       try {
         await withWalletMutex(player.userId, async () => {

@@ -185,6 +185,53 @@ const tournoiSolde = () => ({
 });
 
 describe('Tournois — les gains non verses se reprennent', () => {
+});
+
+describe('Tournois — la dette est ecrite AU moment du reglement', () => {
+  it('un gain en echec est consigne dans `pendingPayouts`', async () => {
+    // C'est le seul endroit ou la dette nait. Si ce lien disparait, le systeme
+    // complet de reprise ne sert a rien : la liste resterait vide.
+    const tournoi = tournoiSolde();
+    releaseWalletWinnings.mockImplementation(async (userId) => {
+      if (userId === 'c1') throw new Error('SUPABASE_DOWN');
+    });
+
+    await tournamentEngine.applyTournamentSettlement(tournoi);
+
+    const dettes = tournoi.pendingPayouts || [];
+    expect(dettes, 'le gain rate doit etre consigne').toHaveLength(1);
+    expect(dettes[0].captainId).toBe('c1');
+    expect(dettes[0].kind).toBe('prize');
+    expect(dettes[0].amount).toBe(1000);
+  });
+
+  it('un gain qui aboutit ne laisse PAS de dette', async () => {
+    const tournoi = tournoiSolde();
+
+    await tournamentEngine.applyTournamentSettlement(tournoi);
+
+    expect(tournoi.pendingPayouts).toHaveLength(0);
+  });
+
+  it('la dette s accumule et se dedoublonne jamais d elle-meme', async () => {
+    const tournoi = tournoiSolde();
+    releaseWalletWinnings.mockImplementation(async (userId) => {
+      if (userId === 'c1') throw new Error('SUPABASE_DOWN');
+    });
+
+    await tournamentEngine.applyTournamentSettlement(tournoi);
+    const premiere = (tournoi.pendingPayouts || []).length;
+
+    // Rejeu du reglement alors que la dette existe deja.
+    releaseWalletWinnings.mockImplementation(async () => {});
+    await tournamentEngine.applyTournamentSettlement(tournoi);
+
+    // La reprise est separee de l ecriture de la dette : rejouer le
+    // reglement ne doit pas empiler une copie du meme gain rate.
+    expect(premiere).toBe(1);
+    expect(tournoi.pendingPayouts.length).toBe(1);
+  });
+
   it('la dette survit au rechargement du tournoi', () => {
     // C est precisement ce qui manquait : sans la normalisation, un redemarrage
     // entre l echec et la reprise effacait la dette.

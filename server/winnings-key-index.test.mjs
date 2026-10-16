@@ -132,28 +132,33 @@ describe("L'index des cles de gain ne depend pas de l'historique", () => {
     expect(getWalletSnapshot(user.id).cashBalance).toBe(400);
   });
 
-  it('LIMITE CONNUE : au-dela de 200 transactions, un redemarrage perd la cle', async () => {
-    // Ce test ne passe pas, et il ne DOIT pas etre "corrige" : il borne la
-    // garantie. L'hydratation reconstruit l'index depuis l'historique du
-    // portefeuille, lui-meme plafonne a 200 entrees. Un gain sorti de cette
-    // fenetre est donc, apres redemarrage, inconnu du serveur.
+  it('la cle survit a un redemarrage AU-DELA de 200 transactions', async () => {
+    // C'etait la limite documentee : l'index se reconstruisait depuis
+    // l'historique, plafonne a 200. Un gain sorti de cette fenetre devenait
+    // inconnu apres redemarrage, et la garde d'idempotence redevenait
+    // inopérante — donc recreditable.
     //
-    // Consequence reelle : la protection tient sans probleme pendant la vie du
-    // processus (c'est la que se joue le double versement), mais ne couvre
-    // pas le cas « plus de 200 transactions PUIS redemarrage PUIS rejeu ». La
-    // parade durable est une colonne dediee en base, pas un index memoire.
+    // La cle vit desormais dans `wallet.winningsKeys`, donc dans le payload du
+    // compte : ni plafonne, ni perdu.
     const user = await nouveauCompte();
     await releaseWalletWinnings(user.id, 400, 'BR-PERDU', 'prize_win', 'Gain BR');
     await noyerLHistorique(user.id, 250);
 
+    // La transaction a disparu des 200 dernieres...
+    const cleDansHistorique = getWalletSnapshot(user.id).transactions
+      .some((tx) => `${tx.type}:${tx.matchId}` === 'prize_win:BR-PERDU');
+    expect(cleDansHistorique, 'la transaction est bien sortie de la fenetre').toBe(false);
+
+    // ... mais la cle, elle, a survecu au redemarrage.
     hydrateWinningsKeys();
 
-    const retrouve = hasSettledWinningsKey(
-      user.id,
-      'prize_win:BR-PERDU',
-      getWalletSnapshot(user.id).transactions,
-    );
-    expect(retrouve, 'limite documentee : la cle est perdue avec le redemarrage').toBe(false);
+    expect(
+      hasSettledWinningsKey(user.id, 'prize_win:BR-PERDU', getWalletSnapshot(user.id)),
+      'la cle doit survivre hors de l historique'
+    ).toBe(true);
+
+    await releaseWalletWinnings(user.id, 400, 'BR-PERDU', 'prize_win', 'Gain BR');
+    expect(getWalletSnapshot(user.id).cashBalance, 'le gain ne doit pas etre recredite').toBe(400);
   });
 });
 

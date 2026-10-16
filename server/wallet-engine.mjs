@@ -313,10 +313,9 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
   // solde au journal.
   const idempotencyKey = options.idempotencyKey || `${type}:${matchId}`;
   return (await updateWalletSnapshot(userId, (wallet) => {
-    // La garde s'appuie sur un index DEDIE, pas seulement sur l'historique :
-    // celui-ci est plafonne a 200 entrees, donc la cle en disparaitrait chez un
-    // joueur tres actif et la garde redeviendrait inopérante.
-    const dejaVerse = hasSettledWinningsKey(userId, idempotencyKey, wallet.transactions);
+    // La garde s'appuie sur `wallet.winningsKeys`, qui vit dans le payload du
+    // compte : ni plafonne comme l'historique, ni perdu au redemarrage.
+    const dejaVerse = hasSettledWinningsKey(userId, idempotencyKey, wallet);
     if (dejaVerse) {
       // Versement deja effectue : on rend le portefeuille intact. Rethrow
       // n'est pas une option : l'appelant (reglement BR, ligue, tournoi)
@@ -335,10 +334,10 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
     const bonusRestore = Math.min(stakeBonus, safeAmount);
 const cashCredit = roundAmount(safeAmount - bonusRestore);
 
-      // L'index est alimente AVANT que l'ecriture ne parte. Si l'ecriture
-      // echoue ensuite, la cle reste tracee et le prochain essai ne recredite
-      // pas. Tracer apres coup laisserait au contraire une fenetre de double
-      // credit — celle-la meme qu on cherche a fermer.
+      // La cle est inscrite DANS le portefeuille, donc ecriture en base avec
+      // lui : c est ce qui la fait survivre a un redemarrage. L index memoire
+      // est alimente dans la foullee, avant l ecriture, pour qu un echec
+      // ulterieur ne laisse pas la porte ouverte.
       trackWinningsKey(userId, idempotencyKey);
 
       return withTransaction(
@@ -348,6 +347,7 @@ const cashCredit = roundAmount(safeAmount - bonusRestore);
         bonusBalance: roundAmount(wallet.bonusBalance + bonusRestore),
         lockedBalance: roundAmount(Math.max(0, wallet.lockedBalance - releasedAmount)),
         lockedEntries: nextLockedEntries,
+        winningsKeys: [...(Array.isArray(wallet.winningsKeys) ? wallet.winningsKeys : []), idempotencyKey],
       },
       {
         type,

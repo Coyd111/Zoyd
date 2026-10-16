@@ -175,6 +175,19 @@ if (req.method === 'POST' && pathname === '/api/wallet/withdraw') {
   let debitedWallet = null;
   let withdrawTxId = null;
   let isDuplicate = false;
+  // `return true` DANS le callback ne sort PAS de la requete : le mutex renvoie
+  // la valeur du callback, mais la route l'ignore et l'execution se poursuit
+  // apres le bloc.
+  //
+  // Consequence sur la branche 409 : ni `isDuplicate` ni `debitedWallet` n'etaient
+  // positionnes, donc le code tombait ensuite sur `initiateFedaPayPayout` — un
+  // SECOND vrai transfert Mobile Money, apres avoir repondu « contacte le
+  // support ». Le joueur recevait a la fois la mise en garde et l'argent.
+  //
+  // C'est exactement l'etat vise par le garde : une premiere requete qui a
+  // debite sans avoir repondu (crash entre le debit et le tag). Relire la meme
+  // cle declenchait un second envoi.
+  let abandonner = false;
   try {
 await withWalletMutex(session.user.id, async () => {
       // Check idempotency INSIDE mutex to prevent TOCTOU race.
@@ -202,6 +215,9 @@ await withWalletMutex(session.user.id, async () => {
               code: 'PAYOUT_PENDING_REVIEW',
               idempotencyKey: cleanKey,
             }, req);
+            // Marque l abandon : le `return true` ci-dessous ne quitte que le
+            // callback du mutex, pas la requete.
+            abandonner = true;
             return true;
           }
           debitedWallet = getServerWallet(session.user.id);
@@ -220,6 +236,9 @@ await withWalletMutex(session.user.id, async () => {
     respondMappedError(res, error);
     return true;
   }
+  // La reponse 409 a deja ete envoyee DANS le mutex. Sans cette sortie, le code
+  // tombait sur `initiateFedaPayPayout` : second transfert apres avoir refuse.
+  if (abandonner) return true;
   if (isDuplicate) {
     respondJson(res, 200, {
       ok: true,

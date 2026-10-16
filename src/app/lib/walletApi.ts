@@ -4,16 +4,16 @@ import type { TransactionStatus, TransactionType } from '../stores/walletStore';
 
 export interface WalletTransaction {
   id: string;
-  /** Union volontairement reprise du store : le serveur n'émet que ces
+  /** Union volontairement reprise du store : le serveur n'Ã©met que ces
    *  valeurs, et un `string` large rendait le mapping non assignable
-   *  (le store forçait un cast). */
+   *  (le store forÃ§ait un cast). */
   type: TransactionType;
   amount: number;
   description?: string;
   status: TransactionStatus;
   metadata?: Record<string, unknown>;
-  /** Champ écrit par le serveur (`buildTransaction`). `created_at` est
-   *  toléré pour les lignes plus anciennes. */
+  /** Champ Ã©crit par le serveur (`buildTransaction`). `created_at` est
+   *  tolÃ©rÃ© pour les lignes plus anciennes. */
   timestamp?: string;
   created_at?: string;
 }
@@ -32,7 +32,7 @@ export interface WalletSnapshot {
  *
  * Le taux etait code en dur a deux endroits dans le front, et le store
  * recalculait le net localement apres un retrait reussi : la notification
- * « X net envoyes » pouvait differer du montant reellement verse par FedaPay.
+ * Â« X net envoyes Â» pouvait differer du montant reellement verse par FedaPay.
  */
 export interface WithdrawalPolicy {
   feeRate: number;
@@ -68,28 +68,53 @@ export const depositWalletBalance = async (amount: number, method: string): Prom
 };
 
 /**
- * Retire des fonds. `idempotencyKey` est générée ici et non par l'appelant :
- * un double-clic ou un retry réseau réutilise la même clé, donc le serveur
- * détecte la duplication (un seul débit, un seul payout FedaPay).
+ * Retire des fonds. `idempotencyKey` est gÃ©nÃ©rÃ©e ici et non par l'appelant :
+ * un double-clic ou un retry rÃ©seau rÃ©utilise la mÃªme clÃ©, donc le serveur
+ * dÃ©tecte la duplication (un seul dÃ©bit, un seul payout FedaPay).
  */
+let pendingWithdrawalKey: string | null = null;
+
 export const withdrawWalletBalance = async (
   amount: number,
   method: string,
   phone: string,
   country?: string
 ): Promise<WalletResponse> => {
-  const idempotencyKey =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `k-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  return authorizedPost<WalletResponse>('/api/wallet/withdraw', {
+  // La cle est CONSERVEE tant que le retrait n'a pas abouti.
+  //
+  // Elle etait regeneree a chaque appel, alors que le commentaire affirmait
+  // l'inverse : un double-clic ou un retry reseau produisait donc deux cles,
+  // donc deux debits et deux payouts. Tout le dispositif d'idempotence du
+  // serveur etait inerte depuis le client.
+  //
+  // La cle n'est Renewee qu'apres un SUCCES : un nouvel essai apres un echec
+  // doit rÃ©utiliser la meme, sinon le serveur voit une nouvelle intention et
+  // debit legitimately. C'est exactement ce que la cle sert a distinguer.
+  if (!pendingWithdrawalKey) {
+    pendingWithdrawalKey =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `k-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+  const idempotencyKey = pendingWithdrawalKey;
+  const response = await authorizedPost<WalletResponse>('/api/wallet/withdraw', {
     amount,
     method,
     phone,
     country,
     idempotencyKey,
-  });
+  }).then(
+    (ok) => { pendingWithdrawalKey = null; return ok; },
+    (erreur) => {
+      // Echec : on garde la cle pour qu un reessai ne debite pas deux fois.
+      throw erreur;
+    },
+  );
+  return response;
 };
+
+/** Vide la cle en attente (tests, ou retrait abandonne definitivement). */
+export const resetPendingWithdrawalKey = () => { pendingWithdrawalKey = null; };
 
 export const verifyFedaPayTransaction = async (transactionId: number | string): Promise<WalletResponse> => {
   return authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });

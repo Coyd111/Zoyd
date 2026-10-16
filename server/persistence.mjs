@@ -783,11 +783,27 @@ export const getHealthInfo = () => ({
     sanctionsPersisted,
   loginAttemptRows: loginAttemptsRows,
   loginAttemptError: loginAttemptsError,
+
   // Quel commit tourne EN CE MOMENT. Sans ca, un deploiement manuel en
   // retard est indiscernable d'un probleme : on lisait un log de deploiement
   // d'une version ancienne et on en concluait que le correctif n'etait pas
   // en ligne. Render injecte RENDER_GIT_COMMIT / RENDER_GIT_BRANCH.
-  deployedCommit: process.env.RENDER_GIT_COMMIT || null,
+  deployedCommit: process.env.RENDER_GIT_COMMIT || null,  // Dettes de reglement en attente, par moteur.
+  //
+  // Elles n'etaient visibles que dans les logs : une dette qui s'eternisait —
+  // un gain qui ne se verse plus parce que le compte du joueur est en erreur —
+  // n'apparaitrait nulle part. Le tableau se lit dans l'etat en memoire, qui
+  // est ce que le cron de reprise relit.
+  //
+  // Une dette non nulle n est pas une panne : c'est une reprise en cours. Mais
+  // elle doit etre CONSULTABLE, sinon le seul moyen de la voir est de chercher
+  // dans les journaux.
+  pendingSettlementDebts: {
+    matches: countPendingMatchDebts(),
+    leagues: countPendingLeagueDebts(),
+    tournaments: countPendingTournamentDebts(),
+  },
+
   deployedCommitShort: process.env.RENDER_GIT_COMMIT?.slice(0, 7) || null,
   deployedBranch: process.env.RENDER_GIT_BRANCH || null,
 });
@@ -2952,6 +2968,32 @@ export const getStateCollection = (kind) => {
   if (!kindMap) return [];
   return Array.from(kindMap.values());
 };
+
+/**
+ * Dettes de reglement en attente, lues dans l'etat en memoire.
+ *
+ * Le comptage vit ICI, et non dans les moteurs, pour deux raisons : `/api/health`
+ * est produit par `persistence`, donc importer les moteurs creerait un cycle ;
+ * et c'est de toute facon la MEMOIRE que les crons de reprise relisent — c'est
+ * donc l'etat qu'il faut observer, pas une source de verite parallele.
+ *
+ * `pendingPayouts` = gains non verses. `pendingRefunds` = remboursements non
+ * honores. Les deux sont des dettes : de l'argent attendu par un joueur.
+ */
+const countPendingDebts = (kind) => {
+  let total = 0;
+  for (const item of getStateCollection(kind)) {
+    const payouts = Array.isArray(item?.pendingPayouts) ? item.pendingPayouts.length : 0;
+    const refunds = Array.isArray(item?.pendingRefunds) ? item.pendingRefunds.length : 0;
+    const uncollectable = Array.isArray(item?.uncollectableRefunds) ? item.uncollectableRefunds.length : 0;
+    total += payouts + refunds + uncollectable;
+  }
+  return total;
+};
+
+const countPendingMatchDebts = () => countPendingDebts('matches');
+const countPendingLeagueDebts = () => countPendingDebts('leagues');
+const countPendingTournamentDebts = () => countPendingDebts('tournaments');
 
 // O(1) single entity lookup
 export const getStateEntity = (kind, entityId) => {

@@ -1073,6 +1073,26 @@ export const refundLeaguePlayerOnServer = async (seasons, actor, seasonId, userI
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
 
+  // Garde de statut :(absente ici, presente partout ailleurs)
+  //
+  // `leaveLeagueSeasonOnServer`, `updateLeagueSettingsOnServer` et
+  // `reassignPlayerOnServer` verifient tous `season.status`. Pas celui-ci.
+  //
+  // Sans elle, un admin pouvait rembourser un joueur d'une saison `qualifying`,
+  // `final` ou `completed`. Sur une saison soldee, `refundLockedEntry` ne fait
+  // RIEN — la reservation a deja ete consommee par le reglement — donc aucun ZC
+  // ne bougeait, mais le joueur etait retire et surtout `season.payout` etait
+  // RECALCULE A LA BAISSE : l ecran `/payments` affichait alors une cagnotte
+  // differente de celle reellement versee, et le livre ne se reconciliait plus.
+  //
+  // La route repondait 200 OK meme quand aucun ZC n avait bouge.
+  // `cancelled` est egalement terminale : son remboursement de masse est deja
+  // traite par `retryPendingLeagueRefunds`. Un remboursement ponctuel ici
+  // recalculerait le pot d une saison cloturee, pour rien.
+  if (season.status === 'completed' || season.status === 'cancelled') {
+    throw makeError('MATCH_CLOSED', 'Saison deja soldee ou annulee : un remboursement manuel n est pas possible.');
+  }
+
   const playerIndex = season.registeredPlayers.findIndex((p) => p.userId === userId);
   if (playerIndex === -1) throw makeError('NOT_JOINED', 'Ce joueur n est pas inscrit a cette ligue.');
 

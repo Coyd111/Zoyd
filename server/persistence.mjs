@@ -174,6 +174,37 @@ const numberOr = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const MAX_TRACKED_SETTLEMENT_KEYS = 500;
+
+/**
+ * Applique les effets de bord d'un reglement UNE FOIS par competition.
+ *
+ * L'argent avait deja sa garde d'idempotence (`winningsKeys`), mais pas les
+ * STATISTIQUES : `patchUserFor*Outcome` appliquait son updater sans condition.
+ * Un reglement rejoue — apres un echec de persistance, une resoumission admin,
+ * une reprise de cron — recredite zero ZC mais remettait `wins`,
+ * `totalEarnings`, l'elo, `leaguesPlayed`, `tournamentsWon` et l'XP une seconde
+ * fois. Le portefeuille etait sur, le classement faux.
+ *
+ * Meme principe que pour les gains : une cle posee dans le payload du compte,
+ * donc ni plafonnee comme l historique, ni perdue au redemarrage.
+ *
+ * @param {string} userId
+ * @param {string} key - unique par joueur ET par competition (ex. `match:M-42`)
+ * @param {(user: object) => object} updater
+ */
+export const applyUserSettlementOnce = async (userId, key, updater) => {
+  if (!userId || !key) return null;
+  if (!getUserById(userId)) return null;
+  return await updateUserAccount(userId, (user) => {
+    const deja = Array.isArray(user.settlementKeys) ? user.settlementKeys : [];
+    if (deja.includes(key)) return user;
+    const next = updater(structuredClone(user));
+    next.settlementKeys = [...deja, key].slice(-MAX_TRACKED_SETTLEMENT_KEYS);
+    return next;
+  });
+};
+
 export const sanitizeUserPayload = (payload) => {
   if (!payload) return null;
   const wallet = normalizeWalletSnapshot(payload.wallet);

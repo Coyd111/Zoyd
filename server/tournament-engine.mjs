@@ -1,4 +1,4 @@
-import { getUserById, updateUserAccount, sanitizeText, getUserByExactPseudo } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce, getUserByExactPseudo } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 import { createLogger } from './logger.mjs';
@@ -631,7 +631,7 @@ export const applyTournamentSettlement = async (tournament) => {
 
           const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
           for (const userId of memberUserIds) {
-            await patchUserForTournamentOutcome(userId, (user) => {
+            await applyUserSettlementOnce(userId, `tournament:${tournament.id}:entry`, (user) => {
               const isCaptain = userId === entry.captainId;
               const nextStats = {
                 ...user.stats,

@@ -15,7 +15,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * ligue dans tout le depot.
  */
 
-vi.mock('./persistence.mjs', () => ({
+vi.mock('./persistence.mjs', () => ({  // Applique une seule fois par competition : c'est le comportement reel.
+  // Sans lui dans le mock, le test echouerait sur un appel a undefined.
+  applyUserSettlementOnce: vi.fn(async (userId, _key, updater) => updater({ id: userId, stats: {}, progression: {} })),
+
   // `requireActorUser` resout le compte par id : il faut donc que le mock
   // renvoie un VRAI compte admin, sans quoi le role est undefined et la
   // fonction echoue sur FORBIDDEN avant meme d'atteindre la validation teste.

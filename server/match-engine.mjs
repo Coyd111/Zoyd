@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { createLogger } from './logger.mjs';
-import { getUserById, updateUserAccount, sanitizeText, DEFAULT_TRUST_SCORE } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce, DEFAULT_TRUST_SCORE } from './persistence.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
@@ -268,7 +268,7 @@ const applyResultSettlement = async (match, result) => {
             player.userId, amount, match.id, 'prize_win',
             `Gain du match ${match.rules?.mode || match.format} / ${match.rules?.map || 'Libre'}`
           );
-          await patchUserForMatchOutcome(player.userId, (user) => {
+          await applyUserSettlementOnce(player.userId, `match:${match.id}:win`, (user) => {
             const nextStats = {
               ...user.stats,
               wins: Number(user.stats?.wins || 0) + 1,
@@ -292,7 +292,7 @@ const applyResultSettlement = async (match, result) => {
           });
         } else {
           await settleMatchLossWallet(player.userId, match.id, `Pass consomme apres la fin du match ${match.id}`);
-          await patchUserForMatchOutcome(player.userId, (user) => {
+          await applyUserSettlementOnce(player.userId, `match:${match.id}:result`, (user) => {
             const nextStats = {
               ...user.stats,
               losses: Number(user.stats?.losses || 0) + 1,

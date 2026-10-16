@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('./persistence.mjs', () => ({
+vi.mock('./persistence.mjs', () => ({  // Applique une seule fois par competition : c'est le comportement reel.
+  // Sans lui dans le mock, le test echouerait sur un appel a undefined.
+  applyUserSettlementOnce: vi.fn(async (userId, _key, updater) => updater({ id: userId, stats: {}, progression: {} })),
+
 getUserById: vi.fn(),
 updateUserAccount: vi.fn(),
 // normalizeLeagueSeason sanitize le nom de la ligue.

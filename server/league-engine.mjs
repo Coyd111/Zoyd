@@ -1,5 +1,5 @@
 import { createLogger } from './logger.mjs';
-import { getUserById, updateUserAccount, sanitizeText } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce } from './persistence.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
@@ -286,23 +286,45 @@ export const joinLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
     throw makeError('ALREADY_JOINED', 'Tu es deja inscrit a cette ligue.');
   }
 
-  await withWalletMutex(actorUser.id, async () => {
+await withWalletMutex(actorUser.id, async () => {
     await lockEntryFee(actorUser.id, season.entryFee, seasonId);
   });
 
-  season.registeredPlayers.push({
-    userId: actorUser.id,
-    pseudo: actorUser.pseudo,
-    joinedAt: getNow(),
-    // Etat de paiement fige (voir getLeaguePayments) : le verrouillage est
-    // libere au règlement, `paid` doit survivre a cette liberation.
-    paid: true,
-    entryFee: season.entryFee,
-    paidAt: getNow(),
-  });
+  // Le verrou est libere si l inscription echoue apres coup.
+  //
+  // Avant, `lockEntryFee` puis `registeredPlayers.push` puis `saveLeagues`
+  // etaient trois etapes sans filet. Un plantage entre les deux — erreur de
+  // persistance, proces arrete, timeout — laissait les ZC bloques chez un joueur
+  // ABSENT de la liste. Le sweeper ne parcourt que `registeredPlayers`, donc il
+  // ne voyait pas ce cas, et `lockEntryFee` renvoyant `ALREADY_LOCKED`, ce
+  // joueur ne pouvait meme plus se reinscrire : ses ZC etaient perdus a jamais.
+  try {
+    season.registeredPlayers.push({
+      userId: actorUser.id,
+      pseudo: actorUser.pseudo,
+      joinedAt: getNow(),
+      // Etat de paiement fige (voir getLeaguePayments) : le verrouillage est
+      // libere au reglement, `paid` doit survivre a cette liberation.
+      paid: true,
+      entryFee: season.entryFee,
+      paidAt: getNow(),
+    });
 
-  season.payout = buildLeaguePayout(season.registeredPlayers.length * season.entryFee);
-  season.updatedAt = getNow();
+    season.payout = buildLeaguePayout(season.registeredPlayers.length * season.entryFee);
+    season.updatedAt = getNow();
+  } catch (error) {
+    // On rend ce qui vient d etre pris plutot que de laisser le joueur bloque.
+    await withWalletMutex(actorUser.id, async () => {
+      await refundLockedEntry(actorUser.id, seasonId, `Inscription ligue annulee ${season.name || ''}`.trim());
+    }).catch((remboursementError) => {
+      log.error('Libération du pass après échec d inscription impossible', {
+        seasonId,
+        userId: actorUser.id,
+        error: String(remboursementError?.message || remboursementError),
+      });
+    });
+    throw error;
+  }
 
   return {
     seasons: nextSeasons,
@@ -651,7 +673,7 @@ export const applyLeagueSettlement = async (season) => {
         // du champion etait convertie 100 % en cash retirable (contournement
         // anti-blanchiment).
         await releaseWalletWinnings(podium.first, payout.first, season.id, 'prize_win', `1er ligue cycle ${season.cycleNumber}`);
-        await patchUserForLeagueOutcome(podium.first, (user) => {
+        await applyUserSettlementOnce(podium.first, `league:${season.id}:p1`, (user) => {
           user.stats = {
             ...user.stats,
             leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
@@ -672,7 +694,7 @@ export const applyLeagueSettlement = async (season) => {
     try {
       await withWalletMutex(podium.second, async () => {
         await releaseWalletWinnings(podium.second, payout.second, season.id, 'prize_win', `2eme ligue cycle ${season.cycleNumber}`);
-        await patchUserForLeagueOutcome(podium.second, (user) => {
+        await applyUserSettlementOnce(podium.second, `league:${season.id}:p2`, (user) => {
           user.stats = {
             ...user.stats,
             leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
@@ -692,7 +714,7 @@ export const applyLeagueSettlement = async (season) => {
     try {
       await withWalletMutex(podium.third, async () => {
         await releaseWalletWinnings(podium.third, payout.third, season.id, 'prize_win', `3eme ligue cycle ${season.cycleNumber}`);
-        await patchUserForLeagueOutcome(podium.third, (user) => {
+        await applyUserSettlementOnce(podium.third, `league:${season.id}:p3`, (user) => {
           user.stats = {
             ...user.stats,
             leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,
@@ -714,7 +736,7 @@ export const applyLeagueSettlement = async (season) => {
       if (!isPodium) {
         await withWalletMutex(player.userId, async () => {
           await settleMatchLossWallet(player.userId, season.id, `Pass consomme ligue cycle ${season.cycleNumber}`);
-          await patchUserForLeagueOutcome(player.userId, (user) => {
+          await applyUserSettlementOnce(player.userId, `league:${season.id}:participation`, (user) => {
             user.stats = {
               ...user.stats,
               leaguesPlayed: Number(user.stats?.leaguesPlayed || 0) + 1,

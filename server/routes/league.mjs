@@ -7,7 +7,8 @@ import {
   respondJson,
   respondMappedError,
 } from '../http-utils.mjs';
-import { withLeagueMutex } from '../mutex.mjs';
+import { withLeagueMutex, withWalletMutex } from '../mutex.mjs';
+import { refundLockedEntry } from '../wallet-engine.mjs';
 import {
   createLeagueSeasonOnServer,
   startLeagueQualificationOnServer,
@@ -133,8 +134,33 @@ if (req.method === 'POST' && leagueJoin) {
     return true;
   }
   try { await withLeagueMutex(async () => {
-    const outcome = await joinLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueJoin[1]);
-    await saveLeagues(io, outcome.seasons);
+    const seasonId = leagueJoin[1];
+    const outcome = await joinLeagueSeasonOnServer(getStoredLeagues(), session.user, seasonId);
+
+    // La compensation du pass vit ICI, pas seulement dans le moteur.
+    //
+    // Le vrai scenario de verrou orphelin n'est pas une exception interne au
+    // moteur : c'est `saveLeagues` qui echoue juste APRÈS, une fois le pass
+    // bloque et l inscrit pousse. Le moteur a deja rendu sa main, donc son
+    // `catch` ne voyait rien : les ZC restaient bloques chez un joueur absent
+    // de la liste persistee. Le sweeper ne parcourt que `registeredPlayers`,
+    // et `lockEntryFee` renvoyant `ALREADY_LOCKED`, ce joueur ne pouvait plus
+    // se reinscrire — ses ZC etaient perdus a jamais.
+    try {
+      await saveLeagues(io, outcome.seasons);
+    } catch (saveError) {
+      await withWalletMutex(session.user.id, async () => {
+        await refundLockedEntry(session.user.id, seasonId, 'Inscription ligue non enregistree');
+      }).catch((remboursementError) => {
+        log.error('Restitution du pass après échec de sauvegarde impossible', {
+          seasonId,
+          userId: session.user.id,
+          error: String(remboursementError?.message || remboursementError),
+        });
+      });
+      throw saveError;
+    }
+
     respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
   }); } catch (error) {
     respondMappedError(res, error);

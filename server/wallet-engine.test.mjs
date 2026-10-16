@@ -4,6 +4,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('./persistence.mjs', () => ({
   getWalletSnapshot: vi.fn(),
   updateWalletSnapshot: vi.fn(),
+  // La garde d'idempotence des gains vit dans persistence. Sans elle dans le
+  // mock, `releaseWalletWinnings` Echouerait sur un `undefined` — pas sur une
+  // regression, mais sur un forget de l'index.
+  hasSettledWinningsKey: vi.fn(() => false),
+  trackWinningsKey: vi.fn(),
 }));
 
 // Import after mocking

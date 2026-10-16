@@ -1,4 +1,5 @@
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { isAnySupportedPhone, phoneFormatError } from '../payout-countries.mjs';
 import {
   ALLOW_DEBUG_CODES,
   getAuthenticatedAppSession,
@@ -351,6 +352,26 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
           respondJson(res, 400, { ok: false, error: 'Level CODM invalide (1-150).', code: 'INVALID_ENUM' });
           return true;
         }
+        // Le telephone n'etait valide par AUCUNE validation, alors qu'il est
+        // en `STRING_FIELDS` : il suffisait donc `sanitizeText`.
+        //
+        // `normalizePhoneKey` ne garde que les chiffres, et la cle
+        // d'unicité `phone_key` en base n'est PAS NULL. Un joueur pouvait donc
+        // poser `phone: ""` — ou `phone: "abc"`, dont la cle vaut aussi `""` —
+        // et occuper la cle VIDE de l'index. Le joueur suivant qui tentait la
+        // meme chose violait `phone_key UNIQUE`, ce qui faisait echouer son
+        // ecriture et le renvoyait en 503 : DEFINITIVEMENT.
+        //
+        // Un joueur pouvait donc casser la mise a jour de profil de tous les
+        // autres, sans etre administrateur.
+        if (field === 'phone' && value !== '' && !isAnySupportedPhone(value)) {
+          respondJson(res, 400, {
+            ok: false,
+            error: phoneFormatError(),
+            code: 'INVALID_PHONE',
+          });
+          return true;
+        }
         if (field === 'bio' && typeof value === 'string' && value.length > 500) {
           value = value.slice(0, 500);
         }
@@ -426,7 +447,21 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
 }
 
 if (req.method === 'POST' && pathname === '/api/auth/logout') {
-  if (!rateLimitGuard(res, getClientIp(req), 'auth')) { return true; }
+    // Groupe DEDIE, et non `auth`.
+    //
+    // Le rate limit est pose AVANT toute lecture de token, et le token est
+    // facultatif : sans session, la route repond quand meme 200. `logout` est
+    // donc appelable par n'importe qui, sans rien prouver.
+    //
+    // Sur le groupe `auth`, 50 appels suffisaient a renvoyer 429 sur TOUTES les
+    // routes d'authentification pendant 15 minutes : `login`, `register`,
+    // `forgot-password`, `reset-password`. Derriere un CGNAT mobile, ou une IP
+    // d'entreprise partagee, tous les utilisateurs de cette IP ne pouvaient
+    // plus se connecter du tout. Un deni de connexion de masse, gratuit.
+    //
+    // `logout` n'a aucun cout serveur notable, donc son propre quota suffit a
+    // le contenir.
+    if (!rateLimitGuard(res, getClientIp(req), 'auth_logout')) { return true; }
   const token = readBearerToken(req);
   // skipRotation: sans ça, getAuthSession déclenche une rotation
   // fire-and-forget qui INSÈRE le nouveau token en mémoire de façon

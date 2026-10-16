@@ -7,9 +7,13 @@ const log = createLogger('rate-limiter');
 const rateLimitBuckets = new Map();
 const MAX_RATE_LIMIT_BUCKETS = 50000;
 
-/** @type {{ auth: { max: number, windowMs: number }, social: { max: number, windowMs: number }, wallet: { max: number, windowMs: number }, chat: { max: number, windowMs: number }, admin: { max: number, windowMs: number }, default: { max: number, windowMs: number } }} */
+/** @type {{ auth: { max: number, windowMs: number }, auth_logout: { max: number, windowMs: number }, social: { max: number, windowMs: number }, wallet: { max: number, windowMs: number }, chat: { max: number, windowMs: number }, admin: { max: number, windowMs: number }, default: { max: number, windowMs: number } }} */
 const RATE_LIMIT_CONFIG = {
   auth:    { max: 50,  windowMs: 15 * 60 * 1000 },
+  // `logout` est appelable sans session et ne prouve rien. Le partager avec
+  // `auth` permettait a n'importe qui de verrouiller la connexion de tous les
+  // utilisateurs d'une IP partagee pendant 15 minutes.
+  auth_logout: { max: 60, windowMs: 60 * 1000 },
   social:  { max: 30,  windowMs: 60 * 1000 },
   wallet:  { max: 20,  windowMs: 10 * 60 * 1000 },
   chat:    { max: 60,  windowMs: 60 * 1000 },

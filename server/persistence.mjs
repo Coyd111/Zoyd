@@ -1492,6 +1492,74 @@ export const hydrateWithdrawalKeys = () => {
   }
 };
 
+// ─── Idempotence des gains ──────────────────────────────────────────────────
+//
+// Meme probleme que les retraits, meme parade.
+//
+// La garde d'idempotence de `releaseWalletWinnings` lisait l'historique du
+// portefeuille. Or cet historique est plafonne a 200 entrees : au-dela, la
+// cle disparaissait et la garde redevient inopérante — c'est-a-dire qu'un
+// joueur tres actif pouvait se voir recrediter un gain deja verse.
+//
+// Le projet avait identifie ce piege pour les retraits sans l'appliquer aux
+// gains : deux files d'attente pour le meme risque. On les reunit ici.
+//
+// Unlike `forgetWithdrawalKey`, il n'y a PAS de retrait de cle : un gain verse
+// est defini. Aucune key expire, donc l'index est borne par construction (un
+// gain par competition et par type).
+//
+// LIMITE A CONNAITRE, bornee par un test dans `winnings-key-index.test.mjs` :
+// l'index est en MEMOIRE, et `hydrateWinningsKeys` le reconstruit depuis
+// l'historique des portefeuilles — lui-meme plafonne a 200 entrees. Un gain
+// sorti de cette fenetre est donc inconnu apres un redemarrage.
+//
+// Concretement : la protection tient sans reserve PENDANT la vie du processus,
+// ce qui couvre le double versement reel. Elle ne couvre pas « plus de 200
+// transactions PUIS redemarrage PUIS rejeu du reglement ». La parade durable
+// serait une colonne dediee en base ; elle n'est pas madee ici.
+const memoryWinningsKeys = new Map(); // userId -> Set<idempotencyKey>
+const MAX_TRACKED_WINNINGS_KEYS = 500;
+const WINNINGS_TX_TYPES = new Set(['prize_win', 'arbitration_fee']);
+
+const getWinningsKeys = (userId) => {
+  if (!memoryWinningsKeys.has(userId)) memoryWinningsKeys.set(userId, new Set());
+  return memoryWinningsKeys.get(userId);
+};
+
+/** Un gain de cette cle a-t-il deja ete verse a ce joueur ? */
+export const hasSettledWinningsKey = (userId, key, transactions = []) => {
+  if (!key) return false;
+  const inIndex = getWinningsKeys(userId).has(key);
+  const inHistory = (Array.isArray(transactions) ? transactions : [])
+    .some((tx) => tx?.status === 'completed'
+      && WINNINGS_TX_TYPES.has(tx?.type)
+      && `${tx.type}:${tx.matchId}` === key);
+  return inIndex || inHistory;
+};
+
+/** Enregistre une cle au moment du credit. */
+export const trackWinningsKey = (userId, key) => {
+  if (!key) return;
+  const set = getWinningsKeys(userId);
+  if (set.size >= MAX_TRACKED_WINNINGS_KEYS) {
+    set.delete(set.values().next().value);
+  }
+  set.add(key);
+};
+
+/** Reconstruit l'index des gains depuis les portefeuilles charges. */
+export const hydrateWinningsKeys = () => {
+  memoryWinningsKeys.clear();
+  for (const [userId, user] of memoryUsers.entries()) {
+    const txs = user?.wallet?.transactions;
+    if (!Array.isArray(txs)) continue;
+    for (const tx of txs) {
+      if (!WINNINGS_TX_TYPES.has(tx?.type) || tx?.status !== 'completed') continue;
+      trackWinningsKey(userId, `${tx.type}:${tx.matchId}`);
+    }
+  }
+};
+
 /**
  * Merge metadata into an existing wallet transaction and persist (memory + Supabase).
  * Used to tag a withdraw with payoutId/payoutStatus AFTER the FedaPay payout succeeds.

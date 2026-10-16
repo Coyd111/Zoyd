@@ -188,6 +188,9 @@ const applyResultSettlement = async (match, result) => {
   const arbiterFee = match.arbiter?.userId ? roundAmount(lockedPot * ARBITER_FEE_RATE) : 0;
   const payout = Math.max(0, roundAmount(lockedPot - arbiterFee));
   const settlementErrors = [];
+  // Les echecs de la commission d'arbitre sont TENUS A PART : ils ne doivent
+  // pas declarer le match non solde alors que tous les joueurs sont payes.
+  const arbiterErrors = [];
 
   // Elo Calculation
   const K = 32;
@@ -295,6 +298,18 @@ const applyResultSettlement = async (match, result) => {
   }
 
   if (match.arbiter?.userId && arbiterFee > 0) {
+    // La creance sur la commission est COMPENSEE, pas perdue.
+    //
+    // Tant que la suite de `settlementErrors` englobait aussi l'arbitre, son
+    // echec declarait le match non solde alors que tous les joueurs etaient
+    // payes — et le gel etait definitif, faute de repli. On note donc
+    // explicitement la commission due, ce qui la rend visible et reprenable.
+    if (!settlementErrors.length && arbiterErrors.length) {
+      match.pendingArbiterFee = roundAmount(arbiterFee);
+    }
+    // La creance est soldee des que la commission aboutit : la laisser
+    // afficherait une dette inexistante.
+    if (!arbiterErrors.length) delete match.pendingArbiterFee;
     try {
       await withWalletMutex(match.arbiter.userId, async () => {
         await releaseWalletWinnings(
@@ -305,9 +320,9 @@ const applyResultSettlement = async (match, result) => {
           `Commission arbitre ${match.id}`
         );
       });
-    } catch (err) {
+} catch (err) {
       log.error('Arbiter payout error', { matchId: match.id, arbiterId: match.arbiter.userId, error: err.message });
-      settlementErrors.push({ playerId: match.arbiter.userId, role: 'arbiter', error: err.message });
+      arbiterErrors.push({ playerId: match.arbiter.userId, role: 'arbiter', error: err.message });
     }
   }
 
@@ -318,8 +333,35 @@ const applyResultSettlement = async (match, result) => {
       errors: settlementErrors,
     });
   }
+  if (arbiterErrors.length > 0) {
+    log.error('SETTLEMENT_ARBITER_FAILURE', {
+      matchId: match.id,
+      failedCount: arbiterErrors.length,
+      errors: arbiterErrors,
+    });
+  }
 
-  return { success: settlementErrors.length === 0, errors: settlementErrors };
+  // L'echec de la commission d'arbitre est SEPARE de celui des joueurs.
+  //
+  // L'erreur d'arbitre etait versee dans le tableau des erreurs de joueurs, donc
+  // `success` devenait `false` alors que TOUS les joueurs venaient d'etre
+  // payes. Le match partait alors en `disputed` avec `payoutDistributed: false`
+  // — et les litiges venaient d'etre tous marques `resolved` dans la meme
+  // fonction. Personne ne pouvait plus rouvrir de litige, et un nouvel essai de
+  // l'admin relancait le reglement : les joueurs etaient ignores par la garde
+  // d'idempotence, l'arbitre echouait a nouveau, `success` repassait a false.
+  // Boucle sans fin sur un match deja entierement paye aux joueurs.
+  //
+  // `playersDistributed` repond a la seule question qui decide du statut du
+  // match : les joueurs ont-ils ete payes ? La commission est une creance
+  // distincte, tracee et rechargeable, pas une raison de geler le match.
+  return {
+    success: settlementErrors.length === 0,
+    playersDistributed: settlementErrors.length === 0,
+    arbiterDistributed: arbiterErrors.length === 0,
+    arbiterErrors,
+    errors: [...settlementErrors, ...arbiterErrors],
+  };
 };
 
 const resolveOpenDisputes = (match, resolution) =>

@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getWalletSnapshot, updateWalletSnapshot } from './persistence.mjs';
+import { getWalletSnapshot, updateWalletSnapshot, hasSettledWinningsKey, trackWinningsKey } from './persistence.mjs';
 
 const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
@@ -313,8 +313,10 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
   // solde au journal.
   const idempotencyKey = options.idempotencyKey || `${type}:${matchId}`;
   return (await updateWalletSnapshot(userId, (wallet) => {
-    const dejaVerse = (Array.isArray(wallet.transactions) ? wallet.transactions : [])
-      .some((tx) => tx && tx.status === 'completed' && `${tx.type}:${tx.matchId}` === idempotencyKey);
+    // La garde s'appuie sur un index DEDIE, pas seulement sur l'historique :
+    // celui-ci est plafonne a 200 entrees, donc la cle en disparaitrait chez un
+    // joueur tres actif et la garde redeviendrait inopérante.
+    const dejaVerse = hasSettledWinningsKey(userId, idempotencyKey, wallet.transactions);
     if (dejaVerse) {
       // Versement deja effectue : on rend le portefeuille intact. Rethrow
       // n'est pas une option : l'appelant (reglement BR, ligue, tournoi)
@@ -331,9 +333,15 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
     // on la rend en bonus, le reste du gain part en cash.
     const stakeBonus = roundAmount(reservation?.bonusAmount || 0);
     const bonusRestore = Math.min(stakeBonus, safeAmount);
-    const cashCredit = roundAmount(safeAmount - bonusRestore);
+const cashCredit = roundAmount(safeAmount - bonusRestore);
 
-    return withTransaction(
+      // L'index est alimente AVANT que l'ecriture ne parte. Si l'ecriture
+      // echoue ensuite, la cle reste tracee et le prochain essai ne recredite
+      // pas. Tracer apres coup laisserait au contraire une fenetre de double
+      // credit — celle-la meme qu on cherche a fermer.
+      trackWinningsKey(userId, idempotencyKey);
+
+      return withTransaction(
       {
         ...wallet,
         cashBalance: roundAmount(wallet.cashBalance + cashCredit),
@@ -345,11 +353,14 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
         type,
         amount: safeAmount,
         description: description || (type === 'arbitration_fee' ? `Commission arbitre ${matchId}` : `Gain ${matchId}`),
-        status: 'completed',
-        matchId,
-        metadata: { cashCredit, bonusRestore },
-      }
-    );
+status: 'completed',
+          matchId,
+          // La cle est stockee AVEC la transaction : c'est elle qui permet a
+          // `hydrateWinningsKeys` de reconstruire l'index apres un redemarrage,
+          // quand la transaction a deja disparu des 200 dernieres.
+          metadata: { cashCredit, bonusRestore, winningsKey: idempotencyKey },
+        }
+      );
   })).wallet;
 };
 

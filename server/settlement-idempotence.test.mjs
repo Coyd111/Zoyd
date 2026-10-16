@@ -15,9 +15,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * `lockedBalance` a la somme des reservations, pas le solde au journal.
  */
 
+// Reproduit la semantique de la garde d'idempotence du serveur : un index
+// dedie par joueur, plus la lecture de l'historique. Le test doit exercer un
+// double qui se comporte comme le vrai, sinon il ne prouve rien.
+const winningsIndex = new Map();
+
 vi.mock('./persistence.mjs', () => ({
   getWalletSnapshot: vi.fn(),
   updateWalletSnapshot: vi.fn(),
+  hasSettledWinningsKey: vi.fn((userId, key, transactions = []) => {
+    const inIndex = (winningsIndex.get(userId) || new Set()).has(key);
+    const inHistory = (Array.isArray(transactions) ? transactions : [])
+      .some((tx) => tx?.status === 'completed'
+        && (tx?.type === 'prize_win' || tx?.type === 'arbitration_fee')
+        && `${tx.type}:${tx.matchId}` === key);
+    return inIndex || inHistory;
+  }),
+  trackWinningsKey: vi.fn((userId, key) => {
+    if (!winningsIndex.has(userId)) winningsIndex.set(userId, new Set());
+    winningsIndex.get(userId).add(key);
+  }),
 }));
 
 import { updateWalletSnapshot } from './persistence.mjs';
@@ -55,8 +72,9 @@ const walletVide = () => ({
 });
 
 beforeEach(() => {
-  vi.resetAllMocks();
-});
+vi.resetAllMocks();
+    winningsIndex.clear();
+  });
 
 describe('Idempotence des versements', () => {
   it('un second versement identique ne credite RIEN', async () => {

@@ -115,6 +115,7 @@ import {
   trackWithdrawalKey,
   forgetWithdrawalKey,
   hydrateWithdrawalKeys,
+  hydrateWinningsKeys,
   getPublicStats,
   getCommissionStats,
   markAdmin2faVerified,
@@ -616,6 +617,10 @@ const start = async () => {
   // portefeuilles charges : sans lui, une cle anterieure au redemarrage
   // serait inconnue et un retry redébitait le joueur.
   hydrateWithdrawalKeys();
+
+    // Meme raison pour les gains : une cle anterieure au redemarrage doit
+    // rester connue, sinon un reglement rejoue recredite le joueur.
+    hydrateWinningsKeys();
 
   initCronJobs();
 

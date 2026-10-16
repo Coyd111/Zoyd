@@ -56,3 +56,48 @@ describe('getClientIp — resistance a la falsification de X-Forwarded-For', () 
     expect(a).toBe(b);
   });
 });
+
+describe('Separation du quota de logout', () => {
+  // `logout` ne demande aucune authentification : le token est facultatif et la
+  // route repond 200 sans session. Tant qu il consomme le groupe `auth`, il
+  // permet a n importe qui de verrouiller `login`, `register`,
+  // `forgot-password` et `reset-password` � 50 appels, 15 minutes, sur toute
+  // IP partagee.
+  //
+  // Ce test est ici, et non en E2E, parce que le rate limiter est
+  // ASSOUPLI en test automatise (NODE_ENV=test + ALLOW_DEBUG_CODES). Un test
+  // E2E de saturation passerait donc toujours, correct comme regresse : il ne
+  // prouverait rien.
+
+  it('saturer logout ne consomme pas le quota des routes d authentification', async () => {
+    const { rateLimitGuard } = await loadLimiter();
+    const stub = () => ({ statusCode: 200, headersSent: false, setHeader() {}, writeHead() {}, end() {}, json() {}, getHeader() {} });
+    const ip = '10.1.2.3';
+
+    // Le budget de `auth` est de 50 par fenetre. On sature `logout` au-dela.
+    let autorisees = 0;
+    for (let i = 0; i < 120; i += 1) {
+      const res = stub();
+      if (rateLimitGuard(res, ip, 'auth_logout')) autorisees += 1;
+    }
+    expect(autorisees, 'logout doit avoir son propre quota').toBeGreaterThan(50);
+
+    // Le quota `auth` est intact : la connexion reste possible.
+    const res = stub();
+    expect(rateLimitGuard(res, ip, 'auth')).toBe(true);
+  });
+
+  it('deux groupes distincts ne partagent pas leur compteur', async () => {
+    const { rateLimitGuard } = await loadLimiter();
+    const ip = '10.1.2.4';
+    const stub = () => ({ statusCode: 200, headersSent: false, setHeader() {}, writeHead() {}, end() {}, json() {}, getHeader() {} });
+
+    // `auth` est sature.
+    for (let i = 0; i < 50; i += 1) rateLimitGuard(stub(), ip, 'auth');
+    expect(rateLimitGuard(stub(), ip, 'auth'), 'le groupe auth doit etre epuise').toBe(false);
+
+    // Un autre groupe ne paie pas pour lui.
+    expect(rateLimitGuard(stub(), ip, 'auth_logout')).toBe(true);
+    expect(rateLimitGuard(stub(), ip, 'default')).toBe(true);
+  });
+});

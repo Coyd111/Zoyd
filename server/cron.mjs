@@ -2,7 +2,7 @@ import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCod
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds } from './league-engine.mjs';
-import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds } from './tournament-engine.mjs';
+import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer } from './match-engine.mjs';
 import { getNow } from './utils.mjs';
 
@@ -337,6 +337,39 @@ export const initCronJobs = () => {
   };
   setInterval(() => { void sweepPendingRefunds(); }, 6 * 60 * 60 * 1000);
   setTimeout(() => { void sweepPendingRefunds(); }, 20 * 1000);
+
+  // Gains de tournoi non verses (6 h + au boot).
+  //
+  // File DISTINCTE de celle des remboursements : les gains d'un tournoi clot et
+  // d'un classement fige ne se rejouaient nulle part, alors que les
+  // remboursements d'un tournoi annule avaient deja leur sweep. Sans ce bloc, un
+  // capitaine dont le versement echouait perdait ses ZC sans qu'aucun code ne
+  // les retrouve.
+  let payoutRetryRunning = false;
+  const sweepPendingTournamentPayouts = async () => {
+    if (payoutRetryRunning) return;
+    payoutRetryRunning = true;
+    try {
+      await withTournamentMutex(async () => {
+        const tournaments = getStateCollection('tournaments');
+        const outstanding = countPendingTournamentPayouts(tournaments);
+        if (outstanding === 0) return;
+        const outcome = await retryPendingTournamentPayouts(tournaments);
+        if (outcome.retried > 0 || outcome.remaining !== outstanding) {
+          await replaceStateCollection('tournaments', outcome.tournaments);
+        }
+        if (outcome.remaining > 0) {
+          log.error('Gains de tournoi toujours en echec', { remaining: outcome.remaining });
+        }
+      });
+    } catch (error) {
+      log.error('Erreur reprise des gains de tournoi', error);
+    } finally {
+      payoutRetryRunning = false;
+    }
+  };
+  setInterval(() => { void sweepPendingTournamentPayouts(); }, 6 * 60 * 60 * 1000);
+  setTimeout(() => { void sweepPendingTournamentPayouts(); }, 25 * 1000);
 
   // Ligues jamais lancees — libere les passes bloques (toutes les 6 h + au boot).
   // Sans ce sweep, une saison restee 'registering' faute d'avoir atteint

@@ -180,6 +180,26 @@ export const getRankFromElo = (elo) => {
   return 'Master';
 };
 
+/**
+ * Valeur a persister pour `payoutDistributed` apres un reglement.
+ *
+ * L'echec PARTIEL etait persiste `false`. Or le cron de reprise ne selectionne
+ * que `'pending'` : un match dont un seul joueur n avait pas ete paye sortait
+ * donc definitivement du mecanisme, et ce joueur ne recevait jamais sa part sans
+ * intervention manuelle. Aucun signal non plus, seulement une ligne de log.
+ *
+ * `false` et `'pending'` ne veulent donc pas dire la meme chose :
+ *   - `true`     : reglement complet ;
+ *   - `'pending'`: a solder — soit en attente de confirmation, soit interrompu ;
+ *   - `false`    : deliberement non verse (annule, rembourse).
+ *
+ * Rejouer un reglement interrompu est sans risque : la garde d'idempotence de
+ * `releaseWalletWinnings` ignore les joueurs deja payes et ne sert que les
+ * impayes.
+ */
+const payoutFlagAfterSettlement = (settlementResult) =>
+  (settlementResult.success ? true : 'pending');
+
 const applyResultSettlement = async (match, result) => {
   // Anti-mint : on ne distribue QUE l'argent réellement verrouillé.
   // match.prizePool est calculé sur maxPlayers à la création ; s'il servait de
@@ -829,7 +849,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   match.updatedAt = getNow();
 
   const settlementResult = await applyResultSettlement(match, fullResult);
-  match.result.payoutDistributed = settlementResult.success;
+  match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };
 
@@ -845,10 +865,29 @@ export const settlePendingMatchResult = async (matches, matchId) => {
   const match = findMatch(nextMatches, matchId);
   if (!match?.result) return { matches: nextMatches, match: match || null, success: true };
   if (match.result.payoutDistributed !== 'pending') {
-    return { matches: nextMatches, match, success: match.result.payoutDistributed !== false };
+    return { matches: nextMatches, match, success: match.result.payoutDistributed === true };
   }
+  // Un litige ouvert doit rester gele : c'est l'admin qui tranche. Verser
+  // automatiquement pendant qu'un litige est ouvert reviendrait a payer un
+  // resultat que le joueur conteste.
+  //
+  // Ce garde devient necessaire maintenant que `'pending'` designe aussi un
+  // reglement interrompu, et pas seulement une attente de confirmation.
+  const litigeOuvert = (match.disputes || [])
+    .some((d) => d.status === 'open' || d.status === 'under_review');
+  if (litigeOuvert) {
+    return { matches: nextMatches, match, success: false };
+  }
+
   const settlementResult = await applyResultSettlement(match, match.result);
-  match.result.payoutDistributed = settlementResult.success;
+  match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
+  // La reprise peut solder un match que l'echec avait laisse en `disputed`.
+  // Sans cette cloture, il resterait `disputed` alors que tous les joueurs
+  // seraient payes : un etat qui ment sur la realite economique du match.
+  if (settlementResult.success && match.status === 'disputed') {
+    match.status = 'finished';
+    match.finishedAt = match.finishedAt || getNow();
+  }
   return { matches: nextMatches, match, success: settlementResult.success };
 };
 
@@ -907,7 +946,7 @@ export const confirmMatchResultOnServer = async (matches, actor, matchId) => {
   }
 
   const settlementResult = await applyResultSettlement(match, match.result);
-  match.result.payoutDistributed = settlementResult.success;
+  match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
   if (settlementResult.success) {
     match.status = 'finished';
     match.finishedAt = getNow();
@@ -944,7 +983,7 @@ export const expireConfirmationsOnServer = async (matches, now = Date.now()) => 
     if (match.disputes.some((d) => d.status === 'open' || d.status === 'under_review')) continue;
 
     const settlementResult = await applyResultSettlement(match, match.result);
-    match.result.payoutDistributed = settlementResult.success;
+    match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
     if (settlementResult.success) {
       match.status = 'finished';
       match.finishedAt = getNow();
@@ -1070,7 +1109,7 @@ export const resolveDisputeOnServer = async (matches, actor, matchId, resolution
 
   if (action === 'settle' && match.result) {
     const settlementResult = await applyResultSettlement(match, match.result);
-    match.result.payoutDistributed = settlementResult.success;
+    match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
     match.status = settlementResult.success ? 'finished' : 'disputed';
     if (settlementResult.success) {
       match.finishedAt = getNow();
@@ -1163,7 +1202,7 @@ const resolveForfeit = async (match, winnerTeam, losingTeam, reason) => {
   match.updatedAt = getNow();
 
   const settlementResult = await applyResultSettlement(match, fullResult);
-  match.result.payoutDistributed = settlementResult.success;
+  match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
 };
 
 const cancelForAutomation = async (match, reason) => {

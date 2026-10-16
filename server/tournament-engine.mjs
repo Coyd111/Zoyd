@@ -121,6 +121,21 @@ const normalizeTournamentSnapshot = (tournament) => {
     cancelReason: tournament?.cancelReason,
     cancelledAt: tournament?.cancelledAt,
     // Dette de remboursement : préservée au chargement, sinon un redémarrage
+    // Dette de GAINS : preservee au chargement pour la meme raison que
+    // pendingRefunds. Sans cela, un redemarrage entre l'echec et la reprise
+    // perdrait definitivement des ZC.
+    pendingPayouts: Array.isArray(tournament?.pendingPayouts)
+      ? tournament.pendingPayouts.map((item) => ({
+          kind: item?.kind,
+          captainId: item?.captainId,
+          arbiterUserId: item?.arbiterUserId,
+          entryId: item?.entryId,
+          slot: item?.slot,
+          amount: item?.amount,
+          placement: item?.placement,
+          lastError: item?.lastError,
+        })).filter((item) => item.kind && (item.captainId || item.arbiterUserId))
+      : [],
     // entre l'échec et le retry perdrait définitivement des ZC bloqués.
     pendingRefunds: Array.isArray(tournament?.pendingRefunds)
       ? tournament.pendingRefunds.map((item) => ({
@@ -579,39 +594,61 @@ const getPlacementXp = (placement) => {
 };
 
 const applyTournamentSettlement = async (tournament) => {
-  if (tournament.status !== 'completed') return;
+    if (tournament.status !== 'completed') return;
 
-  for (const entry of tournament.entries) {
-    const payout = roundAmount(getPlacementPayout(tournament, entry.finalPlacement));
+    // Dette de GAINS, en miroir de `pendingRefunds`.
+    //
+    // Avant, un echec de versement ne vivait que dans une ligne de log. Le
+    // declencheur etait a usage unique (`!wasCompleted`), aucun cron ne
+    // reprenait les gains (le cron ne traitait que `pendingRefunds`), et aucune
+    // route admin ne permetait de relancer : les ZC d'un capitaine were
+    // perdus DEFINITIVEMENT, sur un tournoi clos et un classement fige.
+    //
+    // La garde d'idempotence des gains ne peut rien y faire : elle empeche le
+    // SUR-paiement, pas le sous-paiement. Un versement qui echoue n'ecrit rien
+    // dans l'historique, donc rien ne viendra jamais le relancer.
+    const pendingPayouts = [];
 
-    try {
-      await withWalletMutex(entry.captainId, async () => {
-        if (payout > 0) {
-          await releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
-        } else {
-          await settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
-        }
+    for (const entry of tournament.entries) {
+      const payout = roundAmount(getPlacementPayout(tournament, entry.finalPlacement));
 
-        const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
-        for (const userId of memberUserIds) {
-          await patchUserForTournamentOutcome(userId, (user) => {
-            const isCaptain = userId === entry.captainId;
-            const nextStats = {
-              ...user.stats,
-              tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
-              tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
-              totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (isCaptain ? payout : 0)),
-            };
-            user.stats = nextStats;
-            user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
-            return user;
-          });
-        }
-      });
-    } catch (err) {
-      log.error('Tournament settlement failed for entry', { tournamentId: tournament.id, captainId: entry.captainId, placement: entry.finalPlacement, error: err.message });
+      try {
+        await withWalletMutex(entry.captainId, async () => {
+          if (payout > 0) {
+            await releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
+          } else {
+            await settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
+          }
+
+          const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
+          for (const userId of memberUserIds) {
+            await patchUserForTournamentOutcome(userId, (user) => {
+              const isCaptain = userId === entry.captainId;
+              const nextStats = {
+                ...user.stats,
+                tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
+                tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
+                totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (isCaptain ? payout : 0)),
+              };
+              user.stats = nextStats;
+              user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
+              return user;
+            });
+          }
+        });
+      } catch (err) {
+        log.error('Tournament settlement failed for entry', { tournamentId: tournament.id, captainId: entry.captainId, placement: entry.finalPlacement, error: err.message });
+        pendingPayouts.push({
+          kind: payout > 0 ? 'prize' : 'forfeit',
+          captainId: entry.captainId,
+          entryId: entry.id,
+          amount: payout,
+          placement: entry.finalPlacement,
+          lastError: err.message,
+          at: getNow(),
+        });
+      }
     }
-  }
 
 const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbitersNeeded);
     if (arbiterShare > 0) {
@@ -645,9 +682,27 @@ const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbi
             slot: arbiter.slot,
             error: err.message,
           });
+          // La commission d'arbitre est une dette comme les gains : sans trace,
+          // elle etait perdue elle aussi.
+          pendingPayouts.push({
+            kind: 'arbiter',
+            arbiterUserId: arbiter.userId,
+            slot: arbiter.slot,
+            amount: arbiterShare,
+            lastError: err.message,
+            at: getNow(),
+          });
         }
       }
     }
+
+    // La dette est ecrite AU REGLEMENT, pas apres : le declencheur
+    // `!wasCompleted` est a usage unique, donc si l'echec survient ici et que
+    // cette liste disparait, la reprise n'aura jamais lieu.
+    tournament.pendingPayouts = [
+      ...(Array.isArray(tournament.pendingPayouts) ? tournament.pendingPayouts : []),
+      ...pendingPayouts,
+    ];
   };
 
 /**
@@ -997,6 +1052,88 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
 
   return { tournaments: nextTournaments, retried, remaining, abandoned };
 };
+
+/**
+ * Reprise des GAINS de tournoi non verses.
+ *
+ * Le pendant exact de `retryPendingTournamentRefunds`, qui ne traite que les
+ * remboursements de tournois ANNULES. Les gains etaient le seul des trois
+ * mecanismes de reglement a ne beneficier d'aucune reprise — incoherence
+ * interne au projet, pas une caracteristique du domaine.
+ *
+ * Rejouer un versement est sans risque : la garde d'idempotence de
+ * `releaseWalletWinnings` ignore tout gain deja verse pour cette competition.
+ */
+export const retryPendingTournamentPayouts = async (tournaments) => {
+  const nextTournaments = cloneTournaments(tournaments);
+  let retried = 0;
+  let remaining = 0;
+
+  for (const tournament of nextTournaments) {
+    const pending = Array.isArray(tournament.pendingPayouts) ? tournament.pendingPayouts : [];
+    if (pending.length === 0) continue;
+
+    const stillFailing = [];
+    for (const item of pending) {
+      try {
+        if (item.kind === 'arbiter') {
+          await withWalletMutex(item.arbiterUserId, async () => {
+            await releaseWalletWinnings(
+              item.arbiterUserId,
+              roundAmount(item.amount),
+              `${tournament.id}-ARB-${item.slot}`,
+              'arbitration_fee',
+              `Commission arbitre ${tournament.name}`
+            );
+          });
+        } else if (item.kind === 'forfeit') {
+          await withWalletMutex(item.captainId, async () => {
+            await settleMatchLossWallet(item.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
+          });
+        } else {
+          await withWalletMutex(item.captainId, async () => {
+            await releaseWalletWinnings(
+              item.captainId,
+              roundAmount(item.amount),
+              tournament.id,
+              'prize_win',
+              `Gain tournoi ${tournament.name}`
+            );
+          });
+        }
+        retried += 1;
+      } catch (error) {
+        log.warn('Tournament payout retry failed', {
+          tournamentId: tournament.id,
+          userId: item.captainId || item.arbiterUserId,
+          error: error.message,
+        });
+        stillFailing.push({ ...item, lastError: error.message });
+      }
+    }
+    // La liste ne contient plus que ce qui reste du : un gain reussi en sort,
+    // sinon il serait rejoue a chaque cycle, pour toujours.
+    tournament.pendingPayouts = stillFailing;
+    remaining += stillFailing.length;
+    tournament.updatedAt = getNow();
+  }
+
+  if (retried > 0) {
+    log.warn('Gains de tournoi rejoues', { retried, remaining });
+  }
+  return { tournaments: nextTournaments, retried, remaining };
+};
+
+/**
+ * Total des gains en attente sur tous les tournois (sante).
+ * @param {Array} tournaments - Liste courante des tournois
+ * @returns {number}
+ */
+export const countPendingTournamentPayouts = (tournaments) =>
+  tournaments.reduce(
+    (sum, t) => sum + (Array.isArray(t.pendingPayouts) ? t.pendingPayouts.length : 0),
+    0,
+  );
 
 /**
  * Total des remboursement en attente sur tous les tournois (santé).

@@ -56,6 +56,38 @@ ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS supersedes TEXT;
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_supersedes ON auth_sessions(supersedes);
 
 -- ============================================================
+-- 2a-bis. CONCURRENCE MULTI-INSTANCE — compteur de révision
+-- ============================================================
+-- L 'état des joueurs est en mémoire et chaque mutation écrit le `payload`
+-- complet. Le verrou qui sérialise ces mutations est un verrou de PROCESSUS :
+-- il protège une instance, rien entre deux. Pendant un déploiement, Render
+-- garde l'ancienne instance le temps que la nouvelle démarre, et deux mutations
+-- lisent alors le MÊME instantané. La dernière écrase la première :
+--
+--   instance A : lit solde 1 000, retire 800  -> écrit solde 200
+--   instance B : lit solde 1 000, crédite 500 -> écrit solde 1 500
+--   résultat   : solde 1 500. Les 800 de A ont disparu.
+--
+-- Et rien ne le signale : `/api/health` reste vert, chaque instance étant
+-- individuellement cohérente. C'est ce qui rend la perte invisible, pas rare.
+--
+-- `revision` est un compteur entier incrémenté par TOUTE écriture de la table,
+-- quel que soit le chemin (création, portefeuille, mot de passe, profil,
+-- maintenance). Une écriture n'est appliquée que si la révision lue AVANT le
+-- calcul est toujours celle en base ; sinon elle ne touche aucune ligne et le
+-- calcul est rejoué sur un état frais.
+--
+-- Pourquoi un entier et pas `updated_at` : comparer un TIMESTAMPTZ par égalité
+-- via PostgREST est piégeux — Postgres stocke en microsecondes, le code écrit en
+-- millisecondes. Une égalité qui ne matche pas ne signale aucune erreur : elle
+-- fait échouer toutes les écritures, silencieusement.
+--
+-- NOT NULL DEFAULT 0 rend les lignes existantes immédiatement cohérentes.
+-- `occSupporte()` detecte la presence de la colonne : migration non appliquee,
+-- le serveur retombe sur l'ecriture inconditionnelle d'avant plutot que de
+-- refuser toute mutation.
+
+-- ============================================================
 -- 2b. VERROUILLAGE DE CONNEXION
 -- ============================================================
 -- Le compteur d'echecs vivait en RAM : chaque redemarrage Render le remettait

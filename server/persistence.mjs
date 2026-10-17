@@ -387,6 +387,172 @@ const sbUpdate = async (table, filters, patch) => {
   return true;
 };
 
+// ─── Concurrence multi-instance : révision conditionnelle ────────────────────
+//
+// Le verrou de `mutex.mjs` est un verrou de PROCESSUS : il sérialise les
+// mutations dans UNE instance, et rien entre deux. Pendant un déploiement,
+// Render fait coexister l'ancienne et la nouvelle instance ; les deux lisent le
+// même instantané du portefeuille et la dernière écrase la première. Sur de
+// l'argent, c'est une perte silencieuse : `/api/health` reste vert.
+//
+// Le remède est un compteur `revision` : on lit la révision en base, on calcule,
+// puis on n'écrit QUE si elle est toujours celle-là. Si une autre instance a
+// écrit entre-temps, la mise à jour ne touche AUCUNE ligne et le calcul est
+// rejoué sur un état frais.
+//
+// POURQUOI UN HELPER CENTRALISE
+// -----------------------------
+// La révision ne protège que si TOUTE écriture de `app_users` la fait avancer.
+// Conditionner un seul chemin sur cinq donnerait une protection réelle pour un
+// seul d'entre eux, tout en donnant l'apparence de couvrir tous les autres :
+// bien pire que le risque assumé, parce qu'on cesse alors de chercher.
+//
+// D'où l'invariant ci-dessous : plus aucun `sbUpsert('app_users', …)` n'existe
+// en dehors de `ecrireUserRow`, qui fait avancer la révision par construction.
+// Un test le vérifie sur la source.
+
+/** Nombre de tentatives avant de renvoyer au client un refus rejouable. */
+const OCC_MAX_TENTATIVES = 4;
+
+/** Resultat d'une ecriture conditionnelle. */
+const OCC_OK = 'ok';
+const OCC_CONFLIT = 'conflit';
+const OCC_ECHEC = 'echec';
+
+/**
+ * La colonne `revision` existe-t-elle en base ?
+ *
+ * Sans détection, écrire une colonne absente fait échouer chaque mutation. Or
+ * les mutations de portefeuille ne signalent leur échec qu'au client : le
+ * problème se verrait comme des retraits qui refusent de partir, sans cause
+ * visible.
+ */
+let revisionSupporte = null;
+const occSupporte = async () => {
+  if (revisionSupporte !== null) return revisionSupporte;
+  if (!supabase) { revisionSupporte = false; return false; }
+  try {
+    const { error } = await supabase.from('app_users').select('id,revision').limit(1);
+    revisionSupporte = !error;
+  } catch {
+    revisionSupporte = false;
+  }
+  if (!revisionSupporte) {
+    log.warn(
+      'Colonne app_users.revision absente : ecritures non conditionnelles (fenetre multi-instance ouverte)',
+      { attendu: 'ALTER TABLE app_users ADD COLUMN revision BIGINT NOT NULL DEFAULT 0' }
+    );
+  }
+  return revisionSupporte;
+};
+
+/** Test hook : force l etat de la sonde (`null` pour re-sonder). */
+export const setOccSupportePourTest = (valeur) => { revisionSupporte = valeur; };
+
+/** Revision en base d'un utilisateur, ou `null` si la ligne n existe pas. */
+const lireRevisionUser = async (userId) => {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('id,revision')
+    .eq('id', userId)
+    .limit(1);
+  if (error) return null;
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row) return null;
+  const n = Number(row.revision);
+  return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * Ecriture conditionnelle : n'applique `patch` que si la revision est inchangee.
+ *
+ * Zéro ligne mise à jour = la condition n'était plus vraie. C'est le détecteur
+ * de conflit, et il ne repose sur aucun code d'erreur à mapper — ce qui compte,
+ * puisque PostgREST signale un conflit par un succes.
+ */
+const ecrireUserRowSiRevision = async (userId, revisionObservee, patch) => {
+  const { data, error } = await supabase
+    .from('app_users')
+    .update({ ...patch, revision: revisionObservee + 1 })
+    .eq('id', userId)
+    .eq('revision', revisionObservee)
+    .select('id');
+  if (error) {
+    log.error('app_users conditional update error', {
+      userId, message: error.message, code: error.code,
+    });
+    return OCC_ECHEC;
+  }
+  return Array.isArray(data) && data.length === 0 ? OCC_CONFLIT : OCC_OK;
+};
+
+/**
+ * Écriture d'un joueur — SEUL point d'entrée autorisé sur `app_users`.
+ *
+ * @param {string} userId
+ * @param {object} patch colonnes a ecrire (`id` et `revision` sont geres ici)
+ * @param {() => object} [recalculer] recompose `patch` a partir de l'etat
+ *   frais quand un conflit survient. Sans lui, un rejeu ecrirait le MEME patch
+ *   calcule sur une base perimee — c'est-a-dire l'ecrasement qu on cherche a
+ *   empecher.
+ * @returns {Promise<'ok'|'conflit'|'echec'>}
+ */
+const ecrireUserRow = async (userId, patch, recalculer = null) => {
+  const occ = await occSupporte();
+
+  if (!occ) {
+    // Migration non appliquee : ecriture inconditionnelle, le comportement
+    // d'avant. Refuser les mutations serait bien pire que la fenetre qu on
+    // laisse ouverte.
+    const ok = await sbUpsert('app_users', { ...patch, id: userId });
+    return ok || !supabase ? OCC_OK : OCC_ECHEC;
+  }
+
+  const revisionObservee = await lireRevisionUser(userId);
+  if (revisionObservee === null) {
+    // Ligne absente : c'est une creation, pas un conflit.
+    const ok = await sbUpsert('app_users', { ...patch, id: userId, revision: 0 });
+    return ok ? OCC_OK : OCC_ECHEC;
+  }
+
+  let revisionCourante = revisionObservee;
+  let aEcrire = patch;
+  for (let tentative = 1; tentative <= OCC_MAX_TENTATIVES; tentative += 1) {
+    const resultat = await ecrireUserRowSiRevision(userId, revisionCourante, aEcrire);
+    if (resultat === OCC_OK) return OCC_OK;
+    if (resultat !== OCC_CONFLIT || !recalculer) return resultat;
+
+    log.warn('Conflit d ecriture detecte, rejeu sur un etat frais', { userId, tentative });
+    const frais = await rechargerUserRow(userId);
+    if (!frais) return OCC_CONFLIT;
+    // On repart de ce que l'AUTRE instance vient d'ecrire, ET de sa revision :
+    // rejouer le calcul dessus avec l'ancienne revision echouerait encore.
+    revisionCourante = frais.revision;
+    aEcrire = recalculer(frais.payload);
+  }
+  return OCC_CONFLIT;
+};
+
+/**
+ * Relit une ligne `app_users` (revision + payload).
+ * @returns {Promise<{revision: number, payload: object}|null>}
+ */
+const rechargerUserRow = async (userId) => {
+  const { data, error } = await supabase
+    .from('app_users')
+    .select('revision,payload')
+    .eq('id', userId)
+    .limit(1);
+  if (error) {
+    log.error('app_users reload error', { userId, message: error.message });
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row || !row.payload) return null;
+  const n = Number(row.revision);
+  return { revision: Number.isFinite(n) ? n : 0, payload: row.payload };
+};
+
 const sbSelect = async (table, filters = {}, columns = '*') => {
   if (!supabase) return [];
   let q = supabase.from(table).select(columns);
@@ -1115,14 +1281,14 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     // Write to Supabase — CRITIQUE : ignorer l'échec renvoyait 201 alors que
     // le compte n'existait qu'en RAM, donc le joueur ne pouvait plus se
     // reconnecter après le redémarrage de Render.
-    const persisted = await sbUpsert('app_users', {
-      id, pseudo_key: normalizePseudoKey(payload.pseudo),
+const persisted = await ecrireUserRow(id, {
+      pseudo_key: normalizePseudoKey(payload.pseudo),
       email_key: normalizeEmailKey(payload.email), phone_key: normalizePhoneKey(payload.phone),
       game_id_key: normalizeGameIdKey(payload.gameId), role,
       password_hash: passwordHash, payload,
       created_at: createdAt, updated_at: createdAt,
     });
-    if (supabase && !persisted) {
+    if (supabase && persisted !== OCC_OK) {
       memoryUsers.delete(id);
       pseudoKeys.delete(id);
       if (payload.gameId) gameIdKeys.delete(normalizeGameIdKey(payload.gameId));
@@ -1398,7 +1564,7 @@ export const updateUserAccount = async (userId, updater) => {
     const current = memoryUsers.get(userId);
     if (!current) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
 
-    const next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
+    let next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
     memoryUsers.set(userId, next);
     pseudoKeys.set(userId, normalizePseudoKey(next.pseudo || ''));
     if (current.gameId) gameIdKeys.delete(normalizeGameIdKey(current.gameId));
@@ -1431,15 +1597,34 @@ export const updateUserAccount = async (userId, updater) => {
     // Écriture CRITIQUE (solde / profil) : on n'avale pas l'échec. Sinon le
     // client reçoit 200, la mutation ne survit pas au redémarrage, et une
     // transaction FedaPay déjà « claimée » en mémoire peut créditer 2×.
-    const persisted = await sbUpsert('app_users', {
-      id: userId, pseudo_key: normalizePseudoKey(next.pseudo),
+    //
+    // Conditionnelle, et rejouee sur l'etat frais si une autre instance a ecrit
+    // entre-temps : `recalculer` reapplique le MEME updater au payload que
+    // l'autre instance vient de poser. Rejouer l'ancien patch ecrirait
+    // exactement ce qu'on cherche a empecher.
+    const ligne = () => ({
+      pseudo_key: normalizePseudoKey(next.pseudo),
       email_key: normalizeEmailKey(next.email), phone_key: normalizePhoneKey(next.phone),
       game_id_key: normalizeGameIdKey(next.gameId), role: next.role,
       password_hash: passwordHash, payload: next,
       created_at: current.dateJoined, updated_at: getNow(),
     });
+    const persisted = await ecrireUserRow(userId, ligne(), (frais) => {
+      const rafraichi = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(frais))));
+      next = rafraichi;
+      memoryUsers.set(userId, rafraichi);
+      return {
+        pseudo_key: normalizePseudoKey(rafraichi.pseudo),
+        email_key: normalizeEmailKey(rafraichi.email),
+        phone_key: normalizePhoneKey(rafraichi.phone),
+        game_id_key: normalizeGameIdKey(rafraichi.gameId),
+        role: rafraichi.role,
+        password_hash: passwordHash, payload: rafraichi,
+        created_at: rafraichi.dateJoined, updated_at: getNow(),
+      };
+    });
 
-    if (supabase && !persisted) {
+    if (supabase && persisted !== OCC_OK) {
       // On remet l'état mémoire d'avant : le client doit pouvoir rejouer.
       if (next.gameId) gameIdKeys.delete(normalizeGameIdKey(next.gameId));
       memoryUsers.set(userId, current);
@@ -1949,19 +2134,25 @@ export const updatePasswordHash = async (userId, newHash) => {
   if (user.phone) memoryPasswordHashes.delete(normalizePhoneKey(user.phone));
   // Store new hash
   storePasswordHash(userId, newHash, user.pseudo, user.email, user.phone);
-  // Persist to Supabase
-    await sbUpsert('app_users', {
-      id: userId,
-      pseudo_key: normalizePseudoKey(user.pseudo),
-      email_key: normalizeEmailKey(user.email),
-      phone_key: normalizePhoneKey(user.phone),
-      game_id_key: normalizeGameIdKey(user.gameId),
-      role: user.role,
-      password_hash: newHash,
-      payload: user,
-      created_at: user.dateJoined,
-      updated_at: getNow(),
-    });
+// Persist to Supabase
+        const ecritMotDePasse = await ecrireUserRow(userId, {
+          pseudo_key: normalizePseudoKey(user.pseudo),
+          email_key: normalizeEmailKey(user.email),
+          phone_key: normalizePhoneKey(user.phone),
+          game_id_key: normalizeGameIdKey(user.gameId),
+          role: user.role,
+          password_hash: newHash,
+          payload: user,
+          created_at: user.dateJoined,
+          updated_at: getNow(),
+        });
+        if (ecritMotDePasse !== OCC_OK) {
+          // On ne remet PAS l ancien hash en memoire : l utilisateur vient de
+          // changer de mot de passe, et la revoquer serait pire que le conflit.
+          log.error('Changement de mot de passe non ecrit (conflit ou echec)', {
+            userId, resultat: ecritMotDePasse,
+          });
+        }
 };
 
 // ─── Account Activation Codes ─────────────────────────────────────────────────
@@ -2102,17 +2293,21 @@ export const changeActivationEmail = async (oldEmail, newEmail) => {
     if (passwordHash) storePasswordHash(userId, passwordHash, current.pseudo, current.email, current.phone);
     memoryActivationCodes.delete(oldEmail);
     const code = generateActivationCode(current.email, userId);
-    await sbUpsert('app_users', {
-      id: userId,
-      pseudo_key: normalizePseudoKey(current.pseudo),
-      email_key: normalizeEmailKey(current.email),
-      phone_key: normalizePhoneKey(current.phone),
-      game_id_key: normalizeGameIdKey(current.gameId),
-      role: current.role,
-      password_hash: passwordHash,
-      payload: current,
-      updated_at: getNow(),
-    });
+const ecritActivation = await ecrireUserRow(userId, {
+          pseudo_key: normalizePseudoKey(current.pseudo),
+          email_key: normalizeEmailKey(current.email),
+          phone_key: normalizePhoneKey(current.phone),
+          game_id_key: normalizeGameIdKey(current.gameId),
+          role: current.role,
+          password_hash: passwordHash,
+          payload: current,
+          updated_at: getNow(),
+        });
+        if (ecritActivation !== OCC_OK) {
+          log.error('Mise a jour du profil non ecrite (conflit ou echec)', {
+            userId, resultat: ecritActivation,
+          });
+        }
     return { userId, code };
   });
 };
@@ -2353,12 +2548,16 @@ export const activateUserAccount = async (userId) => {
     user.isActive = true;
     user.activatedAt = getNow();
 
-    // Update in Supabase
-    await sbUpsert('app_users', {
-      id: userId,
-      payload: user,
-      updated_at: getNow(),
-    });
+// Update in Supabase
+        const ecritMaintenance = await ecrireUserRow(userId, {
+          payload: user,
+          updated_at: getNow(),
+        });
+        if (ecritMaintenance !== OCC_OK) {
+          log.error('Ecriture de maintenance non persistee (conflit ou echec)', {
+            userId, resultat: ecritMaintenance,
+          });
+        }
 
     return user;
   });

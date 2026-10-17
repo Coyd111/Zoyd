@@ -8,6 +8,16 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Un SEUL processus, explicitement.
+      #
+      # `docs/02-argent.md` affirmait que `WEB_CONCURRENCY=1` garantissait ça
+      # « aujourd'hui » — alors que la variable n'était configurée NULLE PART.
+      # La garantie ne tenait donc que par l'absence de `cluster` dans la
+      # commande de démarrage : un concours de circonstances, pas une
+      # configuration. Ajouter `--experimental-cluster`, ou passer Render à
+      # l'autoscaling, cassait la garantie sans qu'aucune vérification ne bronche.
+      - key: WEB_CONCURRENCY
+        value: "1"
       # Logs prod en warn+ (le debug par requête noierait les erreurs sur Render gratuit)
       - key: LOG_LEVEL
         value: warn

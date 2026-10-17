@@ -3,6 +3,7 @@ import http from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
 import webpush from 'web-push';
 import { vapidKeys } from './vapid-keys.mjs';
+import { assertSingleProcess } from './single-process-guard.mjs';
 import { createLogger } from './logger.mjs';
 import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from './metrics.mjs';
 import { serializeAuthCookie, ALLOWED_ORIGINS, ALLOW_DEBUG_CODES, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
@@ -584,6 +585,18 @@ io.on('connection', (socket) => {
 });
 
 const start = async () => {
+  // Refuse de booting en multi-processus AVANT de charger quoi que ce soit.
+  //
+  // L'etat des joueurs vit en memoire, et chaque mutation relit-modifie-ecrit
+  // le payload complet sous un verrou de PROCESSUS. Avec deux instances, deux
+  // mutations concurrentes lisent le meme instantane et la derniere ecrase la
+  // premiere : sur un portefeuille, c'est de l'argent perdu en silence.
+  //
+  // On refuse de demarrer plutot que d'accepter ca : un serveur qui tourne
+  // en vendant ceScenario est pire qu'un serveur qui ne demarre pas, parce
+  // qu'il continue d'accepter des retraits.
+  assertSingleProcess();
+
   const loaded = await loadFromSupabaseWithRetry(3);
   if (!loaded) {
     // Le serveur démarre quand même (les lectures restent possibles), mais

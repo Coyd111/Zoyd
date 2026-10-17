@@ -119,7 +119,24 @@ Autant de valeur que de défauts.
 - **Conversion `transaction.amount / 10`** (1 ZC = 10 FCFA) : non confirmée
   contre l'API réelle. Bloqué jusqu'aux clés live.
 - **Multi-instance** : les verrous et l'état en mémoire sont corrects pour
-  **un** processus. `WEB_CONCURRENCY=1` le garantit aujourd'hui, mais un
-  déploiement reste une fenêtre à deux instances (voir §1). UneInstance
-  persistée par joueur — ou un verrou distribué — supprimerait la classe de
-  problème, mais c'est un chantier, pas un correctif.
+  **un** processus seulement. `WEB_CONCURRENCY=1` est désormais réellement
+  configuré (`render.yaml`) **et vérifié au démarrage** par
+  `assertSingleProcess()`, qui refuse de booting plutôt que d'accepter
+  silencieusement une instance concurrente.
+
+  Ce qui reste ouvert, et qui ne se referme pas avec ce garde :
+
+  - **La fenêtre de déploiement.** Render garde l'ancienne instance le temps
+    que la nouvelle démarre. Pendant ce recouvrement, deux processus coexistent
+    et rien ne les distingue : `/api/health` reste vert, chaque instance étant
+    individuellement cohérente. C'est la seule fenêtre réellement exploitable en
+    production aujourd'hui, et elle existe par construction — un garde-fou ne
+    peut pas l'interdire sans passer sur un vrai verrou.
+  - **La classe de problème.** Sur un portefeuille, deux mutations lues sur le
+    même instantané s'écrasent en séquence : deux retraits produisent deux
+    soldes différents, le second effaçant le débit du premier. La parade
+    structurelle est un **OCC en base** (comparer `updated_at` à la lecture,
+    écrire sous cette condition, recharger et réessayer) — un seul point
+    d'entrée à traiter, `updateUserAccount` (`server/persistence.mjs`), puisque
+    toutes les mutations de portefeuille y convergent. C'est un chantier, pas un
+    correctif, et il n'a pas été fait.

@@ -1992,28 +1992,62 @@ export const hydrateWinningsKeys = () => {
  * @returns {Promise<boolean>} true if the transaction was found and tagged
  */
 export const tagWalletTransaction = async (userId, txId, patch) => {
-  if (!txId || !patch || typeof patch !== 'object') return false;
-  let tagged = false;
-  await updateUserAccount(userId, (user) => {
-    const txs = user.wallet?.transactions;
-    if (!Array.isArray(txs)) return user;
-    const tx = txs.find((t) => t?.id === txId);
-    if (tx) {
-      tx.metadata = { ...(tx.metadata || {}), ...patch };
-      // `payoutStatus: 'failed'` doit REFLETER l'echec dans le statut affiche.
-      // Sans cela, un retrait que FedaPay a refuse restait `completed` avec une
-      // coche verte dans l'historique : le joueur lisait des retraits reussis
-      // qui n avaient jamais eu lieu, a cote du remboursement qui traisait la
-      // realite. Le `status` est la seule information que l'UI lit.
-      if (patch.status && typeof patch.status === 'string') {
-        tx.status = patch.status;
+    // `txId` peut etre absent : un retrait sorti de la fenetre de 200 doit
+    // pouvoir etre resolu quand meme. C est la FILE qui porte alors la preuve.
+    if (!patch || typeof patch !== 'object') return false;
+    if (!txId && !patch.payoutId) return false;
+    let tagged = false;
+    await updateUserAccount(userId, (user) => {
+      const txs = user.wallet?.transactions;
+      if (!Array.isArray(txs)) return user;
+      const tx = txs.find((t) => t?.id === txId);
+      if (tx) {
+        tx.metadata = { ...(tx.metadata || {}), ...patch };
+        // `payoutStatus: 'failed'` doit REFLETER l'echec dans le statut affiche.
+        // Sans cela, un retrait que FedaPay a refuse restait `completed` avec une
+        // coche verte dans l'historique : le joueur lisait des retraits reussis
+        // qui n avaient jamais eu lieu, a cote du remboursement qui traisait la
+        // realite. Le `status` est la seule information que l'UI lit.
+        if (patch.status && typeof patch.status === 'string') {
+          tx.status = patch.status;
+        }
+        tagged = true;
       }
-      tagged = true;
-    }
-    return user;
-  });
-  return tagged;
-};
+      // ─── File de reconciliation ─────────────────────────────────────────
+      // L'historique est plafonne a 200 entrees. Un retrait marque
+      // `pending_review` qui en sortait n'etait PLUS JAMAIS relu : son payout
+      // restait « peut-etre parti » indefiniment, donc l'argent du joueur
+      // restait retenu, sans log et sans alerte — `stillPending` ne le comptait
+      // meme plus, puisque le balayage ne le voyait plus.
+      //
+      // Cette liste vit dans le portefeuille, donc dans le payload en base, et
+      // n'est pas bornee par l'activite du joueur. Elle porte ce qu'il faut pour
+      // resolver SANS la transaction : le retrait peut avoir disparu.
+      const file = Array.isArray(user.wallet?.payoutsEnAttente) ? user.wallet.payoutsEnAttente : [];
+      const statutResultant = patch.payoutStatus || tx?.metadata?.payoutStatus;
+      if (statutResultant === 'pending_review') {
+        const payoutId = patch.payoutId || tx?.metadata?.payoutId;
+        if (payoutId && !file.some((p) => p?.payoutId === payoutId)) {
+          file.push({
+            payoutId,
+            txId,
+            idempotencyKey: tx?.metadata?.idempotencyKey || patch.idempotencyKey || null,
+            since: getNow(),
+          });
+        }
+      } else if (statutResultant) {
+        // Resolu : la dette sort de la file. Sans ce retrait, elle y resterait
+        // pour toujours, et chaque balayage际 reinterrogerait FedaPay.
+        const payoutId = patch.payoutId || tx?.metadata?.payoutId;
+        user.wallet.payoutsEnAttente = payoutId
+          ? file.filter((p) => p?.payoutId !== payoutId)
+          : file;
+      }
+      if (user.wallet) user.wallet.payoutsEnAttente = file;
+      return user;
+    });
+    return tagged;
+  };
 
 /**
  * Create a new user account. Mutex-protected to ensure uniqueness checks are atomic.

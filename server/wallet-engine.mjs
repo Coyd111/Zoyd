@@ -480,12 +480,33 @@ export const reconcilePendingWithdrawals = async (
   listUserIds, getWallet, tagTx, refund, forgetKey, warn,
 ) => {
   const pending = [];
+  // Deux sources, et c'est VOLONTAIRE :
+  //
+  // 1. `payoutsEnAttente`, dans le portefeuille : liste dediee, non plafonnee
+  //    par l'activite du joueur. C'est la seule source fiable — l'historique est
+  //    plafonne a 200 entrees, et un retrait qui en sortait n'etait plus jamais
+  //    relu. Son argent restait retenu indefiniment, sans log ni alerte.
+  // 2. L'historique : filet de securite pour les portefeuilles enregistres
+  //    avant l'existence de la liste. Partiel, et assume comme tel.
   for (const userId of listUserIds()) {
-    for (const tx of getWallet(userId)?.transactions || []) {
+    const wallet = getWallet(userId);
+    const dejaVus = new Set();
+    for (const entree of wallet?.payoutsEnAttente || []) {
+      if (!entree?.payoutId) continue;
+      dejaVus.add(entree.payoutId);
+      pending.push({
+        userId,
+        payoutId: entree.payoutId,
+        idempotencyKey: entree.idempotencyKey || null,
+        tx: (wallet?.transactions || []).find((t) => t?.id === entree.txId) || null,
+      });
+    }
+    for (const tx of wallet?.transactions || []) {
       if (tx?.type !== 'withdraw') continue;
       if (tx.metadata?.payoutStatus !== 'pending_review') continue;
       if (!tx.metadata?.payoutId) continue;
-      pending.push({ userId, tx });
+      if (dejaVus.has(tx.metadata.payoutId)) continue;
+      pending.push({ userId, payoutId: tx.metadata.payoutId, idempotencyKey: tx.metadata?.idempotencyKey || null, tx });
     }
   }
   if (pending.length === 0) return { resolved: 0, refunded: 0, stillPending: 0 };
@@ -496,18 +517,36 @@ export const reconcilePendingWithdrawals = async (
 
   for (const item of pending) {
     try {
-      const payout = await retrieveFedaPayPayout(item.tx.metadata.payoutId);
+      const payout = await retrieveFedaPayPayout(item.payoutId);
+      // La transaction peut avoir disparu de la fenetre : le `payoutId` vient
+      // alors de la file, qui est justement la raison de son existence.
+      const marque = {
+        payoutId: item.payoutId,
+        ...(item.tx ? {} : {}),
+      };
       if (payoutSucceeded(payout.status)) {
-        await tagTx(item.userId, item.tx.id, { payoutStatus: 'success', status: 'completed' });
-        forgetKey(item.userId, item.tx.metadata.idempotencyKey);
+        await tagTx(item.userId, item.tx?.id || null, { ...marque, payoutStatus: 'success', status: 'completed' });
+        forgetKey(item.userId, item.idempotencyKey);
         resolved += 1;
       } else if (payoutFailed(payout.status)) {
         // Refus DEFINITIF : cette fois on peut rembourser sans risque.
-        await refund(item.userId, Number(item.tx.amount) || 0, {
-          idempotencyKey: item.tx.metadata.idempotencyKey,
-        });
-        await tagTx(item.userId, item.tx.id, { payoutStatus: 'failed', status: 'failed' });
-        forgetKey(item.userId, item.tx.metadata.idempotencyKey);
+        //
+        // ABSOLU : une transaction de retrait porte un montant NEGATIF (c'est
+        // la sortie de caisse consignee). Le code transmettait tel quel, donc le
+        // remboursement versait un montant NEGATIF — l'argent du joueur etait
+        // retire au lieu de rendu, au moment precis ou on lui rendait enfin
+        // justice. Les tests existants passaient parce que leurs fixtures
+        // portaient un montant positif.
+        const montant = item.tx ? Math.abs(Number(item.tx.amount) || 0) : 0;
+        if (montant > 0) {
+          await refund(item.userId, montant, { idempotencyKey: item.idempotencyKey });
+        } else {
+          warn('Retrait en attente resolu sans transaction : aucun montant a rembourser', {
+            userId: item.userId, payoutId: item.payoutId,
+          });
+        }
+        await tagTx(item.userId, item.tx?.id || null, { ...marque, payoutStatus: 'failed', status: 'failed' });
+        forgetKey(item.userId, item.idempotencyKey);
         refunded += 1;
       } else {
         stillPending += 1;
@@ -517,7 +556,7 @@ export const reconcilePendingWithdrawals = async (
       // exactement le double versement que la route evite a tout prix.
       stillPending += 1;
       warn('Reconciliation retrait impossible', {
-        userId: item.userId, txId: item.tx.id, error: error.message,
+        userId: item.userId, txId: item.tx?.id || null, payoutId: item.payoutId, error: error.message,
       });
     }
   }

@@ -2971,12 +2971,28 @@ export const getRealtimeSession = (token) => {
   // toute sa duree de vie (6 h). Le rechargement cookie du handshake, lui,
   // passait par `getAuthSession` : seules les sockets DEJA ouvertes
   // survivaient au bannissement — et l'ecart etait invisible.
-  if (getBlockingSanction(s.userId)) {
-    memoryRealtimeSessions.delete(tokenHash);
-    return null;
-  }
-  return s;
-};
+if (getBlockingSanction(s.userId)) {
+      memoryRealtimeSessions.delete(tokenHash);
+      return null;
+    }
+    // Le role est RELU, pas reutilise depuis la session.
+    //
+    // `role` etait fige a la creation de la session temps reel. Une session vit
+    // 6 h : un administrateur retrograde gardait donc `role === 'admin'` sur
+    // toutes ses sockets pendant toute cette duree. Concretement,
+    // `notification:push` n'autorise que soi-meme OU un admin — un admin
+    // retrograde continuait donc d ecrire dans le telephone de n'importe quel
+    // joueur pendant des heures apres sa retrogradation.
+    //
+    // C est le meme defaut que celui corrige pour le bannissement ci-dessus :
+    // le controle portait sur l'evenement declencheur, pas sur l'etat courant.
+    const user = getUserById(s.userId);
+    if (!user) {
+      memoryRealtimeSessions.delete(tokenHash);
+      return null;
+    }
+    return { ...s, role: user.role };
+  };
 
 /**
  * Find a valid realtime session for a user, or create one.

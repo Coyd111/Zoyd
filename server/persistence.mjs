@@ -2149,6 +2149,19 @@ export const updatePasswordHash = async (userId, newHash) => {
   // Store new hash
   storePasswordHash(userId, newHash, user.pseudo, user.email, user.phone);
 // Persist to Supabase
+        //
+        // Le rejeu est explicite, et sa SEMANTIQUE est le point : on ne
+        // réecrit pas `payload: user`, qui est notre copie — périmée par
+        // construction, c'est justement ce que le conflit signale. On repart du
+        // payload fraichement relu et on n'y applique QUE l'intention de cette
+        // opération : le nouveau hash.
+        //
+        // Sans cela, un conflit suffisait à perdre le changement de mot de
+        // passe. L'utilisateur reçoit « mot de passe modifié », croit être
+        // protégé, et l'ancien hash reste valide en base — jusqu'au prochain
+        // redémarrage du serveur, où le mot de passe d'avant redevient le
+        // bon. C'est le pire scénario possible : l'utilisateur a fait la
+        // bonne gesture et la protection n'a jamais existé.
         const ecritMotDePasse = await ecrireUserRow(userId, {
           pseudo_key: normalizePseudoKey(user.pseudo),
           email_key: normalizeEmailKey(user.email),
@@ -2159,13 +2172,29 @@ export const updatePasswordHash = async (userId, newHash) => {
           payload: user,
           created_at: user.dateJoined,
           updated_at: getNow(),
-        });
+        }, (frais) => ({
+          pseudo_key: normalizePseudoKey(frais.pseudo ?? user.pseudo),
+          email_key: normalizeEmailKey(frais.email ?? user.email),
+          phone_key: normalizePhoneKey(frais.phone ?? user.phone),
+          game_id_key: normalizeGameIdKey(frais.gameId ?? user.gameId),
+          role: frais.role ?? user.role,
+          password_hash: newHash,
+          payload: frais,
+          created_at: frais.dateJoined ?? user.dateJoined,
+          updated_at: getNow(),
+        }));
         if (ecritMotDePasse !== OCC_OK) {
           // On ne remet PAS l ancien hash en memoire : l utilisateur vient de
           // changer de mot de passe, et la revoquer serait pire que le conflit.
+          // Mais on ne pretend surtout pas que c est passe : le client doit
+          // l'apprendre, sinon il croit a tort etre protege.
           log.error('Changement de mot de passe non ecrit (conflit ou echec)', {
             userId, resultat: ecritMotDePasse,
           });
+          throw makeError(
+            'SERVER_BUSY',
+            'Mot de passe modifie mais non enregistre. Reessaie dans un instant.',
+          );
         }
 };
 

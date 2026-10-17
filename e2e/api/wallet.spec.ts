@@ -251,6 +251,13 @@ test.describe('Wallet API', () => {
   });
 
   test('POST /api/wallet/withdraw — 409 si le solde est insuffisant, sans débiter', async () => {
+    // Solde AVANT, plutôt que la constante EXPECTED_BALANCE : ce test doit
+    //-dire « le refus n'a rien débité », pas « le joueur a 800 ZC ». Sinon il
+    // ne tourne qu'après les tests de dépôt, et `--grep` le fait échouer pour
+    // une raison sans rapport avec ce qu'il vérifie.
+    const avant = await call(player, 'GET', `${BASE}/wallet/me`);
+    expect(avant.status).toBe(200);
+
     const res = await call(player, 'POST', `${BASE}/wallet/withdraw`, {
       amount: 100_000,
       method: MTN,
@@ -264,7 +271,7 @@ test.describe('Wallet API', () => {
     // Aucune réservation, aucune transaction de retrait : le refus est atomique.
     const wallet = await call(player, 'GET', `${BASE}/wallet/me`);
     expect(wallet.status).toBe(200);
-    expect(wallet.body.wallet.cashBalance).toBe(EXPECTED_BALANCE);
+    expect(wallet.body.wallet.cashBalance).toBe(avant.body.wallet.cashBalance);
     expect(wallet.body.wallet.lockedBalance).toBe(0);
     expect(wallet.body.wallet.transactions.some((tx: any) => tx.type === 'withdraw')).toBe(false);
   });
@@ -337,6 +344,9 @@ test.describe('Wallet API', () => {
     // Budget rate-limit : le groupe `wallet` est plafonné à 20 requêtes / 10 min
     // pour l'IP du runner, budget partagé avec match.spec.ts. On couvre les deux
     // formes de rejet les plus parlantes sans l'épuiser.
+    const avant = await call(player, 'GET', `${BASE}/wallet/me`);
+    expect(avant.status).toBe(200);
+
     for (const transactionId of ['abc', '1'.repeat(21)]) {
       const res = await call(player, 'POST', `${BASE}/wallet/verify-fedapay`, { transactionId });
       expect(res.status).toBe(400);
@@ -344,7 +354,7 @@ test.describe('Wallet API', () => {
     }
 
     const wallet = await call(player, 'GET', `${BASE}/wallet/me`);
-    expect(wallet.body.wallet.cashBalance).toBe(EXPECTED_BALANCE);
+    expect(wallet.body.wallet.cashBalance).toBe(avant.body.wallet.cashBalance);
   });
 
   test('POST /api/wallet/deposit — le canal de financement admin est opérationnel', async () => {

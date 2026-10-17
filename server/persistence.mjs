@@ -149,6 +149,10 @@ export const normalizeWalletSnapshot = (wallet) => ({
   // Il vit DANS le portefeuille, donc dans le payload du compte en base : il
   // survit a un redemarrage, ce que ne faisait pas l historique.
   winningsKeys: Array.isArray(wallet?.winningsKeys) ? wallet.winningsKeys.slice(-MAX_TRACKED_WINNINGS_KEYS) : [],
+    // Meme raison pour les retraits : l'historique est plafonne a 200, et la
+    // cle d'idempotence d'un retrait disparaitrait avec lui. Un rejeu passerait
+    // alors le controle et declencherait un second versement.
+    withdrawalKeys: Array.isArray(wallet?.withdrawalKeys) ? wallet.withdrawalKeys.slice(-MAX_TRACKED_WITHDRAWAL_KEYS) : [],
 });
 
 /**
@@ -1775,9 +1779,35 @@ const notifyWalletUpdated = (userId, user) => {
 const memoryWithdrawalKeys = new Map(); // userId -> Set<idempotencyKey>
 const MAX_TRACKED_WITHDRAWAL_KEYS = 500;
 
+/**
+ * Cle d'idempotence des retraits : TENUE DANS LE PORTEFEUILLE, comme les gains.
+ *
+ * Avant, l'index vivait dans une Map separee, donc en RAM pure, et le seul filet
+ * restant au-dela de 200 transactions etait le balayage de l'historique — lui
+ * meme plafonne a 200 (`wallet-engine.mjs:90`).
+ *
+ * Consequence : au-dela de 200 transactions, la cle disparaissait des deux
+ * cotes. Un rejeu du meme retrait avec la meme cle passait alors le controle, et
+ * declenchait un SECOND versement FedaPay, non rattache a rien de rattestable.
+ *
+ * `winningsKeys` resolvait deja ce probleme pour les gains, avec
+ * `hydrateWinningsKeys`. On applique le meme motif plutot que d'inventer.
+ */
 const getWithdrawalKeys = (userId) => {
-  if (!memoryWithdrawalKeys.has(userId)) memoryWithdrawalKeys.set(userId, new Set());
+  if (!memoryWithdrawalKeys.has(userId)) {
+    // Reconstruction depuis le portefeuille : c'est la source de verite, elle
+    // survit a un redemarrage.
+    const stocke = memoryUsers.get(userId)?.wallet?.withdrawalKeys;
+    memoryWithdrawalKeys.set(userId, new Set(Array.isArray(stocke) ? stocke : []));
+  }
   return memoryWithdrawalKeys.get(userId);
+};
+
+/** Reporte l'index memoire dans le portefeuille, pour qu'il soit persiste. */
+const syncWithdrawalKeys = (userId, set) => {
+  const user = memoryUsers.get(userId);
+  if (!user?.wallet) return;
+  user.wallet.withdrawalKeys = Array.from(set);
 };
 
 /**
@@ -1825,6 +1855,10 @@ export const trackWithdrawalKey = (userId, key) => {
     set.delete(oldest);
   }
   set.add(key);
+  // Reporte dans le portefeuille. La persistance se fait avec l'ecriture
+  // suivante du debit : aucune requete de plus, et la cle ne peut pas etre
+  // persistee sans que le debit le soit — donc jamais de cle orpheline.
+  syncWithdrawalKeys(userId, set);
 };
 
 /** Retire une cle : le payout a echoue et le joueur a ete rembourse. */
@@ -1840,19 +1874,29 @@ export const listUserIds = () => Array.from(memoryUsers.keys());
 export const forgetWithdrawalKey = (userId, key) => {
   if (!key) return;
   memoryWithdrawalKeys.get(userId)?.delete(key);
+  syncWithdrawalKeys(userId, memoryWithdrawalKeys.get(userId));
 };
 
-/** Reconstruit l'index depuis les portefeuilles charges (apredemarrage). */
+/** Reconstruit l'index depuis les portefeuilles charges (apres redemarrage). */
 export const hydrateWithdrawalKeys = () => {
   memoryWithdrawalKeys.clear();
   for (const [userId, user] of memoryUsers.entries()) {
+    // SOURCE DE VERITE : le champ dedie du portefeuille. Il n'est pas plafonne
+    // par l'activite du joueur, contrairement a l'historique.
+    const stockes = user?.wallet?.withdrawalKeys;
+    const set = new Set(Array.isArray(stockes) ? stockes : []);
+    memoryWithdrawalKeys.set(userId, set);
+
+    // Repli pour les portefeuilles enregistres avant l existence de ce champ :
+    // seules les transactions encore visibles dans la fenetre de 200. C'est un
+    // filet PARTIEL — assume comme tel plutot que presente comme complet.
     const txs = user?.wallet?.transactions;
     if (!Array.isArray(txs)) continue;
     for (const tx of txs) {
       if (tx?.type !== 'withdraw') continue;
       const key = tx.metadata?.idempotencyKey;
       if (!key || tx.metadata?.payoutStatus === 'failed') continue;
-      trackWithdrawalKey(userId, key);
+      set.add(key);
     }
   }
 };

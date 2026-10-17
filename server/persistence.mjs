@@ -373,6 +373,20 @@ const sbDeleteMulti = async (table, col, values) => {
   if (error) log.error(`${table} delete-in error`, { message: error.message });
 };
 
+const sbUpdate = async (table, filters, patch) => {
+  if (!supabase) return false;
+  let q = supabase.from(table).update(patch);
+  for (const [col, val] of Object.entries(filters)) {
+    q = q.eq(col, val);
+  }
+  const { error } = await q;
+  if (error) {
+    log.error(`${table} update error`, { message: error.message, code: error.code });
+    return false;
+  }
+  return true;
+};
+
 const sbSelect = async (table, filters = {}, columns = '*') => {
   if (!supabase) return [];
   let q = supabase.from(table).select(columns);
@@ -532,7 +546,19 @@ export const loadFromSupabase = async () => {
     for (const s of authSessions) {
       if (!s.token || !s.user_id) continue;
       if (s.expires_at && new Date(s.expires_at) <= new Date()) continue;
-      memoryAuthSessions.set(s.token, { tokenHash: s.token, userId: s.user_id, issuedAt: s.issued_at, expiresAt: s.expires_at });
+      memoryAuthSessions.set(s.token, {
+        tokenHash: s.token,
+        userId: s.user_id,
+        issuedAt: s.issued_at,
+        expiresAt: s.expires_at,
+        // Sans cette restauration, la filiation et la borne absolue ne
+        // vivaient qu'entre deux redemarrages : apres un deploiement, un logout
+        // ne remontait plus la chaine (la mere restait valable) et chaque
+        // rotation repartait de 30 jours neuf.
+        absoluteExpiresAt: s.absolute_expires_at
+          || new Date(Date.parse(s.issued_at || 0) + SESSION_ABSOLUTE_LIFETIME_MS).toISOString(),
+        supersedes: s.supersedes || null,
+      });
     }
 
     // Realtime sessions
@@ -2376,10 +2402,52 @@ const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
  * cookie n expirait que si le client devenait inactif.
  *
  * Ce plafond borne la vie de la session meme si elle ne cesse jamais d etre
- * renouvlee. Il est RECALCULE et PERSISTE a chaque rotation (via `expires_at`),
- * donc il survit a un redemarrage.
+ * renouvlee. Il est CALCULE UNE SEULE FOIS a la creation de la famille, puis
+ * HERITE par chaque rotation — jamais recalcule depuis `expires_at`, sous peine
+ * de le faire avancer de 6 h a chaque rotation.
+ *
+ * Il est desormais PERSISTE (`absolute_expires_at`). Tant que la migration
+ * `supabase/schema.sql` n est pas appliquee, il ne survit pas au redemarrage :
+ * une session rechargee repart de 30 jours neuf. `sbLineageSupporte` dit
+ * franchement quand c est le cas plutot que de le laisser croire.
  */
 const SESSION_ABSOLUTE_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Les colonnes de filiation existent-elles en base ?
+ *
+ * Sonde une fois, puis on memorise. Sans cette detection, ecrire
+ * `absolute_expires_at` sur une table qui ne l'a pas fait echouer CHAQUE
+ * ecriture de session : les utilisateurs seraient deconnectes a chaque
+ * deploiement, silencieusement, puisque `sbUpsert` journalise l'erreur et
+ * rend `false` sans lever.
+ *
+ * `null` = pas encore sonde. Le premier appel sert la sonde.
+ */
+let sbLineageSupporte = null;
+const lineageSupporte = async () => {
+  if (sbLineageSupporte !== null) return sbLineageSupporte;
+  if (!supabase) { sbLineageSupporte = false; return false; }
+  try {
+    const { error } = await supabase
+      .from('auth_sessions')
+      .select('token,absolute_expires_at,supersedes')
+      .limit(1);
+    sbLineageSupporte = !error;
+  } catch {
+    sbLineageSupporte = false;
+  }
+  if (!sbLineageSupporte) {
+    log.warn(
+      'Colonnes de filiation de session absentes : les sessions resteront en memoire seule',
+      { attendu: 'ALTER TABLE auth_sessions ADD COLUMN absolute_expires_at, supersedes' }
+    );
+  }
+  return sbLineageSupporte;
+};
+
+/** Test hooks : force l etat de la sonde (ou `null` pour re-sonder). */
+export const setLignageSupportePourTest = (valeur) => { sbLineageSupporte = valeur; };
 
 /**
  * @param {number} [absoluteExpiresAt] borne absolue ms de la famille de session
@@ -2406,7 +2474,11 @@ const createTokenRecord = async (type, userId, extra = {}, absoluteDeadline = nu
     record.absoluteExpiresAt = new Date(absoluteExpiresAt).toISOString();
     evictOldest(memoryAuthSessions, MAX_AUTH_SESSIONS);
     memoryAuthSessions.set(tokenHash, record);
-    await sbUpsert('auth_sessions', { token: tokenHash, user_id: userId, issued_at: issuedAt, expires_at: expiresAt });
+    const ligne = { token: tokenHash, user_id: userId, issued_at: issuedAt, expires_at: expiresAt };
+    // La borne absolue part en base avec la session, sinon un redemarrage
+    // redistribue 30 jours neuf et le plafond recule de 30 jours par deploiement.
+    if (await lineageSupporte()) ligne.absolute_expires_at = record.absoluteExpiresAt;
+    await sbUpsert('auth_sessions', ligne);
   } else {
     evictOldest(memoryRealtimeSessions, MAX_REALTIME_SESSIONS);
     memoryRealtimeSessions.set(tokenHash, record);
@@ -2586,6 +2658,14 @@ if (newEntry) {
       // que le fils : la mere demeurait valable jusqu au prochain nettoyage,
       // et un cookie vole survivait au logout de la victime.
       newEntry.supersedes = session.tokenHash;
+      // La filiation doit survivre au redemarrage : sinon, apres un deploiement,
+      // un logout ne remonte plus la chaine et la mere reste valable — un cookie
+      // vole survit au logout de la victime.
+      if (await lineageSupporte()) {
+        sbFire('persistSessionLineage', () =>
+          sbUpdate('auth_sessions', { token: newHash }, { supersedes: session.tokenHash })
+        );
+      }
     // La session mere herite du marquage 2FA : sans ca, exiger un nouveau
     // code TOTP a chaque rotation alors que la session vient d'etre validee.
     if (session.admin2faVerified && session.admin2faExpires > Date.now()) {

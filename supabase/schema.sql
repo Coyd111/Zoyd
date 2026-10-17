@@ -36,6 +36,25 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at);
 
+-- Filiation de session et borne absolue.
+--
+-- Ces deux colonnes vivaient uniquement en RAM. Deux garanties Announces par le
+-- code ne tenaient donc qu'entre deux redemarrages :
+--
+-- 1. `absolute_expires_at` — plafond de 30 jours de la famille de sessions.
+--    Sans lui, un redeploiement redistribuait 30 jours neufs depuis la session
+--    mere : le plafond reculait de 30 jours a chaque deploiement.
+-- 2. `supersedes` — ligne de filiation mere -> fils. Sans elle, un logout fait
+--    avec le jeton fils (le cas normal apres rotation) ne supprimait que le
+--    fils : la mere restait valable, et un cookie vole survivait au logout
+--    jusqu a l'expiration de la mere.
+--
+-- `sbLineageSupporte` detecte leur presence : en cas d'absence, le serveur
+-- retombe sur le comportement anterieur au lieu d'echouer sur chaque ecriture.
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS absolute_expires_at TIMESTAMPTZ;
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS supersedes TEXT;
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_supersedes ON auth_sessions(supersedes);
+
 -- ============================================================
 -- 2b. VERROUILLAGE DE CONNEXION
 -- ============================================================

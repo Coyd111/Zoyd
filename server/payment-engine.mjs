@@ -345,3 +345,49 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
       });
   }
 };
+
+/**
+ * Relit un payout chez FedaPay.
+ *
+ * SANS CECI, un payout envoye puis rejete plus tard par FedaPay laisse le joueur
+ * debite A JAMAIS : le statut est ecrit a l envoi (en pratique `pending`), et
+ * rien ne le relait ensuite. Aucun webhook, aucun `Payout.retrieve`, aucun sweep
+ * cron sur les retraits.
+ *
+ * @param {number} payoutId
+ * @returns {Promise<{payoutId: number, status: string, raw: object|null}>}
+ */
+export const retrieveFedaPayPayout = async (payoutId) => {
+  const FEDAPAY_SECRET_KEY = getFedaPayConfig();
+  if (!FEDAPAY_SECRET_KEY) {
+    throw makeError('PAYMENT_NOT_CONFIGURED', "FedaPay n'est pas configure pour les retraits.");
+  }
+  const id = Number(payoutId);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw makeError('INVALID_PAYOUT_ID', 'Identifiant de retrait invalide.');
+  }
+  try {
+    const payout = await Payout.retrieve(id);
+    return {
+      payoutId: id,
+      status: String(payout?.status || 'unknown'),
+      raw: payout || null,
+    };
+  } catch (error) {
+    throw makeError('PAYOUT_LOOKUP_FAILED', `Lecture du retrait ${id} impossible.`, {
+      payoutId: id,
+    });
+  }
+};
+
+/** L'argent a-t-il atteint le joueur ? */
+export const payoutSucceeded = (status) => {
+  const n = String(status || '').toLowerCase();
+  return ['success', 'successful', 'completed', 'paid', 'done'].includes(n);
+};
+
+/** Echec DEFINITIF : le prestataire a refuse, aucune reconciliation ne changera rien. */
+export const payoutFailed = (status) => {
+  const n = String(status || '').toLowerCase();
+  return ['failed', 'failure', 'error', 'rejected', 'cancelled', 'canceled'].includes(n);
+};

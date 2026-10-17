@@ -1,9 +1,25 @@
-import { getStateCollection, replaceStateCollection, cleanupExpiredActivationCodes, cleanupExpiredPasswordResets, cleanupMemoryChatReads, cleanupMemoryNotifications, cleanupMemoryFriendRequests, verifyDataIntegrity } from './persistence.mjs';
+import {
+  getStateCollection,
+  replaceStateCollection,
+  cleanupExpiredActivationCodes,
+  cleanupExpiredPasswordResets,
+  cleanupMemoryChatReads,
+  cleanupMemoryNotifications,
+  cleanupMemoryFriendRequests,
+  verifyDataIntegrity,
+  listUserIds,
+  getUserById,
+  tagWalletTransaction,
+  forgetWithdrawalKey,
+} from './persistence.mjs';
 import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds, retryPendingLeaguePayouts, countPendingLeaguePayouts } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer } from './match-engine.mjs';
+import { reconcilePendingWithdrawals } from './wallet-engine.mjs';
+import { depositToWallet } from './wallet-engine.mjs';
+import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
@@ -401,6 +417,50 @@ export const initCronJobs = () => {
   };
   setInterval(() => { void sweepPendingLeaguePayouts(); }, 6 * 60 * 60 * 1000);
   setTimeout(() => { void sweepPendingLeaguePayouts(); }, 30 * 1000);
+
+  // Retraits « peut-etre partis » : le payout peut avoir ete traite par FedaPay
+  // alors que la reponse s est perdue. La route refuse alors de rembourser — a
+  // raison, sinon double versement — et marque le retrait `pending_review`.
+  //
+  // Ce sweep va le relire aupres du prestataire. C est le SEUL endroit qui le
+  // fait : sans lui, un retrait rejete apres coup laissait le joueur debite a
+  // jamais, et le seul signe etait une ligne de log.
+  let withdrawalReconcileRunning = false;
+  const sweepPendingWithdrawals = async () => {
+    if (withdrawalReconcileRunning) return;
+    withdrawalReconcileRunning = true;
+    try {
+      const result = await reconcilePendingWithdrawals(
+        payoutSucceeded,
+        payoutFailed,
+        retrieveFedaPayPayout,
+        () => listUserIds(),
+        () => listUserIds(),
+        (userId, txId, patch) => tagWalletTransaction(userId, txId, patch),
+        (userId, amount, extra) => depositToWallet(userId, amount, 'Remboursement', {
+          type: 'refund',
+          description: 'Remboursement - retrait rejete par le prestataire',
+          metadata: { reason: 'PAYOUT_REJECTED', ...(extra || {}) },
+        }),
+        (userId, key) => forgetWithdrawalKey(userId, key),
+        (message, detail) => log.warn(message, detail),
+      );
+      if (result.resolved > 0 || result.refunded > 0) {
+        log.warn('Retraits reconcilies', {
+          resolved: result.resolved, refunded: result.refunded, stillPending: result.stillPending,
+        });
+      }
+      if (result.stillPending > 0) {
+        log.error('Retraits toujours en attente de resolution', { count: result.stillPending });
+      }
+    } catch (error) {
+      log.error('Erreur de reconciliation des retraits', error);
+    } finally {
+      withdrawalReconcileRunning = false;
+    }
+  };
+  setInterval(() => { void sweepPendingWithdrawals(); }, 30 * 60 * 1000);
+  setTimeout(() => { void sweepPendingWithdrawals(); }, 45 * 1000);
 
   // Ligues jamais lancees — libere les passes bloques (toutes les 6 h + au boot).
   // Sans ce sweep, une saison restee 'registering' faute d'avoir atteint

@@ -395,3 +395,92 @@ export const debitFromWallet = async (userId, amount, description = 'Debit') => 
     );
   })).wallet;
 };
+
+/**
+ * Retraits marques pending_review : le payout peut-etre parti, on ne sait pas.
+ *
+ * AVANT, ces retraits etaient un trou : la route refusait de rembourser (a
+ * raison), mais rien ne les relisait. Le joueur restait debite, sans trace
+ * consultable ailleurs que dans les logs.
+ *
+ * Ce balayage relit chaque payout douteux aupres de FedaPay et tranche :
+ *   - succes : le retrait est honore ;
+ *   - echec : le prestataire a refuse, on rembourse enfin le joueur ;
+ *   - encore : on laisse en revue, prochain passage.
+ *
+ * Les fonctions FedaPay sont INJECTEES : ce module ne doit pas dependre de
+ * payment-engine. L injection rend en outre la fonction testable sans reseau.
+ *
+ * `listUserIds` et `getWallet` sont fournis par l appelant : ce module ne
+ * connait pas le registre des comptes, seulement les portefeuilles.
+ *
+ * @param {(status: string) => boolean} payoutSucceeded
+ * @param {(status: string) => boolean} payoutFailed
+ * @param {(payoutId: number) => Promise<{status: string}>} retrieveFedaPayPayout
+ * @param {() => string[]} listUserIds
+ * @param {(userId: string) => object|undefined} getWallet
+ * @param {(userId: string, txId: string, patch: object) => Promise<boolean>} tagTx
+ * @param {(userId: string, amount: number, label: string, opts: object) => Promise<object>} refund
+ * @param {(userId: string, key: string) => void} forgetKey
+ * @param {(message: string, detail: object) => void} warn
+ */
+export const reconcilePendingWithdrawals = async (
+  payoutSucceeded, payoutFailed, retrieveFedaPayPayout,
+  listUserIds, getWallet, tagTx, refund, forgetKey, warn,
+) => {
+  const pending = [];
+  for (const userId of listUserIds()) {
+    for (const tx of getWallet(userId)?.transactions || []) {
+      if (tx?.type !== 'withdraw') continue;
+      if (tx.metadata?.payoutStatus !== 'pending_review') continue;
+      if (!tx.metadata?.payoutId) continue;
+      pending.push({ userId, tx });
+    }
+  }
+  if (pending.length === 0) return { resolved: 0, refunded: 0, stillPending: 0 };
+
+  let resolved = 0;
+  let refunded = 0;
+  let stillPending = 0;
+
+  for (const item of pending) {
+    try {
+      const payout = await retrieveFedaPayPayout(item.tx.metadata.payoutId);
+      if (payoutSucceeded(payout.status)) {
+        await tagTx(item.userId, item.tx.id, { payoutStatus: 'success', status: 'completed' });
+        forgetKey(item.userId, item.tx.metadata.idempotencyKey);
+        resolved += 1;
+      } else if (payoutFailed(payout.status)) {
+        // Refus DEFINITIF : cette fois on peut rembourser sans risque.
+        await refund(item.userId, Number(item.tx.amount) || 0, {
+          idempotencyKey: item.tx.metadata.idempotencyKey,
+        });
+        await tagTx(item.userId, item.tx.id, { payoutStatus: 'failed', status: 'failed' });
+        forgetKey(item.userId, item.tx.metadata.idempotencyKey);
+        refunded += 1;
+      } else {
+        stillPending += 1;
+      }
+    } catch (error) {
+      // Relire FedaPay a echoue : on ne decide rien. Rembourser ici serait
+      // exactement le double versement que la route evite a tout prix.
+      stillPending += 1;
+      warn('Reconciliation retrait impossible', {
+        userId: item.userId, txId: item.tx.id, error: error.message,
+      });
+    }
+  }
+
+  return { resolved, refunded, stillPending };
+};
+
+/** Nombre de retraits en attente de reconciliation (sante). */
+export const countPendingWithdrawals = (listUserIds, getWallet) => {
+  let total = 0;
+  for (const userId of listUserIds()) {
+    for (const tx of getWallet(userId)?.transactions || []) {
+      if (tx?.type === 'withdraw' && tx.metadata?.payoutStatus === 'pending_review') total += 1;
+    }
+  }
+  return total;
+};

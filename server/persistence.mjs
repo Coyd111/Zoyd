@@ -1549,6 +1549,15 @@ export const trackWithdrawalKey = (userId, key) => {
 };
 
 /** Retire une cle : le payout a echoue et le joueur a ete rembourse. */
+/**
+ * Identifiants des comptes charges, pour les balayages periodiques.
+ *
+ * Le registre est prive ; sans cet accesseur, un cron ne peut pas relire les
+ * portefeuilles sans dependre d une collection d etat qui ne contient que les
+ * matchs, ligues et tournois.
+ */
+export const listUserIds = () => Array.from(memoryUsers.keys());
+
 export const forgetWithdrawalKey = (userId, key) => {
   if (!key) return;
   memoryWithdrawalKeys.get(userId)?.delete(key);

@@ -799,9 +799,9 @@ export const getHealthInfo = () => ({
   // elle doit etre CONSULTABLE, sinon le seul moyen de la voir est de chercher
   // dans les journaux.
   pendingSettlementDebts: {
-    matches: countPendingMatchDebts(),
-    leagues: countPendingLeagueDebts(),
-    tournaments: countPendingTournamentDebts(),
+    matches: splitPendingDebts('matches'),
+    leagues: splitPendingDebts('leagues'),
+    tournaments: splitPendingDebts('tournaments'),
   },
 
   deployedCommitShort: process.env.RENDER_GIT_COMMIT?.slice(0, 7) || null,
@@ -2999,7 +2999,7 @@ export const getStateCollection = (kind) => {
 };
 
 /**
- * Dettes de reglement en attente, lues dans l'etat en memoire.
+ * Dettes de reglement, lues dans l'etat en memoire.
  *
  * Le comptage vit ICI, et non dans les moteurs, pour deux raisons : `/api/health`
  * est produit par `persistence`, donc importer les moteurs creerait un cycle ;
@@ -3007,22 +3007,23 @@ export const getStateCollection = (kind) => {
  * donc l'etat qu'il faut observer, pas une source de verite parallele.
  *
  * `pendingPayouts` = gains non verses. `pendingRefunds` = remboursements non
- * honores. Les deux sont des dettes : de l'argent attendu par un joueur.
+ * honores. Les deux sont des dettes : de l'argent attendu par un joueur, et les
+ * crons les rejouent. `uncollectableRefunds` n'en est pas une.
+ *
+ * D'ou la separation exigee : voir `splitPendingDebts`.
  */
-const countPendingDebts = (kind) => {
-  let total = 0;
+const splitPendingDebts = (kind) => {
+  let retryable = 0;
+  let uncollectable = 0;
   for (const item of getStateCollection(kind)) {
     const payouts = Array.isArray(item?.pendingPayouts) ? item.pendingPayouts.length : 0;
     const refunds = Array.isArray(item?.pendingRefunds) ? item.pendingRefunds.length : 0;
-    const uncollectable = Array.isArray(item?.uncollectableRefunds) ? item.uncollectableRefunds.length : 0;
-    total += payouts + refunds + uncollectable;
+    const abandoned = Array.isArray(item?.uncollectableRefunds) ? item.uncollectableRefunds.length : 0;
+    retryable += payouts + refunds;
+    uncollectable += abandoned;
   }
-  return total;
+  return { retryable, uncollectable, total: retryable + uncollectable };
 };
-
-const countPendingMatchDebts = () => countPendingDebts('matches');
-const countPendingLeagueDebts = () => countPendingDebts('leagues');
-const countPendingTournamentDebts = () => countPendingDebts('tournaments');
 
 // O(1) single entity lookup
 export const getStateEntity = (kind, entityId) => {

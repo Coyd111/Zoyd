@@ -43,3 +43,51 @@ describe('health — identification du deploiement', () => {
     expect(sante).not.toContain('RESEND_API_KEY');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Une alerte doit distinguer « un joueur attend de l'argent » de « l'argent ne
+// peut plus revenir ».
+//
+// Le 17/10, `/api/health` affichait `pendingSettlementDebts.leagues = 7` sans
+// dire de quoi il s'agissait. Le chiffre additionnait deux choses opposees :
+// des remboursements rejoues toutes les 6 h, et des `uncollectableRefunds`
+// (compte supprime) que rien ne soldera jamais. Consequence concrete : le
+// indicateur restait a 7 indefiniment, donc on ne pouvait plus l'utiliser comme
+// signal — le seul signe fiable aurait ete de leScruter a chaque fois.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('health — dettes de reglement', () => {
+  it('separe les dettes rejouables des dettes definitivement perdues', () => {
+    const source = readPersistence();
+    const debut = source.indexOf('const splitPendingDebts');
+    expect(debut, 'splitPendingDebts doit exister').toBeGreaterThan(-1);
+
+    const corps = source.slice(debut, source.indexOf('};', debut));
+    // Les deux categories doivent etre comptees separement...
+    expect(corps).toContain('retryable');
+    expect(corps).toContain('uncollectable');
+    // ...et l'abandon ne doit jamais etre recompte comme une dette a recouvrer.
+    expect(corps).toMatch(/retryable \+= payouts \+ refunds;/);
+    expect(corps).toMatch(/uncollectable \+= abandoned;/);
+  });
+
+  it('publie la decomposition, pas une somme brute', () => {
+    const source = readPersistence();
+    // Fenetre large : le bloc dettes est plus loin dans l objet que les
+    // identifiants de deploiement testes plus haut.
+    const sante = source.slice(
+      source.indexOf('export const getHealthInfo'),
+      source.indexOf('export const getHealthInfo') + 6000,
+    );
+    expect(sante).toContain('pendingSettlementDebts');
+    for (const kind of ['matches', 'leagues', 'tournaments']) {
+      expect(sante).toContain(`splitPendingDebts('${kind}')`);
+    }
+  });
+
+  it('ne reclasse plus les abandons dans le total des dettes', () => {
+    const source = readPersistence();
+    // L'ancien compteur somma payouts + refunds + uncollectable en un seul
+    // entier : c'est exactement la confusion qu'on supprime.
+    expect(source).not.toMatch(/total \+= payouts \+ refunds \+ uncollectable;/);
+  });
+});

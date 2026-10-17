@@ -2345,11 +2345,42 @@ const ecritActivation = await ecrireUserRow(userId, {
           password_hash: passwordHash,
           payload: current,
           updated_at: getNow(),
+        }, (frais) => {
+          // On reapplique l'INTENTION - le nouvel email - sur l'etat frais, et
+          // surtout on REVALIDE le predicat qui l'autorisait.
+          //
+          // Le garde `isActive !== false` portait sur notre copie, perimee par
+          // construction : c'est precisement ce que le conflit signale. Si
+          // l'autre instance a active le compte entre-temps, changer son email
+          // n'a plus de sens : le joueur s'identifie desormais par cet email,
+          // et le modifier lui retirerait l'acces a son propre compte.
+          if (frais?.isActive !== false) {
+            throw makeError(
+              'ACCOUNT_ALREADY_ACTIVE',
+              'Ce compte vient d etre active. Modifie ton email depuis les parametres.',
+            );
+          }
+          const rafraichi = { ...frais, email: newEmail.trim() };
+          memoryUsers.set(userId, rafraichi);
+          return {
+            pseudo_key: normalizePseudoKey(rafraichi.pseudo),
+            email_key: normalizeEmailKey(rafraichi.email),
+            phone_key: normalizePhoneKey(rafraichi.phone),
+            game_id_key: normalizeGameIdKey(rafraichi.gameId),
+            role: rafraichi.role,
+            password_hash: passwordHash,
+            payload: rafraichi,
+            updated_at: getNow(),
+          };
         });
         if (ecritActivation !== OCC_OK) {
-          log.error('Mise a jour du profil non ecrite (conflit ou echec)', {
+          log.error('Changement d email d activation non ecrit (conflit ou echec)', {
             userId, resultat: ecritActivation,
           });
+          // Le code vient d etre emis ET l'ancien email detruit en memoire.
+          // Rendre un succes laisserait un joueur sans aucun moyen de finir son
+          // inscription, et sans le moindre signe que cela a echoue.
+          throw makeError('SERVER_BUSY', 'Changement d email non enregistre. Reessaie dans un instant.');
         }
     return { userId, code };
   });
@@ -2588,18 +2619,38 @@ export const activateUserAccount = async (userId) => {
     const user = memoryUsers.get(userId);
     if (!user) throw new Error('Utilisateur introuvable.');
 
+    const activatedAt = getNow();
     user.isActive = true;
-    user.activatedAt = getNow();
+    user.activatedAt = activatedAt;
 
 // Update in Supabase
+        //
+        // Activation est MONOTONE : elle ne fait que passer `isActive` a vrai.
+        // Rejouer cette intention sur un etat frais ne peut donc pas ecraser un
+        // travail utile - au pire elle ne change rien. C'est ce qui distingue ce
+        // chemin du changement d'email, dont l'intention n'etait valide que sur
+        // un compte encore inactif.
         const ecritMaintenance = await ecrireUserRow(userId, {
           payload: user,
           updated_at: getNow(),
-        });
+        }, (frais) => ({
+          payload: {
+            ...frais,
+            isActive: true,
+            // Si l'autre instance a deja pose un horodatage, le sien fait foi :
+            // l'ecraser effacerait la trace de qui a active le compte, et quand.
+            activatedAt: frais?.activatedAt || activatedAt,
+          },
+          updated_at: getNow(),
+        }));
         if (ecritMaintenance !== OCC_OK) {
-          log.error('Ecriture de maintenance non persistee (conflit ou echec)', {
+          log.error('Activation non persistee (conflit ou echec)', {
             userId, resultat: ecritMaintenance,
           });
+          // Meme raison que pour le mot de passe : l'utilisateur a clique sur son
+          // lien. Rendre un succes alors que rien n'a ete ecrit le laisse devant
+          // un compte inactif, sans explication.
+          throw makeError('SERVER_BUSY', 'Activation non enregistree. Reessaie dans un instant.');
         }
 
     return user;

@@ -449,6 +449,21 @@ const occSupporte = async () => {
 /** Test hook : force l etat de la sonde (`null` pour re-sonder). */
 export const setOccSupportePourTest = (valeur) => { revisionSupporte = valeur; };
 
+/**
+ * Test hook : place un payload arbitraire dans le cache memoire.
+ *
+ * Sert a reproduire la situation multi-instance ou une instance n'a pas encore
+ * recharge les ecritures d'une autre. Sans ca, impossible de tester le cas
+ * central de `updateUserAccount` : une ecriture anterieure que la memoire
+ * presente encore comme etant l'etat courant.
+ *
+ * Reserve aux tests : en production, un cache coherent est la regle.
+ */
+export const forceUserCache = (userId, payload) => {
+  if (!userId || !payload) return;
+  memoryUsers.set(userId, payload);
+};
+
 /** Revision en base d'un utilisateur, ou `null` si la ligne n existe pas. */
 const lireRevisionUser = async (userId) => {
   const { data, error } = await supabase
@@ -495,12 +510,15 @@ const ecrireUserRowSiRevision = async (userId, revisionObservee, patch) => {
  *   frais quand un conflit survient. Sans lui, un rejeu ecrirait le MEME patch
  *   calcule sur une base perimee — c'est-a-dire l'ecrasement qu on cherche a
  *   empecher.
- * @param {{ creation?: boolean }} [opts] `creation: true` pour la seule creation
- *   de compte. PAR DEFAUT, une ligne absente est une SUPPRESSION en cours, pas
- *   une creation : voir le commentaire sur le repli.
+ * @param {{ creation?: boolean, revisionObservee?: number }} [opts] `creation: true`
+ *   pour la seule creation de compte. PAR DEFAUT, une ligne absente est une
+ *   SUPPRESSION en cours, pas une creation : voir le commentaire sur le repli.
+ *   `revisionObservee` permet a l'appelant d'imposer la revision qu'il a
+ *   lui-meme lue pour construire son patch — c'est ce qui garantit que la base
+ *   du calcul et la condition de l'ecriture designent le meme instant.
  * @returns {Promise<'ok'|'conflit'|'echec'>}
  */
-const ecrireUserRow = async (userId, patch, recalculer = null, { creation = false } = {}) => {
+const ecrireUserRow = async (userId, patch, recalculer = null, { creation = false, revisionObservee: imposee = null } = {}) => {
   const occ = await occSupporte();
 
   if (!occ) {
@@ -511,7 +529,7 @@ const ecrireUserRow = async (userId, patch, recalculer = null, { creation = fals
     return ok || !supabase ? OCC_OK : OCC_ECHEC;
   }
 
-  const revisionObservee = await lireRevisionUser(userId);
+  const revisionObservee = imposee !== null ? imposee : await lireRevisionUser(userId);
   if (revisionObservee === null) {
     if (!creation) {
       // La LIGNE A DISPARU entre-temps : le compte a ete supprime.
@@ -1575,6 +1593,42 @@ export const getPublicStats = () => {
  */
 export const updateUserAccount = async (userId, updater) => {
   return await withUserMutex(userId, async () => {
+    if (!memoryUsers.has(userId)) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
+
+    // ─── Base de calcul : l'INSTANT RELU EN BASE, pas la copie locale ────────
+    //
+    // L'OCC compare une revision lue avant l'ecriture. Il ferme donc la
+    // FENETRE — deux ecritures qui se chevauchent. Il ne fermait pas la
+    // PERIMPTION : si l'instance A ecrit, puis l'instance B demarre, B lit une
+    // revision a jour et calcule pourtant depuis SA copie memoire, anterieure a
+    // A. Aucune conflict n'est detectable — il n'y en a pas — et le CAS passe.
+    //
+    // Concretement sur de l'argent : `trackWithdrawalKey` n'ecrit qu'en
+    // memoire. Si B ecrase le payload de A, la cle d'idempotence ET le debit
+    // de A disparaissent. Un rejeu du meme retrait passe alors le controle et
+    // declenche un SECOND versement.
+    //
+    // On relit donc le payload, et on l'adopte s'il a bouge. La revision
+    // obtenue au meme instant sert de condition a l'ecriture : base et
+    // condition designent le meme instant, sans fenetre entre les deux.
+    const occActif = await occSupporte();
+    let revisionObservee = null;
+    if (occActif) {
+      const frais = await rechargerUserRow(userId);
+      if (!frais) {
+        // Ligne absente : le compte a ete supprime. Refuser, comme toujours —
+        // voir `ecrireUserRow`.
+        throw makeError('SERVER_BUSY', 'Compte introuvable ou supprime.');
+      }
+      revisionObservee = frais.revision;
+      const empreinte = JSON.stringify(sanitizeUserPayload(frais.payload));
+      const empreinteMemoire = JSON.stringify(sanitizeUserPayload(memoryUsers.get(userId)));
+      if (empreinte !== empreinteMemoire) {
+        log.warn('Base de calcul perimee, adoption du payload le plus recent', { userId });
+        memoryUsers.set(userId, sanitizeUserPayload(frais.payload));
+      }
+    }
+
     const current = memoryUsers.get(userId);
     if (!current) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
 
@@ -1634,9 +1688,9 @@ export const updateUserAccount = async (userId, updater) => {
         game_id_key: normalizeGameIdKey(rafraichi.gameId),
         role: rafraichi.role,
         password_hash: passwordHash, payload: rafraichi,
-        created_at: rafraichi.dateJoined, updated_at: getNow(),
-      };
-    });
+created_at: rafraichi.dateJoined, updated_at: getNow(),
+        };
+      }, { revisionObservee });
 
     if (supabase && persisted !== OCC_OK) {
       // On remet l'état mémoire d'avant : le client doit pouvoir rejouer.

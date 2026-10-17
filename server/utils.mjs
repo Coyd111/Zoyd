@@ -6,7 +6,20 @@ export const roundAmount = (value) => {
 
 export const getNow = () => new Date().toISOString();
 
-export const makeError = (code, message) => Object.assign(new Error(message), { code });
+/**
+ * Erreur applicative codee.
+ *
+ * `details` permet de porter un CONTEXTE ACTIONNABLE sur l'erreur — par
+ * exemple un identifiant de payout FedaPay, qui dit a l'appelant si
+ * l'argent a peut-etre malgre tout ete envoye. Sans cela, l'appelant ne peut
+ * que supposer, et une supposition fausse coute de l'argent.
+ *
+ * @param {string} code
+ * @param {string} message
+ * @param {object} [details] - champs additionnels copies sur l'erreur
+ */
+export const makeError = (code, message, details = null) =>
+  Object.assign(new Error(message), { code }, details || {});
 
 /**
  * Formatage d'un montant ZC pour les notifications serveur.

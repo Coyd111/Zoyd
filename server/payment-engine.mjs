@@ -328,6 +328,20 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
       phone: maskPhone(phoneInfo.number),
       raw: error?.message,
     });
-    throw makeError('PAYOUT_FAILED', messagePayout(diagnostic, step));
+    // `createdPayoutId` est REMONTE dans l'erreur.
+      //
+      // `sendNow` peut avoir ete traite par FedaPay alors que la reponse se
+      // perd (timeout, 502, coupure reseau). Dans ce cas l'argent EST parti,
+      // mais l'appelant ne le savait pas : il remboursait le joueur, et celui-ci
+      // recevait a la fois son remboursement et son virement.
+      //
+      // Avec l'identifiant, l'appelant peut conclure « payout peut-etre parti »
+      // et NE PAS rembourser automatiquement — il marque le retrait a
+      // reconcilier. C'est la difference entre un remboursement excessif et une
+      // reconciliation ulterieure.
+      throw makeError('PAYOUT_FAILED', messagePayout(diagnostic, step), {
+        payoutId: createdPayoutId || null,
+        payoutMaybeSent: Boolean(createdPayoutId),
+      });
   }
 };

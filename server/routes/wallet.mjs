@@ -267,7 +267,41 @@ await withWalletMutex(session.user.id, async () => {
       merchantReference: cleanKey || `ZOYD-WITHDRAW-${Date.now()}`,
     });
   } catch (payoutError) {
-    // 3. Échec payout — remboursement sous mutex + traçabilité sur la tx d'origine
+    // 3. Échec payout — remboursement SOUS condition.
+    //
+    // `sendNow` peut avoir ete traite par FedaPay alors que la reponse s'est
+    // perdue (timeout, 502, coupure reseau). L'argent est alors REELLEMENT parti
+    // alors que l'appel echoue. Rembourser dans ce cas donnait au joueur son
+    // remboursement ET son virement : un gain net sur la plateforme.
+    //
+    // Le moteur remonte desormais `payoutMaybeSent`. On ne rembourse que si
+    // l'echec est survenu AVANT toute creation de payout — donc sur une
+    // certitude d'absence d'envoi.
+    const payoutPeutEtreParti = payoutError?.payoutMaybeSent === true;
+    if (payoutPeutEtreParti) {
+      // Aucune restitution automatique. Le retrait est marque pour
+      // reconciliation : l'identifiant du payout est conserve, ce qui rend la
+      // verification possible aupres de FedaPay.
+      log.error('Payout uncertain — pas de remboursement automatique, reconciliation requise', {
+        userId: session.user.id,
+        payoutId: payoutError?.payoutId || null,
+        idempotencyKey: cleanKey,
+      });
+      if (withdrawTxId) {
+        await tagWalletTransaction(session.user.id, withdrawTxId, {
+          payoutId: payoutError?.payoutId || undefined,
+          payoutStatus: 'pending_review',
+          status: 'pending_review',
+        }).catch((tagError) => {
+          log.error('CRITICAL: retrait en attente de revue non marque', {
+            userId: session.user.id, txId: withdrawTxId, error: tagError.message,
+          });
+        });
+      }
+      respondMappedError(res, payoutError);
+      return true;
+    }
+
     log.error('Payout failed, refunding wallet', { userId: session.user.id, error: payoutError.message });
     try {
       await withWalletMutex(session.user.id, async () => {
@@ -291,25 +325,32 @@ await withWalletMutex(session.user.id, async () => {
         error: refundError.message,
       });
     }
-    if (withdrawTxId) {
-      try {
-        // `status: 'failed'` ETANT `payoutStatus` : le statut est ce que
-        // l'historique affiche. Sans lui, un retrait refuse par FedaPay
-        // restait « completed » avec une coche verte.
-        await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed', status: 'failed' });
-        // La clé est libérée : le joueur a été remboursé, un retry doit
-        // pouvoir relancer un vrai payout.
-        forgetWithdrawalKey(session.user.id, cleanKey);
-      } catch (tagError) {
-        // Avant : `.catch(() => {})`. Avalé, le retrait restait NON marqué
-        // 'failed', donc compté dans les commissions ZOYD alors que la
-        // somme avait été remboursée — et la clé restait bloquée.
-        log.error('CRITICAL: payoutStatus not tagged — commission may be over-counted', {
-          userId: session.user.id, txId: withdrawTxId, error: tagError.message,
-        });
+if (withdrawTxId) {
+        try {
+          // `status: 'failed'` ETANT `payoutStatus` : le statut est ce que
+          // l'historique affiche. Sans lui, un retrait refuse par FedaPay
+          // restait « completed » avec une coche verte.
+          await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed', status: 'failed' });
+        } catch (tagError) {
+          // Avant : `.catch(() => {})`. Avalé, le retrait restait NON marqué
+          // 'failed', donc compté dans les commissions ZOYD alors que la
+          // somme avait été remboursée.
+          //
+          // `forgetWithdrawalKey` n'est PLUS dans ce `try` : il ne s'atteignait
+          // jamais si le tag échouait, et la clé restait brûlée en mémoire —
+          // sans que le joueur puisse plus jamais retirer. Le remboursement,
+          // lui, porte desormais la meme cle, ce que `hasActiveWithdrawalKey`
+          // reconnait : le joueur n'est donc plus bloque meme si le tag a echoue.
+          log.error('CRITICAL: payoutStatus not tagged — commission may be over-counted', {
+            userId: session.user.id, txId: withdrawTxId, error: tagError.message,
+          });
+        } finally {
+          // La cle est liberee DANS TOUS LES CAS : le joueur a ete rembourse,
+          // un retry doit pouvoir relancer un vrai payout.
+if (cleanKey) forgetWithdrawalKey(session.user.id, cleanKey);
+          }
       }
-    }
-    respondMappedError(res, payoutError);
+      respondMappedError(res, payoutError);
     return true;
   }
   // 4. Tag payoutId persisté (memory + Supabase) — best effort, le débit reste valide même si le tag échoue

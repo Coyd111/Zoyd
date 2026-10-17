@@ -1503,15 +1503,35 @@ const getWithdrawalKeys = (userId) => {
 
 /**
  * La cle a-t-elle deja servi pour un retrait NON rate (donc rejouable) ?
- * Un retrait marque `payoutStatus: 'failed'` est deliberement exclu : son
- * pass a ete rembourse, un retry doit pouvoir relancer un vrai payout.
+ *
+ * Trois cas la rendent INACTIVE, et chacun existe pour une raison :
+ *
+ * 1. La cle n'a jamais servi.
+ * 2. Le retrait est marque `payoutStatus: 'failed'` — son pass a ete rembourse.
+ * 3. Un REMBOURSEMENT existe pour cette cle (3e cas, ajoute ici).
+ *
+ * Le 3e cas corrige une cle definitivement brulee. `forgetWithdrawalKey` etait
+ * appele DANS le `try` du tag : si `tagWalletTransaction` echouait, la fonction
+ * n'etait jamais atteinte, donc la cle restait en memoire ET la transaction
+ * restait non marquee 'failed' — le garde historique la retrouvait aussi. Le
+ * joueur ne pouvait plus JAMAIS retirer avec cette cle, alors que son argent
+ * lui avait ete rendu. Bloque a vie sur une erreur d'ecriture interne.
+ *
+ * Le remboursement porte `metadata.idempotencyKey` et `type: 'refund'` : c'est
+ * donc une preuve durable que l'intention a ete honoree, independamment du
+ * tag. On se fonde donc dessus plutot que sur une ecriture de plus.
  */
 export const hasActiveWithdrawalKey = (userId, key, transactions = []) => {
+  const liste = Array.isArray(transactions) ? transactions : [];
+  const rembourse = liste.some(
+    (tx) => tx?.metadata?.idempotencyKey === key && tx?.type === 'refund',
+  );
+  if (rembourse) return false;
+
   const active = getWithdrawalKeys(userId).has(key);
-  const inHistory = (Array.isArray(transactions) ? transactions : [])
-    .some((tx) => tx?.metadata?.idempotencyKey === key
-      && tx.type === 'withdraw'
-      && tx.metadata?.payoutStatus !== 'failed');
+  const inHistory = liste.some((tx) => tx?.metadata?.idempotencyKey === key
+    && tx.type === 'withdraw'
+    && tx.metadata?.payoutStatus !== 'failed');
   return active || inHistory;
 };
 

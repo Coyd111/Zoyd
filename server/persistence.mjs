@@ -495,9 +495,12 @@ const ecrireUserRowSiRevision = async (userId, revisionObservee, patch) => {
  *   frais quand un conflit survient. Sans lui, un rejeu ecrirait le MEME patch
  *   calcule sur une base perimee — c'est-a-dire l'ecrasement qu on cherche a
  *   empecher.
+ * @param {{ creation?: boolean }} [opts] `creation: true` pour la seule creation
+ *   de compte. PAR DEFAUT, une ligne absente est une SUPPRESSION en cours, pas
+ *   une creation : voir le commentaire sur le repli.
  * @returns {Promise<'ok'|'conflit'|'echec'>}
  */
-const ecrireUserRow = async (userId, patch, recalculer = null) => {
+const ecrireUserRow = async (userId, patch, recalculer = null, { creation = false } = {}) => {
   const occ = await occSupporte();
 
   if (!occ) {
@@ -510,7 +513,18 @@ const ecrireUserRow = async (userId, patch, recalculer = null) => {
 
   const revisionObservee = await lireRevisionUser(userId);
   if (revisionObservee === null) {
-    // Ligne absente : c'est une creation, pas un conflit.
+    if (!creation) {
+      // La LIGNE A DISPARU entre-temps : le compte a ete supprime.
+      //
+      // Un upsert l aurait RECREE. Or toutes les mutations de portefeuille
+      // passent ici, y compris un retrait en cours : une suppression d admin
+      // (un tricheur, par exemple) qui perdit la course contre une mutation
+      // ressusciterait le compte — avec son solde — et le bannissement qui
+      // venait d etre pose. Refuser est le seul comportement defendable : le
+      // joueur et l admin sont prevenus, et rien n est reinvente.
+      log.error('Ecriture refusee : la ligne a disparu (suppression concurrente)', { userId });
+      return OCC_ECHEC;
+    }
     const ok = await sbUpsert('app_users', { ...patch, id: userId, revision: 0 });
     return ok ? OCC_OK : OCC_ECHEC;
   }
@@ -1287,7 +1301,7 @@ const persisted = await ecrireUserRow(id, {
       game_id_key: normalizeGameIdKey(payload.gameId), role,
       password_hash: passwordHash, payload,
       created_at: createdAt, updated_at: createdAt,
-    });
+    }, null, { creation: true });
     if (supabase && persisted !== OCC_OK) {
       memoryUsers.delete(id);
       pseudoKeys.delete(id);

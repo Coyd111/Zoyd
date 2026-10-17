@@ -22,6 +22,8 @@ import {
 import {
   MIN_WITHDRAWAL_ZC,
   WITHDRAWAL_FEE_RATE,
+  MAX_WITHDRAWAL_DAILY_ZC,
+  getWindowedWithdrawalTotal,
   buildWithdrawalAmounts,
   calcWithdrawNet,
   depositToWallet,
@@ -76,14 +78,22 @@ if (req.method === 'GET' && pathname === '/api/wallet/me') {
   if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
   try {
     const user = getUserById(session.user.id);
+    const wallet = user?.wallet || getServerWallet(session.user.id);
     respondJson(res, 200, {
       ok: true,
-      wallet: user?.wallet || getServerWallet(session.user.id),
+      wallet,
       user,
       // Politique de retrait publiee par le serveur : le front ne doit plus
       // coder `0.02` en dur (il l'avait en dur a deux endroits, et la
       // notification « X net » etait recalculee localement).
-      withdrawal: { feeRate: WITHDRAWAL_FEE_RATE, minAmount: MIN_WITHDRAWAL_ZC },
+      withdrawal: {
+        feeRate: WITHDRAWAL_FEE_RATE,
+        minAmount: MIN_WITHDRAWAL_ZC,
+        // Publie pour que le front affiche la regle au lieu de decouvrir le refus.
+        dailyLimit: MAX_WITHDRAWAL_DAILY_ZC,
+        dailyWindowHours: 24,
+        remainingToday: getWindowedWithdrawalTotal(wallet),
+      },
     });
   } catch (error) {
     respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement du wallet.', code: 'LOAD_ERROR' });

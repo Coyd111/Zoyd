@@ -359,8 +359,9 @@ export const mapPersistenceError = (error) => {
     case 'DUPLICATE_GAME_ID':
     case 'ALREADY_LOCKED':
     case 'TRANSACTION_IN_PROGRESS':
-    case 'INSUFFICIENT_FUNDS':
-    case 'MATCH_CLOSED':
+case 'INSUFFICIENT_FUNDS':
+      case 'DAILY_WITHDRAWAL_LIMIT':
+      case 'MATCH_CLOSED':
     case 'MATCH_NOT_LIVE':
     case 'ALREADY_JOINED':
     case 'ROLE_CONFLICT':

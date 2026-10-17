@@ -4,7 +4,48 @@ import { getWalletSnapshot, updateWalletSnapshot, hasSettledWinningsKey, trackWi
 const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
 
-export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE };
+
+/**
+ * Plafond de retraits cumules par joueur sur 24 h.
+ *
+ * La route ne borne que la TRANSACTION. Sans cumul, un joueur pouvait en
+ * chainer les retraits jusqu a vider son solde : le seul frein etait le rate
+ * limiter par IP, contournable trivialement.
+ *
+ * Volontairement genereux : l objectif est de rendre impossible le cumul
+ * repete, pas d empecher un retrait legitime.
+ */
+const MAX_WITHDRAWAL_DAILY_ZC = 50_000;
+const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE, MAX_WITHDRAWAL_DAILY_ZC };
+
+/**
+ * Somme des retraits du joueur sur la fenetre glissante.
+ *
+ * Lue dans l historique du portefeuille plutot que dans un registre separe :
+ * c est la seule source deja persistee et rattachee au compte, donc elle
+ * survit a un redemarrage.
+ *
+ * @param {object} wallet
+ * @param {number} [nowMs]
+ * @returns {number} cumul en ZC
+ */
+export const getWindowedWithdrawalTotal = (wallet, nowMs = Date.now()) => {
+  const debut = nowMs - DAILY_WINDOW_MS;
+  let total = 0;
+  for (const tx of wallet?.transactions || []) {
+    if (tx?.type !== 'withdraw') continue;
+    if (tx?.status === 'failed') continue;
+    const quand = new Date(tx?.timestamp || 0).getTime();
+    if (!quand || quand < debut) continue;
+    // ATTENTION : amount est NEGATIF sur une transaction de retrait. C est
+    // la sortie de caisse consignee, pas le montant retire. Sans le signe, le
+    // cumul restait nul et le plafond ne limitait rien.
+    total += Math.abs(Number(tx?.amount) || 0);
+  }
+  return roundAmount(total);
+};
 
 /**
  * Compute fee + net for a withdrawal (single source of truth, 2-decimal rounding).
@@ -107,10 +148,20 @@ export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money'
   }
 
   return (await updateWalletSnapshot(userId, (wallet) => {
+    // Le solde d'abord : on ne peut pas retirer plus que ce qu on a, quelle que
+    // soit la fenetre de cumul. L ordre inverse rendait INSUFFICIENT_FUNDS
+    // inatteignable pour les retraits superieurs au plafond.
     if (safeAmount > wallet.cashBalance) {
       throw makeError('INSUFFICIENT_FUNDS', 'Solde cash insuffisant pour ce retrait.');
     }
-
+    // Plafond cumule sur la fenetre glissante, verifie avant tout debit.
+    const cumul = getWindowedWithdrawalTotal(wallet);
+    if (cumul + safeAmount > MAX_WITHDRAWAL_DAILY_ZC) {
+      throw makeError(
+        'DAILY_WITHDRAWAL_LIMIT',
+        'Plafond de retraits atteint : ' + MAX_WITHDRAWAL_DAILY_ZC + ' ZC sur 24 h.',
+      );
+    }
     const { feeAmount, netAmount } = calcWithdrawNet(safeAmount);
 
     return withTransaction(

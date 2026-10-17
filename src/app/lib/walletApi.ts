@@ -4,16 +4,16 @@ import type { TransactionStatus, TransactionType } from '../stores/walletStore';
 
 export interface WalletTransaction {
   id: string;
-  /** Union volontairement reprise du store : le serveur n'Ã©met que ces
+  /** Union volontairement reprise du store : le serveur n'émet que ces
    *  valeurs, et un `string` large rendait le mapping non assignable
-   *  (le store forÃ§ait un cast). */
+   *  (le store forçait un cast). */
   type: TransactionType;
   amount: number;
   description?: string;
   status: TransactionStatus;
   metadata?: Record<string, unknown>;
-  /** Champ Ã©crit par le serveur (`buildTransaction`). `created_at` est
-   *  tolÃ©rÃ© pour les lignes plus anciennes. */
+  /** Champ écrit par le serveur (`buildTransaction`). `created_at` est
+   *  toléré pour les lignes plus anciennes. */
   timestamp?: string;
   created_at?: string;
 }
@@ -32,7 +32,7 @@ export interface WalletSnapshot {
  *
  * Le taux etait code en dur a deux endroits dans le front, et le store
  * recalculait le net localement apres un retrait reussi : la notification
- * Â« X net envoyes Â» pouvait differer du montant reellement verse par FedaPay.
+ * « X net envoyes » pouvait differer du montant reellement verse par FedaPay.
  */
 export interface WithdrawalPolicy {
   feeRate: number;
@@ -68,9 +68,9 @@ export const depositWalletBalance = async (amount: number, method: string): Prom
 };
 
 /**
- * Retire des fonds. `idempotencyKey` est gÃ©nÃ©rÃ©e ici et non par l'appelant :
- * un double-clic ou un retry rÃ©seau rÃ©utilise la mÃªme clÃ©, donc le serveur
- * dÃ©tecte la duplication (un seul dÃ©bit, un seul payout FedaPay).
+ * Retire des fonds. `idempotencyKey` est générée ici et non par l'appelant :
+ * un double-clic ou un retry réseau réutilise la même clé, donc le serveur
+ * détecte la duplication (un seul débit, un seul payout FedaPay).
  */
 let pendingWithdrawalKey: string | null = null;
 
@@ -88,7 +88,7 @@ export const withdrawWalletBalance = async (
   // serveur etait inerte depuis le client.
   //
   // La cle n'est Renewee qu'apres un SUCCES : un nouvel essai apres un echec
-  // doit rÃ©utiliser la meme, sinon le serveur voit une nouvelle intention et
+  // doit réutiliser la meme, sinon le serveur voit une nouvelle intention et
   // debit legitimately. C'est exactement ce que la cle sert a distinguer.
   if (!pendingWithdrawalKey) {
     pendingWithdrawalKey =

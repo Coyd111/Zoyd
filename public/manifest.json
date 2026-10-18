@@ -1,8 +1,8 @@
 {
   "short_name": "ZOYD",
-  "name": "ZOYD — Plateforme CODM Afrique",
+  "name": "ZOYD — Wagers sécurisés et arbitrage rémunéré sur CODM",
   "id": "zoyd-platform",
-  "description": "La plateforme de reference pour les competiteurs de Call of Duty Mobile en Afrique.",
+  "description": "Créez vos matchs compétitifs sur CODM : wagers sécurisés, arbitrage rémunéré, gains Mobile Money.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

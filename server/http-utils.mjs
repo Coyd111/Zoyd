@@ -115,7 +115,12 @@ export const respondJson = (res, statusCode, payload, req = null) => {
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
+    // PAS de `X-XSS-Protection`. L'en-tete est deprecated et IGNORE par tous
+    // les navigateurs modernes ; sa variante `1; mode=block` a meme historique
+    // ment INTRODUIT des failles XSS (CVE-2011-2904) sur les vieux navigateurs
+    // qui, eux, l'appliquaient encore. Il ne protege rien aujourd'hui et donne
+    // une fausse impression de couverture : c'est la CSP de vercel.json qui
+    // fait le travail reel, cote document.
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Vary': 'Origin',

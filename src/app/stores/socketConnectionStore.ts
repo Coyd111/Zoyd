@@ -109,16 +109,26 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
   remoteMatchSnapshots: [],
   remoteTournamentSnapshots: [],
 
-  connect: (user) => {
-    set((state) => ({
-      isConnected: true,
-      connectionLabel: state.serverConnected ? 'live' : 'syncing',
-      lastHeartbeatAt: getNow(),
-    }));
+connect: (user) => {
+  // Garde AVANT toute ecriture d'etat.
+  //
+  // L etat optimiste (`isConnected: true`) etait pose AVANT ce garde : sans
+  // utilisateur, la fonction annoncait « connecte » puis sortait sans lier les
+  // handlers ni ouvrir le socket. L interface affichait un etat vert pour une
+  // connexion qui n existait pas — et rien ne pouvait le trahir.
+  //
+  // `isConnected` signifie « on cherche a etre connecte », `serverConnected`
+  // « le socket est reellement ouvert » (voir `onDisconnect`). Sans
+  // utilisateur, on ne cherche rien : les deux doivent rester faux.
+  if (!user || typeof window === 'undefined') {
+    return;
+  }
 
-    if (!user || typeof window === 'undefined') {
-      return;
-    }
+  set((state) => ({
+    isConnected: true,
+    connectionLabel: state.serverConnected ? 'live' : 'syncing',
+    lastHeartbeatAt: getNow(),
+  }));
 
     bindRealtimeHandlers({
       onConnect: () => {

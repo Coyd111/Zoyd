@@ -15,7 +15,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, hover = false, animate = false, children, ...props }, ref) => {
     const cardClasses = cn(
       'bg-zoyd-black border border-white/10 p-6 overflow-hidden',
-      hover && 'transition-all duration-200 hover:border-zoyd-yellow-50 hover:shadow-lg hover:shadow-zoyd-yellow/10',
+      hover && 'transition-all duration-200 hover:border-zoyd-yellow/50 hover:shadow-lg hover:shadow-zoyd-yellow/10',
       className
     );
 

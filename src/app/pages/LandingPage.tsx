@@ -105,7 +105,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline sélection:bg-zoyd-yellow sélection:text-black overflow-x-hidden safe-top">
+    <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline selection:bg-zoyd-yellow selection:text-black overflow-x-hidden safe-top">
       <SEOHead
         title="ZOYD — Plateforme CODM Afrique"
         description="Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique."

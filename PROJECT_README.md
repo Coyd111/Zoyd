@@ -28,7 +28,7 @@ ZOYD est une plateforme de compétition Call of Duty Mobile dédiée à l'Afriqu
 - **Zod** - Validation de schémas TypeScript-first
 
 ### Design System
-- **Couleurs**: Noir (#000), Blanc (#FFF), Jaune (#FFD700) uniquement
+- **Couleurs**: Noir, Blanc, Jaune et Bleu — déclarés dans `src/styles/theme.css` (`--color-*`) et exposés en `zoyd-*`
 - **Fonts**: 
   - Rajdhani (Display/Headings)
   - Inter (UI/Body text)
@@ -120,10 +120,11 @@ Sizes: `sm`, `md`, `lg`, `xl`
 ### Couleurs Tailwind Custom
 
 ```css
-/* Principales */
-bg-zoyd-black    /* #000000 */
+/* Principales — valeurs réelles : src/styles/theme.css */
+bg-zoyd-black    /* #050505 */
 bg-zoyd-white    /* #FFFFFF */
-bg-zoyd-yellow   /* #FFD700 */
+bg-zoyd-yellow   /* #FFFF00 */
+bg-zoyd-blue     /* #0070FF */
 
 /* Opacités blanches */
 bg-zoyd-white-3  /* rgba(255, 255, 255, 0.03) */
@@ -152,7 +153,7 @@ animate-bounce-slow     /* Bounce lent pour indicateurs */
 ## 🔑 Fonctionnalités Implémentées
 
 ### ✅ Phase 1 - Design System
-- [x] Configuration Tailwind noir/blanc/jaune
+- [x] Configuration Tailwind noir / blanc / jaune / bleu
 - [x] Import Google Fonts (Rajdhani + Inter)
 - [x] Composants UI de base (Button, Card, Badge, Input, Modal)
 - [x] Layout (Navbar, Sidebar, BottomNav)

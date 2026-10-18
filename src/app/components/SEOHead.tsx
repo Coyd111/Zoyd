@@ -1,6 +1,17 @@
 import { Helmet } from 'react-helmet-async';
 
-const SITE = 'https://zoyd.vercel.app';
+// URL publique du site.
+//
+// Elle etait en dur sur la production : en developpement, chaque URL canonique
+// et chaque carte Open Graph annoncaient zoyd.vercel.app. Deux consequences
+// concretes : un partage de lien depuis le local.Canonique vers la prod, et un
+// apercu qui montrait toujours la prod meme en developpant une page.
+//
+// `VITE_SITE_URL` est lue au build (prefixe VITE_ = exposee au client). Le
+// repli production reste la valeur par defaut : un build sans variable doit
+// produire la production, pas une URL vide.
+const SITE = (import.meta.env?.VITE_SITE_URL as string | undefined)?.replace(/\/+$/, '')
+  || 'https://zoyd.vercel.app';
 
 interface SEOHeadProps {
   title: string;

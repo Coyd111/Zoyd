@@ -11,20 +11,25 @@ export { getBaseUrl, getApiUrl };
 
 export const getAuthHeaders = () => {
   // Cookie-only : le token vit dans le cookie httpOnly `zoyd_auth`,
-  // envoyé automatiquement (credentials:include ci-dessous).
-  const expiresAt = useAuthStore.getState().expiresAt;
-
-  // Check token expiration on client side — defer logout to avoid race conditions with parallel requests
-  if (expiresAt && new Date(expiresAt).getTime() < Date.now()) {
-    if (!logoutQueued) {
-      logoutQueued = true;
-      queueMicrotask(() => {
-        useAuthStore.getState().logout();
-        logoutQueued = false;
-      });
-    }
-  }
-
+  // envoye automatiquement (credentials:include ci-dessous).
+  //
+  // AUCUNE verification d'expiration ici — volontairement retiree.
+  //
+  // Le client ne peut pas connaitre l'expiration reelle du cookie : il est
+  // httpOnly, donc illisible en JavaScript. `expiresAt` n'en est qu'un MIROIR
+  // cote store, et ce miroir derive des qu'une session a ete prolongee ailleurs,
+  // qu'un onglet a change avant l'autre, ou qu'un deploiement a change les
+  // durees de vie.
+  //
+  // Sur une divergence, le comportement etait le pire des deux : deconnecter
+  // un joueur dont le cookie est parfaitement valide. Il perdait sa session —
+  // alors meme que le serveur l'aurait accepte — et n'avait aucun moyen de le
+  // savoir.
+  //
+  // Le serveur est l autorite, et le chemin existe deja : `handleAuthError`
+  // purge l'etat sur un 401 (et sur un 403 `AUTH_REQUIRED` uniquement, jamais
+  // sur un 403 metier comme la 2FA). Un store perime se resout donc par le
+  // premier appel qui repond 401 — plus tard, mais juste.
   return {};
 };
 

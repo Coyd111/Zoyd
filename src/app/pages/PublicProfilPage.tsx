@@ -164,7 +164,16 @@ const PublicProfilPage = () => {
 
   return (
     <>
-    <SEOHead title="Profil — ZOYD" description="Profil public d'un joueur ZOYD." path="/profil" noindex />
+    <SEOHead
+      title="Profil — ZOYD"
+      description="Profil public d'un joueur ZOYD."
+      // La route reelle est `/profil/:id` (routes.tsx:180). La canonique
+      // pointait sur `/profil`, qui est l INDEX — donc une URL qui ne designait
+      // pas CE profil. Sans effet SEO immediat (la page est en noindex), mais
+      // une canonique fausse survivrait au jour ou l on retirerait ce noindex.
+      path={id ? `/profil/${id}` : '/profil'}
+      noindex
+    />
     <ProfileView
       userId={id}
       pseudo={publicProfile.pseudo}

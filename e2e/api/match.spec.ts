@@ -321,11 +321,10 @@ test.describe('Match lifecycle', () => {
       },
     });
 
-expect(res.status).toBe(403);
-      // `ARBITER_REQUIRED` et non `FORBIDDEN` : le refus porte une PRECISION
-      // que le client peut afficher. Savoir qu'il manque un arbitre n'est pas la
-      // meme information qu'une interdiction generique — et c'est la seule des
-      // deux qui soit actionnable par le joueur.
+// 409, pas 403 : le match n'est pas interdit, il est dans un etat qui bloque
+      // encore l'action — exactement comme un litige ouvert. Le joueur doit lire
+      // « en attente d'un arbitre », pas « acces refuse ».
+      expect(res.status).toBe(409);
       expect(res.body.code).toBe('ARBITER_REQUIRED');
     });
 

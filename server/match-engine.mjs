@@ -1,3 +1,86 @@
+// ─── Delais d arbitrage ──────────────────────────────────────────────────────
+//
+// L arbitre fait tenir le match : il garantit l heure convenue, arrete les
+// rematchs, et ses ordres s appliquent avant le lancement. Un match sans lui
+// n est pas un match, c est un pot sans garant — et le reglement le refuse
+// deja (`ARBITER_REQUIRED`).
+//
+// Reste l absence : quelqu un qui prend la place puis disparait, ou un match
+// qui n a jamais trouve d arbitre. L argent ne doit pas rester en sequestre
+// indefiniment chez personne.
+//
+// Deux phases, deux delais. Le desequilibre tranche : un remboursement coute
+// cher (frais consommes, arbitre recompense a tort, confiance abimee), alors
+// qu un delai ne coute que de l argent qui dort. Quand on hesite, on allonge.
+const ARBITER_DEADLINE_PHASE_A_MS = 2 * 60 * 60 * 1000; // poste -> lancement
+const ARBITER_DEADLINE_PHASE_B_MS = 2 * 60 * 60 * 1000; // lancement -> resultat
+
+const MATCH_ETATS_CLOS = ['cancelled', 'forfeited', 'archived', 'finished'];
+
+/**
+ * Balaye les matchs dont l arbitrage n avance plus, et REMBOURSE.
+ *
+ * Le remboursement, pas le blocage : c est une decision de confiance. Un joueur
+ * dont l arbitre a disparu veut son argent, pas un ticket ouvert. Laisser un pot
+ * en sequestre sans perspective, c est precisement la dette invisible qu on
+ * traque depuis le debut du projet.
+ *
+ * @param {object[]} matches
+ * @param {number} [nowMs]
+ * @returns {Promise<{matches: object[], refunded: object[], examined: number}>}
+ */
+export const sweepMatchesWithoutArbiter = async (matches, nowMs = Date.now()) => {
+  const nextMatches = cloneMatches(matches);
+  const refunded = [];
+
+  for (const match of nextMatches) {
+    if (!match || MATCH_ETATS_CLOS.includes(match.status)) continue;
+    // Un litige appartient a l admin : le balayage ne doit pas le court-circuiter.
+    if ((match.disputes || []).some((d) => d.status === 'open' || d.status === 'under_review')) continue;
+    // Deja distribue : plus rien a rembourser, et on creerait un gain.
+    if (match.result?.payoutDistributed === true) continue;
+
+    const poste = match.arbiter?.assignedAt ? Date.parse(match.arbiter.assignedAt) : NaN;
+    const lancement = match.startedAt ? Date.parse(match.startedAt) : NaN;
+    const cree = Date.parse(match.createdAt || '') || NaN;
+    const reference = Number.isFinite(poste) ? poste : cree;
+    if (!Number.isFinite(reference)) continue;
+
+    // Phase B si le match a demarre, phase A sinon.
+    const delai = Number.isFinite(lancement) ? ARBITER_DEADLINE_PHASE_B_MS : ARBITER_DEADLINE_PHASE_A_MS;
+    if (nowMs - reference < delai) continue;
+
+    const sansArbitre = !match.arbiter?.userId;
+    // Arbitre en poste mais jamais lance, OU match lance sans resultat : dans
+    // les deux cas le delai est ecoule et personne n a tranche.
+    const rattard = sansArbitre
+      || (!Number.isFinite(lancement))
+      || (Number.isFinite(lancement) && !match.result);
+    if (!rattard) continue;
+
+    const echecs = [];
+    for (const player of match.players) {
+      try {
+        await withWalletMutex(player.userId, async () => {
+          await refundLockedEntry(player.userId, match.id, `Remboursement ${match.id} (pas d arbitre)`);
+        });
+      } catch (error) {
+        // On ne clot PAS un match dont un joueur n a pas ete rembourse : il
+        // resterait du sequestre sans trace. Repris au balayage suivant.
+        echecs.push({ userId: player.userId, error: error.message });
+      }
+    }
+    if (echecs.length > 0) continue;
+
+    match.status = 'cancelled';
+    match.finishedAt = getNow();
+    match.confirmationDeadline = null;
+    match.cancellationReason = sansArbitre ? 'NO_ARBITER' : 'ARBITER_TIMEOUT';
+    refunded.push({ matchId: match.id, reason: match.cancellationReason });
+  }
+
+  return { matches: nextMatches, refunded, examined: nextMatches.length };
+};
 import crypto from 'node:crypto';
 import { createLogger } from './logger.mjs';
 import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce, DEFAULT_TRUST_SCORE } from './persistence.mjs';

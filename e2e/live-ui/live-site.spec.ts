@@ -1,5 +1,18 @@
 import { test, expect } from '@playwright/test';
 
+// ─── Garde-fou PRODUCTION ────────────────────────────────────────────────────
+// Ce fichier vise zoyd.vercel.app. Sans intention explicite, il ne s'exécute
+// pas : `playwright test` sans `--project` touchait la production par défaut,
+// parce que ce projet était simplement dans la liste.
+test.beforeAll(async () => {
+  if (process.env.ZOYD_ALLOW_LIVE_TESTS !== '1') {
+    throw new Error(
+      'Refus de lancer un test LIVE sur la PRODUCTION.\n'
+      + 'Relancer avec : ZOYD_ALLOW_LIVE_TESTS=1 pnpm test:e2e:live-ui',
+    );
+  }
+});
+
 test.describe('LIVE — Landing Page', () => {
   test('renders with ZOYD branding', async ({ page }) => {
     await page.goto('/', { timeout: 30000 });

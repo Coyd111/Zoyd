@@ -27,6 +27,26 @@
 
 import { test, expect } from '@playwright/test';
 
+// ─── Garde-fou PRODUCTION ────────────────────────────────────────────────────
+// Ce fichier vise zoyd.onrender.com et INSCRIT un compte jetable.
+//
+// C'est arrivé pendant la session de travail : `playwright test` lancé sans
+// `--project` a exécuté ce fichier, simplement parce qu'il était dans la liste.
+// Les tests vivaient touchaient la production sans que ce soit demandé.
+//
+// On refuse tant que l'intention n'est pas explicite. Le message est
+// volontairement bruyant : mieux vaut un échec sans conséquence qu'une base de
+// production qui contient un compte de plus.
+test.beforeAll(async () => {
+  if (process.env.ZOYD_ALLOW_LIVE_TESTS !== '1') {
+    throw new Error(
+      'Refus de lancer un test LIVE sur la PRODUCTION.\n'
+      + 'Relancer avec : ZOYD_ALLOW_LIVE_TESTS=1 pnpm test:e2e:live\n'
+      + 'Ce fichier inscrit un compte sur zoyd.onrender.com.',
+    );
+  }
+});
+
 const BASE = 'https://zoyd.onrender.com/api';
 const ORIGIN = 'https://zoyd.vercel.app';
 const HEADERS = { Origin: ORIGIN } as const;

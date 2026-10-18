@@ -12,7 +12,7 @@ const BASE = '/api';
 
 /**
  * Deux failles d'authentification confirmees par la lecture exhaustive, sur les
- * vraies routes â€” pas sur des doubles.
+ * vraies routes ” pas sur des doubles.
  *
  * 1. Le telephone n'etait valide par RIEN dans `PATCH /api/auth/me`, alors
  *    qu'il alimente une cle d'unicite `phone_key` non nullable. `normalizePhoneKey`
@@ -27,7 +27,7 @@ const BASE = '/api';
  *    partout pendant 15 minutes : un deni de connexion de masse sur IP partagee.
  */
 
-test.describe('PATCH /api/auth/me â€” telephone valide', () => {
+test.describe('PATCH /api/auth/me ” telephone valide', () => {
   test('refuse un telephone vide, qui occuperait la cle unique vide', async () => {
     const player = await registerPlayer('phonevide');
     const res = await call(player, 'PATCH', `${BASE}/auth/me`, { phone: '' });

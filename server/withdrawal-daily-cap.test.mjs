@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  *
  * La route ne borne que la TRANSACTION (5 000 000 ZC). Sans cumul, un joueur
  * pouvait enchainer les retraits jusqu a vider son solde : le seul frein etait
- * le rate limiter (20 requetes / 10 min par IP), contournable trivialement ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+ * le rate limiter (20 requetes / 10 min par IP), contournable trivialement ─│
  * depuis plusieurs IP, ou simplement en attendant.
  *
  * Le cumul est lu dans l'historique du portefeuille plutot que dans un registre

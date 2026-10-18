@@ -414,8 +414,8 @@ describe('match-engine - getProjectedPayouts (montants affiches)', () => {
 describe('match-engine - submitMatchResultOnServer idempotency', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // requireActorUser rÃ©sout l'acteur via getUserById : le rÃ´le vient donc
-    // du store serveur, jamais de l'objet passÃ© en paramÃ¨tre.
+    // requireActorUser résout l'acteur via getUserById : le rôle vient donc
+    // du store serveur, jamais de l'objet passé en paramètre.
     getUserById.mockImplementation((id) => ({
       id,
       pseudo: id,
@@ -500,7 +500,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
       })
     ).rejects.toThrow(/lance avant de valider/i);
 
-    // Le role admin RÃ‰EL dÃ©bloque bien l'override (command center).
+    // Le role admin RÉEL débloque bien l'override (command center).
     const ok = await matchEngine.submitMatchResultOnServer([match], { id: 'root' }, 'M-FORGE', {
       winnerTeam: 0,
       scores: { team0: 1, team1: 0 },
@@ -510,7 +510,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
   });
 
   it('should split the pot between winners in 2v2 (anti-mint)', async () => {
-    // 4 joueurs ayant chacun 100 ZC rÃ©ellement verrouillÃ©s (pot rÃ©el = 400)
+    // 4 joueurs ayant chacun 100 ZC réellement verrouillés (pot réel = 400)
     const makePlayer = (id) => ({
       id, pseudo: id, role: 'player',
       stats: { elo: 1200, wins: 0, losses: 0 }, trustScore: 100,
@@ -548,7 +548,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
     const prizeCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
     expect(prizeCalls).toHaveLength(2);
     const total = prizeCalls.reduce((sum, c) => sum + c[1], 0);
-    // 400 verrouillÃ©s âˆ’ 2% sans arbitre payeur = 392 distribuÃ©s (pas 2Ã— le pot)
+    // 400 verrouillés ’ 2% sans arbitre payeur = 392 distribués (pas 2— le pot)
     expect(total).toBe(392);
     expect(prizeCalls.map((c) => c[0]).sort()).toEqual(['u1', 'u2']);
   });
@@ -586,8 +586,8 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
 
     const prizeCalls = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
     const paid = prizeCalls.reduce((sum, c) => sum + c[1], 0);
-    // 200 reellement verrouilles âˆ’ 2% arbitre = 196 distribues.
-    // Avant : 400 (prizePool fantome) âˆ’ 8 = 392 => 192 ZC crees.
+    // 200 reellement verrouilles ’ 2% arbitre = 196 distribues.
+    // Avant : 400 (prizePool fantome) ’ 8 = 392 => 192 ZC crees.
     expect(paid).toBe(196);
     expect(paid).toBeLessThanOrEqual(200);
     const arbiterCall = releaseWalletWinnings.mock.calls.find((c) => c[3] === 'arbitration_fee');

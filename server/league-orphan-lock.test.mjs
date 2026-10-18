@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * Le pass est bloque par le moteur, puis persiste par `saveLeagues` DANS LA
  * ROUTE. C'est la que la perte se produit : si la sauvegarde echoue apres coup,
  * le moteur a deja rendu sa main et son `catch` ne voit rien. Les ZC restent
- * bloques chez un joueur absent de la liste persistee Ã¢â‚¬â€ le sweeper ne parcourt
+ * bloques chez un joueur absent de la liste persistee — le sweeper ne parcourt
  * que `registeredPlayers`, et `lockEntryFee` renvoyant `ALREADY_LOCKED`, ce
  * joueur ne pouvait meme plus se reinscrire.
  *
@@ -27,7 +27,7 @@ vi.mock('./supabase.mjs', () => ({
   },
 }));
 
-// La sauvegarde echoue systÃ©matiquement : c'est la fenetre testee.
+// La sauvegarde echoue systématiquement : c'est la fenetre testee.
 //
 // Elle est declaree DANS la factory : vi.mock est hoisse avant les
 // instructions du module, donc une constante exterieure serait encore
@@ -117,7 +117,7 @@ describe('Verrou orphelin : le pass est rendu si la sauvegarde echoue', () => {
   });
 
   it('sans restitution, le joueur ne pourrait plus se reinscrire', async () => {
-    // TÃƒÂ©moin : la reservation supprimee est bien la condition pour que
+    // TÃƒ©moin : la reservation supprimee est bien la condition pour que
     // `lockEntryFee` accepte une nouvelle inscription. Le test ci-dessus ne
     // prouve donc pas du vide.
     const { joueur, token } = await nouveauJoueur();

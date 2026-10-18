@@ -79,7 +79,7 @@ beforeEach(() => {
 });
 
 describe('Idempotence des statistiques', () => {
-  it('un second rÃƒÂ¨glement de la mÃƒÂªme compÃƒÂ©tition ne touche pas les stats', async () => {
+  it('un second règlement de la même compétition ne touche pas les stats', async () => {
     const user = await nouveauCompte();
 
     const appliquer = () => applyUserSettlementOnce(user.id, 'match:M-1:win', (u) => {
@@ -91,7 +91,7 @@ describe('Idempotence des statistiques', () => {
     await appliquer();
     const apresPremier = getUserById(user.id).stats.wins;
 
-    // Rejeu du rÃƒÂ¨glement : c'est ce que fait un admin qui resoumet aprÃƒÂ¨s un
+    // Rejeu du règlement : c'est ce que fait un admin qui resoumet après un
     // echec de persistance, ou la reprise d'un cron.
     await appliquer();
 
@@ -101,7 +101,7 @@ describe('Idempotence des statistiques', () => {
     expect(stats.totalEarnings).toBe(500);
   });
 
-  it('une compÃƒÂ©tition diffÃƒÂ©rente est bien comptÃƒÂ©e', async () => {
+  it('une compétition différente est bien comptée', async () => {
     const user = await nouveauCompte();
 
     await applyUserSettlementOnce(user.id, 'match:M-1:win', (u) => {
@@ -116,7 +116,7 @@ describe('Idempotence des statistiques', () => {
     expect(getUserById(user.id).stats.wins).toBe(2);
   });
 
-  it('la clÃƒÂ© est bornee : un joueur tres actif ne grossit pas sans fin', async () => {
+  it('la clé est bornee : un joueur tres actif ne grossit pas sans fin', async () => {
     const user = await nouveauCompte();
     for (let i = 0; i < 1200; i += 1) {
       await applyUserSettlementOnce(user.id, `match:M-${i}:win`, (u) => u);

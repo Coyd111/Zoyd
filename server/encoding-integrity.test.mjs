@@ -40,7 +40,7 @@ const PARCOURIR = (racine, extensions, accumulator = []) => {
 };
 
 describe('Integrite de l encodage des sources', () => {
-  it.skip('aucun fichier source ne contient de double encodage (DEBT OUVERTE)', () => {
+  it('aucun fichier source ne contient de double encodage', () => {
     const fichiers = PARCOURIR('.', ['.mjs', '.ts', '.tsx', '.js', '.sql']);
     expect(fichiers.length, 'des fichiers doivent etre analyses').toBeGreaterThan(20);
 

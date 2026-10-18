@@ -201,6 +201,19 @@ const payoutFlagAfterSettlement = (settlementResult) =>
   (settlementResult.success ? true : 'pending');
 
 const applyResultSettlement = async (match, result) => {
+    // Garde-fou du reglement : sans arbitre designe, RIEN n est distribue.
+    //
+    // Cette fonction est le point de sortie de l argent du pot. Elle est
+    // appelee par le chemin normal ET par la reprise de resultat en attente
+    // (`settlePendingMatchResult`), donc un seul garde ne suffit pas : il faut
+    // celui-ci, au plus pres de la sortie d argent, pour que le pot ne puisse
+    // jamais etre reparti sur une match sans tiers.
+    //
+    // En l absence d arbitre, le match doit etre REMBOURSE, pas bloque : voir
+    // `sweepMatchesWithoutArbiter`.
+    if (!match.arbiter?.userId) {
+      throw makeError('ARBITER_REQUIRED', 'Aucun arbitre : le match ne peut pas etre regle.');
+    }
   // Anti-mint : on ne distribue QUE l'argent réellement verrouillé.
   // match.prizePool est calculé sur maxPlayers à la création ; s'il servait de
   // base, un match à roster incomplet paierait un pot fantôme.
@@ -741,14 +754,20 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
-  const isPlayer = match.players.some((p) => p.userId === actorUser.id);
-  const isArbiter = match.arbiter?.userId === actorUser.id;
-  if (!isArbiter && !isPlayer && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul l arbitre, un admin ou un participant peut valider le score.');
-  }
-  if (match.arbiter && !isArbiter && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul l arbitre peut valider le score quand un arbitre est assigne.');
-  }
+const isArbiter = match.arbiter?.userId === actorUser.id;
+// Un resultat se valide PAR L ARBITRE, ou par un admin en recours.
+// La suppression de la branche « pas d arbitre -> un joueur valide » ferme le
+// trou le plus grave du modele : sans tiers, le perdant se declarait
+// vainqueur lui-meme, et personne n avait rien a dire.
+//
+// L administrateur reste autorise : c est lui qui tranche un litige quand
+// l arbitre a disparu. Lui seul, et en trace.
+if (!isArbiter && actorUser.role !== 'admin') {
+  throw makeError(
+    'ARBITER_REQUIRED',
+    'Seul l arbitre peut valider le score.',
+  );
+}
   if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
   // Pas de résultat sur un match clôturé : les mises ont déjà été remboursées
   // (cancel) ou consommées — en créer un ici minterait des ZC sans cagnotte.

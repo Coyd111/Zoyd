@@ -463,21 +463,27 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
   });
 
   it('should reject a forged admin-dashboard submittedBy from a player (anti-mint)', async () => {
-    // Match 'recruiting' incomplet : les gardes (lance, roster complet,
-    // preuves) doivent s'appliquer MEME si le client envoie submittedBy.
-    const match = {
-      id: 'M-FORGE',
-      status: 'recruiting',
-      isInstant: true,
-      players: [{ userId: 'p-1', team: 0 }],
-      disputes: [],
-      prizePool: 100,
-      zoydFee: 5,
-      entryFee: 50,
-      format: '1VS1',
-      teamSize: 1,
-      maxPlayers: 2,
-    };
+// Match 'recruiting' incomplet : les gardes (lance, roster complet,
+      // preuves) doivent s'appliquer MEME si le client envoie submittedBy.
+      //
+      // p-1 est ici l ARBITRE du match : c est le seul acteur que le nouveau
+      // garde laisse passer. Le test doit donc éprouver le garde suivant — le
+      // match n est pas lance — et non celui de l arbitre, qui a ses propres
+      // tests.
+      const match = {
+        id: 'M-FORGE',
+        status: 'recruiting',
+        isInstant: true,
+        players: [{ userId: 'p-1', team: 0 }],
+        arbiter: { userId: 'p-1', pseudo: 'p-1' },
+        disputes: [],
+        prizePool: 100,
+        zoydFee: 5,
+        entryFee: 50,
+        format: '1VS1',
+        teamSize: 1,
+        maxPlayers: 2,
+      };
 
     await expect(
       matchEngine.submitMatchResultOnServer([match], { id: 'p-1' }, 'M-FORGE', {

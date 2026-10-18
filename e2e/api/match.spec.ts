@@ -197,7 +197,10 @@ test.describe('Match lifecycle', () => {
     expect(res.body.match.players).toHaveLength(2);
     expect(res.body.match.players[1].pseudo).toBe(joiner.pseudo);
     expect(res.body.match.players[1].team).toBe(1);
-    expect(res.body.match.status).toBe('full');
+    // Le lobby est complet mais le match ne peut PAS avancer : pas d'arbitre.
+      // L'ancien contrat disait `full`, ce qui se lisait « prêt » alors que rien
+      // ne pouvait se passer — le joueur ne comprenait pas pourquoi.
+      expect(res.body.match.status).toBe('awaiting_arbiter');
     expect(res.body.wallet.cashBalance).toBe(START_BALANCE - ENTRY_FEE);
     expect(res.body.wallet.lockedBalance).toBe(ENTRY_FEE);
   });

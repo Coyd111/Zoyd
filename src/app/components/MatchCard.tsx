@@ -24,13 +24,17 @@ interface MatchCardProps {
     team2: { slots: number; filled: number };
   };
   arbitre: boolean;
-  status: 'open' | 'full' | 'check_in' | 'ready' | 'in_progress' | 'awaiting_confirmation' | 'finished' | 'forfeited' | 'cancelled';
+  status: 'open' | 'full' | 'awaiting_arbiter' | 'check_in' | 'ready' | 'in_progress' | 'awaiting_confirmation' | 'finished' | 'forfeited' | 'cancelled';
   trustScoreMin?: number;
 }
 
 const statusCopy: Record<MatchCardProps['status'], { label: string; accent: string }> = {
   open: { label: 'Inscriptions ouvertes', accent: 'text-zoyd-yellow' },
   full: { label: 'Joueurs complets', accent: 'text-white' },
+    // Sans cet arbitrage, le match ne peut pas demarrer : l arbiter fait tenir
+    // l heure convenue et tranche le resultat. « Joueurs complets » aurait
+    // laisse croire que le match etait pret alors qu il ne pouvait pas avancer.
+    awaiting_arbiter: { label: 'En attente d\'un arbitre', accent: 'text-zoyd-yellow' },
   check_in: { label: 'Présence à confirmer', accent: 'text-zoyd-blue' },
   ready: { label: 'Prêt à jouer', accent: 'text-green-400' },
   in_progress: { label: 'Partie en cours', accent: 'text-zoyd-blue' },

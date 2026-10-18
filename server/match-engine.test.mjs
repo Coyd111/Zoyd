@@ -240,8 +240,15 @@ describe('match-engine - Match Status', () => {
       arbiter: null,
       teamSize: 2,
     };
-    expect(matchEngine.getStatusFromMatch(match)).toBe('full');
-  });
+// `awaiting_arbiter`, plus `full`.
+      //
+      // Ce test affirmait `full` — « lobby complet » — pour un match qui ne
+      // pouvait RIEN avancer : sans arbitre, pas de lancement. Le joueur lisait
+      // un match complet et ne comprenait pas pourquoi rien ne se passait. Le
+      // statut doit nommer la vraie raison, parce que c'est elle que le client
+      // peut afficher et que le joueur peut resoudre.
+      expect(matchEngine.getStatusFromMatch(match)).toBe('awaiting_arbiter');
+    });
 
   it('should return check_in when not all players checked in', () => {
     const match = {

@@ -213,9 +213,18 @@ export const getStatusFromMatch = (match) => {
   const everyoneCheckedIn = match.players.every((player) => player.isCheckedIn);
   const everyoneReady = match.players.every((player) => player.isReady);
 
-  if (!everyoneCheckedIn || !everyoneReady) {
-    return match.arbiter ? 'check_in' : 'full';
-  }
+// Pas d arbitre : le match ne peut pas avancer, quel que soit le nombre de
+    // joueurs presents. L ancien code renvoyait `full`, qui se lisait « lobby
+    // complet » — donc un match bloque, presente comme pret. Le joueur ne
+    // comprenait pas pourquoi rien ne se passait.
+    //
+    // `awaiting_arbiter` dit la vrai raison, et le client peut afficher
+    // « en attente d un arbitre » au lieu d une action impossible.
+    if (!match.arbiter?.userId) return 'awaiting_arbiter';
+
+    if (!everyoneCheckedIn || !everyoneReady) {
+      return 'check_in';
+    }
 
   if (match.status === 'in_progress') {
     return 'in_progress';

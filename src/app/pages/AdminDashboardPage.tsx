@@ -184,7 +184,7 @@ const AdminDashboardPage: React.FC = () => {
     const ready: typeof matches = [];
     for (const match of matches) {
       if (match.status === 'in_progress') live.push(match);
-      else if (match.status === 'ready' || match.status === 'check_in') ready.push(match);
+      else if (match.status === 'ready' || match.status === 'check_in' || match.status === 'awaiting_arbiter') ready.push(match);
     }
     return { live, ready };
   }, [matches]);

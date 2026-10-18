@@ -6,6 +6,12 @@ export type MatchFormat = '1VS1' | '2VS2' | '3VS3' | '4VS4' | '5VS5';
 export type MatchStatus =
   | 'recruiting'
   | 'full'
+  /**
+   * Le match ne peut pas avancer : pas d'arbitre. L'arbitre fait tenir l'heure
+   * convenue et tranche le résultat, donc sans lui le match est bloqué — mais
+   * ce n'est pas un match « complet », et le libellé doit le dire.
+   */
+  | 'awaiting_arbiter'
   | 'check_in'
   | 'ready'
   | 'in_progress'

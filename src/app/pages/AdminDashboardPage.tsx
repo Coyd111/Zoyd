@@ -60,28 +60,31 @@ const AdminDashboardPage: React.FC = () => {
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const hydrateReportsFromServer = useFriendsStore((s) => s.hydrateReportsFromServer);
+
+  // Effet de MONTAGE uniquement.
+  //
+  // La dependance \matches.length\ est retiree. Chaque match recu par socket
+  // declenchait deux appels API et une rehydratation complete — alors qu un
+  // signalement n a AUCUN rapport avec le nombre de matchs. La dependance
+  // n exprirnait aucune intention : elle ne faisait que du bruit.
+  //
+  // Pire qu etre couteux : le tableau de bord paraissait vivant. Un admin
+  // croyait sa file de moderation a jour parce qu elle bougeait, alors
+  // qu elle bougeait pour une raison sans rapport. Une file visiblement
+  // statique vaut mieux qu une file faussement dynamique.
+  //
+  // Le rafraichissement suit desormais les VRAIES causes : ce montage, et
+  // Le rafraichissement suit desormais les VRAIES causes : ce montage, et
+  // reloadReports() deja appele apres chaque action de l admin (resoudre un
+  // signalement, lever une sanction). Un jour de vrai temps reel, ce sera un
+  // evenement socket dedie — a construire, pas a simuler par un compteur.
   useEffect(() => {
     if (user?.role !== 'admin') return;
-    let cancelled = false;
     fetchAdminCommissions()
-      .then((data) => { if (!cancelled) setCommissions(data); })
+      .then((data) => { setCommissions(data); })
       .catch(() => { /* 2FA absente ou reseau : on garde 0 plutot que de mentir */ });
-    // Signalements ET sanctions en cours : la vue de moderation doit montrer
-    // qui est actuellement sanctionne, pas seulement la file a traiter.
-    Promise.all([fetchAdminReports(), fetchActiveSanctions()])
-      .then(([data, actifs]) => {
-        if (cancelled) return;
-        hydrateReportsFromServer(data.reports || []);
-        setSanctions(actifs.sanctions || []);
-        setReportsUnavailable(data.degraded === true);
-      })
-      .catch(() => {
-        // 503 (table injoignable) ou reseau : mieux vaut le dire que
-        // laisser croire a une file de moderation vide.
-        if (!cancelled) setReportsUnavailable(true);
-      });
-    return () => { cancelled = true; };
-  }, [user?.role, matches.length]);
+    void reloadReports();
+  }, [user?.role]);
   const handleExportHistory = async (format: 'csv' | 'json') => {
     setExporting(true);
     try {
@@ -272,6 +275,8 @@ const AdminDashboardPage: React.FC = () => {
     } finally {
       setLoadingAction(false);
     }
+    // Annulation admin : la liste des matchs et les compteurs changent.
+    await reloadReports();
   };
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline pt-safe-top">

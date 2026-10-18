@@ -321,11 +321,15 @@ test.describe('Match lifecycle', () => {
       },
     });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('FORBIDDEN');
-  });
+expect(res.status).toBe(403);
+      // `ARBITER_REQUIRED` et non `FORBIDDEN` : le refus porte une PRECISION
+      // que le client peut afficher. Savoir qu'il manque un arbitre n'est pas la
+      // meme information qu'une interdiction generique — et c'est la seule des
+      // deux qui soit actionnable par le joueur.
+      expect(res.body.code).toBe('ARBITER_REQUIRED');
+    });
 
-  test('POST /api/matches/:id/result — 400 sans scoreboard ni écran final', async () => {
+    test('POST /api/matches/:id/result — 400 sans scoreboard ni écran final', async () => {
     const res = await call(arbiter, 'POST', `${BASE}/matches/${matchId}/result`, {
       winnerTeam: 0,
       scores: { team0: 10, team1: 3 },

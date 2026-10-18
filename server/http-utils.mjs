@@ -350,6 +350,11 @@ export const mapPersistenceError = (error) => {
     case 'INVALID_FORMAT':
       return { status: 400, message, code };
     case 'FORBIDDEN':
+    // Un resultat se valide par l arbitre. Sans lui, personne ne valide — pas
+    // meme un participant. C est un refus d autorisation, pas une donnee
+    // invalide : le reponse doit rester un 403, sinon le client affiche une
+    // erreur de saisie a un joueur qui a bien envoye un resultat valide.
+    case 'ARBITER_REQUIRED':
     case 'TRANSACTION_NOT_OWNED':
     case 'ACCOUNT_NOT_ACTIVATED':
       return { status: 403, message, code };

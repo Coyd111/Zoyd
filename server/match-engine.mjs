@@ -755,19 +755,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
 const isArbiter = match.arbiter?.userId === actorUser.id;
-// Un resultat se valide PAR L ARBITRE, ou par un admin en recours.
-// La suppression de la branche « pas d arbitre -> un joueur valide » ferme le
-// trou le plus grave du modele : sans tiers, le perdant se declarait
-// vainqueur lui-meme, et personne n avait rien a dire.
-//
-// L administrateur reste autorise : c est lui qui tranche un litige quand
-// l arbitre a disparu. Lui seul, et en trace.
-if (!isArbiter && actorUser.role !== 'admin') {
-  throw makeError(
-    'ARBITER_REQUIRED',
-    'Seul l arbitre peut valider le score.',
-  );
-}
+
   if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
   // Pas de résultat sur un match clôturé : les mises ont déjà été remboursées
   // (cancel) ou consommées — en créer un ici minterait des ZC sans cagnotte.
@@ -780,7 +768,20 @@ if (!isArbiter && actorUser.role !== 'admin') {
   }
   // winnerTeam strict : "0", null, 2 ou undefined détruiraient la cagnotte
   // (isWinner false pour tous) ou permettaient des calculs falsifiés.
-  if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
+  // Ce garde vient APRES celui du litige, et l ordre est volontaire.
+//
+// Un litige ouvert est une information plus precieuse qu'un arbitre manquant :
+// il dit au joueur que sa contestation est enregistree et qu'un admin va
+// trancher. Dire « il te manque un arbitre » a la place le laisserait croire a
+// un probleme de regle alors que le sien est pris en compte. Et un litige se
+// signale par un 409, pas par un 403.
+//
+// Seule condition pour valider : etre l arbitre, ou etre admin en recours.
+if (!isArbiter && actorUser.role !== 'admin') {
+  throw makeError('ARBITER_REQUIRED', 'Seul l arbitre peut valider le score.');
+}
+
+if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
     throw makeError('INVALID_RESULTS', 'Equipe gagnante invalide.');
   }
   // Roster complet + match lancé, sauf override admin (award/moderation).

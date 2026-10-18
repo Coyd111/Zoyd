@@ -61,7 +61,7 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2020',
     rollupOptions: {
-      // `pg` a ete retire : il n'est importe nulle part dans le projet.
+      // `pg` a été retiré : il n'est importe nulle part dans le projet.
       external: ['socket.io', 'web-push', 'dotenv', 'fedapay', '@supabase/supabase-js'],
       output: {
         manualChunks(id: string) {

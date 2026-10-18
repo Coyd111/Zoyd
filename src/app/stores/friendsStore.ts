@@ -12,7 +12,7 @@ import type { StoredReport } from '../lib/socialApi';
 import { useToastStore } from './toastStore';
 
 export type FriendStatus = 'online' | 'offline' | 'in_match' | 'in_lobby';
-export type FriendRequestStatus = 'pending' | 'acceptéd' | 'blocked' | 'declined';
+export type FriendRequestStatus = 'pending' | 'accepted' | 'blocked' | 'declined';
 
 export interface Friend {
   id: string;

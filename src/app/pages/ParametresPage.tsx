@@ -848,7 +848,7 @@ const Admin2faSection: React.FC = () => {
                   aria-label="Mot de passe admin, requis pour activer la double authentification"
                 />
                 <p className="text-[10px] text-white/50 mt-1">
-                  Exigé : sans lui, un cookie volé suffirait à s enrolling sa propre 2FA.
+                  Exigé : sans lui, un cookie volé suffirait à s'enrôler sa propre 2FA.
                 </p>
               </div>
               <Button variant="secondary" size="sm" onClick={handleSetup} disabled={busy}>

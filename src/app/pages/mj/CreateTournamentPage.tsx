@@ -153,7 +153,7 @@ const CreateTournamentPage: React.FC = () => {
 
     const startAt = new Date(data.startsAt);
     if (Number.isNaN(startAt.getTime()) || startAt.getTime() <= Date.now()) {
-      toast.error("Choisis une fenêtre de départ validé dans le futur.");
+      toast.error("Choisis une fenêtre de départ valide dans le futur.");
       return;
     }
 

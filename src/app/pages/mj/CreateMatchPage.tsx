@@ -107,7 +107,7 @@ const CreateMatchPage: React.FC = () => {
 
   const onStep3Submit = (_data: Partial<MatchFormData>) => {
     if (!selectedPass || selectedPass <= 0) {
-      toast.error('Choisis une mise validé pour continuer.');
+      toast.error('Choisis une mise valide pour continuer.');
       return;
     }
 

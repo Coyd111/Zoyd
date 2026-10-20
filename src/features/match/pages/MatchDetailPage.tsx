@@ -1,3 +1,28 @@
+/**
+ * MatchDetailPage - ecran detail d'un match (joueur ou arbitre).
+ *
+ * Assemble en-tete, joueurs, regles, actions, chat et timeline, et pilote
+ * les interactions : check-in, arbitrage, resultat, confirmation, litige.
+ *
+ * INVARIANT : le joueur courant se repere par `isMe` (joueur) et
+ * `arbiter.isMe` (arbitre). Le serveur retire userId du payload et livre
+ * `isMe`, calcule POUR chaque destinataire : c'est le seul repere fiable.
+ * INVARIANT : les actions passent par matchApi.ts. Aucune mutation ne doit
+ * etre ecrite localement en esperant que le serveur suive.
+ * INVARIANT : le resultat soumis ne vaut PAS versement : la cagnotte reste
+ * gelee tant que les deux equipes n'ont pas confirme (payoutDistributed).
+ * PIEGE : `awaiting_arbiter` est un match VIVANT, bloque faute d'arbitre. Il
+ * n'apparait pas dans ACTIVE_STATUSES du store matchStore : ne pas en
+ * deduire qu'un tel match est termine.
+ * PIEGE : la salle CODM (nom + mot de passe) n'est visible que par les
+ * participants et l'arbitre (canSeeRoom). Ne jamais la mettre dans un etat
+ * partage.
+ * PIEGE : la diffusion doit etre PER SOCKET. Un composant qui lit `isMe`
+ * ne peut pas etre servi par une diffusion globale : le drapeau n'a de
+ * sens que pour le destinataire.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from '../../../app/lib/toast';

@@ -1,3 +1,49 @@
+/**
+ * server/routes/wallet.mjs - Domaine PORTEFEUILLE : consultation du solde et
+ * de l'historique, depot administrateur, retrait, verification FedaPay.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`wallet`,
+ * `default` pour les lectures) -> lecture du corps -> validation (montant,
+ * pays, operateur, telephone, cle d'idempotence) -> `withWalletMutex` (debit)
+ * -> appel FedaPay HORS verrou -> marquage de la transaction.
+ *
+ * INVARIANT : le retrait exige une `idempotencyKey` (corps ou en-tete
+ *   `x-idempotency-key`) : sans elle, un double-clic debite deux fois et
+ *   declenche deux payouts.
+ * INVARIANT : l'etat d'idempotence est lu A L'INTERIEUR de
+ *   `withWalletMutex` : sinon deux requetes lisent le meme instantane
+ *   (TOCTOU) et les deux debitent.
+ * INVARIANT : le debit est SOUS verrou, l'appel FedaPay HORS verrou :
+ *   l'ordre inverse ouvre la porte au double paiement.
+ * INVARIANT : le remboursement n'a lieu que si l'echec PROUVE que l'argent
+ *   n'est pas parti (`payoutMaybeSent !== true`) ; sinon le retrait est
+ *   marque `pending_review` et sera reconcilie.
+ * INVARIANT : les montants renvoyes au client sont ceux du moteur
+ *   (`buildWithdrawalAmounts`) : le front ne recalcule pas la commission.
+ * PIEGE : le `return true` place DANS le callback du mutex ne sort PAS de la
+ *   requete : c'est le drapeau `abandonner` qui arrete vraiment le flux.
+ *   Sans lui, un 409 etait suivi d'un SECOND payout apres avoir repondu.
+ * PIEGE : la route de depot est reservee a l'admin AVEC 2FA
+ *   (`requireAdmin2fa`) : le garde repond lui-meme, la route ne doit pas
+ *   repondre une seconde fois.
+ * PIEGE : les montants sont en ZC : 150 minimum, 100 000 maximum (soit le
+ *   plafond payout FedaPay de 1 000 000 FCFA).
+ * PIEGE : le pays vient de la requete, sinon du profil, sinon du Benin par
+ *   defaut ; un pays non supporte est `INVALID_COUNTRY`, jamais un repli
+ *   silencieux.
+ * PIEGE : la transaction d'un retrait refuse doit etre marquee `failed` :
+ *   sinon la commission ZOYD compte un retrait qui a ete rembourse.
+ * PIEGE : la cle d'idempotence est RELACHEE dans tous les cas apres un
+ *   remboursement : le joueur doit pouvoir relancer un vrai payout.
+ * PIEGE : la notification de depot est best-effort : l'argent est deja
+ *   credite, son echec ne doit pas faire echouer la requete.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,

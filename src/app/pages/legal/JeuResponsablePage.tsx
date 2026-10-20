@@ -1,3 +1,18 @@
+/**
+ * JeuResponsablePage - regles et outils du jeu responsable.
+ *
+ * Document legal et informatif : interdit aux mineurs, conseils et outils
+ * pour garder le controle de ses mises. Rendu via LegalLayout.
+ *
+ * INVARIANT : document versionne, comme les autres pages legales.
+ * INVARIANT : la regle ' 18 ans ou plus ' doit correspondre a la condition
+ * d'inscription reellement appliquee par le serveur.
+ * PIEGE : ce document doit rester lisible et actionnable : c'est la page
+ * qui explique au joueur comment se faire aider. Eviter le jargon et les
+ * blocs de texte sans structure.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
+ */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';
 

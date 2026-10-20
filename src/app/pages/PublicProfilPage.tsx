@@ -1,3 +1,20 @@
+/**
+ * PublicProfilPage - profil public d'un autre joueur (/profil/:id).
+ *
+ * Meme affichage que ProfilPage, mais pour un tiers : la resolution du
+ * joueur dans les matchs se fait alors par `pseudo`, jamais par `isMe`.
+ *
+ * INVARIANT : sur le profil d'un tiers, `isMe` vaut false PARTOUT : le
+ * serveur l'a calcule pour le demandeur, pas pour la cible. Utiliser
+ * `pseudo` pour retrouver le joueur dans un match.
+ * PIEGE : la page est en `noindex` et sa canonique doit pointer sur
+ * /profil/:id, pas sur /profil (l'index). La fausse canonique a deja survecu
+ * a un retrait de noindex.
+ * PIEGE : les actions sociales (demande d'ami, blocage, signalement) passent
+ * par le store friendsStore, donc par l'API.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useReducedMotion } from 'motion/react';

@@ -1,3 +1,20 @@
+/**
+ * brApi - client du Battle Royale (salon unique, un seul match).
+ *
+ * Expose la configuration BR, les salons, l'inscription, le check-in, le
+ * demarrage, l'elimination des joueurs et la repartition du pot.
+ *
+ * INVARIANT : la regle commerciale rappelee dans toute l'UI : le pass est
+ * paye a l'inscription et n'est JAMAIS rembourse une fois la partie
+ * lancee. Le seul remboursement possible est une desinscription avant
+ * l'heure de depart. Ne pas rendre le pass remboursable "pour le confort".
+ * PIEGE : le roster public n'expose AUCUN userId. L'identification d'un
+ * joueur passe par son pseudo.
+ * PIEGE : la repartition du pot est une operation serveur : le front ne
+ * recalcule pas la repartition, il affiche ce que le serveur renvoie.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import { authorizedGet, authorizedPost } from './apiClient';
 
 /**

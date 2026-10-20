@@ -1,3 +1,20 @@
+/**
+ * useServiceWorker - enregistrement du service worker, mise a jour, push Web.
+ *
+ * Enregistre /sw.js une seule fois (promesse module), signale la disponibilite
+ * d'une mise a jour, et souscrit le PushManager quand la permission de
+ * notification est deja accordee.
+ *
+ * INVARIANT : la premiere installation ne doit PAS recharger la page. Le
+ * rechargement n'a lieu que si un controleur actif est remplace, sinon la
+ * premiere visite de chaque visiteur rechargeait l'ecran pour rien.
+ * PIEGE : le push exige un Bearer temps reel, pas le cookie applicatif :
+ * l'abonnement passe par subscribeToRealtimePush (realtimeClient.ts).
+ * PIEGE : l'enregistrement est asynchrone ; les ecrans qui demandent la
+ * permission doivent attendre navigator.serviceWorker.ready.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.4 (Le push Web)
+ */
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { subscribeToRealtimePush } from '../lib/realtimeClient';

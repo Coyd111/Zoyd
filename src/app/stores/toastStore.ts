@@ -1,3 +1,21 @@
+/**
+ * toastStore - file des messages ephemeres de l'interface.
+ *
+ * Detient les toasts (succes, erreur, warning, info), leur duree de vie et
+ * les timers associes. Est le seul systeme de notifications de l'app :
+ * ToastContainer est monte dans RootLayout.
+ *
+ * INVARIANT : un `id` explicite REMPLACE le toast deja affiche au lieu de
+ * s'empiler. Une erreur qui se repete (perte reseau au bootstrap) ne doit pas
+ * laisser dix messages identiques a l'ecran.
+ * INVARIANT : les timers sont Tenus dans ce module et nettoyes par
+ * cleanupToastTimers. Un toast dont le timer survit a la deconnexion
+ * reapparait sur l'ecran suivant.
+ * PIEGE : le store n'est pas persiste. Un rechargement perd les toasts :
+ * c'est voulu, un toast n'est pas une notification.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import { create } from 'zustand';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';

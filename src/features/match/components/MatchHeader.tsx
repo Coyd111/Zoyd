@@ -1,3 +1,20 @@
+/**
+ * MatchHeader - en-tete d'un match : format, carte, cagnotte, statut.
+ *
+ * Affiche l'identite du match, sa cagnotte, son format et son etat, avec un
+ * lien de retour.
+ *
+ * INVARIANT : la cagnotte affichee vient des props (projection serveur),
+ * jamais d'un calcul local type prizePool moins les frais.
+ * INVARIANT : le libelle de statut est fourni par le parent, qui connait la
+ * liste complete des statuts (awaiting_arbiter compris).
+ * PIEGE : un match en attente d'arbitre est VIVANT : le libelle doit le
+ * dire, sinon le joueur croit a un match termine.
+ * PIEGE : ce composant est purement presentatif : il ne declenche aucune
+ * action.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, Radio, Swords } from 'lucide-react';

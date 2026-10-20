@@ -1,3 +1,18 @@
+/**
+ * NavigationMenu - menu de navigation horizontal (enveloppe Radix).
+ *
+ * Expose Root, List, Item, Link, Content, Trigger, Indicator, Viewport.
+ *
+ * INVARIANT : les liens de navigation passent par `asChild` : le Link de
+ * react-router doit rester le seul element focusable, sinon le clavier
+ * navigue dans un element non cliquable.
+ * INVARIANT : l'indicateur de position est pilote par Radix : ne pas
+ * recalculer la position a la main.
+ * PIEGE : le Viewport est monte une seule fois par menu : le dupliquer
+ * casse l'animation d'ouverture.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import * as React from "react";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
 import { cva } from "class-variance-authority";

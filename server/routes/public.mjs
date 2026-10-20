@@ -1,3 +1,44 @@
+/**
+ * server/routes/public.mjs - Domaine PUBLIC : sante, proxy CODM, metriques,
+ * profils, classement, statistiques, listes de matchs et de tournois, recherche
+ * de joueurs.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse (route traitee), `false`
+ * sinon - le dernier `return false` laisse la main au module suivant.
+ *
+ * Ordre des gardes, par route : session (401 `AUTH_REQUIRED`) -> rate limit ->
+ * traitement. Exceptions : `/api/health` et `/api/realtime/health` n'ont
+ * AUCUNE garde (la sante doit repondre meme quand l'etat est casse) et
+ * `/metrics` repond 403 `METRICS_DISABLED` si `METRICS_TOKEN` n'est pas
+ * configure, puis 401 sur un jeton errone (comparaison de hachages SHA-256).
+ *
+ * INVARIANT : le module repond `true` aussitot qu'il a ecrit, et `false` a la
+ *   fin : le dispatcheur s'arrete au premier `true`.
+ * INVARIANT : `/api/health` repond 503 quand l'etat n'est pas fiable : un
+ *   orchestrateur doit savoir que les ecritures sont refusees.
+ * INVARIANT : `/metrics` n'est PAS une route JSON : elle ecrit du
+ *   `text/plain` en `res.writeHead`, donc elle echappe aux en-tetes et aux
+ *   metriques de `respondJson`.
+ * INVARIANT : le jeton des metriques est compare en temps CONSTANT
+ *   (`secretsEqual` sur les hachages SHA-256, donc de taille fixe).
+ * INVARIANT : les proxies CODM (store, player) exigent une session : sans
+ *   elle, le serveur serait un proxy Codashop gratuit pour tout Internet,
+ *   sur le quota du forfait Render gratuit.
+ * INVARIANT : les listes sont SANITISEES avec leSPECTATEUR en argument
+ *   (`sanitizeMatchForBroadcast` / `sanitizeTournamentForBroadcast`), pour
+ *   que `isMe` soit calcule.
+ * PIEGE : `map(sanitizeMatchForBroadcast)` passerait l'INDEX comme
+ *   `viewerId` et `isMe` serait toujours faux, sans lever la moindre
+ *   erreur : la fleche `(m) => sanitize...(m, viewerId)` est obligatoire.
+ * PIEGE : le classement et les statistiques sont caches 60 s dans la couche
+ *   de persistance : un changement n'est pas immediat.
+ * PIEGE : la pagination borne le `limit` a [1, 500] : en demander 10 000 ne
+ *   renvoie pas plus.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import {

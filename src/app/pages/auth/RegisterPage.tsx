@@ -1,3 +1,21 @@
+/**
+ * RegisterPage - inscription d'un nouveau joueur.
+ *
+ * Formulaire long (identite, contact, pays, gaming, mot de passe, 2FA de
+ * depart), valide par zod, puis creation du compte via l'API.
+ *
+ * INVARIANT : les regles de mot de passe (longueur, majuscule, chiffre,
+ * caractere special) doivent rester identiques a celles du serveur : une
+ * regle divergente donne un echec incomprehensible a l'utilisateur.
+ * PIEGE : l'inscription peut s'arreter sur une ACTIVATION par email. Ne pas
+ * enchainer la connexion : le compte n'est pas encore actif.
+ * PIEGE : le numero de telephone determine les operateurs Mobile Money
+ * disponibles (payoutOperators). Ne pas proposer un operateur invalide.
+ * PIEGE : la confirmation des conditions (18 ans, CGU) est une condition
+ * d'inscription : elle doit etre explicitement cochee.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
+ */
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

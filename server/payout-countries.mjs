@@ -1,3 +1,35 @@
+/**
+ * server/payout-countries.mjs - Matrice pays -> operateurs Mobile Money
+ * acceptes par FedaPay, et regles de format du numero de telephone.
+ *
+ * Module FEUILLE : aucun import, volontairement.
+ *
+ * INVARIANT : ce module n'importe RIEN. `payment-engine.mjs` importe
+ *   `persistence.mjs`, donc `persistence.mjs` ne peut pas importer
+ *   `payment-engine.mjs` sans cycle : les regles vivent ici pour etre
+ *   accessibles aux deux.
+ * INVARIANT : la longueur du Benin est de 10 chiffres (migration ARCEP du
+ *   30/11/2024) ; le format 8 chiffres n'est accepte que comme
+ *   `legacyLengths`.
+ * INVARIANT : `normalizePayoutCountry` ignore les accents et les
+ *   apostrophes : "Benin", "Benin" accentue et "benin" doivent tous donner
+ *   le meme code ISO.
+ * INVARIANT : `parsePhoneForFedaPay` renvoie `{ number: '', country }` quand
+ *   le format ne correspond pas : l'appelant doit tester `number`, pas
+ *   l'absence d'exception.
+ * INVARIANT : les operateurs listes par pays sont les SEULS acceptes par
+ *   FedaPay pour un payout.
+ * PIEGE : le pays vient du profil (texte libre) comme de la requete : il est
+ *   normalise, jamais pris tel quel.
+ * PIEGE : `isAnySupportedPhone` n'impose PAS un pays a l'inscription : il
+ *   rejette seulement les formats qu'aucun retrait ne pourrait jamais payer.
+ * PIEGE : le prefixe international (+229 ...) est attendu, mais la forme
+ *   locale est aussi acceptee.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // Matrice pays → opérateurs Mobile Money supportés par FedaPay (payout).
 //
 // Module FEUILLE : aucun import, volontairement. `payment-engine.mjs` importe

@@ -1,3 +1,23 @@
+/**
+ * tournamentStore - tournois, brackets, contexte d'appelant.
+ *
+ * Detient la liste des tournois, les filtres de l'ecran, et le contexte
+ * par appelant (mon entree, mon creneau d'arbitre, creneaux ouverts) qui
+ * permet d'afficher ' ta position ' sans exfiltrer les identifiants.
+ *
+ * INVARIANT : hydrateFromServer FUSIONNE, replaceFromServer REMPLACE - meme
+ * regle que pour les matchs, pour la meme raison (delta socket).
+ * INVARIANT : le serveur retire userId des membres et ajoute `isMe`,
+ * calcule pour le demandeur. Utiliser `isMe` ou `pseudo` (unique), jamais
+ * `userId` qui serait toujours undefined a l'execution.
+ * PIEGE : le contexte d'appelant vit en MEMOIRE DE SESSION uniquement. Il
+ * doit etre purge a la deconnexion, sinon le nouveau compte herite de
+ * l'entree du precedent (fuite de donnees + inscription bloquee a tort).
+ * PIEGE : le serveur ne produit que 1 ou 2 arbitres ; le repli sur le nombre
+ * maximal d'entrees est un garde-fou, pas une regle metier.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';

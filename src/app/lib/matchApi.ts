@@ -1,3 +1,22 @@
+/**
+ * matchApi - appels REST des matchs : liste, creation, check-in, arbitrage,
+ * resultat, confirmation, litiges.
+ *
+ * Client dedie du domaine match. Chaque fonction renvoie la forme renvoyee
+ * par le serveur (match, user, wallet) ; la normalisation vers les types du
+ * store est faite par matchStore.
+ *
+ * INVARIANT : toute mutation passe par cette API. Le front ne doit jamais
+ * ecrire un match localement en esperant que le serveur suive.
+ * PIEGE : les actions authentifiees renvoient le snapshot du wallet. Il faut
+ * l'hydrater (applyServerAccountState) : sinon l'ecran affiche un solde
+ * anterieur a l'action.
+ * PIEGE : le resultat d'un match n'est pas verse au moment de la soumission.
+ * Le pot est gele jusqu'a la confirmation des DEUX equipes : c'est
+ * `payoutDistributed` qui dit si l'argent est parti.
+ *
+ * Voir aussi : docs/08-frontend.md - section 4 (Les layouts)
+ */
 import type { Match } from '../stores/matchStore';
 import type { User } from '../stores/authStore';
 import type { WalletSnapshot } from './walletApi';

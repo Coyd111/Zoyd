@@ -1,3 +1,45 @@
+/**
+ * server/routes/admin.mjs - Domaine ADMINISTRATION : rechargement force de la
+ * base, commissions ZOYD, file de moderation des signalements, sanctions,
+ * export de l'historique des matchs, configuration de la 2FA, attribution de
+ * match, cloture de litige, annulation de match.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : rate limit (`admin`) -> `requireAdmin2fa` (ou
+ * `requireAdmin` sur les seules routes 2FA) -> lecture du corps -> moteur ->
+ * `saveMatches` -> reponse. Le rate limit passe AVANT le garde 2FA : le
+ * quota doit proteger le garde, pas l'inverse.
+ *
+ * INVARIANT : toute operation financiere ou de moderation exige la 2FA
+ *   (`requireAdmin2fa`). Seul le trio status / setup / enable / verify de la
+ *   2FA utilise `requireAdmin`.
+ * INVARIANT : l'attribution d'un match se fait en DEUX PHASES :
+ *   `deferSettlement: true` persiste le resultat avec `payoutDistributed`
+ *   a `'pending'`, puis `settlePendingMatchResult` verse. Crediter avant
+ *   l'ecriture laissait l'argent parti sans trace.
+ * INVARIANT : la cloture d'un litige exige une action EXPLICITE (`settle` ou
+ *   `refund`) : sans elle la cagnotte restait gelee pour toujours.
+ * INVARIANT : l'export et la lecture des signalements repondent 503
+ *   (`SERVER_BUSY`) quand la base est absente : une liste vide se lirait
+ *   comme "aucun match" ou "aucune file de moderation".
+ * INVARIANT : la resolution d'un signalement porte une TRACE (qui a tranche,
+ *   quand, avec quoi) : un signalement traite sans trace ne vaut rien en cas
+ *   de contestation.
+ * PIEGE : le CSV est echappe (`csvCell`) et prefixe d'un BOM UTF-8 : sans
+ *   BOM, Excel casse les accents et le fichier parait corrupt.
+ * PIEGE : l'installation de la 2FA exige le mot de passe admin : le garde
+ *   anti-takeover repose sur un secret en base, pas seulement en memoire.
+ * PIEGE : re-enroller une 2FA ACTIVE est refuse (409 `2FA_ALREADY_ENABLED`).
+ * PIEGE : `markAdmin2faVerified` agit sur la session STOCKEE : muter la
+ *   copie renvoyee par `getAuthSession` n'a aucun effet.
+ * PIEGE : la fenetre TOTP est de 30 s : l'interface doit afficher le temps
+ *   restant.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Routes d'administration (/api/admin/*).
 //

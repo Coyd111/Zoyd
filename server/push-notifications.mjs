@@ -1,3 +1,34 @@
+/**
+ * server/push-notifications.mjs - Notifications Web Push (VAPID), creation des
+ * notifications dans l'application et diffusion des instantanes d'etat.
+ *
+ * Chaque notification passe par deux canaux distincts : la base (centre de
+ * notifications) et le push navigateur. L'un peut echouer sans que l'autre
+ * soit affecte.
+ *
+ * INVARIANT : la notification est creee EN BASE AVANT l'emission socket et
+ *   l'envoi push : le centre de notifications doit survivre a un client
+ *   non connecte.
+ * INVARIANT : les textes passes en base sont sanitises (`sanitizeText`).
+ * INVARIANT : une souscription morte (404 / 410) est SUPPRIMEE de la base ;
+ *   les autres erreurs sont ignorees et le push est simplement perdu.
+ * INVARIANT : `broadcastStateSnapshot` emet a TOUT LE MONDE : il ne doit
+ *   JAMAIS porter de donnee dependante du destinataire (pas de `isMe`).
+ * INVARIANT : `notifyAllAdmins` isole les erreurs par admin : un admin en
+ *   erreur n'interrompt pas les notifications des autres.
+ * PIEGE : si `vapidKeys` est null, `sendPushToUser` renvoie {delivered:0,
+ *   attempted:0} SANS erreur : le push est optionnel, son absence n'est pas
+ *   une panne.
+ * PIEGE : la notification dans l'application et le push web sont deux
+ *   livraisons distinctes : un push en echec ne veut pas dire que le joueur
+ *   n'a pas ete prevenu.
+ * PIEGE : `requireInteraction` decide de la priorite ('urgent' sinon 'high')
+ *   et donc de la visibilite sur le telephone.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import webpush from 'web-push';
 import { vapidKeys } from './vapid-keys.mjs';
 import { createLogger } from './logger.mjs';

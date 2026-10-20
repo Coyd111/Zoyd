@@ -1,3 +1,24 @@
+/**
+ * walletApi - appels REST du portefeuille : snapshot, depot, retrait, commissions.
+ *
+ * Client dedie du domaine argent. Expose le snapshot complet (soldes,
+ * transactions, entrees bloquees) et la politique de retrait publiee par le
+ * serveur.
+ *
+ * INVARIANT : le taux de frais et le minimum de retrait sont PUBLIES par le
+ * serveur. Ne jamais les coder en dur dans une copie locale durable : le
+ * taux peut changer, et l'UI doit suivre le serveur.
+ * PIEGE : le champ `timestamp` est ecrit par le serveur ; `created_at` n'est
+ * accepte que pour les lignes anciennes. Lire le mauvais champ faisait
+ * retomber sur new Date() : TOUTES les transactions affichaient ' a
+ * l'instant '.
+ * PIEGE : le net d'un retrait vient du serveur (netAmount, feeAmount). Le
+ * recalculer localement pouvait afficher un montant different de celui
+ * reellement verse par FedaPay.
+ * INVARIANT : les appels admin (commissions) exigent la 2FA cote serveur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { authorizedGet, authorizedPost } from './apiClient';
 
 import type { TransactionStatus, TransactionType } from '../stores/walletStore';

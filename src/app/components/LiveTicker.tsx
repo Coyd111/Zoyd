@@ -1,3 +1,20 @@
+/**
+ * LiveTicker - bandeau defilant des matchs en direct.
+ *
+ * Lit `liveMatches` dans le store socket et fait defiler les matchs whose
+ * status est `ready` ou `in_progress`. Se rend null s'il n'y en a aucun.
+ *
+ * INVARIANT : la source est le store socket, pas une liste locale. Ce
+ * composant ne declenche aucune requete.
+ * PIEGE : `liveMatches` est reconstruit par syncFromMatches toutes les 15 s.
+ * La liste affichee est donc un instantane, pas un flux : un match qui
+ * demarre peut apparaitre avec 15 s de retard.
+ * PIEGE : le composant est memoise (React.memo) et ne rend RIEN quand la
+ * liste est vide : ne pas remplacer ce null par un conteneur vide, cela
+ * laisserait une bande vide au-dessus du contenu.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7 (Le client temps reel)
+ */
 import React from 'react';
 import { Badge } from './ui/Badge';
 import { useSocketStore } from '../stores/socketStore';

@@ -1,3 +1,20 @@
+/**
+ * FriendsWidget - widget social : amis, demandes, recherche de joueur.
+ *
+ * Recherche des joueurs via usersApi, envoie les demandes d'ami, et affiche
+ * la liste d'amis avec leur statut.
+ *
+ * INVARIANT : les mutations passent par le store friendsStore, qui appelle
+ * l'API. Un ami ajoute localement seulement disparaitrait au rechargement.
+ * PIEGE : les amis recus du serveur sont des PROFILS PUBLICS sans `status`
+ * ni `isStreamer` : ces deux champs sont derives par le store, pas lus
+ * tels quels depuis le serveur.
+ * PIEGE : une demande en attente est refusee tant qu'une autre est en
+ * cours (pendingId) : le bouton doit rester desactive, sinon le joueur
+ * spamme le serveur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
+ */
 import React, { useMemo, useState } from 'react';
 import { toast } from '../../lib/toast';
 import { motion, AnimatePresence } from 'motion/react';

@@ -1,3 +1,38 @@
+/**
+ * server/payment-engine.mjs - Integration FedaPay : verification et credit
+ * d'un depot, creation d'un payout Mobile Money, relecture d'un payout.
+ *
+ * Seul module du serveur qui parle au prestataire de paiement.
+ *
+ * INVARIANT : la transaction est RELUE chez FedaPay (jamais le corps de la
+ *   requete) et doit etre `approved` avant tout credit.
+ * INVARIANT : la propriete est prouvee par la description `ZOYD:<userId>`
+ *   gravee a la creation du paiement, ou a defaut par l'email. Le telephone
+ *   n'est PAS une preuve : les 8 derniers chiffres coincident entre pays.
+ * INVARIANT : la reservation (`claimTransaction`) est prise AVANT le credit
+ *   et relachee si le credit echoue, pour que le joueur puisse reessayer.
+ * INVARIANT : un meme identifiant de transaction ne peut etre credit qu'une
+ *   fois (`hasTransactionBeenProcessed` + verrou en memoire).
+ * INVARIANT : 1 ZC = 10 FCFA, et la devise doit etre XOF quand l'information
+ *   est presente.
+ * INVARIANT : le payout est plafonne a 1 000 000 FCFA, et le pays comme
+ *   l'operateur doivent figurer dans `PAYOUT_COUNTRY_CONFIG`.
+ * PIEGE : un echec survenu APRES la creation du payout peut signifier que
+ *   l'argent EST PARTI : `payoutMaybeSent` et `payoutId` sont alors portes
+ *   par l'erreur, et l'appelant NE DOIT PAS rembourser dans ce cas.
+ * PIEGE : le 403 de FedaPay est un refus d'AUTORISATION du compte marchand,
+ *   pas une requete malformee : le message doit le dire.
+ * PIEGE : `TRANSACTION_ALREADY_PROCESSED`, `TRANSACTION_IN_PROGRESS` et
+ *   `TRANSACTION_NOT_OWNED` sont relances tels quels : les masquer en
+ *   `FEDAPAY_API_ERROR` ferait croire a un echec definitif.
+ * PIEGE : le SDK cache la vraie raison du refus : passer par
+ *   `extraireErreurFedaPay` pour la journaliser, sinon le log ne dit que
+ *   "403".
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { FedaPay, Transaction, Payout } from 'fedapay';
 import { depositToWallet, debitFromWallet, refundLockedEntry } from './wallet-engine.mjs';
 import { hasTransactionBeenProcessed, claimTransaction, releaseTransaction, makeError } from './persistence.mjs';

@@ -1,3 +1,20 @@
+/**
+ * AdminMatchesTab - liste des matchs dans le tableau de bord admin.
+ *
+ * Filtre les matchs par priorite (priorite, en direct, litiges, tous) et
+ * expose les actions d'annulation et de resolution.
+ *
+ * INVARIANT : aucune action n'est declenchee ici : le composant appelle le
+ * parent, qui passe par l'API et recharge ensuite la liste.
+ * PIEGE : un match `awaiting_arbiter` est un match VIVANT qui n'a pas
+ * d'arbitre. Il doit rester dans les files operationnelles, et son libelle
+ * doit le dire : sans arbitre, le match ne peut pas avancer.
+ * PIEGE : ne pas deduire l'etat d'un match du seul fait qu'il n'est pas
+ * termine : un match dispute, en attente de confirmation ou en attente
+ * d'arbitre sont trois etats differents.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React from 'react';
 import { Filter } from 'lucide-react';
 import { formatZC, getRelativeTime } from '../../../lib/utils';

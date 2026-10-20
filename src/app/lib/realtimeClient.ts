@@ -1,3 +1,26 @@
+/**
+ * realtimeClient - client socket.io : session temps reel, rooms, emissions, push.
+ *
+ * Cree le socket (singleton), obtient un jeton temps reel par POST
+ * /api/realtime/auth/session, branche les 13 evenements, emet presence et
+ * push, et gere l'abonnement Web Push.
+ *
+ * INVARIANT : ce module n'importe JAMAIS apiClient. Il utilise apiUrl.ts pour
+ * casser le cycle d'imports (apiClient -> ... -> realtimeClient -> apiClient).
+ * INVARIANT : autoConnect est false. Le socket ne se connecte qu'APRES
+ * obtention d'une session temps reel valide ; sinon il part en unauthorized.
+ * PIEGE : bindRealtimeHandlers retire les handlers avant de les rebrancher.
+ * Une omission sur la liste des `off()` empile les handlers a chaque
+ * remontage : c'est le cas de `wallet:update`, pose mais jamais retire.
+ * PIEGE : le socket diffuse des DELTAS et n'envoie aucun etat initial a la
+ * connexion (seulement server:hello). Hors ligne, tout ce qui s'est passe
+ * pendant la coupure est perdu : c'est dirtySinceDisconnect, cote store, qui
+ * organise la resynchronisation.
+ * PIEGE : le push et l'authentification temps reel utilisent un Bearer, pas
+ * le cookie applicatif.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7 (Le client temps reel)
+ */
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import type { User } from '../stores/authStore';

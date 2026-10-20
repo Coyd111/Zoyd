@@ -1,3 +1,20 @@
+/**
+ * BrPage - liste des salons Battle Royale et creation de salon.
+ *
+ * Affiche les salons ouverts, le nombre de places, la carte, l'horaire et
+ * le prix du pass, et permet a un admin de creer un salon.
+ *
+ * INVARIANT : la liste des salons vient de brApi.ts. Ne pas creer un salon
+ * localement "pour voir le rendu".
+ * PIEGE : un salon est `open` seulement s'il est `scheduled` ET non plein.
+ * Un salon `live` affiche ses places restantes mais n'est plus joinable.
+ * PIEGE : le pass n'est remboursable qu'avant le lancement : la regle doit
+ * etre visible avant le clic, pas dans une confirmation apres coup.
+ * PIEGE : le roster public n'expose AUCUN userId : l'identification d'un
+ * joueur passe par son pseudo.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Calendar, Map as MapIcon, Users, Swords, ChevronRight, AlertTriangle, Clock, Trophy } from 'lucide-react';

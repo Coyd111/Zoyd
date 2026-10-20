@@ -1,4 +1,22 @@
 /**
+ * codmApi - client du catalogue CODM (Codashop), via le proxy backend.
+ *
+ * Interroge le backend ZOYD, qui relaie Codashop : le navigateur ne doit
+ * jamais appeler Codashop directement (CORS, quotas, cle d'API).
+ *
+ * INVARIANT : tous les appels passent par getApiUrl (apiClient.ts). Aucun
+ * appel direct a codashop.net : le proxy est la seule voie supportee.
+ * INVARIANT : les reponses du proxy sont normalisees ici, une fois. Ne pas
+ * renormaliser dans chaque composant.
+ * PIEGE : le proxy peut repondre en mode degrade (catalogue indisponible).
+ * L'ecran doit distinguer ' pas de donnees ' de ' service indisponible '.
+ * PIEGE : ce catalogue est un CONTENU, pas une source de verite metier. Une
+ * regle de jeu ne doit jamais dependre d'une reponse Codashop.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
+
+/**
  * Codashop / CODM API client — routes through the ZOYD backend proxy.
  * The backend handles CORS and upstream requests to Codashop.
  */

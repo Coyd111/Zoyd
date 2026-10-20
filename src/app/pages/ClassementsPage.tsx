@@ -1,3 +1,23 @@
+/**
+ * ClassementsPage - classements de la communaute (joueurs, gains, pays).
+ *
+ * Agrege les donnees des matchs, des tournois, du wallet et des amis pour
+ * classer les joueurs, et affiche la position du joueur courant.
+ *
+ * INVARIANT : le classement est une AGREGATION COTE CLIENT, a partir de
+ * donnees deja chargees dans les stores. Elle ne remplace pas la source
+ * serveur (user.stats) : c'est une vue de.communaute.
+ * PIEGE : la position du joueur courant se lit via `isMe`, pas via une
+ * comparaison d'identifiant : les identifiants internes ne sont pas
+ * exposes dans les projections diffusees.
+ * PIEGE : un joueur sans activite ne doit pas etre classe. Filtrer sur
+ * activityCount / totalMatches / totalEarnings, comme le fait deja le code.
+ * PIEGE : les graphes et cartesUsesocket pour la presence : hors ligne,
+ * la page doit afficher un etat, pas une liste figee presentee comme
+ * vivante.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';

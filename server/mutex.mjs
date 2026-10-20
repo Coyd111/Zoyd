@@ -1,3 +1,34 @@
+/**
+ * server/mutex.mjs - Verrous de processus serialisant les sections
+ * lecture-modification-ecriture sur l'etat en memoire.
+ *
+ * Trois verrous GLOBAUX (matchs, tournois, ligues) et quatre families de
+ * verrous PAR ENTITE (salon BR, portefeuille, utilisateur, canal).
+ *
+ * INVARIANT : le verrou GLOBAL est toujours pris AVANT le verrou par entite.
+ *   L'ordre inverse ouvre un risque de deadlock entre deux requetes.
+ * INVARIANT : ces verrous protegent l'etat du PROCESSUS courant. Ils ne
+ *   valent rien en multi-processus : c'est le role de single-process-guard.mjs
+ *   de refuser de demarrer dans ce cas.
+ * INVARIANT : un mutex VERROILLE n'est JAMAIS evince. Supprimer celui d'un
+ *   joueur en cours d'operation ferait creer un second Mutex a l'appel
+ *   suivant, donc deux ecritures concurrentes sur le meme portefeuille.
+ * INVARIANT : la valeur de retour de `fn` est propagee et le verrou est
+ *   relache dans un `finally` : une exception ne doit jamais le retenir.
+ * PIEGE : le debit se fait SOUS verrou, l'appel de paiement HORS verrou
+ *   (voir POST /api/wallet/withdraw). L'inverse rend le double paiement
+ *   possible.
+ * PIEGE : `withChannelMutex` n'est utilise que par la couche de persistance
+ *   (canaux de chat), pas par les modules de routes.
+ * PIEGE : le verrou BR est PAR SALON : deux salons distincts se reglent en
+ *   meme temps, c'est voulu.
+ * PIEGE : le nettoyage toutes les 5 min ne retire que les verrous INACTIFS
+ *   depuis plus de 30 min ET non verrouilles.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { Mutex } from 'async-mutex';
 
 const matchMutex = new Mutex();

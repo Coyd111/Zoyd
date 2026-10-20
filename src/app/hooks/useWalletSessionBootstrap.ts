@@ -1,3 +1,21 @@
+/**
+ * useWalletSessionBootstrap - hydrate le portefeuille au demarrage de session.
+ *
+ * Appelle refreshFromServer avec l'userId attendu, et retente avec un backoff
+ * 2 s -> 5 s -> 10 s -> 20 s si le serveur echoue (offre gratuite Render
+ * endormie). N'hydrate qu'une fois par utilisateur.
+ *
+ * INVARIANT : passer le userId attendu au refresh. Si la reponse arrive apres
+ * un logout suivi d'une reconnexion d'un autre compte, le store doit refuser
+ * d'ecrire plutot que d'afficher le solde d'un autre joueur.
+ * PIEGE : ne pas avaler l'erreur de refresh. Le bootstrap en depend pour
+ * savoir s'il doit retenter : avaler affichait 0 ZC alors que le serveur en
+ * avait, et le joueur croyait son portefeuille vide.
+ * PIEGE : une seule hydratation par utilisateur. Le ref userId sert de
+ * garde : changer de compte doit relancer le chargement, pas le bloquer.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6.1 (Les hooks de session)
+ */
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';

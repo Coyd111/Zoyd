@@ -1,3 +1,21 @@
+/**
+ * BrLobbyCreatePanel - creation d'un salon Battle Royale (admin).
+ *
+ * Regle carte, mode, horaire, nombre de places et repartition des gains,
+ * puis cree le salon via l'API.
+ *
+ * INVARIANT : la creation est reservee au role admin cote serveur. Le
+ * panneau peut etre masque, mais ce n'est pas une barriere.
+ * INVARIANT : la repartition des gains est une regle serveur : le form
+ * peut la saisir, il ne doit pas la calculer ni la deduire.
+ * PIEGE : le nombre de places et la taille d'equipe doivent etre coherents
+ * avec la carte et le mode choisis : une incoherence est refusee par le
+ * serveur, apres avoir deja rempli le formulaire.
+ * PIEGE : l'horaire conditionne la possibility de se desinscrire avec
+ * remboursement : une heure dans le passe rend le salon inexploitable.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, Coins, Info, Map as MapIcon, Swords, Trophy, User, X } from 'lucide-react';
 

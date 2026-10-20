@@ -1,3 +1,26 @@
+/**
+ * apiClient - client HTTP du front : enveloppe fetch, erreurs typees, purge.
+ *
+ * Point d'entree de tous les appels /api/*. Ajoute les credentials (cookie
+ * httpOnly), un timeout de 30 s, la traduction des codes d'erreur en messages
+ * lisibles, et la purge de session sur echec d'authentification.
+ *
+ * INVARIANT : AUCUNE verification d'expiration ici. Le cookie est httpOnly :
+ * le client ne peut pas connaitre sa reelle expiration, et expiresAt n'en
+ * est qu'un miroir qui derive. Le serveur est l'autorite.
+ * INVARIANT : seul un 401 - ou un 403 explicitement code AUTH_REQUIRED -
+ * purge l'etat. Un 403 METIER (2FA, mot de passe actuel, transaction d'un
+ * autre compte) ne doit PAS detruire la session.
+ * PIEGE : le cycle d'imports. Ce module NE DOIT PAS importer sessionReset
+ * (ni socketStore, ni realtimeClient) : le cycle
+ * apiClient -> sessionReset -> socketStore -> socketConnectionStore ->
+ * realtimeClient -> apiClient se referme. La purge passe par le registre
+ * sessionPurge.ts, et les URLs par le module feuille apiUrl.ts.
+ * PIEGE : credentials: 'include' est obligatoire (cookie cross-origine
+ * Vercel -> Render). L'oublier fait tomber toutes les requetes en 401.
+ *
+ * Voir aussi : docs/08-frontend.md - section 2 (L'arborescence de src/)
+ */
 import { useAuthStore } from '../stores/authStore';
 import { getBaseUrl, getApiUrl } from './apiUrl';
 import { purgeSessionStores } from './sessionPurge';

@@ -1,3 +1,17 @@
+/**
+ * Breadcrumb - fil d'ariane (Radix Slot + icones lucide).
+ *
+ * Sous-composants : List, Item, Link, Page, Separator, Ellipsis.
+ *
+ * INVARIANT : le dernier element est un `BreadcrumbPage` (le fil actuel), il
+ * n'est pas un lien : il ne pointe nulle part.
+ * INVARIANT : `BreadcrumbLink` utilise `asChild` pour heriter du Link de
+ * react-router : le focus clavier doit suivre le routeur.
+ * PIEGE : ne pas mettre d'URL absolue ou externe dans un fil d'ariane
+ * interne : la navigation doit rester dans l'application.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { ChevronRight, MoreHorizontal } from "lucide-react";

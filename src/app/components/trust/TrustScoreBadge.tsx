@@ -1,3 +1,19 @@
+/**
+ * TrustScoreBadge - badge de score de confiance, compact ou detaille.
+ *
+ * Reutilise les fonctions du trustScoreStore pour la couleur, le fond et le
+ * libelle, et affiche le decoupage par categorie en mode detaille.
+ *
+ * INVARIANT : la couleur et le libelle viennent du store, pas d'une table
+ * locale. Dupliquer les seuils ici les ferait diverger du reste de l'UI.
+ * PIEGE : le store ne contient QUE la valeur. Toute logique de score (recalcul,
+ * ponderation) est cote serveur : un score calcule localement n'a aucune
+ * valeur de trustScore.
+ * PIEGE : le mode compact et le mode detaille doivent rester coherents : un
+ * score affichable en badge ne doit pas disparaitre en detail.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import React from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, ShieldAlert, Shield, ShieldX } from 'lucide-react';

@@ -1,3 +1,23 @@
+/**
+ * Modal - fenetre modale maison (la, sans Radix), animee par motion.
+ *
+ * Gere l'ouverture, la fermeture par Echap, le piege de focus (Tab), le focus
+ * initial, le rendu de l'arriere-plan et le retour du focus au declencheur.
+ *
+ * INVARIANT : le focus doit revenir au declencheur a la fermeture. Sans
+ * cela, la navigation clavier repart au hasard dans la page.
+ * INVARIANT : le focus initial est pose sur le PREMIER element focusable du
+ * panneau, sinon sur le panneau lui-meme.
+ * PIEGE : `onClose` est presque toujours une arrow function, donc une
+ * nouvelle reference a chaque rendu. Le garder dans une ref evite de
+ * rejouer l'effet a chaque frappe : le focus etait rendu au declencheur, le
+ * champ perdait le focus et, sur mobile, le clavier se fermait a chaque
+ * caractere saisi.
+ * PIEGE : ce composant n'a pas de portail : s'il est rendu dans un conteneur
+ * en `overflow-hidden`, il sera coupe.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';

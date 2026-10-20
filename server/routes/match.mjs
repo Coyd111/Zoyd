@@ -1,3 +1,40 @@
+/**
+ * server/routes/match.mjs - Domaine MATCHS 1v1-5v5 : creation, inscription,
+ * arbitrage, presence, pret, programmation, salle, lancement, resultat,
+ * confirmation, litige, preuves, escalade.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`social`
+ * pour les actions sociales) -> lecture du corps -> `withMatchMutex` (global)
+ * -> `withWalletMutex` (par joueur) -> moteur -> `saveMatches` -> reponse.
+ *
+ * INVARIANT : le verrou GLOBAL est pris AVANT le verrou par portefeuille :
+ *   l'ordre inverse ouvre la porte a un deadlock.
+ * INVARIANT : le corps de la requete est lu HORS du mutex : le verrou doit
+ *   couvrir la mutation, pas le parsing.
+ * INVARIANT : le droit d'entree est arrondi a 2 decimales AVANT le calcul de
+ *   la cagnotte : le pot est un produit, l'argent bloque une somme
+ *   d'arrondis - au-dela de 2 decimales les deux divergent de quelques
+ *   centimes et le reglement cree de la monnaie.
+ * INVARIANT : le resultat est soumis avec `deferSettlement: true` : il est
+ *   PERSISTE d'abord, l'argent est verse ensuite.
+ * INVARIANT : le corps du resultat est filtre par une liste blanche
+ *   (`winnerTeam`, `scores`, `proofs`, `screenshots`, `resolutionType`,
+ *   `arbiterNotes`) : c'est du JSON client.
+ * INVARIANT : toute mutation se termine par `saveMatches` (persistance ET
+ *   diffusion) avant la reponse.
+ * PIEGE : le `return true` place DANS le callback du mutex ne sort pas de la
+ *   requete (cf. routes/wallet.mjs).
+ * PIEGE : la route n'ecrit JAMAIS le statut elle-meme : il vient du moteur
+ *   (`updateMatchSnapshot` le derive).
+ * PIEGE : le `isMe` de la reponse vient de `buildMatchActionPayload` : le
+ *   client ne le calcule pas.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import {
   getAuthenticatedAppSession,
   parseRequestBody,

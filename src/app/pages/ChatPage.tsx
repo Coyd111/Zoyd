@@ -1,3 +1,23 @@
+/**
+ * ChatPage - messagerie : canaux, messages, non-lus, saisie en cours.
+ *
+ * Compose les canaux (global, match, prive), la lecture, l'envoi et la
+ * presence du canal actif. La lecture et l'ecriture passent par l'API, les
+ * messages entrants par le socket.
+ *
+ * INVARIANT : l'envoi d'un message passe par sendServerChatMessage (API).
+ * chatStore.sendMessage ne fait qu'une mutation LOCALE : le message
+ * n'existerait pour personne d'autre et disparaitrait au rechargement.
+ * INVARIANT : l'ecriture de presence et de saisie passe par le socket, avec
+ * un garde `isRealtimeSocketConnected`. Hors ligne, le store garde l'etat
+ * local et le serveur rattrapera a la reconnexion.
+ * PIEGE : marquer un canal comme lu est une ecriture : elle part au serveur
+ * et se propage aux autres onglets par l'evenement socket chat:read.
+ * PIEGE : ne jamais afficher un message systeme comme un message de joueur :
+ * le rendu distingue les deux (isSystem).
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
+ */
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck, ArrowLeft } from 'lucide-react';

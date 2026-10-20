@@ -1,3 +1,23 @@
+/**
+ * Sidebar - barre laterale complete du design system (port shadcn/ui).
+ *
+ * Fournit le provider, la logique de repli (via use-mobile), les rails, le
+ * header, le footer, le groupe, le menu et les actions. Sert de reference
+ * pour les panneaux lateraux de l'application.
+ *
+ * INVARIANT : `useIsMobile` decide du mode replie : la bascule desktop /
+ * mobile est automatique, elle ne doit pas etre pilotee a la main.
+ * INVARIANT : le provider doit envelopper tous les sous-composants : hors
+ * provider, les sous-composants n'ont pas d'etat de repli.
+ * PIEGE : le `sheet` mobile reutilise le Radix Dialog : c'est lui qui
+ * provides le focus trap de la version mobile.
+ * PIEGE : les largeurs de rail (SIDEBAR_WIDTH_*) determinent le calcul du
+ * contenu : les changer deplace tous les ecrans qui l'utilisent.
+ * PIEGE : ce composant est purement presentatif : il ne doit contenir ni
+ * appel reseau ni regle metier.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

@@ -1,3 +1,22 @@
+/**
+ * Pagination - pagination de listes, avec ses libelles d'accessibilite.
+ *
+ * Sous-composants : Pagination, PaginationContent, PaginationItem,
+ * PaginationLink, PaginationPrevious, PaginationNext, PaginationEllipsis.
+ *
+ * INVARIANT : la pagination est un composant de PRESENTATION : le state
+ * courant et le nombre de pages viennent des props. Le composant ne
+ * transforme pas une liste en pages tout seul.
+ * INVARIANT : `PaginationLink` doit pointer vers une URL reelle (ou
+ * declencher un callback) : un lien decoratif casse la navigation clavier.
+ * PIEGE : `PaginationPrevious` / `PaginationNext` doivent etre des liens,
+ * pas des boutons, quand la pagination repose sur l'URL : sans cela, le
+ * bouton moyen et le partage de lien ne fonctionnent plus.
+ * PIEGE : l'ellipse n'est pas un element focusable : elle annonce qu'il
+ * reste des pages sans creer une cible de focus inutile.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import * as React from "react";
 import {
   ChevronLeftIcon,

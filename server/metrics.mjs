@@ -1,3 +1,37 @@
+/**
+ * server/metrics.mjs - Compteurs, jauges et histogrammes en memoire, exposes
+ * au format texte Prometheus sur `GET /metrics`.
+ *
+ * Aucun stockage externe : tout est en memoire, avec des plafonds d'entrees
+ * qui bornent la cardinalite des labels.
+ *
+ * INVARIANT : la cardinalite des labels est BORNEE par les plafonds
+ *   (MAX_COUNTER_ENTRIES, MAX_GAUGE_ENTRIES, MAX_HISTOGRAM_ENTRIES) : un label
+ *   contenant un identifiant par requete fait exploser la carte et evicter les
+ *   vrais compteurs.
+ * INVARIANT : le label `pathname` doit etre NORMALISE avant usage
+ *   (`normalizePathForMetrics` dans http-utils.mjs) : un chemin brut fait une
+ *   serie par match.
+ * INVARIANT : `startTimer` / `endTimer` utilisent `process.hrtime.bigint()`
+ *   et doivent etre apparies sur la MEME requete.
+ * INVARIANT : le format d'exposition est produit uniquement par
+ *   `metricsToPrometheus`, qui echappe les valeurs de labels.
+ * PIEGE : l'eviction est FIFO sur l'ordre d'insertion : a saturation, la
+ *   serie la plus ancienne est SUPPRIMEE et son compteur perdu sans trace.
+ * PIEGE : un histogramme ne garde que les MAX_OBSERVATIONS dernieres
+ *   valeurs ; `sum` et `count` restent cumulatifs et ne sont pas reinitialises
+ *   par le nettoyage.
+ * PIEGE : le nettoyage supprime les jauges `zoyd_uptime_*` et `zoyd_node_*`,
+ *   recreees par la collecte toutes les 15 s - une lecture entre les deux les
+ *   voit absentes.
+ * PIEGE : les metriques HTTP sont enregistrees dans `respondJson` : une
+ *   reponse ecrite en direct avec `res.writeHead` (route /metrics, export
+ *   CSV) n'est PAS comptee.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // server/metrics.mjs — Lightweight Prometheus-compatible metrics (zero deps)
 // Exposes /metrics endpoint in Prometheus exposition format.
 

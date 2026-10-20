@@ -1,3 +1,51 @@
+/**
+ * server/routes/auth.mjs - Domaine AUTHENTIFICATION : inscription, connexion,
+ * activation, renvoi de code, reinitialisation de mot de passe, profil
+ * (lecture / modification / suppression), deconnexion, changement de mot de
+ * passe.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : rate limit -> lecture du corps -> session -> logique
+ * metier. Exception : sur `POST /api/auth/logout`, le rate limit vient
+ * EN PREMIER et la session est OPTIONNELLE (on peut se deconnecter sans
+ * etre connecte).
+ *
+ * INVARIANT : l'inscription n'accepte qu'une LISTE BLANCHE stricte
+ *   (`REGISTER_FIELDS`) : un client qui poste `{id, wallet, trustScore}` ne
+ *   doit pas pouvoir creer un compte avec un solde.
+ * INVARIANT : la modification du profil utilise elle aussi une liste blanche
+ *   stricte (`ALLOWED_PROFILE_FIELDS`) : c'est ce qui bloque l'escalade de
+ *   role (mass assignment).
+ * INVARIANT : le changement d'email exige le MOT DE PASSE ACTUEL : l'email
+ *   est l'identifiant du compte.
+ * INVARIANT : le pseudo ne peut pas devenir vide, et le telephone doit
+ *   correspondre a un format qu'un retrait pourrait payer.
+ * INVARIANT : la deconnexion revoque la session applicative ET les sessions
+ *   temps reel du compte.
+ * INVARIANT : le changement de mot de passe revoque TOUTES les sessions du
+ *   compte.
+ * INVARIANT : la suppression du compte exige une confirmation explicite
+ *   (`confirmForfeit`) et annonce le solde abandonne.
+ * PIEGE : la sanction bloquante est verifiee APRES l'authentification et
+ *   repond un code DEDIE (`ACCOUNT_SANCTIONED`) : un "identifiants
+ *   invalides" generique ferait croire a un mot de passe oublie.
+ * PIEGE : la reinitialisation repond la MEME chose que le compte existe ou
+ *   non : pas d'oracle d'enumeration (contrairement a l'inscription, ou le
+ *   joueur doit savoir quel champ est deja pris).
+ * PIEGE : la connexion utilise le groupe `auth` (50 / 15 min) mais la
+ *   deconnexion utilise `auth_logout` : partager le groupe permettait de
+ *   verrouiller la connexion de toute une IP partagee pendant 15 minutes.
+ * PIEGE : l'inscription cree un compte DIRECTEMENT ACTIF (decision du
+ *   18/09/2026) : la route d'activation existe encore mais n'est pas sur le
+ *   chemin nominal.
+ * PIEGE : la suppression du compte est irreversible et le solde est perdu :
+ *   la confirmation n'est pas une formalite.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import { isAnySupportedPhone, phoneFormatError } from '../payout-countries.mjs';
 import {

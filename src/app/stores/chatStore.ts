@@ -1,3 +1,24 @@
+/**
+ * chatStore - canaux, messages, non-lus du chat ZOYD.
+ *
+ * Detient la liste des canaux (global, match, team, prive, arbitrage), les
+ * messages par canal et le compteur de non-lus. Alimente par le bootstrap
+ * REST et par les evenements socket chat:channel / chat:message / chat:read.
+ *
+ * INVARIANT : receiveServerMessage est idempotent : meme id, ou meme
+ * (canal, expediteur, texte) a moins de 5 secondes, le message est ignore.
+ * Sans ce garde, la relance du bootstrap duplique chaque message.
+ * INVARIANT : le chat se lit et s'ecrit par l'API (chatApi.ts). sendMessage
+ * et createChannel ici ne sont que des mutations LOCALES : un message ecrit
+ * ainsi n'existe pas pour les autres joueurs et disparait au rechargement.
+ * PIEGE : le store est plafonne a 500 messages : la troncature garde les plus
+ * recents, pas les plus anciens.
+ * PIEGE : applyServerRead ignore un read emis pour un autre utilisateur ;
+ * sans ce controle, le compteur de non-lus d'un tiers se mettait a zero chez
+ * tout le monde.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
+ */
 import { create } from 'zustand';
 
 export type ChatChannel = 'global' | 'match' | 'team' | 'private' | 'arbitration';

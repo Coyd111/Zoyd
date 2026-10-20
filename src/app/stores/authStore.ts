@@ -1,3 +1,22 @@
+/**
+ * authStore - etat d'authentification : user, isAuthenticated, isLoading.
+ *
+ * Detient le profil du joueur connecte et le miroir expiresAt. Le token
+ * lui-meme n'est JAMAIS en JavaScript : il vit dans le cookie httpOnly
+ * `zoyd_auth`, envoye automatiquement par le navigateur.
+ *
+ * INVARIANT : cookie-only. Aucun token dans le store, le localStorage ou une
+ * variable module : le client ne peut pas lire un cookie httpOnly.
+ * INVARIANT : expiresAt n'est qu'un MIROIR. Ne jamais comparer expiresAt
+ * cote client pour deconnecter : le serveur est l'autorite et tranche au
+ * premier 401.
+ * PIEGE : updateUser filtre les cles autorisees (allowedKeys). Ajouter un
+ * champ sans l'y inscrire le fait silencieusement ignorer.
+ * PIEGE : login et hydrateSession vident aussi le score de confiance
+ * (trustScoreStore) : ne pas oublier cette propagation.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { create } from 'zustand';
 import { useTrustScoreStore } from './trustScoreStore';
 

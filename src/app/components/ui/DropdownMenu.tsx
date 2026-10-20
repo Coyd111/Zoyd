@@ -1,3 +1,19 @@
+/**
+ * DropdownMenu - menu contextuel (enveloppe Radix DropdownMenu).
+ *
+ * Famille de sous-composants : Trigger, Content, Item, CheckboxItem,
+ * RadioGroup, Label, Separator, Shortcut, Sub, SubTrigger, SubContent.
+ *
+ * INVARIANT : le menu se pilote au clavier (fleches, Echap, Entree) grace a
+ * Radix. Ne pas remplacer les sous-composants par des div cliquables.
+ * INVARIANT : un item destructif doit porter `className` de danger ET rester
+ * identifiable : c'est le dernier rempart quand la confirmation n'est pas
+ * demandee.
+ * PIEGE : les sous-menus (Sub) se ferment au focus d'un item parent : ne pas
+ * mettre d'action dans un item qui en contient un autre.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

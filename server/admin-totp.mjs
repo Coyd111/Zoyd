@@ -1,3 +1,34 @@
+/**
+ * server/admin-totp.mjs - Double authentification TOTP (RFC 6238) des
+ * administrateurs, et gardes d'autorisation associees.
+ *
+ * Trois exports servent de garde aux routes : `requireAdmin` (role admin),
+ * `requireAdmin2fa` (role admin + 2FA verifiee) et le stockage des secrets.
+ *
+ * INVARIANT : `requireAdmin` et `requireAdmin2fa` repondent EUX-MEMES sur un
+ *   refus (401/403 + code) : l'appelant doit faire `return true` immediatement
+ *   et ne JAMAIS repondre une seconde fois.
+ * INVARIANT : toute operation financiere ou de moderation passe par
+ *   `requireAdmin2fa` ; `requireAdmin` seul ne couvre que les routes de
+ *   configuration de la 2FA (status / setup / enable / verify).
+ * INVARIANT : `TOTP_WINDOW_STEPS = 0` - un code n'est accepte que pendant
+ *   SON pas de 30 s : il n'est donc pas rejouable.
+ * INVARIANT : le secret n'est lu que dans `adminTotpSecrets`, repeuple au
+ *   demarrage par `loadAdminTotpSecrets` depuis la base.
+ * INVARIANT : la verification est en temps CONSTANT (`timingSafeEqual`) sur
+ *   deux tampons de meme taille : jamais une comparaison de chaines.
+ * PIEGE : `verifyTotp` exige une CHAINUE de exactement 6 chiffres : un
+ *   nombre est refuse meme s'il s'affiche correctement.
+ * PIEGE : `adminTotpSecrets` vit en memoire : une Map vide au demarrage
+ *   signifie "aucun secret charge", pas "2FA desactivee" - d'ou le mot
+ *   de passe obligatoire sur `/api/admin/2fa/setup`.
+ * PIEGE : `requireAdmin2fa` verifie `admin2faVerified` ET `admin2faExpires` :
+ *   un seul des deux ne suffit pas.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import crypto from 'node:crypto';
 import { getAuthenticatedAppSession, respondJson } from './http-utils.mjs';
 import { createLogger } from './logger.mjs';

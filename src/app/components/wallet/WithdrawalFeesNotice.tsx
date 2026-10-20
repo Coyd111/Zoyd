@@ -1,3 +1,21 @@
+/**
+ * WithdrawalFeesNotice - avertissement sur les DEUX frais d'un retrait.
+ *
+ * Rappel que la commission ZOYD (2 %) s'ajoute aux frais de transfert
+ * preleves par FedaPay, et que le montant credite peut donc etre inferieur
+ * au net annonce. Le joueur peut masquer l'avertissement.
+ *
+ * INVARIANT : on n'annonce JAMAIS un chiffre pour FedaPay. Le taux est
+ * contractuel et peut changer : un montant invente dans l'UI serait pire
+ * que le silence.
+ * PIEGE : les 2 % sont la commission de ZOYD, pas celle du prestataire. Les
+ * deux ne se confondent pas dans le texte.
+ * PIEGE : la fermeture du bandeau est memorisee en local (localStorage). Ne
+ * pas y mettre de donnee sensible : le stockage du navigateur est lisible
+ * par le joueur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 

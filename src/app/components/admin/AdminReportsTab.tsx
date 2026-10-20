@@ -1,3 +1,24 @@
+/**
+ * AdminReportsTab - file de moderation des signalements.
+ *
+ * Separe les signalements en attente des signalements traites, affiche la
+ * gravite recommandee et les actions possibles (classer, suspendre, bannir).
+ *
+ * INVARIANT : un signalement est une ACCUSATION, pas une preuve. La
+ * gravite RECOMMANDE, l'admin tranche ; aucun bouton n'applique la sanction
+ * automatiquement.
+ * INVARIANT : l'action definitive (suspension, bannissement) passe par une
+ * confirmation explicite : c'est la seule action de la page qu'on ne peut
+ * pas reprendre d'un clic.
+ * PIEGE : la liste provient de l'API et se recharge apres chaque action
+ * (reloadReports). Ne jamais la reconstruire localement : le statut local
+ * prevaudrait et un echec partiel (sanction appliquee, statut non ecrit)
+ * resterait invisible.
+ * PIEGE : une reponse serveur degradee doit afficher un echec de lecture,
+ * pas une liste vide qui se lirait comme ' personne ne signale rien '.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Ban, Clock, ShieldAlert, Check, Gavel } from 'lucide-react';
 import type { ActiveSanction } from '../../lib/socialApi';

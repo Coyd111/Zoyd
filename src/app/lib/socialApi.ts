@@ -1,3 +1,21 @@
+/**
+ * socialApi - appels REST social : demandes d'ami, blocages, signalements,
+ * administration de la moderation.
+ *
+ * Client dedie du domaine social. Contient aussi les appels admin de
+ * moderation (liste des signalements, sanction, sanctions actives).
+ *
+ * INVARIANT : un signalement doit utiliser l'identifiant renvoye par le
+ * serveur, pas un identifiant fabrique localement : sinon la meme ligne
+ * apparait deux fois apres hydratation.
+ * PIEGE : la reponse admin peut etre ' degradee ' (le serveur a repondu
+ * partiellement). L'interface doit alors afficher un echec de lecture, et
+ * non une liste vide qui se lirait comme ' personne ne signale rien '.
+ * PIEGE : les appels admin exigent la 2FA cote serveur. Le front ne peut
+ * pas s'en passer.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
+ */
 import { authorizedPost, authorizedDelete, authorizedGet } from './apiClient';
 import type { Friend, FriendRequest } from '../stores/friendsStore';
 

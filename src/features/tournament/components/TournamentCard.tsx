@@ -1,3 +1,22 @@
+/**
+ * TournamentCard - vignette d'un tournoi dans les listes.
+ *
+ * Affiche nom, format, frais, cagnotte, nombre d'entrees, horodatage et
+ * etat, avec un lien vers le bracket. Purement presentational.
+ *
+ * INVARIANT : la cagnotte affichee vient des props, calculee par le
+ * serveur sur les fonds reellement bloques. Ne pas la recalculer ici.
+ * INVARIANT : la carte ne declenche aucune action : le lien vers le bracket
+ * est fait avec le composant Link du routeur.
+ * PIEGE : la table de correspondance des statuts doit couvrir les quatre
+ * statuts (recruiting, live, completed, cancelled). Un statut absent
+ * s'affiche avec les valeurs par defaut, sans signal visuel.
+ * PIEGE : un tournoi annule peut avoir des remboursements en attente
+ * (pendingRefunds) : l'etat visible doit rester coherent avec celui du
+ * store.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React from 'react';
 import { ArrowRight, Clock3, Radio, Trophy, Users } from 'lucide-react';
 import type { Tournament } from '../../../app/stores/tournamentStore';

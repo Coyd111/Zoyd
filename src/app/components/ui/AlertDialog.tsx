@@ -1,3 +1,22 @@
+/**
+ * AlertDialog - dialogue de confirmation, pour les actions irreversibles.
+ *
+ * Enveloppe Radix AlertDialog. Utilise pour confirmer une action qui ne peut
+ * pas etre reprise (suppression, sanction, resolution destructive).
+ *
+ * INVARIANT : AlertDialog ne doit pas servir a annoncer une information.
+ * C'est une CONFIRMATION : une information se rend dans un Alert ou un
+ * toast.
+ * INVARIANT : l'action destructive doit etre visuellement distincte et
+ * placee dans la zone d'action de la boite de dialogue.
+ * PIEGE : ne pas declencher l'action au `onOpenChange`. L'action doit partir
+ * du clic sur le bouton de confirmation, sinon une fermeture accidentelle
+ * (Echap) executerait l'action.
+ * PIEGE : Radix bloque deja la fermeture au clic sur l'overlay : ne pas
+ * ajouter un onClick sur l'overlay.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

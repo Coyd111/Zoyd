@@ -1,3 +1,23 @@
+/**
+ * BrLobbyDetailPage - detail d'un salon Battle Royale.
+ *
+ * Affiche le roster, le check-in, la salle CODM, les regles du pass et les
+ * actions (rejoindre, quitter, demarrer) selon le role du joueur.
+ *
+ * INVARIANT : le pass BR est paye a l'inscription et JAMAIS rembourse une
+ * fois la partie lancee. Le seul remboursement possible est une
+ * desinscription avant l'heure de depart. Ne pas rendre le pass
+ * remboursable "pour le confort".
+ * INVARIANT : les actions passent par brApi.ts et la reponse serveur fait
+ * foi pour l'etat du salon.
+ * PIEGE : les statuts du salon (scheduled, live, finished, settling,
+ * cancelled) commandent l'affichage. Un salon `live` n'est plus joinable,
+ * meme si des places sont libres.
+ * PIEGE : les frais FedaPay s'ajoutent a la commission ZOYD : le net
+ * annonce n'est pas ce qui est credite sur le numero du joueur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {

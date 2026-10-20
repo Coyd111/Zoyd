@@ -1,3 +1,24 @@
+/**
+ * BrArbiterPanel - console d'arbitrage d'un salon Battle Royale.
+ *
+ * Permet de demarrer la partie, eliminer les joueurs, terminer le salon et
+ * repartir le pot. Les actions qui versent de l'argent exigent un code TOTP.
+ *
+ * INVARIANT : la 2FA est une BARRIERE SERVEUR (requireAdmin2fa). Le champ
+ * TOTP de ce panneau est un garde d'UX : c'est le serveur qui refuse
+ * l'action sans code valide.
+ * INVARIANT : les actions passent par brApi.ts ; l'etat du salon relu du
+ * serveur fait foi.
+ * PIEGE : eliminer un joueur et finir le salon sont DEFINITIFS. Ne pas
+ * mettre ces actions dans une confirmation annulable par erreur de clic.
+ * PIEGE : la repartition du pot est calculee par le serveur : l'afficher ne
+ * signifie pas qu'elle a ete versee. Ne pas confirmer un versement avant la
+ * reponse serveur.
+ * PIEGE : le code TOTP expire vite (fenetre courte) : le renvoyer doit
+ * changer le code attendu, pas reuse le precedent.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, Gavel, PlayCircle, Shield, Skull, Trophy, Users,

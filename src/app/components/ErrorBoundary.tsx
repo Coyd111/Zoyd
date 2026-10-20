@@ -1,3 +1,20 @@
+/**
+ * ErrorBoundary - filet de securite React pour l'ensemble de l'application.
+ *
+ * Capture une exception de rendu, journalise via logError et affiche un
+ * repli. Monte dans App.tsx, au-dessus de tous les providers.
+ *
+ * INVARIANT : le repli doit etre rendu sans dependre des stores, du
+ * routeur ni du design system : le boundary se declenche precisement quand
+ * le reste est casse.
+ * INVARIANT : toute erreur doit etre JOURNALISEE avant l'affichage du
+ * repli, sinon elle disparait silencieusement.
+ * PIEGE : un boundary React ne rattrape PAS les erreurs des gestionnaires
+ * d'evenements, des promesses rejetees ni des effets asynchrones : ceux-la
+ * doivent etre catches explicitement (voir apiClient.readJson).
+ *
+ * Voir aussi : docs/08-frontend.md - section 3.3 (Erreurs de route)
+ */
 import React from 'react';
 import { logError } from '../lib/logger';
 

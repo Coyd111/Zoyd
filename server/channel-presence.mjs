@@ -1,3 +1,31 @@
+/**
+ * server/channel-presence.mjs - Presence des joueurs par canal : membres,
+ * accuses de lecture et indicateur de saisie, en memoire.
+ *
+ * Aucun stockage durable : la presence est un etat ephemere, reconstruit a
+ * chaque connexion socket.
+ *
+ * INVARIANT : la cle d'un membre est le `userId`, PAS le `socketId` :
+ *   plusieurs onglets = un seul membre (`socketIds` est un Set).
+ * INVARIANT : a la deconnexion, un SPECTATEUR sans socket restant est
+ *   SUPPRIME ; un joueur ou un arbitre est CONSERVE et marque hors ligne.
+ * INVARIANT : `emitChannelSnapshots` est la SEULE sortie des deux evenements
+ *   `presence:snapshot` et `typing:snapshot`.
+ * INVARIANT : `publicMember` est le seul filtre des donnees de presence
+ *   exposees : aucun identifiant interne supplementaire n'y est ajoute.
+ * PIEGE : a saturation de MAX_ACTIVE_CHANNELS, `getChannelMemberMap` renvoie
+ *   une Map VIDE : l'appelant voit un canal sans membre, pas une erreur.
+ * PIEGE : le role d'un membre est borne par l'appelant (player / arbiter /
+ *   spectator) et `team` a 0 ou 1 : ce module ne valide pas, il applique.
+ * PIEGE : le nettoyage periodique (10 min) supprime aussi les canaux de chat
+ *   inactifs depuis plus de 24 h, SAUF `global` - qui n'est jamais supprime.
+ * PIEGE : les canaux supprimes ici sont des canaux EN MEMOIRE ; les canaux
+ *   persistes sont du ressort de la couche de persistance.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getMemoryChatChannels } from './persistence.mjs';
 import { getNow } from './utils.mjs';
 

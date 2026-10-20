@@ -1,3 +1,23 @@
+/**
+ * BracketGrid - grille des rounds du bracket.
+ *
+ * Dispose les affronnements par round et affiche la repartition des gains
+ * prevue.
+ *
+ * INVARIANT : la structure des rounds vient du serveur (TournamentMatch).
+ * Ne pas la recomposer a partir des entrees.
+ * INVARIANT : la repartition affichee est celle du serveur (payout).
+ * La recalculer en front donnerait un palier faux des le premier ecart de
+ * roster.
+ * PIEGE : les libelles de round (Finale, Demies, Quarts, Round N) dependent
+ * du nombre TOTAL de rounds : les passer en dur casse l'affichage d'un
+ * tournoi a 3 rounds.
+ * PIEGE : un match de bracket a un statut qui lui est propre (pending,
+ * ready, live, finished) : ne pas le confondre avec le statut d'un match
+ * de la section match.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React from 'react';
 import { CheckCircle2, Trophy } from 'lucide-react';
 import { formatZC } from '../../../lib/utils';

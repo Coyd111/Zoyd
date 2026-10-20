@@ -1,3 +1,19 @@
+/**
+ * AdminUrgencyTab - match et litiges qui demandent une decision rapide.
+ *
+ * Liste les matchs avec dossier ouvert, le degre d'escalade, la categorie
+ * du litige, et ouvre l'annulation ou la resolution d'un match.
+ *
+ * INVARIANT : les actions remontent au parent, qui appelle l'API puis
+ * recharge la liste. Aucun changement d'etat local avant reponse serveur.
+ * PIEGE : la cagnotte d'un match en litige est GELEE. L'UI doit le dire :
+ * c'est ce qui explique au joueur pourquoi son gain n'est pas verse.
+ * PIEGE : un dossier `open` et un dossier `under_review` sont tous deux
+ * actifs. Ne filtrer que sur `open`, c'est laisser en attente un litige deja
+ * pris en charge.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { CheckCircle2, Ban, Eye, Filter, Flame, ExternalLink } from 'lucide-react';

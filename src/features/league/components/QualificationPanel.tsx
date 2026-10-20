@@ -1,3 +1,22 @@
+/**
+ * QualificationPanel - groupes et journees de qualification d'une saison.
+ *
+ * Affiche les groupes par jour, les joueurs, l'etat de chaque journee et
+ * les actions d'administration (lancer une journee).
+ *
+ * INVARIANT : les groupes sont orientes par jour (DAY_KEYS de
+ * leagueSeasonConstants.ts). Un jour absent doit s'afficher comme en
+ * attente, pas disparaitre : le joueur verrait un calendrier incomplet.
+ * INVARIANT : une journee ne peut etre lancee que si la saison est en phase
+ * qualifying. Le serveur le refuse de toute facon.
+ * PIEGE : le statut d'un slot de journee (pending, scheduled, live,
+ * finished) n'est pas le statut de la saison : les deux tables de libelles
+ * sont distinctes.
+ * PIEGE : la liste DAY_KEYS sert a plusieurs composants : la modifier
+ * change l'affichage de toute la ligue.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import { Trophy, Play, Clock } from 'lucide-react';
 import type { LeagueSeason } from '../../../app/stores/leagueStore';
 import { DAY_KEYS, DAY_LABELS, DAY_STATUS_ICONS } from './leagueSeasonConstants';

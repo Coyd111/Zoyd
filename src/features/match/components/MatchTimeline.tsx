@@ -1,3 +1,20 @@
+/**
+ * MatchTimeline - fil combine du match : chat et evenements.
+ *
+ * Compose le chat du match et la chronologie des evenements (check-in,
+ * resultat, litige) dans un meme flux.
+ *
+ * INVARIANT : la chronologie est construite a partir des evenements deja
+ * recus (etat du match et du resultat), pas d'un historique cote serveur
+ * qui n'existe pas.
+ * PIEGE : le decompte de participants (readCount) vient de la presence du
+ * canal. Hors ligne, il est fige : l'afficher comme un nombre de lecteurs
+ * actuel serait faux.
+ * PIEGE : l'ordre chronologique doit rester stable : un evenement recu
+ * tardivement ne doit pas remonter avant un evenement deja affiche.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7 (Le client temps reel)
+ */
 import React from 'react';
 import { MatchChat } from './MatchChat';
 import type { ChatMessage } from '../../../app/stores/chatStore';

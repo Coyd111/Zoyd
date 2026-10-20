@@ -1,3 +1,40 @@
+/**
+ * server/league-engine.mjs - BR League : cycle d'une saison (inscriptions,
+ * qualification sur 5 jours, finale, classement) et reglement du podium.
+ *
+ * Statuts ecrits de la saison : `registering`, `qualifying`, `final`,
+ * `completed`, `cancelled`. Statuts ecrits d'une journee : `pending`
+ * (defaut), `scheduled`, `live`, `finished`. La finale a son propre statut
+ * (`pending` puis `finished`).
+ *
+ * INVARIANT : le droit d'entree est de 50 ZC et le maximum de 500 joueurs ;
+ *   la qualification court sur 5 jours (`DAY_KEYS`) et la finale conserve le
+ *   top 40.
+ * INVARIANT : le classement est calcule en points (survie + eliminations) et
+ *   le podium est partage en 60 / 25 / 15 % de la cagnotte.
+ * INVARIANT : `applyLeagueSettlement` est la SEULE sortie de l'argent ; les
+ *   echecs sont consignes en `pendingPayouts` et repris par le cron.
+ * INVARIANT : la cle de reservation du pass est `season.id` (et non
+ *   `season.id-1ST`) : une cle differente laissait le pass bloque a vie et
+ *   convertissait la mise bonus en cash retirable.
+ * INVARIANT : le pass n'est bloque qu'a l'inscription et n'est rembourse que
+ *   par `refundLeaguePlayerOnServer` (admin + 2FA).
+ * PIEGE : la repartition des joueurs sur les journees est faite par un
+ *   tirage (`assignPlayersToDays`) A LA CLOTURE des inscriptions : elle n'est
+ *   plus rejouee ensuite.
+ * PIEGE : le cron ne clot les inscriptions que si au moins 10 joueurs sont
+ *   inscrits ; en dessous, la saison est annulee et les passes rembourses.
+ * PIEGE : une saison perimee est annulee par `getStaleLeagueSeasonIds` +
+ *   `cancelStaleLeagueSeasonOnServer` ; les remboursements sont ensuite
+ *   repris par le cron de reprise.
+ * PIEGE : la compensation d'un pass quand l'ecriture echoue est faite dans
+ *   la ROUTE (routes/league.mjs), pas seulement dans le moteur : le moteur a
+ *   deja rendu la main quand la persistence echoue.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { createLogger } from './logger.mjs';
 import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce } from './persistence.mjs';
 import {

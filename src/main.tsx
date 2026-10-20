@@ -1,3 +1,20 @@
+/**
+ * main.tsx - point d'entree de l'application React (createRoot sur #root).
+ *
+ * Monte l'application dans un <StrictMode>, enveloppee d'un RootErrorBoundary
+ * local. Ce boundary est en styles INLINE, pas en Tailwind : il doit rester
+ * affichable meme si le CSS n'a pas ete charge. Point d'entree du bundle
+ * declare dans index.html.
+ *
+ * INVARIANT : ne rien importer ici qui declenche une requete au chargement ;
+ * le bootstrap de session passe par App.tsx, volontairement plus bas.
+ * INVARIANT : le boundary racine ne doit dependre d'aucun token du design
+ * system - c'est la derniere ligne de defense quand React echoue.
+ * PIEGE : StrictMode monte les effets deux fois en dev : tout effet de bord
+ * (abonnement socket, fetch) doit etre idempotent.
+ *
+ * Voir aussi : docs/08-frontend.md - section 1 (Vue d'ensemble)
+ */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Component, type ReactNode } from "react";

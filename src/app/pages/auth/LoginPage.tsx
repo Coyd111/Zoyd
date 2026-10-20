@@ -1,3 +1,21 @@
+/**
+ * LoginPage - connexion d'un joueur (identifiant + mot de passe).
+ *
+ * Formulaire react-hook-form valide par zod, appel a loginWithBackend,
+ * puis redirection vers l'espace du joueur.
+ *
+ * INVARIANT : la session est prouvee par le COOKIE httpOnly renvoye par le
+ * serveur. Le token ne doit jamais etre stocke en JavaScript.
+ * PIEGE : un mauvais mot de passe doit afficher le message du serveur, pas
+ * ' session expiree ' : avant, le client ecraseait le code serveur et le
+ * joueur lisait un message trompeur.
+ * PIEGE : le bouton doit se desactiver pendant la soumission : deux
+ * connexions simultanees creent deux sessions cote serveur.
+ * PIEGE : la 2FA d'administration a sa propre page (Parametres) : la
+ * connexion ne doit pas la melanger a l'authentification simple.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
+ */
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

@@ -1,3 +1,21 @@
+/**
+ * Dialog - fenetre modale accessible (enveloppe Radix Dialog).
+ *
+ * Expose Dialog, DialogTrigger, DialogPortal, DialogOverlay, DialogContent
+ * et DialogClose. Gere le focus trap, la fermeture par Echap et le role ARIA
+ * grace a Radix.
+ *
+ * INVARIANT : les sous-composants doivent garder leurs `data-slot` : des
+ * styles et des tests du design system s'y accrochent.
+ * INVARIANT : ne pas remplacer le Radix Root par un div : le focus trap et
+ * l'accessibilite clavier en dependent.
+ * PIEGE : DialogContent ne doit pas etre monte hors de Dialog : Radix leve
+ * une erreur explicite dans ce cas.
+ * PIEGE : la fermeture du formulaire (bouton Annuler) doit passer par
+ * DialogClose, pour que le focus soit rendu au declencheur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

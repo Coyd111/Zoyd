@@ -1,3 +1,67 @@
+/**
+ * server/persistence.mjs - SOURCE DE VERITE du serveur : cache memoire et
+ * persistance durable (Supabase) des comptes, portefeuilles, sessions, canaux
+ * de chat, collections d'etat, cles d'idempotence et sanctions.
+ *
+ * DEUX CHEMINS, A NE JAMAIS MELANGER :
+ *   - LECTURE : synchrone, servie par les Maps en memoire. C'est ce que voit
+ *     le code metier et les routes.
+ *   - ECRITURE : asynchrone, via Supabase. C'est ce qui survit au
+ *     redemarrage. Toute sortie d'argent passe par ici.
+ *
+ * INVARIANT : TOUTE ECRITURE D'ARGENT PASSE PAR CE FICHIER
+ *   (`updateWalletSnapshot`). Aucun module ne peut ecrire un solde
+ *   directement, et aucun autre module ne doit importer le client Supabase
+ *   pour le faire.
+ * INVARIANT : `ecrireUserRow` est le SEUL point d'entree autorise sur la
+ *   table `app_users` : c'est lui qui fait avancer la colonne `revision`.
+ *   Aucun autre appel direct a `sbUpsert` sur cette table ne doit exister
+ *   (un test le verifie sur la source).
+ * INVARIANT : l'OCC (optimistic concurrency control) est CONDITIONNEL : le
+ *   patch n'est applique que si la revision observee est encore la revision
+ *   courante. En cas de conflit, le calcul est REJOUE sur l'etat frais
+ *   (`recalculer`), jamais sur l'etat perime - et au plus
+ *   OCC_MAX_TENTATIVES fois.
+ * INVARIANT : l'OCC ne ferme que la FENETRE de chevauchement, pas la
+ *   PEREMPTION : `updateUserAccount` relit le payload en base avant de
+ *   calculer, et adopte la version la plus recente.
+ * INVARIANT : une ligne disparue entre la lecture et l'ecriture est une
+ *   SUPPRESSION, pas une creation : l'ecriture est refusee. Un upsert
+ *   ressusciterait le compte - avec son solde - et annulerait le
+ *   bannissement pose.
+ * INVARIANT : `replaceStateCollection` remplace une collection ENTIERE : les
+ *   entites absentes de la liste sont supprimees en base. Une liste
+ *   incomplete est une perte de donnees.
+ * INVARIANT : l'ecriture d'etat est FAIL CLOSED : base indisponible ou etat
+ *   non fiable => refus `SERVER_BUSY` et retour arriere de la memoire.
+ * INVARIANT : les cles d'idempotence sont REHYDRATEES au demarrage
+ *   (`hydrateWithdrawalKeys`, `hydrateWinningsKeys`) : sans elles, un retry
+ *   apres redemarrage paie deux fois.
+ * INVARIANT : l'argent n'est deplace que par une reservation atomique :
+ *   `claimTransaction` AVANT le credit, `releaseTransaction` si le credit
+ *   echoue.
+ * INVARIANT : le mot de passe est hache en scrypt, et un compte absent est
+ *   traite avec un hache factice : le temps de reponse ne doit pas reveler
+ *   l'existence du compte.
+ * PIEGE : les lectures viennent de la MEMOIRE : apres une ecriture externe
+ *   (autre instance, correction SQL), le cache est perime jusqu'au prochain
+ *   rechargement. C'est precisement ce que `updateUserAccount` corrige.
+ * PIEGE : chaque Map a un plafond et une eviction : la memoire est bornee,
+ *   mais les entrees les plus anciennes disparaissent sans trace.
+ * PIEGE : `sbFire` est best-effort et NON await : il ne doit jamais servir a
+ *   persister quelque chose qui doit survivre (les signalements utilisent
+ *   `sbUpsert`, await).
+ * PIEGE : quand l'ecriture echoue, `updateUserAccount` restaure l'etat
+ *   memoire precedent et leve `SERVER_BUSY` : le client peut donc reessayer.
+ * PIEGE : les fonctions `normalize*` COMPLENTENT les champs manquants : ce
+ *   n'est pas une validation, et un champ absent n'y est pas un refus.
+ * PIEGE : le role d'un compte est RELU a chaque resolution de session, jamais
+ *   repris d'une session creee plus tot.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // persistence.mjs — Supabase-primary with in-memory sync cache
 // Replaces SQLite entirely. In-memory Maps serve synchronous reads,
 // Supabase provides durable persistence. On startup, data loads from Supabase.

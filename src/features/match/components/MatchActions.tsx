@@ -1,3 +1,26 @@
+/**
+ * MatchActions - barre d'actions contextuelle d'un match.
+ *
+ * Regroupe les actions possibles selon le role et l'etat : rejoindre,
+ * check-in, s'arbitrer, publier la salle, soumettre le resultat, confirmer,
+ * contester, ouvrir un litige.
+ *
+ * INVARIANT : chaque action visible depend du role ET du statut du match.
+ * Une action proposee hors de son contexte echoue cote serveur : mieux vaut
+ * la cacher.
+ * INVARIANT : les actions passent par l'API (matchApi.ts). L'etat local ne
+ * remplace pas la reponse serveur.
+ * PIEGE : le resultat soumis ouvre une FENETRE DE CONFIRMATION pendant
+ * laquelle la cagnotte est gelee. L'interface doit dire ' en attente de
+ * confirmation ' et non ' gagne '.
+ * PIEGE : `waitingPlayers.some(p => p.isMe)` identifie le joueur courant
+ * par le drapeau calcule pour lui : ne pas remplacer par une comparaison
+ * d'identifiant.
+ * PIEGE : la soumission d'un resultat et l'ouverture d'un litige sont
+ * exclusives. Verifier l'etat avant d'afficher les deux.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { Link } from 'react-router';

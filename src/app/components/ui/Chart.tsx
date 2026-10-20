@@ -1,3 +1,22 @@
+/**
+ * Chart - enveloppe Recharts pour les graphiques du design system.
+ *
+ * Expose ChartContainer, ChartTooltip, ChartLegend, ChartStyle et le hook
+ * useChart. Publie les couleurs de series comme variables CSS.
+ *
+ * INVARIANT : ChartContainer doit fournir le `config` : c'est lui qui donne
+ * le libelle et la couleur de chaque serie. Sans config, la legende est vide.
+ * INVARIANT : les couleurs sont validees (SAFE_COLOR_RE) avant d'etre
+ * injectees en CSS : une valeur non conforme ne doit pas atterrir dans une
+ * feuille de style.
+ * PIEGE : useChart leve une erreur hors d'un ChartContainer. C'est voulu :
+ * un graphique hors conteneur perd ses couleurs sans aucun avertissement.
+ * PIEGE : ChartContainer pose un `aspect-video` : un graphique qui doit
+ * remplir une hauteur libre a besoin d'un conteneur dimensionne, sinon il
+ * s'effondre.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

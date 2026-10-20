@@ -1,3 +1,19 @@
+/**
+ * MentionsPage - mentions legales et assistance.
+ *
+ * Document legal statique : editeur du service, contact assistance,
+ * hebergeurs et prestataire de paiement. Rendu via LegalLayout.
+ *
+ * INVARIANT : document versionne. Les coordonnees reelles (raison sociale,
+ * contacts, hebergeurs) doivent etre exactes : c'est une obligation
+ * legale, pas une decoration.
+ * PIEGE : le contact d'assistance doit etre le MEMME que celui partage par
+ * LegalLayout (ASSISTANCE), pour eviter deux numeros de contact.
+ * PIEGE : verifier que les hebergeurs cites correspondent a l'infrastructure
+ * reelle (front Vercel, API Render) apres un changement d'hebergement.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
+ */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';
 

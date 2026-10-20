@@ -1,3 +1,49 @@
+/**
+ * server/match-engine.mjs - Cycle de vie d'un match 1v1 a 5v5 : creation,
+ * inscription, arbitrage, resultat, litiges et reglement de la cagnotte.
+ *
+ * Statuts ecrits dans `match.status` : `recruiting`, `in_progress`,
+ * `awaiting_confirmation`, `finished`, `cancelled`, `forfeited`, `disputed`.
+ * Statuts DERIVES par `getStatusFromMatch` (recopie dans `match.status` par
+ * `updateMatchSnapshot`) : `recruiting`, `awaiting_arbiter`, `check_in`,
+ * `ready`, `in_progress`, `disputed`, `finished`. `archived` est pose par le
+ * cron d'archivage, pas par ce fichier.
+ *
+ * INVARIANT : `applyResultSettlement` est la SEULE sortie de l'argent de la
+ *   cagnotte : sans arbitre designe elle refuse (ARBITER_REQUIRED).
+ * INVARIANT : la cagnotte distribuee est la cagnotte REELLEMENT VERROUILLEE
+ *   (`getLockedPot`, lue dans les reservations de portefeuille), jamais
+ *   `match.prizePool` calcule sur `maxPlayers` a la creation : un match a
+ *   roster incomplet payerait un pot fantome.
+ * INVARIANT : le pot est DIVISE entre les gagnants ; le premier gagnant
+ *   absorbe l'arrondi pour que le total reste exact.
+ * INVARIANT : l'echec de la commission d'arbitre est SEPARE de l'echec des
+ *   joueurs : seuls les joueurs decident du `success` du reglement.
+ * INVARIANT : `result.payoutDistributed` a TROIS valeurs - `true` (regle),
+ *   `'pending'` (a solder), `false` (volontairement non verse). Seuls les
+ *   `'pending'` sont repris par le cron.
+ * INVARIANT : le statut est DERIVE par `getStatusFromMatch` et rafraichi par
+ *   `updateMatchSnapshot` : il faut le recalculer apres tout changement de
+ *   roster, de presence ou d'arbitre.
+ * PIEGE : la route soumet le resultat avec `deferSettlement: true` : le
+ *   resultat est PERSISTE d'abord, l'argent est verse ensuite. Inverser cet
+ *   ordre credite avant l'ecriture.
+ * PIEGE : un litige ouvert ou en revue GELO la cagnotte : aucun reglement
+ *   automatique tant qu'il existe.
+ * PIEGE : les preuves sont normalisees (`normalizeProofRefs`) : 10 refs max,
+ *   2000 caracteres, ni `javascript:` / `vbscript:` / `data:`, ni chevron, ni
+ *   gestionnaire `on...=`.
+ * PIEGE : `submittedBy` venant du client n'est pas cru : l'autorite vient du
+ *   role REEL de l'acteur (`actorUser.role`).
+ * PIEGE : soumettre un resultat sur un match clos est refuse (MATCH_CLOSED) :
+ *   les mises ont deja ete remboursees ou consommees.
+ * PIEGE : `sweepMatchesWithoutArbiter` REMBOURSE (il ne bloque pas) et saute
+ *   tout match ayant un litige ouvert : c'est l'admin qui tranche.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // ─── Delais d arbitrage ──────────────────────────────────────────────────────
 //
 // L arbitre fait tenir le match : il garantit l heure convenue, arrete les

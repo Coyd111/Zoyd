@@ -1,3 +1,23 @@
+/**
+ * EarningsDashboard - tableau de bord des gains du joueur.
+ *
+ * Regroupe les gains par periode et par source, avec les graphiques
+ * correspondants (charges a la demande) et l'etat des gains en attente.
+ *
+ * INVARIANT : les gains affiches proviennent de l'historique du wallet et
+ * des resultats de matchs. Un match dont le pot n'est pas verse ne compte
+ * pas comme un gain (isMatchPayoutSettled).
+ * PIEGE : getWinnerPayout renvoie le TOTAL DE L'EQUIPE, pas la part
+ * individuelle. L'utiliser pour un gain personnel affiche un montant
+ * multiplie par le nombre de joueurs de l'equipe.
+ * PIEGE : les graphiques sont charges en `lazy` (Suspense) : prevoir un
+ * etat de chargement, sinon l'ecran saute.
+ * PIEGE : les soldes viennent du walletStore, pas d'un calcul local sur les
+ * transactions (les bonus et les montants bloques n'ont pas la meme
+ * definition qu'une somme de lignes).
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React, { useMemo, Suspense } from 'react';
 import { motion } from 'motion/react';
 import {

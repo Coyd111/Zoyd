@@ -1,3 +1,21 @@
+/**
+ * Sidebar - navigation laterale duMJ, du wallet, du chat et de l'admin.
+ *
+ * Liste les entrees de navigation, met en avant l'onglet courant, et
+ * propose la deconnexion via useLogout.
+ *
+ * INVARIANT : l'entree ' CONTROLE ' (/admin) est conditionnee au role
+ * `admin` du store. C'est une commodite d'UX, PAS une autorisation : la
+ * route elle-meme n'est pas protegee cote client, et la barriere reelle est
+ * serveur (requireAdmin / requireAdmin2fa sur /api/admin/*).
+ * PIEGE : la deconnexion passe par useLogout, qui vide TOUS les stores de
+ * session. Ne pas remplacer cet appel par un simple logout() du store d'auth
+ * : le solde, le chat et les amis resteraient visibles.
+ * PIEGE : la Sidebar est la navigation LATERALE (desktop). La version mobile
+ * est BottomNav : les deux listes doivent rester coherentes.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import React from 'react';
 import { Link, useLocation } from 'react-router';
 import { BarChart3, LayoutGrid, LogOut, MessageCircle, Newspaper, Plus, Settings, ShieldCheck, Trophy, Users, Zap, TrendingUp } from 'lucide-react';

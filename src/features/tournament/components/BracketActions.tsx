@@ -1,3 +1,21 @@
+/**
+ * BracketActions - barre d'action du bracket (inscription, arbitrage, ...).
+ *
+ * Decide quelles actions sont proposees (inscription, slot d'arbitre,
+ * lancement) et affiche le montant du pass.
+ *
+ * INVARIANT : la disponibilite des actions vient du parent, qui combine le
+ * role, le statut du tournoi et la presence d'une entree. Ce composant ne
+ * decide rien seul.
+ * INVARIANT : le deficit de solde passe par walletFunding : construire le
+ * lien de recharge avec buildFundingPath, qui assainit la destination.
+ * PIEGE : une inscription a un cout : le bouton doit rester desactive
+ * pendant la soumission, sinon un double-clic cree deux inscriptions.
+ * PIEGE : le pass d'un tournoi n'est PAS remboursable apres le lancement :
+ * l'interface doit le dire avant le clic, pas apres.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { formatZC } from '../../../lib/utils';

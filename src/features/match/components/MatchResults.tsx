@@ -1,3 +1,20 @@
+/**
+ * MatchResults - resultat d'un match : score, preuves, repartition.
+ *
+ * Affiche le score, l'equipe gagnante, les preuves et l'etat du versement.
+ *
+ * INVARIANT : un resultat n'est comptabilise comme gagne que si
+ * payoutDistributed est vrai. La valeur `'pending'` (fenetre de
+ * confirmation ouverte) et `false` (reglement echoue) ne sont PAS des
+ * gains : afficher un montant la-dessus, c'est annoncer de l'argent qui
+ * n'est pas arrive.
+ * PIEGE : `getWinnerPayout` renvoie le TOTAL de l'equipe gagnante. Ne pas
+ * le presenter comme la part d'un joueur.
+ * PIEGE : les preuves peuvent etre absentes (resultat sans capture) :
+ * l'interface doit le dire plutot que d'afficher un bloc vide.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
+ */
 import React from 'react';
 import { isMatchPayoutSettled, type Match } from '../../../app/stores/matchStore';
 

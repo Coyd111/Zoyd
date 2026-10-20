@@ -1,3 +1,19 @@
+/**
+ * Alert - bandeau d'information (variantes `cva`).
+ *
+ * Expose Alert, AlertTitle et AlertDescription. Variantes : default et
+ * destructive.
+ *
+ * INVARIANT : une alerte doit porter un titre ET une description, ou un
+ * seul des deux : `role="alert"` ne se suffit pas a lui-meme.
+ * INVARIANT : la variante destructive est reservee a une erreur reelle.
+ * L'utiliser pour une information banale apprend au joueur a ignorer le
+ * rouge.
+ * PIEGE : les couleurs d'icone viennent du `cn()` et de la variante : ne
+ * pas teinter l'icone a la main, il y aurait deux sources de verite.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 

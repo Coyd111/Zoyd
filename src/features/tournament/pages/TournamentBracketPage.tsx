@@ -1,3 +1,27 @@
+/**
+ * TournamentBracketPage - bracket d'un tournoi : rounds, entrees, actions.
+ *
+ * Assemble la grille du bracket, l'en-tete, la barre laterale et les actions
+ * (inscription, arbitrage, lancement, resultats).
+ *
+ * INVARIANT : mon entree se repere par `isMe` sur les membres, ou par le
+ * contexte d'appelant (callerEntryByTournament) mis en cache par le
+ * store. Le userId n'est plus dans le payload : le reconstruire ne
+ * fonctionnerait pas.
+ * INVARIANT : le bracket est genere par le SERVEUR. Le front ne recompose
+ * ni les affronnements ni les rounds.
+ * INVARIANT : les actions passent par tournamentApi.ts, puis la reponse
+ * serveur est reappliquee au store.
+ * PIEGE : le contexte d'appelant vit en MEMOIRE DE SESSION. Il doit etre
+ * purge a la deconnexion, sinon le nouveau compte herite de l'entree du
+ * precedent.
+ * PIEGE : une inscription coute de l'argent : le solde doit etre verifie
+ * et le manque doit proposer la recharge (walletFunding).
+ * PIEGE : un slot d'arbitre ouvert est une ressource comptee par le
+ * serveur : ne pas recompter localement les slots libres.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from '../../../app/lib/toast';

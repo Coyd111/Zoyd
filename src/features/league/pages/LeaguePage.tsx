@@ -1,3 +1,20 @@
+/**
+ * LeaguePage - liste des saisons de BR League.
+ *
+ * Affiche les cycles en cours, les inscriptions, les qualifications et les
+ * podiums, avec les actions d'inscription et de lancement.
+ *
+ * INVARIANT : l'inscription et la sortie de saison passent par leagueApi.ts.
+ * Le pass paye a l'inscription est fige : il survit au reglement, donc son
+ * etat ne se deduit pas du solde.
+ * PIEGE : `getActiveSeason` ne renvoie que les saisons registering,
+ * qualifying ou final. Une saison terminee n'est plus l'active : le
+ * bandeau ne doit pas la mettre en avant.
+ * PIEGE : la creation et le lancement d'une qualifite sont des actions
+ * admin. Le bouton peut etre masque, mais la barriere reste serveur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Trophy, Calendar, Crown, Zap, ChevronRight } from 'lucide-react';

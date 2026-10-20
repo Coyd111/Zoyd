@@ -1,3 +1,41 @@
+/**
+ * server/http-utils.mjs - Conventions HTTP du serveur : cookies, CORS,
+ * reponse JSON, lecture du corps, resolution des sessions, mapping des
+ * erreurs metier vers un statut HTTP.
+ *
+ * C'est la couche de serialisation unique : les modules de routes y passent
+ * pour ecrire une reponse, sans jamais ecrire d'en-tetes a la main.
+ *
+ * INVARIANT : `respondJson` est la SEULE sortie JSON : elle porte les
+ *   en-tetes CORS/securite et l'enregistrement des metriques. Une route qui
+ *   ecrit avec `res.writeHead` echappe aux deux.
+ * INVARIANT : le cookie de rotation de session est pose par `respondJson`
+ *   depuis `req._authRotation`, AVANT `writeHead` : une seule tentative, la
+ *   rotation etant asynchrone.
+ * INVARIANT : les deux resolutions de token ne sont PAS interchangeables.
+ *   `getAuthenticatedRealtimeSession` n'accepte que l'en-tete Bearer, car le
+ *   cookie `zoyd_auth` n'est PAS un token temps reel.
+ * INVARIANT : toute erreur metier porte un `error.code` : c'est ce code que
+ *   `mapPersistenceError` fait correspondre ; un code inconnu tombe sur un
+ *   500 generique.
+ * INVARIANT : le corps de requete est plafonne a 1 Mo et le socket est
+ *   detruit au-dela (sans quoi un seul client peut saturer le serveur).
+ * PIEGE : `readBearerToken` privilegie le COOKIE alors que
+ *   `getAuthenticatedAppSession` privilegie l'en-tete Authorization : les
+ *   priorites sont volontairement inversees.
+ * PIEGE : `getCorsOrigin` renvoie '' pour une origine non whitelistee : la
+ *   reponse part alors sans `Access-Control-Allow-Origin`.
+ * PIEGE : ni CSP ni `X-XSS-Protection` ici : ces regles visent les
+ *   DOCUMENTS (vercel.json), pas une reponse JSON.
+ * PIEGE : `normalizePathForMetrics` doit etre applique au pathname avant de
+ *   l'utiliser comme label, sinon la cardinalite des series explose.
+ * PIEGE : une coupure du client pendant la lecture du corps remonte
+ *   `CLIENT_ABORTED` - ce n'est pas une session invalide.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getAuthSession, getRealtimeSession } from './persistence.mjs';
 import { incCounter, endTimer } from './metrics.mjs';
 import log from './logger.mjs';

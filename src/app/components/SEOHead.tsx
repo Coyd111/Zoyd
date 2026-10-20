@@ -1,3 +1,26 @@
+/**
+ * SEOHead - injection dynamique du titre, canonique et cartes Open Graph.
+ *
+ * Enveloppe react-helmet-async. Chaque page le monte avec son titre, sa
+ * description et son chemin ; les pages sous AppLayout passent en plus
+ * `noindex`.
+ *
+ * INVARIANT : le composant ne fonctionne QUE sous HelmetProvider (monte dans
+ * App.tsx). Hors de ce provider, Helmet ne rend rien et la page perd son
+ * titre et sa canonique.
+ * PIEGE : le titre de la page d'accueil est ecrit a DEUX endroits :
+ * `index.html` (statique, dans le <head>) et `LandingPage.tsx` (dynamique,
+ * via SEOHead). Les deux valeurs sont identiques AUJOURD'HUI, et c'est
+ * exactement le probleme : rien n'oblige a les garder synchronisees.
+ * Corriger un seul des deux cree une divergence - un crawler qui n'execute
+ * pas de JS voit un titre different de celui affiche apres le chargement.
+ * La meme regle vaut pour la description et pour le bloc JSON-LD de
+ * index.html, qui n'a aucun equivalent dynamique.
+ * PIEGE : `SITE` lit VITE_SITE_URL au BUILD, avec repli sur la production.
+ * Un build sans variable doit produire la production, pas une URL vide.
+ *
+ * Voir aussi : docs/08-frontend.md - section 9 (Le SEO)
+ */
 import { Helmet } from 'react-helmet-async';
 
 // URL publique du site.

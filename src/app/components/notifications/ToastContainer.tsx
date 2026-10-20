@@ -1,3 +1,20 @@
+/**
+ * ToastContainer - rendu visuel des toasts (succes, erreur, warning, info).
+ *
+ * Seul point d'affichage du store toastStore. Monte par RootLayout : c'est
+ * lui qui rend les toasts visibles dans toute l'application.
+ *
+ * INVARIANT : ce composant est le SEUL rendu des toasts. Y ajouter un
+ * second systeme (sonner, react-hot-toast) ferait disparaitre les messages
+ * de tous les ecrans.
+ * INVARIANT : la duree de vie vient du store, pas d'un timer local : le
+ * store doit rester le seul proprietaire des delais.
+ * PIEGE : la fermeture manuelle doit appeler removeToast, pas seulement
+ * masquer l'element : le timer du store continuerait de tourner et
+ * re-ecrirait l'etat.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle, AlertTriangle, XCircle, Info, X, ExternalLink } from 'lucide-react';

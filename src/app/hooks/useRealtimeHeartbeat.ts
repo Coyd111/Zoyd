@@ -1,3 +1,23 @@
+/**
+ * useRealtimeHeartbeat - moteur du cycle temps reel : connecte le socket,
+ * bootstrappe l'etat serveur, resynchronise et fusionne les deltas.
+ *
+ * Appele par AppLayout. Connecte via socketStore.connect(user), lance
+ * bootstrapServerState une fois par session, puis appelle
+ * syncFromMatches toutes les 15 s pour recalculer presence et rappels.
+ *
+ * INVARIANT : dependre de l'IDENTITE du user (user?.id), pas de l'objet user.
+ * Dependre de l'objet recreait une boucle : chaque updateUser faisait
+ * disconnect/connect + bootstrap, y compris a chaque hydrate du wallet.
+ * INVARIANT : le socket diffuse des DELTAS (le match modifie), pas la
+ * collection : il faut FUSIONNER via hydrateFromServer. replaceFromServer
+ * effacerait tous les autres matchs de la liste.
+ * PIEGE : quand la connexion tombe, les deltas emis pendant la coupure sont
+ * perdus ; le store socketConnectionStore pose dirtySinceDisconnect et
+ * resynchronise au retour. Ne pas vider les stores a la coupure.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6.2 (Le cycle de synchronisation)
+ */
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useMatchStore } from '../stores/matchStore';

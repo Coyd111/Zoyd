@@ -1,3 +1,18 @@
+/**
+ * NotFoundPage - ecran 404.
+ *
+ * Affiche ' page introuvable ' et propose de revenir. Publie un SEOHead en
+ * noindex pour ne pas faire indexer l'erreur.
+ *
+ * INVARIANT : cette page doit rester accessible meme quand tout le reste
+ * echoue : pas de store, pas de requete, pas de dependance au design system
+ * obligatoire.
+ * INVARIANT : elle porte un `noindex`. Sans lui, un 404 peut etre indexe.
+ * PIEGE : le message doit etre court et actionnable ; un 404 qui propose
+ * de se connecter masque l'erreur reelle.
+ *
+ * Voir aussi : docs/08-frontend.md - section 3.1 (Inventaire)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';

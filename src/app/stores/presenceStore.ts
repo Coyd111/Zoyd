@@ -1,3 +1,26 @@
+/**
+ * presenceStore - presence par canal, saisie en cours, canaux vus.
+ *
+ * Detient qui est en ligne, coche, pret, et qui tape dans chaque canal.
+ * Rejoint les canaux match, emet les evenements presence:* et recoit les
+ * snapshots presence:snapshot / typing:snapshot du serveur.
+ *
+ * INVARIANT : le `userId` d'un joueur de match n'est pas envoye par le
+ * serveur. La jointure entre la presence du canal et les joueurs du match se
+ * fait sur le `pseudo`, qui est unique et present dans les deux payloads.
+ * INVARIANT : `isMe` (joueur) et `arbiter.isMe` sont calcules par le
+ * serveur POUR chaque destinataire ; un match observe par un tiers affiche
+ * isMe=false partout.
+ * PIEGE : la coupure de connexion vide la presence. C'est
+ * socketConnectionStore.disconnect qui appelle clearPresence : ne pas
+ * vider la presence depuis le store lui-meme au moindre re-render.
+ * PIEGE : les emissions (presence:join, presence:update, presence:leave,
+ * channel:seen, typing:update) ne partent que si le socket est connecte.
+ * Le serveur reecrit l'identite du demandeur : il n'est pas maitre de son
+ * propre userId.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
+ */
 import { create } from 'zustand';
 import type { Match } from './matchStore';
 import {

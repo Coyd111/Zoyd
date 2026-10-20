@@ -1,3 +1,28 @@
+/**
+ * matchPayout.ts - lecture de la partition d'un pot de match, cote front.
+ *
+ * Expose la commission d'arbitre, le total de l'equipe gagnante et deux
+ * helpers de compatibilite. Source de verite : la projection `projectedPayouts`
+ * calculee par le serveur sur la cagnotte REELLEMENT bloquee.
+ *
+ * INVARIANT : la projection serveur prime. Ne jamais recalculer
+ * `prizePool - zoydFee - arbiterFee` pour l'affichage : prizePool vaut
+ * maxPlayers x entryFee des la creation, alors que le serveur calcule sur
+ * les fonds reellement bloques. Un roster incomplet verse moins.
+ * PIEGE : `getWinnerPayoutPerPlayer` et `hasAuthoritativePayout` n'ont AUCUN
+ * appelant : c'est du code mort. `perWinner` n'est lu par aucun composant
+ * et Rollup l'elague du build. Le serveur calcule de surcroit autrement
+ * (match-engine.mjs) : la projection divise par le nombre TOTAL de joueurs,
+ * le reglement reel par le nombre de GAGNANTS (ecart de 2x en 2v2, 5x en
+ * 5v5). Ne pas ressusciter ces helpers sans corriger le serveur d'abord.
+ * PIEGE : `getWinnerPayout` renvoie le TOTAL DE L'EQUIPE, pas la part
+ * individuelle. L'utiliser pour afficher un gain personnel gonfle le profil
+ * (voir profileMetrics et communityInsights).
+ * PIEGE : la commission d'arbitre (2 %) ne s'applique que s'il y a un
+ * arbitre. L'afficher sur un match sans arbitre est faux.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
+ */
 // Partition d'un pot de match, cote front.
 //
 // Le serveur calcule `projectedPayouts` sur la CAGNOTTE REELLEMENT

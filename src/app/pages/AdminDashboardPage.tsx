@@ -1,3 +1,28 @@
+/**
+ * AdminDashboardPage - tableau de bord d'administration (5 onglets).
+ *
+ * Orchestre les onglets (apercu, matchs, litiges, utilisateurs, signalements),
+ * execute les actions admin et recharge les listes apres chacune d'elles.
+ *
+ * INVARIANT : `adminLoader` (routes.tsx) ne verifie RIEN et la prop
+ * `requireAdmin` d'AppLayout est de l'UX, PAS une securite. La barriere
+ * reelle est serveur : requireAdmin / requireAdmin2fa sur /api/admin/*.
+ * INVARIANT : le tableau de bord se rafraichit via reloadReports(), appele
+ * apres CHAQUE action de l'admin (resoudre un signalement, lever une
+ * sanction). Il ne se rafraichit PAS sur un compteur de matchs : une
+ * dependance `matches.length` declenchait deux appels API a chaque match
+ * recu, pour une file de moderation sans rapport. Une file visiblement
+ * statique vaut mieux qu'une file faussement dynamique.
+ * PIEGE : apres une action, c'est la LECTURE SERVEUR qui fait foi, pas le
+ * statut local : une sanction appliquee dont l'ecriture echoue resterait
+ * invisible sinon.
+ * PIEGE : si la reponse serveur est degradee, afficher un echec de lecture
+ * et non une liste vide, qui se lirait comme « personne ne signale rien ».
+ * PIEGE : les actions admin exigent la 2FA ; les erreurs 2FA doivent etre
+ * distinguees des erreurs de reseau.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router';
 import { Shield, Swords, AlertTriangle, TrendingUp, DollarSign, Users, Lock, Scale, Download } from 'lucide-react';

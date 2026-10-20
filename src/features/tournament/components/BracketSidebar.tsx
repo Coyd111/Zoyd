@@ -1,3 +1,18 @@
+/**
+ * BracketSidebar - panneau lateral du bracket : regles, echeance, mon entree.
+ *
+ * Affiche le resume du tournoi, le calendrier et la position de l'appelant.
+ *
+ * INVARIANT : le contexte de l'appelant (mon entree, mon slot d'arbitre)
+ * vient du store tournamentStore, qui le garde en memoire de session.
+ * PIEGE : ce contexte DOIT etre purge a la deconnexion : sinon le nouveau
+ * compte herite de l'entree du precedent, et le bracket affiche une
+ * position qui n'est pas la sienne tout en bloquant l'inscription.
+ * PIEGE : les regles du tournoi viennent du serveur : les recopier en dur
+ * ici les desynchronise a la premiere edition.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import React from 'react';
 import { CheckCircle2, Gamepad2, Radio } from 'lucide-react';
 import type { Tournament, TournamentMatch } from '../../../app/stores/tournamentStore';

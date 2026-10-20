@@ -1,3 +1,20 @@
+/**
+ * chatApi - appels REST du chat : bootstrap, canaux, messages, lecture.
+ *
+ * Client dedie du chat global et des canaux de match. Le temps reel (canaux
+ * et messages qui arrivent) passe par le socket ; l'ecriture passe par ici.
+ *
+ * INVARIANT : l'ecriture d'un message se fait par cette API, pas par
+ * chatStore.sendMessage (qui ne fait qu'une mutation locale et disparait au
+ * rechargement).
+ * PIEGE : les canaux de match sont crees par le serveur a la creation du
+ * match. Un `chatChannelId` et un `channelId` coexistent dans le modele :
+ * le premier est le canal de chat, le second le canal de presence.
+ * PIEGE : marquer un canal comme lu est une ecriture : elle part au serveur
+ * et se propage aux autres onglets par l'evenement socket chat:read.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
+ */
 import type { ChatChannel, ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import { authorizedGet, authorizedPost } from './apiClient';
 

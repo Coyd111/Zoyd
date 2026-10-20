@@ -1,3 +1,24 @@
+/**
+ * notificationStore - notifications du joueur, dedupe, toast et push navigateur.
+ *
+ * Centralise les notifications serveur (REST et temps reel), les notifications
+ * creees localement, la deduplication par dedupeKey, et le declenchement des
+ * toasts et des notifications navigateur.
+ *
+ * INVARIANT : hydrateFromServer FUSIONNE (merge), ne remplace pas. Sinon les
+ * notifications creees localement (confirmations wallet, rappels temps reel)
+ * sont effacees a chaque resynchronisation.
+ * INVARIANT : markAsRead et markAllAsRead appellent l'API. Un simple changement
+ * local ferait diverger l'etat de la cloche de celui du serveur.
+ * PIEGE : la deduplication passe par metadata.dedupeKey. Deux rappels du meme
+ * evenement (check-in, salle disponible) doivent partager la meme cle, sinon
+ * le joueur recoit la meme alerte en boucle.
+ * PIEGE : le toast n'est declenche que si la notification est nouvelle ou si
+ * son contenu a change ; et le push navigateur exige priorite haute ou
+ * urgente ET un onglet en arriere-plan.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
+ */
 import { create } from 'zustand';
 import { useToastStore, type ToastType } from './toastStore';
 import { markServerNotificationRead, markAllServerNotificationsRead } from '../lib/notificationApi';

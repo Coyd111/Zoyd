@@ -1,3 +1,26 @@
+/**
+ * communityInsights.ts - agregations de la communaute pour les classements
+ * et le tableau de bord d'administration.
+ *
+ * Croise matchs, tournois, transactions, amis et signalements pour produire
+ * les joueurs classes, les comptes a surveiller et les statistiques globales.
+ *
+ * INVARIANT : c'est une AGREGATION COTE CLIENT, sur des donnees deja
+ * chargees. Elle ne remplace pas la source serveur (user.stats) : c'est une
+ * vue de communaute, et les deux peuvent differer.
+ * INVARIANT : seuls les types de transactions visibles (gains, commission
+ * d'arbitre, remboursement, bonus, parrainage) et les types positifs (gains,
+ * commission, bonus, parrainage) sont pris en compte. Modifier ces ensembles
+ * change les classements du jour au lendemain.
+ * PIEGE : un match dont le pot n'est pas verse ne compte pas. Utiliser
+ * isMatchPayoutSettled, jamais le seul statut du match.
+ * PIEGE : `isMe` est repris tel quel depuis le payload : sur un profil
+ * public d'un tiers, isMe vaut false partout. Ne pas le recomputer.
+ * PIEGE : la normalisation des pseudos (casse, accents, tirets) sert a
+ * regrouper les variantes d'ecriture d'un meme pseudo.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import type { User } from '../app/stores/authStore';
 import type { Friend, Report } from '../app/stores/friendsStore';
 import { isMatchPayoutSettled, type Match } from '../app/stores/matchStore';

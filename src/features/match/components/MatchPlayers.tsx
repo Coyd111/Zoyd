@@ -1,3 +1,21 @@
+/**
+ * MatchPlayers - liste des joueurs d'un match, avec leur etat.
+ *
+ * Affiche les deux equipes, le role de chacun, le check-in, la confiance et
+ * les gainstires. Donnees en lecture seule.
+ *
+ * INVARIANT : aucun userId n'est disponible : le joueur se repere par son
+ * pseudo et par `isMe` pour le joueur courant. Ne jamais reconstruire un
+ * identifiant a partir du pseudo pour une action serveur.
+ * INVARIANT : la presence d'un joueur (en ligne, pret, coche) vient de la
+ * presence, pas du statut du match seul.
+ * PIEGE : les montants affiches par equipe sont des TOTAUX D'EQUIPE. Les
+ * repartir par joueur afficherait un gain qui n'existe pas.
+ * PIEGE : le gameId (repere stable du joueur) est optionnel : un joueur
+ * inscrit avant son introduction n'en a pas.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
+ */
 import React from 'react';
 import { Clock3, CreditCard, ShieldCheck, Trophy } from 'lucide-react';
 import { formatZC } from '../../../lib/utils';

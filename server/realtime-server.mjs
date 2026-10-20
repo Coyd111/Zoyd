@@ -1,3 +1,43 @@
+/**
+ * server/realtime-server.mjs - Point d'entree UNIQUE du back : serveur HTTP,
+ * Socket.IO, sequence de demarrage et arret propre.
+ *
+ * Le pipeline HTTP est ici : garde CSRF, boucle sur les modules de routes,
+ * filet de securite. Le socket et les intervalles de fond sont montes dans
+ * le meme processus.
+ *
+ * INVARIANT : l'ordre de demarrage n'est pas decoratif : `assertSingleProcess`
+ *   passe AVANT tout chargement d'etat, et le chargement d'etat avant le cron
+ *   et le socket.
+ * INVARIANT : si l'etat n'a pas pu etre charge, le serveur ECUTE quand meme
+ *   mais refuse toute ecriture (`isStateTrusted() === false`) et
+ *   `/api/health` repond 503.
+ * INVARIANT : l'identite d'un payload socket est IMPOSEE par la session
+ *   (`userId`, `pseudo`) : le client ne peut pas l'usurper.
+ * INVARIANT : l'acces a un canal est verifie par `canAccessChatChannel` sur
+ *   chaque evenement de presence, de saisie et d'accuse de lecture.
+ * INVARIANT : le rate limit de connexion socket est de 10 par 60 s et par IP,
+ *   resolue avec les MEMES regles que le HTTP (`getClientIp`).
+ * INVARIANT : la room `user:<userId>` est le point de diffusion des mises a
+ *   jour de portefeuille (`onWalletUpdated`).
+ * PIEGE : l'ordre de `ROUTE_MODULES` n'a AUCUNE portee semantique : un module
+ *   repond en renvoyant `true`, et le premier qui repond gagne.
+ * PIEGE : le garde CSRF ne s'applique qu'aux methodes mutatrices, et ne
+ *   rejette un `Origin` que s'il est PRESENT : une requete sans Origin passe.
+ * PIEGE : le handshake socket passe aussi par `allowRequest` : `cors.origin`
+ *   seul ne filtre pas la reconnexion WebSocket.
+ * PIEGE : la session est FIGEE a la connexion socket : une retroactive de
+ *   role n'est pas vue par les sockets deja ouvertes.
+ * PIEGE : `handleRequest` est enveloppe dans un try/catch qui repond un 500
+ *   generique : une exception dans une route ne doit pas laisser la requete
+ *   pendante.
+ * PIEGE : `unhandledRejection` journalise mais n'arrete PAS le processus ;
+ *   `uncaughtException` journalise puis sort en code 1.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import crypto from 'node:crypto';
 import http from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';

@@ -1,3 +1,25 @@
+/**
+ * LandingPage - page d'accueil publique (hero video, arguments, statistiques).
+ *
+ * Est le SEUL ecran accessible sans session. Charge les statistiques
+ * publiques de la plateforme et publie le SEOHead de la page d'accueil.
+ *
+ * INVARIANT : le titre de cette page est ecrit a DEUX endroits :
+ * `index.html` (statique, dans le <head>) et ici, via SEOHead (dynamique).
+ * Les deux valeurs sont identiques AUJOURD'HUI, et c'est exactement le
+ * probleme : rien n'oblige a les garder synchronisees. Corriger un seul des
+ * deux cree une divergence - un crawler qui n'execute pas de JS voit un
+ * titre different de celui affiche apres le chargement de React.
+ * La meme regle vaut pour la description et pour le bloc JSON-LD de
+ * index.html, qui n'a aucun equivalent dynamique.
+ * PIEGE : la classe de selection du texte est `selection:bg-zoyd-yellow`
+ * SANS ACCENT. Un accent la rendrait ingenerable par Tailwind, et le style
+ * de selection disparaitrait silencieusement.
+ * PIEGE : cette page vit hors AppLayout : pas de session, pas de socket, pas
+ * de chrome applicative. Tout store lu ici doit tolerer un etat vide.
+ *
+ * Voir aussi : docs/08-frontend.md - section 9 (Le SEO)
+ */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';

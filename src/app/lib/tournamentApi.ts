@@ -1,3 +1,22 @@
+/**
+ * tournamentApi - appels REST des tournois : liste, creation, inscription,
+ * arbitrage, resultats, demarrage.
+ *
+ * Client dedie du domaine tournoi. Les actions authentifiees renvoient le
+ * contexte de l'appelant (mon entree, mon creneau d'arbitre, creneaux
+ * ouverts).
+ *
+ * INVARIANT : le contexte d'appelant (myEntryId, myArbiterSlot,
+ * openArbiterSlots) n'est present que sur les reponses d'actions
+ * authentifiees, jamais sur les lectures publiques.
+ * PIEGE : les inscriptions sont APPAREILLEES cote serveur (membre sans
+ * userId, avec isMe). Le front ne doit pas deduire ' mon entree ' d'un
+ * userId : il n'est plus dans le payload.
+ * PIEGE : subscribeToTournaments est un simple polling toutes les 30 s.
+ * Ne pas le confondre avec une diffusion socket.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import type {
   CreateTournamentInput,
   Tournament,

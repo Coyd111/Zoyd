@@ -1,3 +1,23 @@
+/**
+ * HubMJPage - hub multijoueur : liste des matchs, filtres, recherche.
+ *
+ * Point d'entree du mode 1v1 a 5v5 : filtres par format et statut, recherche
+ * debouncee, compteurs de joueurs et d'arbitres manquants.
+ *
+ * INVARIANT : la liste vient du store matchStore, hydrate par le socket et
+ * par le polling de RootLayout. Le hub ne fait pas sa propre requete.
+ * PIEGE : `awaiting_confirmation` est exclu de la liste des matchs
+ * rejointables : la cagnotte est gelee et le match n'est plus ouvert. En
+ * revanche `awaiting_arbiter` reste un match VIVANT et doit rester
+ * visible.
+ * PIEGE : le nombre d'arbitres manquants se compte sur les matchs non
+ * termines et sans arbitre : le compter sur toute la liste affichait un
+ * chiffre faux.
+ * PIEGE : la recherche est debouncee (useDebounce) : ne pas relancer une
+ * requete a chaque frappe.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6.2 (Le cycle de synchronisation)
+ */
 import React, { useMemo, useState } from 'react';
 import { Crosshair, Search, Activity, Swords, ShieldCheck, Radio } from 'lucide-react';
 import { MatchCard } from '../../components/MatchCard';

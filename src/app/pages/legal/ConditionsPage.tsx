@@ -1,3 +1,20 @@
+/**
+ * ConditionsPage - conditions d'utilisation de ZOYD.
+ *
+ * Document legal statique : compte, matchs avec mises, depots, retraits,
+ * litiges et regles de jeu. Rendu via LegalLayout.
+ *
+ * INVARIANT : c'est du CONTENU JURIDIQUE, versionne avec sa date de mise a
+ * jour. Modifier le texte sans changer la date met en place une version
+ * non tracee.
+ * PIEGE : le texte mentionne les regles reelles de la plateforme. Toute
+ * evolution metier (frais, delais, plafonds) doit etre refletee ici en
+ * meme temps que dans le code.
+ * PIEGE : la description SEO est passee au layout : elle doit correspondre
+ * au contenu reel de la page.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
+ */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';
 

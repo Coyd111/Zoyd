@@ -1,3 +1,18 @@
+/**
+ * ModeSelectionPage - choix du mode de jeu (MJ, BR, BR League).
+ *
+ * Ecran de transition apres connexion : le joueur choisit son mode de jeu
+ * avant d'arriver sur son tableau de bord.
+ *
+ * INVARIANT : la destination finale se lit dans le store d'auth. Un choix
+ * de mode ne doit pas etre memorise cote serveur par ce composant.
+ * PIEGE : cette page vit hors AppLayout : pas de socket, pas de chrome. Un
+ * store lu ici doit tolerer un etat vide.
+ * PIEGE : les redirections doivent passer par `navigate`, pas par un
+ * <a href> : un rechargement complet casserait la session en memoire.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';

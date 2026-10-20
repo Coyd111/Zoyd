@@ -1,3 +1,20 @@
+/**
+ * BottomNav - barre de navigation basse (mobile), avec un menu ' Plus '.
+ *
+ * Version mobile de la Sidebar : memes destinations, plus un tiroir qui
+ * regroupe les entrees secondaires (BR League, classements, gains, infos).
+ *
+ * INVARIANT : la liste de destinations doit rester coherente avec la
+ * Sidebar. Une destination presente dans l'une et absente de l'autre est un
+ * ecran inaccessible pour un profil de navigation donne.
+ * PIEGE : c'est une navigation de confort, pas une garde. Aucun acces n'est
+ * filtre par role ici : le role n'a de sens que pour l'entree d'admin.
+ * PIEGE : la barre occupe le bas de l'ecran : le contenu principal doit
+ * garder une marge basse (pb-24 sur le main d'AppLayout), sinon la
+ * navigation cache la derniere ligne d'un ecran.
+ *
+ * Voir aussi : docs/08-frontend.md - section 4 (Les layouts)
+ */
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper, Shield, TrendingUp, Plus } from 'lucide-react';

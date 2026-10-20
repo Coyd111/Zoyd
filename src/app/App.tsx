@@ -1,3 +1,20 @@
+/**
+ * App.tsx - racine de l'application : providers, bootstrap de session, routeur.
+ *
+ * Monte dans cet ordre : useServiceWorker, useAuthSessionBootstrap,
+ * useChatSessionBootstrap, useWalletSessionBootstrap, puis ErrorBoundary ->
+ * HelmetProvider -> MotionConfig -> RouterProvider. Les hooks de bootstrap
+ * tournent avant le routeur : ils remplissent les stores lus par les ecrans.
+ *
+ * INVARIANT : SEOHead ne fonctionne que sous HelmetProvider. Deplace-le, et
+ * le titre, la canonique et les cartes Open Graph de chaque page disparaisent.
+ * INVARIANT : MotionConfig reducedMotion="user" neutralise les animations JS ;
+ * 26 composants sont animes par motion, la preference CSS ne les atteint pas.
+ * PIEGE : le bootstrap ne purge la session que sur un vrai 401 ; un timeout
+ * (serveur Render en veille) doit proposer un reessai, pas deconnecter.
+ *
+ * Voir aussi : docs/08-frontend.md - section 1 (Vue d'ensemble)
+ */
 import { RouterProvider } from 'react-router';
 import { HelmetProvider } from 'react-helmet-async';
 import { MotionConfig, useReducedMotion } from 'motion/react';

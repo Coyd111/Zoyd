@@ -1,3 +1,43 @@
+/**
+ * server/tournament-engine.mjs - Cycle de vie d'un tournoi : tableau,
+ * inscriptions, arbitrage, resultats de match et reglement du podium.
+ *
+ * Statuts ecrits du tournoi : `recruiting` (defaut), `live`, `completed`,
+ * `cancelled`. Statuts ecrits d'un match de tournoi : `pending`, `ready`,
+ * `live`, `finished`. `completed` est DERIVE de l'etat du bracket (finale
+ * terminee ET match de bronze resolu), pas pose par une action unique.
+ *
+ * INVARIANT : l'argent d'un tournoi ne sort que par
+ *   `applyTournamentSettlement`, qui ne s'execute que si le statut est
+ *   `completed`.
+ * INVARIANT : les echecs de versement sont ecrits comme une DETTE
+ *   (`pendingPayouts`) AU MOMENT du reglement : le declencheur
+ *   `!wasCompleted` est a usage unique, donc une liste perdue = des ZC
+ *   definitivement perdus.
+ * INVARIANT : les dettes de remboursement (`pendingRefunds`) et les dettes
+ *   definitivement irrecouvrables (`uncollectableRefunds`) doivent, elles
+ *   aussi, survivre a un rechargement de l'etat.
+ * INVARIANT : la commission de l'arbitre fait partie du reglement : une
+ *   exception non rattrapee empechait la persistence du tournoi, et les
+ *   capitaines deja payes etaient payes une seconde fois.
+ * INVARIANT : le pass est bloque par equipe (`entryFee` x `teamSize`) et
+ *   debite sur le capitaine.
+ * INVARIANT : le tableau est reconstruit par `normalizeMatches` : le statut
+ *   d'un match est derive de la presence de ses deux entrants (`ready`) ou
+ *   de leur absence (`pending`).
+ * PIEGE : le format est limite a 1VS1-5VS5 comme les matchs : un 12VS12
+ *   prelevait 12 fois le pass sur le capitaine.
+ * PIEGE : `buildPayout` est recalcule a chaque normalisation : il depend du
+ *   nombre d'entrees ET du nombre d'arbitres (5 % ou 10 %).
+ * PIEGE : les horaires sont normalises - aucun match entre 00h00 et 07h00
+ *   (`normalizePlayableDate` / `addPlayableMinutes`).
+ * PIEGE : le gain en cash part au CAPITAINE ; les membres recoivent les
+ *   statistiques et l'XP, pas l'argent.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce, getUserByExactPseudo } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';

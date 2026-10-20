@@ -1,3 +1,45 @@
+/**
+ * server/wallet-engine.mjs - Toutes les mutations de portefeuille : depot,
+ * retrait, blocage du pass, remboursement, versement des gains, debit.
+ *
+ * Une seule porte d'entree vers la base : `updateWalletSnapshot`. Ce module ne
+ * connait ni FedaPay ni la base : il calcule et applique sur l'etat du
+ * portefeuille.
+ *
+ * INVARIANT : toute mutation passe par `updateWalletSnapshot` : c'est la
+ *   seule porte vers le solde, et c'est elle qui notifie les ecouteurs
+ *   temps reel.
+ * INVARIANT : le montant d'une transaction est SIGNE : un retrait est
+ *   NEGATIF, un remboursement est POSITIF. Le journal doit se reconcilier
+ *   avec les soldes.
+ * INVARIANT : le solde est verifie AVANT le plafond journalier : sinon
+ *   `INSUFFICIENT_FUNDS` devient inatteignable pour les gros retraits.
+ * INVARIANT : le debit precede l'appel FedaPay, et le remboursement n'a lieu
+ *   que sur une certitude d'echec (indicateur `payoutMaybeSent`).
+ * INVARIANT : `releaseWalletWinnings` est idempotent sur la cle
+ *   type + competition : un second appel rend le portefeuille intact au lieu
+ *   de payer deux fois.
+ * INVARIANT : la cle de gain est ecrite DANS le portefeuille : elle doit
+ *   etre persistee avec lui, sinon la protection disparait au redemarrage.
+ * PIEGE : l'historique est plafonne a 200 entrees : une cle stockee
+ *   uniquement dans l'historique finit par disparaitre (d'ou `winningsKeys`
+ *   et la liste dediee `payoutsEnAttente`).
+ * PIEGE : le montant d'un retrait est negatif dans l'historique : le
+ *   remboursement doit utiliser `Math.abs`, sinon il rembourse un montant
+ *   NEGATIF (le joueur perd de l'argent au moment ou on lui rend justice).
+ * PIEGE : `depositToWallet` sert aussi aux remboursements : `options.type` et
+ *   `options.description` doivent etre surcharges, sinon un remboursement
+ *   s'affiche comme un depot dans l'historique.
+ * PIEGE : la part BONUS de la mise du gagnant revient en bonus (non
+ *   retirable) et non en cash : l'anti-blanchiment est applique ici.
+ * PIEGE : les fonctions FedaPay sont INJECTEES dans
+ *   `reconcilePendingWithdrawals` : ce module ne doit pas importer
+ *   `payment-engine.mjs`, sous peine de cycle.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import crypto from 'node:crypto';
 import { getWalletSnapshot, updateWalletSnapshot, hasSettledWinningsKey, trackWinningsKey } from './persistence.mjs';
 

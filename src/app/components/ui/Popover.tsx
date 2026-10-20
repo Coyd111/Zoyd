@@ -1,3 +1,19 @@
+/**
+ * Popover - panneau qui s'ouvre au clic (enveloppe Radix Popover).
+ *
+ * Sous-composants : Root, Trigger, Anchor, Portal, Content, Arrow, Close.
+ *
+ * INVARIANT : le Popover est un CONTENU, pas un dialogue. Il n'a ni
+ * `role="dialog"` ni focus piege : si l'on veut un focus piege, c'est
+ * Dialog.
+ * PIEGE : un Popover ne doit pas contenir d'action irreversible sans
+ * confirmation : il se ferme au clic dehors.
+ * PIEGE : le Portal rend le popover hors du flux du parent : un `overflow
+ * hidden` sur un ancetre ne le coupe donc pas, mais un `z-index` faible
+ * peut le passer sous une barre.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

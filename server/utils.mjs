@@ -1,3 +1,32 @@
+/**
+ * server/utils.mjs - Primitives partagees : arrondis, horodatage, erreurs codees,
+ * formatage de montant et progression d'XP.
+ *
+ * Aucune dependance, aucune effet de bord : ce module est importe partout,
+ * y compris par la couche de persistance.
+ *
+ * INVARIANT : tout montant monetaire passe par `roundAmount` (2 decimales).
+ *   Sans cela, une somme d'arrondis ne se recompose pas et le reglement cree
+ *   ou detruit de la monnaie.
+ * INVARIANT : `makeError` est le SEUL moyen de creer une erreur metier.
+ *   C'est `error.code` que `mapPersistenceError` fait correspondre ; une
+ *   erreur sans `code` devient un 500 generique.
+ * INVARIANT : `formatZcForNotification` est le MIROIR serveur de `formatZC`
+ *   (src/lib/utils.ts). Les deux formats doivent rester identiques, sinon la
+ *   notification et l'UI affichent des montants differents.
+ * INVARIANT : `addXpToProgression` renvoie un NOUVEL objet, il ne mute pas
+ *   l'argument : l'appelant range le resultat dans le compte.
+ * PIEGE : `roundAmount` renvoie 0 pour une entree non finie - il masque
+ *   l'erreur au lieu de la signaler : valider avant d'appeler.
+ * PIEGE : les `details` de `makeError` sont copies sur l'Error ; c'est
+ *   `payoutId` qui permet a l'appelant d'eviter un double remboursement.
+ * PIEGE : `LEVEL_THRESHOLDS.PRO` vaut Infinity : la boucle d'XP s'arrete a PRO
+ *   et `nextLevelXp` y vaut Infinity.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 export const roundAmount = (value) => {
   const n = Number(value || 0);
   if (!Number.isFinite(n)) return 0;

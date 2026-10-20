@@ -1,4 +1,22 @@
 /**
+ * codmWeaponData - referentiel statique des armes CODM (2026).
+ *
+ * Donnees de contenu : armes par categorie, variantes, rarity, et compteurs.
+ * Sert a alimenter l'ecran ' Infos ' et les fiches d'armes.
+ *
+ * INVARIANT : c'est une DONNEE STATIQUE versionnee, ecrite a la main. Elle
+ * ne vient pas du jeu et ne se met pas a jour toute seule.
+ * PIEGE : ne jamais en deduire une regle metier (equilibrage, prix,
+ * interdiction d'arme). Le serveur fait foi.
+ * PIEGE : les compteurs derives (TOTAL_WEAPONS) doivent etre recalcules si
+ * une arme est ajoutee : un compteur faux se voit sur l'ecran public.
+ * PIEGE : le contenu de ce fichier est volumineux : toute modification doit
+ * rester lisible et verifiable (les listes sont ordonnees).
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
+
+/**
  * COD Mobile Weapon & Game Data
  * Updated for 2026 (through Season 5 2026)
  * Sources: COD Mobile Fandom Wiki, ZillionGamer, MobileMatters.gg, Reddit, IGN, Activision

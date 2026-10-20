@@ -1,3 +1,19 @@
+/**
+ * Menubar - barre de menus de bureau (enveloppe Radix Menubar).
+ *
+ * Sous-composants : Root, Menu, Trigger, Content, Item, CheckboxItem,
+ * RadioGroup, Label, Separator, Shortcut, Sub, SubTrigger, SubContent.
+ *
+ * INVARIANT : c'est une barre de menus de type desktop. Sur mobile, la
+ * navigation passe par BottomNav : ne pas dupliquer les deux parcours.
+ * INVARIANT : le focus clavier et l'ordre de tabulation sont geres par Radix.
+ * PIEGE : `loop` sur le menu change la navigation clavier (la fleche haut
+ * reboucle). Ne pas le changer sans verifier le comportement attendu.
+ * PIEGE : ce composant n'est pas un point d'entree metier : il ne doit
+ * contenir ni etat global ni appel reseau.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

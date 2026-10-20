@@ -1,3 +1,20 @@
+/**
+ * RootLayout - coquille globale : ScrollToTop, Outlet, ToastContainer.
+ *
+ * Pere de toutes les routes. Charge les matchs et les tournois au demarrage,
+ * puis bascule en POLLING HTTP quand le socket n'est pas connecte. Monte aussi
+ * le ToastContainer, seul point d'affichage des toasts de l'application.
+ *
+ * INVARIANT : le polling n'est active que si le socket n'est pas connecte.
+ * Les deux actifs en meme temps, les listes se battent et la cagnotte affichee
+ * peut reculer.
+ * PIEGE : le socket diffuse des DELTAS, pas la collection ; la rehydratation
+ * doit passer par hydrateFromServer (fusion), jamais replaceFromServer.
+ * PIEGE : ToastContainer est monte ici : le deplacer supprime tous les
+ * retours utilisateur de l'app.
+ *
+ * Voir aussi : docs/08-frontend.md - section 4 (Les layouts)
+ */
 import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import ToastContainer from '../components/notifications/ToastContainer';

@@ -1,3 +1,19 @@
+/**
+ * Tooltip - infobulle (enveloppe Radix Tooltip).
+ *
+ * Sous-composants : Provider, Root, Trigger, Portal, Content, Arrow.
+ *
+ * INVARIANT : le TooltipProvider doit etre monte au-dessus de tous les
+ * tooltips de l'ecran, sinon Radix leve une erreur a l'usage.
+ * INVARIANT : un tooltip ne doit jamais contenir la SEULE information
+ * critique : il disparait au survol et n'est pas lisible sur mobile.
+ * PIEGE : TooltipTrigger doit envelopper un element focusable : un tooltip
+ * sur un simple div n'est jamais atteint au clavier.
+ * PIEGE : ne pas mettre de lien ni de bouton dans le contenu : le focus ne
+ * peut pas y entrer.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

@@ -1,3 +1,39 @@
+/**
+ * server/routes/league.mjs - Domaine LIGUE BR : liste et detail des saisons,
+ * creation, inscription, retrait, lancement des qualifications et des
+ * journees, resultats, finale, classement, reglages, reassignment,
+ * remboursement d'un pass, paiements.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit ->
+ * `withLeagueMutex` -> lecture du corps -> moteur -> `saveLeagues` ->
+ * reponse. Les routes qui deplacent de l'argent ajoutent `requireAdmin2fa`
+ * (remboursement d'un pass, lecture des paiements).
+ *
+ * INVARIANT : la liste ET le detail exigent une session : une saison expose
+ *   le `userId` de chaque joueur inscrit (le modele `isMe` complet n'est pas
+ *   encore en place, l'identifiant est donc retire a la main).
+ * INVARIANT : la compensation du pass quand la persistence echoue est
+ *   faite ICI, et pas seulement dans le moteur : le moteur a deja rendu la
+ *   main quand `saveLeagues` echoue, et le balayeur ne parcourt que
+ *   `registeredPlayers` - le joueur absent de la liste perdait ses ZC.
+ * INVARIANT : le remboursement d'un pass et la lecture des paiements exigent
+ *   la 2FA : ce sont des operations financieres.
+ * INVARIANT : toute mutation est sous `withLeagueMutex`, et le
+ *   remboursement d'un pass passe aussi par `withWalletMutex`.
+ * PIEGE : `name` et `format` sont OPTIONNELS a la creation : le front
+ *   appelle sans argument et le moteur genere un nom par defaut.
+ * PIEGE : les resultats de la finale sont le moment ou l'argent part
+ *   (`submitLeagueFinalResultsOnServer`) : c'est la seule route qui clot la
+ *   saison.
+ * PIEGE : le classement est un GET sans session : il n'expose que le
+ *   classement, pas les identifiants.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,

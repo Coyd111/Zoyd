@@ -1,3 +1,37 @@
+/**
+ * server/cron.mjs - Travaux de fond : archivage, cloture des inscriptions,
+ * controle d'integrite, balayage des reglements et reconciliation des
+ * retraits.
+ *
+ * `initCronJobs` est appele UNE SEULE FOIS, depuis realtime-server.mjs.
+ *
+ * INVARIANT : chaque job prend le MEME verrou que la route correspondante
+ *   (`withMatchMutex`, `withLeagueMutex`, `withTournamentMutex`) : un job de
+ *   fond et une route ne doivent jamais muter la meme collection en
+ *   parallele.
+ * INVARIANT : chaque job a une garde ANTI-CHEVAUCHEMENT : un tick lent est
+ *   saute et journalise, il n'est jamais empile.
+ * INVARIANT : les jobs ne tranchent jamais seuls : ils appellent les
+ *   fonctions des moteurs, qui portent les invariants de l'argent.
+ * INVARIANT : la reconciliation des retraits ne decide RIEN sur une erreur
+ *   de lecture : le payout reste en `pending_review`.
+ * PIEGE : `initCronJobs` ne doit etre appele QU'UNE fois : un second appel
+ *   doublerait chaque intervalle.
+ * PIEGE : les intervalles sont ecrits en dur dans le code : ils ne sont pas
+ *   configurables par variable d'environnement.
+ * PIEGE : l'archivage change le statut en `archived` (etat terminal) : ce job
+ *   ne rembourse pas les passes.
+ * PIEGE : le balayage des reglements ne reprend QUE les matchs dont
+ *   `payoutDistributed` vaut `'pending'` : un `false` est un refus
+ *   VOLONTAIRE de verser.
+ * PIEGE : la cloture des inscriptions de ligue passe le statut de
+ *   `registering` a `qualifying` et tire les journees : c'est le moment
+ *   unique ou la repartition des joueurs est figee.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import {
   getStateCollection,
   replaceStateCollection,

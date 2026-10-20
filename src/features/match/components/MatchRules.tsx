@@ -1,3 +1,20 @@
+/**
+ * MatchRules - regles du match (mode, carte, score cible, best of).
+ *
+ * Composant de lecture seule, affiche sous condition que la salle soit
+ * visible.
+ *
+ * INVARIANT : les regles affichees viennent de `match.rules`, copie du
+ * serveur. Ne pas les recalculer ni les completer avec des valeurs par
+ * defaut : une regle inventee contredit l'accord du joueur.
+ * INVARIANT : `canSeeRoom` conditionne l'affichage des informations
+ * sensibles (salle, mot de passe). Ne pas la contourner.
+ * PIEGE : les restrictions d'arme et de score streak sont des options du
+ * serveur ; les afficher suppose qu'elles sont presentes, pas qu'elles
+ * s'appliquent.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React from 'react';
 import type { Match } from '../../../app/stores/matchStore';
 

@@ -1,3 +1,23 @@
+/**
+ * MatchChat - chat d'un match, avec presence et saisie en cours.
+ *
+ * Affiche les messages du canal, la presence dans la salle et les
+ * indicateurs ' en train d'ecrire '.
+ *
+ * INVARIANT : l'envoi passe par la page parente, qui appelle l'API. Ce
+ * composant ne fait qu'afficher et remonter la saisie.
+ * INVARIANT : le canal de chat et le canal de presence sont deux canaux
+ * distincts (`chatChannelId` et `channelId`) : les melanger fait
+ * disappear le chat ou la presence.
+ * PIEGE : l'identite du message courant se lit par senderId, qui est
+ * lisible dans le chat. C'est une exception au usage general de `isMe` :
+ * le chat est un canal d'echange, pas une projection de match.
+ * PIEGE : le canal est fermee quand le socket est coupe : l'ecran doit
+ * l'indiquer, pas laisser croire que le chat est muet alors que les
+ * messages partiront a la reconnexion.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import { Send, ShieldCheck, Terminal, Users, Radio } from 'lucide-react';
 import type { ChatMessage } from '../../../app/stores/chatStore';

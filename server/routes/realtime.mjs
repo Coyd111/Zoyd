@@ -1,3 +1,36 @@
+/**
+ * server/routes/realtime.mjs - Domaine TEMPS REEL : creation de la session
+ * temps reel, cle publique VAPID, bootstrap d'etat, souscription / desen-
+ * souscription / test de push.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : rate limit (`auth` sur la creation de session) ->
+ * session -> lecture du corps -> ecriture. Les routes de bootstrap et de push
+ * utilisent `getAuthenticatedRealtimeSession`, c'est-a-dire l'en-tete
+ * Bearer UNIQUEMENT.
+ *
+ * INVARIANT : le bootstrap d'etat et les routes de push exigent une session
+ *   TEMPS REEL : le cookie `zoyd_auth` n'est pas un token temps reel et ne
+ *   doit pas y servir.
+ * INVARIANT : la creation d'une session temps reel est rate limitee
+ *   (`auth`) : elle cree une entree serveur.
+ * INVARIANT : le bootstrap est BORNE : 100 matchs et 50 tournois, les plus
+ *   recents.
+ * INVARIANT : seule la cle VAPID PUBLIQUE sort du serveur ; la cle privee
+ *   reste cote serveur (cf. vapid-keys.mjs).
+ * PIEGE : `POST /api/realtime/state/sync` a ete SUPPRIME : il repondait 409
+ *   ou 400 pour tout et donnait l'illusion d'un appel fonctionnel. Ne pas le
+ *   rebrancher.
+ * PIEGE : le socket ne transporte que des DELTAS : la synchronisation
+ *   complete passe par les routes API dediees.
+ * PIEGE : la souscription de push exige un `endpoint` : c'est l'identifiant
+ *   de la souscription, sans lui rien n'est enregistre.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,

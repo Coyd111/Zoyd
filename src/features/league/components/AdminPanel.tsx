@@ -1,3 +1,21 @@
+/**
+ * AdminPanel - panneau d'administration d'une saison de ligue.
+ *
+ * Ouvre et ferme les inscriptions, lance les journees de qualification, et
+ * affiche l'etat des paiements du podium.
+ *
+ * INVARIANT : ce panneau est un garde d'UX. Les actions passent par
+ * leagueApi.ts et le serveur les refuse sans le role admin : l'affichage
+ * conditionnel ne protege rien.
+ * INVARIANT : le paiement d'un joueur se lit par deux etats distincts :
+ * `paid` (le pass a ete paye a l'inscription, FIGE) et `locked` (des fonds
+ * sont encore bloques, faux apres versement du podium). Ne pas deduire l'un
+ * de l'autre.
+ * PIEGE : l'ecran de paiement doit tolerer un serveur en veille (timeout) :
+ * afficher ' paiement indisponible ' plutot que zero.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import { useEffect, useState } from 'react';
 import { Settings, DollarSign, RefreshCw, UserMinus } from 'lucide-react';
 import type { LeagueSeason, LeagueDayKey } from '../../../app/stores/leagueStore';

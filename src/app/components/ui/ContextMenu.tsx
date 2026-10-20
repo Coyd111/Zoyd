@@ -1,3 +1,20 @@
+/**
+ * ContextMenu - menu au clic droit (enveloppe Radix ContextMenu).
+ *
+ * Meme famille de sous-composants que DropdownMenu, mais declenche par le
+ * clic droit.
+ *
+ * INVARIANT : un clic droit ne doit pas etre la SEULE facon d'atteindre
+ * une action : prevoir toujours une alternative visible.
+ * INVARIANT : le menu doit etre rendu dans le provider Radix, et ses items
+ * doivent rester focusables au clavier.
+ * PIEGE : Radix gere le clic droit et la fermeture ; un onClick maison sur
+ * l'overlay entre en conflit avec lui.
+ * PIEGE : le menu ne doit pas contenir de lien de navigation vers une page
+ * qui n'existe pas : il n'y a pas de route par defaut.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

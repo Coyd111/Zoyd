@@ -1,3 +1,21 @@
+/**
+ * leagueStore - saisons de ligue, classements, qualifications, podium.
+ *
+ * Detient les cycles de BR League (5 jours de qualification + finale),
+ * leurs groupes, les classements, les finalistes et le podium. Alimente par
+ * l'API REST et par l'evenement socket state:leagues.
+ *
+ * INVARIANT : hydrateFromServer FUSIONNE, replaceFromServer REMPLACE. Le
+ * socket envoie des deltas : remplacer effacerait les autres saisons.
+ * PIEGE : `name` de la saison : le serveur l'acceptait mais ne le persistait
+ * pas. Le repli `Cycle N` n'est qu'un affichage, pas une donnee reelle.
+ * PIEGE : les journees de qualification sont normalisees une par une (les
+ * cles absences doivent produire des slots `pending`, pas `undefined`).
+ * INVARIANT : isPlayerRegistered compare sur userId, qui reste lisible dans
+ * les donnees de ligue : ce store n'est pas diffuse en mode isMe.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
 

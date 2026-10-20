@@ -1,3 +1,25 @@
+/**
+ * WalletPage - portefeuille : soldes, depots, retraits, historique.
+ *
+ * Affiche les soldes (cash, bonus, bloque, gains en attente), permet le
+ * depot et le retrait Mobile Money, et liste les transactions.
+ *
+ * INVARIANT : le net d'un retrait vient du SERVEUR (netAmount, feeAmount).
+ * Le recalculer ici affichait un montant different de celui reellement verse
+ * par FedaPay.
+ * INVARIANT : le taux de frais et le minimum de retrait sont publies par le
+ * serveur. Ne pas les coder en dur dans l'ecran : le taux peut changer.
+ * PIEGE : le retrait porte une cle d'idempotence, generee et conservee par
+ * walletApi.ts. Un double-clic ou un retry ne doit produire qu'un seul
+ * debit et un seul paiement FedaPay.
+ * PIEGE : FedaPay preleve EN PLUS ses propres frais de transfert, qui ne
+ * reviennent pas a ZOYD. Ne jamais annoncer un montant comme ' ce que tu
+ * recevras ' sans cette precision (voir WithdrawalFeesNotice).
+ * PIEGE : un 403 metier (2FA, transaction d'un autre compte) ne doit pas
+ * etre traite comme une session expiree.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { toast } from '../lib/toast';

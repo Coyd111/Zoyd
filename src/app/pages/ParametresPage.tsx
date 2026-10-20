@@ -1,3 +1,25 @@
+/**
+ * ParametresPage - reglages du compte : identite, securite, gaming, notifications.
+ *
+ * Quatre onglets. Permet de modifier le profil, de supprimer son compte, de
+ * regler les preferences de notification, et de gerer la 2FA d'administration.
+ *
+ * INVARIANT : toute sauvegarde passe par updateServerAccount (l'API), puis le
+ * store d'auth est mis a jour avec la reponse serveur. Ecrire dans le store
+ * sans appel serveur ferait diverger l'ecran du compte reel.
+ * INVARIANT : la 2FA admin s'active par un code TOTP a 6 chiffres, et la
+ * fenetre de saisie est courte (30 s) : le code doit etre lu depuis
+ * l'application d'authentification, pas calcule dans le navigateur.
+ * PIEGE : la suppression de compte est refusee s'il reste des wagers en
+ * cours. L'UI doit l'expliquer, pas masquer l'action.
+ * PIEGE : un 403 metier (mot de passe actuel faux, 2FA) ne doit pas
+ * deconnecter la session : seul un 401 purge l'etat.
+ * PIEGE : le type `User` de lucide et le type `User` du store portent le
+ * meme nom : le type du store est aliase (`AuthUser`). Ne pas retirer
+ * l'alias.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';

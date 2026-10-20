@@ -1,3 +1,23 @@
+/**
+ * TournoisPage - liste des tournois : ouverts, en cours, archives.
+ *
+ * Filtre par format, recherche debouncee, affiche les cartes de tournoi et
+ * le bouton de creation.
+ *
+ * INVARIANT : la liste vient du store tournamentStore, hydrate par le
+ * socket et par le polling de RootLayout. La page ne fait pas sa propre
+ * requete de liste a chaque rendu.
+ * INVARIANT : la creation d'un tournoi passe par l'API. Ne pas creer un
+ * tournoi localement "pour tester".
+ * PIEGE : les statuts du tournoi sont recruiting / live / completed /
+ * cancelled. Les filtres doivent couvrir les quatre : un tournoi annule
+ * n'est pas un tournoi termine, et le traiter comme tel masque une
+ * annulation avec remboursement.
+ * PIEGE : la recherche est debouncee : ne pas relancer une requete a chaque
+ * frappe.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Plus, Search, Swords, Trophy, Users } from 'lucide-react';

@@ -1,3 +1,20 @@
+/**
+ * ToggleGroup - groupe de boutons a deux etats (enveloppe Radix ToggleGroup).
+ *
+ * Sous-composants : Root, Item. Les items partagent une valeur unique (mode
+ * exclusif) ou multiple.
+ *
+ * INVARIANT : `type` (single / multiple) decide si un seul item peut etre
+ * actif. Un filtre qui doit pouvoir se decocher se comporte en single avec
+ * la meme valeur sur le second clic, ou en multiple : le choix doit etre
+ * delibere, sinon l'utilisateur ne peut plus tout desactiver.
+ * PIEGE : la valeur groupee est un tableau en mode multiple : le lire comme
+ * une chaine donne un resultat de filtre faux.
+ * PIEGE : ce composant est utilise pour des filtres d'ecran : il ne doit
+ * jamais declencher de requete par lui-meme.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

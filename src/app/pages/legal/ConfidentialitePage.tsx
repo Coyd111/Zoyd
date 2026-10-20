@@ -1,3 +1,19 @@
+/**
+ * ConfidentialitePage - politique de confidentialite.
+ *
+ * Document legal statique : donnees collectees, usage, visibilite, duree de
+ * conservation et droits du joueur. Rendu via LegalLayout.
+ *
+ * INVARIANT : document versionne. Toute nouvelle donnee collectee ou
+ * tout nouveau tiers (hebergeur, prestataire de paiement) doit etre
+ * mentionne ici en meme temps que dans le code.
+ * PIEGE : ne pas nommer de service tiers qui n'est plus utilise, ni
+ * omettre un nouveau prestataire : les deux sont des obligations.
+ * PIEGE : le document decrit ce que le code fait reellement. Ne pas y
+ * annoncer une donnee qui n'est pas collectee.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
+ */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';
 

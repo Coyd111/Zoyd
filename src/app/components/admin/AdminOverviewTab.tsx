@@ -1,3 +1,21 @@
+/**
+ * AdminOverviewTab - vue d'ensemble du tableau de bord d'administration.
+ *
+ * Affiche la file de priorite, le nombre de matchs prets et en direct, les
+ * signalements en attente et les derniers evenements. Ne declenche aucune
+ * action : tout est remonte au parent.
+ *
+ * INVARIANT : ce composant ne fait AUCUNE requete. Il recoit ses donnees
+ * du parent, qui les recharge apres chaque action (reloadReports).
+ * PIEGE : le tableau de bord ne se rafraichit PAS sur un compteur de matchs
+ * ou de signalements. Une dependance `matches.length` faisait deux appels
+ * API a chaque match recu, pour une file de moderation sans rapport : le
+ * tableau paraissait vivant alors qu'il bougeait pour une fausse raison.
+ * PIEGE : ce composant ne fait AUCUNE requete : tout passe par le parent,
+ * qui recharge apres chaque action.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';

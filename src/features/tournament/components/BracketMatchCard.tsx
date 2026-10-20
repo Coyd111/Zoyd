@@ -1,3 +1,22 @@
+/**
+ * BracketMatchCard - une case du bracket (deux equipes, score, etat).
+ *
+ * Affiche les deux affronnants, le score, le vainqueur et l'etat du match
+ * de bracket.
+ *
+ * INVARIANT : le vainqueur est designe par winnerEntryId, pas par une
+ * comparaison de score affichee : le serveur fait foi.
+ * INVARIANT : les scores absents (match non joue) doivent s'afficher comme
+ * tels, pas comme 0-0 : un 0-0 sur un match non joue se lit comme un match
+ * nul.
+ * PIEGE : les statuts du bracket (pending, ready, live, finished) sont
+ * differents des statuts de match : les libelles doivent venir de la table
+ * dediee.
+ * PIEGE : le composant est memoise : les props doivent etre stables, sinon
+ * le memo est inutile.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React from 'react';
 import type { TournamentMatch } from '../../../app/stores/tournamentStore';
 

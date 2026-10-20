@@ -1,3 +1,20 @@
+/**
+ * AntiFraudePage - regles anti-fraude de la plateforme.
+ *
+ * Document legal statique : un compte par personne, score de fiabilite,
+ * controles et sanctions graduees.
+ *
+ * INVARIANT : document versionne. Le score de confiance evoque ici doit
+ * correspondre aux seuils reellement utilises par le store
+ * (trustScoreStore).
+ * PIEGE : les sanctions decrites ici doivent correspondre aux sanctions
+ * reellement appliqueables dans l'interface d'administration : un ecart
+ * ferait promettre au joueur une sanction qui n'existe pas.
+ * PIEGE : le document ne doit pas devenir une description technique du
+ * systeme anti-triche : il decrit des regles opposables au joueur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';

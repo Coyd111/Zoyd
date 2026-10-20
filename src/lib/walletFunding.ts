@@ -1,3 +1,23 @@
+/**
+ * walletFunding.ts - demande de recharge liee a une action bloquee.
+ *
+ * Calcule le montant manquant, construit le lien vers le portefeuille avec
+ * le contexte (inscription a un match, creation, entree de tournoi) et
+ * relit l'invite au retour.
+ *
+ * INVARIANT : le `returnTo` est ASSAINI : seul un chemin interne commencant
+ * par un seul `/` et commencant par une liste blanche (/mj, /br-league) est
+ * accepte. Un `//` ou une URL absolue serait une redirection ouverte.
+ * INVARIANT : le montant manquant est `max(0, requis - disponible)`, arrondi
+ * a deux decimales. Un negatif proposerait de "deposer" de l'argent.
+ * PIEGE : les montants passes dans l'URL sont des INDICATIONS pour
+ * l'affichage. Le debit reel est toujours recalcule par le serveur : ne
+ * pas faire confiance aux parametres de la query string.
+ * PIEGE : `parseFundingPrompt` doit retourner null sur un contexte inconnu
+ * ou un montant non fini, et non une invite a moitie vide.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 export type FundingContext = 'match-join' | 'match-create' | 'tournament-entry';
 
 export interface FundingPrompt {

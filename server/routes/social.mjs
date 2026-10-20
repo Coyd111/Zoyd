@@ -1,3 +1,39 @@
+/**
+ * server/routes/social.mjs - Domaine SOCIAL : amis, demandes d'ami, blocs,
+ * signalements de joueurs, centre de notifications.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`social`,
+ * `default` pour les notifications) -> lecture du corps -> `withUserMutex` ->
+ * logique metier.
+ *
+ * INVARIANT : les relations sont modifiees sous `withUserMutex` : le
+ *   lecture-modification-ecriture de la liste d'amis doit etre serialise.
+ * INVARIANT : le signalement est ecrit avec `sbUpsert` ATTENDU, pas avec
+ *   `sbFire` : un signalement perdu = un joueur qui harcele en croyant avoir
+ *   ete ecoute.
+ * INVARIANT : la gravite du signalement est CALCULEE par le serveur au
+ *   depot, a partir du seul motif (`severityForReason`) : elle ne peut pas
+ *   dependre d'un champ du client.
+ * INVARIANT : le signalement ecrit les colonnes denormalisees (`reporter_id`,
+ *   `target_id`, `reason`, `status`, `severity`) : les index de la lecture de
+ *   moderation en dependent.
+ * INVARIANT : les notifications sont lues et marquees par compte : aucune
+ *   route ne renvoie la notification d'un autre joueur.
+ * PIEGE : `sbUpsert` renvoie `undefined` en mode memoire (ce n'est pas un
+ *   echec) et `false` sur un refus reel : seule la valeur `false` doit
+ *   produire un 503 `SERVER_BUSY`.
+ * PIEGE : la notification est envoyee APRES l'ecriture et son echec est
+ *   rattrape : une notification en erreur ne doit pas faire echouer la
+ *   requete metier.
+ * PIEGE : une demande d'ami porte une DIRECTION (expediteur -> destinataire) :
+ *   c'est le RECIPIENT qui l'accepte (`requestId` + `session.user.id`).
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import {
   respondJson,

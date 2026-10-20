@@ -1,3 +1,20 @@
+/**
+ * LeaksPage - ecran ' Infos ' : etat reel de la plateforme et catalogue CODM.
+ *
+ * Melange des statistiques publiques, des bundles CODM (via codmApi) et des
+ * donnees d'armes (codmWeaponData). Est un ecran public sous AppLayout.
+ *
+ * INVARIANT : les appels CODM passent par le proxy backend (codmApi.ts) :
+ * le navigateur ne doit jamais appeler Codashop directement (CORS, cle
+ * d'API, quotas).
+ * PIEGE : le catalogue d'armes est une DONNEE STATIQUE versionnee dans
+ * codmWeaponData.ts, pas une source de verite sur le jeu. Ne pas y faire
+ * confiance pour une regle metier.
+ * PIEGE : un echec de l'API CODM ne doit pas casser la page : la section
+ * catalogue doit degrader proprement, sans faire disparaitre les stats.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';

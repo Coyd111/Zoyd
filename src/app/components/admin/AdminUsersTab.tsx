@@ -1,3 +1,21 @@
+/**
+ * AdminUsersTab - utilisateurs a surveiller dans le tableau de bord admin.
+ *
+ * Liste paginee des comptes dont le profil derive un signal (comportement,
+ * litiges, inactivite), avec un filtre critique / a surveiller / tous.
+ *
+ * INVARIANT : les utilisateurs sont filtres par le store, pas recalcules
+ * ici. Le signal vient de communityInsights, qui agrege les matchs, le
+ * chat, les signalements et les transactions.
+ * PIEGE : la pagination est LOCALE (20 par page). Elle ne doit pas
+ * confondre avec une pagination serveur : ici, la liste est deja en
+ * memoire.
+ * PIEGE : un signalement d'admin sur un compte ne doit jamais etre deduit
+ * d'un simple statut 'watch' affiche par le filtre : c'est une
+ * recommandation, pas une sanction.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Eye, Users, ChevronLeft, ChevronRight } from 'lucide-react';

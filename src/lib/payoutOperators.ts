@@ -1,3 +1,23 @@
+/**
+ * payoutOperators.ts - operateurs Mobile Money par pays (miroir serveur).
+ *
+ * Liste des operateurs de paiement, de leur logo, de leurs couleurs et des
+ * pays ou ils sont disponibles. Utilisee pour filtrer les methodes de
+ * retrait selon le pays du joueur.
+ *
+ * INVARIANT : cette liste est un MIROIR de PAYOUT_COUNTRY_CONFIG cote
+ * serveur. Toute divergence fait afficher au joueur un operateur que le
+ * serveur refuse (ou pire, cache un operateur disponible).
+ * INVARIANT : les codes operateur sont ceux du prestataire : ils sont
+ * compares a la reponse serveur, ils ne sont pas arbitraires.
+ * PIEGE : isAnySupportedPhone sert a desactiver le retrait pour un numero
+ * non eligible. Ne pas deplacer la verification au serveur : le joueur verrait
+ * un formulaire valide qui echoue a l'envoi.
+ * PIEGE : un logo absent ne doit pas casser l'affichage : le badge texte
+ * stylise est le repli prevu.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 // Opérateurs Mobile Money par pays (miroir de PAYOUT_COUNTRY_CONFIG côté serveur).
 // Modes FedaPay vérifiés dans la doc : mtn_open/moov/sbin (BJ), mtn_ci/moov_ci/
 // orange_ci/wave_ci (CI), orange_sn/wave_sn (SN), moov_tg/togocel (TG).

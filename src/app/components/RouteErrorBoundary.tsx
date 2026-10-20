@@ -1,3 +1,20 @@
+/**
+ * RouteErrorBoundary - ecran d'erreur d'une ROUTE (React Router).
+ *
+ * Utilise par `errorElement` sur chaque branche protegee de routes.tsx.
+ * Distingue une 404 d'une autre erreur et propose un retour.
+ *
+ * INVARIANT : chaque branche protegee de routes.tsx doit porter un
+ * `errorElement`. Sans lui, une exception de chargement de page affiche un
+ * ecran vide.
+ * INVARIANT : l'ecran doit proposer une issue (retour a l'accueil) : une
+ * erreur sans sortie oblige l'utilisateur a changer d'URL a la main.
+ * PIEGE : le composant ne doit pas utiliser le routeur pour se navigate
+ * lui-meme (il s'execute quand le routeur est deja en erreur) : preferer un
+ * lien simple vers une route statique.
+ *
+ * Voir aussi : docs/08-frontend.md - section 3.3 (Erreurs de route)
+ */
 import { useRouteError, isRouteErrorResponse, Link } from 'react-router';
 
 export function RouteErrorBoundary() {

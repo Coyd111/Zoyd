@@ -1,3 +1,29 @@
+/**
+ * server/logger.mjs - Logger structure JSON, sans dependance externe.
+ *
+ * Produit une ligne JSON par entree sur stdout, ou une ligne coloree en dev.
+ * Le seuil de niveau est lu au chargement du module, jamais a chaque appel.
+ *
+ * INVARIANT : `time`, `level`, `module` et `msg` ne sont JAMAIS ecrasables par
+ *   `extra` (RESERVED_KEYS) - une cle reservee fournie par l'appelant est
+ *   deplacee sous `entry.data`, sinon le journal devient forgeable.
+ * INVARIANT : la sortie part de stdout uniquement (jamais stderr) : la
+ *   collecte de logs de la plateforme lit stdout.
+ * INVARIANT : `extra` peut etre un objet ou une Error ; une Error devient
+ *   `entry.err = { message, stack, code }`.
+ * PIEGE : le seuil est fige au chargement - changer LOG_LEVEL exige un
+ *   redemarrage, rien n'est reevalu en cours de route.
+ * PIEGE : `fatal` ne arrete RIEN : l'arret du processus est decide par
+ *   l'appelant (voir `process.on('uncaughtException')` dans realtime-server.mjs).
+ * PIEGE : l'export par defaut est lie au module 'server' ; utiliser
+ *   `createLogger(nom)` pour un journal identifie.
+ * PIEGE : en developpement la sortie n'est pas du JSON (prefixe ANSI) - ne
+ *   pas parser stdout en local pour extraire des champs.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // server/logger.mjs — Lightweight structured logger (zero external deps)
 // Outputs JSON to stdout. In dev, pretty-prints if NODE_ENV !== 'production'.
 

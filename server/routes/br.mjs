@@ -1,3 +1,43 @@
+/**
+ * server/routes/br.mjs - Domaine BATTLE ROYALE : configuration, liste des
+ * salons, creation, actions de salon (join / leave / checkin / start /
+ * eliminate / finish), detail, vue arbitre.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`default`,
+ * `admin` pour `finish`) -> `withBrLobbyMutex(lobbyId)` -> RE-LECTURE du
+ * snapshot DANS le verrou -> moteur -> `saveBrLobbies` -> reponse. L'action
+ * `finish` ajoute `requireAdmin2fa`.
+ *
+ * INVARIANT : le snapshot est RELU A L'INTERIEUR du verrou : dehors, la
+ *   seconde requete travaillerait encore sur l'instantane de la premiere (les
+ *   deux versaient la cagnotte deux fois sur `finish`).
+ * INVARIANT : le verrou est PAR SALON : deux salons distincts se reglent en
+ *   parallele, c'est le fonctionnement normal.
+ * INVARIANT : `join` et `leave` restent sur le quota `default` et non
+ *   `wallet` : mutualiser le quota des retraits rendait le produit inutilisable
+ *   (inscrire puis se desinscrire epuisait le quota avant de pouvoir retirer
+ *   ses gains).
+ * INVARIANT : `finish` exige la 2FA EN PLUS de l'autorite de l'arbitre du
+ *   salon : l'arbitre du salon ne dispense pas de la 2FA, de l'argent part.
+ * INVARIANT : le reglement persiste sa progression apres chaque versement
+ *   (`onProgress` -> `saveBrLobbies`) : un arret de processus laisse un salon
+ *   reprenable, pas un double credit.
+ * INVARIANT : seule la vue `/arbiter` rend les `userId` ; toutes les autres
+ *   routes repassent par `toPublicBrLobby`.
+ * PIEGE : le groupe de rate limit `match` utilise par `POST /api/br/lobbies`
+ *   n'est PAS dans `RATE_LIMIT_CONFIG` : il retombe silencieusement sur
+ *   `default`.
+ * PIEGE : le createur du salon est l'ARBITRE : il ne paie aucun pass et ne
+ *   figure pas dans le roster.
+ * PIEGE : les reponses des actions renvoient la vue PUBLIQUE du salon : les
+ *   `userId` n'y sont jamais.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,

@@ -1,3 +1,17 @@
+/**
+ * EarningsCharts - graphiques des gains (evolution, repartition).
+ *
+ * Composants Recharts purs : ils recoivent des series et les dessinent.
+ *
+ * INVARIANT : ce composant ne calcule RIEN. Les series sont preparees par
+ * EarningsDashboard ; ici on n'additionne pas, on ne convertit pas.
+ * PIEGE : les couleurs viennent du design system via les tokens CSS ; une
+ * couleur codee en dur dans un graphique diverge du reste de l'UI.
+ * PIEGE : un graphique sans etat vide affiche un cadre vide sans
+ * explication : prevoir le cas ' aucune donnee ' explicitement.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React from 'react';
 import {
   AreaChart,

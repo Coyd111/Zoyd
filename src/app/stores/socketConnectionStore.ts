@@ -1,3 +1,28 @@
+/**
+ * socketConnectionStore - chef d'orchestre du temps reel : connexion, handlers,
+ * bootstrap et resynchronisation.
+ *
+ * Branche les 13 evenements socket, hydrate les stores amis, notifications,
+ * matchs et tournois, et repousse les deltas vers les stores metier.
+ *
+ * INVARIANT : `isConnected` = ' on cherche a etre connecte ' ;
+ * `serverConnected` = ' le socket est reellement ouvert '. Sans utilisateur,
+ * les deux doivent rester faux : l'etat optimiste ne doit jamais preceder le
+ * garde `if (!user)`.
+ * INVARIANT : a la coupure, `dirtySinceDisconnect` passe a true. Le socket
+ * n'envoie aucun etat initial : tout ce qui s'est passe pendant la coupure
+ * est perdu. Au retour, si dirtySinceDisconnect ET bootstrapReady, il faut
+ * re-bootstraper, sinon l'interface affiche « live » en vert tout en
+ * servant un etat perime.
+ * PIEGE : le handler `wallet:update` porte un garde multi-compte. L'evenement
+ * peut arriver apres un logout suivi d'une autre connexion : sans ce controle,
+ * le solde du compte precedent s'ecrit dans le wallet du nouveau joueur.
+ * PIEGE : le rechargement passe par reloadReports / bootstrapServerState
+ * declenche par les VRAIES causes (montage, action de l'admin). Ne jamais le
+ * conditionner a un compteur de matchs.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6.3 (Ce qui se passe hors ligne)
+ */
 import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';

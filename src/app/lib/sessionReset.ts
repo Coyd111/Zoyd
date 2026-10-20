@@ -1,3 +1,22 @@
+/**
+ * sessionReset - vide TOUTES les donnees de session d'un compte.
+ *
+ * Appele sur 401, sur changement de mot de passe et a la deconnexion. Coupe
+ * le socket, vide le wallet, les matchs, les tournois, la ligue, le chat, les
+ * amis, les notifications, les toasts, le score de confiance et la presence.
+ *
+ * INVARIANT : le reset doit inclure les maps par-utilisateur du store
+ * tournois (callerEntryByTournament, callerArbiterSlotByTournament,
+ * openArbiterSlotsByTournament). Sans ce reset, le nouveau compte herite de
+ * l'entree du precedent : le bracket affiche ' ta position ' et bloque
+ * l'inscription - fuite de donnees ET fonctionnalite cassee.
+ * PIEGE : ce module est separe de authStore pour une raison de cycle :
+ * authStore est importe par walletStore, un import direct creerait un cycle.
+ * PIEGE : chaque etape est isolee dans un try/catch : une purge partielle
+ * ne doit pas empecher les autres stores d'etre vides.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6.3 (Ce qui se passe hors ligne)
+ */
 import { useSocketStore } from '../stores/socketStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useMatchStore } from '../stores/matchStore';

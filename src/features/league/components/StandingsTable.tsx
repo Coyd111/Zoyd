@@ -1,3 +1,19 @@
+/**
+ * StandingsTable - tableau des classements d'une saison de ligue.
+ *
+ * Affiche le classement par points, la meilleure place, le nombre de
+ * matchs joues, et met en avant la ligne du joueur courant.
+ *
+ * INVARIANT : le classement vient du serveur (standings). Ne pas le
+ * recalculer cote client : le bareme de points est une regle serveur.
+ * INVARIANT : la ligne du joueur courant est identifiee par userId, qui
+ * reste lisible dans les donnees de ligue. C'est une exception au usage
+ * general de `isMe` (propre aux matchs et tournois diffuses).
+ * PIEGE : une saison sans classement doit afficher un etat vide explicite,
+ * pas un tableau a zero ligne qui se lirait comme ' personne n'a joue '.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import type { LeagueStanding } from '../../../app/stores/leagueStore';
 
 export const StandingsTable = ({ standings, currentUserId }: { standings: LeagueStanding[]; currentUserId?: string }) => {

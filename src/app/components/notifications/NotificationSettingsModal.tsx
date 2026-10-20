@@ -1,3 +1,20 @@
+/**
+ * NotificationSettingsModal - reglages de notification et permission navigateur.
+ *
+ * Demande la permission du navigateur, affiche l'etat du service worker et
+ * permet de declencher la mise a jour en attente.
+ *
+ * INVARIANT : la permission navigateur ne se demande qu'APRES une action
+ * explicite de l'utilisateur. Un `Notification.requestPermission()` au
+ * montage est refuse par les navigateurs.
+ * PIEGE : la permission peut etre accordee, refusee ou unsupported selon le
+ * navigateur : `unsupported` n'est pas une erreur, c'est un etat legitime.
+ * PIEGE : appliquer une mise a jour du service worker passe par
+ * SKIP_WAITING puis un rechargement. Ne pas recharger sur une PREMIERE
+ * installation : l'utilisateur ne verrait qu'un aller-retour inutile.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.4 (Le push Web)
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Bell, Calendar, Download, CheckCircle, AlertCircle, Monitor, Smartphone, Clock } from 'lucide-react';

@@ -1,3 +1,19 @@
+/**
+ * ForgotPasswordPage - reinitialisation du mot de passe.
+ *
+ * Deux etapes : demander un code de reinitialisation (par email ou SMS),
+ * puis saisir ce code avec le nouveau mot de passe.
+ *
+ * INVARIANT : la reponse du serveur ne doit pas reveler si un compte
+ * existe. Afficher un message identique dans les deux cas.
+ * PIEGE : le code de reinitialisation n'est pas le mot de passe : le
+ * nouveau mot de passe doit respecter les memes regles que a
+ * l'inscription.
+ * PIEGE : le delai d'attente avant de redemander un code doit etre
+ * respecte, comme sur la page d'activation.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
+ */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from '../../lib/toast';

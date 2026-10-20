@@ -1,3 +1,21 @@
+/**
+ * Card - conteneur de contenu du design system ZOYD.
+ *
+ * Famille de sous-composants (Card, CardHeader, CardTitle, CardDescription,
+ * CardContent, CardFooter) qui partagent la meme structure et les memes
+ * tokens.
+ *
+ * INVARIANT : les sous-composants se choisissent par convention de nom (CardHeader
+ * dans Card), pas par une propriete. Un `CardHeader` hors d'un `Card`
+ * n'a pas de sens et perd ses styles.
+ * INVARIANT : les classes viennent de cn() (twMerge) : un style passe par
+ * className ecrase proprement la variante, sans classe en dur a melanger.
+ * PIEGE : une opacite s'ecrit `/50`, pas `-50`. La faute passe le compilateur
+ * et le lint : la bordure disparaait silencieusement au survol.
+ * PIEGE : ce composant ne doit contenir aucun etat ni appel reseau.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import React from 'react';
 import { cn } from '../../../lib/utils';
 import { motion, type MotionProps } from 'motion/react';

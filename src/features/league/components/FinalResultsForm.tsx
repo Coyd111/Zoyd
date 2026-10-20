@@ -1,3 +1,21 @@
+/**
+ * FinalResultsForm - saisie des resultats de la finale d'une saison.
+ *
+ * Formulaire de classement (place, kills) pour chaque finaliste, renvoye
+ * au parent qui appelle l'API.
+ *
+ * INVARIANT : le formulaire ne fait AUCUN appel reseau : il remonte les
+ * resultats, le parent les envoie. C'est ce qui permet d'afficher un
+ * message d'erreur du serveur sans perdre la saisie.
+ * INVARIANT : la place designe l'equipe gagnante et doit etre un entier
+ * valide. Le serveur refuse un resultat incoherent.
+ * PIEGE : la validation cote client ne remplace PAS la validation serveur :
+ * une place en double ou hors rangee doit etre refusee par l'API.
+ * PIEGE : la saisie doit etre conservee apres une erreur reseau : vider le
+ * formulaire ferait perdre un classement deja rempli.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import { useState } from 'react';
 
 export const FinalResultsForm = ({

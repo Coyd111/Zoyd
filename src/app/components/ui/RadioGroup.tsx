@@ -1,3 +1,18 @@
+/**
+ * RadioGroup - groupe de boutons radio (enveloppe Radix RadioGroup).
+ *
+ * Sous-composants : Root, Item, Indicator. Sibling oriente par la valeur.
+ *
+ * INVARIANT : les items d'un groupe se groupent par `name` implicite (le
+ * Root) : deux groupes sur la meme page ne doivent pas partager la meme
+ * valeur de depart.
+ * INVARIANT : un seul item peut etre selectionne : c'est le contrat du
+ * radio, pas un choix d'implementation.
+ * PIEGE : dans un formulaire, la valeur doit etre branchee au controller
+ * (react-hook-form) : ne pas lire l'etat interne de Radix.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

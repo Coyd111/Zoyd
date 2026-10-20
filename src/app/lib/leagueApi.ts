@@ -1,3 +1,21 @@
+/**
+ * leagueApi - appels REST des saisons de ligue : liste, detail, inscription,
+ * journees de qualification, finale, paiements.
+ *
+ * Client dedie du domaine BR League. Les paiements du podium sont lus par le
+ * panneau admin de la ligue.
+ *
+ * INVARIANT : le cycle de la ligue est une machine a etats cote serveur
+ * (registering -> qualifying -> final -> completed). Le front ne fait que
+ * declencher les transitions autorisees et relire l'etat.
+ * PIEGE : le pass paye a l'inscription est FIGE (survit au reglement), et
+ * les fonds encore bloques disparaissent apres versement du podium : ne pas
+ * deduire l'un de l'autre.
+ * PIEGE : les valeurs par defaut (entryFee, maxPlayers) du store ne sont
+ * qu'un repli d'affichage ; la source reste la reponse serveur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import type { LeagueSeason, LeagueDayKey } from '../stores/leagueStore';
 import { authorizedGet, authorizedPost, authorizedPatch } from './apiClient';
 

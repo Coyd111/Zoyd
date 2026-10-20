@@ -1,3 +1,22 @@
+/**
+ * toast - adaptateur d'API toast, au-dessus du store maison.
+ *
+ * Offre la meme surface d'appel que `sonner` (toast.success, toast.error,
+ * toast.loading, toast.dismiss) mais ecrit dans toastStore, qui est le seul
+ * systeme reellement monte dans l'application.
+ *
+ * INVARIANT : passer par le store, pas par un composant. Cet adaptateur est
+ * utilisable hors composant React (dans un store, un service).
+ * PIEGE : aucun <Toaster /> n'est monte dans l'app. Les ~180 appels directs a
+ * `toast` de `sonner` ne s'affichaient donc jamais : le joueur n'avait aucun
+ * retour sur une action reussie ou refusee.
+ * PIEGE : le second argument accepte une chaine ET un objet d'options. La
+ * chaine est le raccourci `{ description }` : c'est l'usage dominant, ne pas
+ * le retirer sans migrer tous les appelants.
+ * PIEGE : un `id` stable remplace le toast au lieu de l'empiler.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import { useToastStore } from '../stores/toastStore';
 
 /**

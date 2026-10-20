@@ -1,3 +1,21 @@
+/**
+ * Navbar - barre haute : logo, indicateur de connexion, solde, notifications.
+ *
+ * Affiche aussi le lien d'administration, visible uniquement si le role du
+ * joueur est `admin`.
+ *
+ * INVARIANT : l'indicateur de connexion distingue `isConnected` (on cherche
+ * a etre connecte) de `serverConnected` (le socket est reellement ouvert).
+ * N'afficher ' En ligne ' que sur serverConnected : sinon l'interface
+ * annonce un etat vert pour une connexion qui n'existe pas.
+ * PIEGE : le solde vient du walletStore, qui est synchronise avec le store
+ * d'auth par syncAuthBalance. Sans cette synchro, l'en-tete affiche l'ancien
+ * total alors que la page portefeuille est deja a jour.
+ * PIEGE : le lien ' Control ' est une commodite d'UX. Le role `admin` dans
+ * le store n'est PAS une autorisation : la barriere est serveur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import React, { useState } from 'react';
 import { Link } from 'react-router';
 import { Settings, Wallet } from 'lucide-react';

@@ -1,3 +1,28 @@
+/**
+ * matchStore - etat des matchs : collection, filtres, projections de gains.
+ *
+ * Detient les matchs recus du serveur, les filtres de l'ecran hub, et les
+ * selecteurs (matchs actifs, historique, eligibilite arbitre). Porte les
+ * TYPES metier partages par tous les ecrans match.
+ *
+ * INVARIANT : hydrateFromServer FUSIONNE (delta socket), replaceFromServer
+ * REMPLACE. Le socket diffuse des deltas : remplacer effacerait tous les
+ * autres matchs de la liste.
+ * INVARIANT : ACTIVE_STATUSES = recruiting, full, check_in, ready,
+ * in_progress, awaiting_confirmation. `awaiting_arbiter` en est ABSENT : un
+ * match vivant sans arbitre n'apparait donc pas dans les matchs actifs. Tout
+ * composant qui filtre sur match.status doit le savoir.
+ * INVARIANT : le serveur retire userId du payload et livre `isMe`, calcule
+ * POUR chaque destinataire. Sur un match observe par un tiers, `isMe` vaut
+ * false pour tout le monde : c'est le seul repere du joueur courant.
+ * PIEGE : `payoutDistributed: 'pending'` doit survivre a la normalisation.
+ * L'ecraser en false ferait passer un resultat non verse pour un match regle
+ * (stats fausses).
+ * PIEGE : StoredMatch n'a PAS de signature d'index : une faute de frappe
+ * devient une erreur de compilation au lieu d'un `unknown` silencieux.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';

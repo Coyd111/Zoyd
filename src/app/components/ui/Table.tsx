@@ -1,3 +1,22 @@
+/**
+ * Table - primitives de tableau (Header, Body, Row, Head, Cell, Caption,
+ * Footer).
+ *
+ * Elements de structure et de style d'un tableau semantique.
+ *
+ * INVARIANT : utiliser les primitives plutot qu'un <table> nu : le style
+ * (bordures, fond, survol) passe par les classes des sous-composants.
+ * INVARIANT : un tableau de donnees a un en-tete de colonne (TableHead) : la
+ * ligne d'en-tete est ce qui rend la table navigable au clavier et lisible
+ * par un lecteur d'ecran.
+ * PIEGE : le composant `Table` est un <table> SEMANTIQUE : ne pas le
+ * remplacer par des div, la structure du document s'en trouve alteree.
+ * PIEGE : ScrollArea autour d'un tableau large est accepte, mais le tableau
+ * doit rester lisible en entier : la colonne la plus importante ne doit pas
+ * disparaitre dans le defilement horizontal.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

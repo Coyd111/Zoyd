@@ -1,3 +1,18 @@
+/**
+ * ScrollArea - zone de defilement avec barres personnalisees (Radix).
+ *
+ * Sous-composants : Root, Viewport, ScrollBar, Thumb, Corner.
+ *
+ * INVARIANT : le Viewport est le conteneur qui recoit la hauteur : c'est
+ * lui qui porte `overflow`. Le ScrollBar seul ne defile rien.
+ * PIEGE : la hauteur du ScrollArea doit venir des props (une taille de
+ * parent), sinon la zone grandit avec son contenu et ne defile jamais.
+ * PIEGE : `ScrollArea` n'est pas accessible au clavier par lui-meme : le
+ * contenu doit rester focusable, sinon il devient impossible a atteindre
+ * au clavier.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

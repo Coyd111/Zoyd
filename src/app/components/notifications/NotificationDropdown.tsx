@@ -1,3 +1,20 @@
+/**
+ * NotificationDropdown - menu deroulant des notifications, cloche de la barre.
+ *
+ * Liste les notifications triees par priorite, permet de marquer comme lu,
+ * et navigue vers l'action associee.
+ *
+ * INVARIANT : marquer comme lu passe par le store, qui appelle l'API. Un
+ * simple changement local ferait diverger la cloche de l'etat serveur.
+ * PIEGE : safeNavigate n'accepte que les URLs de meme origine (http/https).
+ * Une actionUrl venue du serveur ne doit pas pouvoir rediriger le joueur
+ * vers un site externe : c'est une protection contre l'open redirect.
+ * PIEGE : le compteur de non-lus vient du selecteur dedie
+ * (selectUnreadCount) : le recalculer ici dupliquerait la regle de
+ * priorite et de dismissal.
+ *
+ * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
+ */
 import React, { useRef, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';

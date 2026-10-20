@@ -1,3 +1,26 @@
+/**
+ * walletStore - soldes, transactions et politique de retrait du joueur.
+ *
+ * Detient cashBalance, bonusBalance, lockedBalance, pendingWinnings,
+ * l'historique des transactions et les entrees bloquees. Expose le depot et
+ * le retrait, qui passent par l'API.
+ *
+ * INVARIANT : toute ecriture passe par l'API (depositWalletBalance,
+ * withdrawWalletBalance, fetchWalletSnapshot). Ne jamais ecrire le solde en
+ * local en esperant que le serveur suive : le serveur est seul juge de
+ * l'argent, et le socket peut corriger l'ecran a tout moment.
+ * INVARIANT : applyRemoteWallet ne touche QUE les soldes. L'evenement
+ * `wallet:update` ne contient pas les transactions : les remplacer par une
+ * liste vide ferait disparaitre l'historique a chaque gain.
+ * PIEGE : refreshFromServer passe l'userId attendu. Sans ce garde, une
+ * reponse arrivee apres un logout + reconnexion ecrirait le wallet ET le
+ * profil du compte precedent chez le nouveau joueur.
+ * PIEGE : le taux de frais et le minimum de retrait sont PUBLIES par le
+ * serveur. Les constantes locales ne servent qu'a la premiere seconde de
+ * chargement : ne pas les coder en dur comme une source de verite.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { create } from 'zustand';
 import { depositWalletBalance, fetchWalletSnapshot, type WalletSnapshot, type WithdrawalPolicy, withdrawWalletBalance } from '../lib/walletApi';
 import { useAuthStore } from './authStore';

@@ -1,3 +1,19 @@
+/**
+ * MatchCard - vignette d'un match dans les listes (hub MJ, tableaux de bord).
+ *
+ * Affiche format, carte, cagnotte, heure, joueurs et statut. Donnees en
+ * lecture seule : la carte ne declenche aucune action metier.
+ *
+ * INVARIANT : la carte est une PURE FONCTION des props. Toute action passe
+ * par la page parente : sinon le hub MJ cumule les responsabilites.
+ * PIEGE : la liste des libelles de statut DOIT rester alignee sur le type
+ * MatchStatus du store, `awaiting_arbiter` compris. Un match en attente
+ * d'arbitre est vivant : il ne doit pas etre affiche comme termine.
+ * PIEGE : le pot affiche vient des props, pas d'un recalcul local : le
+ * serveur calcule la partition sur la cagnotte reellement bloquee.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React from 'react';
 import { ShieldCheck, Clock, Radio, Users } from 'lucide-react';
 import { formatZC, getRelativeTime } from '../../lib/utils';

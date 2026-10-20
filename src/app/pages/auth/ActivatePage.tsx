@@ -1,3 +1,18 @@
+/**
+ * ActivatePage - activation d'un compte par code recu par email.
+ *
+ * Saisit le code d'activation, permet de le renvoyer (avec un delai) et de
+ * changer l'email de destination.
+ *
+ * INVARIANT : le delai de renvoi du code est de 60 s : le bouton doit
+ * respecter ce delai, sinon le joueur declenche une rafale de requetes.
+ * PIEGE : le compte n'existe qu'apres activation : le routeur doit continuer
+ * aconsiderer le joueur comme non connecte tant que le code n'est pas passe.
+ * PIEGE : ne jamais journaliser le code d'activation : c'est un secret a
+ * usage unique.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
+ */
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { toast } from '../../lib/toast';

@@ -1,3 +1,24 @@
+/**
+ * LeagueSeasonPage - detail d'une saison de BR League.
+ *
+ * Affiche le calendrier, les groupes de qualification jour par jour, le
+ * classement, les finalistes et le podium, avec les actions d'administration.
+ *
+ * INVARIANT : le cycle de la saison est une machine a etats cote serveur.
+ * Les transitions (lancer une journee, passer en finale, saisir les
+ * resultats) passent par leagueApi.ts et le front relit l'etat renvoye.
+ * INVARIANT : les actions d'administration ne sont visibles que pour un
+ * admin, et le serveur les refuse de toute facon. Le garde d'affichage est
+ * de l'UX, pas une autorisation.
+ * PIEGE : un slot de qualification a son propre statut (pending,
+ * scheduled, live, finished) : ne pas le confondre avec le statut de la
+ * saison (registering, qualifying, final, completed).
+ * PIEGE : les resultats du podium sont saisis par l'admin, puis le serveur
+ * paie. L'ecran doit montrer l'etat du paiement, pas supposer qu'il a eu
+ * lieu.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Crown, Medal, Zap, AlertTriangle } from 'lucide-react';

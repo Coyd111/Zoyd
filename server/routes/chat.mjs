@@ -1,3 +1,35 @@
+/**
+ * server/routes/chat.mjs - Domaine CHAT : bootstrap, detail d'un canal,
+ * creation d'un canal, envoi d'un message, accuse de lecture.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`chat`) ->
+ * lecture du corps -> controle d'acces au canal (`canAccessChatChannel`, 404
+ * `CHANNEL_NOT_FOUND`) -> ecriture -> diffusion.
+ *
+ * INVARIANT : l'acces au canal est verifie par `canAccessChatChannel` sur
+ *   CHAQUE route qui touche un canal, et un refus repond 404 (et non 403) :
+ *   l'existence du canal n'est pas divulguee.
+ * INVARIANT : le texte du message est sanitise (`sanitizeText`) et tronque a
+ *   2000 caracteres AVANT d'etre stocke.
+ * INVARIANT : l'expediteur est la SESSION (`senderId`, `senderPseudo`), pas
+ *   un champ du corps de requete.
+ * INVARIANT : les participants d'un canal cree sont la session plus les
+ *   utilisateurs EXISTANTS : un identifiant inconnu est ecarte silencieusement.
+ * INVARIANT : la diffusion suit les helpers de chat-helpers.mjs (global,
+ *   scope public, ou room `user:<id>` de chaque participant).
+ * PIEGE : le refus d'acces est un 404 : un 403 confirmerait l'existence du
+ *   canal et permettrait d'enumerer les canaux prives.
+ * PIEGE : le detail renvoie 150 messages, le bootstrap 20 par canal actif :
+ *   les deux bornes sont differentes et voulues.
+ * PIEGE : l'accuse de lecture est diffusee dans la room personnelle
+ *   `user:<userId>`, pas dans la room du canal.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,

@@ -1,3 +1,25 @@
+/**
+ * profileMetrics.ts - metriques de competition d'un profil (joueur ou equipe).
+ *
+ * Calcule resume, derniers matchs, classements et totaux de gains a partir
+ * des matchs et tournois deja charges dans les stores. Aucune requete.
+ *
+ * INVARIANT : la resolution du joueur dans un match suit deux regles : `isMe`
+ * sur son PROPRE profil (calcule par le serveur pour le demandeur), `pseudo`
+ * sur le profil public d'un tiers. Melanger les deux affiche le mauvais
+ * joueur.
+ * INVARIANT : un match compte comme gagne/perdu seulement si le pot est
+ * reellement verse (isMatchPayoutSettled). Un resultat `pending` ou `false`
+ * n'est pas un gain.
+ * PIEGE : getWinnerPayout renvoie le TOTAL DE L'EQUIPE. L'additionner comme
+ * un gain individuel multiplies le profil par le nombre de joueurs de
+ * l'equipe (2x en 2v2, 5x en 5v5). Aucun argent ne bouge : c'est une
+ * divergence d'affichage.
+ * PIEGE : le serveur ne livre pas userId dans les matchs diffuses : compter
+ * sur userId ferait correspondre aucun match a un joueur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12.3 (Le piege du total)
+ */
 import type { User, UserStats } from '../app/stores/authStore';
 import { isMatchPayoutSettled, type Match, type MatchPlayer } from '../app/stores/matchStore';
 import type { Tournament, TournamentEntry, TournamentEntryMember } from '../app/stores/tournamentStore';

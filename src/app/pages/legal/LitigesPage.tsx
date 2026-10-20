@@ -1,3 +1,19 @@
+/**
+ * LitigesPage - reglement des litiges.
+ *
+ * Document legal statique : quand contester, preuves exigees, gel de la
+ * cagnotte, arbitrage, decision finale.
+ *
+ * INVARIANT : document versionne (date de mise a jour). Toute evolution de
+ * la procedure de litige doit etre refletee ici en meme temps que dans le
+ * code serveur.
+ * PIEGE : le gel de la cagnotte est une regle metier : le code (freeze du
+ * prizePool) et ce document doivent dire la meme chose.
+ * PIEGE : ce document est en `noindex` implicite ou explicite selon le
+ * layout : verifier la coherence avec le SEO.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';

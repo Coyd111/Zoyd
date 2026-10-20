@@ -1,3 +1,40 @@
+/**
+ * server/rate-limiter.mjs - Quotas par IP et par groupe, plus la resolution de
+ * l'IP client reelle.
+ *
+ * Fenetre glissante simplifiee : un compteur par couple (IP, groupe), remis a
+ * zero quand la fenetre est depassee.
+ *
+ * INVARIANT : la cle de bucket est `${ip}|${group}` - les quotas sont
+ *   independants par groupe pour une meme IP.
+ * INVARIANT : le `X-Forwarded-For` retenu est le DERNIER saut : le premier
+ *   est entierement controle par l'appelant, qui pourrait changer d'en-tete a
+ *   chaque requete pour obtenir un bucket neuf.
+ * INVARIANT : `X-Forwarded-For` n'est lu que si le pair direct est un proxy
+ *   de confiance (`isTrustedProxyPeer`) ou si `TRUST_PROXY=true`.
+ * INVARIANT : `rateLimitGuard` renvoie TRUE quand la requete est AUTORISEE -
+ *   convention OPPOSEE a `requireAdmin` / `requireAdmin2fa` (qui renvoient
+ *   null sur refus).
+ * INVARIANT : l'assouplissement des quotas exige les TROIS conditions
+ *   (NODE_ENV=test, ALLOW_DEBUG_CODES=true, ZOYD_DISABLE_SUPABASE=true) : un
+ *   service connecte a une base reelle ne doit jamais pouvoir se mettre en
+ *   mode detendu.
+ * PIEGE : un groupe absent de `RATE_LIMIT_CONFIG` retombe SILENCIEUSEMENT sur
+ *   `default` - c'est le cas du groupe 'match' utilise par
+ *   `POST /api/br/lobbies`.
+ * PIEGE : le compteur est REINITIALISE, pas glisse : une rafale terminee la
+ *   fenetre passe encore.
+ * PIEGE : a saturation de MAX_RATE_LIMIT_BUCKETS, le plus ancien bucket est
+ *   evince, ce qui libere un quota plus tot que prevu.
+ * PIEGE : `checkRateLimit` est aussi appele directement par les handlers
+ *   socket (groupes 'chat' et 'default'), sans passer par le garde HTTP.
+ * PIEGE : `logout` a son propre groupe (`auth_logout`) : le partager avec
+ *   `auth` permettait de verrouiller la connexion de toute une IP partagee.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { respondJson } from './http-utils.mjs';
 import { createLogger } from './logger.mjs';
 

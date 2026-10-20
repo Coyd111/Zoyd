@@ -1,3 +1,34 @@
+/**
+ * server/code-delivery.mjs - Livraison des codes d'authentification a usage
+ * unique (activation, changement d'email, reinitialisation de mot de passe).
+ *
+ * Canaux essayes dans l'ordre : Resend (HTTPS), Brevo (HTTPS), SMTP,
+ * webhook `CODE_DELIVERY_WEBHOOK`, puis repli non productif.
+ *
+ * INVARIANT : le webhook n'est appele que sur une URL HTTPS a hote PUBLIC :
+ *   ni `http`, ni `localhost` / `.local` / `.internal`, ni IPv4, ni IPv6
+ *   (protection anti-SSRF).
+ * INVARIANT : le code n'est journalise que si `ALLOW_DEBUG_CODES === 'true'` :
+ *   le defaut est fail-closed, un code d'authentification ne se journalise
+ *   jamais en production.
+ * INVARIANT : Resend et Brevo sont essayes AVANT SMTP : les ports 25/465/587
+ *   sont fermes sur Render gratuit.
+ * INVARIANT : un echec de fournisseur est journalise puis le suivant est
+ *   essaye : `deliverAuthCode` ne leve pas (seul le webhook renvoie
+ *   `delivered:false`).
+ * PIEGE : la valeur retournee `channel` vaut 'none' quand rien n'a ete
+ *   envoye : la route doit alors repondre honnetement ("en attente") au lieu
+ *   de pretendre que le message est parti.
+ * PIEGE : le destinataire est masque dans les journaux (`maskDestination`).
+ * PIEGE : l'import de `nodemailer` est dynamique et peut echouer : il est
+ *   rattrape et le canal SMTP est saute.
+ * PIEGE : l'expiration de 15 minutes du code est geree par la couche de
+ *   persistance, pas ici.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // server/code-delivery.mjs — Auth code delivery (activation / password reset).
 // Canaux par ordre de priorité :
 // 1. Resend API HTTPS (port 443, compatible Render gratuit) si RESEND_API_KEY

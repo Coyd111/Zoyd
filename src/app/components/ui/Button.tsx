@@ -1,3 +1,24 @@
+/**
+ * Button - bouton d'action du design system ZOYD.
+ *
+ * Enveloppe la primitive button avec des variantes `cva` (primary, secondary,
+ * ghost, danger) et des tailles (sm, md, lg, xl). Anime le survol et
+ * l'appui via motion.
+ *
+ * INVARIANT : toutes les tailles gardent `min-h-[44px]` : c'est la cible
+ * tactile mobile du design system, pas une decoracion.
+ * INVARIANT : `disabled` doit rester lisible et non cliquable ; l'animation
+ * motion ne doit jamais donner l'illusion d'un bouton actif.
+ * PIEGE : l'animation enveloppe le bouton dans un motion.div. Ajouter un
+ * `onClick` sur le motion.div au lieu du Button fait perdre le focus et
+ * l'accessibilite clavier.
+ * PIEGE : les classes viennent de cva ET de cn(). twMerge resout les
+ * conflits Tailwind : ne pas reinventer un ordre de classes a la main.
+ * PIEGE : une correction de classe se verifie dans le CSS GENERE, pas dans
+ * la source (voir docs/06-tests.md).
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../lib/utils';

@@ -1,3 +1,24 @@
+/**
+ * ProfileView - affichage complet d'un profil (joueur ou equipe).
+ *
+ * Utilise par ProfilPage (son propre profil) et PublicProfilPage (profil
+ * d'un tiers). Compose les resumes de competition, le score de confiance,
+ * l'historique de matchs et les actions sociales.
+ *
+ * INVARIANT : la resolution du joueur dans un match suit deux regles :
+ * `isMe` sur son PROPRE profil (calcule par le serveur pour le demandeur),
+ * `pseudo` sur le profil public d'un tiers. Melanger les deux affiche le
+ * mauvais joueur.
+ * PIEGE : getWinnerPayout renvoie le TOTAL DE L'EQUIPE gagnante, pas la part
+ * individuelle. L'afficher comme un gain personnel gonfle le profil d'un
+ * facteur 2 en 2v2 et 5 en 5v5. Aucun mouvement d'argent n'est en jeu :
+ * c'est une divergence d'affichage.
+ * PIEGE : un gain n'est affiche que si le pot est reellement verse
+ * (isMatchPayoutSettled). Un resultat en attente de confirmation affiche
+ * ' - ', pas un montant.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';

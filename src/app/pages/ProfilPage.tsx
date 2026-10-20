@@ -1,3 +1,20 @@
+/**
+ * ProfilPage - profil du joueur connecte, avec resume de competition.
+ *
+ * Reutilise ProfileView pour l'affichage et ajoute le resume de competition
+ * (buildCompetitiveSummary) ainsi que la deconnexion.
+ *
+ * INVARIANT : le resume doit venir de profileMetrics.ts, qui applique la
+ * MEME resolution que ProfileView : `isMe` sur son propre profil, `pseudo`
+ * sur le profil d'un tiers. Melanger les deux affiche le mauvais joueur.
+ * PIEGE : un gain n'est affiche que si le pot est reellement verse
+ * (isMatchPayoutSettled). Un resultat en attente de confirmation affiche
+ * ' - ', pas un montant.
+ * PIEGE : la deconnexion passe par useLogout, qui vide tous les stores de
+ * session, pas par un simple logout() du store d'auth.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
+ */
 import { useMemo } from 'react';
 import { Link } from 'react-router';
 import { useReducedMotion } from 'motion/react';

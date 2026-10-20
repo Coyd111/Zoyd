@@ -1,4 +1,34 @@
 /**
+ * server/single-process-guard.mjs - Verifie que le serveur tourne dans un
+ * processus UNIQUE, et refuse de demarrer sinon.
+ *
+ * L'etat des joueurs vit en memoire : deux instances se quotidient sur le
+ * read-modify-write du payload complet, sans qu'aucun verrou ne les voie.
+ *
+ * INVARIANT : `assertSingleProcess` doit etre appele AVANT tout chargement
+ *   d'etat : charger puis refuser laisserait des mutations en cours sur un
+ *   etat que l'on ne pilote pas.
+ * INVARIANT : le refus est limite aux CAS CERTAINS (worker de cluster actif,
+ *   ou `WEB_CONCURRENCY` explicitement superieure a 1). Une valeur
+ *   illisible est signalee mais laisse demarrer.
+ * INVARIANT : l'unicite est deduite de `WEB_CONCURRENCY` (et du statut de
+ *   cluster), jamais du nombre de sockets ouverts.
+ * INVARIANT : `isMultiProcess` renvoie `false` sur une valeur illisible :
+ *   "je ne sais pas" ne doit pas etre confondu avec "je sais que c'est
+ *   bon".
+ * PIEGE : deux demarrages independants (hors `WEB_CONCURRENCY` et hors
+ *   cluster) ne sont PAS detectes : c'est la limite connue et bornee de
+ *   cette protection (cf. docs/audit/02-argent.md).
+ * PIEGE : `TRUST_PROXY` et `WEB_CONCURRENCY` n'ont rien a voir : ne pas
+ *   confondre les deux variables lors d'un diagnostic.
+ * PIEGE : le module est importable a tout moment, mais `assertSingleProcess`
+ *   leve : l'appeler hors demarrage arreterait le processus de test.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
+/**
  * Verrou d'unicite du processus.
  *
  * Pourquoi ce fichier existe

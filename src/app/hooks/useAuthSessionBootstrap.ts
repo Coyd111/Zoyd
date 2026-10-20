@@ -1,3 +1,21 @@
+/**
+ * useAuthSessionBootstrap - revalide la session au chargement de l'application.
+ *
+ * Appelle GET /api/auth/me (le cookie httpOnly part tout seul), puis hydrate
+ * le store d'authentification. Enregistre aussi la purge de session dans le
+ * registre sessionPurge.ts, branche au chargement du module.
+ *
+ * INVARIANT : le cookie est la seule preuve de session. Aucun token n'est
+ * lu ni ecrit en JavaScript, et expiresAt n'est qu'un MIROIR cote store.
+ * PIEGE : la purge n'a lieu que sur un vrai 401. Un cold-start Render
+ * (timeout 30 s) ou un 502 doivent proposer un reessai, pas ejecter le joueur
+ * alors que son cookie est valide.
+ * PIEGE : l'enregistrement du handler de purge se fait au CHARGEMENT du
+ * module (top-level de App.tsx), donc avant le premier rendu et avant toute
+ * requete : ne pas le deplacer dans un useEffect.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6.1 (Les hooks de session)
+ */
 import { useEffect, useRef } from 'react';
 import { toast } from '../lib/toast';
 import { fetchCurrentUser, type AuthResponse } from '../lib/authApi';

@@ -1,3 +1,20 @@
+/**
+ * CountdownTimer - compte a rebours avant le debut d'un match.
+ *
+ * Affiche un decompte HH:MM:SS recalcule chaque seconde et signale la fin
+ * du delai via `onComplete`.
+ *
+ * INVARIANT : la source de verite est `targetDate` (Date ou chaine ISO),
+ * pas un etat local decremente : le composant doit se resynchroniser si la
+ * cible change.
+ * PIEGE : `onComplete` n'est appele qu'une fois (l'intervalle est alors
+ * nettoye). Un parent qui passe une fonction inline la voit changer a
+ * chaque rendu : ne pas remettre le timer a zero sur ce changement.
+ * PIEGE : le rendu depend de la locale et du fuseau du navigateur : un
+ * decalage d'heure affiche un compte a rebours faux.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
+ */
 import React, { useState, useEffect } from 'react';
 import { getCountdownDisplay } from '../../lib/utils';
 import { cn } from '../../lib/utils';

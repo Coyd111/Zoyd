@@ -1,3 +1,16 @@
+/**
+ * Toggle - bouton a deux etats (enveloppe Radix Toggle, variantes `cva`).
+ *
+ * Variantes default et outline ; pressed / non-pressed.
+ *
+ * INVARIANT : l'etat actif vient de Radix (`pressed`). Ne pas le dupliquer
+ * dans un state local : les deux peuvent diverger.
+ * PIEGE : Toggle n'a pas de role de case a cocher : dans un formulaire, un
+ * Checkbox est le bon composant.
+ * PIEGE : les classes viennent de cva + cn() : twMerge resout les conflits.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

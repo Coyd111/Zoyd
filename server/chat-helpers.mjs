@@ -1,3 +1,32 @@
+/**
+ * server/chat-helpers.mjs - Canaux de chat : construction, regle d'acces,
+ * payload de demarrage et helpers de diffusion.
+ *
+ * Le canal `global` et un canal par match coexistent ; les canaux de
+ * conversation privee sont crees a la demande par les routes.
+ *
+ * INVARIANT : `canAccessChatChannel` est LA regle d'acces (admin, ou scope
+ *   public, ou participant). Elle est appliquee par les routes de chat ET par
+ *   les handlers socket de presence et de saisie.
+ * INVARIANT : le payload de demarrage est BORNE : 50 canaux, 10 canaux actifs
+ *   x 20 messages. Ne pas elargir ces bornes sans mesurer la charge.
+ * INVARIANT : la diffusion d'un message vise la room du canal pour un scope
+ *   public, la room `user:<id>` de chaque participant, et TOUT LE MONDE pour
+ *   le canal `global`.
+ * INVARIANT : le canal construit depuis un match a pour participants les
+ *   joueurs PLUS l'arbitre, et un scope qui suit `match.visibility`.
+ * PIEGE : la liste des participants est figee au moment de la construction du
+ *   canal : un joueur qui rejoint le match plus tard n'y est pas ajoute
+ *   automatiquement.
+ * PIEGE : `broadcastChatMessage` sort sans emettre si le canal ou le message
+ *   est manquant - ce n'est pas une erreur a propager.
+ * PIEGE : le nombre de messages non lus vient de la couche de persistance
+ *   (`getUnreadCountForUser`), pas du tableau des messages.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import {
   getChatChannelById,
   upsertChatChannel,

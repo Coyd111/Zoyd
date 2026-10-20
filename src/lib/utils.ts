@@ -1,3 +1,22 @@
+/**
+ * utils.ts - utilitaires de formatage partages par tout le front.
+ *
+ * Regroupe `cn` (fusion de classes Tailwind), le formatage des montants en
+ * ZC, l'arrondi des montants, et quelques helpers de temps et de texte.
+ *
+ * INVARIANT : `cn` = twMerge(clsx(...)). C'est la SEULE facon de composer
+ * des classes Tailwind dans l'application : c'est elle qui resout les
+ * conflits (une classe du appelant doit ecraser la variante).
+ * INVARIANT : tout montant affichable passe par formatZC, et tout montant
+ * calcule par roundAmount. Un montant non arrondi affiche des centimes
+ * fantomes ; un arrondi fait a l'affichage fausse les totaux.
+ * PIEGE : ce module est feuille : il ne doit importer aucun store ni
+ * aucune API. Une dependance ici se propage partout.
+ * PIEGE : le formatage des montants est en ZC (monnaie du jeu), pas en
+ * FCFA : ne pas melanger les deux dans le meme ecran.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 

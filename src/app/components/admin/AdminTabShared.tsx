@@ -1,3 +1,21 @@
+/**
+ * AdminTabShared - elements partages par les onglets du tableau de bord admin.
+ *
+ * Contient les tables de correspondance (tonalite par statut, libelles FR,
+ * categories de litige) et les composants de presentation partages (StatusPill,
+ * MetaChip, SignalBadge, PriorityBadge).
+ *
+ * INVARIANT : la tonalite par statut doit couvrir TOUS les statuts de match,
+ * `awaiting_arbiter` compris. Un statut absent s'affiche avec la valeur par
+ * defaut, sans signal visuel.
+ * PIEGE : ce fichier ne doit contenir QUE de la presentation. Les actions
+ * admin (resoudre, annuler, sanctionner) sont declenchees par le parent
+ * AdminDashboardPage, qui appelle l'API.
+ * PIEGE : les libelles FR sont une table unique : dupliquer une regle
+ * d'affichage dans un onglet la desynchronise des autres.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React from 'react';
 import type { Match } from '../../stores/matchStore';
 

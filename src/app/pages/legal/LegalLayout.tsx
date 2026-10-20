@@ -1,3 +1,21 @@
+/**
+ * LegalLayout - coquille commune des pages legales (navigation, SEOHead).
+ *
+ * Fournit la mise en page, le fil d'ariane legal, la navigation entre les
+ * documents, la date de mise a jour et le bloc d'assistance partage.
+ *
+ * INVARIANT : les pages legales sont hors AppLayout : pas de session requise,
+ * pas de chrome applicative. Ce layout doit rester affichable sans store.
+ * INVARIANT : ASSISTANCE est partage par tous les documents : le contact
+ * d'assistance doit etre le MEME partout.
+ * PIEGE : le SEOHead est monte ici avec le titre, la description et le
+ * chemin de la page. Une page legale qui oublie de passer `path` produira
+ * une canonique vers la racine.
+ * PIEGE : les pages legales ne doivent pas dependre du design system au point
+ * d'etre illisibles si le CSS ne charge pas.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
+ */
 import React from 'react';
 import { Link, useLocation } from 'react-router';
 import { ArrowLeft } from 'lucide-react';

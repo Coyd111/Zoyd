@@ -1,3 +1,19 @@
+/**
+ * Slider - curseur de selection (enveloppe Radix Slider).
+ *
+ * Sous-composants : Root, Track, Range, Thumb.
+ *
+ * INVARIANT : le Root porte `value`, `min`, `max` et `step` : ce sont eux
+ * qui definissent la granularite reelle des valeurs rendues.
+ * INVARIANT : le Thumb doit avoir un `aria-label` : sans lui, le curseur
+ * n'est pas identifiable au clavier.
+ * PIEGE : dans un formulaire, la valeur doit venir du controller
+ * react-hook-form : ne pas lire l'etat interne de Radix.
+ * PIEGE : le nombre de Thumb doit correspondre au nombre de valeurs : un
+ * Thumb de plus que les valeurs casse la gestion clavier de Radix.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

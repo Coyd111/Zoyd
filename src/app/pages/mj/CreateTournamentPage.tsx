@@ -1,3 +1,21 @@
+/**
+ * CreateTournamentPage - creation d'un tournoi avec bracket automatique.
+ *
+ * Regle format, nombre d'entrees, frais, calendrier, regles et
+ * restrictions, puis cree le tournoi via l'API.
+ *
+ * INVARIANT : la creation passe par l'API (createTournament). Le bracket
+ * est genere par le serveur : le front ne doit pas le recomposer.
+ * INVARIANT : leArbitre peut etre reserve en meme temps que la creation ;
+ * l'arbitrage est une ressource comptee par le serveur.
+ * PIEGE : les montants du palier (1er, 2e, 3e) sont calcules par le
+ * serveur sur la cagnotte reellement bloquee. Les reproduire localement
+ * donnerait un palier faux des le premier ecart de roster.
+ * PIEGE : la date de debut conditionne le deroulement des journees : une
+ * date dans le passe doit etre refusee avant l'envoi.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.4 (Pages mj)
+ */
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';

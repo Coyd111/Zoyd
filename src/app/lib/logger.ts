@@ -1,3 +1,20 @@
+/**
+ * logger - journalisation client structuree, prefixee [ZOYD].
+ *
+ * Expose logError, logWarning et logInfo. En production, la sortie est un
+ * JSON ; hors production, l'objet reste lisible dans la console.
+ *
+ * INVARIANT : logInfo n'ecrit RIEN en production. C'est le seul niveau
+ * bruyant ; les erreurs et warnings sortent toujours.
+ * PIEGE : la sortie console EST le comportement attendu de ce module.
+ * Ne pas remplacer console.error/warn/log par autre chose sans changer le
+ * contrat du fichier.
+ * PIEGE : ne jamais passer de secret, de token ni de donnee personnelle dans
+ * le `context` : le payload part en console et peut finir dans un rapport
+ * d'erreur ou une capture d'ecran.
+ *
+ * Voir aussi : docs/08-frontend.md - section 11 (Les points de vigilance)
+ */
 type ErrorLevel = 'error' | 'warn' | 'info';
 
 interface ErrorContext {

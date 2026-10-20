@@ -1,3 +1,25 @@
+/**
+ * friendsStore - amis, demandes, blocages et signalements.
+ *
+ * Detient la liste d'amis (profils publics), les demandes en attente, les
+ * comptes bloques et les signalements de moderation. Toutes les mutations
+ * passent par socialApi.ts.
+ *
+ * INVARIANT : le serveur renvoie des PROFILS PUBLICS pour les amis, sans
+ * `status` ni `isStreamer` : ces deux champs sont DERIVES ici (statut force a
+ * offline, isStreamer depuis streamerMode).
+ * INVARIANT : toute mutation (demande, acceptation, blocage, signalement)
+ * passe par l'API. Ecrire dans le store sans appel serveur laisse une ligne
+ * que personne d'autre ne voit et que le prochain rechargement efface.
+ * PIEGE : le signalement local doit reprendre l'identifiant RENVOYE PAR LE
+ * SERVEUR. Fabriquer un id local (RP-<Date.now()>) faisait apparaitre la
+ * meme ligne deux fois apres hydratation, dont une que personne n'a lue.
+ * PIEGE : hydrateReportsFromServer est separe de hydrateFromServer : sans
+ * lui, le tableau de bord admin ne montrait que les signalements faits dans
+ * CE navigateur.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { create } from 'zustand';
 import {
   sendServerFriendRequest,

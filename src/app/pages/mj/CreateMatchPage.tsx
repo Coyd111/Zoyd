@@ -1,3 +1,24 @@
+/**
+ * CreateMatchPage - creation d'un match (formulaire en plusieurs etapes).
+ *
+ * Regle format, carte, regles, frais d'entree et restrictions, puis cree le
+ * match via l'API et applique la reponse serveur au profil et au wallet.
+ *
+ * INVARIANT : la creation passe par createServerMatch (API), puis la reponse
+ * (match, user, wallet) est hydratee avec applyServerAccountState. Ecrire
+ * le match localement en esperant que le serveur suive afficherait un match
+ * inexistant.
+ * INVARIANT : si le solde est insuffisant, le joueur est redirige vers le
+ * portefeuille avec un montant a recharger (buildFundingPath) - le retour
+ * doit sanitiser la destination.
+ * PIEGE : le `returnTo` n'est accepte que pour une liste blanche de
+ * prefixes (/mj, /br-league) et doit commencer par un seul `/` : un `//`
+ * ou une URL absolue serait une redirection ouverte.
+ * PIEGE : le match cree debloque les frais DANS la cagnotte : la partition
+ * affichee est celle du serveur, pas prizePool moins des frais.
+ *
+ * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
+ */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';

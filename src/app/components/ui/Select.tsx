@@ -1,3 +1,21 @@
+/**
+ * Select - liste deroulante (enveloppe Radix Select).
+ *
+ * Sous-composants : Trigger, Value, Content, Item, Group, Label, Separator,
+ * ScrollUpButton, ScrollDownButton, Viewport.
+ *
+ * INVARIANT : le Trigger affiche `SelectValue` : c'est lui qui porte le
+ * texte selectionne. Un Trigger sans SelectValue affiche la valeur brute
+ * (identifiant) au lieu du libelle.
+ * INVARIANT : `SelectItem` doit avoir une `value` non vide et unique : c'est
+ * la cle reellement transmise.
+ * PIEGE : Radix Select n'accepte pas un item `disabled` Focusable : le
+ * navigation clavier passe alors sur un element mort.
+ * PIEGE : pour un formulaire, passer la valeur au `name` du Trigger ou
+ * utiliser un controller (react-hook-form) ; ne pas lire le libelle affiche.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

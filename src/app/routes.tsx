@@ -1,3 +1,22 @@
+/**
+ * routes.tsx - routeur du front : 35 entrees, statiques pour l'accueil et
+ * l'authentification, paresseuses pour tout le reste.
+ *
+ * createBrowserRouter. RootLayout est la racine, AppLayout enveloppe les
+ * ecrans authentifies. Les pages legales sont hors AppLayout (pas de session
+ * requise). Chaque branche protegee porte un errorElement.
+ *
+ * INVARIANT : `adminLoader` ne verifie RIEN : c'est un simple import() de
+ * AdminDashboardPage. La redirection admin est faite par la prop
+ * `requireAdmin` d'AppLayout, qui est de l'UX, PAS une securite. La seule
+ * barriere reelle est serveur (requireAdmin / requireAdmin2fa sur /api/admin/*).
+ * PIEGE : toute page ajoutee ici doit l'etre via un loader paresseux, sauf
+ * s'il s'agit de l'accueil, de l'auth, d'une page legale ou du 404.
+ * PIEGE : deux routes de compatibilite redirigent les URLs accentuees vers
+ * les URLs ASCII ; les supprimer casse les liens deja partages.
+ *
+ * Voir aussi : docs/08-frontend.md - section 3 (Le routeur)
+ */
 import { createBrowserRouter, Navigate } from 'react-router';
 import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';

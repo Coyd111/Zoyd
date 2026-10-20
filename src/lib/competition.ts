@@ -1,3 +1,21 @@
+/**
+ * competition.ts - referentiel du jeu : rangs, formats, cartes, modes.
+ *
+ * Source unique des listes utilisees par les formulaires (creer un match,
+ * creer un tournoi, reglages) et des libelles affiches dans les cartes.
+ *
+ * INVARIANT : toute liste d'options de formulaire doit venir d'ici. Une
+ * liste dupliquee dans un ecran diverge des autres et du serveur.
+ * INVARIANT : les valeurs des options (format, device, controller) sont
+ * exactement celles attendues par le serveur : ce sont des ENUMS, pas des
+ * libelles.
+ * PIEGE : un libelle peut contenir un accent, une valeur ne doit jamais en
+ * contenir : les valeurs sont comparees et stockees.
+ * PIEGE : getMapImage mappe une carte vers son visuel ; une carte ajoutee
+ * au referentiel sans image fait tomber l'ecran sur une image par defaut.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
+ */
 export const CODM_RANGS = [
   'Rookie',
   'Veteran',

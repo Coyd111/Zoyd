@@ -1,3 +1,20 @@
+/**
+ * Input - champ de saisie texte du design system.
+ *
+ * Style de base (fond, bordure, focus) applique a un input HTML natif.
+ *
+ * INVARIANT : le style de focus est porte par la classe, pas par un etat
+ * local : les champs du design system partagent le meme anneau de focus.
+ * INVARIANT : `type` reste par defaut `text`. Changer le defaut casse les
+ * champs mot de passe et telephone qui relyent sur leur propre type.
+ * PIEGE : ce composant ne controle pas la valeur : il esternalise
+ * (react-hook-form ou state du parent). Ne pas y ajouter de state interne.
+ * PIEGE : un `id` ou un `aria-label` est obligatoire a l'appel : le champ
+ * doit etre identifiable, sinon l'autocompletion mobile et le lecteur
+ * d'ecran ne savent pas quoi remplir.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 import React from 'react';
 import { cn } from '../../../lib/utils';
 

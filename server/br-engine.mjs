@@ -1,3 +1,42 @@
+/**
+ * server/br-engine.mjs - Battle Royale : un salon, une seule partie, classement
+ * par rang de survie et/ou kills, reglement de la cagnotte.
+ *
+ * Statuts ecrits du salon : `scheduled` (creation), `live` (lancement),
+ * `settling` (reglement en cours), `finished` (regle), `cancelled` (personne
+ * n'a joue). `settling` est PERSISTE AVANT les versements et n'est donc pas
+ * un etat transitoire invisible.
+ *
+ * INVARIANT : le pass est paye A L'INSCRIPTION et n'est JAMAIS rembourse : un
+ *   inscrit absent penalise ceux qui sont venus, sa part reste dans la
+ *   cagnotte.
+ * INVARIANT : le SEUL cas de remboursement est l'absence de TOUT joueur
+ *   present : la cagnotte est alors rendue et le salon passe `cancelled`.
+ * INVARIANT : le reglement est reserve a l'ARBITRE DU SALON
+ *   (`requireLobbyArbiter`), pas au role admin.
+ * INVARIANT : le statut `settling` est ecrit AVANT tout versement, et chaque
+ *   versement est persiste juste apres (`player.settled = true`) : un arret
+ *   de processus laisse un salon reprenable, pas un double versement.
+ * INVARIANT : un salon `finished` est refuse au reglement ; un salon
+ *   `settling` est accepte (reprise apres arret).
+ * INVARIANT : la commission d'arbitre est plafonnee a 5 % de la cagnotte, et
+ *   la repartition par defaut somme exactement 100 %.
+ * INVARIANT : le classement est choisi par le createur : `survie`,
+ *   `survie_kills` (70 % survie / 30 % kills) ou `kills`.
+ * PIEGE : le createur du salon est l'ARBITRE : il ne paie aucun pass et ne
+ *   figure pas dans le roster.
+ * PIEGE : la programmation doit etre a 24 h - 48 h de l'heure de
+ *   lancement ; la tolerance de 10 min avant l'heure n'est derogable que
+ *   dans la suite E2E.
+ * PIEGE : seules 5 places sont payees (BR_PRIZED_PLACES) : le reste de la
+ *   cagnotte reste pour les absents.
+ * PIEGE : un joueur liste deux fois n'est paye qu'une fois (drapeau
+ *   `settled`).
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getUserById } from './persistence.mjs';
 import {
   lockEntryFee,

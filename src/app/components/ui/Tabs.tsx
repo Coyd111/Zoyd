@@ -1,3 +1,19 @@
+/**
+ * Tabs - onglets (enveloppe Radix Tabs).
+ *
+ * Sous-composants : Root, List, Trigger, Content.
+ *
+ * INVARIANT : la valeur active est portee par le Root : le declencheur et
+ * le contenu partagent la MEME valeur. Un Trigger et un Content avec des
+ * valeurs differentes n'affichent jamais le bon onglet.
+ * INVARIANT : le contenu d'un onglet non actif doit rester monte ou etre
+ * monte a la demande : selon l'usage (formulaire a l'init, animation), le
+ * comportement differe. Ne pas le changer sans verifier le formulaire.
+ * PIEGE : les Tabs sont des boutons a role d'onglet : le focus clavier
+ * (fleches) est gere par Radix, pas par une implementation maison.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

@@ -1,3 +1,22 @@
+/**
+ * trustScoreStore - score de confiance du joueur et son historique.
+ *
+ * Detient le score global et son decoupage (ponctualite, fair-play,
+ * resultats, litiges, anciennete). Hydrate depuis le profil utilisateur.
+ *
+ * INVARIANT : le store est une VUE. La source de verite est le profil
+ * renvoye par le serveur ; ne jamais recalculer un score de confiance
+ * localement.
+ * INVARIANT : toutes les valeurs sont bornees a 0-100 et arrondies (clamp).
+ * Un score hors bornes vient d'un serveur, pas d'une faute de saisie.
+ * PIEGE : getTrustColor / getTrustBg / getTrustLabel sont des fonctions
+ * PURES de correspondance. Les seuils (80 / 50 / 30 / 90) sont des regles
+ * de design : les modifier change le libelle affiche partout en un coup.
+ * PIEGE : le store se purge a la deconnexion et se rehydrate sur chaque
+ * login/hydrateSession.
+ *
+ * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
+ */
 import { create } from 'zustand';
 
 export interface TrustBreakdown {

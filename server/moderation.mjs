@@ -1,4 +1,34 @@
 /**
+ * server/moderation.mjs - Gravite d'un signalement, sanction recommandee et
+ * regles de duree de vie des sanctions.
+ *
+ * Module pur : aucune dependance, aucun acces base, aucune mutation. Il
+ * fournit au serveur la regle "un signalement est une accusation, pas une
+ * preuve" et les bornes de duree des sanctions.
+ *
+ * INVARIANT : `computeExpiry` borne la duree a [1, MAX_TEMP_BAN_DAYS] et
+ *   renvoie `null` pour toute sanction qui n'est pas un bannissement
+ *   temporaire - une levee n'a pas d'echeance.
+ * INVARIANT : `isSanctionActive` est evalue a la LECTURE, jamais par un
+ *   drapeau : un bannissement temporaire expire cesse de s'appliquer meme si
+ *   la tache de fond de nettoyage n'a jamais tourne.
+ * INVARIANT : `isSanctionKind` est le seul filtre des kinds acceptees par
+ *   l'admin : une resolution hors liste doit etre refusee, pas reinterpretee.
+ * PIEGE : la gravite deduit du MOTIF (`reason`), jamais d'un champ "gravite"
+ *   envoye par le client : la chaine du client n'est pas une preuve.
+ * PIEGE : MAX_TEMP_BAN_DAYS = 30 - au-dela, un "temporaire" est un permanent
+ *   deguise : utiliser le kind explicite `permanent_ban`.
+ * PIEGE : `revokedAt` pose rend la sanction inactive quel que soit son
+ *   `expiresAt` : les deux champs se lisent ensemble, pas l'un apres l'autre.
+ * PIEGE : `severityForReason` normalise avec `trim()` seulement : une
+ *   difference de casse ou d'espace change le resultat (le reste retombe
+ *   dans 'a_qualifier').
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
+/**
  * Gravite et sanction recommandee, derivees du motif du signalement.
  *
  * Le serveur ne se fie pas a ce que le client appelle `reason` : un joueur

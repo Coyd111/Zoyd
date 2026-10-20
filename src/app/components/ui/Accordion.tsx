@@ -1,3 +1,17 @@
+/**
+ * Accordion - sections repliables (enveloppe Radix Accordion).
+ *
+ * Sous-composants : Root, Item, Trigger, Content.
+ *
+ * INVARIANT : `type` (single / multiple) decide si une seule section peut
+ * rester ouverte. Le laisser par defaut change le comportement attendu.
+ * INVARIANT : le Content doit rester dans le DOM pour l'animation ; forcer
+ * un `display:none` coupe la transition.
+ * PIEGE : un Accordion imbrique partage le contexte Radix du parent : un
+ * `id` de trigger duplique casse l'association aria-controls.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

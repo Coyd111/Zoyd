@@ -1,3 +1,41 @@
+/**
+ * server/routes/tournament.mjs - Domaine TOURNOIS : detail, creation,
+ * inscription, retrait, arbitrage, lancement, salle, mise en direct du match,
+ * resultat.
+ *
+ * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
+ *
+ * Ordre des gardes : rate limit -> session (401 `AUTH_REQUIRED`) ->
+ * `withTournamentMutex` -> lecture du corps -> moteur -> `saveTournaments` ->
+ * reponse. Le rate limit passe AVANT la session sur les routes d'ecriture :
+ * le quota doit proteger le garde, pas l'inverse.
+ *
+ * INVARIANT : toute mutation est entierement sous `withTournamentMutex` : le
+ *   tournoi, ses entrees et ses matchs partagent la meme collection.
+ * INVARIANT : le droit d'entree est arrondi a 2 decimales AVANT le calcul de
+ *   la cagnotte (meme raison que pour les matchs).
+ * INVARIANT : toute mutation se termine par `saveTournaments` (persistance ET
+ *   diffusion socket par socket).
+ * INVARIANT : la route de detail renvoie le tournoi SANITISE
+ *   (`sanitizeTournamentForBroadcast`) : ni `captainId`, ni `userId` des
+ *   membres ou des arbitres.
+ * PIEGE : la declaration du motif `tournamentDetail` precede le premier `if`
+ *   du bloc : elle en fait partie, sinon l'identifiant serait indefini.
+ * PIEGE : la route de detail n'est PAS sous le mutex du tournoi : une lecture
+ *   ne mute pas la collection.
+ * PIEGE : les notifications sont envoyees apres la sauvegarde et leur echec
+ *   est rattrape.
+ * PIEGE : la creation valide le nom (3-100 caracteres), le format, le nombre
+ *   d'entrees (2-256) et le droit d'entree : chaque regle a son propre code
+ *   d'erreur, les confondre rend le diagnostic impossible.
+ * PIEGE : la commission d'arbitre vaut 5 % ou 10 % selon le NOMBRE
+ *   D'ARBITRES (2 au-dela de 8 entrees maxi), pas selon le format : le taux
+ *   de la cagnotte change avec la taille du tournoi.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
 import { roundAmount } from '../utils.mjs';
 import {

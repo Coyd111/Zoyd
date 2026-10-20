@@ -1,3 +1,21 @@
+/**
+ * AppLayout - chrome applicative : Navbar, Sidebar, BottomNav, zone principale.
+ *
+ * Enveloppe toutes les routes authentifiees (/mj, /wallet, /chat, /admin...).
+ * Pose le lien d'evitement d'accessibilite, branche useRealtimeHeartbeat et
+ * rend l'Outlet de la route enfant.
+ *
+ * INVARIANT : `requireAdmin` est un garde d'UX, PAS une autorisation. Il
+ * redirige vers /mj si le role n'est pas admin, mais n'intercepte aucune
+ * requete : n'importe qui peut appeler /api/admin/* sans navigateur. La
+ * barriere reelle est serveur (requireAdmin / requireAdmin2fa).
+ * PIEGE : `min-w-0` + `overflow-x-clip` sur <main> sont obligatoires ; sans
+ * eux, le min-content des descendants etire main au-dela du viewport.
+ * PIEGE : le socket est monte ici (useRealtimeHeartbeat) : le debrancher
+ * laisse l'interface affichee sans jamais resynchroniser.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import React from 'react';
 import { Outlet, Navigate } from 'react-router';
 import { Navbar } from '../components/layout/Navbar';

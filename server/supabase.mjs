@@ -1,3 +1,35 @@
+/**
+ * server/supabase.mjs - Fabrique l'unique client Supabase du serveur (role
+ * service_role), utilise par la couche de persistance.
+ *
+ * Charge `.env.server`, choisit la cle de service, et expose `supabase` -
+ * soit le client, soit `null` en mode degrade / mode memoire.
+ *
+ * INVARIANT : seule une cle `service_role` est acceptee
+ *   (SUPABASE_SERVICE_KEY ou SUPABASE_SERVICE_ROLE_KEY). Le code ecrit en
+ *   contournant les RLS : avec une cle anon, chaque ecriture echouerait
+ *   derriere un client qui se dit pourtant actif, et l'argent cesserait d'etre
+ *   persiste sans la moindre alerte.
+ * INVARIANT : `supabase` vaut `null` - et ne leve jamais - quand la base est
+ *   indisponible : `persistence.mjs` bascule alors en mode memoire.
+ * INVARIANT : `ZOYD_DISABLE_SUPABASE=true` l'emporte sur la presence des
+ *   variables : `.env.server` est charge meme en mode memoire, donc l'absence
+ *   d'URL ne prouve rien et la suite E2E tournerait contre le reseau.
+ * INVARIANT : le client est cree sans session persistee ni rafraichissement
+ *   automatique : c'est un client de service, pas un client utilisateur.
+ * PIEGE : `dotenv.config()` REECRIT les variables du process avec le contenu
+ *   de `.env.server` : vider SUPABASE_URL dans le process ne suffit pas a
+ *   isoler les tests, d'ou ZOYD_DISABLE_SUPABASE.
+ * PIEGE : une table manquante n'echoue pas ici : elle ressort plus tard
+ *   "relation does not exist" dans les journaux (ex. `user_reports`).
+ * PIEGE : l'import a des effets de bord (lecture du .env, ouverture d'une
+ *   connexion) : ce module ne doit pas etre importe par un script de test
+ *   qui veut rester hors ligne.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 // Supabase client — Primary database
 // Uses service_role key for server-side operations (bypasses RLS)
 

@@ -127,21 +127,55 @@ L'étape 5 a déjà payé : `server/admin-totp-guard.test.mjs` a été gardé pa
 
 ---
 
-## 7. Reste à documenter
+## 7. La documentation
 
-Rien de ce qui suit n'existe encore. Ne le cherche pas, ce n'est pas perdu.
+Neuf documents, ~8 500 lignes, tous sourcés par `fichier:ligne`. Ce qui suit n'est
+pas une description de ce que le projet **devrait** faire : c'est ce qu'il **fait**,
+au moment de l'écriture.
 
-- [ ] `01-architecture.md` — composants, flux, temps réel, OCC
-- [ ] `02-modele-metier.md` — match, pari, arbitrage, validation, remboursement
-- [ ] `03-securite.md` — rôles, 2FA, gardes, ce que le client NE protège pas
-- [ ] `04-api.md` — routes, contrats, codes erreur
-- [ ] `05-invariants.md` — les règles métier qui ne doivent jamais casser
-- [ ] `06-tests.md` — stratégie de validation et ce que les tests ne prouvent pas
-- [ ] `07-exploitation.md` — déploiement, configuration, incidents
+| Document | Contenu |
+|---|---|
+| [`01-architecture.md`](01-architecture.md) | Point d'entrée, pipeline de requête, routage, temps réel, verrous, rate-limiter, cron, table exhaustive des routes, pièges |
+| [`02-modele-metier.md`](02-modele-metier.md) | Les 7 moteurs, les 4 cycles de vie, les statuts écrits vs dérivés, les 5 obligations de l'arbitre, le cycle de l'argent, l'OCC |
+| [`03-securite.md`](03-securite.md) | 4 portes du garde admin, CSRF, rate-limiter, sessions, mot de passe, **menaces couvertes** et **menaces non couvertes** |
+| [`04-api.md`](04-api.md) | Convention de réponse, table complète des codes erreur → statut, routes par domaine |
+| [`05-invariants.md`](05-invariants.md) | **54 invariants numérotés** + les 15 violations constatées |
+| [`06-tests.md`](06-tests.md) | Les 3 niveaux, **ce que les tests ne prouvent pas**, recette de mutation |
+| [`07-exploitation.md`](07-exploitation.md) | Déploiement Vercel + Render, variables d'environnement, schéma Supabase, runbook |
+| [`08-frontend.md`](08-frontend.md) | Routes, stores, client temps réel, design system, SEO, les 4 bugs corrigés |
+
+Le code porte aussi un **en-tête de commentaire** en tête de chaque fichier
+significatif : 38 fichiers `server/`, 152 fichiers `src/`. Chacun indique le rôle,
+les invariants et les pièges, avec renvoi vers le document détaillé.
 
 ---
 
-## 8. État au moment de l'écriture
+## 8. Ce que la documentation a trouvé — à corriger ensuite
+
+La lecture n'a pas servi qu'à décrire : elle a **confirmé 15 anomalies**. Les plus
+graves, avec l'impact concret :
+
+| # | Anomalie | Impact |
+|---|---|---|
+| **V1** | `sweepMatchesWithoutArbiter` **n'est appelé nulle part** | Le délai de 2 h par phase n'est pas appliqué. Un match sans arbitre reste en séquestre **indéfiniment**. Le code existe et est testé — mais sur du code mort |
+| **V2** | `pendingArbiterFee` est écrit mais **jamais relu** | La commission d'arbitre en échec est une créance écrite et jamais reprise |
+| **V3** | `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES` | Un match en attente d'arbitre **disparaît de la liste des matchs actifs** du joueur |
+| **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | **Gèle les confirmations de tous les autres matchs** |
+| **V7** | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` | Verrou orphelin : de l'argent bloqué sans match |
+| **V9** | La migration de la colonne `revision` n'est dans **aucun SQL du dépôt** | Une base neuve n'a pas la colonne OCC — la protection multi-instance n'existe pas |
+| **V8** | Le front additionne le total d'équipe aux gains d'un joueur | Affichage faux du gain |
+
+Le détail de chacune, avec les emplacements exacts, est dans
+[`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).
+
+**V1 est le plus important** : la session précédente avait conclu que
+« l'arbitre obligatoire est en place et payé ». C'est vrai pour le *blocage* du
+règlement — mais le *balayage* qui rembourse un match abandonné n'a jamais été
+branché. Un test vert ne prouve rien quand il couvre du code mort.
+
+---
+
+## 9. État au moment de l'écriture
 
 - Production Render : saine (`ok=true`, `integrity.ok=true`)
 - Front Vercel : branché sur `principale`, déploiement automatique **fonctionnel**

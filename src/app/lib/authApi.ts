@@ -1,3 +1,21 @@
+/**
+ * authApi - appels REST d'authentification : inscription, login, activation,
+ * reinitialisation, 2FA.
+ *
+ * Client dedie du domaine compte. C'est aussi la que se trouve la
+ * verification du code TOTP admin (verifyAdmin2fa).
+ *
+ * INVARIANT : cookie-only. Le `token` que renvoie le serveur n'est pas a
+ * stocker en JavaScript : le cookie httpOnly fait foi. Le champ token de la
+ * reponse reste dans le type pour compatibilite, pas pour etre utilise.
+ * PIEGE : la 2FA admin est une BARRIERE SERVEUR. verifyAdmin2fa n'est qu'un
+ * garde d'UX cote front : la vraie verification est faite par
+ * requireAdmin2fa sur /api/admin/*.
+ * PIEGE : l'inscription peut renvoyer un code d'activation a saisir dans une
+ * autre page : ne pas enchainer l'activation automatiquement.
+ *
+ * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
+ */
 import type { User } from '../stores/authStore';
 import { authorizedGet, authorizedPost, authorizedPatch, authorizedDelete, getApiUrl } from './apiClient';
 

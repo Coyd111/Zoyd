@@ -1,3 +1,41 @@
+/**
+ * server/state-helpers.mjs - Persistance et diffusion des collections d'etat
+ * (matchs, tournois, ligues, salons BR) et sanitisation pour la diffusion.
+ *
+ * Point de jonction entre les moteurs (qui calculent) et la couche de
+ * persistance (qui stocke) + le socket (qui diffuse).
+ *
+ * INVARIANT : la sanitisation sert DEUX sorties - la reponse HTTP ET la
+ *   diffusion socket. Un champ retire ici ne doit pas etre re-expose par un
+ *   autre chemin.
+ * INVARIANT : les identifiants internes (userId des joueurs, de l'arbitre,
+ *   `captainId`) ne sont JAMAIS diffuses : ils sont remplaces par le
+ *   booleen `isMe`.
+ * INVARIANT : `isMe` est calcule PAR DESTINATAIRE : matchs et tournois sont
+ *   emis socket par socket, jamais par un `io.emit` global.
+ * INVARIANT : `roomPassword`, `roomName`, `screenshots` et
+ *   `result.confirmedByTeams` sont retires de la diffusion ; le second est
+ *   remplace par le booleen `hasConfirmed`.
+ * INVARIANT : les gains projetes sont calcules par le serveur
+ *   (`getProjectedPayouts`) : le client ne recalcule jamais le pot.
+ * INVARIANT : la collection est remplacee EN BLOC (`replaceStateCollection`) :
+ *   une liste partielle supprimerait en base les entites absentes.
+ * PIEGE : `Array.map` passe (element, index, tableau) : ecrire
+ *   `map(sanitizeMatchForBroadcast)` passerait l'INDEX comme `viewerId` et
+ *   `isMe` serait toujours faux, sans lever la moindre erreur.
+ * PIEGE : le pseudo affiche suit le compte tant que le match est dans les
+ *   statuts `LIVE_IDENTITY_STATUSES` ; apres la soumission du resultat il est
+ *   FIGE (le joueur ne peut pas renommer apres une defaite).
+ * PIEGE : le roster public BR ne doit contenir ni `userId`, ni `killedBy`,
+ *   ni `arbiterId`, ni `creatorId`, ni `teams[].key` : l'UI n'a besoin que du
+ *   booleen `isArbiter`.
+ * PIEGE : `saveBrLobbies` diffuse la vue SANITISEE : diffuser l'etat brut
+ *   rendrait la sanitisation HTTP sans effet.
+ *
+ * Invariants detailles : docs/05-invariants.md
+ * Architecture et routage : docs/01-architecture.md
+ */
+
 import { syncMatchChatChannels, buildMatchChatChannel, broadcastChatChannel } from './chat-helpers.mjs';
 import { broadcastStateSnapshot } from './push-notifications.mjs';
 import { replaceStateCollection, getStateCollection, getUserById } from './persistence.mjs';

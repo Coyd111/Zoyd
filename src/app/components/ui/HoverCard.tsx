@@ -1,3 +1,18 @@
+/**
+ * HoverCard - carte informative au survol (enveloppe Radix HoverCard).
+ *
+ * Affiche un contenu enrichi au survol ou au focus, sans quitter la page.
+ *
+ * INVARIANT : un contenu de HoverCard n'est jamais l'information
+ * ESSENTIELLE : il disparait au survol de la souris et n'est pas visible
+ * sur mobile.
+ * PIEGE : ne pas y mettre de lien ni de bouton : le focus ne peut pas y
+ * entrer, la carte se ferme.
+ * PIEGE : la carte se ferme au dela d'un delai. Ne pas y mettre un texte
+ * que le joueur doit lire longtemps.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

@@ -1,3 +1,19 @@
+/**
+ * BracketHeader - en-tete d'un tournoi dans le bracket.
+ *
+ * Affiche nom, format, frais, cagnotte, nombre d'entrees et arbitres, avec
+ * un lien de retour.
+ *
+ * INVARIANT : la cagnotte et le palier viennent des props (serveur). Ne pas
+ * les recalculer en front.
+ * INVARIANT : le nombre d'arbitres requis est une regle serveur (1 ou 2
+ * selon la taille du tournoi) : ne pas le deviner a partir du nombre
+ * d'entrees affichees.
+ * PIEGE : la liste des arbitres est un type local limite a `userId` : ne
+ * pas y ajouter de champs sans verifier ce que le serveur transmet.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
+ */
 import React from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, Clock3, CreditCard, ShieldCheck, Users } from 'lucide-react';

@@ -1,3 +1,22 @@
+/**
+ * Sheet - panneau lateral (enveloppe Radix Dialog en mode drawer).
+ *
+ * Sous-composants : Root, Trigger, Portal, Overlay, Content, Header, Title,
+ * Description, Close, Footer. Utilise pour le menu mobile et les panneaux
+ * de detail.
+ *
+ * INVARIANT : c'est un Dialog : focus piege, Echap et role dialog sont
+ * fournis par Radix. Ne pas le reconstruire en div.
+ * INVARIANT : la fermeture doit passer par SheetClose pour rendre le focus
+ * au declencheur.
+ * PIEGE : l'overlay ferme le panneau au clic : une action en cours (un
+ * formulaire) peut etre perdue sans confirmation. Fermer explicitement si
+ * l'action est irreversible.
+ * PIEGE : le sens d'ouverture (gauche/droite) est porte par les classes de
+ * position : ne pas l'inverser dans une variante.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

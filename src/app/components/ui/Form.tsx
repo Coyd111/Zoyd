@@ -1,3 +1,21 @@
+/**
+ * Form - integration react-hook-form avec les primitives du design system.
+ *
+ * Expose Form, FormField, FormItem, FormLabel, FormControl, FormDescription,
+ * FormMessage. Lie les libelles, les descriptions et les messages d'erreur
+ * au champ correspondant, pour l'accessibilite.
+ *
+ * INVARIANT : chaque champ doit etre un `FormField` avec un `name` : c'est
+ * lui qui relie le message d'erreur au bon input (id, aria-describedby).
+ * INVARIANT : FormMessage n'affiche un texte que si l'erreur existe :
+ * un message vide occupe de la place et trompe le lecteur d'ecran.
+ * PIEGE : FormLabel utilise Radix Label + Slot : il doit pointer vers
+ * l'id du controle. Sans FormControl autour, l'association est rompue.
+ * PIEGE : ce composant ne fait aucune requete. La soumission reste du
+ * ressort du parent, via l'API.
+ *
+ * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ */
 "use client";
 
 import * as React from "react";

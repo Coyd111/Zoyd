@@ -1,3 +1,23 @@
+/**
+ * DashboardPage - tableau de bord du joueur (espace MJ).
+ *
+ * Regroupe les matchs actifs, les demandes d'ami, les gains, les notifications
+ * et les raccourcis. Sert aussi de page d'accueil connectee.
+ *
+ * INVARIANT : le joueur courant se repere par `isMe`, pas par un userId :
+ * le serveur retire userId du payload et livre isMe, calcule POUR chaque
+ * destinataire.
+ * INVARIANT : la liste des statuts actifs inclut `awaiting_arbiter` : ce
+ * match est VIVANT (bloque faute d'arbitre) et doit apparaitre. La liste
+ * ACTIVE_STATUSES du store matchStore, elle, ne l'inclut pas : c'est une
+ * difference deliberee, ne pas la uniformiser sans decision metier.
+ * PIEGE : un match `awaiting_confirmation` a un resultat soumis mais un pot
+ * GELE. L'afficher comme gagne (et donc verse) serait un gain fictif.
+ * PIEGE : ne jamais recalculer un gain localement : la cagnotte est calculee
+ * par le serveur sur les fonds reellement bloques.
+ *
+ * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
+ */
 import React, { useMemo } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';

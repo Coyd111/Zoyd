@@ -157,7 +157,7 @@ graves, avec l'impact concret :
 
 | # | Anomalie | Impact |
 |---|---|---|
-| **V1** | `sweepMatchesWithoutArbiter` **n'est appelé nulle part** | Le délai de 2 h par phase n'est pas appliqué. Un match sans arbitre reste en séquestre **indéfiniment**. Le code existe et est testé — mais sur du code mort |
+| **V1** | `sweepMatchesWithoutArbiter` **n'était appelé nulle part** | ✅ **CORRIGÉ** — branché sur le tick de 30 s, avec un test qui couvre le chemin complet |
 | **V2** | `pendingArbiterFee` est écrit mais **jamais relu** | La commission d'arbitre en échec est une créance écrite et jamais reprise |
 | **V3** | `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES` | Un match en attente d'arbitre **disparaît de la liste des matchs actifs** du joueur |
 | **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | **Gèle les confirmations de tous les autres matchs** |
@@ -168,10 +168,25 @@ graves, avec l'impact concret :
 Le détail de chacune, avec les emplacements exacts, est dans
 [`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).
 
-**V1 est le plus important** : la session précédente avait conclu que
-« l'arbitre obligatoire est en place et payé ». C'est vrai pour le *blocage* du
-règlement — mais le *balayage* qui rembourse un match abandonné n'a jamais été
-branché. Un test vert ne prouve rien quand il couvre du code mort.
+**V1 était le plus important, et il est corrigé.** La session précédente avait
+conclu que « l'arbitre obligatoire est en place et payé ». C'était vrai pour le
+*blocage* du règlement — mais le *balayage* qui rembourse un match abandonné
+n'était pas branché. Un match sans arbitre pouvait rester en séquestre
+**jusqu'à 14 jours**, au lieu des 2 h promises.
+
+Le correctif enchaîne le balayage à l'automatisation dans une fonction unique
+(`runMatchAutomationOnServer`), appelée par le tick de 30 s. L'ordre est
+délibéré : le balayage s'applique sur le résultat de l'automatisation, donc un
+match déjà annulé est ignoré. Et `server/arbiter-sweep-wiring.test.mjs` couvre
+le **chemin complet** — débrancher le balayage fait tomber 2 tests sur 6.
+
+C'est le motif à retenir : **un test qui appelle la fonction ne prouve pas
+qu'elle est branchée.** La preuve du branchement exige de traverser le chemin
+de production.
+
+**V6 est presque aussi grave** : une exception `ARBITER_REQUIRED` dans
+l'expiration des confirmations gèle les confirmations de **tous** les autres
+matchs.
 
 ---
 

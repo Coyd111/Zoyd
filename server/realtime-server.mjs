@@ -178,6 +178,7 @@ import {
   launchMatchOnServer,
   openDisputeOnServer,
   processMatchAutomationOnServer,
+  runMatchAutomationOnServer,
   resolveDisputeOnServer,
   scheduleMatchOnServer,
   setRoomDetailsOnServer,
@@ -684,7 +685,21 @@ const start = async () => {
     }
     matchAutomationRunning = true;
     try { await withMatchMutex(async () => {
-      const outcome = await processMatchAutomationOnServer(getStateCollection('matches'));
+      // Le tick enchaine expiration/forfait ET balayage d'arbitrage. Les deux
+      // etaient ecrits, testes — mais le balayage n etait APPELLE PAR PERSONNE :
+      // les delais de 2 h par phase n etaient donc pas appliques, et un match
+      // sans arbitre restait en sequestre indefiniment.
+      //
+      // L ordre est important : le balayage s applique sur le resultat de
+      // l automatisation, donc un match deja annule par celle-ci est ignore
+      // par celui-la. `runMatchAutomationOnServer` fait cet enchainement.
+      const outcome = await runMatchAutomationOnServer(getStateCollection('matches'));
+      if (outcome.refunded.length > 0) {
+        log.warn('Arbiter sweep refunded matches', {
+          count: outcome.refunded.length,
+          matches: outcome.refunded.map((r) => `${r.matchId}:${r.reason}`).slice(0, 20),
+        });
+      }
       if (outcome.changed) {
         await saveMatches(io, outcome.matches);
       }

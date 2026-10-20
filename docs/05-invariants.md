@@ -495,7 +495,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 
 | # | Constat | Le rapport antérieur avait raison ? | Gravité |
 |---|---|---|---|
-| V1 | `sweepMatchesWithoutArbiter` n'est appelé par aucun cron, aucune route, aucun serveur | **OUI** | ÉLEVÉE |
+| V1 | `sweepMatchesWithoutArbiter` n'est appelé par aucun cron, aucune route, aucun serveur | **OUI** — **CORRIGÉ** | ÉLEVÉE → résolu |
 | V2 | `pendingArbiterFee` est écrit mais jamais relu | **OUI** | MOYENNE |
 | V3 | `awaiting_arbiter` ∉ `ACTIVE_STATUSES` | **OUI**, avec une nuance | MOYENNE |
 | V4 | `archived` ∈ `MATCH_ETATS_CLOS` mais ∉ `TERMINAL_STATUSES` | **OUI** | MOYENNE |
@@ -513,8 +513,14 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 
 ---
 
-### V1 — `sweepMatchesWithoutArbiter` n'est branché nulle part
-**Gravité : ÉLEVÉE**
+### V1 — `sweepMatchesWithoutArbiter` n'est branché nulle part — **CORRIGÉ**
+**Gravité : ÉLEVÉE → résolu**
+
+> **Statut : corrigé.** Le balayage est désormais branché sur le tick
+> d'automatisation de 30 s, et le **chemin complet** est couvert par un test
+> (`server/arbiter-sweep-wiring.test.mjs`) qui échoue si le branchement est
+> supprimé. La description ci-dessous est conservée telle quelle : elle
+> documente l'état *avant* le correctif, et la méthode employée.
 
 **Constat.** La fonction existe, elle est documentée, elle est testée — et elle
 n'est jamais exécutée. Les délais d'arbitrage de 2 h ne sont donc jamais
@@ -543,7 +549,38 @@ Aucun autre. Vérifié en particulier :
 
 **Conclusion : CONFIRMÉ.** Le rapport antérieur avait raison.
 
-**Impact utilisateur concret.** Le seul mécanisme actif est
+**Le correctif.** Le balayage a été enchaîné à l'automatisation dans une
+fonction unique, `runMatchAutomationOnServer` (`server/match-engine.mjs`),
+appelée par le tick de 30 s de `server/realtime-server.mjs` :
+
+- **L'ordre est délibéré.** Le balayage s'applique sur le **résultat** de
+  l'automatisation. Un match que celle-ci vient d'annuler est déjà en
+  `cancelled` quand le balayage le voit — et il l'ignore. Aucun double
+  remboursement n'est possible, y compris après un échec partiel : le
+  balayage ne clôture pas un match dont un joueur n'a pas été remboursé
+  (`server/match-engine.mjs`, le `if (echecs.length > 0) continue;`).
+- **L'idempotence est structurelle.** `refundLockedEntry` est idempotent : sans
+  réservation, elle ne crédite rien (`server/wallet-engine.mjs:313-315`).
+- **Le balayage ne peut pas casser l'automatisation.** Il est enveloppé dans un
+  `try/catch` : une donnée corrompue sur un match ne gèle pas les autres.
+- **La trace est visible.** Un remboursement par le balayage produit un log
+  `warn` avec la liste des matchs et la raison (`NO_ARBITER` /
+  `ARBITER_TIMEOUT`). C'est un mouvement d'argent : il doit se voir dans les
+  logs, pas seulement dans la base.
+
+**La preuve du branchement.** `server/arbiter-sweep-wiring.test.mjs` ne teste
+plus la fonction : il teste le **tick complet**. Il vérifie explicitement que
+l'automatisation *seule* ne touche pas un match sans arbitre ni horaire — ce
+qui prouve que c'est le balayage qui agit, et non un effet de bord. Balayage
+débranché, la suite tombe à **2 échecs sur 6**.
+
+**Conséquence à connaître.** Brancher le balayage **active un délai de 2 h qui
+était inerte**. En production, un match lancé depuis plus de 2 h sans résultat,
+ou un match sans arbitre depuis plus de 2 h, sera désormais annulé et
+remboursé automatiquement. C'est le comportement voulu depuis le début — mais
+il n'avait jamais été exercé. Il faut le savoir avant de pousser.
+
+**Impact utilisateur concret (avant le correctif).** Le seul mécanisme actif était
 `processMatchAutomationOnServer` (tick 30 s, `server/realtime-server.mjs:640-657`),
 qui ne compare qu'à `scheduledAt` (`:1376`) et à `expiresAt` (`:1366`, 14 j).
 
@@ -961,7 +998,11 @@ point par point** dans le code. Bilan :
 ### Confirmés (5/5 sur les cinq points signalés)
 
 1. `sweepMatchesWithoutArbiter` n'est appelé par aucun cron, aucune route,
-   aucun serveur, aucun script — **confirmé** (V1).
+   aucun serveur, aucun script — **confirmé** (V1). **CORRIGÉ depuis** : le
+   balayage est branché sur le tick d'automatisation de 30 s
+   (`server/match-engine.mjs` → `runMatchAutomationOnServer`, appelé par
+   `server/realtime-server.mjs`), et `server/arbiter-sweep-wiring.test.mjs`
+   couvre désormais le CHEMIN COMPLET — pas seulement la fonction.
 2. `pendingArbiterFee` est écrit mais jamais relu — **confirmé** (V2).
 3. `awaiting_arbiter` ∉ `ACTIVE_STATUSES` — **confirmé**, mais le rapport
    se trompait sur un point : le statut est **persisté** en base

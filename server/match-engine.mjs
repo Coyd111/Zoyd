@@ -1396,10 +1396,11 @@ const autoReadyCheckedInPlayers = (match) => {
  * Run automated match lifecycle checks: expire old matches, auto-forfeit no-shows.
  * Called periodically to handle matches that missed their scheduled window.
  * @param {Array} matches - Current array of all matches.
+ * @param {number} [nowMs] - Horloge de reference (injectee pour les tests).
  * @returns {Promise<{matches: Array, changed: boolean}>}
  */
-export const processMatchAutomationOnServer = async (matches) => {
-  const now = Date.now();
+export const processMatchAutomationOnServer = async (matches, nowMs = Date.now()) => {
+  const now = nowMs;
   const nextMatches = cloneMatches(matches);
   let changed = false;
 
@@ -1464,6 +1465,53 @@ export const processMatchAutomationOnServer = async (matches) => {
   }
 
   return { matches: nextMatches, changed };
+};
+
+/**
+ * Tick complet d'automatisation des matchs : expiration, forfait, ET balayage
+ * d'arbitrage.
+ *
+ * Pourquoi ces deux etapes dans UNE fonction
+ * ------------------------------------------
+ * L'automatisation et le balayage se recoupent, et il faut les enchainer dans
+ * cet ordre precis :
+ *
+ * 1. L'automatisation traite ce qui est ECHEANCE : match perime, heure de
+ *    rendez-vous depassee, equipe incomplete.
+ * 2. Le balayage traite ce qui est ABANDONNE : pas d'arbitre designe, ou
+ *    arbitre en poste qui ne tranche pas.
+ *
+ * L'ordre compte : le balayage s'execute sur le resultat de l'automatisation,
+ * donc un match que l'automatisation vient d'annuler est deja en `cancelled`
+ * quand le balayage le voit — et le balayage l'ignore. Sans cet ordre, les deux
+ * pourrait viser le meme match.
+ *
+ * Aucun double remboursement n'est possible meme en cas d'echec partiel :
+ * `refundLockedEntry` est idempotent (sans reservation, elle ne credite
+ * rien). Un joueur rembourse par l'automatisation ne peut pas l'etre une
+ * seconde fois par le balayage.
+ *
+ * @param {Array} matches - Etat courant des matchs.
+ * @param {number} [nowMs] - Horloge de reference (injectee pour les tests).
+ * @returns {Promise<{matches: Array, changed: boolean, refunded: object[]}>}
+ */
+export const runMatchAutomationOnServer = async (matches, nowMs = Date.now()) => {
+  const automated = await processMatchAutomationOnServer(matches, nowMs);
+
+  let swept = { matches: automated.matches, refunded: [] };
+  try {
+    swept = await sweepMatchesWithoutArbiter(automated.matches, nowMs);
+  } catch (error) {
+    // Le balayage ne doit JAMAIS empecher l'automatisation de tourner : une
+    // donnee corrompue sur un match ne doit pas geler tous les autres.
+    log.error('Arbiter sweep failed', { error: error.message });
+  }
+
+  return {
+    matches: swept.matches,
+    changed: automated.changed || swept.refunded.length > 0,
+    refunded: swept.refunded,
+  };
 };
 
 /**

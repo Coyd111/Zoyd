@@ -625,8 +625,8 @@ dehors de `ecrireUserRow` — `server/occ-revision-invariant.test.mjs:29`.
 
 | Fenêtre | Valeur | Emplacement | Est-elle appliquées ? |
 |---|---|---|---|
-| Arbitrage — phase A (prise de poste → lancement) | **2 h** | `server/match-engine.mjs:15` | **Non** — le sweep n'est branché nulle part (§9.1) |
-| Arbitrage — phase B (lancement → résultat) | **2 h** | `server/match-engine.mjs:16` | **Non** — idem |
+| Arbitrage — phase A (prise de poste → lancement) | **2 h** | `server/match-engine.mjs:15` | **Oui** — sweep, tick 30 s (`runMatchAutomationOnServer`) |
+| Arbitrage — phase B (lancement → résultat) | **2 h** | `server/match-engine.mjs:16` | **Oui** — idem |
 | Confirmation du résultat | **30 min** | `server/match-engine.mjs:108`, appliquée `:946` | **Oui** — cron 60 s (`server/cron.mjs:285-313`) |
 | Expiration d'un match sans résultat | **14 j** | `server/match-engine.mjs:572` | **Oui** — automation 30 s (`server/realtime-server.mjs:640-657`) |
 | 2FA admin (session marquée vérifiée) | **5 min** | `server/persistence.mjs:3164` | **Oui** |
@@ -656,7 +656,7 @@ dehors de `ecrireUserRow` — `server/occ-revision-invariant.test.mjs:29`.
 | Reprise des remboursements de ligue | `server/cron.mjs:511-547` | 6 h + boot | — | ✅ |
 | Réconciliation des retraits incertains | `server/cron.mjs:429-463` | 30 min + boot | — | ✅ |
 | Contrôle d'intégrité | `server/cron.mjs:172-194` | 1 h | — | ✅ |
-| **Balayage des matchs sans arbitre (2 h)** | `sweepMatchesWithoutArbiter` | — | `server/match-engine.mjs:15-16` | ❌ **jamais appelé** |
+| **Balayage des matchs sans arbitre (2 h)** | `sweepMatchesWithoutArbiter` | — | `server/match-engine.mjs:15-16` | ✅ **branché** (tick 30 s, via `runMatchAutomationOnServer`) |
 | **Reprise des commissions d'arbitre en échec** | `match.pendingArbiterFee` | — | `server/match-engine.mjs:433` | ❌ **jamais relu** |
 | Reprise des règlements BR interrompus | `lobby.status === 'settling'` | — | `server/br-engine.mjs:723` | ⚠️ **manuel** (l'arbitre rejoue `finish`) |
 

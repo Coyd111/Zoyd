@@ -405,11 +405,16 @@ que de comparer à une constante.
 > **C'est la section la plus importante du document.** Chaque point a été
 > revérifié dans le code ou par exécution, pas recopié d'un rapport antérieur.
 
-### 4.1 Le sweep d'arbitre : un test vert sur du code mort
+### 4.1 Le sweep d'arbitre : un test vert sur du code mort — **CORRIGÉ**
 
-**Le fait :** `sweepMatchesWithoutArbiter` est définie, documentée, testée — et
-elle n'est **jamais exécutée** en production. C'est le constat **V1** de
-`docs/05-invariants.md:498` et `:516-567`.
+> **Statut : corrigé.** Le balayage est branché sur le tick d'automatisation de
+> 30 s, et `server/arbiter-sweep-wiring.test.mjs` couvre désormais le **chemin
+> complet**. Ce qui suit est conservé tel quel : c'est le raisonnement, et il
+> vaut pour n'importe quelle fonction exportée de ce dépôt.
+
+**Le fait (au moment de la rédaction) :** `sweepMatchesWithoutArbiter` était
+définie, documentée, testée — et **jamais exécutée** en production. C'est le
+constat **V1** de `docs/05-invariants.md:498`.
 
 **La preuve (re-vérifiée le 2026-10-20) :** occurrences *complètes* de
 `sweepMatchesWithoutArbiter` dans tout le dépôt :
@@ -440,19 +445,41 @@ n'importe.
 > « Un test "qui appelle la fonction" ne prouve pas qu'elle est branchée. »
 > — `docs/05-invariants.md:945`
 
-**Le test manque de nature.** Pour prouver le branchement, il faudrait un test
-qui vérifie *l'effet en production* : par exemple, "un cron passe et rembourse
-un match sans arbitre". Aucun test de ce type n'existe. Un test qui **liste**
-les jobs du cron et vérifie que `sweepMatchesWithoutArbiter` figure dans la
-liste serait possible — il est **absent**.
+**Le test manquait de nature.** Pour prouver le branchement, il fallait un test
+qui vérifie *l'effet en production* : « un tick passe et rembourse un match sans
+arbitre ». Aucun test de ce type n'existait. Un test qui **liste** les jobs du
+cron et vérifie que `sweepMatchesWithoutArbiter` figure dans la liste aurait
+été possible — il était **absent**.
 
-**Ce que le joueur perd.** Le seul mécanisme actif est
+**Ce que le joueur perdait.** Le seul mécanisme actif était
 `processMatchAutomationOnServer` (tick 30 s), qui ne compare qu'à
 `scheduledAt` et à `expiresAt` (14 jours). Un match sans `scheduledAt` — le cas
-le plus courant — reste `recruiting` / `awaiting_arbiter` / `check_in` et **le
-passe reste bloqué jusqu'à 14 jours** au lieu des 2 h promises. Le joueur ne
-peut ni récupérer son argent, ni rejouer (`lockEntryFee` renverrait
+le plus courant — restait `recruiting` / `awaiting_arbiter` / `check_in` et **le
+passe restait bloqué jusqu'à 14 jours** au lieu des 2 h promises. Le joueur ne
+pouvait ni récupérer son argent, ni rejouer (`lockEntryFee` renverrait
 `ALREADY_LOCKED`).
+
+**Le correctif, et ce qu'il a fallu inventer pour le prouver.**
+
+Le balayage a été enchaîné à l'automatisation dans une fonction unique,
+`runMatchAutomationOnServer` (`server/match-engine.mjs`), appelée par le tick de
+30 s de `server/realtime-server.mjs`. L'ordre est délibéré : le balayage
+s'applique sur le **résultat** de l'automatisation, donc un match que
+l'automatisation vient d'annuler est déjà en `cancelled` et le balayage
+l'ignore. Aucun double remboursement n'est possible même en cas d'échec
+partiel : `refundLockedEntry` est idempotent (sans réservation, elle ne crédite
+rien).
+
+`server/arbiter-sweep-wiring.test.mjs` est le test qui manquait. Il ne
+teste plus la fonction : il teste le **tick complet**, et il vérifie
+explicitement que l'automatisation *seule* ne touche pas un match sans arbitre
+ni horaire — c'est ce qui prouve que c'est bien le balayage qui agit, et pas
+un effet de bord.
+
+**La preuve que ce test-là mord.** Balayage débranché
+(`swept = { matches: automated.matches, refunded: [] }`), la suite tombe à
+**2 échecs sur 6**. C'est la recette appliquée au garde admin
+(§5) : un test qui reste vert quand on casse le code ne prouve rien.
 
 **Règle générale.** Un test unitaire d'une fonction exportée prouve que la
 **fonction** est correcte. Il ne prouve pas que la fonction est **branchée**.

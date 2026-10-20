@@ -73,17 +73,18 @@ Zoyd/
 | `DEPLOYMENT.md` | 2026-10-15 | Déploiement et exploitation |
 | `ARCHITECTURE.md` | 2026-08-27 | Schémas d'architecture |
 
-### ⚠️ Doublons périmés — à supprimer, PAS à mettre à jour
+### ✅ Doublons périmés — supprimés
 
-Ces trois fichiers font doublon avec leurs versions racines et sont **abandonnés depuis
-août**. Ils se contredisent avec les versions tenues à jour. Les mettre à jour
-maintiendrait la confusion au lieu de la résoudre.
+Ces trois fichiers faisaient doublon avec leurs versions racines et étaient
+**abandonnés depuis août**. Ils se contredisaient avec les versions tenues à jour.
+Ils ont été supprimés : les mettre à jour aurait maintenu la confusion au lieu
+de la résoudre. L'historique git les conserve si besoin.
 
-| Fichier obsolète | Doublon vivant à jour |
+| Fichier supprimé | Doublon vivant à jour |
 |---|---|
-| `docs/ARCHITECTURE.md` | `ARCHITECTURE.md` (racine) |
-| `docs/DEPLOYMENT.md` | `DEPLOYMENT.md` (racine) |
-| `docs/PROJECT_PRESENTATION.md` | `PROJECT_README.md` (racine) |
+| ~~`docs/ARCHITECTURE.md`~~ | `ARCHITECTURE.md` (racine) |
+| ~~`docs/DEPLOYMENT.md`~~ | `DEPLOYMENT.md` (racine) |
+| ~~`docs/PROJECT_PRESENTATION.md`~~ | `PROJECT_README.md` (racine) |
 
 ### Rapports d'audit (`docs/audit/`, 11 fichiers)
 

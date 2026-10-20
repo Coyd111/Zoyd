@@ -808,6 +808,74 @@ describe('match-engine - confirmation obligatoire des deux equipes', () => {
     expect(releaseWalletWinnings).not.toHaveBeenCalled();
   });
 
+  it('un match que le reglement refuse n empoisonne PAS les autres', async () => {
+    // Le defaut le plus grave du balayage : une exception dans la boucle
+    // sortait de la fonction ET le match fautif levait a nouveau au run
+    // suivant. Les matchs situes APRES lui n etaient donc JAMAIS traites.
+    //
+    // Le match fautif est volontairement EN PREMIER : c'est exactement la
+    // position qui bloquait tout le monde.
+    const sansArbitre = makeMatch({ id: 'M-SANS-ARB', arbiter: undefined });
+    const avecArbitre = makeMatch({ id: 'M-OK' });
+
+    // Un admin PEUT soumettre un resultat sur un match sans arbitre
+    // (isAdminOverride court-circuite les gardes de presence et de preuves).
+    // C'est le chemin reel qui produit ce match.
+    const submittedA = await matchEngine.submitMatchResultOnServer(
+      [sansArbitre], { id: 'root' }, 'M-SANS-ARB',
+      { winnerTeam: 0, scores: { team0: 7, team1: 2 } },
+      { deferSettlement: true },
+    );
+    const submittedB = await matchEngine.submitMatchResultOnServer(
+      [avecArbitre], { id: 'arb' }, 'M-OK',
+      { winnerTeam: 0, scores: { team0: 7, team1: 2 }, proofs: { scoreboard: ['s.png'], finalResult: ['f.png'] } },
+      { deferSettlement: true },
+    );
+
+    const expire = (m) => new Date(Date.now() - 1000).toISOString();
+    const lesDeux = [
+      { ...submittedA.matches[0], confirmationDeadline: expire() },
+      { ...submittedB.matches[0], confirmationDeadline: expire() },
+    ];
+
+    const outcome = await matchEngine.expireConfirmationsOnServer(lesDeux);
+
+    // Le match fautif est signale, pas solde.
+    expect(outcome.failed).toHaveLength(1);
+    expect(outcome.failed[0].id).toBe('M-SANS-ARB');
+    expect(outcome.failed[0].code).toBe('ARBITER_REQUIRED');
+    expect(outcome.settled.map((s) => s.id)).not.toContain('M-SANS-ARB');
+
+    // ET SURTOUT : le match sain, place APRES, a bien ete regle.
+    // C'est l assertion qui distingue le correctif de l ancien code.
+    expect(outcome.settled.map((s) => s.id)).toContain('M-OK');
+    expect(outcome.matches[1].status).toBe('finished');
+    expect(releaseWalletWinnings).toHaveBeenCalled();
+  });
+
+  it('un match sans arbitre reste en attente — il sera REMBOURSE par le balayage', async () => {
+    // Le refus n est pas un blocage : sans arbitre, le match ne peut pas etre
+    // regle, donc il doit etre REMBOURSE. C est ce que fait
+    // `sweepMatchesWithoutArbiter`. Ce test verrouille que l expiration ne
+    // verse RIEN au perdant, et laisse le pot au balayage d arbitrage.
+    const sansArbitre = makeMatch({ id: 'M-SANS-ARB', arbiter: undefined });
+    const submitted = await matchEngine.submitMatchResultOnServer(
+      [sansArbitre], { id: 'root' }, 'M-SANS-ARB',
+      { winnerTeam: 0, scores: { team0: 7, team1: 2 } },
+      { deferSettlement: true },
+    );
+    const expired = submitted.matches.map((m) => ({
+      ...m, confirmationDeadline: new Date(Date.now() - 1000).toISOString(),
+    }));
+
+    const outcome = await matchEngine.expireConfirmationsOnServer(expired);
+
+    expect(outcome.settled).toHaveLength(0);
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+    // Le match n est pas cloture : il reste visible pour le balayage.
+    expect(outcome.matches[0].status).toBe('awaiting_confirmation');
+  });
+
   it('resolveDispute "settle" verse le resultat en attente', async () => {
     const submitted = await submit(makeMatch());
     const outcome = await matchEngine.resolveDisputeOnServer(

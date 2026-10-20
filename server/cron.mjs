@@ -336,6 +336,17 @@ export const initCronJobs = () => {
             failed: outcome.settled.filter((s) => !s.success).map((s) => s.id),
           });
         }
+        // Les matchs que le reglement refuse (typiquement : pas d'arbitre)
+        // sont isoles — ils ne bloquent plus les autres. Mais ils doivent
+        // rester VISIBLES : un match qui ne peut pas etre regle est une
+        // cagnotte qui reste gelee, et personne ne doit decouvrir cela en
+        // attendant un retrait.
+        if (outcome.failed.length > 0) {
+          log.error('Reglements refuses a l expiration des confirmations', {
+            count: outcome.failed.length,
+            matches: outcome.failed.map((f) => `${f.id}:${f.code}`),
+          });
+        }
       });
     } catch (error) {
       log.error('Erreur expiration des confirmations', error);

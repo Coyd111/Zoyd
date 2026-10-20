@@ -1126,11 +1126,12 @@ export const confirmMatchResultOnServer = async (matches, actor, matchId) => {
  * gèlerait la cagnotte indéfiniment).
  * @param {Array} matches - Liste courante des matchs
  * @param {number} now - Horodatage de référence
- * @returns {Promise<{matches: Array, settled: Array}>}
+ * @returns {Promise<{matches: Array, settled: Array, failed: Array}>}
  */
 export const expireConfirmationsOnServer = async (matches, now = Date.now()) => {
   const nextMatches = cloneMatches(matches);
   const settled = [];
+  const failed = [];
 
   for (const match of nextMatches) {
     if (match.status !== 'awaiting_confirmation') continue;
@@ -1140,7 +1141,36 @@ export const expireConfirmationsOnServer = async (matches, now = Date.now()) => 
     // Un litige ouvert doit rester gelé : c'est l'admin qui tranche.
     if (match.disputes.some((d) => d.status === 'open' || d.status === 'under_review')) continue;
 
-    const settlementResult = await applyResultSettlement(match, match.result);
+    let settlementResult;
+    try {
+      settlementResult = await applyResultSettlement(match, match.result);
+    } catch (error) {
+      // ISOLATION — un match qui ne peut pas etre regle ne doit pas
+      // EMPECHER les autres d expirer.
+      //
+      // Sans ce try/catch, l'exception sort de la boucle : chaque match situe
+      // APRES celui-ci dans le tableau n'est jamais traite. Et comme le match
+      // fautif reste en `awaiting_confirmation`, il leve a nouveau au run
+      // suivant : le blocage est donc DEFINITIF, pas passager.
+      //
+      // Cas reel : un resultat soumis par un admin sur un match sans arbitre
+      // declenche ARBITER_REQUIRED au reglement (l'admin peut ecrire un
+      // resultat, mais l'argent ne sort pas sans tiers). Ce match reste
+      // bloque — et avec lui tous les matchs situes apres lui.
+      //
+      // Le match fautif n'est PAS solde : il reste en attente. Le balayage
+      // d'arbitrage (`sweepMatchesWithoutArbiter`) le REMBOURSE, puisque sans
+      // arbitre le match ne peut pas etre regle. C'est la decision deja
+      // ecrite dans le code, pas une invention d'ici.
+      log.error('Reglement refuse a l expiration des confirmations', {
+        matchId: match.id,
+        code: error.code,
+        error: error.message,
+      });
+      failed.push({ id: match.id, code: error.code, error: error.message });
+      continue;
+    }
+
     match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
     if (settlementResult.success) {
       match.status = 'finished';
@@ -1151,7 +1181,7 @@ export const expireConfirmationsOnServer = async (matches, now = Date.now()) => 
     settled.push({ id: match.id, success: settlementResult.success });
   }
 
-  return { matches: nextMatches, settled };
+  return { matches: nextMatches, settled, failed };
 };
 
 /**

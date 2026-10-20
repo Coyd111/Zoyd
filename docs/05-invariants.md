@@ -500,7 +500,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | V3 | `awaiting_arbiter` ∉ `ACTIVE_STATUSES` | **OUI**, avec une nuance | MOYENNE |
 | V4 | `archived` ∈ `MATCH_ETATS_CLOS` mais ∉ `TERMINAL_STATUSES` | **OUI** | MOYENNE |
 | V5 | `getProjectedPayouts.perWinner` divise par le nombre total de joueurs | **OUI** sur le fond, **NON** sur l'impact | FAIBLE (latent) |
-| V6 | Une exception de règlement tue tout le balayage d'expiration des confirmations | **NOUVEAU** | ÉLEVÉE |
+| V6 | Une exception de règlement tue tout le balayage d'expiration des confirmations | **NOUVEAU** | ÉLEVÉE → résolu |
 | V7 | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` → verrou orphelin | **NOUVEAU** | ÉLEVÉE |
 | V8 | Le front additionne le total de l'équipe gagnante aux gains d'un joueur | **NOUVEAU** | MOYENNE |
 | V9 | La migration de la colonne `revision` n'est dans aucun fichier SQL du dépôt | **NOUVEAU** | ÉLEVÉE (si non appliquée) |
@@ -773,8 +773,15 @@ soldé** (`server/state-helpers.mjs:149` s'exécute à chaque broadcast), donc
 
 ---
 
-### V6 — Une exception de règlement tue tout le balayage d'expiration des confirmations
-**Gravité : ÉLEVÉE** — *constat nouveau, absent du rapport*
+### V6 — Une exception de règlement tue tout le balayage d'expiration des confirmations — **CORRIGÉ**
+**Gravité : ÉLEVÉE → résolu** — *constat nouveau, absent du rapport*
+
+> **Statut : corrigé.** L'appel est désormais isolé par un `try/catch` dans la
+> boucle, et les échecs sont **signalés** (`failed` dans la valeur de retour,
+> log `error` côté moteur et côté cron) au lieu d'être avalés. Un match qui ne
+> peut pas être réglé ne bloque plus les autres — et ne disparaît plus dans le
+> silence. Le raisonnement ci-dessous est conservé tel quel : il documente
+> l'état *avant* le correctif.
 
 **Constat.** `expireConfirmationsOnServer` appelle `applyResultSettlement`
 **sans** `try/catch`. Un seul match sans arbitre dans la collection fait
@@ -808,10 +815,45 @@ chaque tick. Symptôme visible : une ligne « Erreur expiration des confirmation
 toutes les 60 s dans les logs, et des joueurs dont les gains ne partent
 jamais — sur des matchs parfaitement légitimes.
 
-**Correctif.** Encadrer l'appel `applyResultSettlement` dans la boucle
-(`server/match-engine.mjs:1097`) par un `try/catch` qui **continue** au lieu de
-propager, et refléter l'échec dans `payoutDistributed` (déjà fait par
-`payoutFlagAfterSettlement`, `:292-293`).
+**Correctif.** Encadrer l'appel `applyResultSettlement` dans la boucle par un
+`try/catch` qui **continue** au lieu de propager.
+
+**Le correctif appliqué, et un détail qui rend le précédent évitable.**
+
+L'isolation, seule, aurait laissé un problème : le match fautif reste en
+`awaiting_confirmation`, et le balayage le retente — et le rejette — toutes
+les 60 s, en boucle. Un `log.error` toutes les 60 s est mieux qu'un gel
+silencieux, mais c'est du bruit.
+
+La bonne réponse est celle que **le code disait déjà** : le commentaire de la
+garde de règlement dans `applyResultSettlement` (« En l'absence d'arbitre, le
+match doit être REMBOURSE, pas bloque : voir `sweepMatchesWithoutArbiter` »)
+et le fait que le balayage d'arbitrage (V1, désormais branché) rembourse
+précisément les matchs sans arbitre. Les deux mécanismes se complètent :
+l'expiration des confirmations libère les matchs **réglables**, le balayage
+d'arbitrage rembourse les matchs **non réglables**. Aucun des deux ne gèle plus
+l'autre.
+
+Le correctif fait donc deux choses :
+
+1. **Isolation** — `try/catch` par match dans la boucle : un échec est
+   enregistré dans `failed`, journalisé en `error`, et la boucle **continue**.
+2. **Visibilité** — `expireConfirmationsOnServer` retourne désormais
+   `{ matches, settled, failed }`, et le cron journalise les échecs. Avant,
+   l'erreur était avalée par le `catch` du cron : une cagnotte gelée
+   n'apparaissait nulle part.
+
+**La preuve.** `server/match-engine.test.mjs` — un match sans arbitre dont le
+règlement est refusé est placé **en premier** dans la collection, suivi d'un
+match sain. Le test vérifie que le match sain **est** réglé. C'est
+l'assertion qui distingue le correctif de l'ancien code : elle échouait
+avant. Mutation vérifiée : en propagant l'exception à la place du `continue`,
+la suite tombe à **2 échecs sur 57**.
+
+**Pourquoi ce défaut n'existait pas ailleurs.** Le job frère
+`sweepPendingSettlements` (`server/cron.mjs:294-300`) avait déjà le `try/catch`
+par match. L'auteur connaissait le motif — il l'avait écrit 20 lignes plus
+haut. `expireConfirmationsOnServer` était le seul à ne pas l'avoir.
 
 ---
 
@@ -1039,19 +1081,22 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 1. **Vérifier en production si la colonne `app_users.revision` existe** (V9).
    Sans elle, toute la protection multi-instance est hors service. C'est une
    seule requête ; tout le reste en dépend.
-2. **Brancher le sweep d'arbitrage** (V1) — ou décider explicitement que les
-   2 h sont abandonnées, et réécrire le code et les commentaires qui les
-   promettent. En l'état, le code ment au joueur.
-3. **Encadrer `applyResultSettlement` dans la boucle d'expiration**
-   (V6) : un match ne doit pas pouvoir geler la cagnotte de tous les autres.
-4. **Déplacer `lockEntryFee` après le contrôle `TEAM_FULL`** (V7), et ajouter
-   le rembobinage du modèle ligue.
-5. **Ouvrir une file de reprise pour la commission d'arbitre** (V2), sur le
+2. **Déplacer `lockEntryFee` après le contrôle `TEAM_FULL`** (V7), et ajouter
+   un test qui vérifie qu'un joueur dont l'équipe est complète ne perd pas son
+   pass.
+3. **Ouvrir une file de reprise pour la commission d'arbitre** (V2), sur le
    modèle de `pendingPayouts`.
-6. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
+4. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
    champ ne soit affiché.
-7. **Réconcilier les trois listes de statuts** (V3, V4) : `awaiting_arbiter`
+5. **Réconcilier les trois listes de statuts** (V3, V4) : `awaiting_arbiter`
    dans `ACTIVE_STATUSES`, `archived` dans `TERMINAL_STATUSES` — ou, mieux,
    une source unique pour les statuts.
-8. **Donner au BR une reprise automatique** (V10).
-9. **Aligner le front sur le serveur** pour les gains par joueur (V8).
+6. **Donner au BR une reprise automatique** (V10).
+7. **Aligner le front sur le serveur** pour les gains par joueur (V8).
+
+### Déjà traités
+
+- ✅ **V1** — le balayage d'arbitrage est branché sur le tick de 30 s, avec un
+  test qui couvre le chemin complet.
+- ✅ **V6** — l'expiration des confirmations isole les échecs par match et les
+  signale ; un match non réglable ne gèle plus les autres.

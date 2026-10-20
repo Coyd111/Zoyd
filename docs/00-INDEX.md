@@ -160,7 +160,7 @@ graves, avec l'impact concret :
 | **V1** | `sweepMatchesWithoutArbiter` **n'était appelé nulle part** | ✅ **CORRIGÉ** — branché sur le tick de 30 s, avec un test qui couvre le chemin complet |
 | **V2** | `pendingArbiterFee` est écrit mais **jamais relu** | La commission d'arbitre en échec est une créance écrite et jamais reprise |
 | **V3** | `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES` | Un match en attente d'arbitre **disparaît de la liste des matchs actifs** du joueur |
-| **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | **Gèle les confirmations de tous les autres matchs** |
+| **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | ✅ **CORRIGÉ** — isolé par match, et les échecs sont désormais signalés |
 | **V7** | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` | Verrou orphelin : de l'argent bloqué sans match |
 | **V9** | La migration de la colonne `revision` n'est dans **aucun SQL du dépôt** | Une base neuve n'a pas la colonne OCC — la protection multi-instance n'existe pas |
 | **V8** | Le front additionne le total d'équipe aux gains d'un joueur | Affichage faux du gain |
@@ -184,9 +184,12 @@ C'est le motif à retenir : **un test qui appelle la fonction ne prouve pas
 qu'elle est branchée.** La preuve du branchement exige de traverser le chemin
 de production.
 
-**V6 est presque aussi grave** : une exception `ARBITER_REQUIRED` dans
-l'expiration des confirmations gèle les confirmations de **tous** les autres
-matchs.
+**V6 était presque aussi grave, et il est corrigé** : une exception
+`ARBITER_REQUIRED` dans l'expiration des confirmations faisait échouer le
+balayage **entier** — et comme le match fautif levait à nouveau au run
+suivant, le gel était **permanent**. Tous les matchs situés après lui dans la
+collection attendaient indéfiniment. Le job frère avait déjà le `try/catch` par
+match : l'auteur connaissait le motif, il l'avait oublié 20 lignes plus bas.
 
 ---
 

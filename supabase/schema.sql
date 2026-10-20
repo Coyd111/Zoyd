@@ -86,6 +86,13 @@ CREATE INDEX IF NOT EXISTS idx_auth_sessions_supersedes ON auth_sessions(superse
 -- `occSupporte()` detecte la presence de la colonne : migration non appliquee,
 -- le serveur retombe sur l'ecriture inconditionnelle d'avant plutot que de
 -- refuser toute mutation.
+--
+-- ⚠️ L'ALTER ci-dessous a été AJOUTÉ APRÈS coup : le commentaire existait,
+-- la colonne non. Une base recréée depuis ce dépôt n'avait donc AUCUNE
+-- protection OCC, et rien ne le signalait. C'est ce que vérifie
+-- `server/schema-coverage.test.mjs` — sans lui, l'écart peut se rouvrir.
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS revision BIGINT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_app_users_revision ON app_users(revision);
 
 -- ============================================================
 -- 2b. VERROUILLAGE DE CONNEXION

@@ -518,6 +518,20 @@ const occSupporte = async () => {
 export const setOccSupportePourTest = (valeur) => { revisionSupporte = valeur; };
 
 /**
+ * La colonne OCC est-elle presente en base ? `null` = pas encore sonde.
+ *
+ * Expose dans `/api/health` pour que l'etat soit CONNAISSABLE sans avoir a
+ * ouvrir les journaux. V9 a montre que cette colonne avait ete creee a la
+ * main en production, sans que le depot ne contienne le DDL : l'etat etait
+ * donc inconnu, et un simple avertissement dans les logs ne suffit pas — on
+ * ne lit pas les logs quand on cherche a savoir si le systeme est protege.
+ *
+ * `false` = la protection multi-instance est hors service, et les ecritures
+ * sont inconditionnelles. C'est un etat qui doit etre visible, pas devine.
+ */
+export const getOccRevisionColumn = () => revisionSupporte;
+
+/**
  * Test hook : place un payload arbitraire dans le cache memoire.
  *
  * Sert a reproduire la situation multi-instance ou une instance n'a pas encore
@@ -924,6 +938,13 @@ export const loadFromSupabase = async () => {
     // serveur demarrerait en lecture seule a cause d'une migration en attente.
     await probeLoginAttemptsTable();
 
+    // Idem pour la colonne OCC : elle porte la protection multi-instance.
+    // Elle est OPTIONNELLE elle aussi (une base d'avant l'OCC n'a pas la
+    // colonne), et sa sonde ne doit jamais faire tomber `stateTrusted` : on
+    // demarre en ecriture non conditionnelle, on le signale, et on rend
+    // l'etat consultable dans `/api/health`.
+    await occSupporte();
+
     // Idem pour l'historique de sanctions : tolerant a l'absence de table.
     // Un joueur banni ne doit PAS redevenir jouable parce que le serveur a
     // demarre sans la table — mais mieux vaut demarrer et le signaler dans
@@ -1072,6 +1093,10 @@ export const getHealthInfo = () => ({
   // `rows` distingue une table creee et vide d'une table reellement en service ;
   // `error` donne la cause exacte quand la sonde echoue.
   loginLockoutPersisted: loginAttemptsPersisted,
+  // true = la colonne OCC existe, les ecritures sont conditionnelles.
+  // false = elle est absente : les ecritures deviennent inconditionnelles et
+  // la fenetre multi-instance s'ouvre. null = pas encore sonde.
+  occRevisionColumn: revisionSupporte,
     sanctionsPersisted,
   loginAttemptRows: loginAttemptsRows,
   loginAttemptError: loginAttemptsError,

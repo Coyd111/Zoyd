@@ -158,7 +158,7 @@ graves, avec l'impact concret :
 | # | Anomalie | Impact |
 |---|---|---|
 | **V1** | `sweepMatchesWithoutArbiter` **n'était appelé nulle part** | ✅ **CORRIGÉ** — branché sur le tick de 30 s, avec un test qui couvre le chemin complet |
-| **V2** | `pendingArbiterFee` est écrit mais **jamais relu** | La commission d'arbitre en échec est une créance écrite et jamais reprise |
+| **V2** | `pendingArbiterFee` est écrit mais jamais relu | ✅ **CORRIGÉ** — repris par un job cron dédié, avec un test qui couvre le câblage |
 | **V3** | `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES` | Un match en attente d'arbitre **disparaît de la liste des matchs actifs** du joueur |
 | **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | ✅ **CORRIGÉ** — isolé par match, et les échecs sont désormais signalés |
 | **V7** | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` | ✅ **CORRIGÉ** — le verrou passe après les validations, plus un filet de remboursement |

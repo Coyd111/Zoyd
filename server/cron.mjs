@@ -50,13 +50,59 @@ import { createLogger } from './logger.mjs';
 import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds, retryPendingLeaguePayouts, countPendingLeaguePayouts } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
-import { settlePendingMatchResult, expireConfirmationsOnServer } from './match-engine.mjs';
+import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbiterFees, retryPendingArbiterFees } from './match-engine.mjs';
 import { reconcilePendingWithdrawals } from './wallet-engine.mjs';
 import { depositToWallet } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
+
+let arbiterFeeRetryRunning = false;
+
+/**
+ * Reprise des commissions d'arbitre non versees.
+ *
+ * File DISTINCTE de celle des reglements interrompus. Un match dont le
+ * versement de la commission a echoue est `finished` : les joueurs sont payes,
+ * donc `payoutDistributed` vaut `true`, donc ce match n'entrait dans AUCUNE
+ * file. La creance `pendingArbiterFee` etait ecrite, et jamais relue :
+ * l'arbitre avait fait son travail et perdait 2 % du pot, sans que rien ne le
+ * signale.
+ *
+ * 30 min et non 60 s : la commission n'est pas une cagnotte gelee, c'est un
+ * versement attendu. Et un echec persistant ne doit pas remplir les logs
+ * toutes les minutes.
+ *
+ * Cette fonction est exportee pour etre testee DIRECTEMENT. Une reprise qui
+ * n'est appellee par personne a deja existee dans ce projet (V1) : un test
+ * qui n'exerce que le moteur, sans le job, ne prouve rien.
+ */
+export const sweepPendingArbiterFees = async () => {
+  if (arbiterFeeRetryRunning) return;
+  arbiterFeeRetryRunning = true;
+  try {
+    await withMatchMutex(async () => {
+      const matches = getStateCollection('matches');
+      const outstanding = countPendingArbiterFees(matches);
+      if (outstanding === 0) return;
+      const outcome = await retryPendingArbiterFees(matches);
+      if (outcome.retried > 0 || outcome.remaining !== outstanding) {
+        await replaceStateCollection('matches', outcome.matches);
+      }
+      if (outcome.retried > 0) {
+        log.warn('Commissions d arbitre rejouees', { retried: outcome.retried });
+      }
+      if (outcome.remaining > 0) {
+        log.error('Commissions d arbitre toujours en echec', { remaining: outcome.remaining });
+      }
+    });
+  } catch (error) {
+    log.error('Erreur reprise des commissions d arbitre', error);
+  } finally {
+    arbiterFeeRetryRunning = false;
+  }
+};
 
 export const initCronJobs = () => {
   log.info('Service de tâches planifiées initialisé.');
@@ -310,6 +356,11 @@ export const initCronJobs = () => {
   setInterval(() => { void sweepPendingSettlements(); }, 60 * 1000);
   // Au boot : un redemarrage Render est justement le cas le plus probable.
   setTimeout(() => { void sweepPendingSettlements(); }, 15 * 1000);
+
+  // Commission d'arbitre non versee : le job est defini au niveau module
+  // (`sweepPendingArbiterFees`) pour etre testable directement.
+  setInterval(() => { void sweepPendingArbiterFees(); }, 30 * 60 * 1000);
+  setTimeout(() => { void sweepPendingArbiterFees(); }, 45 * 1000);
 
   // Fin de fenetre de confirmation — toutes les 60 s.
   // Un match en attente dont le delai est depasse est regle AUTOMATIQUEMENT :

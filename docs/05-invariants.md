@@ -496,7 +496,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | # | Constat | Le rapport antérieur avait raison ? | Gravité |
 |---|---|---|---|
 | V1 | `sweepMatchesWithoutArbiter` n'est appelé par aucun cron, aucune route, aucun serveur | **OUI** — **CORRIGÉ** | ÉLEVÉE → résolu |
-| V2 | `pendingArbiterFee` est écrit mais jamais relu | **OUI** | MOYENNE |
+| V2 | `pendingArbiterFee` est écrit mais jamais relu | **OUI** | MOYENNE → résolu |
 | V3 | `awaiting_arbiter` ∉ `ACTIVE_STATUSES` | **OUI**, avec une nuance | MOYENNE |
 | V4 | `archived` ∈ `MATCH_ETATS_CLOS` mais ∉ `TERMINAL_STATUSES` | **OUI** | MOYENNE |
 | V5 | `getProjectedPayouts.perWinner` divise par le nombre total de joueurs | **OUI** sur le fond, **NON** sur l'impact | FAIBLE (latent) |
@@ -605,9 +605,14 @@ explicitement vers le sweep pour dire qu'« en l'absence d'arbitre, le match doi
 
 ---
 
-### V2 — `pendingArbiterFee` est écrit mais jamais relu
-**Gravité : MOYENNE**
+### V2 — `pendingArbiterFee` est écrit mais jamais relu — **CORRIGÉ**
+**Gravité : MOYENNE → résolu**
 
+
+> **Statut : corrigé.** La créance est désormais reprise par un job cron dédié
+> (`server/cron.mjs` → `sweepPendingArbiterFees`), et le **câblage** est
+> couvert par un test qui appelle le job lui-même. Le raisonnement ci-dessous
+> est conservé tel quel : il documente l'état *avant* le correctif.
 **Constat.** Quand le versement de la commission d'arbitre échoue, une créance
 est inscribed sur le match. Aucun cron, aucune route, aucun moteur ne la relit.
 
@@ -1105,20 +1110,20 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 1. **Vérifier en production si la colonne `app_users.revision` existe** (V9).
    Sans elle, toute la protection multi-instance est hors service. C'est une
    seule requête ; tout le reste en dépend.
-2. **Ouvrir une file de reprise pour la commission d'arbitre** (V2), sur le
-   modèle de `pendingPayouts`.
-3. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
+2. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
    champ ne soit affiché.
-4. **Réconcilier les trois listes de statuts** (V3, V4) : `awaiting_arbiter`
+3. **Réconcilier les trois listes de statuts** (V3, V4) : `awaiting_arbiter`
    dans `ACTIVE_STATUSES`, `archived` dans `TERMINAL_STATUSES` — ou, mieux,
    une source unique pour les statuts.
-5. **Donner au BR une reprise automatique** (V10).
-6. **Aligner le front sur le serveur** pour les gains par joueur (V8).
+4. **Donner au BR une reprise automatique** (V10).
+5. **Aligner le front sur le serveur** pour les gains par joueur (V8).
 
 ### Déjà traités
 
 - ✅ **V1** — le balayage d'arbitrage est branché sur le tick de 30 s, avec un
   test qui couvre le chemin complet.
+- ✅ **V2** — la commission d'arbitre non versée est reprise par un job cron
+  dédié ; le câblage est couvert par un test qui appelle le job lui-même.
 - ✅ **V6** — l'expiration des confirmations isole les échecs par match et les
   signale ; un match non réglable ne gèle plus les autres.
 - ✅ **V7** — le pass BR n'est plus verrouillé avant les validations ; un

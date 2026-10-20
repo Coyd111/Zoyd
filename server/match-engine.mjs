@@ -1550,6 +1550,86 @@ export const runMatchAutomationOnServer = async (matches, nowMs = Date.now()) =>
  * @param {Object|null} currentUser - The user requesting matches, or null for anonymous.
  * @returns {Array} Array of matching public matches.
  */
+/**
+ * Nombre de matchs dont la commission d'arbitre n'a pas ete versee.
+ * @param {Array} matches
+ * @returns {number}
+ */
+export const countPendingArbiterFees = (matches) =>
+  matches.filter((m) => roundAmount(m.pendingArbiterFee || 0) > 0).length;
+
+/**
+ * Rejoue les commissions d'arbitre que le reglement n'a pas pu verser.
+ *
+ * Pourquoi cette file existe
+ * --------------------------
+ * `applyResultSettlement` paie d'abord les joueurs, puis l'arbitre. Si le
+ * versement de la commission echoue — base indisponible,钱包 indisponible —
+ * les joueurs sont deja payes et le match est `finished`. La commission, elle,
+ * disparait : `pendingArbiterFee` etait ecrit, et jamais relu par AUCUN cron,
+ * aucune route, aucun moteur. L'arbitre avait fait son travail ; il perdait
+ * 2 % du pot, silencieusement.
+ *
+ * Meme famille que V1 et V6 : une creance ecrite, et jamais reprise.
+ *
+ * Rejouer un versement est sans risque : la garde d'idempotence de
+ * `releaseWalletWinnings` ignore tout gain deja verse pour cette competition.
+ * La cle est `arbitration_fee:<matchId>` — identique a celle du reglement
+ * initial, donc un double appel ne paie pas deux fois.
+ *
+ * @param {Array} matches
+ * @returns {Promise<{matches: Array, retried: number, remaining: number}>}
+ */
+export const retryPendingArbiterFees = async (matches) => {
+  const nextMatches = cloneMatches(matches);
+  let retried = 0;
+  let remaining = 0;
+
+  for (const match of nextMatches) {
+    const due = roundAmount(match.pendingArbiterFee || 0);
+    if (due <= 0) continue;
+
+    const arbiterId = match.arbiter?.userId;
+    if (!arbiterId) {
+      // L'arbitre n'est plus identifiable : la creance ne peut pas etre versee
+      // telle quelle. On la garde visible plutot que de l effacer — une
+      // dette qu on ne voit pas est une dette qu on ne rembourse pas.
+      log.error('Commission d arbitre non versable : arbitre inconnu', {
+        matchId: match.id,
+        amount: due,
+      });
+      remaining += 1;
+      continue;
+    }
+
+    try {
+      await withWalletMutex(arbiterId, async () => {
+        await releaseWalletWinnings(
+          arbiterId,
+          due,
+          match.id,
+          'arbitration_fee',
+          `Commission arbitre ${match.id}`
+        );
+      });
+      // La creance est soldee : elle doit sortir de la file, sinon elle
+      // serait rejouee a chaque cycle, pour toujours.
+      delete match.pendingArbiterFee;
+      retried += 1;
+    } catch (error) {
+      log.warn('Commission d arbitre : reprise echouee', {
+        matchId: match.id,
+        arbiterId,
+        amount: due,
+        error: error.message,
+      });
+      remaining += 1;
+    }
+  }
+
+  return { matches: nextMatches, retried, remaining };
+};
+
 export const getPublicMatchesForUser = (matches, currentUser) =>
   matches.filter((match) => {
     if (match.visibility !== 'public') return false;

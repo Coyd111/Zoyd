@@ -161,7 +161,7 @@ graves, avec l'impact concret :
 | **V2** | `pendingArbiterFee` est écrit mais **jamais relu** | La commission d'arbitre en échec est une créance écrite et jamais reprise |
 | **V3** | `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES` | Un match en attente d'arbitre **disparaît de la liste des matchs actifs** du joueur |
 | **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | ✅ **CORRIGÉ** — isolé par match, et les échecs sont désormais signalés |
-| **V7** | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` | Verrou orphelin : de l'argent bloqué sans match |
+| **V7** | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` | ✅ **CORRIGÉ** — le verrou passe après les validations, plus un filet de remboursement |
 | **V9** | La migration de la colonne `revision` n'est dans **aucun SQL du dépôt** | Une base neuve n'a pas la colonne OCC — la protection multi-instance n'existe pas |
 | **V8** | Le front additionne le total d'équipe aux gains d'un joueur | Affichage faux du gain |
 

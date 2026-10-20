@@ -501,7 +501,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | V4 | `archived` ∈ `MATCH_ETATS_CLOS` mais ∉ `TERMINAL_STATUSES` | **OUI** | MOYENNE |
 | V5 | `getProjectedPayouts.perWinner` divise par le nombre total de joueurs | **OUI** sur le fond, **NON** sur l'impact | FAIBLE (latent) |
 | V6 | Une exception de règlement tue tout le balayage d'expiration des confirmations | **NOUVEAU** | ÉLEVÉE → résolu |
-| V7 | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` → verrou orphelin | **NOUVEAU** | ÉLEVÉE |
+| V7 | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` → verrou orphelin | **NOUVEAU** | ÉLEVÉE → résolu |
 | V8 | Le front additionne le total de l'équipe gagnante aux gains d'un joueur | **NOUVEAU** | MOYENNE |
 | V9 | La migration de la colonne `revision` n'est dans aucun fichier SQL du dépôt | **NOUVEAU** | ÉLEVÉE (si non appliquée) |
 | V10 | BR : aucun cron de reprise d'un règlement interrompu | **NOUVEAU** | MOYENNE |
@@ -857,11 +857,16 @@ haut. `expireConfirmationsOnServer` était le seul à ne pas l'avoir.
 
 ---
 
-### V7 — BR : le pass est verrouillé avant le contrôle `TEAM_FULL`
-**Gravité : ÉLEVÉE** — *constat nouveau, absent du rapport*
+### V7 — BR : le pass est verrouillé avant le contrôle `TEAM_FULL` — **CORRIGÉ**
+**Gravité : ÉLEVÉE → résolu** — *constat nouveau, absent du rapport*
+
+> **Statut : corrigé.** Le verrou est désormais posé **après** toutes les
+> validations, et un filet de sécurité rembourse le pass si une écriture
+> postérieure échoue. Le raisonnement ci-dessous est conservé tel quel : il
+> documente l'état *avant* le correctif.
 
 **Constat.** Dans `joinBrLobbyOnServer`, `lockEntryFee` est appelé **avant** la
-vérification de completude d'équipe. Si l'équipe est pleine, l'exception est
+vérification de complétude d'équipe. Si l'équipe est pleine, l'exception est
 levée **après** le débit.
 
 **Vérification.**
@@ -893,9 +898,28 @@ le refus `TEAM_FULL`, mais `lockEntryFee` y est un `vi.fn()` sans effet
 (`server/br-engine.test.mjs:9-14`) : le test ne peut pas, par construction,
 détecter un problème de solde.
 
-**Correctif.** Déplacer `lockEntryFee` après le contrôle `TEAM_FULL`, ou
-encadrer l'ensemble verrou + poussée du joueur d'un `try/catch` qui rembourse
-en cas d'échec, sur le modèle de `server/league-engine.mjs:301-327`.
+**Correctif appliqué.** Deux mesures, dans cet ordre :
+
+1. **Déplacer `lockEntryFee` après le contrôle `TEAM_FULL`.** La règle
+   générale : *on ne bloque de l'argent qu'après avoir été sûr que l'opération
+   aboutira.* Toutes les validations passent d'abord, l'argent ensuite.
+2. **Un filet de sécurité.** Les écritures qui suivent le verrou sont
+   encadrées : si l'une d'elles échoue, le pass est **remboursé** avant de
+   propager l'erreur. V7 venait précisément d'une écriture susceptible
+   d'échouer après le débit — on ne remet pas ce genre de piège en place.
+
+**La preuve.** `server/br-engine.test.mjs` — deux joueurs de la même équipe
+remplissent un duo en mode `duo`, un troisième de la même équipe est refusé.
+Le test vérifie que **`lockEntryFee` n'a pas été appelé** pour le joueur
+refusé, et que le salon (nombre de joueurs, pot) est inchangé.
+
+C'est précisément l'angle mort que le documente : `lockEntryFee` y est un
+`vi.fn()` sans effet, donc **aucun test ne pouvait voir un problème de solde**.
+L'assertion porte donc sur l'appel lui-même — ce que le mock permet, et ce
+que la lecture du solde ne permettait pas.
+
+Mutation vérifiée : en remettant le verrou avant le contrôle `TEAM_FULL`, la
+suite tombe à **1 échec sur 70**.
 
 ---
 
@@ -1081,18 +1105,15 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 1. **Vérifier en production si la colonne `app_users.revision` existe** (V9).
    Sans elle, toute la protection multi-instance est hors service. C'est une
    seule requête ; tout le reste en dépend.
-2. **Déplacer `lockEntryFee` après le contrôle `TEAM_FULL`** (V7), et ajouter
-   un test qui vérifie qu'un joueur dont l'équipe est complète ne perd pas son
-   pass.
-3. **Ouvrir une file de reprise pour la commission d'arbitre** (V2), sur le
+2. **Ouvrir une file de reprise pour la commission d'arbitre** (V2), sur le
    modèle de `pendingPayouts`.
-4. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
+3. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
    champ ne soit affiché.
-5. **Réconcilier les trois listes de statuts** (V3, V4) : `awaiting_arbiter`
+4. **Réconcilier les trois listes de statuts** (V3, V4) : `awaiting_arbiter`
    dans `ACTIVE_STATUSES`, `archived` dans `TERMINAL_STATUSES` — ou, mieux,
    une source unique pour les statuts.
-6. **Donner au BR une reprise automatique** (V10).
-7. **Aligner le front sur le serveur** pour les gains par joueur (V8).
+5. **Donner au BR une reprise automatique** (V10).
+6. **Aligner le front sur le serveur** pour les gains par joueur (V8).
 
 ### Déjà traités
 
@@ -1100,3 +1121,6 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
   test qui couvre le chemin complet.
 - ✅ **V6** — l'expiration des confirmations isole les échecs par match et les
   signale ; un match non réglable ne gèle plus les autres.
+- ✅ **V7** — le pass BR n'est plus verrouillé avant les validations ; un
+  joueur refusé ne perd plus son argent, et un filet rembourse en cas
+  d'échec tardif.

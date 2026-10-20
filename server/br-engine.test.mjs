@@ -339,6 +339,57 @@ describe('br-engine - joinBrLobbyOnServer', () => {
       .rejects.toThrow(/plus d'inscriptions/);
   });
 
+  // V7 : le pass etait bloque AVANT le controle `TEAM_FULL`. Un joueur dont
+  // l'equipe etait complete payait son pass, recevait l erreur, et son argent
+  // restait bloque : il n etait pas dans `lobby.players`, donc la
+  // desinscription ne le rattrapait pas non plus. Un echec d inscription
+  // couteait un joueur le montant de son pass, sans contrepartie.
+  it('un joueur refuse TEAM_FULL ne perd pas son pass', async () => {
+    const salonDuo = createLobby({ mode: 'duo', map: 'isolated' });
+    let lobbies = [salonDuo];
+
+    // Deux joueurs de la MEME equipe remplissent le duo.
+    for (const id of ['a1', 'a2']) {
+      const p = { ...player(id), squadKey: 'MEME-EQUIPE' };
+      getUserById.mockReturnValue(p);
+      const res = await brEngine.joinBrLobbyOnServer(lobbies, p, salonDuo.id);
+      lobbies = res.lobbies;
+    }
+
+    // Le troisieme de la meme equipe est refuse.
+    vi.clearAllMocks();
+    const troisieme = { ...player('a3'), squadKey: 'MEME-EQUIPE' };
+    getUserById.mockReturnValue(troisieme);
+
+    await expect(brEngine.joinBrLobbyOnServer(lobbies, troisieme, salonDuo.id))
+      .rejects.toThrow(/equipe est complete/);
+
+    // L ASSERTION CLE : aucun verrou n a ete pose pour le joueur refuse.
+    expect(lockEntryFee).not.toHaveBeenCalled();
+    expect(refundLockedEntry).not.toHaveBeenCalled();
+  });
+
+  it('un joueur refuse ne se retrouve pas non plus dans le salon', async () => {
+    const salonDuo = createLobby({ mode: 'duo', map: 'isolated' });
+    let lobbies = [salonDuo];
+    for (const id of ['a1', 'a2']) {
+      const p = { ...player(id), squadKey: 'MEME-EQUIPE' };
+      getUserById.mockReturnValue(p);
+      const res = await brEngine.joinBrLobbyOnServer(lobbies, p, salonDuo.id);
+      lobbies = res.lobbies;
+    }
+    const avant = lobbies[0].players.length;
+    const potAvant = lobbies[0].pot;
+
+    const troisieme = { ...player('a3'), squadKey: 'MEME-EQUIPE' };
+    getUserById.mockReturnValue(troisieme);
+    await expect(brEngine.joinBrLobbyOnServer(lobbies, troisieme, salonDuo.id)).rejects.toThrow();
+
+    // Le salon est inchange : ni joueur, ni pot.
+    expect(lobbies[0].players).toHaveLength(avant);
+    expect(lobbies[0].pot).toBe(potAvant);
+  });
+
   // Regression : en solo (teamSize 1), la `squadKey` par defaut etait le
   // pseudo. Le 2e joueur rejoignait donc l'equipe du createur, deja complete,
   // et recevait TEAM_FULL : un salon solo ne pouvait ACCEPTER aucun joueur

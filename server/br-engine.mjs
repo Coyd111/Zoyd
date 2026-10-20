@@ -390,12 +390,6 @@ export const joinBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
     throw makeError('LOBBY_FULL', `Salon complet (${lobby.maxPlayers} joueurs max).`);
   }
 
-  // `lockEntryFee` est idempotent : si le joueur avait deja bloque ce pass,
-  // il ne serait pas debite deux fois.
-  await withWalletMutex(actorUser.id, async () => {
-    await lockEntryFee(actorUser.id, lobby.entryFee, lobby.id);
-  });
-
   // equipes : solo = 1 joueur par equipe, duo/squad = regroupement par
   // `squadKey` (le joueur peut fournir son pseudo d'equipe).
   const teamSize = BR_MODES[lobby.mode].teamSize;
@@ -414,27 +408,55 @@ export const joinBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   if (team.members.length >= teamSize) {
     throw makeError('TEAM_FULL', `Ton equipe est complete (${teamSize} joueur(s) max).`);
   }
-  team.members.push(actorUser.id);
 
-  lobby.players.push({
-    userId: actorUser.id,
-    pseudo: actorUser.pseudo,
-    teamId: team.id,
-    joinedAt: getNow(),
-    checkedIn: false,
-    // En vie jusqu'a elimination. `placement` est inversee a l'elimination :
-    // le dernier elimine est 1er.
-    alive: true,
-    placement: null,
-    kills: 0,
-    eliminatedAt: null,
-    absent: false,
-    settled: false,
-    winnings: 0,
+  // ─── Verrou du pass : APRES toutes les validations ────────────────────────
+  //
+  // Le verrou etait pose AVANT le controle `TEAM_FULL`. Un joueur dont
+  // l'equipe etait complete payait donc son pass, puis recevait l'erreur —
+  // et son argent restait bloque : il n etait pas dans `lobby.players`, donc
+  // la desinscription ne le rattrapait pas non plus. Un simple echec
+  // d inscription couteait un joueur le montant de son pass, sans contrepartie.
+  //
+  // Regle : on ne bloque de l argent qu'apres avoir ete sur que l operation
+  // aboutira. Toutes les validations passent d'abord, l argent ensuite.
+  //
+  // `lockEntryFee` est idempotent : si le joueur avait deja bloque ce pass,
+  // il ne serait pas debite deux fois.
+  await withWalletMutex(actorUser.id, async () => {
+    await lockEntryFee(actorUser.id, lobby.entryFee, lobby.id);
   });
 
-  lobby.pot = roundAmount(lobby.pot + lobby.entryFee);
-  lobby.updatedAt = getNow();
+  // Filet de securite : si une ecriture posterior au verrou echoue, le pass
+  // est rembourse. Le defaut de V7 venait precisement d une ecriture qui
+  // pouvait echouer apres le debit — on ne remet pas ce genre de piege.
+  try {
+    team.members.push(actorUser.id);
+
+    lobby.players.push({
+      userId: actorUser.id,
+      pseudo: actorUser.pseudo,
+      teamId: team.id,
+      joinedAt: getNow(),
+      checkedIn: false,
+      // En vie jusqu'a elimination. `placement` est inversee a l'elimination :
+      // le dernier elimine est 1er.
+      alive: true,
+      placement: null,
+      kills: 0,
+      eliminatedAt: null,
+      absent: false,
+      settled: false,
+      winnings: 0,
+    });
+
+    lobby.pot = roundAmount(lobby.pot + lobby.entryFee);
+    lobby.updatedAt = getNow();
+  } catch (error) {
+    await withWalletMutex(actorUser.id, async () => {
+      await refundLockedEntry(actorUser.id, lobby.id, `Annulation inscription salon BR ${lobby.id}`);
+    });
+    throw error;
+  }
 
   return { lobby, lobbies: nextLobbies };
 };

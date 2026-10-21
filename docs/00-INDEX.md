@@ -165,6 +165,7 @@ graves, avec l'impact concret :
 | **V7** | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` | ✅ **CORRIGÉ** — le verrou passe après les validations, plus un filet de remboursement |
 | **V9** | La migration de la colonne `revision` n'est dans **aucun SQL du dépôt** | ✅ **CORRIGÉ** — DDL ajouté, test de couverture du schéma, état exposé dans `/api/health` |
 | **V8** | Le front additionne le total d'équipe aux gains d'un joueur | Affichage faux du gain |
+| **V5** | `perWinner` : la part annoncée par joueur était 2x trop petite | ✅ **CORRIGÉ** — la projection annonce la part réelle, et un test vérifie qu'elle correspond au règlement |
 
 Le détail de chacune, avec les emplacements exacts, est dans
 [`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).

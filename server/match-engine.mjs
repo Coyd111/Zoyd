@@ -214,14 +214,29 @@ export const getProjectedPayouts = (match) => {
   const basis = lockedPot > 0 ? lockedPot : Number(match.prizePool || 0);
   const arbiterFee = match.arbiter?.userId ? roundAmount(basis * ARBITER_FEE_RATE) : 0;
   const winner = Math.max(0, roundAmount(basis - arbiterFee));
+
+  // Part par joueur GAGNANT.
+  //
+  // Le nombre de gagnants n'est connu qu'une fois le resultat soumis. Avant,
+  // c'est la TAILLE D'EQUIPE qui le determine : l'equipe gagnante en compte
+  // exactement `teamSize`. Le repli (moitie du roster) couvre les matchs
+  // anciens, dont la taille d'equipe n'est pas toujours renseignee.
+  //
+  // Diviser par le nombre TOTAL de joueurs donnait une part deux fois trop
+  // petite en 1v1 — la moitie du pot au lieu du pot entier — et en 2v2, la
+  // moitie de la part reelle. Pire : la valeur erronee etait FIGEE par un
+  // test, donc la correction aurait passe pour une regression.
+  const joueurs = match.players || [];
+  const gagnants = match.result && match.result.winnerTeam !== undefined && match.result.winnerTeam !== null
+    ? joueurs.filter((p) => p.team === match.result.winnerTeam).length
+    : (match.teamSize || Math.max(1, Math.ceil(joueurs.length / 2)));
+
   return {
     basis: roundAmount(basis),
     locked: lockedPot > 0,
     arbiterFee,
     winner,
-    perWinner: match.players && match.players.length
-      ? roundAmount(winner / match.players.length)
-      : 0,
+    perWinner: gagnants > 0 ? roundAmount(winner / gagnants) : 0,
   };
 };
 

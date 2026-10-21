@@ -387,18 +387,84 @@ describe('match-engine - getProjectedPayouts (montants affiches)', () => {
   });
 
   it('should split the winner pot across the players of the winning team', () => {
+    // 2v2 : quatre joueurs, deux equipes de deux. L'equipe gagnante compte
+    // DEUX joueurs, donc chacun recoit la MOITIE du pot gagneur.
+    //
+    // L'assertion d'origine (490) divisait par le nombre TOTAL de joueurs :
+    // elle figeait le bug. Et le nom du test annoncait deja le bon
+    // comportement — « across the players of the winning team » — que
+    // l'implementation ne respectait pas.
     lockEveryone('M-1', 500);
     const match = {
       id: 'M-1',
       prizePool: 2000,
-      players: [{ userId: 'a' }, { userId: 'b' }, { userId: 'c' }, { userId: 'd' }],
+      teamSize: 2,
+      players: [
+        { userId: 'a', team: 0 }, { userId: 'b', team: 0 },
+        { userId: 'c', team: 1 }, { userId: 'd', team: 1 },
+      ],
       arbiter: { userId: 'arb' },
     };
     const projection = matchEngine.getProjectedPayouts(match);
     expect(projection.basis).toBe(2000);
     expect(projection.arbiterFee).toBe(40);
     expect(projection.winner).toBe(1960);
-    expect(projection.perWinner).toBe(490);
+    // 1960 / 2 gagnants = 980 par joueur — et non 1960 / 4 joueurs.
+    expect(projection.perWinner).toBe(980);
+  });
+
+  it('la projection annonce ce que le reglement versera REELLEMENT', () => {
+    // L'invariant qui manquait, et qui aurait attrape le bug : ce que
+    // l'ecran annonce et ce que la poche recoit doivent etre le meme chiffre.
+    // Sans ca, l'affichage et le reglement pouvait diverger en silence.
+    lockEveryone('M-1', 500);
+    const match = {
+      id: 'M-1',
+      status: 'in_progress',
+      format: '2VS2',
+      teamSize: 2,
+      maxPlayers: 4,
+      entryFee: 500,
+      prizePool: 2000,
+      zoydFee: 0,
+      arbiterFee: 40,
+      players: [
+        { userId: 'a', team: 0 }, { userId: 'b', team: 0 },
+        { userId: 'c', team: 1 }, { userId: 'd', team: 1 },
+      ],
+      disputes: [],
+      arbiter: { userId: 'arb' },
+    };
+
+    const projection = matchEngine.getProjectedPayouts(match);
+
+    getUserById.mockImplementation((id) => ({
+      id,
+      pseudo: id,
+      role: id === 'arb' ? 'arbiter' : 'player',
+      trustScore: 100,
+      stats: { elo: 1200, wins: 0, losses: 0 },
+      progression: {},
+      wallet: { lockedEntries: { 'M-1': { amount: 500 } } },
+    }));
+
+    const winners = ['a', 'b'];
+    const gagnant = winners.includes('a') ? 0 : 1;
+    const matchAvecResultat = {
+      ...match,
+      result: { winnerTeam: gagnant, scores: { team0: 10, team1: 0 }, payoutDistributed: 'pending' },
+      status: 'awaiting_confirmation',
+      confirmationDeadline: new Date(Date.now() + 60_000).toISOString(),
+    };
+
+    return matchEngine.settlePendingMatchResult([matchAvecResultat], 'M-1').then(() => {
+      const versements = releaseWalletWinnings.mock.calls.filter((c) => c[3] === 'prize_win');
+      expect(versements.length).toBeGreaterThan(0);
+      for (const versement of versements) {
+        // Chaque gagnant recoit EXACTEMENT ce que la projection annoncait.
+        expect(versement[1]).toBe(projection.perWinner);
+      }
+    });
   });
 
   it('should fall back to prizePool when no funds are locked (estimation)', () => {

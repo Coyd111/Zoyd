@@ -499,7 +499,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | V2 | `pendingArbiterFee` est écrit mais jamais relu | **OUI** | MOYENNE → résolu |
 | V3 | `awaiting_arbiter` n est pas dans `ACTIVE_STATUSES` | **OUI** | MOYENNE -> resolu |
 | V4 | `archived` dans MATCH_ETATS_CLOS mais pas TERMINAL_STATUSES | **OUI** | MOYENNE -> resolu |
-| V5 | `getProjectedPayouts.perWinner` divise par le nombre total de joueurs | **OUI** sur le fond, **NON** sur l'impact | FAIBLE (latent) |
+| V5 | `perWinner` divise par le nombre total de joueurs | **OUI** sur le fond | FAIBLE (latent) -> resolu |
 | V6 | Une exception de règlement tue tout le balayage d'expiration des confirmations | **NOUVEAU** | ÉLEVÉE → résolu |
 | V7 | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` → verrou orphelin | **NOUVEAU** | ÉLEVÉE → résolu |
 | V8 | Le front additionne le total de l'équipe gagnante aux gains d'un joueur | **NOUVEAU** | MOYENNE |
@@ -1152,13 +1152,11 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 
 ## 8. Ce qu'il faut faire, par ordre de risque
 
-1. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
-   champ ne soit affiché.
-2. **Donner au BR une reprise automatique** (V10).
-3. **Aligner le front sur le serveur** pour les gains par joueur (V8).
-4. **Rendre `login-timing.test.mjs` stable** : c'est un test de chronométrage
-   avec 60 ms de tolérance, et il échoue par intermittence sous charge. Un
-   test qui tombe au hasard est un test qui ne prouve rien.
+1. **Donner au BR une reprise automatique** (V10).
+2. **Aligner le front sur le serveur** pour les gains par joueur (V8).
+3. **Rendre `login-timing.test.mjs` stable** : c est un test de chronometrie
+   avec 60 ms de tolerance, et il echoue par intermittence sous charge. Un
+   test qui tombe au hasard ne prouve rien.
 
 ### Déjà traités
 
@@ -1172,6 +1170,8 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
   bien eu lieu, et il doit figurer chez le joueur.
 - ✅ **V6** — l'expiration des confirmations isole les échecs par match et les
   signale ; un match non réglable ne gèle plus les autres.
+- ✅ **V5** — `perWinner` annonce la part par joueur GAGNANT, et un test
+  verifie qu elle correspond exactement a ce que le reglement verse.
 - ✅ **V7** — le pass BR n'est plus verrouillé avant les validations ; un
   joueur refusé ne perd plus son argent, et un filet rembourse en cas
   d'échec tardif.

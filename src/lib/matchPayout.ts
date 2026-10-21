@@ -9,15 +9,18 @@
  * `prizePool - zoydFee - arbiterFee` pour l'affichage : prizePool vaut
  * maxPlayers x entryFee des la creation, alors que le serveur calcule sur
  * les fonds reellement bloques. Un roster incomplet verse moins.
- * PIEGE : `getWinnerPayoutPerPlayer` et `hasAuthoritativePayout` n'ont AUCUN
- * appelant : c'est du code mort. `perWinner` n'est lu par aucun composant
- * et Rollup l'elague du build. Le serveur calcule de surcroit autrement
- * (match-engine.mjs) : la projection divise par le nombre TOTAL de joueurs,
- * le reglement reel par le nombre de GAGNANTS (ecart de 2x en 2v2, 5x en
- * 5v5). Ne pas ressusciter ces helpers sans corriger le serveur d'abord.
- * PIEGE : `getWinnerPayout` renvoie le TOTAL DE L'EQUIPE, pas la part
- * individuelle. L'utiliser pour afficher un gain personnel gonfle le profil
- * (voir profileMetrics et communityInsights).
+    * PIEGE : `perWinner` est la part par joueur GAGNANT. Le serveur la calcule
+    * sur la taille de l'equipe gagnante (donc divise par 2 en 2VS2, par 5 en
+    * 5VS5) — et sur le nombre REEL de gagnants quand le resultat est soumis.
+    * Avant la correction, elle divisait par le nombre TOTAL de joueurs : la
+    * part annoncee etait deux fois trop petite en 2VS2, cinq fois trop
+    * petite en 5VS5, et un test figeait la valeur erronee. Le calcul vit
+    * maintenant dans `server/match-engine.mjs` (`getProjectedPayouts`), et un
+    * test verifie que l affichage annonce exactement ce que le reglement
+    * verse.
+    * PIEGE : `getWinnerPayout` renvoie le TOTAL DE L'EQUIPE, pas la part
+    * individuelle. L'utiliser pour afficher un gain personnel gonfle le profil
+    * (voir profileMetrics et communityInsights).
  * PIEGE : la commission d'arbitre (2 %) ne s'applique que s'il y a un
  * arbitre. L'afficher sur un match sans arbitre est faux.
  *
@@ -70,15 +73,3 @@ export const getWinnerPayout = (match: PayoutMatch): number => {
   );
 };
 
-/**
- * Part par joueur gagnant. Le serveur partage entre les joueurs de l'equipe
- * gagnante (5 en 5VS5), pas entre tous les inscrits.
- */
-export const getWinnerPayoutPerPlayer = (match: PayoutMatch, winnerTeamSize?: number): number => {
-  if (match.projectedPayouts?.perWinner) return roundAmount(match.projectedPayouts.perWinner);
-  const size = winnerTeamSize && winnerTeamSize > 0 ? winnerTeamSize : 1;
-  return roundAmount(getWinnerPayout(match) / size);
-};
-
-/** true si le montant provient du serveur (donc fiable), false si reconstruit. */
-export const hasAuthoritativePayout = (match: PayoutMatch): boolean => Boolean(match.projectedPayouts);

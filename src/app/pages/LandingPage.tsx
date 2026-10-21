@@ -37,6 +37,7 @@ import { LANDING_TICKER_ITEMS } from '../../lib/competition';
 import { getApiUrl } from '../lib/apiClient';
 import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
+import { SocialLinks } from '../components/SocialLinks';
 
 interface PublicStats {
   players: number;
@@ -506,9 +507,12 @@ export default function LandingPage() {
             <Link to="/mentions" className="hover:text-white/70 transition-colors">Mentions & Assistance</Link>
             <Link to="/jeu-responsable" className="hover:text-white/70 transition-colors">Jeu responsable</Link>
           </div>
-          <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/70">
-            © 2026 ZOYD — Cotonou, Bénin
-            <span className="ml-3 inline-block border border-zoyd-yellow/50 text-zoyd-yellow px-2 py-0.5">18+</span>
+          <div className="flex flex-wrap items-center gap-6">
+            <SocialLinks />
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/70">
+              © 2026 ZOYD — Cotonou, Bénin
+              <span className="ml-3 inline-block border border-zoyd-yellow/50 text-zoyd-yellow px-2 py-0.5">18+</span>
+            </div>
           </div>
         </div>
       </footer>

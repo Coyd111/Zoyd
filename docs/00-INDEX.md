@@ -172,6 +172,7 @@ graves, avec l'impact concret :
 
 | **V12** | `LEAGUE_PLAYERS_PER_DAY` : constante morte, dérivée de la source de vérité | ✅ **CORRIGÉ** |
 Le détail de chacune, avec les emplacements exacts, est dans
+| **Réseaux sociaux** | Discord, TikTok, WhatsApp (communauté) | ✅ **AJOUTÉS** — icônes de marque officielles, source unique, `sameAs` dans le JSON-LD |
 [`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).
 
 **V1 était le plus important, et il est corrigé.** La session précédente avait

@@ -170,6 +170,7 @@ graves, avec l'impact concret :
 | **V14** | Un salon BR jamais lance garde les passes verrouillees a jamais | **CORRIGE** - balayage des salons perimes, avec remboursement |
 | **V11** | `arbiterPayouts` : la sortie de trésorerie était mesurée sur le pot théorique | ✅ **CORRIGÉ** — lue désormais sur les transactions réellement versées |
 
+| **V12** | `LEAGUE_PLAYERS_PER_DAY` : constante morte, dérivée de la source de vérité | ✅ **CORRIGÉ** |
 Le détail de chacune, avec les emplacements exacts, est dans
 [`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).
 

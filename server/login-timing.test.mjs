@@ -39,6 +39,8 @@ const mesure = async (identifier) => {
   return Number(process.hrtime.bigint() - debut) / 1e6;
 };
 
+const mediane = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
 beforeEach(() => vi.clearAllMocks());
 
 describe("Login : l'existence d'un compte ne se lit pas au chrono", () => {
@@ -55,14 +57,39 @@ describe("Login : l'existence d'un compte ne se lit pas au chrono", () => {
     });
     await settle();
 
-    // Medianes : la machine chargee gonfle les echantillons, pas leur ordre.
+    // ─── Pourquoi cet echantillonnage ───────────────────────────────────────
+    //
+    // La version precedente prenait 5 echantillons par cas, et CINQ
+    // identifiants DIFFERENTS pour le cas inexistant. Deux erreurs en
+    // découlaient :
+    //
+    // 1. Cinq echantillons, c'est une mediane tres bruyante : un seul passage
+    //    du ramasse-miettes suffit a la deplacer de dizaines de ms. Le test
+    //    echouait donc une fois sur trois, selon la charge de la machine.
+    // 2. Les deux cas n'etaient pas compares a egale charge : l'existant
+    //    etait mesure 5 fois sur la MEME cle (donc rechauffe), l'inexistant
+    //    5 fois sur des cles differentes (donc 5 chemins a froid). On
+    //    comparait un cas chaud a un cas froid.
+    //
+    // Ici : NEUF echantillons, un echantillon de chauffe JETE, et les deux
+    // cas mesures en ALTERNANCE. L'alternance est le point cle : une pause
+    // du ramasse-miettes ou un pic de charge tombent sur les deux series, et
+    // non sur une seule. C'est ce qui rend la comparaison honnete.
     const existant = [];
     const inexistant = [];
-    for (let i = 0; i < 5; i += 1) {
-      existant.push(await mesure(`Chrono${stamp}`));
-      inexistant.push(await mesure(`Inconnu${stamp}${i}`));
+    const idExistant = `Chrono${stamp}`;
+    const idInexistant = `Inconnu${stamp}`;
+
+    // Chauffage : le premier appel paie le JIT et les caches internes. On le
+    // jette — sinon les deux series ne demarrent pas au meme point.
+    await mesure(idExistant);
+    await mesure(idInexistant);
+
+    for (let i = 0; i < 9; i += 1) {
+      existant.push(await mesure(idExistant));
+      inexistant.push(await mesure(idInexistant));
     }
-    const mediane = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
     const mExistant = mediane(existant);
     const mInexistant = mediane(inexistant);
 
@@ -72,8 +99,10 @@ describe("Login : l'existence d'un compte ne se lit pas au chrono", () => {
     expect(
       ecart,
       `ecart temporel de ${ecart.toFixed(1)} ms (existant ${mExistant.toFixed(1)} / inexistant ${mInexistant.toFixed(1)})`
+      + ` — existant [${existant.map((x) => x.toFixed(0)).join(' ')}]`
+      + ` / inexistant [${inexistant.map((x) => x.toFixed(0)).join(' ')}]`,
     ).toBeLessThan(60);
-  }, 30000);
+  }, 120000);
 
   it('les deux cas rendent la MEME erreur, cote API', async () => {
     const stamp = `${Date.now()}`.slice(-9).slice(0, 6);

@@ -833,6 +833,22 @@ describe('league-engine - assignPlayersToDays', () => {
       expect(day).toHaveLength(1);
     }
   });
+
+  it('aucune journee ne depasse l effectif maximum attendu par journee', () => {
+    // La repartition est un tourniquet sur le nombre maximal d inscrits. Le
+    // plafond par journee n'est donc pas une regle a appliquer : c'est une
+    // consequence. Ce test la verifie, pour que la constante derivee ne
+    // derive pas non plus.
+    const joueurs = Array.from({ length: 500 }, (_, i) => `p${i}`);
+    const groups = leagueEngine.assignPlayersToDays(joueurs);
+
+    for (const jour of Object.values(groups)) {
+      expect(jour.length).toBeLessThanOrEqual(leagueEngine.LEAGUE_PLAYERS_PER_DAY);
+    }
+    // Et la repartition est complete : personne n'est perdu, personne n'est
+    // duplique.
+    expect(Object.values(groups).flat()).toHaveLength(500);
+  });
 });
 
 describe('league-engine - submitLeagueFinalResultsOnServer', () => {

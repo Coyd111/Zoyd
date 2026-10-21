@@ -52,7 +52,19 @@ const log = createLogger('league-engine');
 const LEAGUE_ENTRY_FEE = 50;
 const LEAGUE_MAX_PLAYERS = 500;
 const LEAGUE_QUALIFY_DAYS = 5;
-const LEAGUE_PLAYERS_PER_DAY = 100;
+/**
+ * Effectif ATTENDU par journee de qualification.
+ *
+ * Ce n'etait pas un nombre magique : la repartition est un tourniquet
+ * (`assignPlayersToDays`, `i % LEAGUE_QUALIFY_DAYS`) sur `LEAGUE_MAX_PLAYERS`
+ * inscrits au maximum. La journee maximale vaut donc exactement
+ * `LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS`.
+ *
+ * La constante etait definie — a la bonne valeur — mais JAMAIS UTILISEE. Un
+ * nombre ecrit en dur duplique une regle : il derive des que l une des deux
+ * sources change. Ici, il est DERIVE, donc il ne peut plus diverger.
+ */
+export const LEAGUE_PLAYERS_PER_DAY = Math.ceil(LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS);
 const LEAGUE_FINALISTS_COUNT = 40;
 const LEAGUE_FINAL_TABLE_SIZE = 100;
 const LEAGUE_REWARD_FIRST = 0.60;

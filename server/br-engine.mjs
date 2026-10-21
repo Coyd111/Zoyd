@@ -961,6 +961,88 @@ if (arbiter.userId && arbiter.amount > 0 && !lobby.arbiterSettled) {
  * pouvait differer du pot de quelques centimes, et la cagnotte ne serait ni
  * videe ni creditee au centime pres.
  */
+/**
+ * Nombre de salons BR dont le reglement est interrompu.
+ *
+ * Un salon reste `settling` tant que TOUT n'a pas ete verse : c'est
+ * volontaire, pour qu'une prime en echec ne puisse pas disparaitre derriere un
+ * statut « regle ».
+ *
+ * @param {Array} lobbies
+ * @returns {number}
+ */
+export const countPendingBrSettlements = (lobbies) =>
+  (lobbies || []).filter((lobby) => lobby && lobby.status === 'settling').length;
+
+/**
+ * Reprend les reglements BR interrompus.
+ *
+ * Pourquoi cette file existe
+ * --------------------------
+ * `settleBrLobbyOnServer` ecrit `settling` AVANT les versements, et marque
+ * chaque joueur verse (`player.settled`). Le mecanisme de reprise EXISTE
+ * donc deja : un salon `settling` est accepte, et les joueurs deja payes sont
+ * sautes.
+ *
+ * Mais PERSONNE ne rappelait la fonction. Un arret de processus au milieu
+ * d'un reglement laissait le salon en `settling` pour toujours, avec une
+ * prime jamais versee et un salon ni `live` ni `regle` — donc invisible des
+ * deux cotes.
+ *
+ * Meme famille que V1, V2 et V6 : un mecanisme ecrit, teste, jamais relie.
+ *
+ * Rejouer un versement est sans risque : la garde d'idempotence de
+ * `releaseWalletWinnings` ignore tout gain deja verse, et les drapeaux
+ * `settled` evitent meme de tenter le versement.
+ *
+ * @param {Array} lobbies
+ * @param {object} [options]
+ * @param {Function} [options.getActor] - (lobby) => acteur du reglement
+ *   (l'arbitre du salon). Un salon sans arbitre resolvable est signale, pas
+ *   efface : une dette qu on ne voit pas est une dette qu on ne rembourse pas.
+ * @param {Function} [options.onProgress] - Persistance incremental, comme la
+ *   route : l'etat avance a chaque versement, donc un arret au milieu ne
+ *   perd pas ce qui a deja ete verse.
+ * @returns {Promise<{lobbies: Array, retried: number, remaining: number}>}
+ */
+export const retryPendingBrSettlements = async (lobbies, options = {}) => {
+  const getActor = typeof options.getActor === 'function' ? options.getActor : null;
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+  let nextLobbies = cloneLobbies(lobbies || []);
+  let retried = 0;
+  let remaining = 0;
+
+  for (const lobby of nextLobbies) {
+    if (!lobby || lobby.status !== 'settling') continue;
+
+    const actor = getActor ? getActor(lobby) : null;
+    if (!actor) {
+      log.error('Reglement BR non reprenable : arbitre introuvable', {
+        lobbyId: lobby.id,
+      });
+      remaining += 1;
+      continue;
+    }
+
+    try {
+      const outcome = await settleBrLobbyOnServer(nextLobbies, actor, lobby.id, { onProgress });
+      // `settleBrLobbyOnServer` travaille sur son PROPRE clone : on doit
+      // reprendre le resultat, sinon les reglments precedents seraient
+      // perdus et le salon repayerait depuis zero.
+      nextLobbies = outcome.lobbies;
+      retried += 1;
+    } catch (error) {
+      log.error('Reprise du reglement BR echouee', {
+        lobbyId: lobby.id,
+        error: error?.message,
+      });
+      remaining += 1;
+    }
+  }
+
+  return { lobbies: nextLobbies, retried, remaining };
+};
+
 export const computeBrPayouts = (lobby) => {
   const ranking = computeBrRanking(lobby);
   const pot = roundAmount(lobby.pot || 0);

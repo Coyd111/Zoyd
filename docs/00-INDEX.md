@@ -166,6 +166,7 @@ graves, avec l'impact concret :
 | **V9** | La migration de la colonne `revision` n'est dans **aucun SQL du dépôt** | ✅ **CORRIGÉ** — DDL ajouté, test de couverture du schéma, état exposé dans `/api/health` |
 | **V8** | Le front additionne le total d'équipe aux gains d'un joueur | ✅ **CORRIGÉ** — le profil public affichait le double de la part réelle en 2VS2 |
 | **V5** | `perWinner` : la part annoncée par joueur était 2x trop petite | ✅ **CORRIGÉ** — la projection annonce la part réelle, et un test vérifie qu'elle correspond au règlement |
+| **V10** | BR : aucun cron de reprise d'un règlement interrompu | ✅ **CORRIGÉ** — un salon BR bloqué en `settling` est désormais repris, sans double crédit |
 
 Le détail de chacune, avec les emplacements exacts, est dans
 [`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).

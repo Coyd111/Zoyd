@@ -51,6 +51,7 @@ import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mj
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds, retryPendingLeaguePayouts, countPendingLeaguePayouts } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbiterFees, retryPendingArbiterFees } from './match-engine.mjs';
+import { countPendingBrSettlements, retryPendingBrSettlements } from './br-engine.mjs';
 import { reconcilePendingWithdrawals } from './wallet-engine.mjs';
 import { depositToWallet } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
@@ -361,6 +362,49 @@ export const initCronJobs = () => {
   // (`sweepPendingArbiterFees`) pour etre testable directement.
   setInterval(() => { void sweepPendingArbiterFees(); }, 30 * 60 * 1000);
   setTimeout(() => { void sweepPendingArbiterFees(); }, 45 * 1000);
+
+  // Reglements BR interrompus (5 min + au boot).
+  //
+  // Un salon BR reste `settling` tant que TOUT n'a pas ete verse. Le
+  // mecanisme de reprise EXISTAIT deja — le salon `settling` est accepte, et
+  // les joueurs deja payes sont sautes grace au drapeau `settled` — mais
+  // PERSONNE ne rappelait la fonction de reglement. Un arret de processus au
+  // milieu laissait donc le salon bloque pour toujours : prime jamais versee,
+  // salon ni `live` ni `regle`, invisible des deux cotes.
+  //
+  // 5 min : un joueur a paye son pass et attend sa prime. C'est de l'argent
+  // qui doit bouger, contrairement a une dette de commission d arbitre.
+  let brSettlementRetryRunning = false;
+  const sweepPendingBrSettlements = async () => {
+    if (brSettlementRetryRunning) return;
+    brSettlementRetryRunning = true;
+    try {
+      const lobbies = getStateCollection('brLobbies');
+      const outstanding = countPendingBrSettlements(lobbies);
+      if (outstanding === 0) return;
+      const outcome = await retryPendingBrSettlements(lobbies, {
+        // L acteur du reglement est l ARBITRE DU SALON : c est lui que
+        // `requireLobbyArbiter` verifie.
+        getActor: (lobby) => (lobby.arbiterId ? getUserById(lobby.arbiterId) : null),
+        onProgress: (progress) => replaceStateCollection('brLobbies', progress),
+      });
+      if (outcome.retried > 0 || outcome.remaining !== outstanding) {
+        await replaceStateCollection('brLobbies', outcome.lobbies);
+      }
+      if (outcome.retried > 0) {
+        log.warn('Reglements BR interrompus repris', { retried: outcome.retried });
+      }
+      if (outcome.remaining > 0) {
+        log.error('Reglements BR toujours en echec', { remaining: outcome.remaining });
+      }
+    } catch (error) {
+      log.error('Erreur reprise des reglements BR', error);
+    } finally {
+      brSettlementRetryRunning = false;
+    }
+  };
+  setInterval(() => { void sweepPendingBrSettlements(); }, 5 * 60 * 1000);
+  setTimeout(() => { void sweepPendingBrSettlements(); }, 60 * 1000);
 
   // Fin de fenetre de confirmation — toutes les 60 s.
   // Un match en attente dont le delai est depasse est regle AUTOMATIQUEMENT :

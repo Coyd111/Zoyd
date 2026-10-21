@@ -505,7 +505,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | V8 | Le front additionne le total de l'équipe gagnante aux gains d'un joueur | **NOUVEAU** | MOYENNE |
 | V9 | La migration de la colonne `revision` n'est dans aucun fichier SQL du dépôt | **NOUVEAU** | ÉLEVÉE (si non appliquée) |
 | V10 | BR : aucun cron de reprise d'un règlement interrompu | **NOUVEAU** | MOYENNE |
-| V11 | `arbiterPayouts` utilise le `arbiterFee` figé sur le pot théorique | **NOUVEAU** | FAIBLE |
+| V11 | `arbiterPayouts` utilise le `arbiterFee` fige sur le pot theorique | **NOUVEAU** | FAIBLE (latent) -> resolu |
 | V12 | `LEAGUE_PLAYERS_PER_DAY` est une constante morte | **NOUVEAU** | FAIBLE |
 | V13 | `getMatchActivityForUser` est du code mort | — | INFO |
 | V14 | Un salon BR jamais lance garde les passes verrouillees | **NOUVEAU** | ELEVE -> resolu |
@@ -1216,6 +1216,8 @@ mêmes drapeaux `settled` et la même reprise que V10.
   le drapeau \settled\ evite le double credit.
 - ✅ **V14** — un salon BR programme et jamais lance est annule et rembourse ;
   un joueur ne paie plus un salon qui n existe plus.
+- ✅ **V11** — la sortie de tresorerie vers les arbitres est lue sur les
+  transactions reellement versees, plus sur le pot theorique.
 - ✅ **V7** — le pass BR n'est plus verrouillé avant les validations ; un
   joueur refusé ne perd plus son argent, et un filet rembourse en cas
   d'échec tardif.

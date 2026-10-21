@@ -168,6 +168,7 @@ graves, avec l'impact concret :
 | **V5** | `perWinner` : la part annoncée par joueur était 2x trop petite | ✅ **CORRIGÉ** — la projection annonce la part réelle, et un test vérifie qu'elle correspond au règlement |
 | **V10** | BR : aucun cron de reprise d'un règlement interrompu | ✅ **CORRIGÉ** — un salon BR bloqué en `settling` est désormais repris, sans double crédit |
 | **V14** | Un salon BR jamais lance garde les passes verrouillees a jamais | **CORRIGE** - balayage des salons perimes, avec remboursement |
+| **V11** | `arbiterPayouts` : la sortie de trésorerie était mesurée sur le pot théorique | ✅ **CORRIGÉ** — lue désormais sur les transactions réellement versées |
 
 Le détail de chacune, avec les emplacements exacts, est dans
 [`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).

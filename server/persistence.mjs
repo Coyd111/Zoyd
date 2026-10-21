@@ -77,6 +77,7 @@ import { roundAmount, getNow, makeError } from './utils.mjs';
 // cycle d'import (payment-engine importe persistence).
 import { isAnySupportedPhone, phoneFormatError } from './payout-countries.mjs';
 import { withUserMutex, withChannelMutex } from './mutex.mjs';
+import { sumCommissionTransactions } from './commission-stats.mjs';
 import { computeExpiry, isSanctionActive, severityForReason } from './moderation.mjs';
 import { Mutex } from 'async-mutex';
 
@@ -1581,37 +1582,13 @@ const PUBLIC_STATS_TTL = 60_000;
  * @returns {{ revenue: number, withdrawalFees: number, withdrawalCount: number, arbiterPayouts: number }}
  */
 export const getCommissionStats = () => {
-  let withdrawalFees = 0;
-  let withdrawalCount = 0;
-  let arbiterFees = 0;
-  for (const user of memoryUsers.values()) {
-    const txs = user.wallet?.transactions;
-    if (!Array.isArray(txs)) continue;
-    for (const tx of txs) {
-      if (tx?.type !== 'withdraw') continue;
-      // Payout echoue + rembourse : le joueur a recu son brut, la commission
-      // n'a jamais ete encaissee.
-      if (tx.metadata?.payoutStatus === 'failed') continue;
-      withdrawalFees += Number(tx.metadata?.feeAmount || 0);
-      withdrawalCount++;
-    }
-  }
-  try {
-    const matches = getStateCollection('matches');
-    if (Array.isArray(matches)) {
-      for (const match of matches) {
-        // `arbiterFee` est fige a la creation sur le pot theorique : on ne
-        // retient que les matchs regles ET arbitres, ou le montant a ete
-        // reellement preleve.
-        if (match?.status !== 'finished') continue;
-        if (match?.result?.payoutDistributed !== true) continue;
-        if (!match?.arbiter?.userId) continue;
-        arbiterFees += Number(match.arbiterFee || 0);
-      }
-    }
-  } catch { /* collections pas encore chargees : 0 par defaut */ }
-  const withdrawalTotal = Math.round(withdrawalFees * 100) / 100;
-  const arbiterTotal = Math.round(arbiterFees * 100) / 100;
+  // La lecture des transactions est dans `commission-stats.mjs` : elle est
+  // pure, donc testable seule. Elle lit la TRANSACTION (montant reellement
+  // verse) et plus le champ `match.arbiterFee`, qui etait fige a la creation
+  // sur le pot THEORIQUE — donc faux sur un match au roster incomplet.
+  const { withdrawalFees, withdrawalCount, arbiterFees } = sumCommissionTransactions(memoryUsers.values());
+  const withdrawalTotal = withdrawalFees;
+  const arbiterTotal = arbiterFees;
   return {
     /**
      * REVENU ZOYD. Seule source : la commission de retrait (2 %).

@@ -47,11 +47,11 @@ import {
   forgetWithdrawalKey,
 } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
-import { withMatchMutex, withLeagueMutex, withTournamentMutex } from './mutex.mjs';
+import { withMatchMutex, withLeagueMutex, withTournamentMutex, withBrLobbyMutex } from './mutex.mjs';
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds, retryPendingLeaguePayouts, countPendingLeaguePayouts } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbiterFees, retryPendingArbiterFees } from './match-engine.mjs';
-import { countPendingBrSettlements, retryPendingBrSettlements } from './br-engine.mjs';
+import { countPendingBrSettlements, retryPendingBrSettlements, countStaleBrLobbies, getStaleBrLobbyIds, cancelStaleBrLobbyOnServer } from './br-engine.mjs';
 import { reconcilePendingWithdrawals } from './wallet-engine.mjs';
 import { depositToWallet } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
@@ -405,6 +405,66 @@ export const initCronJobs = () => {
   };
   setInterval(() => { void sweepPendingBrSettlements(); }, 5 * 60 * 1000);
   setTimeout(() => { void sweepPendingBrSettlements(); }, 60 * 1000);
+
+  // Salons BR programmes et JAMAIS lances (30 min + au boot).
+  //
+  // Un salon BR ne se lance que si l'arbitre (ou le createur) le lance, et
+  // seulement si les joueurs se sont pointes. Sans balayage, un salon qui
+  // n'a jamais demarre restait `scheduled` POUR TOUJOURS : les joueurs
+  // avaient paye leur pass, et leur argent restait bloque.
+  //
+  // Aucun cron ne s'en occupait : le cron nettoie les matchs, les ligues et
+  // les tournois, pas les salons BR. Et un salon BR n'a pas d'`expiresAt`,
+  // alors qu'un match en a un (14 jours).
+  let staleBrLobbyRunning = false;
+  const sweepStaleBrLobbies = async () => {
+    if (staleBrLobbyRunning) return;
+    staleBrLobbyRunning = true;
+    try {
+      const lobbies = getStateCollection('brLobbies');
+      const staleIds = getStaleBrLobbyIds(lobbies);
+      if (staleIds.length === 0) return;
+
+      let cancelled = 0;
+      let refunded = 0;
+      for (const lobbyId of staleIds) {
+        // Verrou PAR SALON : c est le meme verrou que la route d'action, donc
+        // un joueur qui se desinscrit en meme temps ne peut pas etre
+        // rembourse deux fois.
+        const outcome = await withBrLobbyMutex(lobbyId, async () => {
+          // On RELIT dans le verrou : l instantane initial peut etre vieux.
+          const fresh = getStateCollection('brLobbies');
+          const res = await cancelStaleBrLobbyOnServer(fresh, lobbyId);
+          if (res.cancelled || res.refunded > 0) {
+            await replaceStateCollection('brLobbies', res.lobbies);
+          }
+          return res;
+        });
+        if (outcome.cancelled) cancelled += 1;
+        refunded += outcome.refunded;
+        if (outcome.errors.length > 0) {
+          log.error('Annulation de salon BR incomplete', {
+            lobbyId,
+            errors: outcome.errors.length,
+          });
+        }
+      }
+
+      if (cancelled > 0) {
+        log.warn('Salons BR annules (jamais lances)', { cancelled, refunded });
+      }
+      const remaining = countStaleBrLobbies(getStateCollection('brLobbies'));
+      if (remaining > 0) {
+        log.error('Salons BR perimes toujours en echec', { remaining });
+      }
+    } catch (error) {
+      log.error('Erreur balayage des salons BR perimes', error);
+    } finally {
+      staleBrLobbyRunning = false;
+    }
+  };
+  setInterval(() => { void sweepStaleBrLobbies(); }, 30 * 60 * 1000);
+  setTimeout(() => { void sweepStaleBrLobbies(); }, 90 * 1000);
 
   // Fin de fenetre de confirmation — toutes les 60 s.
   // Un match en attente dont le delai est depasse est regle AUTOMATIQUEMENT :

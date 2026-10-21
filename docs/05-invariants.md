@@ -508,7 +508,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | V11 | `arbiterPayouts` utilise le `arbiterFee` figé sur le pot théorique | **NOUVEAU** | FAIBLE |
 | V12 | `LEAGUE_PLAYERS_PER_DAY` est une constante morte | **NOUVEAU** | FAIBLE |
 | V13 | `getMatchActivityForUser` est du code mort | — | INFO |
-| V14 | Un salon BR jamais lance garde les passes verrouillees | **NOUVEAU** | ELEVE |
+| V14 | Un salon BR jamais lance garde les passes verrouillees | **NOUVEAU** | ELEVE -> resolu |
 | V14 | Ternaire mort dans `getStatusFromMatch` | — | INFO |
 | V15 | `isInstantNoArbiter` est inatteignable | — | INFO |
 
@@ -1192,10 +1192,7 @@ mêmes drapeaux `settled` et la même reprise que V10.
 ---
 ## 8. Ce qu'il faut faire, par ordre de risque
 
-1. **Balayer les salons BR jamais lances** (V14) : un salon `scheduled` dont
-   l heure est depassee doit etre annule et rembourse, sinon les passes y
-   restent bloques indefiniment.
-2. **Rendre `login-timing.test.mjs` stable** : c est un test de chronometrie
+1. **Rendre `login-timing.test.mjs` stable** : c est un test de chronometrie
    avec 60 ms de tolerance, et il echoue par intermittence sous charge. Un
    test qui tombe au hasard ne prouve rien.
 
@@ -1217,6 +1214,8 @@ mêmes drapeaux `settled` et la même reprise que V10.
   equipe. Un test compare le calcul du front au gain reellement verse.
 - ✅ **V10** — un salon BR interrompu (\settling\) est repris par un job cron ;
   le drapeau \settled\ evite le double credit.
+- ✅ **V14** — un salon BR programme et jamais lance est annule et rembourse ;
+  un joueur ne paie plus un salon qui n existe plus.
 - ✅ **V7** — le pass BR n'est plus verrouillé avant les validations ; un
   joueur refusé ne perd plus son argent, et un filet rembourse en cas
   d'échec tardif.

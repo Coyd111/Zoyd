@@ -1043,6 +1043,112 @@ export const retryPendingBrSettlements = async (lobbies, options = {}) => {
   return { lobbies: nextLobbies, retried, remaining };
 };
 
+/**
+ * Delai de grace avant qu un salon programme et jamais lance soit annule.
+ *
+ * Le lancement est possible 10 min avant l'heure programmee
+ * (`BR_START_EARLY_TOLERANCE_MS`). 2 h apres l'heure, la partie ne commencera
+ * plus : les joueurs ont paye leur pass, et l argent doit leur revenir.
+ *
+ * 2 h et pas 24 h : la promenade avait un sens pour un match, ou un joueur
+ * absent gelerait la cagnotte. Ici, un salon qui n a pas demarre dans ce
+ * delai ne demarrera pas. C est la meme constante que le delai d arbitrage
+ * (2 h par phase) : le produit raisonne deja en heures, pas en jours.
+ */
+export const BR_STALE_LOBBY_GRACE_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Les salons programmes dont l'heure est depassee et qui n'ont jamais ete
+ * lances.
+ *
+ * Un salon BR ne se lance que si l'arbitre (ou le createur) le lance, et
+ * seulement si les joueurs se sont pointes. Si ce lancement n'a jamais lieu,
+ * le salon reste `scheduled` — et les passes restent bloques.
+ *
+ * Aucun balayage ne s'en occupait : le cron nettoie les matchs, les ligues et
+ * les tournois, pas les salons BR. Un salon BR n'a pas d'`expiresAt` non plus,
+ * alors qu'un match en a un (14 jours).
+ *
+ * @param {Array} lobbies
+ * @param {number} [nowMs]
+ * @returns {string[]} Identifiants des salons perimes
+ */
+export const getStaleBrLobbyIds = (lobbies, nowMs = Date.now()) =>
+  (lobbies || [])
+    .filter((lobby) => {
+      if (!lobby || lobby.status !== 'scheduled') return false;
+      if (!lobby.scheduledAt) return false;
+      const programme = Date.parse(lobby.scheduledAt);
+      if (!Number.isFinite(programme)) return false;
+      return nowMs - programme > BR_STALE_LOBBY_GRACE_MS;
+    })
+    .map((lobby) => lobby.id);
+
+/**
+ * Annule un salon BR programme et jamais lance, et rembourse chaque joueur.
+ *
+ * Le remboursement, pas le blocage : un joueur dont le salon n'a jamais demarre
+ * veut son argent, pas un salon defunct dans son historique.
+ *
+ * Si un remboursement echoue, le salon n'est PAS clos : il reste `scheduled`,
+ * donc le balayage suivant le reprendra. C'est la meme discipline que le
+ * balayage d'arbitrage : on ne clot pas une dette qu'on n'a pas honoree.
+ *
+ * @param {Array} lobbies
+ * @param {string} lobbyId
+ * @returns {Promise<{lobbies: Array, cancelled: boolean, refunded: number, errors: Array}>}
+ */
+export const cancelStaleBrLobbyOnServer = async (lobbies, lobbyId) => {
+  const nextLobbies = cloneLobbies(lobbies || []);
+  const lobby = findLobby(nextLobbies, lobbyId);
+  if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
+  if (lobby.status !== 'scheduled') {
+    return { lobbies: nextLobbies, cancelled: false, refunded: 0, errors: [] };
+  }
+
+  const errors = [];
+  let refunded = 0;
+  for (const player of lobby.players) {
+    if (player.settled) continue;
+    try {
+      await withWalletMutex(player.userId, async () => {
+        await refundLockedEntry(
+          player.userId,
+          lobby.id,
+          `Salon BR annule (jamais lance) ${lobby.name}`,
+        );
+      });
+      player.settled = true;
+      refunded += 1;
+    } catch (error) {
+      errors.push({ userId: player.userId, error: error?.message });
+      log.error('BR stale lobby refund failed', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
+    }
+  }
+
+  if (errors.length > 0) {
+    // On ne clot PAS un salon dont un joueur n'a pas ete rembourse : il
+    // resterait du sequestre sans trace. Repris au balayage suivant.
+    return { lobbies: nextLobbies, cancelled: false, refunded, errors };
+  }
+
+  lobby.status = 'cancelled';
+  lobby.finishedAt = getNow();
+  lobby.updatedAt = lobby.finishedAt;
+  lobby.cancellationReason = 'NEVER_STARTED';
+  return { lobbies: nextLobbies, cancelled: true, refunded, errors };
+};
+
+/**
+ * Nombre de salons BR programmes dont l'heure est depassee sans avoir jamais
+ * ete lances.
+ * @param {Array} lobbies
+ * @param {number} [nowMs]
+ * @returns {number}
+ */
+export const countStaleBrLobbies = (lobbies, nowMs = Date.now()) =>
+  getStaleBrLobbyIds(lobbies, nowMs).length;
+
 export const computeBrPayouts = (lobby) => {
   const ranking = computeBrRanking(lobby);
   const pot = roundAmount(lobby.pot || 0);

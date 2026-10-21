@@ -84,7 +84,7 @@ const shiftDays = (date: Date, days: number) => {
 const isReportOpen = (report: Report) => report.status === 'pending';
 const isDisputeOpen = (status?: string) => status === 'open' || status === 'under_review';
 
-import { getWinnerPayout } from './matchPayout';
+import { getWinnerPayoutPerPlayer } from './matchPayout';
 
 const getTournamentPlacementPayout = (entry: TournamentEntry, tournament: Tournament) => {
   if (entry.finalPlacement === 1) return tournament.payout.first;
@@ -424,7 +424,7 @@ export const buildCommunityPlayers = ({
 
         if (player.team === match.result.winnerTeam) {
           record.wins += 1;
-          record.totalEarnings = roundAmount(record.totalEarnings + getWinnerPayout(match));
+          record.totalEarnings = roundAmount(record.totalEarnings + getWinnerPayoutPerPlayer(match));
         } else {
           record.losses += 1;
         }

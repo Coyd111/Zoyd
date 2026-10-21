@@ -20,6 +20,8 @@
     * verse.
     * PIEGE : `getWinnerPayout` renvoie le TOTAL DE L'EQUIPE, pas la part
     * individuelle. L'utiliser pour afficher un gain personnel gonfle le profil
+    * du facteur taille d'equipe — 2x en 2VS2, 5x en 5VS5 — et c'est un chiffre
+    * PUBLIC. Pour un gain individuel, utiliser `getWinnerPayoutPerPlayer`.
     * (voir profileMetrics et communityInsights).
  * PIEGE : la commission d'arbitre (2 %) ne s'applique que s'il y a un
  * arbitre. L'afficher sur un match sans arbitre est faux.
@@ -58,8 +60,28 @@ interface PayoutMatch {
   prizePool?: number;
   zoydFee?: number;
   arbiterFee?: number;
+  teamSize?: number;
   projectedPayouts?: MatchPayoutProjection;
 }
+
+/**
+ * Part par joueur GAGNANT.
+ *
+ * `getWinnerPayout` renvoie le TOTAL de l'equipe gagnante. L'additionner
+ * comme gain personnel gonfle le profil du facteur taille d'equipe : 2x en
+ * 2VS2, 5x en 5VS5. C'est un chiffre PUBLIC — c'est la reputation du joueur.
+ *
+ * La source de verite est la projection serveur (`projectedPayouts.perWinner`),
+ * qui divise par la taille de l'equipe gagnante, et par le nombre REEL de
+ * gagnants quand le resultat est soumis. Le repli divise par la taille
+ * d'equipe, pour les matchs sans projection (anciens payloads, tests).
+ */
+export const getWinnerPayoutPerPlayer = (match: PayoutMatch): number => {
+  const projection = match.projectedPayouts?.perWinner;
+  if (typeof projection === 'number' && projection > 0) return roundAmount(projection);
+  const size = match.teamSize && match.teamSize > 0 ? match.teamSize : 1;
+  return roundAmount(getWinnerPayout(match) / size);
+};
 
 /** Commission d'arbitre retenue : projection serveur si presente, sinon champ du match. */
 export const getArbiterFee = (match: PayoutMatch): number =>

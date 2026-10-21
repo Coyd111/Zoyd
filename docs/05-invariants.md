@@ -1153,7 +1153,6 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 ## 8. Ce qu'il faut faire, par ordre de risque
 
 1. **Donner au BR une reprise automatique** (V10).
-2. **Aligner le front sur le serveur** pour les gains par joueur (V8).
 3. **Rendre `login-timing.test.mjs` stable** : c est un test de chronometrie
    avec 60 ms de tolerance, et il echoue par intermittence sous charge. Un
    test qui tombe au hasard ne prouve rien.
@@ -1172,6 +1171,8 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
   signale ; un match non réglable ne gèle plus les autres.
 - ✅ **V5** — `perWinner` annonce la part par joueur GAGNANT, et un test
   verifie qu elle correspond exactement a ce que le reglement verse.
+- ✅ **V8** — le profil public annonce la PART du joueur, pas le total de son
+  equipe. Un test compare le calcul du front au gain reellement verse.
 - ✅ **V7** — le pass BR n'est plus verrouillé avant les validations ; un
   joueur refusé ne perd plus son argent, et un filet rembourse en cas
   d'échec tardif.

@@ -23,7 +23,7 @@
 import type { User, UserStats } from '../app/stores/authStore';
 import { isMatchPayoutSettled, type Match, type MatchPlayer } from '../app/stores/matchStore';
 import type { Tournament, TournamentEntry, TournamentEntryMember } from '../app/stores/tournamentStore';
-import { getWinnerPayout } from './matchPayout';
+import { getWinnerPayoutPerPlayer } from './matchPayout';
 
 export interface TournamentPlacement {
   tournamentId: string;
@@ -203,7 +203,7 @@ export const buildCompetitiveSummary = ({
 
     if (participant.team === match.result.winnerTeam) {
       wins += 1;
-      matchEarnings += getWinnerPayout(match);
+      matchEarnings += getWinnerPayoutPerPlayer(match);
     } else {
       losses += 1;
     }

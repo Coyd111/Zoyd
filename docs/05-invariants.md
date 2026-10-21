@@ -497,8 +497,8 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 |---|---|---|---|
 | V1 | `sweepMatchesWithoutArbiter` n'est appelé par aucun cron, aucune route, aucun serveur | **OUI** — **CORRIGÉ** | ÉLEVÉE → résolu |
 | V2 | `pendingArbiterFee` est écrit mais jamais relu | **OUI** | MOYENNE → résolu |
-| V3 | `awaiting_arbiter` ∉ `ACTIVE_STATUSES` | **OUI**, avec une nuance | MOYENNE |
-| V4 | `archived` ∈ `MATCH_ETATS_CLOS` mais ∉ `TERMINAL_STATUSES` | **OUI** | MOYENNE |
+| V3 | `awaiting_arbiter` n est pas dans `ACTIVE_STATUSES` | **OUI** | MOYENNE -> resolu |
+| V4 | `archived` dans MATCH_ETATS_CLOS mais pas TERMINAL_STATUSES | **OUI** | MOYENNE -> resolu |
 | V5 | `getProjectedPayouts.perWinner` divise par le nombre total de joueurs | **OUI** sur le fond, **NON** sur l'impact | FAIBLE (latent) |
 | V6 | Une exception de règlement tue tout le balayage d'expiration des confirmations | **NOUVEAU** | ÉLEVÉE → résolu |
 | V7 | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` → verrou orphelin | **NOUVEAU** | ÉLEVÉE → résolu |
@@ -651,8 +651,14 @@ Deux détails qui aggravent le constat :
 
 ---
 
-### V3 — `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES`
-**Gravité : MOYENNE (visibilité)**
+### V3 — `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES` — **CORRIGÉ**
+**Gravité : MOYENNE (visibilité) → résolu**
+
+> **Statut : corrigé.** Les statuts ont une **source unique**, partagée par le
+> serveur et le front : `shared/match-status.json`. `awaiting_arbiter` y est
+> déclaré actif, et un test verrouille ce point explicitement, avec sa raison.
+> Le raisonnement ci-dessous est conservé tel quel : il documente l'état
+> *avant* le correctif.
 
 **Constat.** `awaiting_arbiter` est un statut vivant, mais il n'appartient à
 aucune des deux listes qui classent les matchs d'un joueur.
@@ -732,6 +738,45 @@ définitivement, mais il peut rester bloqué plusieurs jours.
 
 ---
 
+**Le correctif — une source unique, partagée par le serveur et le front.**
+
+Les statuts vivaient dans **cinq listes**, dans deux langages, et elles ne se
+contredisaient pas de la même façon :
+
+| Liste | `awaiting_arbiter` | `awaiting_confirmation` |
+|---|---|---|
+| serveur `ACTIVE_STATUSES` | absent | présent |
+| front `matchStore` `ACTIVE_STATUSES` | absent | présent |
+| front `DashboardPage` | présent | **absent** |
+
+Deux bugs de sens opposé : un match **en attente d'arbitre** disparaissait de
+la liste des matchs actifs du joueur, et un match **en attente de
+confirmation** disparaissait du tableau de bord — alors que sa cagnotte est
+gelée et que le joueur doit la voir.
+
+La correction ne consiste pas à ajouter `awaiting_arbiter` à deux listes : elle
+supprime la possibilité de diverger. `shared/match-status.json` est désormais
+la **source unique**, importée par le serveur (`server/match-status.mjs`) et
+par le front (`src/app/lib/matchStatus.ts`). Le type `MatchStatus` du front,
+qui ne contenait même pas `archived` — que le serveur écrit pourtant — a été
+realigné.
+
+**La garde, et ce qu'elle a trouvé.** `server/match-status-consistency.test.mjs`
+interdit toute liste de statuts locale dans les fichiers qui gèrent le cycle
+de vie d'un match. En l'écrivant, elle a trouvé **sept listes de plus** que le
+rapport n'avait pas vues — dont la plus gênante : la **file de priorité de
+l'administration**, qui ignorait `awaiting_arbiter`. L'admin ne voyait donc
+pas les matchs qui attendaient un arbitre. C'est précisément le match qu'il
+peut arbitrer lui-même, ou faire arbitrer.
+
+Le garde est **cadré** sur les fichiers de match, et distingue une liste de
+*classification* d'une condition d'*action* (« peut-il se pointer ? ») : une
+garde lexicale sur tout le dépôt produisait 139 faux positifs, les statuts de
+tournoi, de ligue et de salon BR étant des entités distinctes.
+
+Mutation vérifiée : réintroduire une liste locale → le test tombe.
+
+---
 ### V5 — `getProjectedPayouts.perWinner` divise par le nombre total de joueurs
 **Gravité : FAIBLE en l'état, latente**
 
@@ -1107,16 +1152,13 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 
 ## 8. Ce qu'il faut faire, par ordre de risque
 
-1. **Vérifier en production si la colonne `app_users.revision` existe** (V9).
-   Sans elle, toute la protection multi-instance est hors service. C'est une
-   seule requête ; tout le reste en dépend.
-2. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
+1. **Corriger `perWinner`** (V5) **et** le test qui fige le bug, avant que le
    champ ne soit affiché.
-3. **Réconcilier les trois listes de statuts** (V3, V4) : `awaiting_arbiter`
-   dans `ACTIVE_STATUSES`, `archived` dans `TERMINAL_STATUSES` — ou, mieux,
-   une source unique pour les statuts.
-4. **Donner au BR une reprise automatique** (V10).
-5. **Aligner le front sur le serveur** pour les gains par joueur (V8).
+2. **Donner au BR une reprise automatique** (V10).
+3. **Aligner le front sur le serveur** pour les gains par joueur (V8).
+4. **Rendre `login-timing.test.mjs` stable** : c'est un test de chronométrage
+   avec 60 ms de tolérance, et il échoue par intermittence sous charge. Un
+   test qui tombe au hasard est un test qui ne prouve rien.
 
 ### Déjà traités
 
@@ -1124,6 +1166,10 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
   test qui couvre le chemin complet.
 - ✅ **V2** — la commission d'arbitre non versée est reprise par un job cron
   dédié ; le câblage est couvert par un test qui appelle le job lui-même.
+- ✅ **V3** — `awaiting_arbiter` est un match ACTIF : il vit, et son pot est
+  bloqué. Le joueur doit le voir.
+- ✅ **V4** — `archived` est un match CLOS et reste dans l'HISTORIQUE : il a
+  bien eu lieu, et il doit figurer chez le joueur.
 - ✅ **V6** — l'expiration des confirmations isole les échecs par match et les
   signale ; un match non réglable ne gèle plus les autres.
 - ✅ **V7** — le pass BR n'est plus verrouillé avant les validations ; un

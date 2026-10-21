@@ -61,7 +61,6 @@
 const ARBITER_DEADLINE_PHASE_A_MS = 2 * 60 * 60 * 1000; // poste -> lancement
 const ARBITER_DEADLINE_PHASE_B_MS = 2 * 60 * 60 * 1000; // lancement -> resultat
 
-const MATCH_ETATS_CLOS = ['cancelled', 'forfeited', 'archived', 'finished'];
 
 /**
  * Balaye les matchs dont l arbitrage n avance plus, et REMBOURSE.
@@ -80,7 +79,7 @@ export const sweepMatchesWithoutArbiter = async (matches, nowMs = Date.now()) =>
   const refunded = [];
 
   for (const match of nextMatches) {
-    if (!match || MATCH_ETATS_CLOS.includes(match.status)) continue;
+    if (!match || CLOSED_STATUSES.includes(match.status)) continue;
     // Un litige appartient a l admin : le balayage ne doit pas le court-circuiter.
     if ((match.disputes || []).some((d) => d.status === 'open' || d.status === 'under_review')) continue;
     // Deja distribue : plus rien a rembourser, et on creerait un gain.
@@ -139,14 +138,13 @@ import {
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 export { addXpToProgression };
+import { ACTIVE_STATUSES, CLOSED_STATUSES, HISTORY_STATUSES } from './match-status.mjs';
 
 const log = createLogger('match-engine');
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 /** Taille d'équipe maximale par camp (1VS1 … 5VS5). */
 export const MAX_TEAM_SIZE = 5;
 
-const ACTIVE_STATUSES = ['recruiting', 'full', 'check_in', 'ready', 'in_progress', 'awaiting_confirmation'];
-const TERMINAL_STATUSES = ['finished', 'cancelled', 'forfeited'];
 /**
  * Fenetre de confirmation laissee aux deux équipes avant paiement automatique.
  * 30 min : assez pour ouvrir un litige, trop court pour geler la cagnotte.
@@ -245,7 +243,7 @@ export const getStatusFromMatch = (match) => {
     return 'disputed';
   }
 
-  if (TERMINAL_STATUSES.includes(match.status)) {
+  if (CLOSED_STATUSES.includes(match.status)) {
     return match.status;
   }
 
@@ -642,7 +640,7 @@ export const joinMatchOnServer = async (matches, actor, matchId, preferredTeam) 
   const match = findMatch(nextMatches, matchId);
 
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
-  if (TERMINAL_STATUSES.includes(match.status)) throw makeError('MATCH_CLOSED', 'Ce match est deja clos.');
+  if (CLOSED_STATUSES.includes(match.status)) throw makeError('MATCH_CLOSED', 'Ce match est deja clos.');
   if (match.players.some((player) => player.userId === actorUser.id)) throw makeError('ALREADY_JOINED', 'Tu es deja dans ce match.');
   if (match.arbiter?.userId === actorUser.id) throw makeError('ROLE_CONFLICT', "Tu occupes deja la place d'arbitre.");
   if ((match.trustScoreMin || 0) > actorUser.trustScore) throw makeError('TRUST_REQUIRED', 'Trust score insuffisant pour ce match.');
@@ -897,7 +895,7 @@ const isArbiter = match.arbiter?.userId === actorUser.id;
   if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
   // Pas de résultat sur un match clôturé : les mises ont déjà été remboursées
   // (cancel) ou consommées — en créer un ici minterait des ZC sans cagnotte.
-  if (['cancelled', 'forfeited', 'archived'].includes(match.status)) {
+  if (CLOSED_STATUSES.includes(match.status)) {
     throw makeError('MATCH_CLOSED', 'Ce match est clôturé et ne peut plus recevoir de résultat.');
   }
   // Un litige ouvert gèle la cagnotte : seul resolveDispute peut le clore.
@@ -1212,7 +1210,7 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
   // résultat est en attente de confirmation, le perdant a le droit de
   // contester — c'est précisément la fenêtre qui rend la confirmation utile.
   const alreadyPaid = match.result?.payoutDistributed === true
-    || TERMINAL_STATUSES.includes(match.status)
+    || CLOSED_STATUSES.includes(match.status)
     || match.status === 'archived';
   if (alreadyPaid) {
     throw makeError('MATCH_CLOSED', 'Ce match est clos : trop tard pour contester.');
@@ -1344,7 +1342,7 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
   // Anti-double-remboursement : un match déjà soldé (résultat + gains distribués
   // ou statut terminal) ne peut plus être annulé — les mises sont déjà parties.
-  if (match.result?.payoutDistributed || TERMINAL_STATUSES.includes(match.status)) {
+  if (match.result?.payoutDistributed || CLOSED_STATUSES.includes(match.status)) {
     throw makeError('MATCH_CLOSED', 'Match déjà clôturé : annulation impossible, gains déjà distribués.');
   }
 
@@ -1436,7 +1434,7 @@ export const processMatchAutomationOnServer = async (matches, nowMs = Date.now()
 
   for (const match of nextMatches) {
     try {
-      if (match.status === 'disputed' || TERMINAL_STATUSES.includes(match.status)) {
+      if (match.status === 'disputed' || CLOSED_STATUSES.includes(match.status)) {
         continue;
       }
 
@@ -1650,7 +1648,7 @@ export const getMatchActivityForUser = (matches, userId) => ({
   ),
   history: matches.filter(
     (match) =>
-      ['finished', 'cancelled', 'forfeited', 'disputed'].includes(match.status) &&
+      HISTORY_STATUSES.includes(match.status) &&
       (match.players.some((player) => player.userId === userId) || match.arbiter?.userId === userId)
   ),
 });

@@ -65,6 +65,7 @@ import { MatchActions } from '../components/MatchActions';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { getArbiterFee, getWinnerPayout } from '../../../lib/matchPayout';
+import { CLOSED_STATUSES } from '../../../app/lib/matchStatus';
 
 const statusLabels: Record<string, string> = {
   recruiting: 'Recrutement ouvert',
@@ -218,7 +219,7 @@ const MatchDetailPage: React.FC = () => {
   const teamAlpha = (match?.players ?? []).filter((player) => player.team === 0);
   const teamBravo = (match?.players ?? []).filter((player) => player.team === 1);
   const statusLabel = match ? statusLabels[match.status] || match.status : '';
-  const canJoinAsPlayer = !!match && !!user && !currentPlayer && !isArbiter && !['finished', 'cancelled', 'forfeited'].includes(match.status);
+  const canJoinAsPlayer = !!match && !!user && !currentPlayer && !isArbiter && !CLOSED_STATUSES.includes(match.status);
   const canJoinArbiterSlot = !!match && !!user && canJoinAsArbiter(match.id);
   const canCheckIn = !!match && !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);
   const canToggleReady = !!match && !!currentPlayer && currentPlayer.isCheckedIn && ['check_in', 'ready'].includes(match.status);
@@ -228,7 +229,7 @@ const MatchDetailPage: React.FC = () => {
   // n'est plus un match clos : tant que la cagnotte n'est pas partie
   // (`payoutDistributed !== true`) le perdant a le droit de contester.
   const matchIsClosed = !!match && (
-    ['finished', 'cancelled', 'forfeited', 'archived'].includes(match.status)
+    CLOSED_STATUSES.includes(match.status)
     || match.result?.payoutDistributed === true
   );
   const canOpenDispute = !!match && !matchIsClosed && (!!currentPlayer || isArbiter);

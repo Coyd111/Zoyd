@@ -1,0 +1,38 @@
+{
+  "ACTIVE": [
+    "recruiting",
+    "full",
+    "awaiting_arbiter",
+    "check_in",
+    "ready",
+    "in_progress",
+    "awaiting_confirmation"
+  ],
+  "CLOSED": [
+    "cancelled",
+    "forfeited",
+    "archived",
+    "finished"
+  ],
+  "HISTORY": [
+    "finished",
+    "cancelled",
+    "forfeited",
+    "archived",
+    "disputed"
+  ],
+  "ALL": [
+    "recruiting",
+    "full",
+    "awaiting_arbiter",
+    "check_in",
+    "ready",
+    "in_progress",
+    "awaiting_confirmation",
+    "disputed",
+    "finished",
+    "cancelled",
+    "forfeited",
+    "archived"
+  ]
+}

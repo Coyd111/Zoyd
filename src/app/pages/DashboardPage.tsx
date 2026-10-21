@@ -48,6 +48,7 @@ import { useFriendsStore } from '../stores/friendsStore';
 import { formatZC, getRelativeTime } from '../../lib/utils';
 import { SEOHead } from '../components/SEOHead';
 import { Skeleton } from '../components/ui/Skeleton';
+import { ACTIVE_STATUSES } from '../lib/matchStatus';
 
 const quickActions = [
   { label: 'MJ Hub', desc: 'Matchs & wagers', icon: Swords, path: '/mj', color: 'text-zoyd-blue' },
@@ -98,7 +99,7 @@ const DashboardPage: React.FC = () => {
       matches.filter(
         (m) =>
           m.players.some((p) => p.isMe) &&
-          ['recruiting', 'full', 'awaiting_arbiter', 'check_in', 'ready', 'in_progress'].includes(m.status)
+          ACTIVE_STATUSES.includes(m.status)
       ),
     [matches]
   );

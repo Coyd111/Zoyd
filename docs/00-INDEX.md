@@ -159,10 +159,11 @@ graves, avec l'impact concret :
 |---|---|---|
 | **V1** | `sweepMatchesWithoutArbiter` **n'était appelé nulle part** | ✅ **CORRIGÉ** — branché sur le tick de 30 s, avec un test qui couvre le chemin complet |
 | **V2** | `pendingArbiterFee` est écrit mais jamais relu | ✅ **CORRIGÉ** — repris par un job cron dédié, avec un test qui couvre le câblage |
-| **V3** | `awaiting_arbiter` n'est pas dans `ACTIVE_STATUSES` | Un match en attente d'arbitre **disparaît de la liste des matchs actifs** du joueur |
-| **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | ✅ **CORRIGÉ** — isolé par match, et les échecs sont désormais signalés |
+| **V3** | `awaiting_arbiter` absent des matchs actifs | ✅ **CORRIGÉ** — source unique partagée, et **7 listes de plus** trouvées |
+| **V4** | `archived` absent des statuts terminaux | ✅ **CORRIGÉ** — source unique partagée |
+| **V6** | Une exception `ARBITER_REQUIRED` dans l'expiration des confirmations | ✅ **CORRIGÉ** — isolée par match, et les échecs sont désormais signalés |
 | **V7** | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` | ✅ **CORRIGÉ** — le verrou passe après les validations, plus un filet de remboursement |
-| **V9** | La migration de la colonne `revision` n'est dans **aucun SQL du dépôt** | Une base neuve n'a pas la colonne OCC — la protection multi-instance n'existe pas |
+| **V9** | La migration de la colonne `revision` n'est dans **aucun SQL du dépôt** | ✅ **CORRIGÉ** — DDL ajouté, test de couverture du schéma, état exposé dans `/api/health` |
 | **V8** | Le front additionne le total d'équipe aux gains d'un joueur | Affichage faux du gain |
 
 Le détail de chacune, avec les emplacements exacts, est dans

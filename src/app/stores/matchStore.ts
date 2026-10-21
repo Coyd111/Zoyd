@@ -26,26 +26,11 @@
 import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
+import { ACTIVE_STATUSES, CLOSED_STATUSES, HISTORY_STATUSES, type MatchStatus } from '../lib/matchStatus';
+
+export type { MatchStatus };
 
 export type MatchFormat = '1VS1' | '2VS2' | '3VS3' | '4VS4' | '5VS5';
-export type MatchStatus =
-  | 'recruiting'
-  | 'full'
-  /**
-   * Le match ne peut pas avancer : pas d'arbitre. L'arbitre fait tenir l'heure
-   * convenue et tranche le résultat, donc sans lui le match est bloqué — mais
-   * ce n'est pas un match « complet », et le libellé doit le dire.
-   */
-  | 'awaiting_arbiter'
-  | 'check_in'
-  | 'ready'
-  | 'in_progress'
-  /** Résultat soumis, cagnotte gelée : les deux équipes doivent confirmer. */
-  | 'awaiting_confirmation'
-  | 'finished'
-  | 'disputed'
-  | 'cancelled'
-  | 'forfeited';
 
 export type MatchVisibility = 'public' | 'private';
 export type MatchTeam = 0 | 1;
@@ -259,9 +244,6 @@ export interface MatchState {
   canJoinAsArbiter: (matchId: string) => boolean;
 }
 
-// Un match en attente de confirmation reste actif côté serveur (cagnotte
-// gelée) : il doit donc rester dans les matchs actifs du joueur.
-const ACTIVE_STATUSES: MatchStatus[] = ['recruiting', 'full', 'check_in', 'ready', 'in_progress', 'awaiting_confirmation'];
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
 const flattenProofs = (proofs?: MatchProofBundle) =>
   proofs
@@ -537,7 +519,7 @@ export const useMatchStore = create<MatchState>()((set, get) => {
         getMatchHistory: (_userId) =>
           get().matches.filter(
             (match) =>
-              ['finished', 'cancelled', 'forfeited', 'disputed'].includes(match.status) &&
+              HISTORY_STATUSES.includes(match.status) &&
               (match.players.some((player) => player.isMe) || match.arbiter?.isMe === true)
           ),
 
@@ -547,7 +529,7 @@ export const useMatchStore = create<MatchState>()((set, get) => {
           if (!match || !currentUser) return false;
           if (match.arbiter) return false;
           if (match.players.some((player) => player.isMe)) return false;
-          return !['finished', 'cancelled', 'forfeited'].includes(match.status);
+          return !CLOSED_STATUSES.includes(match.status);
         },
 
       };

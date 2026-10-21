@@ -46,6 +46,7 @@ import AdminUrgencyTab from '../components/admin/AdminUrgencyTab';
 import AdminUsersTab from '../components/admin/AdminUsersTab';
 import type { MatchFilter, UserFilter, DisputeFilter } from '../components/admin/AdminTabShared';
 import { SEOHead } from '../components/SEOHead';
+import { CLOSED_STATUSES, PRIORITY_STATUSES } from '../lib/matchStatus';
 
 const EMPTY_WALLET: WalletSnapshot = {
   cashBalance: 0,
@@ -225,9 +226,9 @@ const AdminDashboardPage: React.FC = () => {
   }, [disputeFilter, adminInsights.openDisputes, escalatedDisputes]);
   const filteredMatches = useMemo(() => {
     const sorted = [...matches].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
-    if (matchFilter === 'priority') return sorted.filter((m) => ['disputed', 'check_in', 'ready', 'in_progress'].includes(m.status));
-    if (matchFilter === 'active') return sorted.filter((m) => !['finished', 'cancelled', 'forfeited'].includes(m.status));
-    if (matchFilter === 'closed') return sorted.filter((m) => ['finished', 'cancelled', 'forfeited'].includes(m.status));
+    if (matchFilter === 'priority') return sorted.filter((m) => PRIORITY_STATUSES.includes(m.status));
+    if (matchFilter === 'active') return sorted.filter((m) => !CLOSED_STATUSES.includes(m.status));
+    if (matchFilter === 'closed') return sorted.filter((m) => CLOSED_STATUSES.includes(m.status));
     return sorted;
   }, [matchFilter, matches]);
   const priorityQueue = useMemo(() => {

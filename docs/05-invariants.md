@@ -508,6 +508,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | V11 | `arbiterPayouts` utilise le `arbiterFee` figé sur le pot théorique | **NOUVEAU** | FAIBLE |
 | V12 | `LEAGUE_PLAYERS_PER_DAY` est une constante morte | **NOUVEAU** | FAIBLE |
 | V13 | `getMatchActivityForUser` est du code mort | — | INFO |
+| V14 | Un salon BR jamais lance garde les passes verrouillees | **NOUVEAU** | ELEVE |
 | V14 | Ternaire mort dans `getStatusFromMatch` | — | INFO |
 | V15 | `isInstantNoArbiter` est inatteignable | — | INFO |
 
@@ -1150,9 +1151,51 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 
 ---
 
+### V14 — Un salon BR jamais lancé garde les passes verrouillés à jamais
+**Gravité : ÉLEVÉE** — *constat trouvé pendant la correction de V10, absent du rapport*
+
+**Constat.** Un salon BR est créé avec `status: 'scheduled'` et une
+programmation à 24-48 h (`BR_MIN_DELAY_MS` / `BR_MAX_DELAY_MS`). Les joueurs
+s'inscrivent et **verrouillent leur pass**. Le salon ne passe `live` que si
+l'arbitre ou le créateur le lance (`startBrLobbyOnServer`), et ce lancement
+exige que les joueurs se soient pointés.
+
+**Si ce lancement n'a jamais lieu, le salon reste `scheduled` — pour toujours.**
+
+**Vérification.**
+
+| Élément | Emplacement |
+|---|---|
+| Statut initial | `server/br-engine.mjs:345` — `status: 'scheduled'` |
+| Passage à `live` | `server/br-engine.mjs:580` — `lobby.status = 'live'` |
+| Conditions du lancement | `server/br-engine.mjs:539-561` — `TOO_EARLY`, arbitre ou créateur, joueurs pointés |
+| Balayage des salons `scheduled` | **aucun** — le cron nettoie matchs, ligues, tournois, pas les salons BR |
+| `expiresAt` sur un salon BR | **absent** — les matchs en ont un (14 j), les salons BR non |
+
+**Le contraste avec le moteur de match est ce qui rend le trou visible.**
+`processMatchAutomationOnServer` traite un match dont l'heure est dépassée :
+il annule et rembourse. Un salon BR n'a **ni** ce traitement **ni** une
+expiration. La seule sortie est que le joueur se désinscrive lui-même
+(`leaveBrLobbyOnServer`, qui n'accepte que le statut `scheduled`).
+
+C'est le même défaut que V1, mais côté BR : un remboursement dont la condition
+d'appel n'est jamais remplie.
+
+**Impact utilisateur concret.** Un joueur a payé son pass, s'est inscrit dans
+un salon qui n'a jamais démarré, et son argent reste bloqué. Il peut partir
+lui-même — s'il y pense. Sinon, c'est définitif.
+
+**Correctif.** Un balayage des salons `scheduled` dont l'heure est dépassée
+depuis plus de X : annuler le salon et rembourser chaque joueur, avec les
+mêmes drapeaux `settled` et la même reprise que V10.
+
+---
 ## 8. Ce qu'il faut faire, par ordre de risque
 
-3. **Rendre `login-timing.test.mjs` stable** : c est un test de chronometrie
+1. **Balayer les salons BR jamais lances** (V14) : un salon `scheduled` dont
+   l heure est depassee doit etre annule et rembourse, sinon les passes y
+   restent bloques indefiniment.
+2. **Rendre `login-timing.test.mjs` stable** : c est un test de chronometrie
    avec 60 ms de tolerance, et il echoue par intermittence sous charge. Un
    test qui tombe au hasard ne prouve rien.
 

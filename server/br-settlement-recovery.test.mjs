@@ -139,4 +139,34 @@ describe('Reprise des reglements BR interrompus', () => {
     expect(res.remaining).toBe(1);
     expect(res.lobbies[0].status).toBe('settling');
   });
+
+  it('reprend aussi le CAS du REMBOURSEMENT, pas seulement celui des primes', async () => {
+    // Question posee : un remboursement interrompu est-il repris lui aussi ?
+    //
+    // Oui, et pour la meme raison : la branche « personne n a joue » vit
+    // DANS `settleBrLobbyOnServer`, utilise le meme statut `settling` et les
+    // memes drapeaux `settled`. Un arret de processus au milieu d un
+    // remboursement laisse le salon en `settling` — donc la reprise le voit.
+    //
+    // `contenders` est vide quand tous les joueurs sont absents : c est le
+    // seul cas ou le salon rembourse.
+    const lobby = lobbyInterrompu({
+      id: 'BR-REMBOURSE',
+      status: 'settling',
+      players: [
+        { userId: 'p1', pseudo: 'P1', teamId: 'T-1', joinedAt: '2026-01-01T00:00:00Z', checkedIn: false, alive: false, placement: null, kills: 0, eliminatedAt: null, absent: true, settled: false, winnings: 0 },
+        { userId: 'p2', pseudo: 'P2', teamId: 'T-2', joinedAt: '2026-01-01T00:00:00Z', checkedIn: false, alive: false, placement: null, kills: 0, eliminatedAt: null, absent: true, settled: false, winnings: 0 },
+      ],
+    });
+
+    const res = await retryPendingBrSettlements([lobby], {
+      getActor: (l) => ({ id: l.arbiterId, role: 'admin' }),
+    });
+
+    const rembourses = versements.filter((v) => v.kind === 'refund');
+    expect(rembourses).toHaveLength(2);
+    // Le salon passe `cancelled` : la dette est close.
+    expect(res.lobbies[0].status).toBe('cancelled');
+    expect(res.retried).toBe(1);
+  });
 });

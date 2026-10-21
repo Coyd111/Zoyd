@@ -90,6 +90,9 @@ const PublicProfilPage = () => {
     });
   }, [id, matches, ownProfile, publicProfile, targetPseudo, tournaments]);
 
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [confirmReport, setConfirmReport] = useState(false);
+
   if (!id) return null;
 
   if (!bootstrapReady) {
@@ -161,9 +164,6 @@ const PublicProfilPage = () => {
       toast.error('Erreur lors du blocage.');
     }
   };
-
-  const [confirmAction, setConfirmAction] = useState<string | null>(null);
-  const [confirmReport, setConfirmReport] = useState(false);
 
   const handleReport = () => {
     if (!currentUser) {

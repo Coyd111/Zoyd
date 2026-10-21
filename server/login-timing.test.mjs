@@ -40,6 +40,29 @@ const mesure = async (identifier) => {
 };
 
 const mediane = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+/**
+ * Le MINIMUM, et non la mediane.
+ *
+ * `scryptAsync` est un `promisify(crypto.scrypt)` : il s'execute sur le
+ * threadpool de libuv (4 threads par defaut). La suite lance les fichiers de
+ * test en parallele : les appels scrypt se disputent ces threads, et l
+ * etendue d une meme serie va alors de 559 a 985 ms. La mediane valait 799 ms
+ * de facon stable pour le compte existant, mais 680 ou 805 pour le compte
+ * inexistant — et l ecart « mesure » variait de 6 a 125 ms sans que le code
+ * n ait change.
+ *
+ * Le MINIMUM est l echantillon le moins perturbé : il vaut ~100 ms quand le
+ * scrypt est seul sur le threadpool, contre ~800 ms en charge.
+ *
+ * Ce qui compte, c est que l ecart SYSTEMATIQUE — la fuite qu on cherche —
+ * survit a l echantillonnage. Or la cause racine du bruit etait la
+ * contention : les fichiers de test sont desormais serialises
+ * (`fileParallelism: false` dans `vitest.config.ts`), et l ecart mesure
+ * tombe alors a 1-3 ms, de facon stable. La conception a temps constant
+ * fonctionne ; le 60 ms de tolerance represente vingt fois cet ecart, et
+ * attraperait la fuite d origine (plusieurs centaines de ms).
+ */
+const minimum = (xs) => Math.min(...xs);
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -85,13 +108,13 @@ describe("Login : l'existence d'un compte ne se lit pas au chrono", () => {
     await mesure(idExistant);
     await mesure(idInexistant);
 
-    for (let i = 0; i < 9; i += 1) {
+    for (let i = 0; i < 15; i += 1) {
       existant.push(await mesure(idExistant));
       inexistant.push(await mesure(idInexistant));
     }
 
-    const mExistant = mediane(existant);
-    const mInexistant = mediane(inexistant);
+    const mExistant = minimum(existant);
+    const mInexistant = minimum(inexistant);
 
     // Avant le correctif, l'ecart etait de plusieurs centaines de ms : scrypt
     // plus un aller-retour base. On tolere 60 ms de bruit, on interdit le saut.

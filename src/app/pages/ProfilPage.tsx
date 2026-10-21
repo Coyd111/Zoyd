@@ -39,6 +39,19 @@ const ProfilPage = () => {
   // restaient en memoire — visibles pour qui se connecte ensuite.
   const logout = useLogout();
 
+  const summary = useMemo(
+    () =>
+      buildCompetitiveSummary({
+        target: { isOwnProfile: true, pseudo: user?.pseudo ?? '' },
+        overallTrustScore: user?.trustScore ?? 0,
+        matches,
+        tournaments,
+        fallbackStats: user?.stats,
+        dateJoined: user?.dateJoined,
+      }),
+    [matches, tournaments, user]
+  );
+
   if (!user) {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top">
@@ -52,18 +65,6 @@ const ProfilPage = () => {
     );
   }
 
-  const summary = useMemo(
-    () =>
-      buildCompetitiveSummary({
-        target: { isOwnProfile: true, pseudo: user.pseudo },
-        overallTrustScore: user.trustScore,
-        matches,
-        tournaments,
-        fallbackStats: user.stats,
-        dateJoined: user.dateJoined,
-      }),
-    [matches, tournaments, user]
-  );
 
   return (
     <>

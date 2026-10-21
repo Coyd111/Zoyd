@@ -133,6 +133,12 @@ const DashboardPage: React.FC = () => {
     [requests]
   );
 
+  const totalWins = useMemo(() => recentFinished.filter((m) => {
+    const myPlayer = m.players.find((p) => p.isMe);
+    return myPlayer && m.result?.winnerTeam === myPlayer.team;
+  }).length, [recentFinished, user?.id]);
+
+
   if (!user) return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">
       <main className="max-w-[1600px] mx-auto px-5 md:px-8 pt-20 md:pt-28 pb-28 safe-bottom">
@@ -146,11 +152,6 @@ const DashboardPage: React.FC = () => {
       </main>
     </div>
   );
-
-  const totalWins = useMemo(() => recentFinished.filter((m) => {
-    const myPlayer = m.players.find((p) => p.isMe);
-    return myPlayer && m.result?.winnerTeam === myPlayer.team;
-  }).length, [recentFinished, user.id]);
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline safe-top">

@@ -24,7 +24,7 @@ code pour les constats les plus graves avant de les retenir.
 
 | Constat | Verdict | Preuve |
 |---|---|---|
-| **F1** — `useState` après retour précoce | ✅ **CONFIRMÉ** | `PublicProfilPage.tsx:93, 95, 110` (retours) puis `:165-166` (`useState`). Au 1ᵉʳ rendu : 0 hook ; au 2ᵉ : 2 hooks de plus → React lève « Rendered more hooks than during the previous render » → l'`ErrorBoundary` racine s'affiche et **toute l'application tombe** sur `/profil/:id`. |
+| **F1** — `useState` après retour précoce | ✅ **CONFIRMÉ — CORRIGÉ** | `PublicProfilPage.tsx:93, 95, 110` (retours) puis `:165-166` (`useState`). Au 1ᵉʳ rendu : 0 hook ; au 2ᵉ : 2 hooks de plus → React lève « Rendered more hooks than during the previous render » → l'`ErrorBoundary` racine s'affiche et **toute l'application tombe** sur `/profil/:id`. |
 | **M1** — `projectedPayouts` écarté par le store | ✅ **CONFIRMÉ** | `matchStore.ts:393-427` (`normalizeStoredMatch`) ne recopie pas `projectedPayouts`, alors que le type `Match` le déclare (`:168-173`). Le champ est perdu sur **tous** les chemins (HTTP et socket). |
 | **C1** — écriture BR hors du verrou | ✅ **CONFIRMÉ** | `routes/br.mjs:178` ouvre `withBrLobbyMutex`, `:235` le referme, et `:239` (`saveBrLobbies`) écrit **en dehors**. La lecture est verrouillée, l'écriture non. |
 

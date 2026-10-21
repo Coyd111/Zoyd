@@ -26,6 +26,20 @@ export default defineConfig({
     // compte de la contention, pas d'un defaut de navigateur — un vrai blocage
     // hangait jusqu'a ce plafond, lui aussi.
     testTimeout: 20_000,
+    // Les fichiers de test s'executent EN PARALLELE par defaut, et c est la
+    // source du bruit de `login-timing.test.mjs`.
+    //
+    // `scryptAsync` est un `promisify(crypto.scrypt)` : il occupe le
+    // threadpool de libuv (4 threads). Quand plusieurs fichiers tournent en
+    // meme temps, les appels scrypt se disputent ces threads, et l etendue
+    // d une meme serie de mesures va de 150 a 985 ms. L ecart « mesure »
+    // entre un compte existant et un compte inexistant variait alors de 6 a
+    // 125 ms — sans que le code n ait change.
+    //
+    // Serialiser les fichiers supprime la contention : le threadpool n est
+    // plus partage, et la mesure redevient stable. Le cout est un peu de
+    // temps de suite ; le gain est une suite qui ne tombe pas au hasard.
+    fileParallelism: false,
   },
   globals: true,
   // Node, et c'est VOLONTAIRE : cette ligne annoncait `jsdom`, mais jsdom

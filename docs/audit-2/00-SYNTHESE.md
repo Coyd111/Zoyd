@@ -84,9 +84,9 @@ suivis.
 
 | ID | Constat | Impact |
 |---|---|---|
-| **S1** | `POST /api/matches/:id/result` : l'override admin du moteur permet d'écrire le vainqueur **sans TOTP** | La route jumelle `/api/admin/matches/:id/award` est, elle, sous `requireAdmin2fa`. Le cron règle la cagnotte 30 min après. |
-| **S2** | `/api/leagues/:id/final-results` (+ `days/:day/results`, `advance-to-final`) : rôle admin seul, aucun TOTP | `applyLeagueSettlement` verse la cagnotte réelle. Le remboursement voisin est en revanche sous 2FA. |
-| **S3** | `POST /api/tournaments/:id/matches/:mid/result` : l'admin contourne le slot d'arbitre | Déclenche `applyTournamentSettlement`. |
+| **S1** | `POST /api/matches/:id/result` : l'override admin du moteur permet d'écrire le vainqueur **sans TOTP** | La route jumelle `/api/admin/matches/:id/award` est, elle, sous `requireAdmin2fa`. Le cron règle la cagnotte 30 min après. **CORRIGÉ le 23/10/2026** (`require2faIfAdmin` sur result + arbiter : l'admin paie un TOTP frais, l'arbitre joueur passe sans code). |
+| **S2** | `/api/leagues/:id/final-results` (+ `days/:day/results`, `advance-to-final`) : rôle admin seul, aucun TOTP | `applyLeagueSettlement` verse la cagnotte réelle. Le remboursement voisin est en revanche sous 2FA. **CORRIGÉ le 23/10/2026** (les trois routes de la chaîne passent sous `requireAdmin2fa`, alignées sur refund/payments). |
+| **S3** | `POST /api/tournaments/:id/matches/:mid/result` : l'admin contourne le slot d'arbitre | Déclenche `applyTournamentSettlement`. **CORRIGÉ le 23/10/2026** (`require2faIfAdmin` ; l'arbitre assigné continue de passer sans code). |
 | **S4** | `GET /api/matches` est publique et `sanitizeMatchForBroadcast` est incomplète | Sortent `creatorId`, `disputes[].requestedBy`, `disputes[].evidence`, et surtout `result.proofHash` — qui n'est **pas** un hash mais la concaténation en clair des URL de captures (le front l'affiche). |
 
 ### 2.3 Concurrence
@@ -150,7 +150,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 2 | **A1 + A2 + A3** — job de réconciliation, clé d'idempotence, marquage — **LIVRÉ le 23/10/2026** (avec les deux défauts latents de la file de réconciliation) | De l'argent réellement perdu ou versé deux fois. A1 et A3 sont liés : livrer A3 avec A1 armerait la double remise. |
 | 3 | **C1 + C2** — écriture BR dans le verrou, cron BR sous verrou — **LIVRÉ le 23/10/2026** (double étage : verrou + écriture par entité, avec isolation par salon des jobs d'annulation) ; l'option structurelle recommandée par l'audit a été appliquée | Réinteressions : je les ai introduites ou laissées en partie. |
 | 4 | **C3 + C4** — reprise des états `disputed`/`live`/`qualifying` — **LIVRÉ le 23/10/2026** (C3 : échec de règlement de litige → dette reprise ; C4 : les trois balayages élargis aux états abandonnés, aucun nouveau job) | Cagnottes gelées sans qu'aucun cron ne les reprenne. |
-| 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |
+| 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat — **LIVRÉ le 23/10/2026** (garde conditionnelle `require2faIfAdmin` + chaîne ligue sous `requireAdmin2fa`, 16 tests de route) | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |
 | 6 | **M1** — recopier `projectedPayouts` dans le store | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |
 | 7 | **M2, M3, M4, M5** — dérives front/serveur | `/br-league` cassée, montants affichés faux. |
 | 8 | **F2, F3, F4, F5** — squelette permanent, fuite entre comptes, mensonge du dashboard, TOTP non demandé | Le joueur ne voit pas son solde ; le compte suivant hérite du précédent. |

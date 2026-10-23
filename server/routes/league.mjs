@@ -9,7 +9,8 @@
  * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit ->
  * `withLeagueMutex` -> lecture du corps -> moteur -> `saveLeagues` ->
  * reponse. Les routes qui deplacent de l'argent ajoutent `requireAdmin2fa`
- * (remboursement d'un pass, lecture des paiements).
+ * (remboursement d'un pass, lecture des paiements, chaines resultats/
+ * avance-to-final/final-results de la ligue - audit-2 S2).
  *
  * INVARIANT : la liste ET le detail exigent une session : une saison expose
  *   le `userId` de chaque joueur inscrit (le modele `isMe` complet n'est pas
@@ -270,11 +271,11 @@ if (req.method === 'POST' && leagueStartDay) {
 
 const leagueDayResults = pathname.match(/^\/api\/leagues\/([^/]+)\/days\/([^/]+)\/results$/);
 if (req.method === 'POST' && leagueDayResults) {
-  const session = getAuthenticatedAppSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
-    return true;
-  }
+  // Ecrire le classement de qualification est la premiere marche de la
+  // chaine qui finit par debtor les portefeuilles : la chaine exige le role
+  // admin (dans le moteur), elle exige donc aussi la 2FA (audit-2 S2).
+  const session = requireAdmin2fa(req, res);
+  if (!session) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     const outcome = submitLeagueDayResultsOnServer(
@@ -294,11 +295,11 @@ if (req.method === 'POST' && leagueDayResults) {
 
 const leagueAdvanceToFinal = pathname.match(/^\/api\/leagues\/([^/]+)\/advance-to-final$/);
 if (req.method === 'POST' && leagueAdvanceToFinal) {
-  const session = getAuthenticatedAppSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
-    return true;
-  }
+  // Designe les finalistes : deuxieme marche de la chaine admin qui verse
+  // la cagnotte (audit-2 S2). Le role admin est verifie dans le moteur, la
+  // 2FA l'est ici, sur le meme modele que refund/payments.
+  const session = requireAdmin2fa(req, res);
+  if (!session) { return true; }
   try { await withLeagueMutex(async () => {
     const outcome = advanceToFinalOnServer(getStoredLeagues(), session.user, leagueAdvanceToFinal[1]);
     await saveLeagues(io, outcome.seasons);
@@ -311,11 +312,12 @@ if (req.method === 'POST' && leagueAdvanceToFinal) {
 
 const leagueFinalResults = pathname.match(/^\/api\/leagues\/([^/]+)\/final-results$/);
 if (req.method === 'POST' && leagueFinalResults) {
-  const session = getAuthenticatedAppSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
-    return true;
-  }
+  // Cette route VERSE LA CAGNOTTE (60 / 25 / 15 % + pertes) : role admin
+  // verifie dans le moteur, 2FA verifiee ici. Un remboursement ponctuel
+  // (refund/:userId) exigeait la 2FA : un versement complet ne peut pas
+  // couter moins (audit-2 S2).
+  const session = requireAdmin2fa(req, res);
+  if (!session) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     const outcome = submitLeagueFinalResultsOnServer(

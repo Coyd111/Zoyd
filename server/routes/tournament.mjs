@@ -8,7 +8,9 @@
  * Ordre des gardes : rate limit -> session (401 `AUTH_REQUIRED`) ->
  * `withTournamentMutex` -> lecture du corps -> moteur -> `saveTournaments` ->
  * reponse. Le rate limit passe AVANT la session sur les routes d'ecriture :
- * le quota doit proteger le garde, pas l'inverse.
+ * le quota doit proteger le garde, pas l'inverse. La soumission de resultat
+ * ajoute `require2faIfAdmin` : l'override admin ne peut pas couter moins
+ * que l'arbitre du duel lui-meme.
  *
  * INVARIANT : toute mutation est entierement sous `withTournamentMutex` : le
  *   tournoi, ses entrees et ses matchs partagent la meme collection.
@@ -62,6 +64,7 @@ import {
   buildTournamentActionPayload,
 } from '../state-helpers.mjs';
 import { deliverNotification } from '../push-notifications.mjs';
+import { require2faIfAdmin } from '../admin-totp.mjs';
 import { createLogger } from '../logger.mjs';
 
 const log = createLogger('tournament-routes');
@@ -278,11 +281,11 @@ if (req.method === 'POST' && tournamentLive) {
 const tournamentResult = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/result$/);
 if (req.method === 'POST' && tournamentResult) {
   if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
-  const session = getAuthenticatedAppSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
-    return true;
-  }
+  // L'override admin passe la garde du moteur sans etre l'arbitre du duel :
+  // un tournoi solde par la peut verser la cagnotte aux finalistes. L'admin
+  // doit donc avoir une 2FA fraiche, comme sur /api/admin/* (audit-2 S3).
+  const session = require2faIfAdmin(req, res);
+  if (!session) { return true; }
 
   try { await withTournamentMutex(async () => {
     const body = await parseRequestBody(req);

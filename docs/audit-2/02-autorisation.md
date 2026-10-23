@@ -278,6 +278,19 @@ appliquer `requireAdmin2fa` sur `POST /api/matches/:id/result` quand
 `POST /api/admin/matches/:id/award`. Idem pour `POST /api/matches/:id/arbiter` si l'on
 interdit aux admins de prendre une place d'arbitre sur un match sans arbitre.
 
+**Correctif (23/10/2026)** : la nouvelle garde `require2faIfAdmin`
+(`server/admin-totp.mjs`) passe toute session non admin et exige, pour une
+session admin, la même fenêtre 2FA que `requireAdmin2fa` (2FA activée **et**
+vérifiée depuis moins de 5 min). Appliquée sur les deux chemins joueur :
+- `POST /api/matches/:id/result` — l'override admin paie le code TOTP, exactement
+  comme la route jumelle `award` ;
+- `POST /api/matches/:id/arbiter` — un admin ne peut plus s'attribuer une place
+  d'arbitre sans TOTP : c'est ce qui fermait la boucle (devenir arbitre pour
+  caser la cagnotte par la voie normale d'arbitrage).
+Le garde `ARBITER_REQUIRED` du moteur reste le contrôle de proximité du
+versement. Tests : `server/admin-result-2fa-gates.test.mjs` — admin sans 2FA,
+2FA activée jamais vérifiée, 2FA fraiche, arbitre ordinaire.
+
 ---
 
 ### S2 — HAUTE — La cagnotte de la ligue BR est versée sans 2FA
@@ -320,6 +333,15 @@ confirmation client : aucun code TOTP n'est demandé ni transmis
 `days/:day/results` + `advance-to-final` (la chaîne deLigendes), comme cela est déjà fait
 pour `refund` et `payments`.
 
+**Correctif (23/10/2026)** : la chaîne complète passe sous `requireAdmin2fa`
+(`server/routes/league.mjs`), alignée sur `refund/:userId` et `payments` —
+un versement complet ne peut pas coûter moins qu'un remboursement ponctuel :
+- `POST /api/leagues/:id/days/:day/results` (classement de qualification) ;
+- `POST /api/leagues/:id/advance-to-final` (désignation des finalistes) ;
+- `POST /api/leagues/:id/final-results` (versement 60/25/15 % + pertes).
+Un non-admin reçoit désormais le 403 `ADMIN_REQUIRED` de la garde (avant, le
+même 403 venait du moteur) : aucune régression d'autorisation.
+
 ---
 
 ### S3 — HAUTE — Le règlement d'un tournoi peut être déclenché sans 2FA
@@ -347,6 +369,12 @@ déterminer le vainqueur d'un tournoi et à déclencher le versement.
 
 **Correction.** `requireAdmin2fa` sur cette route pour le cas admin, ou retirer l'override
 admin de `requireTournamentMatchAction` (comme pour S1).
+
+**Correctif (23/10/2026)** : la même garde conditionnelle `require2faIfAdmin` est posée
+sur `POST /api/tournaments/:id/matches/:mid/result` — l'override admin paie le
+code TOTP ; l'arbitre assigné du duel garde son chemin normal. Le garde
+`requireTournamentMatchAction` du moteur reste intact (contrôle de
+proximité). Tests : `server/admin-result-2fa-gates.test.mjs`.
 
 ---
 

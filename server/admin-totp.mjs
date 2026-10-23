@@ -3,14 +3,21 @@
  * administrateurs, et gardes d'autorisation associees.
  *
  * Trois exports servent de garde aux routes : `requireAdmin` (role admin),
- * `requireAdmin2fa` (role admin + 2FA verifiee) et le stockage des secrets.
+ * `requireAdmin2fa` (role admin + 2FA verifiee) et `require2faIfAdmin`
+ * (session quelconque ; l'admin seul doit avoir une 2FA fraiche) - plus le
+ * stockage des secrets.
  *
  * INVARIANT : `requireAdmin` et `requireAdmin2fa` repondent EUX-MEMES sur un
  *   refus (401/403 + code) : l'appelant doit faire `return true` immediatement
- *   et ne JAMAIS repondre une seconde fois.
+ *   et ne JAMAIS repondre une seconde fois. `require2faIfAdmin` suit la meme
+ *   discipline (401 sans session, 403 + code 2FA_REQUIRED pour un admin).
  * INVARIANT : toute operation financiere ou de moderation passe par
  *   `requireAdmin2fa` ; `requireAdmin` seul ne couvre que les routes de
- *   configuration de la 2FA (status / setup / enable / verify).
+ *   configuration de la 2FA (status / setup / enable / verify). Les routes
+ *   mixtes (arbitre OU admin en override) brassent l'argent sur un chemin
+ *   non admin : elles passent par `require2faIfAdmin` - sinon un mot de
+ *   passe admin compromis suffit a ecrire un resultat payant sans TOTP
+ *   (contours S1/S2/S3 de l'audit-2).
  * INVARIANT : `TOTP_WINDOW_STEPS = 0` - un code n'est accepte que pendant
  *   SON pas de 30 s : il n'est donc pas rejouable.
  * INVARIANT : le secret n'est lu que dans `adminTotpSecrets`, repeuple au
@@ -192,6 +199,45 @@ export const requireAdmin2fa = (req, res) => {
     // d'autorisation d'une session expiree, et deconnectait le joueur.
     respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.', code: 'ADMIN_REQUIRED' }, req);
     return null;
+  }
+  const totpEntry = adminTotpSecrets.get(session.user.id);
+  if (!totpEntry?.enabled) {
+    respondJson(res, 403, { ok: false, error: 'Active la 2FA dans Paramètres > Sécurité pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
+    return null;
+  }
+  if (!session.admin2faVerified || session.admin2faExpires <= Date.now()) {
+    respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
+    return null;
+  }
+  return session;
+};
+
+/**
+ * Require a valid session; an ADMIN session is additionally bound to a fresh
+ * 2FA verification (same rules as `requireAdmin2fa`), while any other role
+ * passes through unchanged.
+ *
+ * Pour les routes mixtes ou un joueur arbitre peut agir sans etre admin
+ * (`POST /api/matches/:id/result|arbiter`, `POST /api/tournaments/:id/
+ * matches/:mid/result`) : l'override admin doit couter le meme code TOTP
+ * que la route /api/admin/* equilibree - sinon le mot de passe admin
+ * compromis suffit a ecrire un resultat payant (audit-2 S1/S3).
+ *
+ * Meme discipline que `requireAdmin2fa` : la garde repond EUX-MEME au refus
+ * (401/403 + code), l'appelant fait `return true` immediatement.
+ *
+ * @param {import('http').IncomingMessage} req - HTTP request
+ * @param {import('http').ServerResponse} res - HTTP response
+ * @returns {object|null} Session (non admin) ou admin 2FA-fraiche, sinon null
+ */
+export const require2faIfAdmin = (req, res) => {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.' }, req);
+    return null;
+  }
+  if (session.user.role !== 'admin') {
+    return session;
   }
   const totpEntry = adminTotpSecrets.get(session.user.id);
   if (!totpEntry?.enabled) {

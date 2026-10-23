@@ -8,6 +8,9 @@
  * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`social`
  * pour les actions sociales) -> lecture du corps -> `withMatchMutex` (global)
  * -> `withWalletMutex` (par joueur) -> moteur -> `saveMatches` -> reponse.
+ * Les resultats et places d'arbitre ajoutent `require2faIfAdmin` : une
+ * session admin doit avoir une 2FA fraiche, un joueur arbitre passe sans
+ * code (l'override admin ne doit pas couter moins que /api/admin/*).
  *
  * INVARIANT : le verrou GLOBAL est pris AVANT le verrou par portefeuille :
  *   l'ordre inverse ouvre la porte a un deadlock.
@@ -62,6 +65,7 @@ import {
 import { getStateCollection } from '../persistence.mjs';
 import { saveMatches, buildMatchActionPayload } from '../state-helpers.mjs';
 import { deliverNotification, notifyAllAdmins } from '../push-notifications.mjs';
+import { require2faIfAdmin } from '../admin-totp.mjs';
 import { createLogger } from '../logger.mjs';
 
 const log = createLogger('match-routes');
@@ -153,11 +157,13 @@ if (req.method === 'POST' && matchJoin) {
 
 const matchArbiter = pathname.match(/^\/api\/matches\/([^/]+)\/arbiter$/);
 if (req.method === 'POST' && matchArbiter) {
-  const session = getAuthenticatedAppSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
-    return true;
-  }
+  // La place d'arbitre ouvre le chemin normal "l'arbitre ecrit le resultat,
+  // la cagnotte part a la confirmation" : sans garde, un admin dont le mot
+  // de passe est compromis (pas le TOTP) s'attribue la place puis paie via
+  // sa session admin. L'override admin passe donc par la meme fenetre 2FA
+  // que les routes /api/admin/* (audit-2 S1).
+  const session = require2faIfAdmin(req, res);
+  if (!session) { return true; }
   if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   try { await withMatchMutex(async () => {
@@ -287,11 +293,13 @@ if (req.method === 'POST' && matchLaunch) {
 
 const matchResult = pathname.match(/^\/api\/matches\/([^/]+)\/result$/);
 if (req.method === 'POST' && matchResult) {
-  const session = getAuthenticatedAppSession(req);
-  if (!session) {
-    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
-    return true;
-  }
+  // L'override admin ecrivait le resultat sans TOTP : le texte de
+  // expireConfirmationsOnServer dit meme que "l'admin peut ecrire un
+  // resultat". C'est le contour le plus court de la 2FA : la route jumelle
+  // /api/admin/matches/:id/award exige le code, le chemin joueur ne le
+  // demandait pas (audit-2 S1).
+  const session = require2faIfAdmin(req, res);
+  if (!session) { return true; }
 
   try { await withMatchMutex(async () => {
     const body = await parseRequestBody(req);

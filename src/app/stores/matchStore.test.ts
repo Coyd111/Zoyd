@@ -155,3 +155,109 @@ describe('matchStore — replaceFromServer (liste complete)', () => {
     expect(ids()).toEqual(['GARDE']);
   });
 });
+
+/**
+ * M1 — la projection serveur survit a la normalisation.
+ *
+ * Avant la correction, `StoredMatch` ne declarait pas `projectedPayouts` :
+ * `normalizeStoredMatch` ecartait le champ malgre l'emission serveur
+ * (`sanitizeMatchForBroadcast` l'attache a TOUTES les sorties), et les helpers
+ * de `src/lib/matchPayout.ts` retombaient toujours sur le recalcul local
+ * `prizePool - zoydFee - arbiterFee` — le pot THEORIQUE et une commission
+ * figee, jamais le versement reel (roster incomplet, match sans arbitre).
+ */
+describe('matchStore — projection projectedPayouts (M1)', () => {
+  beforeEach(() => {
+    useMatchStore.setState({ matches: [], filters: { format: 'all', status: 'all' } });
+  });
+
+  it('replaceFromServer garde la projection serveur dans le match normalise', () => {
+    const projection = {
+      basis: 88.2,
+      locked: true,
+      arbiterFee: 1.8,
+      winner: 86.4,
+      perWinner: 43.2,
+    };
+    // Roster 2v2 incomplet : prizePool theorique 100 mais projection sur les
+    // fonds reellement bloques (88.2).
+    useMatchStore.getState().replaceFromServer([
+      match({ id: 'M-PROJ', prizePool: 100, teamSize: 2, projectedPayouts: projection }),
+    ]);
+
+    const stored = current()[0].projectedPayouts;
+    expect(stored).toEqual(projection);
+  });
+
+  it('hydrateFromServer garde aussi la projection (chemin delta socket)', () => {
+    useMatchStore.setState({ matches: [match({ id: 'M-PROJ', updatedAt: '2026-01-01T00:00:00.000Z' })] as never });
+
+    useMatchStore.getState().hydrateFromServer([
+      match({
+        id: 'M-PROJ',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        prizePool: 100,
+        teamSize: 2,
+        projectedPayouts: { basis: 88.2, locked: true, arbiterFee: 1.8, winner: 86.4, perWinner: 43.2 },
+      }),
+    ]);
+
+    expect(current()[0].projectedPayouts?.perWinner).toBe(43.2);
+    expect(current()[0].projectedPayouts?.basis).toBe(88.2);
+  });
+
+  it('sans projection, le champ reste undefined et le repli local reste le recours', () => {
+    useMatchStore.getState().replaceFromServer([match({ id: 'M-ANCIEN', prizePool: 100, teamSize: 2 })]);
+
+    expect(current()[0].projectedPayouts).toBeUndefined();
+  });
+
+  it('une projection malformee (basis non fini) est ecartee : pas de pot invente', () => {
+    useMatchStore.getState().replaceFromServer([
+      match({
+        id: 'M-CASSE',
+        prizePool: 100,
+        projectedPayouts: { basis: Number.NaN, locked: true, arbiterFee: 1.8, winner: 86.4, perWinner: 43.2 },
+      }),
+    ]);
+
+    expect(current()[0].projectedPayouts).toBeUndefined();
+  });
+
+  it('les helpers de matchPayout lisent enfin la valeur serveur du store (V8)', async () => {
+    const { getWinnerPayout, getWinnerPayoutPerPlayer, getArbiterFee } = await import('../../lib/matchPayout');
+
+    useMatchStore.getState().replaceFromServer([
+      match({
+        id: 'M-PROJ',
+        prizePool: 100,
+        zoydFee: 2,
+        arbiterFee: 2,
+        teamSize: 2,
+        players: [{ isMe: true, team: 0, userId: 'p1', pseudo: 'P1', ready: true, checkedIn: true, readyAt: null, checkedInAt: null }] as never,
+        projectedPayouts: { basis: 88.2, locked: true, arbiterFee: 1.764, winner: 86.436, perWinner: 43.218 },
+      }),
+    ]);
+
+    const storedMatch = current()[0];
+    // La projection l'emporte partout : le pot reellement bloque (88.2) et la
+    // commission reelle (1.764 : 2% de la base verrouillee), pas la theorie.
+    expect(getWinnerPayout(storedMatch)).toBe(86.44);
+    expect(getWinnerPayoutPerPlayer(storedMatch)).toBe(43.22);
+    // La commission projetee passe SANS re-normalisation : le front ne
+    // recalcule rien (getArbiterFee ne round pas la branche projetee).
+    expect(getArbiterFee(storedMatch)).toBe(1.764);
+  });
+
+  it('sans projection conservee, les helpers retombent sur le calcul local', async () => {
+    const { getWinnerPayout, getArbiterFee } = await import('../../lib/matchPayout');
+
+    useMatchStore.getState().replaceFromServer([
+      match({ id: 'M-ANCIEN', prizePool: 100, zoydFee: 2, arbiterFee: 2, teamSize: 2 }),
+    ]);
+
+    const storedMatch = current()[0];
+    expect(getWinnerPayout(storedMatch)).toBe(96);
+    expect(getArbiterFee(storedMatch)).toBe(2);
+  });
+});

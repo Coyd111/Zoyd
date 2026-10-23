@@ -25,7 +25,7 @@ code pour les constats les plus graves avant de les retenir.
 | Constat | Verdict | Preuve |
 |---|---|---|
 | **F1** — `useState` après retour précoce | ✅ **CONFIRMÉ — CORRIGÉ** | `PublicProfilPage.tsx:93, 95, 110` (retours) puis `:165-166` (`useState`). Au 1ᵉʳ rendu : 0 hook ; au 2ᵉ : 2 hooks de plus → React lève « Rendered more hooks than during the previous render » → l'`ErrorBoundary` racine s'affiche et **toute l'application tombe** sur `/profil/:id`. |
-| **M1** — `projectedPayouts` écarté par le store | ✅ **CONFIRMÉ** | `matchStore.ts:393-427` (`normalizeStoredMatch`) ne recopie pas `projectedPayouts`, alors que le type `Match` le déclare (`:168-173`). Le champ est perdu sur **tous** les chemins (HTTP et socket). |
+| **M1** — `projectedPayouts` écarté par le store | ✅ **CONFIRMÉ — CORRIGÉ** | `matchStore.ts:393-427` (`normalizeStoredMatch`) ne recopie pas `projectedPayouts`, alors que le type `Match` le déclare (`:168-173`). Le champ est perdu sur **tous** les chemins (HTTP et socket). **CORRIGÉ le 23/10/2026** (`StoredMatch` déclare le champ, `normalizeStoredProjection` le recopie avec garde « pas de pot inventé » ; 6 tests de chaîne payload→store→helpers). |
 | **C1** — écriture BR hors du verrou | ✅ **CONFIRMÉ — CORRIGÉ** | `routes/br.mjs:178` ouvre `withBrLobbyMutex`, `:235` le referme, et `:239` (`saveBrLobbies`) écrit **en dehors**. La lecture est verrouillée, l'écriture non. **CORRIGÉ le 23/10/2026.** |
 
 ### 1.1 Ce que M1 implique sur mes propres correctifs
@@ -151,7 +151,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 3 | **C1 + C2** — écriture BR dans le verrou, cron BR sous verrou — **LIVRÉ le 23/10/2026** (double étage : verrou + écriture par entité, avec isolation par salon des jobs d'annulation) ; l'option structurelle recommandée par l'audit a été appliquée | Réinteressions : je les ai introduites ou laissées en partie. |
 | 4 | **C3 + C4** — reprise des états `disputed`/`live`/`qualifying` — **LIVRÉ le 23/10/2026** (C3 : échec de règlement de litige → dette reprise ; C4 : les trois balayages élargis aux états abandonnés, aucun nouveau job) | Cagnottes gelées sans qu'aucun cron ne les reprenne. |
 | 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat — **LIVRÉ le 23/10/2026** (garde conditionnelle `require2faIfAdmin` + chaîne ligue sous `requireAdmin2fa`, 16 tests de route) | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |
-| 6 | **M1** — recopier `projectedPayouts` dans le store | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |
+| 6 | **M1** — recopier `projectedPayouts` dans le store — **LIVRÉ le 23/10/2026** | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |
 | 7 | **M2, M3, M4, M5** — dérives front/serveur | `/br-league` cassée, montants affichés faux. |
 | 8 | **F2, F3, F4, F5** — squelette permanent, fuite entre comptes, mensonge du dashboard, TOTP non demandé | Le joueur ne voit pas son solde ; le compte suivant hérite du précédent. |
 | 9 | **S4** — `proofHash` exposé publiquement | Fuite d'URL de captures. |

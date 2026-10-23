@@ -294,6 +294,20 @@ interface StoredResult {
 }
 
 /**
+ * Projection serveur de la partition du pot (sanitizeMatchForBroadcast). Le
+ * champ DOIT etre declare ici : sans lui, normalizeStoredMatch l'ecartait et
+ * tous les gains affiches retombaient sur le recalcul local `prizePool - fee`
+ * (pot theorique, commission figee) - jamais ce que le serveur verse.
+ */
+interface StoredProjectedPayouts {
+  basis?: number;
+  locked?: boolean;
+  arbiterFee?: number;
+  winner?: number;
+  perWinner?: number;
+}
+
+/**
  * Forme brute d'un match venant du serveur. Tous les champs sont optionnels
  * (le serveur peut envoyer une forme partielle) mais DOIVENT être déclarés
  * explicitement, et SANS index signature : avec `[key: string]: unknown`, chaque
@@ -336,6 +350,7 @@ interface StoredMatch {
   disputes?: StoredDispute[];
   dispute?: StoredDispute;
   result?: StoredResult;
+  projectedPayouts?: StoredProjectedPayouts;
 }
 
 const normalizeStoredDispute = (dispute: StoredDispute): Dispute => ({
@@ -390,6 +405,30 @@ const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResu
     payoutDistributed,
   };
 };
+/**
+ * Recopie la projection serveur sans la reconstruire : elle est calculee sur
+ * les fonds REELLEMENT verrouilles (server/match-engine.mjs — getProjectedPayouts),
+ * le front n'a pas assez d'information pour la recalculer. Si la base n'est
+ * pas un nombre fini (payload ancien ou partial), on renvoie `undefined` pour
+ * que les helpers retombent sur leur chemin de repli, sans inventer un pot.
+ */
+const normalizeStoredProjection = (
+  projection: StoredProjectedPayouts | undefined
+): Match['projectedPayouts'] => {
+  if (!projection || typeof projection !== 'object') return undefined;
+  const basis = Number(projection.basis);
+  const winner = Number(projection.winner);
+  if (!Number.isFinite(basis) || !Number.isFinite(winner)) return undefined;
+  const arbiterFee = Number(projection.arbiterFee);
+  const perWinner = Number(projection.perWinner);
+  return {
+    basis,
+    locked: projection.locked === true,
+    arbiterFee: Number.isFinite(arbiterFee) ? arbiterFee : 0,
+    winner,
+    perWinner: Number.isFinite(perWinner) ? perWinner : 0,
+  };
+};
 const normalizeStoredMatch = (match: StoredMatch): Match => ({
   id: match.id || '',
   creatorId: match.creatorId || '',
@@ -424,6 +463,7 @@ const normalizeStoredMatch = (match: StoredMatch): Match => ({
   expiresAt: match.expiresAt || '',
   trustScoreMin: match.trustScoreMin,
   isInstant: match.isInstant ?? false,
+  projectedPayouts: normalizeStoredProjection(match.projectedPayouts),
 });
 
 const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match[]) => {

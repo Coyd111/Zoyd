@@ -112,6 +112,26 @@ juste, mais ne prouve rien sur le trajet HTTP → store.
 `normalizeStoredMatch` ; ajouter un test de store qui passe par `replaceFromServer` avec un
 payload contenant `projectedPayouts`.
 
+**Correctif (23/10/2026)** : les deux ajouts sont en place dans
+`src/app/stores/matchStore.ts` —
+- `StoredProjectedPayouts` déclaré et reporté dans `StoredMatch` ;
+- `normalizeStoredProjection` recopie la projection sans la reconstruire : elle
+  est calculée par le serveur sur les fonds réellement verrouillés, le front
+  n'a pas assez d'information pour la refaire. Si `basis` ou `winner` n'est
+  pas un nombre fini (payload ancien ou partiel), la projection est écartée :
+  les helpers retombent sur leur repli local, aucun pot n'est inventé.
+- `perWinner`/`arbiterFee` malformés tombent à 0 plutôt qu'à `NaN`.
+
+La copie est appliquée sur les deux chemins d'entrée (`replaceFromServer` et
+`hydrateFromServer`/`mergeMatchesByFreshness`, tous deux passent par
+`normalizeStoredMatch`). Les six nouveaux tests de `src/app/stores/
+matchStore.test.ts` couvrent la chaîne complète payload → store → helpers de
+`matchPayout.ts` (V5/V8) : projection conservée sur les deux chemins, champ
+`undefined` sans projection, projection `NaN` écartée, helpers lisant enfin
+le pot réel (88,2 € bloqués, commission 1,764 — pas la théorie 96/2), et le
+repli local toujours utilisable pour les payloads sans projection.
+Types et lint : `npm run typecheck`, `npm run lint` — verts.
+
 ---
 
 ### M2 — ÉLEVÉE — Une saison de ligue `cancelled` fait crasher `/br-league` et `/br-league/:id`

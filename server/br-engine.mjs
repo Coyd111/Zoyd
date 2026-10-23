@@ -1183,9 +1183,16 @@ export const computeBrPayouts = (lobby) => {
   for (let i = 0; i < BR_PRIZED_PLACES; i++) {
     const player = ranking[i];
     if (!player) break;
+    // Les taux sont des pourcentages du POT (validateBrPayout exige que les
+    // six taux somment a 100 % : la somme des cinq parts vaut donc
+    // pot * (1 - arbiterRate) = winnersPool). Les appliquer au lieu sur
+    // winnersPool faussait toute la repartition et faisait absorber par le
+    // 5e le depassement des quatre premiers : le 5e etait paye PLUS que le
+    // 4e - et l'ecran affichait un autre montant que le versement
+    // (splitBrPayout cote front multipliait lui le pot).
     const amount = i === lastIndex
       ? roundAmount(winnersPool - distributed)
-      : roundAmount(winnersPool * shares[i]);
+      : roundAmount(pot * shares[i]);
     distributed = roundAmount(distributed + amount);
     results.push({
       userId: player.userId,

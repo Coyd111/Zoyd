@@ -163,7 +163,13 @@ export interface BrProjectedPayouts {
 
 /**
  * Répartition lisible d'une cagnotte BR : montants en ZC par place, plus la
- * commission de l'arbitre. Calculée par le serveur (source de vérité).
+ * commission de l'arbitre. Formule ALIGNEE sur le serveur
+ * (computeBrPayouts, br-engine.mjs) : les taux sont des pourcentages du POT
+ * (la validation serveur exige que les six taux somment à 100 %, donc la
+ * somme des cinq parts vaut pot × (1 − arbiterRate) — pas pot × (1 − rate)
+ * fois les taux individuels). Appliquer les taux à la cagnotte des gagnants
+ * faisait apparaître un 5ᵉ payé plus que le 4ᵉ et un montant que personne ne
+ * recevait (M3).
  */
 export const splitBrPayout = (lobby: BrLobby) => {
   const pot = lobby.pot || 0;
@@ -181,7 +187,7 @@ export const splitBrPayout = (lobby: BrLobby) => {
     winnersPool,
     arbiterRate: rate,
     arbiterAmount: pot * rate,
-    places: shares.map((s) => ({ ...s, amount: winnersPool * s.rate })),
+    places: shares.map((s) => ({ ...s, amount: pot * s.rate })),
   };
 };
 
@@ -195,9 +201,21 @@ export const fetchBrLobbies = async (): Promise<BrLobby[]> => {
   return Array.isArray(response.lobbies) ? response.lobbies : [];
 };
 
-export const fetchBrLobby = async (lobbyId: string): Promise<BrLobby> => {
-  const response = await authorizedGet<{ ok: boolean; lobby: BrLobby }>(`/api/br/lobbies/${lobbyId}`);
-  return response.lobby;
+/**
+ * Salon + projection serveur du meme GET. La projection est la source de
+ * verite des montants : des qu'un classement existe, l'ecran affiche les
+ * montants calculés PAR le serveur, pas un recalcul local (M3).
+ */
+export const fetchBrLobby = async (
+  lobbyId: string
+): Promise<{ lobby: BrLobby; projectedPayouts: BrProjectedPayouts | null }> => {
+  const response = await authorizedGet<
+    { ok: boolean; lobby: BrLobby; projectedPayouts?: BrProjectedPayouts }
+  >(`/api/br/lobbies/${lobbyId}`);
+  return {
+    lobby: response.lobby,
+    projectedPayouts: response.projectedPayouts ?? null,
+  };
 };
 
 export interface CreateBrLobbyPayload {

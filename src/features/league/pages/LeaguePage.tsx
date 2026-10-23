@@ -49,6 +49,9 @@ const STATUS_TABS: Array<{ value: LeagueSeasonStatus | 'all'; label: string }> =
   { value: 'qualifying', label: 'QUALIFICATION' },
   { value: 'final', label: 'FINALE' },
   { value: 'completed', label: 'TERMINÉ' },
+  // Une saison annulee n'appartenait a aucun onglet : invisible sur l'ecran
+  // des ligues alors que les joueurs cherchent leur pass (M2).
+  { value: 'cancelled', label: 'ANNULÉE' },
 ];
 
 const DAY_LABELS: Record<string, string> = {
@@ -64,6 +67,9 @@ const STATUS_BADGES: Record<LeagueSeasonStatus, { label: string; color: string }
   qualifying: { label: 'Qualification en cours', color: 'text-zoyd-yellow border-zoyd-yellow/30 bg-zoyd-yellow/10' },
   final: { label: 'Finale', color: 'text-orange-400 border-orange-400/30 bg-orange-400/10' },
   completed: { label: 'Terminé', color: 'text-white/70 border-white/10 bg-white/5' },
+  // Une saison annulee (inscriptions insuffisantes, saison perimee) crashait
+  // toute la page /br-league : badge undefined -> badge.color TypeError (M2).
+  cancelled: { label: 'Annulée', color: 'text-red-400 border-red-400/30 bg-red-400/10' },
 };
 
 const SeasonCard: React.FC<{
@@ -75,7 +81,9 @@ const SeasonCard: React.FC<{
 }> = React.memo(({ season, currentUserId, onJoin, onLeave, isActionLoading }) => {
   const isRegistered = season.registeredPlayers.some((p) => p.userId === currentUserId);
   const slotsLeft = season.maxPlayers - season.registeredPlayers.length;
-  const badge = STATUS_BADGES[season.status];
+  // Repli explicite : un statut serveur inconnu du front ne doit plus
+  // valoir `undefined` sur une table de libelles (M2).
+  const badge = STATUS_BADGES[season.status] ?? { label: season.status, color: 'text-white/70 border-white/10 bg-white/5' };
 
   return (
     <Link

@@ -189,6 +189,22 @@ défaut et inclut la saison annulée.
 deux tables de libellés, et à l'onglet de filtre ; ou, à défaut, lire le badge avec un repli
 explicite (`STATUS_BADGES[season.status] ?? repli`).
 
+**Correctif (23/10/2026)** — le traitement complet est appliqué (l'option 1 et la défense de
+l'option 2), centré sur `src/app/stores/leagueStore.ts` :
+
+- l'union `LeagueSeasonStatus` couvre désormais `cancelled`, alignée sur les cinq états
+  que le serveur écrit réellement (la même écriture est documentée au §4 et aux lignes
+  669/963 de `server/league-engine.mjs`) ;
+- `STATUS_LABELS` (`leagueSeasonConstants.ts`) reçoit l'entrée `cancelled` (« Annulée ») ;
+- les deux lectures de badge reçoivent le repli explicite : `STATUS_BADGES[season.status] ??
+  { label: season.status, color: 'text-white/70 …' }`, et de même sur `LeagueSeasonPage` —
+  si jamais un sixième état apparaissait, la page dégrade gracieusement au lieu de crasher ;
+- l'onglet de filtre « ANNULÉE » est ajouté à `STATUS_TABS`.
+
+Aucun filtrage n'est ajouté à `getActiveSeason` au-delà de l'exclusion existante du statut
+cancellé (cette exclusion était déjà correcte). Vérification : la suite complète vitest
+(981 pass) couvre l'ensemble.
+
 ---
 
 ### M3 — ÉLEVÉE — BR : les parts sont appliquées sur la cagnotte des gagnants, le 5ᵉ est payé plus que le 4ᵉ, et le front affiche un autre montant
@@ -260,6 +276,32 @@ l'intention est d'appliquer les taux à la cagnotte des gagnants, le dire dans
 `validateBrPayout` et aligner `BR_DEFAULT_PAYOUT` en conséquence. Dans les deux cas, le front
 doit lire `projectedPayouts.payouts` au lieu de `splitBrPayout`.
 
+**Correctif (23/10/2026)** — l'option 1 est appliquée aux deux bouts, en gardant un seul
+invariant : « les taux sont des pourcentages du pot ».
+
+Serveur (`server/br-engine.mjs`, `computeBrPayouts`) : chaque place classée reçoit
+`roundAmount(pot * shares[i])`, et la **dernière place classée** absorbe le reste d'arrondi
+(`winnersPool - distributed`, quelques centimes). La somme des cinq parts redevient par
+construction `pot × (1 − arbiterRate)` — puisque les six taux somment à 1 — et le défaut
+monétaire du tableau disparaît. Sur les défauts de production (pot 100 000) :
+**40 000 / 22 000 / 13 000 / 12 000 / 8 000**, arbitre 5 000. `validateBrPayout` est inchangé.
+
+Front (`src/app/lib/brApi.ts`) : `splitBrPayout` applique à présent `pot × taux` pour les
+cinq places — identique à la formule serveur. La page de détail
+(`BrLobbyDetailPage.tsx`) ne s'appuie plus sur ce seul calcul : `fetchBrLobby` renvoie
+désormais `{ lobby, projectedPayouts }`, la page stocke la projection serveur et la table
+« Répartition » lit `projection.payouts[i].amount` **en priorité** (l'arbitre lisant
+`projection.arbiter.amount`), pour ne retomber sur les taux qu'avant le premier classement
+— moment où la projection serveur est vide par construction (`computeBrPayouts` du salon non
+classé). Dès qu'un classement existe, les deux écrans du salon (détail et panneau arbitre)
+affichent les mêmes montants verrouillés.
+
+Tests : quatre tests ajoutés à `server/br-engine.test.mjs` verrouillent les montants exacts
+(part = pot × taux, cinquième ≤ quatrième sur un pot ne tombant pas juste, absorption du
+reste sur la dernière place classée avec total = pot au centime, k place classées absorbant
+tout le reste), et deux tests ajoutés à `src/app/lib/brApi.test.ts` alignent verrou +
+somme = pot côté front. La suite complète passe 981 tests.
+
 ---
 
 ### M4 — ÉLEVÉE — Les commissions d'arbitre du profil public sont lues sur le champ figé `match.arbiterFee`
@@ -312,6 +354,20 @@ théorique). L'écart est public et cumulatif sur l'historique d'un joueur.
 `projectedPayouts.arbiterFee` — donc M1 doit être corrigé d'abord ; à défaut, ne rien
 afficher tant que la projection serveur n'est pas disponible.
 
+**Correctif (23/10/2026)** — appliqué dans l'ordre prévu : M1 (livré avant) rend la
+projection disponible dans le store, ce correctif change le lecteur. Le cumul des
+commissions dans `buildCompetitiveSummary` (`src/lib/profileMetrics.ts:185-190`) passe de
+`totalCommissions += match.arbiterFee` à `totalCommissions += getArbiterFee(match)` —
+soit, dans l'ordre : la commission réellement versée au règlement (2 % du pot verrouillé,
+0 sans arbitre), puis, uniquement pour les matchs anciens sans projection, le repli
+historique sur le champ figé.
+
+Vérifiés par la lecture : `communityInsights.ts` n'additionne que
+`getWinnerPayoutPerPlayer` (déjà projection-aware) et ne calcule pas de commission, donc
+rien à changer ailleurs. Deux tests ajoutés à `src/lib/profileMetrics.test.ts` : la carte
+annonce `176,4` avec une projection à base 8 820 (et non l'ancien `40` figé), et retombe
+sur `40` pour un match ancien sans projection.
+
 ---
 
 ### M5 — ÉLEVÉE — L'admin tranche un litige sur un montant recalculé localement
@@ -351,6 +407,19 @@ versement.
 **Correction.** Rendre `projectedPayouts` disponible (M1) et supprimer le repli ; à défaut,
 ne pas afficher de montant tant que la projection est absente, plutôt que d'afficher un
 calcul local présenté comme autoritaire.
+
+**Correctif (23/10/2026)** — la seconde option est appliquée dans
+`src/app/components/admin/AdminUrgencyTab.tsx` (la première option complète dépend de la
+fraîcheur des données du listing admin, qui n'est pas contractuelle) : le repli local
+`Math.max(0, prizePool - arbiterFee)` est **supprimé**. `winnerShare` devient
+`match.projectedPayouts?.winner`, donc `number | undefined`. Les deux boutons de
+résolution affichent le montant seulement quand il existe : « Confirmer Alpha — 87 000
+ZC » avec la projection, « Confirmer Alpha » sans. L'admin ne voit plus de montant quand
+le serveur n'a rien affirmé — il vaut mieux un libellé nu qu'un montant faux.
+
+Le statut « pool gelé » (`prizePoolFrozen`) et la stat « Prizepool » du cartouche restent
+intentionnellement inchangés : le pot théorique y est présenté comme un plafond, pas
+comme un montant du règlement.
 
 ---
 

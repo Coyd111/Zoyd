@@ -111,10 +111,10 @@ suivis.
 
 | ID | Constat |
 |---|---|
-| **M2** | `LeagueSeasonStatus` ignore `cancelled`, que le serveur écrit → `badge.color` lève une TypeError et casse `/br-league` entière. |
-| **M3** | Le front calcule les parts BR sur la cagnotte des gagnants : il affiche 7 600 ZC là où le serveur verse 12 350 ZC. |
-| **M4** | Les commissions d'arbitre du profil **public** lisent toujours `match.arbiterFee` (figé au pot théorique) : V11 n'a été corrigé que côté serveur. |
-| **M5** | `AdminUrgencyTab.tsx:109-110` tranche un litige sur `prizePool − arbiterFee`, alors que le commentaire du fichier affirme que ce calcul local a été supprimé. |
+| **M2** | `LeagueSeasonStatus` ignore `cancelled`, que le serveur écrit → `badge.color` lève une TypeError et casse `/br-league` entière. **CORRIGÉ le 23/10/2026** (sans crash ni runtime : type complet, libellés, onglet ANNULÉE, repli défensif sur les deux pages). |
+| **M3** | Le front calcule les parts BR sur la cagnotte des gagnants : il affiche 7 600 ZC là où le serveur verse 12 350 ZC. **CORRIGÉ le 23/10/2026** (serveur et front recalés sur pot × taux ; la page de détail lit la projection serveur en priorité, repli sur les taux avant le premier classement ; 6 nouveaux tests). |
+| **M4** | Les commissions d'arbitre du profil **public** lisent toujours `match.arbiterFee` (figé au pot théorique) : V11 n'a été corrigé que côté serveur. **CORRIGÉ le 23/10/2026** (lecture par `getArbiterFee`, projection prioritaire ; 2 tests). |
+| **M5** | `AdminUrgencyTab.tsx:109-110` tranche un litige sur `prizePool − arbiterFee`, alors que le commentaire du fichier affirme que ce calcul local a été supprimé. **CORRIGÉ le 23/10/2026** (repli supprimé : montant affiché seulement quand la projection le porte). |
 
 ---
 
@@ -152,7 +152,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 4 | **C3 + C4** — reprise des états `disputed`/`live`/`qualifying` — **LIVRÉ le 23/10/2026** (C3 : échec de règlement de litige → dette reprise ; C4 : les trois balayages élargis aux états abandonnés, aucun nouveau job) | Cagnottes gelées sans qu'aucun cron ne les reprenne. |
 | 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat — **LIVRÉ le 23/10/2026** (garde conditionnelle `require2faIfAdmin` + chaîne ligue sous `requireAdmin2fa`, 16 tests de route) | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |
 | 6 | **M1** — recopier `projectedPayouts` dans le store — **LIVRÉ le 23/10/2026** | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |
-| 7 | **M2, M3, M4, M5** — dérives front/serveur | `/br-league` cassée, montants affichés faux. |
+| 7 | **M2, M3, M4, M5** — dérives front/serveur — **LIVRÉ le 23/10/2026** (M2 : statut `cancelled` + replis défensifs ; M3 : les taux BR appliqués au pot des deux côtés, projection serveur prioritaire à l'écran ; M4 : commissions du profil via projection ; M5 : repli local de tranchage supprimé) | `/br-league` cassée, montants affichés faux. |
 | 8 | **F2, F3, F4, F5** — squelette permanent, fuite entre comptes, mensonge du dashboard, TOTP non demandé | Le joueur ne voit pas son solde ; le compte suivant hérite du précédent. |
 | 9 | **S4** — `proofHash` exposé publiquement | Fuite d'URL de captures. |
 | 10 | **A4, A7, A9** — parts BR, slot d'arbitre de tournoi, montants non écrits | Répartition fausse et prise de contrôle. |

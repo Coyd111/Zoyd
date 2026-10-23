@@ -36,6 +36,7 @@ import {
   splitBrPayout,
   type BrConfig,
   type BrLobby,
+  type BrProjectedPayouts,
 } from '../../../app/lib/brApi';
 import { formatZC, formatFCFA } from '../../../lib/utils';
 import { SEOHead } from '../../../app/components/SEOHead';
@@ -61,6 +62,7 @@ const BrLobbyDetailPage: React.FC = () => {
 
   const [lobby, setLobby] = useState<BrLobby | null>(null);
   const [config, setConfig] = useState<BrConfig | null>(null);
+  const [projection, setProjection] = useState<BrProjectedPayouts | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [acting, setActing] = useState(false);
@@ -69,8 +71,12 @@ const BrLobbyDetailPage: React.FC = () => {
     if (!lobbyId) return;
     setLoading(true);
     try {
-      const [detail, cfg] = await Promise.all([fetchBrLobby(lobbyId), fetchBrConfig()]);
-      setLobby(detail);
+      const [{ lobby: fetchedLobby, projectedPayouts }, cfg] = await Promise.all([
+        fetchBrLobby(lobbyId),
+        fetchBrConfig(),
+      ]);
+      setLobby(fetchedLobby);
+      setProjection(projectedPayouts);
       setConfig(cfg);
       setNotFound(false);
     } catch (error) {
@@ -166,6 +172,13 @@ const BrLobbyDetailPage: React.FC = () => {
   const mode = config?.modes[lobby.mode];
   const rankingMode = config?.rankingModes[lobby.rankingMode];
   const split = splitBrPayout(lobby);
+  // Source de verite des montants : la projection SERVEUR du GET du salon
+  // (des qu'un classement existe). Avant le premier classement, la table
+  // reste sur les taux (dont la formule cote front est alignee sur
+  // computeBrPayouts : taux = pourcentage du POT). Avant ce choix, l'ecran
+  // affichait pour le 5e un montant que personne ne recevait (M3).
+  const projectionPayout = (place: number) =>
+    projection?.payouts?.find((p) => p.placement === place)?.amount ?? split.places[place - 1]?.amount ?? 0;
   const presentCount = lobby.players.filter((p) => p.checkedIn).length;
   const slotsLeft = lobby.maxPlayers - lobby.players.length;
   const isOpen = lobby.status === 'scheduled' && slotsLeft > 0;
@@ -249,7 +262,7 @@ const BrLobbyDetailPage: React.FC = () => {
                     {Math.round(place.rate * 100)} %
                   </span>
                 </span>
-                <span className="font-mono text-white">{formatZC(place.amount)}</span>
+                <span className="font-mono text-white">{formatZC(projectionPayout(place.place))}</span>
               </div>
             ))}
             <div className="flex items-center justify-between text-xs pt-2 border-t border-white/10">
@@ -260,7 +273,9 @@ const BrLobbyDetailPage: React.FC = () => {
                   {Math.round(split.arbiterRate * 100)} % (max {Math.round((config?.arbiterMaxRate || 0.05) * 100)} %)
                 </span>
               </span>
-              <span className="font-mono text-zoyd-yellow">{formatZC(split.arbiterAmount)}</span>
+              <span className="font-mono text-zoyd-yellow">
+                {formatZC(projection?.arbiter?.amount ?? split.arbiterAmount)}
+              </span>
             </div>
           </div>
           <p className="text-[10px] font-mono text-white/50 mt-4 pt-3 border-t border-white/10">

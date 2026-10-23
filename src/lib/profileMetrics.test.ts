@@ -118,4 +118,54 @@ describe('Gains du profil — la part du joueur, pas celle de son equipe', () =>
     // 1960 (pot moins commission, recalcule depuis prizePool) / 2 joueurs.
     expect(resume.stats.totalEarnings).toBe(980);
   });
+
+  /*
+   * M4 - les commissions d'arbitre du profil public.
+   *
+   * `match.arbiterFee` est un champ FIGE a la creation (2 % du pot
+   * THEORIQUE) : le serveur ne le reecrit jamais au reglement, ou il calcule
+   * 2 % de la cagnotte REELLEMENT verrouillee dans une variable locale, et
+   * ZERO commission quand l'arbitre est parti. La carte "commissions"
+   * additionnait donc un montant que le serveur n'a pas verse des que le
+   * roster etait incomplet ou l'arbitre absent.
+   */
+
+  it('les commissions affichees prennent la projection serveur, pas le champ fige', () => {
+    // La commission reelle (2 % de la base verrouillee 8820) est 176.4 cote
+    // serveur, pas l'ancienne valeur figee 40.
+    const matchArbiter = {
+      ...matchGagne2v2(),
+      arbiterFee: 40,
+      projectedPayouts: {
+        basis: 8820,
+        locked: true,
+        arbiterFee: 176.4,
+        winner: 8643.6,
+        perWinner: 4321.8,
+      },
+    } as unknown as Match;
+    const resume = buildCompetitiveSummary({
+      target: cible('ARB', false),
+      overallTrustScore: 50,
+      matches: [matchArbiter],
+      tournaments: [],
+    });
+
+    expect(resume.arbiterStats.arbitratedMatches).toBe(1);
+    expect(resume.arbiterStats.totalCommissions).toBe(176.4);
+  });
+
+  it('sans projection, le repli reste le champ fige pour les matchs anciens', () => {
+    const matchArbiter = { ...matchGagne2v2() };
+    delete (matchArbiter as { projectedPayouts?: unknown }).projectedPayouts;
+    const resume = buildCompetitiveSummary({
+      target: cible('ARB', false),
+      overallTrustScore: 50,
+      matches: [matchArbiter],
+      tournaments: [],
+    });
+
+    expect(resume.arbiterStats.arbitratedMatches).toBe(1);
+    expect(resume.arbiterStats.totalCommissions).toBe(40);
+  });
 });

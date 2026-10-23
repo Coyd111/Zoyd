@@ -103,11 +103,12 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
             match.disputes[0];
           const isEscalated = (activeDispute?.level || 1) >= 2;
           // Montant autoritaire fourni par le serveur (cagnotte reellement
-          // verrouillee - commission d'arbitre). Le `* 0.98` local ignorait la
-          // commission d'arbitre et le roster incomplet : l'admin confirmait un
-          // montant different de celui reellement verse.
-          const winnerShare = match.projectedPayouts?.winner
-            ?? Math.max(0, Number(match.prizePool || 0) - Number(match.arbiterFee || 0));
+          // verrouillee - commission d'arbitre). AUCUN montant si la
+          // projection manque : avant le correctif M1, `projectedPayouts`
+          // valait toujours `undefined` et le "repli" theorique plus bas
+          // etait en realite LE chemin utilise par l'ecran - l'admin
+          // confirmait un montant different de celui reellement verse (M5).
+          const winnerShare = match.projectedPayouts?.winner;
 
           return (
             <div key={match.id} className="p-6">
@@ -228,7 +229,9 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   }`}
                 >
                   <CheckCircle2 className="w-3 h-3 inline mr-2" />
-                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha' ? `Confirmer Alpha — ${formatZC(winnerShare)}` : 'Valider Alpha'}
+                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha'? 
+                    `Confirmer Alpha${typeof winnerShare === 'number' ? ` — ${formatZC(winnerShare)}` : ''}` 
+                    : 'Valider Alpha'}
                 </button>
                 <button
                   disabled={loadingAction}
@@ -246,7 +249,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                       : 'bg-white text-black hover:bg-zoyd-yellow'
                   }`}
                 >
-                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo' ? `Confirmer Bravo — ${formatZC(winnerShare)}` : 'Valider Bravo'}
+                  {pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo'? `Confirmer Bravo${typeof winnerShare === 'number' ? ` — ${formatZC(winnerShare)}` : ''}` : 'Valider Bravo'}
                 </button>
                 <button
                   disabled={loadingAction}

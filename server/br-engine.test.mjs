@@ -732,6 +732,75 @@ describe('br-engine - computeBrPayouts (argent)', () => {
     const { payouts } = brEngine.computeBrPayouts(lobby);
     expect(payouts[0].userId).toBe('slasher');
   });
+
+  /**
+   * M3 - les taux s'appliquent au POT, pas au winnersPool.
+   *
+   * Avant le correctif, chaque place etait `winnersPool * taux` : les cinq
+   * parts ne sommaient plus au pool (elles ne correspondent a aucun montant
+   * reellement verse), et sur un pot qui ne tombait pas juste, l'arrondi
+   * partait en vrac au lieu d'etre absorbe proprement. Les taux du salon ne
+   * voulaient alors plus rien dire : 40 % de "97 % de la cagnotte".
+   *
+   * Desormais : place i = pot * taux (les 6 taux somment a 1, la commission
+   * arbitre se met de cote), et la DERNIERE place classee absorbe l'arrondi
+   * (`winnersPool - distributed`). Au total : sum(parts) + arbitre = pot.
+   */
+  it('M3 - chaque part vaut pot * taux (et non winnersPool * taux)', () => {
+    const lobby = finishedLobby(1000, tenPlayers([1, 2, 3, 4, 5, 6], [6, 5, 4, 3, 2, 1]));
+    const { payouts, arbiter } = brEngine.computeBrPayouts(lobby);
+
+    // Pot 1000, arbitre 3 % : les premieres places doivent refleter leur
+    // taux SUR LE POT (400/220/150/120), pas des fractions de 970.
+    expect(payouts[0].amount).toBe(400); // 1000 * 0.40
+    expect(payouts[1].amount).toBe(220); // 1000 * 0.22
+    expect(payouts[2].amount).toBe(150); // 1000 * 0.15
+    expect(payouts[3].amount).toBe(120); // 1000 * 0.12
+    expect(arbiter.amount).toBe(30);     // 1000 * 0.03
+    // La 5e (derniere classee) absorbe l'arrondi : 970 - 890 = 80 = 8 % du pot
+    expect(payouts[4].amount).toBe(80);  // 1000 * 0.08
+  });
+
+  it('M3 - le 5e ne touche JAMAIS plus que le 4e sur un pot qui tombe pas juste', () => {
+    // Pot 999.97 : les taux s'appliquent a 999.97, la 5e absorbe la fraction
+    // d'arrondi - pas un arrondi du winnersPool qui la poussait au-dessus
+    // du 4e.
+    const lobby = finishedLobby(999.97, tenPlayers([1, 2, 3, 4, 5, 6], [6, 5, 4, 3, 2, 1]));
+    const { payouts } = brEngine.computeBrPayouts(lobby);
+
+    expect(payouts[3].amount).toBeGreaterThanOrEqual(payouts[4].amount);
+    // Decroissance stricte, mais la cinquieme reste payable (8 % du pot).
+    const fourthExpected = Math.round(999.97 * 0.12 * 100) / 100;
+    expect(payouts[3].amount).toBe(fourthExpected);
+  });
+
+  it('M3 - la derniere place classee absorbe le reste d\'arrondi (total = pot)', () => {
+    const lobby = finishedLobby(333.33, tenPlayers([1, 2, 3, 4, 5, 6, 7], [9, 8, 7, 6, 5, 4, 3]));
+    const { payouts, arbiter } = brEngine.computeBrPayouts(lobby);
+
+    // 4 premieres places a pot*taux ARRONDI : 133.33/73.33/50/40
+    expect(payouts[0].amount).toBe(133.33);
+    expect(payouts[1].amount).toBe(73.33);
+    expect(payouts[2].amount).toBe(50);
+    expect(payouts[3].amount).toBe(40);
+    // La 5e prend le reste exact : 323.33 - 296.66 = 26.67
+    expect(payouts[4].amount).toBe(26.67);
+
+    const total = payouts.reduce((sum, p) => sum + p.amount, 0) + arbiter.amount;
+    expect(total).toBeCloseTo(333.33, 2);
+  });
+
+  it('M3 - moins de 5 classes : la derniere classe absorbe TOUT le reste', () => {
+    // 3 classes seulement : 1re/2e au taux du pot, la 3e ramasse le reste
+    // (97 % du pot moins les parts deja versees).
+    const lobby = finishedLobby(300, tenPlayers([1, 2, 3], [3, 2, 1]));
+    const { payouts } = brEngine.computeBrPayouts(lobby);
+
+    expect(payouts[0].amount).toBe(120); // 300 * 0.40
+    expect(payouts[1].amount).toBe(66);  // 300 * 0.22
+    // Reste exact : (300 * 0.97) - 186 = 105
+    expect(payouts[2].amount).toBe(105);
+  });
 });
 
 describe('br-engine - settleBrLobbyOnServer (reglement)', () => {

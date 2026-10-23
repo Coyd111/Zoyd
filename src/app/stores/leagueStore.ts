@@ -19,7 +19,10 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
 
-export type LeagueSeasonStatus = 'registering' | 'qualifying' | 'final' | 'completed';
+// `cancelled` fait partie du domaine serveur (inscriptions insuffisantes,
+// saison perimee - cancelStaleLeagueSeasonOnServer). L'omettre faisait
+// valoir `undefined` sur STATUS_BADGES... et crashait /br-league (M2).
+export type LeagueSeasonStatus = 'registering' | 'qualifying' | 'final' | 'completed' | 'cancelled';
 export type LeagueDayKey = 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
 export type LeagueDayStatus = 'pending' | 'scheduled' | 'live' | 'finished';
 

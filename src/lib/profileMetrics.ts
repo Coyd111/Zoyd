@@ -23,7 +23,7 @@
 import type { User, UserStats } from '../app/stores/authStore';
 import { isMatchPayoutSettled, type Match, type MatchPlayer } from '../app/stores/matchStore';
 import type { Tournament, TournamentEntry, TournamentEntryMember } from '../app/stores/tournamentStore';
-import { getWinnerPayoutPerPlayer } from './matchPayout';
+import { getArbiterFee, getWinnerPayoutPerPlayer } from './matchPayout';
 
 export interface TournamentPlacement {
   tournamentId: string;
@@ -185,7 +185,11 @@ export const buildCompetitiveSummary = ({
   for (const match of matches) {
     if (isTargetArbiterInMatch(match, target) && (match.status === 'finished' || match.status === 'disputed') && match.result) {
       arbitratedMatches += 1;
-      totalCommissions += match.arbiterFee;
+      // `getArbiterFee` privilegie la projection serveur (commission reelle
+      // du reglement, sur la cagnotte verrouillee, 0 sans arbitre au
+      // versement) et ne retombe sur `match.arbiterFee` - un champ FIGE a la
+      // creation sur le pot theorique - que sans projection.
+      totalCommissions += getArbiterFee(match);
     }
   }
 

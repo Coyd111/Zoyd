@@ -255,7 +255,9 @@ const LeagueSeasonPage = () => {
     );
   }
 
-  const badge = STATUS_LABELS[season.status];
+  // Repli explicite : un statut serveur inconnu du front ne doit plus valoir
+  // `undefined` sur STATUS_LABELS (M2 - saison annulee).
+  const badge = STATUS_LABELS[season.status] ?? { label: season.status, color: 'text-white/70 border-white/10 bg-white/5' };
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">

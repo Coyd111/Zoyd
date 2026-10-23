@@ -110,6 +110,13 @@ interface SocketConnectionState {
   serverConnected: boolean;
   connectionLabel: 'offline' | 'syncing' | 'live';
   bootstrapReady: boolean;
+  // F2 : le bootstrap a ACHEVE par un echec (serveur en veille, session
+  // realtime expiree). Sans cet etat, les cinq ecrans qui affichent un
+  // squelette tant que `bootstrapReady` est false restaient sur ce squelette
+  // A JAMAIS : le joueur ne voyait jamais son solde et conclut que son
+  // argent avait disparu. Les ecrans doivent rendre "chargement impossible
+  // + Reessayer" des que cet etat est pose.
+  bootstrapFailed: boolean;
   // Passe a true quand une coupure est survenue. Au retour du socket, on
   // resynchronise : les deltas emis pendant la coupure ont ete perdus.
   dirtySinceDisconnect: boolean;
@@ -127,6 +134,7 @@ export const useSocketConnectionStore = create<SocketConnectionState>((set, get)
   isConnected: false,
   serverConnected: false,
   bootstrapReady: false,
+  bootstrapFailed: false,
   dirtySinceDisconnect: false,
   connectionLabel: 'offline',
   lastHeartbeatAt: undefined,
@@ -237,6 +245,7 @@ connect: (user) => {
       // Deconnexion volontaire (logout / unmount) : ce n'est pas une coupure.
       // L'etat repart a zero, la prochaine session bootstrape normalement.
       bootstrapReady: false,
+      bootstrapFailed: false,
       dirtySinceDisconnect: false,
     });
   },
@@ -394,12 +403,17 @@ connect: (user) => {
         remoteTournamentSnapshots: bootstrap.tournaments || [],
         lastHeartbeatAt: bootstrap.timestamp || getNow(),
         bootstrapReady: true,
+        bootstrapFailed: false,
         dirtySinceDisconnect: false,
       });
     } catch {
       set((state) => ({
         serverConnected: false,
         connectionLabel: state.isConnected ? 'syncing' : 'offline',
+        // F2 : signale l'echec explicite. Les ecrans pillotent
+        // `bootstrapReady` ET `bootstrapFailed` : le joueur voit un etat
+        // "chargement impossible + Reessayer" au lieu du squelette eternel.
+        bootstrapFailed: true,
       }));
     }
   },

@@ -1,18 +1,20 @@
 /**
  * useLogout - deconnexion propre : backend, push, socket, stores, redirection.
  *
- * Vide l'etat de session du compte courant (solde, matchs, tournois, ligue,
- * chat, amis, notifications, score de confiance, presence, toasts) puis
- * redirige vers /auth/login. appele par la Sidebar et la page profil.
- *
- * INVARIANT : le logout doit effacer le wallet, le chat et les amis. Sans ca,
- * un compte connecte ensuite dans le meme onglet voit les donnees du precedent
- * jusqu'au prochain rafraichissement serveur.
- * PIEGE : les timers de toast sont nettoyes explicitement (cleanupToastTimers) :
+ * INVARIANT (F3) : la purge des stores passe PAR `resetAllSessionStores()`,
+ * jamais par une copie locale. La copie precedente oubliait les maps
+ * par-utilisateur du store tournois (`callerEntryByTournament`...) et la file
+ * de signalements (`reports`) : le compte suivant heritait de l'entree du
+ * precedent ("ta position" + inscription bloquee) et le dashboard admin
+ * restait sur la file de moderation de l'autre compte. sessionReset est le
+ * point d'entree unique, teste et isole (chaque etape dans son try/catch) :
+ * ce fichier ne fait plus que l'orchestration (backend, push, auth, timers).
+ * PIEGE : `cleanupToastTimers` reste ICI, AVANT/AVEC le vidage des toasts :
  * un toast pending survit sinon a la deconnexion et reapparait sur l'ecran
- * suivant.
- * PIEGE : la deconnexion du socket passe par le store, pas par un import de
- * realtimeClient : c'est le store qui reinitialise la presence.
+ * suivant ; `idCounter` n'est pas couvert par sessionReset.
+ * PIEGE : la deconnexion du socket passe par le store (sessionReset appelle
+ * `disconnect()`), pas par un import direct de realtimeClient : c'est le
+ * store qui reinitialise la presence.
  *
  * Voir aussi : docs/08-frontend.md - section 6.1 (Les hooks de session)
  */
@@ -21,16 +23,7 @@ import { useNavigate } from 'react-router';
 import { logoutFromBackend } from '../lib/authApi';
 import { unsubscribeFromRealtimePush } from '../lib/realtimeClient';
 import { useAuthStore } from '../stores/authStore';
-import { useSocketStore } from '../stores/socketStore';
-import { useWalletStore } from '../stores/walletStore';
-import { useMatchStore } from '../stores/matchStore';
-import { useTournamentStore } from '../stores/tournamentStore';
-import { useLeagueStore } from '../stores/leagueStore';
-import { useChatStore } from '../stores/chatStore';
-import { useFriendsStore } from '../stores/friendsStore';
-import { useNotificationStore } from '../stores/notificationStore';
-import { useTrustScoreStore } from '../stores/trustScoreStore';
-import { usePresenceStore } from '../stores/presenceStore';
+import { resetAllSessionStores } from '../lib/sessionReset';
 import { useToastStore, cleanupToastTimers } from '../stores/toastStore';
 
 export function useLogout() {
@@ -44,17 +37,11 @@ export function useLogout() {
         .then((reg) => unsubscribeFromRealtimePush(user, reg))
         .catch(() => undefined);
     }
-    useSocketStore.getState().disconnect();
     useAuthStore.getState().logout();
-    useWalletStore.setState({ cashBalance: 0, bonusBalance: 0, lockedBalance: 0, pendingWinnings: 0, transactions: [], lockedEntries: {} });
-    useMatchStore.setState({ matches: [] });
-    useTournamentStore.setState({ tournaments: [] });
-    useLeagueStore.setState({ seasons: [] });
-    useChatStore.getState().replaceFromServer([], []);
-    useFriendsStore.setState({ friends: [], requests: [], blockedIds: [] });
-    useNotificationStore.getState().clearAll();
-    useTrustScoreStore.setState({ score: { overall: 50, punctuality: 50, fairPlay: 50, results: 50, disputes: 50, seniority: 50 }, history: [] });
-    usePresenceStore.setState({ seenByChannel: {} });
+    // Purge unique (F3) : wallet, matchs, tournois (maps d'appelant incluses),
+    // ligue, chat, amis (file de signalements incluse), notifications,
+    // toasts, score de confiance, presence + coupure du socket.
+    resetAllSessionStores();
     cleanupToastTimers();
     useToastStore.setState({ toasts: [], idCounter: 0 });
     navigate('/auth/login');

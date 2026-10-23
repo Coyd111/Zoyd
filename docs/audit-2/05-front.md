@@ -161,6 +161,29 @@ remplacer le retry par le même backoff que le portefeuille
 déjà écrit et testé. Un écran doit toujours rendre un état « je n'ai pas pu
 charger » avec un bouton « Réessayer », jamais un squelette infini.
 
+**Correctif (23/10/2026)** — les deux parties sont appliquées, cap du backoff
+inclus :
+
+- état explicite : `socketConnectionStore` porte désormais `bootstrapFailed`,
+  posé dans le `catch` du bootstrap, effacé ensuite par une réussite et par la
+  déconnexion volontaire (un échec ne doit pas trainer dans la session
+  suivante) ; trois tests ajoutés à `socketConnectionStore.test.ts` ;
+- retry : `useRealtimeHeartbeat` retente le bootstrap avec le même backoff
+  que le portefeuille (2 s → 5 s → 10 s → 20 s : l'offre gratuite de Render
+  s'endort, le reveil demande de la patience). Subtilité : `bootstrapServerState`
+  avale ses propres erreurs (le `catch` du store ne rejette pas), donc la
+  réussite se lit dans `bootstrapReady` après l'attente — un `.catch` du
+  hook n'aurait jamais tiré. Le cleanup de l'effet tue le timer d'arrière-plan
+  et interdit les tentatives en vol (logout, changement de compte) sans
+  remettre `didBootstrapRef`, pour qu'une simple navigation (remontage)
+  ne déclenche pas un bootstrap de plus ;
+- écrans : un composant partagé `BootstrapFailedPanel` (« chargement
+  impossible » + « Réessayer ») est rendu par les **cinq** écrans branchés
+  sur `bootstrapReady` (wallet, détail de match, hub MJ, classements, profil
+  public). Le squelette reste affiché tant que le backoff retente ;
+  le panneau n'apparaît qu'après le dernier essai — et son bouton « Réessayer »
+  relance `bootstrapServerState` à la main.
+
 ---
 
 ### F3 — HAUTE — La déconnexion ne purge pas le contexte d'appelant de tournoi ni la file de signalements : fuite entre comptes
@@ -218,6 +241,18 @@ qui isole chaque étape dans son `try/catch`). Ne jamais dupliquer une purge :
 il y a déjà eu une régression de ce type (les maps de tournoi ont été ajoutées
 à `sessionReset` sans que `useLogout` soit mis à jour).
 
+**Correctif (23/10/2026)** — appliqué tel quel : `useLogout` ne duplique plus
+**rien**. Le hook garde son orchestration (backend, push service-worker,
+`logout()` de l'auth, timers de toasts), et délègue la purge intégrale à
+`resetAllSessionStores()` : wallet, matchs, tournois **avec les trois maps
+d'appelant**, ligue, chat, amis **avec la file de signalements et
+`pendingId`**, notifications, toasts, trust, presence, socket. La moitié
+restée à la main est exactement celle qui exige des timers explicites
+(`cleanupToastTimers`, `idCounter`, absents de `sessionReset`) ; tout le reste
+est délégué, et le commentaire du hook verrouille l'invariant « jamais de
+copie locale de la purge ». Un test ajouté à `sessionPurge.test.ts` verrouille
+précisément les deux champs que la copie oubliait (maps d'appelant + `reports`).
+
 ---
 
 ### F4 — HAUTE — Le tableau de bord admin affiche « 0 ZC » de revenu quand la lecture échoue
@@ -257,6 +292,13 @@ déjà dans le même fichier (`AdminDashboardPage.tsx:83`, `:405-412`) et
 afficher « indisponible » plutôt que « 0 ZC ». Le même écran sait déjà faire
 ce que l'écran ne fait pas.
 
+**Correctif (23/10/2026)** — appliqué : `commissionsUnavailable` est posé dans
+le `catch` de la lecture (le commentaire mensonger « on garde 0 plutôt que de
+mentir » est remplacé), effacé à chaque succès, et les deux cartes financières
+affichent `indisponible` en valeur, avec un motif en sous-titre (« 2FA expirée
+ou réseau »), tant que la lecture n'a pas abouti. Un zéro n'est affiché que
+quand le serveur a effectivement répondu zéro.
+
 ---
 
 ### F5 — HAUTE — Les actions admin sous 2FA n'ont aucune invite TOTP : le tableau de bord admin et le panneau ligue sont bloqués
@@ -288,6 +330,28 @@ L'admin renonce, la file de moderation reste bloquée.
 rejeu de l'action) dans un composant réutilisable (`<TwoFactorPrompt>`) et
 l'utiliser dans `AdminDashboardPage` et `LeagueSeasonPage`. Au minimum :
 pré-detecter le `2FA_REQUIRED` et ouvrir l'invite au lieu d'afficher un toast.
+
+**Correctif (23/10/2026)** — le composant réutilisable est extrait
+(`src/app/components/admin/TwoFactorPrompt.tsx` : dialog modal, champ
+numérique à 6 chiffres, focus automatique et champ remis à zéro à chaque
+ouverture — un code résiduel d'une tentative précédente serait refusé par la
+fenêtre TOTP) et branché sur les deux écrans :
+
+- `AdminDashboardPage` : `award`, `resolve-dispute`, `cancel` **et** l'export
+  CSV/JSON (lui aussi sous `requireAdmin2fa`, `admin.mjs:389`) attrapent
+  `ApiError.code === '2FA_REQUIRED'` ; l'action en attente est mémorisée dans
+  un ref (la closure du handler), l'invite s'ouvre à la place du toast, et
+  après `verifyAdmin2fa` réussi l'action est rejouée telle quelle. Les erreurs
+  du rejeu passent par les toasts habituels de chaque handler ; l'invite, elle,
+  ne remonte que les échecs de *vérification* du code.
+- `LeagueSeasonPage` : `executeAdminAction` mémorise `{ action, payload }`
+  (le rejeu des résultats de finale transporte donc les mêmes résultats) et
+  rejoue après vérification. Le remboursement de ligue a enfin un chemin ;
+  avant, le bouton était mort.
+
+`BrArbiterPanel` garde son implémentation en place — c'était le modèle, le
+composant en est l'extraction, changer le fonctionnel qui fonctionnait
+d'abord aurait élargi le risque pour zéro gain.
 
 ---
 

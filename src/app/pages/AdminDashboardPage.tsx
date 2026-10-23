@@ -23,11 +23,13 @@
  *
  * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router';
 import { Shield, Swords, AlertTriangle, TrendingUp, DollarSign, Users, Lock, Scale, Download } from 'lucide-react';
 import { toast } from '../lib/toast';
+import { ApiError } from '../lib/apiClient';
 import { adminAwardServerMatch, adminCancelServerMatch, adminResolveServerDispute, downloadMatchHistory } from '../lib/matchApi';
+import { verifyAdmin2fa } from '../lib/authApi';
 import { applyServerAccountState } from '../lib/serverSync';
 import { useAuthStore, type User } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
@@ -39,6 +41,7 @@ import type { WalletSnapshot } from '../lib/walletApi';
 import { fetchAdminCommissions, type CommissionStats } from '../lib/walletApi';
 import { fetchAdminReports, resolveAdminReport, fetchActiveSanctions, revokeAdminSanction, type ActiveSanction } from '../lib/socialApi';
 import { FocusCard, StatCard } from '../components/admin/AdminTabShared';
+import TwoFactorPrompt from '../components/admin/TwoFactorPrompt';
 import AdminOverviewTab from '../components/admin/AdminOverviewTab';
 import AdminMatchesTab from '../components/admin/AdminMatchesTab';
 import AdminReportsTab, { type Resolution, type QueueReport } from '../components/admin/AdminReportsTab';
@@ -71,11 +74,28 @@ const AdminDashboardPage: React.FC = () => {
   const [pendingResolve, setPendingResolve] = useState<{ matchId: string; type: 'alpha' | 'bravo' | 'none' } | null>(null);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState(false);
+  // F5 : invite TOTP pour les actions sous requireAdmin2fa. Au moment ou
+  // le serveur repond `2FA_REQUIRED` (verification moins recente que 5 min),
+  // l'action en attente est memorisee dans `pendingAdminActionRef`, l'invite
+  // s'ouvre, et apres `verifyAdmin2fa` on la rejoue. Avant ce correctif,
+  // l'admin recevait un toast et devait aller dans Parametres puis
+  // recliquer : ni le tableau de bord ni le panneau ligue ne proposent
+  // d'invite (le pattern venait de BrArbiterPanel et n'y etait pas extrait).
+  const [twofaOpen, setTwofaOpen] = useState(false);
+  const [twofaSubmitting, setTwofaSubmitting] = useState(false);
+  const [twofaError, setTwofaError] = useState<string | null>(null);
+  const pendingAdminActionRef = useRef<(() => Promise<void>) | null>(null);
   // Commissions ZOYD reellement encaissees, calculees par le serveur sur
   // l'ensemble des portefeuilles (`/api/admin/commissions`, 2FA requise).
   // Avant, la carte sommait `match.zoydFee`, fige a 0 a la creation des matchs :
   // la carte affichait donc 0 en permanence, y compris apres des retraits.
   const [commissions, setCommissions] = useState<CommissionStats>({ revenue: 0, withdrawalFees: 0, withdrawalCount: 0, arbiterPayouts: 0 });
+  // F4 : distinguer « zero » de « inconnu ». Avant ce correctif, l'echec de
+  // la lecture (2FA expiree au-dela de 5 min, ou reseau) laissait le sombre
+  // objet initial `{ revenue: 0, … }` affiche : le tableau rangeait une
+  // carte « REVENUS ZOYD : 0 ZC » - un faux statement financier -  quand
+  // aucune donnee n'etait lue, a l'image de `reportsUnavailable` voisin.
+  const [commissionsUnavailable, setCommissionsUnavailable] = useState(false);
   // Les signalements ne venaient que du navigateur courant : la table
   // accumulait sans que rien ne la lise. Un etat `reportsUnavailable` permet
   // d'afficher un echec de lecture, et non une liste vide qui se lirait
@@ -107,8 +127,14 @@ const AdminDashboardPage: React.FC = () => {
   useEffect(() => {
     if (user?.role !== 'admin') return;
     fetchAdminCommissions()
-      .then((data) => { setCommissions(data); })
-      .catch(() => { /* 2FA absente ou reseau : on garde 0 plutot que de mentir */ });
+      .then((data) => {
+        setCommissions(data);
+        setCommissionsUnavailable(false);
+      })
+      // F4 : l'ancien commentaire disait « on garde 0 plutot que de mentir »
+      // et le code faisait le contraire : une carte « 0 ZC » que personne
+      // n'a mesuree. Desormais « indisponible » est affiche, pas un montant.
+      .catch(() => { setCommissionsUnavailable(true); });
     void reloadReports();
   }, [user?.role]);
   const handleExportHistory = async (format: 'csv' | 'json') => {
@@ -116,8 +142,14 @@ const AdminDashboardPage: React.FC = () => {
     try {
       const filename = await downloadMatchHistory(undefined, undefined, format);
       toast.success('Export prêt', `${filename} téléchargé. Range-le hors de ce projet.`);
-    } catch (err) {
-      toast.error('Export impossible', err instanceof Error ? err.message : 'Réessaie dans un instant.');
+    } catch (error) {
+      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+        // F5 : l'export est sous requireAdmin2fa (admin.mjs:389). Meme invite
+        // que les autres actions financees.
+        openTwofaPrompt(() => handleExportHistory(format));
+      } else {
+        toast.error('Export impossible', error instanceof Error ? error.message : 'Réessaie dans un instant.');
+      }
     } finally {
       setExporting(false);
     }
@@ -254,6 +286,42 @@ const AdminDashboardPage: React.FC = () => {
 
   if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
 
+  // F5 : apres une verification TOTP reussie, on rejoue l'action memorisee.
+  // Les erreurs de l'action rejouee passent par SES toasts (chaque handler
+  // catche les siennes) : l'invite, elle, ne remonte que les erreurs de
+  // VERIFICATION du code.
+  const handleTwofaSubmit = async (code: string) => {
+    const stripped = code.trim();
+    if (!/^\d{6}$/.test(stripped)) {
+      setTwofaError('Le code TOTP fait 6 chiffres.');
+      return;
+    }
+    setTwofaSubmitting(true);
+    setTwofaError(null);
+    let verified = false;
+    try {
+      await verifyAdmin2fa(stripped);
+      verified = true;
+    } catch (error) {
+      setTwofaError(error instanceof Error ? error.message : 'Verification impossible.');
+    } finally {
+      setTwofaSubmitting(false);
+    }
+    if (!verified) return;
+    const pending = pendingAdminActionRef.current;
+    pendingAdminActionRef.current = null;
+    setTwofaOpen(false);
+    if (pending) await pending();
+  };
+
+  // Le serveur repond `2FA_REQUIRED` : on retient l'action et on ouvre
+  // l'invite au lieu d'abuser un toast qui demande de quitter l'ecran.
+  const openTwofaPrompt = (pending: () => Promise<void>) => {
+    pendingAdminActionRef.current = pending;
+    setTwofaError(null);
+    setTwofaOpen(true);
+  };
+
   const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: Partial<WalletSnapshot> | null }) => { hydrateMatches([payload.match]); applyServerAccountState({ user: payload.user, wallet: payload.wallet ? { ...EMPTY_WALLET, ...payload.wallet } : null }); };
   const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => {
     if (loadingAction) return;
@@ -263,7 +331,11 @@ const AdminDashboardPage: React.FC = () => {
       applyAdminMatchResponse(response);
       toast.success('Résultat admin appliqué.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Résolution admin impossible.');
+      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+        openTwofaPrompt(() => handleResolveWinner(matchId, winnerTeam));
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Résolution admin impossible.');
+      }
     } finally {
       setLoadingAction(false);
     }
@@ -284,7 +356,11 @@ const AdminDashboardPage: React.FC = () => {
       applyAdminMatchResponse(response);
       toast.success('Litige clos, passes remboursées aux joueurs.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.');
+      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+        openTwofaPrompt(() => handleResolveDisputeOnly(matchId));
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.');
+      }
     } finally {
       setLoadingAction(false);
     }
@@ -297,7 +373,11 @@ const AdminDashboardPage: React.FC = () => {
       applyAdminMatchResponse(response);
       toast.success('Match annulé et remboursé côté serveur.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Annulation admin impossible.');
+      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+        openTwofaPrompt(() => handleCancelMatch(matchId));
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Annulation admin impossible.');
+      }
     } finally {
       setLoadingAction(false);
     }
@@ -338,17 +418,17 @@ const AdminDashboardPage: React.FC = () => {
           // Revenu ZOYD = la commission de retrait (2 %). Les parts d'arbitre sont
 // une sortie de cagnotte, affichees a part pour ne pas les compter comme
 // des recettes.
-<StatCard
+          <StatCard
             icon={<TrendingUp className="w-5 h-5 text-green-400" aria-hidden="true" />}
             label="REVENUS ZOYD (2 % RETRAITS)"
-            value={formatZC(commissions.revenue)}
-            hint={`${commissions.withdrawalCount} retrait(s) honoré(s)`}
+            value={commissionsUnavailable ? 'indisponible' : formatZC(commissions.revenue)}
+            hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau)' : `${commissions.withdrawalCount} retrait(s) honoré(s)`}
           />
           <StatCard
             icon={<Scale className="w-5 h-5 text-white/60" aria-hidden="true" />}
             label="SORTIES ARBITRES"
-            value={formatZC(commissions.arbiterPayouts)}
-            hint="Part de cagnotte versée aux arbitres (sortie, pas revenu)"
+            value={commissionsUnavailable ? 'indisponible' : formatZC(commissions.arbiterPayouts)}
+            hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau)' : 'Part de cagnotte versée aux arbitres (sortie, pas revenu)'}
           />
         </div>
 
@@ -416,6 +496,20 @@ const AdminDashboardPage: React.FC = () => {
         {activeTab === 'users' && <AdminUsersTab filteredUsers={filteredUsers} userFilter={userFilter} onFilterChange={setUserFilter} />}
         {activeTab === 'reports' && <AdminReportsTab reports={queueReports} unavailable={reportsUnavailable} resolvingId={resolvingId} sanctions={sanctions} revokingId={revokingId} onResolve={handleResolveReport} onRevoke={handleRevokeSanction} />}
       </main>
+
+      {/*
+        F5 : invite TOTP des actions admin finances (award, close-litige,
+        cancel). Ouverte par `openTwofaPrompt` quand le serveur repond
+        `2FA_REQUIRED` ; apres verification, l'action memorisee est rejouee.
+      */}
+      <TwoFactorPrompt
+        open={twofaOpen}
+        submitting={twofaSubmitting}
+        error={twofaError}
+        onSubmit={(code) => { void handleTwofaSubmit(code); }}
+        onCancel={() => { setTwofaOpen(false); setTwofaError(null); pendingAdminActionRef.current = null; }}
+        verifyLabel="Vérifier et exécuter"
+      />
 
       {confirmAction && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmer l'annulation du match">

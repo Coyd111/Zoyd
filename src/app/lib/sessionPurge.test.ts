@@ -84,4 +84,50 @@ describe('branche applicative de la purge', () => {
     expect(apres.bonusBalance).toBe(0);
     expect(apres.lockedBalance).toBe(0);
   });
+
+  /**
+   * F3 - les conséquences précises de la purge dupliquée de `useLogout`.
+   *
+   * La copie locale oubliait : les maps par-utilisateur du store tournois
+   * (le compte suivant voyait « ta position » d'un tournoi qu'il n'a jamais
+   * joué, et son inscription était bloquée), et la file de signalements
+   * (`reports`) lue par le dashboard admin. Ce test verrouille que
+   * `resetAllSessionStores` — le point d'entrée unique désormais utilisé par
+   * `useLogout` — n'oublie AUCUN de ces champs, si le module devait être
+   * retrimé un jour.
+   */
+  it('resetAllSessionStores ne laisse survivre ni les maps d appelant ni la file de signalements', async () => {
+    vi.resetModules();
+    const { resetAllSessionStores } = await import('./sessionReset');
+    const { useTournamentStore } = await import('../stores/tournamentStore');
+    const { useFriendsStore } = await import('../stores/friendsStore');
+
+    // État du compte précédent : inscrit + slot d'arbitre + signalements.
+    useTournamentStore.setState({
+      callerEntryByTournament: { 'T-1': 'entry-A' },
+      callerArbiterSlotByTournament: { 'T-1': 2 },
+      openArbiterSlotsByTournament: { 'T-1': 3 },
+    });
+    useFriendsStore.setState({
+      reports: [{
+        id: 'R-1',
+        targetId: 'u9',
+        reason: 'other',
+        description: 'signalement de test',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        status: 'pending',
+      }],
+      pendingId: 'R-1',
+    });
+
+    resetAllSessionStores();
+
+    const tournaments = useTournamentStore.getState();
+    expect(tournaments.callerEntryByTournament).toEqual({});
+    expect(tournaments.callerArbiterSlotByTournament).toEqual({});
+    expect(tournaments.openArbiterSlotsByTournament).toEqual({});
+    const friends = useFriendsStore.getState();
+    expect(friends.reports).toEqual([]);
+    expect(friends.pendingId).toBeNull();
+  });
 });

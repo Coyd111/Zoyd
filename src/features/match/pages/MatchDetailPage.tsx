@@ -54,6 +54,7 @@ import { useChatStore } from '../../../app/stores/chatStore';
 import { useSocketStore, usePresenceStore } from '../../../app/stores/socketStore';
 import { Skeleton } from '../../../app/components/ui/Skeleton';
 import { Modal } from '../../../app/components/ui/Modal';
+import BootstrapFailedPanel from '../../../app/components/BootstrapFailedPanel';
 import { useWalletStore } from '../../../app/stores/walletStore';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { getCountdownDisplay, formatZC } from '../../../lib/utils';
@@ -100,6 +101,10 @@ const MatchDetailPage: React.FC = () => {
   const socketConnected = useSocketStore((s) => s.isConnected);
   const lastHeartbeatAt = useSocketStore((s) => s.lastHeartbeatAt);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  // F2 : echec definitif du bootstrap -> panneau explicite + Reessayer, au
+  // lieu du squelette eternel.
+  const bootstrapFailed = useSocketStore((s) => s.bootstrapFailed);
+  const retryBootstrap = () => { void useSocketStore.getState().bootstrapServerState(user); };
   const seenByChannel = usePresenceStore((s) => s.seenByChannel);
   const getChannelPresence = usePresenceStore((s) => s.getChannelPresence);
   const getPresenceSummary = usePresenceStore((s) => s.getPresenceSummary);
@@ -611,6 +616,15 @@ const MatchDetailPage: React.FC = () => {
   // Early returns APRÈS tous les hooks (sinon React error #310 quand match charge après le 1er rendu)
   if (!id) {
     return null;
+  }
+
+  if (!bootstrapReady && bootstrapFailed) {
+    return (
+      <div className="min-h-dvh bg-zoyd-black text-white safe-top safe-bottom">
+        <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
+        <BootstrapFailedPanel onRetry={retryBootstrap} />
+      </div>
+    );
   }
 
   if (!bootstrapReady) {

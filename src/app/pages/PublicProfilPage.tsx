@@ -26,6 +26,7 @@ import { useTournamentStore } from '../stores/tournamentStore';
 import { useSocketStore } from '../stores/socketStore';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
+import BootstrapFailedPanel from '../components/BootstrapFailedPanel';
 import ProfileView from '../components/profile/ProfileView';
 import { buildCompetitiveSummary, createPublicProfile, getObservedPlayerSnapshot } from '../../lib/profileMetrics';
 import { sendServerFriendRequest } from '../lib/socialApi';
@@ -45,6 +46,10 @@ const PublicProfilPage = () => {
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  // F2 : echec definitif du bootstrap -> panneau explicite + Reessayer, au
+  // lieu du squelette eternel sur un profil public.
+  const bootstrapFailed = useSocketStore((s) => s.bootstrapFailed);
+  const retryBootstrap = () => { void useSocketStore.getState().bootstrapServerState(currentUser); };
   const prefersReducedMotion = useReducedMotion();
 
   const friendRecord = friends.find((friend) => friend.id === id);
@@ -94,6 +99,14 @@ const PublicProfilPage = () => {
   const [confirmReport, setConfirmReport] = useState(false);
 
   if (!id) return null;
+
+  if (!bootstrapReady && bootstrapFailed) {
+    return (
+      <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center">
+        <BootstrapFailedPanel onRetry={retryBootstrap} />
+      </div>
+    );
+  }
 
   if (!bootstrapReady) {
     return (

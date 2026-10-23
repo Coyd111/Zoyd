@@ -25,7 +25,9 @@ import { Link } from 'react-router';
 import FriendsWidget from '../../components/social/FriendsWidget';
 import { useMatchStore } from '../../stores/matchStore';
 import { useSocketStore } from '../../stores/socketStore';
+import { useAuthStore } from '../../stores/authStore';
 import { Skeleton } from '../../components/ui/Skeleton';
+import BootstrapFailedPanel from '../../components/BootstrapFailedPanel';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SEOHead } from '../../components/SEOHead';
 
@@ -46,6 +48,10 @@ const HubMJPage: React.FC = () => {
   // quand RootLayout hydrate le store après le 1er rendu (liste vide figée).
   const matches = useMatchStore((s) => s.matches);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  // F2 : echec definitif du bootstrap -> panneau explicite au lieu du
+  // squelette eternel (voir BootstrapFailedPanel).
+  const bootstrapFailed = useSocketStore((s) => s.bootstrapFailed);
+  const retryBootstrap = () => { void useSocketStore.getState().bootstrapServerState(useAuthStore.getState().user); };
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
   const [needsArbiter, setNeedsArbiter] = useState(false);
@@ -195,7 +201,9 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
             </div>
           </div>
 
-          {!bootstrapReady ? (
+          {!bootstrapReady && bootstrapFailed ? (
+            <BootstrapFailedPanel onRetry={retryBootstrap} />
+          ) : !bootstrapReady ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-48 bg-white/5" />

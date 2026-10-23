@@ -102,10 +102,10 @@ suivis.
 | ID | Constat | Impact |
 |---|---|---|
 | **F1** | `useState` après retour précoce | **Toute l'app tombe** sur `/profil/:id`. (CRITIQUE) |
-| **F2** | `bootstrapReady` n'est jamais remis à `true` en cas d'échec (`socketConnectionStore.ts:399`) | Portefeuille, match, hub, classements et profil restent sur un squelette **à jamais** : le joueur ne voit jamais son solde. |
-| **F3** | `useLogout.ts:51,54` duplique la purge au lieu d'appeler `sessionReset` | Les maps `callerEntryByTournament` survivent → le compte suivant hérite de l'entrée du précédent (« ta position » + inscription bloquée). |
-| **F4** | `AdminDashboardPage.tsx:111` avale l'échec de `/api/admin/commissions` | Affiche « REVENUS ZOYD : 0 ZC » — le commentaire dit « plutôt que de mentir », le code ment. Le modèle `reportsUnavailable` existe dans le même fichier. |
-| **F5** | `award` / `cancel` / `refund` sont sous `requireAdmin2fa` mais **aucune invite TOTP** | Actions systématiquement en 403. Le bon modèle existe : `BrArbiterPanel.tsx:206`. |
+| **F2** | `bootstrapReady` n'est jamais remis à `true` en cas d'échec (`socketConnectionStore.ts:399`) | Portefeuille, match, hub, classements et profil restent sur un squelette **à jamais** : le joueur ne voit jamais son solde. **CORRIGÉ le 23/10/2026** (`bootstrapFailed` explicite, backoff 2s→5s→10s→20s dans le heartbeat, panneau « chargement impossible + Réessayer » sur les cinq écrans ; 3 tests). |
+| **F3** | `useLogout.ts:51,54` duplique la purge au lieu d'appeler `sessionReset` | Les maps `callerEntryByTournament` survivent → le compte suivant hérite de l'entrée du précédent (« ta position » + inscription bloquée). **CORRIGÉ le 23/10/2026** (délégation à `resetAllSessionStores`, plus aucune copie locale ; 1 test verrouillant maps d'appelant + file de signalements). |
+| **F4** | `AdminDashboardPage.tsx:111` avale l'échec de `/api/admin/commissions` | Affiche « REVENUS ZOYD : 0 ZC » — le commentaire dit « plutôt que de mentir », le code ment. Le modèle `reportsUnavailable` existe dans le même fichier. **CORRIGÉ le 23/10/2026** (`commissionsUnavailable` sur le même modèle ; « indisponible » affiché, plus de « 0 ZC » imaginaire). |
+| **F5** | `award` / `cancel` / `refund` sont sous `requireAdmin2fa` mais **aucune invite TOTP** | Actions systématiquement en 403. Le bon modèle existe : `BrArbiterPanel.tsx:206`. **CORRIGÉ le 23/10/2026** (`TwoFactorPrompt` extrait et branché sur dashboard admin — award, resolve-dispute, cancel, export — et panneau ligue — refund à replay du payload ; rejeu de l'action après `verifyAdmin2fa`). |
 
 ### 2.5 Dérive serveur ↔ front
 
@@ -153,7 +153,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat — **LIVRÉ le 23/10/2026** (garde conditionnelle `require2faIfAdmin` + chaîne ligue sous `requireAdmin2fa`, 16 tests de route) | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |
 | 6 | **M1** — recopier `projectedPayouts` dans le store — **LIVRÉ le 23/10/2026** | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |
 | 7 | **M2, M3, M4, M5** — dérives front/serveur — **LIVRÉ le 23/10/2026** (M2 : statut `cancelled` + replis défensifs ; M3 : les taux BR appliqués au pot des deux côtés, projection serveur prioritaire à l'écran ; M4 : commissions du profil via projection ; M5 : repli local de tranchage supprimé) | `/br-league` cassée, montants affichés faux. |
-| 8 | **F2, F3, F4, F5** — squelette permanent, fuite entre comptes, mensonge du dashboard, TOTP non demandé | Le joueur ne voit pas son solde ; le compte suivant hérite du précédent. |
+| 8 | **F2, F3, F4, F5** — squelette permanent, fuite entre comptes, mensonge du dashboard, TOTP non demandé — **LIVRÉ le 23/10/2026** (F2 : `bootstrapFailed` + backoff + panneaux « Réessayer » sur les 5 écrans ; F3 : purge déléguée à `resetAllSessionStores` ; F4 : « indisponible » à la place du faux « 0 ZC » ; F5 : invite TOTP réutilisable + rejeu automatique de l'action) | Le joueur ne voit pas son solde ; le compte suivant hérite du précédent. |
 | 9 | **S4** — `proofHash` exposé publiquement | Fuite d'URL de captures. |
 | 10 | **A4, A7, A9** — parts BR, slot d'arbitre de tournoi, montants non écrits | Répartition fausse et prise de contrôle. |
 | 11 | La documentation — corriger les affirmations fausses | Une doc qui ment est pire qu'une doc absente. |

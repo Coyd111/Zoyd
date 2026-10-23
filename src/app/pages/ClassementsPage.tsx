@@ -28,6 +28,7 @@ import { useMatchStore } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
 import { useSocketStore } from '../stores/socketStore';
 import { Skeleton } from '../components/ui/Skeleton';
+import BootstrapFailedPanel from '../components/BootstrapFailedPanel';
 import {
   buildCommunityPlayers,
   buildControllerRankings,
@@ -95,6 +96,10 @@ const ClassementsPage: React.FC = () => {
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  // F2 : distinguer squelette (retries en cours) de panne definitive
+  // (panneau explicite + Reessayer).
+  const bootstrapFailed = useSocketStore((s) => s.bootstrapFailed);
+  const retryBootstrap = () => { void useSocketStore.getState().bootstrapServerState(user); };
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<RankingTab>('elo');
 
@@ -340,7 +345,9 @@ const ClassementsPage: React.FC = () => {
           })}
         </div>
 
-        {!bootstrapReady ? (
+        {!bootstrapReady && bootstrapFailed ? (
+          <BootstrapFailedPanel onRetry={retryBootstrap} />
+        ) : !bootstrapReady ? (
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
               <Skeleton key={i} className="h-16 bg-white/5" />

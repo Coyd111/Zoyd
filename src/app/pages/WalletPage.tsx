@@ -32,6 +32,7 @@ import { useWalletStore } from '../stores/walletStore';
 import { useAuthStore } from '../stores/authStore';
 import { useSocketStore } from '../stores/socketStore';
 import { Skeleton } from '../components/ui/Skeleton';
+import BootstrapFailedPanel from '../components/BootstrapFailedPanel';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
 import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormatError, formatPhoneInput, type PayoutOperator } from '../../lib/payoutOperators';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
@@ -108,6 +109,12 @@ const withdrawalMinAmount = useWalletStore((s) => s.withdrawalMinAmount);
 const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever, showAgain: showFeesNoticeAgain } = useWithdrawalFeesNoticeDismissed();
   const { user } = useAuthStore();
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
+  // F2 : distinguer "le bootstrap n'a pas encore abouti" (squelette, retries
+  // en cours) de "le bootstrap a ACHEVE par un echec" (panne + Reessayer).
+  // Avant le correctif, un echec definitive rendait ce squelette jusqu'au
+  // bout : le joueur ne voyait jamais son solde, sans aucune explication.
+  const bootstrapFailed = useSocketStore((s) => s.bootstrapFailed);
+  const retryBootstrap = () => { void useSocketStore.getState().bootstrapServerState(user); };
 
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -411,7 +418,9 @@ if (!payoutCountry) {
           </div>
         </div>
 
-        {!bootstrapReady ? (
+        {!bootstrapReady && bootstrapFailed ? (
+          <BootstrapFailedPanel onRetry={retryBootstrap} />
+        ) : !bootstrapReady ? (
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (

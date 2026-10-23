@@ -49,6 +49,7 @@ describe('socketConnectionStore — reprise apres coupure', () => {
       isConnected: false,
       serverConnected: false,
       bootstrapReady: false,
+      bootstrapFailed: false,
       dirtySinceDisconnect: false,
       connectionLabel: 'offline',
     });
@@ -122,5 +123,75 @@ describe('socketConnectionStore — reprise apres coupure', () => {
     const state = useSocketConnectionStore.getState();
     expect(state.connectionLabel).toBe('syncing');
     expect(state.dirtySinceDisconnect).toBe(true);
+  });
+});
+
+/**
+ * F2 - un echec de bootstrap doit etre VISIBLE, pas silencieux.
+ *
+ * Avant le correctif, l'echec ne remettait que `serverConnected` et
+ * `connectionLabel` : `bootstrapReady` restait false, et les cinq ecrans qui
+ * pilotaient leur squelette dessus restaient bloques A JAMAIS - le joueur ne
+ * voyait jamais son solde. Desormais `bootstrapFailed` porte l'echec, se
+ * revele (les ecrans rendent "chargement impossible + Reessayer"), et est
+ * efface par une reussite ULTERIEURE ou par une deconnexion volontaire.
+ */
+describe('socketConnectionStore — echec de bootstrap visible (F2)', () => {
+  beforeEach(() => {
+    handlers.current = null;
+    fetchRealtimeBootstrap.mockReset();
+    useSocketConnectionStore.getState().disconnect();
+    useSocketConnectionStore.setState({
+      isConnected: false,
+      serverConnected: false,
+      bootstrapReady: false,
+      bootstrapFailed: false,
+      dirtySinceDisconnect: false,
+      connectionLabel: 'offline',
+    });
+  });
+
+  it('pose bootstrapFailed quand le bootstrap echoue', async () => {
+    fetchRealtimeBootstrap.mockRejectedValueOnce(new Error('serveur en veille'));
+
+    await useSocketConnectionStore.getState().bootstrapServerState(user);
+
+    const state = useSocketConnectionStore.getState();
+    expect(state.bootstrapReady).toBe(false);
+    expect(state.bootstrapFailed).toBe(true);
+  });
+
+  it('efface bootstrapFailed quand une nouvelle tentative reussit', async () => {
+    fetchRealtimeBootstrap.mockRejectedValueOnce(new Error("d'abord rate"));
+
+    await useSocketConnectionStore.getState().bootstrapServerState(user);
+    expect(useSocketConnectionStore.getState().bootstrapFailed).toBe(true);
+
+    fetchRealtimeBootstrap.mockResolvedValueOnce({
+      friends: [],
+      friendRequests: [],
+      blockedIds: [],
+      notifications: [],
+      matches: [],
+      tournaments: [],
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+    await useSocketConnectionStore.getState().bootstrapServerState(user);
+
+    const state = useSocketConnectionStore.getState();
+    expect(state.bootstrapReady).toBe(true);
+    expect(state.bootstrapFailed).toBe(false);
+  });
+
+  it('reset bootstrapFailed a la deconnexion volontaire', async () => {
+    fetchRealtimeBootstrap.mockRejectedValue(new Error('jamais repondu'));
+    await useSocketConnectionStore.getState().bootstrapServerState(user);
+    expect(useSocketConnectionStore.getState().bootstrapFailed).toBe(true);
+
+    useSocketConnectionStore.getState().disconnect();
+
+    // Deco volontaire (logout) : la session suivante repart a zero, l'echec
+    // ne doit pas trainer.
+    expect(useSocketConnectionStore.getState().bootstrapFailed).toBe(false);
   });
 });

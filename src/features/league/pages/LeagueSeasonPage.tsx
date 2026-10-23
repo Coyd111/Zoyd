@@ -19,13 +19,16 @@
  *
  * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Crown, Medal, Zap, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
 import { Button } from '../../../app/components/ui/Button';
+import TwoFactorPrompt from '../../../app/components/admin/TwoFactorPrompt';
 import { useLeagueStore, type LeagueDayKey } from '../../../app/stores/leagueStore';
 import { useAuthStore } from '../../../app/stores/authStore';
+import { ApiError } from '../../../app/lib/apiClient';
+import { verifyAdmin2fa } from '../../../app/lib/authApi';
 import {
   fetchServerLeagueSeason,
   joinServerLeagueSeason,
@@ -79,6 +82,14 @@ const LeagueSeasonPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ action: string; payload?: LeagueAdminPayload; message: string } | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  // F5 : le refund (+ advance-to-final / final-results) est sous
+  // requireAdmin2fa. Avant l'invite ci-dessous, le bouton etait simplement
+  // MORT : le serveur repondait `2FA_REQUIRED`, l'ecran en faisait un toast
+  // generique, et l'admin n'avait AUCUN chemin pour repondre la demande.
+  const [twofaOpen, setTwofaOpen] = useState(false);
+  const [twofaSubmitting, setTwofaSubmitting] = useState(false);
+  const [twofaError, setTwofaError] = useState<string | null>(null);
+  const pendingAdminActionRef = useRef<{ action: string; payload?: LeagueAdminPayload } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -213,11 +224,48 @@ const LeagueSeasonPage = () => {
       }
       if (response) replaceFromServer([response.season]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erreur lors de l'action admin.");
+      // F5 : `2FA_REQUIRED` n'est pas un echec de l'action, c'est une
+      // demande de verification. On retient l'action + son payload pour la
+      // rejouer apres la saisie du code, au lieu d'un toast sans issue.
+      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+        pendingAdminActionRef.current = { action, payload };
+        setTwofaError(null);
+        setTwofaOpen(true);
+      } else {
+        toast.error(error instanceof Error ? error.message : "Erreur lors de l'action admin.");
+      }
     } finally {
       setActionLoading(false);
       setConfirmAction(null);
     }
+  };
+
+  // F5 : verification TOTP puis rejeu de l'action admin memorisee. Les
+  // erreurs de l'action rejouee passent par executeAdminAction (toast ou
+  // nouvelle invite 2FA si la session a encore expire) ; l'invite elle-meme
+  // ne remonte que les erreurs de verification du code.
+  const handleTwofaSubmit = async (code: string) => {
+    const stripped = code.trim();
+    if (!/^\d{6}$/.test(stripped)) {
+      setTwofaError('Le code TOTP fait 6 chiffres.');
+      return;
+    }
+    setTwofaSubmitting(true);
+    setTwofaError(null);
+    let verified = false;
+    try {
+      await verifyAdmin2fa(stripped);
+      verified = true;
+    } catch (error) {
+      setTwofaError(error instanceof Error ? error.message : 'Verification impossible.');
+    } finally {
+      setTwofaSubmitting(false);
+    }
+    if (!verified) return;
+    const pending = pendingAdminActionRef.current;
+    pendingAdminActionRef.current = null;
+    setTwofaOpen(false);
+    if (pending) await executeAdminAction(pending.action, pending.payload);
   };
 
   if (isLoading) {
@@ -489,6 +537,22 @@ const LeagueSeasonPage = () => {
           </div>
         </Tabs>
       </div>
+
+      {/*
+        F5 : invite TOTP des actions admin de ligue sous requireAdmin2fa
+        (refund, advance-to-final, final-results). Ouverte quand le serveur
+        repond `2FA_REQUIRED` ; apres verification, l'action memorisee est
+        rejouee. Sans elle, le bouton de remboursement etait simplement mort.
+      */}
+      <TwoFactorPrompt
+        open={twofaOpen}
+        submitting={twofaSubmitting}
+        error={twofaError}
+        onSubmit={(code) => { void handleTwofaSubmit(code); }}
+        onCancel={() => { setTwofaOpen(false); setTwofaError(null); pendingAdminActionRef.current = null; }}
+        verifyLabel="Vérifier et relancer l'action"
+        description="Cette action admin est protégée par la 2FA : saisis ton code TOTP pour l'exécuter."
+      />
 
       {confirmAction && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmation requise">

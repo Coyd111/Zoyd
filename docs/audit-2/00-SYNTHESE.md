@@ -26,7 +26,7 @@ code pour les constats les plus graves avant de les retenir.
 |---|---|---|
 | **F1** — `useState` après retour précoce | ✅ **CONFIRMÉ — CORRIGÉ** | `PublicProfilPage.tsx:93, 95, 110` (retours) puis `:165-166` (`useState`). Au 1ᵉʳ rendu : 0 hook ; au 2ᵉ : 2 hooks de plus → React lève « Rendered more hooks than during the previous render » → l'`ErrorBoundary` racine s'affiche et **toute l'application tombe** sur `/profil/:id`. |
 | **M1** — `projectedPayouts` écarté par le store | ✅ **CONFIRMÉ** | `matchStore.ts:393-427` (`normalizeStoredMatch`) ne recopie pas `projectedPayouts`, alors que le type `Match` le déclare (`:168-173`). Le champ est perdu sur **tous** les chemins (HTTP et socket). |
-| **C1** — écriture BR hors du verrou | ✅ **CONFIRMÉ** | `routes/br.mjs:178` ouvre `withBrLobbyMutex`, `:235` le referme, et `:239` (`saveBrLobbies`) écrit **en dehors**. La lecture est verrouillée, l'écriture non. |
+| **C1** — écriture BR hors du verrou | ✅ **CONFIRMÉ — CORRIGÉ** | `routes/br.mjs:178` ouvre `withBrLobbyMutex`, `:235` le referme, et `:239` (`saveBrLobbies`) écrit **en dehors**. La lecture est verrouillée, l'écriture non. **CORRIGÉ le 23/10/2026.** |
 
 ### 1.1 Ce que M1 implique sur mes propres correctifs
 
@@ -49,6 +49,8 @@ moins d'une heure après l'avoir écrit.
 - **C1** est une **réintergression** : le commentaire de `routes/br.mjs:167-176`
   explique que le snapshot est relu *dans* le verrou — c'est vrai — mais
   l'écriture est restée dehors. Le correctif initial était partiel.
+  **CORRIGÉ le 23/10/2026** (voir le bloc « Correctif » sous C1 dans
+  `03-concurrence.md`).
 - **A1** est une **réintergression** : `03-concurrence.md` (§4) décrit le job
   de réconciliation des retraits comme « corrigé » ; `01-argent.md` montre que
   le câblage passe un mauvais 5ᵉ argument et que le job est un **no-op depuis
@@ -91,7 +93,7 @@ suivis.
 
 | ID | Constat | Impact |
 |---|---|---|
-| **C2** | Le cron de règlement BR ne prend **aucun** verrou (`cron.mjs:377-405`) | Il réécrit toute la collection et **supprime** les salons absents de son instantané → salon disparu, passes gelées. Contredit l'invariant du fichier lui-même. |
+| **C2** | Le cron de règlement BR ne prend **aucun** verrou (`cron.mjs:377-405`) | Il réécrit toute la collection et **supprime** les salons absents de son instantané → salon disparu, passes gelées. Contredit l'invariant du fichier lui-même. **CORRIGÉ le 23/10/2026** (verrou par salon + écriture par entité). |
 | **C3** | Match `disputed` + `payoutDistributed:'pending'` (`match-engine.mjs:1311-1318`) | Les deux filtres de reprise sont disjoints → reprise par **aucun** cron, part de cagnotte gelée, invisible dans `/api/health`. |
 | **C4** | États « en cours » jamais repris : salon BR `live`, tournoi `live`, ligue `qualifying` | Aucun balayage de péremption (l'équivalent existe pour les matchs) → passes gelées à jamais. |
 
@@ -146,7 +148,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 |---|---|---|
 | 1 | **F1** — remonter les `useState` | Une page publique qui casse toute l'application. Visible par n'importe qui, en une URL. |
 | 2 | **A1 + A2 + A3** — job de réconciliation, clé d'idempotence, marquage — **LIVRÉ le 23/10/2026** (avec les deux défauts latents de la file de réconciliation) | De l'argent réellement perdu ou versé deux fois. A1 et A3 sont liés : livrer A3 avec A1 armerait la double remise. |
-| 3 | **C1 + C2** — écriture BR dans le verrou, cron BR sous verrou | Réinteressions : je les ai introduites ou laissées en partie. |
+| 3 | **C1 + C2** — écriture BR dans le verrou, cron BR sous verrou — **LIVRÉ le 23/10/2026** (double étage : verrou + écriture par entité, avec isolation par salon des jobs d'annulation) ; l'option structurelle recommandée par l'audit a été appliquée | Réinteressions : je les ai introduites ou laissées en partie. |
 | 4 | **C3 + C4** — reprise des états `disputed`/`live`/`qualifying` | Cagnottes gelées sans qu'aucun cron ne les reprenne. |
 | 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |
 | 6 | **M1** — recopier `projectedPayouts` dans le store | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |

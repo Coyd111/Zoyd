@@ -20,6 +20,10 @@
  *   (`getProjectedPayouts`) : le client ne recalcule jamais le pot.
  * INVARIANT : la collection est remplacee EN BLOC (`replaceStateCollection`) :
  *   une liste partielle supprimerait en base les entites absentes.
+ *   EXCEPTION : `brLobbies` est ecrit PAR ENTITE (`upsertStateEntity` dans
+ *   `saveBrLobbies`) : le remplacement en bloc ecrasait les actions
+ *   concurrentes d'autres salons, et supprimait un salon cree depuis
+ *   l'instantane — passes bloques sans issue (C1/C2).
  * PIEGE : `Array.map` passe (element, index, tableau) : ecrire
  *   `map(sanitizeMatchForBroadcast)` passerait l'INDEX comme `viewerId` et
  *   `isMe` serait toujours faux, sans lever la moindre erreur.
@@ -38,11 +42,11 @@
 
 import { syncMatchChatChannels, buildMatchChatChannel, broadcastChatChannel } from './chat-helpers.mjs';
 import { broadcastStateSnapshot } from './push-notifications.mjs';
-import { replaceStateCollection, getStateCollection, getUserById } from './persistence.mjs';
+import { replaceStateCollection, upsertStateEntity, getStateCollection, getStateEntity, getUserById } from './persistence.mjs';
 import { normalizeTournamentCollection } from './tournament-engine.mjs';
 import { getPublicMatchesForUser, getProjectedPayouts } from './match-engine.mjs';
 import { normalizeLeagueCollection } from './league-engine.mjs';
-import { normalizeBrLobbyCollection } from './br-engine.mjs';
+import { normalizeBrLobbyCollection, normalizeBrLobby } from './br-engine.mjs';
 import { getServerWallet } from './wallet-engine.mjs';
 
 /**
@@ -333,15 +337,38 @@ const getStoredBrLobbies = () => normalizeBrLobbyCollection(getStateCollection('
 
 /**
  * Persist BR lobbies to state storage and push snapshot to clients.
- * Uses the shared `state_snapshots` table (kind column), so no migration needed.
- * @param {object} io - Socket.IO server instance
- * @param {Array} lobbies - The BR lobbies to persist
+ *
+ * ECriture PAR ENTITE, pas en bloc. L'ancien chemin passait par
+ * `replaceStateCollection` : la collection ENTIERE etait reecrite depuis un
+ * instantane obtenu avant l'action concurrente — une presence cochee au
+ * check-in, un salon cree entre-temps, disparaissaient de la liste ecrite, et
+ * `replaceStateCollection` SUPPRIME les entites absentes de la liste : le salon
+ * disparaissait, et les passes bloques n'avaient plus aucun chemin de sortie.
+ * Voir C1/C2 dans docs/audit-2/03-concurrence.md.
+ *
+ * La comparaison se fait sur l'etat NORMALISE des deux cotes : le stockage brut
+ * peut suivre une ancienne forme (champs absents), ce n'est pas une difference
+ * utile et ne doit pas declencher d'ecriture.
+ *
+ * Aucun verrou ici : `saveBrLobbies` s'attend a etre appele DANS le verrou du
+ * salon modifie (route d'action, cron). L'ecriture ne touche que les entites
+ * presentes dans la liste, donc deux verrous par-salon distincts ne se
+ * marchent pas sur les pieds.
+ *
+ * @param {object} io - Socket.IO server instance (sans diffusion si null)
+ * @param {Array} lobbies - Lobbies a persister (delta : seuls les modifies sont ecrits)
  * @returns {Promise<Array>} The stored lobbies
  */
 const saveBrLobbies = async (io, lobbies) => {
-  await replaceStateCollection('brLobbies', lobbies);
+  const entrees = Array.isArray(lobbies) ? lobbies : [];
+  for (const lobby of entrees) {
+    if (!lobby || !lobby.id) continue;
+    const courant = getStateEntity('brLobbies', lobby.id);
+    if (courant && JSON.stringify(normalizeBrLobby(courant)) === JSON.stringify(normalizeBrLobby(lobby))) continue;
+    await upsertStateEntity('brLobbies', lobby);
+  }
   const stored = getStoredBrLobbies();
-  broadcastStateSnapshot(io, 'brLobbies', stored.map((lobby) => toPublicBrLobby(lobby)));
+  if (io) broadcastStateSnapshot(io, 'brLobbies', stored.map((lobby) => toPublicBrLobby(lobby)));
   return stored;
 };
 

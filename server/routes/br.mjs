@@ -7,12 +7,19 @@
  *
  * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`default`,
  * `admin` pour `finish`) -> `withBrLobbyMutex(lobbyId)` -> RE-LECTURE du
- * snapshot DANS le verrou -> moteur -> `saveBrLobbies` -> reponse. L'action
- * `finish` ajoute `requireAdmin2fa`.
+ * snapshot DANS le verrou -> moteur (liste restreinte au salon cible) ->
+ * `saveBrLobbies` DANS LE MEME VERROU -> reponse. L'action `finish` ajoute
+ * `requireAdmin2fa`.
  *
  * INVARIANT : le snapshot est RELU A L'INTERIEUR du verrou : dehors, la
  *   seconde requete travaillerait encore sur l'instantane de la premiere (les
  *   deux versaient la cagnotte deux fois sur `finish`).
+ * INVARIANT : l'ECRITURE est DANS le verrou aussi (C1) : le verrou couvre le
+ *   cycle COMPLET lire -> calculer -> ecrire, sinon l'ecriture ecrasait celle
+ *   de l'action concurrente qui venait de finir.
+ * INVARIANT : `saveBrLobbies` persiste PAR ENTITE (C2) : deux verrous
+ *   par-salon pris en parallele ne s'ecrasent plus mutuellement, et une
+ *   entite absente de l'instantane n'est jamais supprimee.
  * INVARIANT : le verrou est PAR SALON : deux salons distincts se reglent en
  *   parallele, c'est le fonctionnement normal.
  * INVARIANT : `join` et `leave` restent sur le quota `default` et non
@@ -174,69 +181,82 @@ if (brLobbyAction && req.method === 'POST') {
   //
   // Le snapshot est donc relu DANS le verrou : sans cela, le second appel
   // partirait encore de l instantane d avant le premier.
+  //
+  // C1 (audit-2) — L'ECRITURE EST TOUJOURS DANS LE MEME VERROU. `474dcfa` avait
+  // deplace le calcul dans `withBrLobbyMutex` mais laisse `saveBrLobbies` apres
+  // la fermeture du callback : deux inscriptions simultanees reappliquaient
+  // chacune SON instantane — la seconde ecrivait par-dessus la premiere, et le
+  // joueur deja inscrit disparaissait de la collection persistee. Son pass,
+  // deja bloque dans `lockedEntries`, devenait irretrouvable. Le verrou couvre
+  // donc le cycle COMPLET lire -> calculer -> ecrire.
   try {
     const outcome = await withBrLobbyMutex(lobbyId, async () => {
-      const lobbies = getStoredBrLobbies();
-      let status = 200;
+      // LA LISTE EST RESTREINTE AU SALON CIBLE : le clone du moteur et le
+      // diff d'ecriture ne portent que la cible. Un salon voisin, verrouillable
+      // en parallele sous son propre verrou, ne peut plus etre ecrase par une
+      // copie perimee emportee dans l'instantane de la collection entiere.
+      const cible = getStoredBrLobbies().find((l) => l.id === lobbyId);
+      const cibleOuRien = cible ? [cible] : [];
+      let result;
 
       if (action === 'join') {
-        return { outcome: await joinBrLobbyOnServer(lobbies, actor, lobbyId) };
-      }
-      if (action === 'leave') {
-        return { outcome: await leaveBrLobbyOnServer(lobbies, actor, lobbyId) };
-      }
-      if (action === 'checkin') {
-        return { outcome: checkInBrLobbyOnServer(lobbies, actor, lobbyId) };
-      }
-      if (action === 'start') {
-        return { outcome: startBrLobbyOnServer(lobbies, actor, lobbyId) };
-      }
-      if (action === 'eliminate') {
+        result = await joinBrLobbyOnServer(cibleOuRien, actor, lobbyId);
+      } else if (action === 'leave') {
+        result = await leaveBrLobbyOnServer(cibleOuRien, actor, lobbyId);
+      } else if (action === 'checkin') {
+        result = checkInBrLobbyOnServer(cibleOuRien, actor, lobbyId);
+      } else if (action === 'start') {
+        result = startBrLobbyOnServer(cibleOuRien, actor, lobbyId);
+      } else if (action === 'eliminate') {
         const body = await parseRequestBody(req);
         if (!body.userId || typeof body.userId !== 'string') {
           respondJson(res, 400, { ok: false, error: 'userId du joueur elimine requis.', code: 'INVALID_JSON' }, req);
           return { aborted: true };
         }
-        return {
-          outcome: eliminateBrPlayerOnServer(lobbies, actor, lobbyId, body.userId, {
-            killerUserId: typeof body.killerUserId === 'string' ? body.killerUserId : null,
-            assists: Number(body.assists) || 0,
-          }),
-        };
+        result = eliminateBrPlayerOnServer(cibleOuRien, actor, lobbyId, body.userId, {
+          killerUserId: typeof body.killerUserId === 'string' ? body.killerUserId : null,
+          assists: Number(body.assists) || 0,
+        });
+      } else {
+        // `finish` distribue la cagnotte. L'autorite est l'ARBITRE du salon
+        // (verifie dans le moteur), pas la 2FA admin : dans ce modele l'arbitre
+        // est le seul a avoir vu la partie. La 2FA reste demandee en plus, car
+        // de l'argent part.
+        const adminSession = requireAdmin2fa(req, res);
+        if (!adminSession) return { aborted: true };
+
+        // Le reglement persiste sa progression a chaque versement. Si le
+        // processus meurt au milieu, le salon est deja marque `settling` et les
+        // joueurs deja payes le sont dans l'etat : un nouvel essai les saute au
+        // lieu de les payer une seconde fois.
+        result = await settleBrLobbyOnServer(cibleOuRien, actor, lobbyId, {
+          onProgress: (progress) => saveBrLobbies(io, progress),
+        });
       }
 
-      // `finish` distribue la cagnotte. L'autorite est l'ARBITRE du salon
-      // (verifie dans le moteur), pas la 2FA admin : dans ce modele l'arbitre
-      // est le seul a avoir vu la partie. La 2FA reste demandee en plus, car
-      // de l'argent part.
-      const adminSession = requireAdmin2fa(req, res);
-      if (!adminSession) return { aborted: true };
+      // L'ecriture EST le verrou : elle part AVANT de le relacher. Dehors, une
+      // action concurrente sur le meme salon persistait la sienne par-dessus
+      // (C1) ; l'ecriture par entite rend aussi les autres salons epargnes (C2).
+      await saveBrLobbies(io, result.lobbies);
 
-      // Le reglement persiste sa progression a chaque versement. Si le
-      // processus meurt au milieu, le salon est deja marque `settling` et les
-      // joueurs deja payes le sont dans l'etat : un nouvel essai les saute au
-      // lieu de les payer une seconde fois.
-      const outcome = await settleBrLobbyOnServer(lobbies, actor, lobbyId, {
-        onProgress: (progress) => saveBrLobbies(io, progress),
-      });
+      if (action !== 'finish') return { outcome: result };
 
       // Notification aux gagants.
-      for (const prize of outcome.payouts || []) {
+      for (const prize of result.payouts || []) {
         await deliverNotification(io, prize.userId, {
           title: `BR - ${prize.placement}e place`,
-          body: `${formatZcForNotification(prize.amount)} gagnes sur ${outcome.lobby.name} (${prize.kills} kills).`,
+          body: `${formatZcForNotification(prize.amount)} gagnes sur ${result.lobby.name} (${prize.kills} kills).`,
           url: '/br',
-          tag: `br-prize-${outcome.lobby.id}-${prize.userId}`,
+          tag: `br-prize-${result.lobby.id}-${prize.userId}`,
           type: 'wallet_update',
           requireInteraction: false,
-        }).catch(() => { /* l'argent est verse, la notification est secondary */ });
+        }).catch(() => { /* l'argent est verse, la notification est secondaire */ });
       }
-      return { outcome, status };
+      return { outcome: result };
     });
 
     if (outcome.aborted) return true;
     const result = outcome.outcome;
-    await saveBrLobbies(io, result.lobbies);
     // Meme pour l'arbitre : il repasserait par `/arbiter` s'il a besoin des
     // userId, et les reponses d'action restent publiques (un inscrit peut
     // appeler join/leave/checkin).

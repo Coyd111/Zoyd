@@ -6,9 +6,15 @@
  * `initCronJobs` est appele UNE SEULE FOIS, depuis realtime-server.mjs.
  *
  * INVARIANT : chaque job prend le MEME verrou que la route correspondante
- *   (`withMatchMutex`, `withLeagueMutex`, `withTournamentMutex`) : un job de
- *   fond et une route ne doivent jamais muter la meme collection en
- *   parallele.
+ *   (`withMatchMutex`, `withLeagueMutex`, `withTournamentMutex`,
+ *   `withBrLobbyMutex` pour les salons BR) : un job de fond et une route ne
+ *   doivent jamais muter la meme collection en parallele. Les jobs BR
+ *   `sweepPendingBrSettlements` et `sweepStaleBrLobbies` sont exportes pour
+ *   le test de cablage, en plus d'etre branches sur leurs intervalles.
+ * INVARIANT : les ecritures BR passent par `saveBrLobbies`, PAR ENTITE (C2) :
+ *   le remplacement en bloc ecrasait les actions concurrentes d'autres salons
+ *   et SUPPRIMAIT les entites absentes de l'instantane (passes bloques sans
+ *   issue).
  * INVARIANT : chaque job a une garde ANTI-CHEVAUCHEMENT : un tick lent est
  *   saute et journalise, il n'est jamais empile.
  * INVARIANT : les jobs ne tranchent jamais seuls : ils appellent les
@@ -51,9 +57,10 @@ import { withMatchMutex, withLeagueMutex, withTournamentMutex, withBrLobbyMutex 
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds, retryPendingLeaguePayouts, countPendingLeaguePayouts } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbiterFees, retryPendingArbiterFees } from './match-engine.mjs';
-import { countPendingBrSettlements, retryPendingBrSettlements, countStaleBrLobbies, getStaleBrLobbyIds, cancelStaleBrLobbyOnServer } from './br-engine.mjs';
+import { retryPendingBrSettlements, countStaleBrLobbies, getStaleBrLobbyIds, cancelStaleBrLobbyOnServer } from './br-engine.mjs';
 import { reconcilePendingWithdrawals, refundRejectedWithdrawal } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
+import { saveBrLobbies } from './state-helpers.mjs';
 import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
@@ -101,6 +108,160 @@ export const sweepPendingArbiterFees = async () => {
     log.error('Erreur reprise des commissions d arbitre', error);
   } finally {
     arbiterFeeRetryRunning = false;
+  }
+};
+
+// ─── BR : reprise des reglements interrompus (sweepPendingBrSettlements) ────
+
+let brSettlementRetryRunning = false;
+
+/**
+ * Reprise des reglements BR interrompus.
+ *
+ * C2 (audit-2) — le job ne prenait AUCUN verrou et reecrivait la collection
+ * ENTIERE par-dessus un instantane : une presence cochee, ou un salon cree
+ * entre la lecture et l'ecriture, disparaissait de la base (et de la memoire),
+ * et les passes bloques n'avaient plus de chemin de sortie.
+ *
+ * Desormais, salon par salon :
+ *   1. le meme verrou que la route d'action (`withBrLobbyMutex`) ;
+ *   2. la collection EST RELITE dans le verrou ;
+ *   3. l'ecriture passe par `saveBrLobbies`, PAR ENTITE — un salon dont le
+ *      statut vient d'etre solde par la route, ou un salon concurrent, ne peut
+ *      plus etre ecrase.
+ *
+ * Le verrou PAR SALON suffit depuis que l'ecriture ne touche plus que
+ * l'entite modifiee : deux salons se reprennent en parallele sans s'ecraser.
+ */
+export const sweepPendingBrSettlements = async () => {
+  if (brSettlementRetryRunning) {
+    log.warn('Job reprise reglements BR deja en cours : tick saute.');
+    return;
+  }
+  brSettlementRetryRunning = true;
+  try {
+    const ids = getStateCollection('brLobbies')
+      .filter((l) => l && l.status === 'settling')
+      .map((l) => l.id);
+    if (ids.length === 0) return;
+
+    let retried = 0;
+    let remaining = 0;
+    for (const lobbyId of ids) {
+      const reprise = await withBrLobbyMutex(lobbyId, async () => {
+        // On RELIT dans le verrou : l'instantane du dessus peut etre vieux.
+        const fresh = getStateCollection('brLobbies');
+        const cible = fresh.find((l) => l && l.id === lobbyId && l.status === 'settling');
+        // Deja solde par la route (ou par un tick concurrent) : plus rien a faire.
+        if (!cible) return { retried: false, remaining: false };
+        const actor = cible.arbiterId ? getUserById(cible.arbiterId) : null;
+        if (!actor) {
+          log.error('Reglement BR non reprenable : arbitre introuvable', { lobbyId });
+          return { retried: false, remaining: true };
+        }
+        try {
+          // L'acteur du reglement est l'ARBITRE DU SALON : c'est lui que
+          // `requireLobbyArbiter` verifie. La liste restreinte au salon
+          // traite suffit : le moteur clone le tableau qui lui est donne.
+          const outcome = await retryPendingBrSettlements([cible], {
+            getActor: () => actor,
+            onProgress: (progress) => saveBrLobbies(null, progress),
+          });
+          // L'ecriture EST dans le verrou du salon traite.
+          await saveBrLobbies(null, outcome.lobbies);
+          return { retried: outcome.retried > 0, remaining: outcome.remaining > 0 };
+        } catch (error) {
+          log.error('Reprise du reglement BR echouee', { lobbyId, error: error?.message });
+          return { retried: false, remaining: true };
+        }
+      });
+      if (reprise?.retried) retried += 1;
+      if (reprise?.remaining) remaining += 1;
+    }
+
+    if (retried > 0) {
+      log.warn('Reglements BR interrompus repris', { retried });
+    }
+    if (remaining > 0) {
+      log.error('Reglements BR toujours en echec', { remaining });
+    }
+  } catch (error) {
+    log.error('Erreur reprise des reglements BR', error);
+  } finally {
+    brSettlementRetryRunning = false;
+  }
+};
+
+// ─── BR : annulation des salons programmes jamais lances (sweepStaleBrLobbies)
+
+let staleBrLobbyRunning = false;
+
+/**
+ * Annule les salons BR programmes jamais lances, et rembourse chaque joueur.
+ *
+ * Le verrou est PAR SALON depuis le correctif initial ; l'ecriture passe
+ * maintenant par `saveBrLobbies` (PAR ENTITE, C2) : un verrou par entite ne
+ * protegait pas une ecriture DE COLLECTION — le traitement du salon A ecrasait
+ * une action concurrente sur le salon B.
+ */
+export const sweepStaleBrLobbies = async () => {
+  if (staleBrLobbyRunning) {
+    log.warn('Job salons BR perimes deja en cours : tick saute.');
+    return;
+  }
+  staleBrLobbyRunning = true;
+  try {
+    const lobbies = getStateCollection('brLobbies');
+    const staleIds = getStaleBrLobbyIds(lobbies);
+    if (staleIds.length === 0) return;
+
+    let cancelled = 0;
+    let refunded = 0;
+    for (const lobbyId of staleIds) {
+      // Verrou PAR SALON : c est le meme verrou que la route d'action, donc
+      // un joueur qui se desinscrit en meme temps ne peut pas etre
+      // rembourse deux fois.
+      const outcome = await withBrLobbyMutex(lobbyId, async () => {
+        // On RELIT dans le verrou : l'instantane initial peut etre vieux.
+        const fresh = getStateCollection('brLobbies');
+        // Liste RESTREINTE au salon traite : le diff d'ecriture ne portera
+        // que lui ; un echec ne doit pas non plus empecher le suivant
+        // (isolation par salon, comme pour les matchs en V6).
+        const cible = fresh.find((l) => l && l.id === lobbyId);
+        if (!cible) {
+          // Annule ou change entre-temps : plus rien a faire pour ce salon.
+          log.warn('Salon BR perime deja traite entre-temps', { lobbyId });
+          return null;
+        }
+        const res = await cancelStaleBrLobbyOnServer([cible], lobbyId);
+        if (res.cancelled || res.refunded > 0) {
+          // Ecriture PAR ENTITE (C2), DANS le verrou du salon annule.
+          await saveBrLobbies(null, res.lobbies);
+        }
+        return res;
+      });
+      if (!outcome) continue;
+      if (outcome.cancelled) cancelled += 1;
+      refunded += outcome.refunded;
+      if (outcome.errors.length > 0) {
+        log.error('Annulation de salon BR incomplete', {
+          lobbyId,
+          errors: outcome.errors.length,
+        });
+      }
+    }
+
+    if (cancelled > 0) {
+      log.warn('Salons BR annules (jamais lances)', { cancelled, refunded });
+    }
+    const remaining = countStaleBrLobbies(getStateCollection('brLobbies'));
+    if (remaining > 0) {
+      log.error('Salons BR perimes toujours en echec', { remaining });
+    }
+  } catch (error) {
+    log.error('Erreur balayage des salons BR perimes', error);
+  } finally {
+    staleBrLobbyRunning = false;
   }
 };
 
@@ -373,35 +534,6 @@ export const initCronJobs = () => {
   //
   // 5 min : un joueur a paye son pass et attend sa prime. C'est de l'argent
   // qui doit bouger, contrairement a une dette de commission d arbitre.
-  let brSettlementRetryRunning = false;
-  const sweepPendingBrSettlements = async () => {
-    if (brSettlementRetryRunning) return;
-    brSettlementRetryRunning = true;
-    try {
-      const lobbies = getStateCollection('brLobbies');
-      const outstanding = countPendingBrSettlements(lobbies);
-      if (outstanding === 0) return;
-      const outcome = await retryPendingBrSettlements(lobbies, {
-        // L acteur du reglement est l ARBITRE DU SALON : c est lui que
-        // `requireLobbyArbiter` verifie.
-        getActor: (lobby) => (lobby.arbiterId ? getUserById(lobby.arbiterId) : null),
-        onProgress: (progress) => replaceStateCollection('brLobbies', progress),
-      });
-      if (outcome.retried > 0 || outcome.remaining !== outstanding) {
-        await replaceStateCollection('brLobbies', outcome.lobbies);
-      }
-      if (outcome.retried > 0) {
-        log.warn('Reglements BR interrompus repris', { retried: outcome.retried });
-      }
-      if (outcome.remaining > 0) {
-        log.error('Reglements BR toujours en echec', { remaining: outcome.remaining });
-      }
-    } catch (error) {
-      log.error('Erreur reprise des reglements BR', error);
-    } finally {
-      brSettlementRetryRunning = false;
-    }
-  };
   setInterval(() => { void sweepPendingBrSettlements(); }, 5 * 60 * 1000);
   setTimeout(() => { void sweepPendingBrSettlements(); }, 60 * 1000);
 
@@ -415,53 +547,7 @@ export const initCronJobs = () => {
   // Aucun cron ne s'en occupait : le cron nettoie les matchs, les ligues et
   // les tournois, pas les salons BR. Et un salon BR n'a pas d'`expiresAt`,
   // alors qu'un match en a un (14 jours).
-  let staleBrLobbyRunning = false;
-  const sweepStaleBrLobbies = async () => {
-    if (staleBrLobbyRunning) return;
-    staleBrLobbyRunning = true;
-    try {
-      const lobbies = getStateCollection('brLobbies');
-      const staleIds = getStaleBrLobbyIds(lobbies);
-      if (staleIds.length === 0) return;
-
-      let cancelled = 0;
-      let refunded = 0;
-      for (const lobbyId of staleIds) {
-        // Verrou PAR SALON : c est le meme verrou que la route d'action, donc
-        // un joueur qui se desinscrit en meme temps ne peut pas etre
-        // rembourse deux fois.
-        const outcome = await withBrLobbyMutex(lobbyId, async () => {
-          // On RELIT dans le verrou : l instantane initial peut etre vieux.
-          const fresh = getStateCollection('brLobbies');
-          const res = await cancelStaleBrLobbyOnServer(fresh, lobbyId);
-          if (res.cancelled || res.refunded > 0) {
-            await replaceStateCollection('brLobbies', res.lobbies);
-          }
-          return res;
-        });
-        if (outcome.cancelled) cancelled += 1;
-        refunded += outcome.refunded;
-        if (outcome.errors.length > 0) {
-          log.error('Annulation de salon BR incomplete', {
-            lobbyId,
-            errors: outcome.errors.length,
-          });
-        }
-      }
-
-      if (cancelled > 0) {
-        log.warn('Salons BR annules (jamais lances)', { cancelled, refunded });
-      }
-      const remaining = countStaleBrLobbies(getStateCollection('brLobbies'));
-      if (remaining > 0) {
-        log.error('Salons BR perimes toujours en echec', { remaining });
-      }
-    } catch (error) {
-      log.error('Erreur balayage des salons BR perimes', error);
-    } finally {
-      staleBrLobbyRunning = false;
-    }
-  };
+  // 30 min : un salon programme expire 2 h apres son heure : pas urgent.
   setInterval(() => { void sweepStaleBrLobbies(); }, 30 * 60 * 1000);
   setTimeout(() => { void sweepStaleBrLobbies(); }, 90 * 1000);
 

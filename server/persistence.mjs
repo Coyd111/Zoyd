@@ -3683,11 +3683,30 @@ export const upsertStateEntity = async (kind, entity) => {
       kind, entityId: oldest, cap: MAX_STATE_PER_KIND,
     });
   }
+
+  // Screenshot mémoire AVANT mutation : si l'écriture en base échoue, l'état
+  // doit revenir à sa valeur d'origine (nouvelle -> absente, existante ->
+  // valeur précédente), sinon le prochain appel compare un état « optimiste »
+  // à la base et la divergence devient invisible.
+  const ancien = kindMap.has(entity.id) ? kindMap.get(entity.id) : null;
   kindMap.set(entity.id, entity);
   memoryStateSnapshots.set(`${kind}:${entity.id}`, entity);
 
   if (supabase) {
-    await sbUpsert('state_snapshots', { kind, entity_id: entity.id, payload: entity, updated_at: getNow() });
+    const ok = await sbUpsert('state_snapshots', { kind, entity_id: entity.id, payload: entity, updated_at: getNow() });
+    if (!ok) {
+      // FAIL CLOSED, comme `replaceStateCollection`. Avaler l'échec renvoyait
+      // « réussi » au client alors que la base n'avait rien : un règlement
+      // interrompu se relancerait en croyant l'état persisté.
+      if (ancien) {
+        kindMap.set(entity.id, ancien);
+        memoryStateSnapshots.set(`${kind}:${entity.id}`, ancien);
+      } else {
+        kindMap.delete(entity.id);
+        memoryStateSnapshots.delete(`${kind}:${entity.id}`);
+      }
+      throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+    }
   }
 };
 

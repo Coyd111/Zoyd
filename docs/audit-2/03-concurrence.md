@@ -36,8 +36,8 @@ explicitement marqué **NON VÉRIFIÉ** (§ 6).
 
 | ID | Sévérité | Objet | Emplacement principal |
 |----|-----------|--------|------------------------|
-| C1 | **Haute** | BR — l'écriture de la collection sort du verrou par salon : inscription perdue, **pass gelé** | `server/routes/br.mjs:239` |
-| C2 | **Haute** | BR — le cron de reprise des règlements ne prend **aucun** verrou : il peut supprimer un salon et ses passes | `server/cron.mjs:377-405` |
+| C1 | **Haute** — CORRIGÉ | BR — l'écriture de la collection sort du verrou par salon : inscription perdue, **pass gelé** | `server/routes/br.mjs:239` |
+| C2 | **Haute** — CORRIGÉ | BR — le cron de reprise des règlements ne prend **aucun** verrou : il peut supprimer un salon et ses passes | `server/cron.mjs:377-405` |
 | C3 | **Haute** | Match — `disputed` + `payoutDistributed:'pending'` : repris par **aucun** cron → part de cagnotte gelée | `server/match-engine.mjs:1311-1318` |
 | C4 | **Haute** | Salons BR, tournois et ligues « en cours » : **aucun** balayage de péremption → passes gelées à jamais | `server/br-engine.mjs:1076`, `server/tournament-engine.mjs:1212`, `server/league-engine.mjs:881` |
 | C5 | **Moyenne** | BR — la création de salon est hors de tout verrou : un salon peut disparaître | `server/routes/br.mjs:114-145` |
@@ -46,11 +46,13 @@ explicitement marqué **NON VÉRIFIÉ** (§ 6).
 
 **Répartition : 4 Haute, 3 Moyenne, 0 Faible, 0 Critique.**
 
-> C1 est une **RÉINTÉRESSION** : le commit `474dcfa` (« plus de double versement
+> C1 est une **RÉINTÉGRESSION** : le commit `474dcfa` (« plus de double versement
 > BR, ni en concurrence ni après reprise ») avait déplacé le *calcul* dans
 > `withBrLobbyMutex` mais laissé l'*écriture* dehors. Le défaut décrit dans le
 > message du commit (« le joueur évincé avait payé son pass et n'existait plus
-> en base ») est donc toujours reproductible.
+> en base ») est donc toujours reproductible. **CORRIGÉ le 23/10/2026** — avec
+> C2, par une protection à double étage : écriture **dans** le verrou **et**
+> écriture **par entité** (voir les blocs « Correctif » sous C1 et C2).
 
 **Note transverse (amplificateur commun à C1, C2 et C5)** —
 `replaceStateCollection` remplace la collection **entière** et **supprime en
@@ -148,6 +150,40 @@ Un test de non-régression doit forcer deux `join` concurrents sur le même
 salon et vérifier que les deux joueurs figurent dans la collection persistée
 et que leurs deux passes sont bloqués.
 
+**Correctif (23/10/2026)** — en deux étages, enchâssés :
+
+1. *Écriture dans le verrou* (`server/routes/br.mjs`) : le callback du
+   `withBrLobbyMutex(lobbyId)` englobe désormais le cycle complet —
+   lecture (`getStoredBrLobbies`) → moteur → `await saveBrLobbies(io,
+   result.lobbies)` — pour **les six** actions (join, leave, checkin, start,
+   eliminate, finish). La lecture, dont l'objet est restreint au **seul salon
+   cible**, fait que le clone du moteur, la progression `onProgress` et le diff
+   d'écriture ne portent sur aucune autre entité (voir C2). La réponse HTTP et
+   le `catch` restent hors verrou ; pour `finish`, la notification aux gagnants
+   est envoyée dans le callback, après l'écriture (l'argent est versé, la
+   notification ne doit pas prolonger le verrou).
+2. *Écriture par entité* (`server/state-helpers.mjs` : `saveBrLobbies`) :
+   abandon du remplacement en bloc. La fonction parcourt la liste qu'on lui
+   passe, compare chaque entité à l'état stocké **sur l'état normalisé des deux
+   côtés** (une ancienne forme au stockage, ou une coercition de type, ne
+   déclenchent pas d'écriture), puis appelle `upsertStateEntity` pour les
+   seules entités modifiées. Une entité absente de la liste n'est **jamais**
+   supprimée ; un salon inchangé ne repart pas en base. La diffusion socket ne
+   part que si `io` est fourni (côté cron : aucun io). Ce point neutralise
+   l'amplificateur commun (note transverse) pour **toutes** les écritures BR
+   d'un coup.
+3. *Fail-closed* (`server/persistence.mjs` : `upsertStateEntity`) : si
+   l'écriture en base échoue, l'entité est retirée de la mémoire (rollback) et
+   l'erreur remonte — avaler l'échec renvoyait un état mémoire qui ment.
+
+**Tests** : `server/br-write-inside-lock.test.mjs` — ordre verrou → moteur →
+save → unlock pour `join` et `finish` (progression intermédiaire `onProgress`
+comprise) ; `server/br-save-per-entity.test.mjs` — delta par entité, jamais
+de suppression, anciennes formes de stockage sans réécriture, diffusion
+sanitisée. La course de l'audit (deux `join` simultanés) est désormais
+couverte par l'ordre du cycle : la seconde écriture part avec la lecture faite
+*dans* le verrou, après le premier joueur.
+
 ---
 
 ### C2 — BR : le cron de reprise des règlements ne prend aucun verrou
@@ -211,6 +247,39 @@ concurrente sur le salon B.
    par salon suffisant, et c'est cohérent avec l'invariant
    « la collection est remplacée EN BLOC » *à condition* de ne plus l'appliquer
    à `brLobbies`.
+
+**Correctif (23/10/2026)** — l'option 2 (structurelle) est appliquée ; elle
+passe main dans la main avec C1 (même fonction d'écriture) :
+
+1. `server/cron.mjs` — `sweepPendingBrSettlements` est réécrite **salon par
+   salon** : pour chaque salon `settling`, `withBrLobbyMutex(lobbyId)` ; à
+   l'intérieur du verrou, la collection est **relue** (`getStateCollection`) —
+   un salon soldé par la route entre la collecte des identifiants et le verrou
+   n'est plus repris —, le remboursement/règlement est confié au moteur avec
+   la **liste restreinte au seul salon** (`retryPendingBrSettlements([cible])`,
+   l'acteur étant l'arbitre du salon), et les écritures (progression
+   `onProgress` + résultat) passent par `saveBrLobbies` **dans le verrou**.
+   Un échec sur un salon n'empêche plus le suivant (isolation par salon,
+   comme pour les matchs en V6).
+2. `server/cron.mjs` — `sweepStaleBrLobbies` : verrou par salon déjà présent,
+   écriture `replaceStateCollection('brLobbies', …)` remplacée par
+   `saveBrLobbies(null, res.lobbies)` — l'annulation du salon A ne peut plus
+   écraser une action concurrente sur le salon B. La liste transmise au moteur
+   est restreinte au salon relu dans le verrou, et un salon qui vient d'être
+   traité entre-temps est sauté sans arrêt du balayage (isolation par salon,
+   comme pour les matchs en V6) ; un échec sur un salon ne bloque plus les
+   suivants.
+3. Les deux jobs sont **exposés** (`export const`) pour le test de câblage,
+   qui verrouille : l'ordre verrou → moteur → save → unlock, la relecture dans
+   le verrou (salon soldé entre-temps : aucune reprise, aucune écriture), la
+   liste restreinte au salon traité, l'épargne des autres salons, et la garde
+   anti-chevauchement (second tick sauté).
+
+**Tests** : `server/br-write-inside-lock.test.mjs` (cron ET routes ;
+aucune écriture BR ne passe par `replaceStateCollection`) et
+`server/br-save-per-entity.test.mjs` (l'écriture ne porte que le delta,
+aucune suppression). La suite complète reste verte (23/10/2026 : 930 tests
+passés / 2 ignorés, 0 échec).
 
 ---
 
@@ -632,9 +701,9 @@ double paiement possible — c'est le piège décrit dans l'en-tête de
 | V2 | `pendingArbiterFee` écrit mais jamais relu | corrigé | `sweepPendingArbiterFees` (`server/cron.mjs:82-106`) |
 | V6 | Une exception de règlement tuait tout le balayage d'expiration | corrigé | isolation par match (`server/match-engine.mjs:1157-1185`) |
 | V7 | BR : pass verrouillé avant le contrôle `TEAM_FULL` | corrigé | verrou posé après les validations (`server/br-engine.mjs:412-427`) |
-| V10 | BR : aucun cron de reprise d'un règlement interrompu | corrigé | `sweepPendingBrSettlements` existe — mais **sans verrou**, voir C2 |
-| V14 | Salon BR programmé et jamais lancé → passes gelées | corrigé | `sweepStaleBrLobbies` — mais ne couvre que `scheduled`, voir C4 |
-| — | Double versement BR en concurrence | **partiellement** corrigé | `474dcfa` : le calcul est sous verrou, **l'écriture n'y est pas** → **C1 (RÉINTÉRESSION)** |
+| V10 | BR : aucun cron de reprise d'un règlement interrompu | corrigé | `sweepPendingBrSettlements` existe ; désormais **sous verrou par salon + écriture par entité** (`:136-193`, voir Correctif C2 du 23/10/2026) |
+| V14 | Salon BR programmé et jamais lancé → passes gelées | corrigé | `sweepStaleBrLobbies` — ne couvre que `scheduled`, voir C4 (l'écriture est désormais par entité, Correctif C2) |
+| — | Double versement BR en concurrence | **corrigé le 23/10/2026** | `474dcfa` mettait le calcul sous verrou, l'écriture restait dehors (**C1, réintergression**) → désormais calcul **et** écriture sous le verrou, et écriture **par entité** |
 | — | Gains de tournoi / de ligue non versés | corrigé | `pendingPayouts` + crons dédiés (`server/cron.mjs:565`, `:596`) |
 | — | Retrait « peut-être parti » | corrigé | `pending_review` + file de réconciliation (`server/wallet-engine.mjs:2093-2113`) |
 
@@ -647,15 +716,16 @@ double paiement possible — c'est le piège décrit dans l'en-tête de
 | `withMatchMutex` | global | collection `matches` | 13 blocs de route `routes/match.mjs` + 3 blocs `routes/admin.mjs` + 4 crons + tick d'automatisation |
 | `withTournamentMutex` | global | collection `tournaments` | 8 blocs de route `routes/tournament.mjs` + 3 crons |
 | `withLeagueMutex` | global | collection `leagues` | 11 blocs de route `routes/league.mjs` + 4 crons |
-| `withBrLobbyMutex` | par entité | un salon BR | actions de salon (`routes/br.mjs:178`) + `sweepStaleBrLobbies` (`cron.mjs:434`) — **pas** le job de règlement, **pas** la création |
+| `withBrLobbyMutex` | par entité | un salon BR | actions de salon (`routes/br.mjs`, cycle complet lecture→calcul→écriture dans le verrou depuis le Correctif C1) + `sweepPendingBrSettlements` et `sweepStaleBrLobbies` (`cron.mjs`, Correctif C2) — **pas** la création de salon (C5) |
 | `withWalletMutex` | par entité | un joueur | moteurs de règlement, routes wallet, moteurs BR/ligue/tournoi |
 | `withUserMutex` | par entité | un compte | `updateUserAccount` (point de sérialisation réel), suppression de compte, activation, email d'activation |
 | `withChannelMutex` | par entité | un canal | `appendChatMessage`, `markChatChannelRead` |
 | `withRegistrationMutex` | global (auth) | inscriptions / unicité | `insertUser`, `PATCH /api/auth/me` |
 
-**Écarts constatés** : `withBrLobbyMutex` n'est pas pris par le job de règlement
-BR (C2) ni par la création de salon (C5) ; `withUserMutex` n'est pas pris par
-`updatePasswordHash` (C6).
+**Écarts restants** : `withBrLobbyMutex` n'est pas pris par la création de
+salon (C5) — la partie « le salon crée disparaît » est neutralisée par
+l'écriture par entité (le correctif de C1/C2), le reste du constat C5 reste
+ouvert ; `withUserMutex` n'est pas pris par `updatePasswordHash` (C6).
 
 ---
 

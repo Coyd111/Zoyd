@@ -801,7 +801,7 @@ n'a plus de socket **et** `role === 'spectator'` il est **supprimé** ; sinon il
 | `saveMatches(io, matches, changedMatch=null)` (`server/state-helpers.mjs:18-29`) | `state:matches` | **socket par socket** (`server/state-helpers.mjs:79-90`) |
 | `saveTournaments(io, tournaments, changedTournament=null)` (`server/state-helpers.mjs:43-54`) | `state:tournaments` | **socket par socket** (`server/state-helpers.mjs:47-52`) |
 | `saveLeagues(io, seasons)` (`server/state-helpers.mjs:316-321`) | `state:leagues` | `io.emit` global |
-| `saveBrLobbies(io, lobbies)` (`server/state-helpers.mjs:303-308`) | `state:brLobbies` | `io.emit` global, **après sanitisation** (`toPublicBrLobby`) |
+| `saveBrLobbies(io, lobbies)` (`server/state-helpers.mjs`) | `state:brLobbies` | `io.emit` global, **après sanitisation** (`toPublicBrLobby`) ; écriture **PAR ENTITÉ** (`upsertStateEntity`, delta normalisé) — voir C1/C2 dans `docs/audit-2/03-concurrence.md` ; aucune diffusion si `io` est `null` (chemin cron) |
 
 > « Diffuser les matchs en calculant `isMe` POUR CHAQUE socket. Un `io.emit` global ne peut
 > pas porter un `isMe` different par destinataire. On emet donc par socket : le nombre de

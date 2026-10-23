@@ -863,17 +863,33 @@ export const countPendingLeaguePayouts = (leagues) =>
     0,
   );
 
-// ─── Saisons restées en inscription : libère les passes bloqués ───────────
+// ─── Saisons en sequestre sans issue : libere les passes bloques ──────────
 //
-// Le cron ne ferme automatiquement une saison que si elle atteint 10 inscrits.
-// En dessous, elle restait 'registering' INDEFINITEMENT et les pass des
-// inscrits restaient verrouilles dans `lockedEntries`, sans aucun chemin pour
-// les liberer : c'est exactement la perte seche que le sweeper des tournois a
-// ete ecrit pour empecher, mais aucun equivalent n'existait pour les ligues.
+// Deux formes de peremption (C4, audit-2) : une saison arrivee au seuil
+// d'inscriptions jamais ferree (`registering`), et une phase de
+// qualification demarree puis abandonnee (`qualifying`). Sans balayage,
+// dans les deux cas les passes des inscrits restaient verrouilles dans
+// `lockedEntries` sans aucun chemin pour les liberer.
+
+// Une semaine apres le debut de la qualification : les journees de
+// qualification se suivent au quotidien, donc une saison sans aucune
+// journee close apres 7 jours est une saison abandonnee.
+export const LEAGUE_QUALIFYING_STALE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Saisons en inscription dont la date de cloture est depassee depuis plus de
- * `graceMs` : elles n'ont jamais demarre, leurs passes doivent etre liberes.
+ * Saisons en sequestre sans issue (C4, audit-2).
+ *
+ * Deux etats vises :
+ *   - `registering` : la cloture des inscriptions est passee depuis plus de
+ *     `graceMs` et la saison n'a jamais demarre (moins de 10 inscrits, le
+ *     cron de fermeture n'a jamais tranche) ;
+ *   - `qualifying`  : la phase de qualification est lancee depuis plus de
+ *     `LEAGUE_QUALIFYING_STALE_GRACE_MS` (une semaine entiere, alors que les
+ *     journees de qualification se suivent au quotidien) : aucune session
+ *     n'a abouti, la saison est abandonnee. Sans balayage, elle reste
+ *     `qualifying` pour toujours — les passes restent verrouilles, et
+ *     aucun statut ni /health ne le signale.
+ *
  * @param {Array} seasons - Liste courante des saisons
  * @param {number} graceMs - Tolerance apres la cloture des inscriptions
  * @returns {Array<string>} IDs a annuler
@@ -882,18 +898,30 @@ export const getStaleLeagueSeasonIds = (seasons, graceMs = 60 * 60 * 1000) => {
   const now = Date.now();
   return (Array.isArray(seasons) ? seasons : [])
     .filter((season) => {
-      if (season?.status !== 'registering') return false;
-      const closesAt = season?.schedule?.registrationCloses;
-      if (!closesAt) return false;
-      const ts = new Date(closesAt).getTime();
-      if (!Number.isFinite(ts)) return false;
-      return ts + graceMs < now;
+      if (season?.status === 'registering') {
+        const closesAt = season?.schedule?.registrationCloses;
+        if (!closesAt) return false;
+        const ts = new Date(closesAt).getTime();
+        if (!Number.isFinite(ts)) return false;
+        return ts + graceMs < now;
+      }
+      if (season?.status === 'qualifying') {
+        const qualifiee = season?.schedule?.qualifyingStarts;
+        if (!qualifiee) return false;
+        const ts = new Date(qualifiee).getTime();
+        if (!Number.isFinite(ts)) return false;
+        return ts + LEAGUE_QUALIFYING_STALE_GRACE_MS < now;
+      }
+      return false;
     })
     .map((season) => season.id);
 };
 
 /**
- * Annule une saison restee en inscription et rembourse les inscrits.
+ * Annule une saison en sequestre sans issue et rembourse les inscrits.
+ *
+ * Deux etats acceptes : `registering` (jamais lancee) et `qualifying`
+ * (démarrée puis abandonnee — C4, audit-2).
  *
  * Un remboursement en echec n'est PAS perdu : il reste dans `pendingRefunds`
  * et le cron de reprise le rejoue. Ne pas le conserver reviendrait a
@@ -903,8 +931,8 @@ export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason 
   const nextSeasons = cloneLeagues(seasons);
   const season = findSeason(nextSeasons, seasonId);
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'registering') {
-    throw makeError('MATCH_CLOSED', 'Seule une saison encore en inscription peut etre annulee ainsi.');
+  if (season.status !== 'registering' && season.status !== 'qualifying') {
+    throw makeError('MATCH_CLOSED', 'Seule une saison pas encore soldee peut etre annulee ainsi.');
   }
 
   let refunded = 0;

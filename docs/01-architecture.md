@@ -838,7 +838,7 @@ que le match n'est pas figé (`server/state-helpers.mjs:92-101`).
 | 6 h | Archivage des matchs inactifs (> 14 j) | `server/cron.mjs:36-82` |
 | 1 h | Fermeture des inscriptions de ligue | `server/cron.mjs:85` |
 | 1 h | Contrôle d'intégrité des données | `server/cron.mjs:192` |
-| **60 s** | Balayage des règlements en attente | `server/cron.mjs:276` |
+| **60 s** | Balayage des règlements en attente (interrompus + litiges clos restés `disputed` — C3) | `server/cron.mjs:276` |
 | **60 s** | Expiration des fenêtres de confirmation | `server/cron.mjs:312` |
 | 6 h | Reprise des remboursements | `server/cron.mjs:354` |
 | 6 h | Paiements de tournois en attente | `server/cron.mjs:387` |
@@ -851,6 +851,13 @@ Chaque job utilise les **mêmes verrous** que les routes (`withMatchMutex`,
 `withLeagueMutex`, `withTournamentMutex`) et possède une **garde anti-chevauchement**
 (`server/cron.mjs:31-33`, `:37-41`, `:86-90`). Deux jobs de fond et une route ne peuvent
 donc pas muter la même collection en parallèle.
+
+Depuis le correctif C4 (23/10/2026), les balayages de péremption couvrent
+aussi les états « en cours » abandonnés : salons BR `live` (via
+`sweepStaleBrLobbies`), tournois `live` (via le sweep tournoi de 6 h),
+saisons de ligue `qualifying` (via le sweep ligues de 6 h). Aucun nouveau
+job : chaque état rejoint le balayage existant sous son verrou ; les
+annulations rembourseront avant de clôturer.
 
 ---
 

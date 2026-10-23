@@ -368,6 +368,55 @@ describe('league-engine - saisons restées en inscription (sweeper)', () => {
   });
 });
 
+describe('league-engine - C4 : phase de qualification abandonnee', () => {
+  const saisonQualification = (ageJours) => makeSeason({
+    status: 'qualifying',
+    registeredPlayers: ['p1', 'p2'].map((p) => ({
+      userId: p, pseudo: p.toUpperCase(), joinedAt: new Date().toISOString(), paid: true,
+    })),
+    qualificationGroups: {
+      tuesday: { players: ['p1', 'p2'], matchId: null, results: [], status: 'scheduled' },
+    },
+    schedule: {
+      registrationOpens: new Date(Date.now() - 30 * 24 * 3600_000).toISOString(),
+      registrationCloses: new Date(Date.now() - (10 + ageJours) * 24 * 3600_000).toISOString(),
+      qualifyingStarts: new Date(Date.now() - ageJours * 24 * 3600_000).toISOString(),
+      qualifyingEnds: null,
+      finalAt: null,
+    },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockPlayer);
+    refundLockedEntry.mockResolvedValue({});
+  });
+
+  it('C4 - detecte une qualification ancienne, pas une recente', () => {
+    // Grace d'une semaine : les journees se suivent au quotidien, donc 8
+    // jours sans cloture de journee est un abandon, pas une pause.
+    expect(leagueEngine.getStaleLeagueSeasonIds([saisonQualification(8)])).toEqual(['LS-TEST']);
+    expect(leagueEngine.getStaleLeagueSeasonIds([saisonQualification(2)])).toEqual([]);
+    // Analyse sans horloge : rien a prouver, rien a contester.
+    const condition = saisonQualification(8);
+    condition.schedule.qualifyingStarts = null;
+    expect(leagueEngine.getStaleLeagueSeasonIds([condition])).toEqual([]);
+  });
+
+  it('C4 - annule la saison qualifying et rembourse les inscrits', async () => {
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer(
+      [saisonQualification(8)], 'LS-TEST',
+      'Ligue annulee automatiquement : qualification abandonnee par les organisateurs.',
+    );
+
+    expect(outcome.season.status).toBe('cancelled');
+    expect(outcome.refunded).toBe(2);
+    expect(refundLockedEntry).toHaveBeenCalledTimes(2);
+    expect(outcome.season.cancelReason).toContain('qualification abandonnee');
+    expect(outcome.season.pendingRefunds).toEqual([]);
+  });
+});
+
 describe('league-engine - getLeagueLeaderboard', () => {
   it('should return standings for season', () => {
     const standings = [

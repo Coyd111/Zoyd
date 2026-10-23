@@ -983,21 +983,27 @@ export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) 
 };
 
 /**
- * Annule un tournoi qui n'a jamais démarré et rembourse tous les capitaines.
- * Sans ce workflow, un tournoi resté en 'recruiting' (pas assez d'arbitres,
- * pas assez d'équipes) bloquait les passes (pass × taille d'équipe) à vie :
- * aucun cron ne traitait la collection 'tournaments'.
+ * Annule un tournoi en sequestre sans issue et rembourse tous les capitaines.
+ * Deux etats acceptes (C4, audit-2) :
+ *   - `recruiting` : jamais demarre (pas assez d'arbitres, pas assez d'equipes) ;
+ *   - `live`       : bracket lance puis abandonne par les arbitres.
+ * Sans ce workflow, les passes (pass x taille d'equipe) restaient bloques a
+ * vie : aucun cron ne traitait la collection 'tournaments' et la cloture du
+ * bracket n'arrivait jamais sans arbitre.
  * @param {Array} tournaments - Liste courante des tournois
- * @param {string} tournamentId - ID du tournoi à annuler
- * @param {string} [reason] - Motif affiché aux joueurs
+ * @param {string} tournamentId - ID du tournoi a annuler
+ * @param {string} [reason] - Motif affiche aux joueurs
  * @returns {Promise<{tournaments: Array, tournament: object|null, refunded: number}>}
  */
 export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, reason = 'Tournoi annule (inscriptions clos).') => {
   const nextTournaments = cloneTournaments(tournaments);
   const tournament = findTournament(nextTournaments, tournamentId);
   if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
-  if (tournament.status !== 'recruiting') {
-    throw makeError('MATCH_CLOSED', 'Seul un tournoi non demarre peut etre annule ainsi.');
+  // C4 (audit-2) — `recruiting` ET `live`. Un tournoi `live` n'a encore verse
+  // aucun gain (`applyTournamentSettlement` ne s'execute qu'en `completed`) :
+  // rembourser toutes les entrees est donc sans double paiement possible.
+  if (tournament.status !== 'recruiting' && tournament.status !== 'live') {
+    throw makeError('MATCH_CLOSED', 'Seul un tournoi non termine peut etre annule ainsi.');
   }
 
   let refunded = 0;
@@ -1203,16 +1209,30 @@ export const countUncollectableTournamentRefunds = (tournaments) =>
   );
 
 /**
- * Tournois en inscription dont la date de début est dépassée depuis plus de
- * `graceMs` : ils n'ont jamais démarré, leurs passes doivent être libérés.
+ * Tournois en sequestre sans issue (C4, audit-2).
+ *
+ * Deux etats vises, meme default :
+ *   - `recruiting` : la date de debut est passee depuis plus de `graceMs`
+ *     et le bracket n'a jamais demarre ;
+ *   - `live`       : l'arbitre a LANCE le bracket puis a disparu. Sans
+ *     balayage, un tournoi reste `live` POUR TOUJOURS : les
+ *     `entryFee x teamSize` restent en lockedEntries, et le statut ne bouge
+ *     que par le reglement final — qui n'arrivera jamais sans arbitre.
+ *
+ * Un tournoi `live` n'a jamais verse un seul gain (`applyTournamentSettlement`
+ * ne s'execute qu'en status `completed`) : rembourser toutes les entrees y est
+ * sans risque de double paiement.
+ *
  * @param {Array} tournaments - Liste courante des tournois
- * @param {number} graceMs - Tolérance après startsAt
- * @returns {Array<string>} IDs à annuler
+ * @param {number} graceMs - Tolerance apres startsAt
+ * @returns {Array<string>} IDs a annuler
  */
 export const getExpiredTournamentIds = (tournaments, graceMs = 24 * 60 * 60 * 1000) => {
   const now = Date.now();
   return tournaments
-    .filter((t) => t.status === 'recruiting' && t.startsAt && new Date(t.startsAt).getTime() + graceMs < now)
+    .filter((t) => (t.status === 'recruiting' || t.status === 'live')
+      && t.startsAt
+      && new Date(t.startsAt).getTime() + graceMs < now)
     .map((t) => t.id);
 };
 

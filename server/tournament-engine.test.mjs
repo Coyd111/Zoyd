@@ -627,3 +627,58 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     expect(normalized[0].pendingRefunds[0].captainId).toBe('player-2');
   });
 });
+
+describe('tournament-engine - C4 : tournoi live abandonne', () => {
+  const makeTournament = () => ({
+    id: 'T-VIEUX',
+    name: 'Open Benin',
+    format: '1VS1',
+    teamSize: 1,
+    entryFee: 100,
+    status: 'live',
+    startsAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+    entries: [makeEntry('player-1', 'ShadowX'), makeEntry('player-2', 'Ghost')],
+    arbiters: [{ userId: 'arb-1', slot: 1 }],
+    arbitersNeeded: 1,
+    matches: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  it('C4 - getExpiredTournamentIds repere un tournoi live vieux de trop', () => {
+    // Grace par defaut 24 h : un bracket lance hier matin et jamais termine
+    // est une dette, pas une competition en pause.
+    const ids = tournamentEngine.getExpiredTournamentIds([makeTournament()]);
+    expect(ids).toEqual(['T-VIEUX']);
+
+    // Encore dans la grace : rien.
+    const recent = { ...makeTournament(), startsAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() };
+    expect(tournamentEngine.getExpiredTournamentIds([recent])).toEqual([]);
+
+    // Un tournoi clos : jamais repris.
+    const fini = { ...makeTournament(), status: 'completed' };
+    expect(tournamentEngine.getExpiredTournamentIds([fini])).toEqual([]);
+  });
+
+  it('C4 - annule un tournoi live et rembourse toutes les entrees', async () => {
+    refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
+
+    const outcome = await tournamentEngine.cancelStaleTournamentOnServer(
+      [makeTournament()], 'T-VIEUX', 'Tournoi annule : bracket lance mais jamais termine.',
+    );
+
+    // Un tournoi live n'a verse AUCUN gain (le reglement final n'arrive pas
+    // si le bracket n'arrive jamais) : rembourser tout est sans sur-paiement.
+    expect(outcome.refunded).toBe(2);
+    expect(outcome.tournament.status).toBe('cancelled');
+    expect(outcome.tournament.cancelReason).toContain('bracket lance mais jamais termine');
+    expect(outcome.tournament.entries).toHaveLength(0);
+  });
+
+  it('C4 - un tournoi termine n est pas annulable via ce sweep', async () => {
+    const fini = { ...makeTournament(), status: 'completed' };
+    await expect(
+      tournamentEngine.cancelStaleTournamentOnServer([fini], 'T-VIEUX'),
+    ).rejects.toMatchObject({ code: 'MATCH_CLOSED' });
+  });
+});

@@ -8,9 +8,11 @@
  * INVARIANT : chaque job prend le MEME verrou que la route correspondante
  *   (`withMatchMutex`, `withLeagueMutex`, `withTournamentMutex`,
  *   `withBrLobbyMutex` pour les salons BR) : un job de fond et une route ne
- *   doivent jamais muter la meme collection en parallele. Les jobs BR
- *   `sweepPendingBrSettlements` et `sweepStaleBrLobbies` sont exportes pour
- *   le test de cablage, en plus d'etre branches sur leurs intervalles.
+ *   doivent jamais muter la meme collection en parallele. Les jobs
+ *   `sweepPendingSettlements`, `sweepExpiredConfirmations`,
+ *   `sweepPendingArbiterFees`, `sweepPendingBrSettlements` et
+ *   `sweepStaleBrLobbies` sont exportes pour les tests de cablage, en plus
+ *   d'etre branches sur leurs intervalles.
  * INVARIANT : les ecritures BR passent par `saveBrLobbies`, PAR ENTITE (C2) :
  *   le remplacement en bloc ecrasait les actions concurrentes d'autres salons
  *   et SUPPRIMAIT les entites absentes de l'instantane (passes bloques sans
@@ -29,7 +31,11 @@
  *   ne rembourse pas les passes.
  * PIEGE : le balayage des reglements ne reprend QUE les matchs dont
  *   `payoutDistributed` vaut `'pending'` : un `false` est un refus
- *   VOLONTAIRE de verser.
+ *   VOLONTAIRE de verser. Un `'pending'` avec `confirmationDeadline` est
+ *   une fenetre de contestation OUVERTE : regle ici seulement si le statut
+ *   vaut `disputed` ET le litige est clos (C3 : le reglement de la
+ *   resolution de litige est passe en echec — le match a une dette, pas un
+ *   litige).
  * PIEGE : la cloture des inscriptions de ligue passe le statut de
  *   `registering` a `qualifying` et tire les journees : c'est le moment
  *   unique ou la repartition des joueurs est figee.
@@ -66,6 +72,8 @@ import { getNow } from './utils.mjs';
 const log = createLogger('cron');
 
 let arbiterFeeRetryRunning = false;
+let pendingSettlementRunning = false;
+let confirmationSweepRunning = false;
 
 /**
  * Reprise des commissions d'arbitre non versees.
@@ -108,6 +116,113 @@ export const sweepPendingArbiterFees = async () => {
     log.error('Erreur reprise des commissions d arbitre', error);
   } finally {
     arbiterFeeRetryRunning = false;
+  }
+};
+
+// ─── Matchs : reprise des reglements interrompus et fenetres expirees ───────
+
+/**
+ * Retente les reglements de match interrompus (60 s + au boot).
+ *
+ * Un règlement se fait en deux phases : le resultat est persiste d'abord, la
+ * monnaie est verse ensuite. Un arret de processus entre les deux laissait un
+ * match `'pending'` definitivement sans reprise. Ce job est ce retry.
+ *
+ * C3 (audit-2) — le filtre visait `pending && !confirmationDeadline`. Or
+ * `resolveDisputeOnServer` laisse, en echec de reglement, un match
+ * `disputed` AVEC deadline : repris par AUCUN des quatre filtres (le
+ * present job exige l'absence de deadline, `sweepExpiredConfirmations`
+ * exige `awaiting_confirmation`, l'automation saute `disputed`), son
+ * sequestre restait bloque pour toujours.
+ *
+ * Desormais le job vise aussi les matchs `disputed` dont le litige est
+ * CLOS : deadline maintenue ou non, la reprise devient possible. La garde
+ * `settlePendingMatchResult` refuse toujours un litige OUVERT, et la
+ * reprise est idempotente — les joueurs deja payes sont ignores.
+ */
+export const sweepPendingSettlements = async () => {
+  if (pendingSettlementRunning) return;
+  pendingSettlementRunning = true;
+  try {
+    await withMatchMutex(async () => {
+      let list = getStateCollection('matches');
+      const litigeOuvert = (m) => (m.disputes || [])
+        .some((d) => d.status === 'open' || d.status === 'under_review');
+      // Deux vagues, un seul balayage :
+      //   1. reglement interrompu : `'pending'` sans fenetre de confirmation
+      //      (une fenetre presente couvre la contestation du perdant ;
+      //      `settlePendingMatchResult` refuse en outre un litige ouvert) ;
+      //   2. litige CLOS restant `disputed` sur un reglement passe en echec
+      //      (C3 ; desormais impossible via `resolveDisputeOnServer`, mais
+      //      les etats historiques de la base recoivent cette deuxieme
+      //      chance).
+      const pending = list.filter(
+        (m) => m.result?.payoutDistributed === 'pending'
+          && !litigeOuvert(m)
+          && (!m.confirmationDeadline || m.status === 'disputed'),
+      );
+      if (pending.length === 0) return;
+      log.warn('Reglements de match interrompus : reprise.', { count: pending.length });
+      for (const match of pending) {
+        try {
+          const settled = await settlePendingMatchResult(list, match.id);
+          if (settled.match) list = settled.matches;
+        } catch (error) {
+          log.error('Reprise de reglement echouee', { matchId: match.id, error: error.message });
+        }
+      }
+      await replaceStateCollection('matches', list);
+    });
+  } catch (error) {
+    log.error('Erreur reprise des reglements', error);
+  } finally {
+    pendingSettlementRunning = false;
+  }
+};
+
+/**
+ * Ferme les fenetres de confirmation expirees (60 s + au boot).
+ *
+ * Un match en attente dont le delai est depasse est regle AUTOMATIQUEMENT :
+ * sans ce job, un joueur absent gelerait la cagnotte indefiniment. Un
+ * litige ouvert reste gele (c'est l'admin qui tranche via resolve-dispute).
+ */
+export const sweepExpiredConfirmations = async () => {
+  if (confirmationSweepRunning) return;
+  confirmationSweepRunning = true;
+  try {
+    await withMatchMutex(async () => {
+      const matches = getStateCollection('matches');
+      const expiring = matches.filter(
+        (m) => m.status === 'awaiting_confirmation'
+          && m.confirmationDeadline
+          && new Date(m.confirmationDeadline).getTime() <= Date.now(),
+      );
+      if (expiring.length === 0) return;
+      const outcome = await expireConfirmationsOnServer(matches);
+      if (outcome.settled.length > 0) {
+        await replaceStateCollection('matches', outcome.matches);
+        log.warn('Fenetres de confirmation expirees : gains liberes', {
+          count: outcome.settled.length,
+          failed: outcome.settled.filter((s) => !s.success).map((s) => s.id),
+        });
+      }
+      // Les matchs que le reglement refuse (typiquement : pas d'arbitre)
+      // sont isoles — ils ne bloquent plus les autres. Mais ils doivent
+      // rester VISIBLES : un match qui ne peut pas etre regle est une
+      // cagnotte qui reste gelee, et personne ne doit decouvrir cela en
+      // attendant un retrait.
+      if (outcome.failed.length > 0) {
+        log.error('Reglements refuses a l expiration des confirmations', {
+          count: outcome.failed.length,
+          matches: outcome.failed.map((f) => `${f.id}:${f.code}`),
+        });
+      }
+    });
+  } catch (error) {
+    log.error('Erreur expiration des confirmations', error);
+  } finally {
+    confirmationSweepRunning = false;
   }
 };
 
@@ -434,9 +549,10 @@ export const initCronJobs = () => {
   // Premier passage différé : le contrôle de démarrage vient de tourner, inutile de le refaire.
   setTimeout(() => { void runIntegrityCheck(); }, 30 * 1000).unref?.();
 
-  // Tournois jamais démarrés — libère les passes bloqués (toutes les 6 h).
-  // Sans ça, un tournoi resté 'recruiting' (pas assez d'arbitres/équipes)
-  // gardait entryFee × teamSize en lockedEntries indefinement.
+  // Tournois en sequestre sans issue — libere les passes bloques (toutes les
+  // 6 h). Deux etats (C4, audit-2) : `recruiting` jamais lance a la date
+  // prevue, et `live` lance puis jamais termine (arbitres disparus). Sans ca,
+  // entryFee x teamSize restait en lockedEntries indefiniment.
   let tournamentSweepRunning = false;
   setInterval(async () => {
     if (tournamentSweepRunning) {
@@ -454,11 +570,12 @@ export const initCronJobs = () => {
         let totalRefunded = 0;
         for (const id of expiredIds) {
           try {
-            const outcome = await cancelStaleTournamentOnServer(
-              updated,
-              id,
-              'Tournoi annule : pas assez d inscriptions avant la date de debut.'
-            );
+            // Motif honnete selon l'etat reel du tournoi.
+            const cible = updated.find((t) => t.id === id);
+            const raison = cible?.status === 'live'
+              ? 'Tournoi annule : bracket lance mais jamais termine.'
+              : 'Tournoi annule : pas assez d inscriptions avant la date de debut.';
+            const outcome = await cancelStaleTournamentOnServer(updated, id, raison);
             updated = outcome.tournaments;
             totalRefunded += outcome.refunded;
           } catch (error) {
@@ -484,36 +601,12 @@ export const initCronJobs = () => {
   // le match reste 'pending' ET la cagnotte reste gelee DEFINITIVEMENT :
   // settlePendingMatchResult n'etait appele que par les 2 routes HTTP, donc
   // aucun retry n'existait. Ce job est ce retry.
-  let pendingSettlementRunning = false;
-  const sweepPendingSettlements = async () => {
-    if (pendingSettlementRunning) return;
-    pendingSettlementRunning = true;
-    try {
-      await withMatchMutex(async () => {
-        let list = getStateCollection('matches');
-        // ATTENTION : on ne retente QUE les règlements interrompus. Un
-        // résultat 'pending' AVEC confirmationDeadline est en attente de
-        // confirmation des équipes : le régler ici viderait la fenêtre que
-        // le perdant a pour contester.
-        const pending = list.filter((m) => m.result?.payoutDistributed === 'pending' && !m.confirmationDeadline);
-        if (pending.length === 0) return;
-        log.warn('Reglements de match interrompus : reprise.', { count: pending.length });
-        for (const match of pending) {
-          try {
-            const settled = await settlePendingMatchResult(list, match.id);
-            if (settled.match) list = settled.matches;
-          } catch (error) {
-            log.error('Reprise de reglement echouee', { matchId: match.id, error: error.message });
-          }
-        }
-        await replaceStateCollection('matches', list);
-      });
-    } catch (error) {
-      log.error('Erreur reprise des reglements', error);
-    } finally {
-      pendingSettlementRunning = false;
-    }
-  };
+  // Reprise des reglements de match interrompus — toutes les 60 s.
+  //
+  // Le reglement se fait en 2 phases : on persiste d'abord le resultat avec
+  // `'pending'`, puis la monnaie. Un arret entre les deux laissait le match
+  // sans reprise. La fonction est exportee (top-level, comme
+  // `sweepPendingArbiterFees`) pour etre testee directement.
   setInterval(() => { void sweepPendingSettlements(); }, 60 * 1000);
   // Au boot : un redemarrage Render est justement le cas le plus probable.
   setTimeout(() => { void sweepPendingSettlements(); }, 15 * 1000);
@@ -537,63 +630,22 @@ export const initCronJobs = () => {
   setInterval(() => { void sweepPendingBrSettlements(); }, 5 * 60 * 1000);
   setTimeout(() => { void sweepPendingBrSettlements(); }, 60 * 1000);
 
-  // Salons BR programmes et JAMAIS lances (30 min + au boot).
+  // Salons BR en sequestre sans issue (30 min + au boot).
   //
-  // Un salon BR ne se lance que si l'arbitre (ou le createur) le lance, et
-  // seulement si les joueurs se sont pointes. Sans balayage, un salon qui
-  // n'a jamais demarre restait `scheduled` POUR TOUJOURS : les joueurs
-  // avaient paye leur pass, et leur argent restait bloque.
+  // Deux etats (C4, audit-2) : programmes jamais lances, ou `live` lances
+  // puis abandonnes par l'arbitre — dans les deux cas les passes des
+  // participants restent bloques, l'argent ne sort jamais, et le salon n'a
+  // ni issue ni signal.
   //
-  // Aucun cron ne s'en occupait : le cron nettoie les matchs, les ligues et
-  // les tournois, pas les salons BR. Et un salon BR n'a pas d'`expiresAt`,
-  // alors qu'un match en a un (14 jours).
+  // Aucun cron ne s'en occupait a l'origine : le cron nettoie les matchs,
+  // les ligues et les tournois, pas les salons BR. Et un salon BR n'a pas
+  // d'`expiresAt`, alors qu'un match en a un (14 jours).
   // 30 min : un salon programme expire 2 h apres son heure : pas urgent.
   setInterval(() => { void sweepStaleBrLobbies(); }, 30 * 60 * 1000);
   setTimeout(() => { void sweepStaleBrLobbies(); }, 90 * 1000);
 
   // Fin de fenetre de confirmation — toutes les 60 s.
-  // Un match en attente dont le delai est depasse est regle AUTOMATIQUEMENT :
-  // sans ce job, un joueur absent gelerait la cagnotte indefiniment. Un
-  // litige ouvert reste gele (c'est l'admin qui tranche via resolve-dispute).
-  let confirmationSweepRunning = false;
-  const sweepExpiredConfirmations = async () => {
-    if (confirmationSweepRunning) return;
-    confirmationSweepRunning = true;
-    try {
-      await withMatchMutex(async () => {
-        const matches = getStateCollection('matches');
-        const expiring = matches.filter(
-          (m) => m.status === 'awaiting_confirmation'
-            && m.confirmationDeadline
-            && new Date(m.confirmationDeadline).getTime() <= Date.now(),
-        );
-        if (expiring.length === 0) return;
-        const outcome = await expireConfirmationsOnServer(matches);
-        if (outcome.settled.length > 0) {
-          await replaceStateCollection('matches', outcome.matches);
-          log.warn('Fenetres de confirmation expirees : gains liberes', {
-            count: outcome.settled.length,
-            failed: outcome.settled.filter((s) => !s.success).map((s) => s.id),
-          });
-        }
-        // Les matchs que le reglement refuse (typiquement : pas d'arbitre)
-        // sont isoles — ils ne bloquent plus les autres. Mais ils doivent
-        // rester VISIBLES : un match qui ne peut pas etre regle est une
-        // cagnotte qui reste gelee, et personne ne doit decouvrir cela en
-        // attendant un retrait.
-        if (outcome.failed.length > 0) {
-          log.error('Reglements refuses a l expiration des confirmations', {
-            count: outcome.failed.length,
-            matches: outcome.failed.map((f) => `${f.id}:${f.code}`),
-          });
-        }
-      });
-    } catch (error) {
-      log.error('Erreur expiration des confirmations', error);
-    } finally {
-      confirmationSweepRunning = false;
-    }
-  };
+  // La fonction est exportee (top-level) pour etre testee directement.
   setInterval(() => { void sweepExpiredConfirmations(); }, 60 * 1000);
   setTimeout(() => { void sweepExpiredConfirmations(); }, 25 * 1000);
 
@@ -766,12 +818,11 @@ export const initCronJobs = () => {
   setInterval(() => { void sweepPendingWithdrawals(); }, 30 * 60 * 1000);
   setTimeout(() => { void sweepPendingWithdrawals(); }, 45 * 1000);
 
-  // Ligues jamais lancees — libere les passes bloques (toutes les 6 h + au boot).
-  // Sans ce sweep, une saison restee 'registering' faute d'avoir atteint
-  // 10 inscrits (le cron de fermeture exige ce seuil) gardait l'entryFee de
-  // chaque inscrit bloque dans lockedEntries indefiniment : le joueur ne
-  // pouvait ni recuperer son argent ni quitter la ligue. C'etait la seule
-  // perte seche du catalogue sans aucun chemin de sortie.
+  // Ligues en sequestre sans issue — libere les passes bloques (toutes les
+  // 6 h + au boot). Deux etats (C4, audit-2) : `registering` jamais fermee
+  // (moins de 10 inscrits, le cron de cloture n'a jamais tranche), et
+  // `qualifying` demarree puis jamais aboutie. Sans ce sweep, l'entryFee de
+  // chaque inscrit restait bloque dans lockedEntries indefiniment.
   let staleLeagueRunning = false;
   const sweepStaleLeagues = async () => {
     if (staleLeagueRunning) return;
@@ -785,11 +836,12 @@ export const initCronJobs = () => {
         let totalRefunded = 0;
         for (const id of staleIds) {
           try {
-            const outcome = await cancelStaleLeagueSeasonOnServer(
-              seasons,
-              id,
-              'Ligue annulee automatiquement : pas assez d inscriptions avant la date de cloture.',
-            );
+            // Motif honnete selon l'etat reel de la saison.
+            const cible = seasons.find((s) => s.id === id);
+            const raison = cible?.status === 'qualifying'
+              ? 'Ligue annulee automatiquement : qualification abandonnee par les organisateurs.'
+              : 'Ligue annulee automatiquement : pas assez d inscriptions avant la date de cloture.';
+            const outcome = await cancelStaleLeagueSeasonOnServer(seasons, id, raison);
             seasons = outcome.seasons;
             totalRefunded += outcome.refunded;
           } catch (error) {

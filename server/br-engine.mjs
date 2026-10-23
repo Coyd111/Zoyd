@@ -1058,16 +1058,21 @@ export const retryPendingBrSettlements = async (lobbies, options = {}) => {
 export const BR_STALE_LOBBY_GRACE_MS = 2 * 60 * 60 * 1000;
 
 /**
- * Les salons programmes dont l'heure est depassee et qui n'ont jamais ete
- * lances.
+ * Les salons BR en sequestre sans issue, par balayage du cron.
  *
- * Un salon BR ne se lance que si l'arbitre (ou le createur) le lance, et
- * seulement si les joueurs se sont pointes. Si ce lancement n'a jamais lieu,
- * le salon reste `scheduled` — et les passes restent bloques.
+ * Deux formes de peremption, meme grace :
+ *   - `scheduled`  : l'heure de lancement est depassee et le salon n'a
+ *     jamais ete lance (pas de `startedAt`) ;
+ *   - `live`       : l'arbitre a LANCE la partie (passes bloques, `pot`
+ *     valorises) puis a disparu — deconnexion, absence, abandon. Sans
+ *     balayage, personne n'appelle jamais `finish` : la cagnotte reste
+ *     sequestree pour toujours, le salon n'etant ni `live` ni `regle` ni
+ *     `annule` (C4, audit-2).
  *
- * Aucun balayage ne s'en occupait : le cron nettoie les matchs, les ligues et
- * les tournois, pas les salons BR. Un salon BR n'a pas d'`expiresAt` non plus,
- * alors qu'un match en a un (14 jours).
+ * La grace `BR_STALE_LOBBY_GRACE_MS` (2 h) est la meme que la phase B des
+ * matchs 1v1-5v5 (`ARBITER_DEADLINE_PHASE_B_MS` : lancement -> resultat) :
+ * un arbitre absent depuis 2 h sur une partie lancee est deja une absence,
+ * pas un match qui dure.
  *
  * @param {Array} lobbies
  * @param {number} [nowMs]
@@ -1076,23 +1081,31 @@ export const BR_STALE_LOBBY_GRACE_MS = 2 * 60 * 60 * 1000;
 export const getStaleBrLobbyIds = (lobbies, nowMs = Date.now()) =>
   (lobbies || [])
     .filter((lobby) => {
-      if (!lobby || lobby.status !== 'scheduled') return false;
-      if (!lobby.scheduledAt) return false;
-      const programme = Date.parse(lobby.scheduledAt);
-      if (!Number.isFinite(programme)) return false;
-      return nowMs - programme > BR_STALE_LOBBY_GRACE_MS;
+      if (!lobby || (lobby.status !== 'scheduled' && lobby.status !== 'live')) return false;
+      // `scheduled` : l'heure programme ; `live` : l'heure de lancement.
+      const reference = lobby.status === 'live' ? lobby.startedAt : lobby.scheduledAt;
+      if (!reference) return false;
+      const horodatage = Date.parse(reference);
+      if (!Number.isFinite(horodatage)) return false;
+      return nowMs - horodatage > BR_STALE_LOBBY_GRACE_MS;
     })
     .map((lobby) => lobby.id);
 
 /**
- * Annule un salon BR programme et jamais lance, et rembourse chaque joueur.
+ * Annule un salon BR en sequestre sans issue, et rembourse chaque joueur.
+ *
+ * Deux etats acceptes :
+ *   - `scheduled` : jamais lance (`NEVER_STARTED`) ;
+ *   - `live`      : lance puis abandonne par l'arbitre (`ARBITER_TIMEOUT`,
+ *     meme vocabulaire que le balayage d'arbitrage des matchs).
  *
  * Le remboursement, pas le blocage : un joueur dont le salon n'a jamais demarre
- * veut son argent, pas un salon defunct dans son historique.
+ * ou ne finira jamais veut son argent, pas un salon defunct dans son historique.
  *
- * Si un remboursement echoue, le salon n'est PAS clos : il reste `scheduled`,
- * donc le balayage suivant le reprendra. C'est la meme discipline que le
- * balayage d'arbitrage : on ne clot pas une dette qu'on n'a pas honoree.
+ * Si un remboursement echoue, le salon n'est PAS clos : il reste dans son
+ * etat courant, donc le balayage suivant le reprendra. C'est la meme
+ * discipline que le balayage d'arbitrage : on ne clot pas une dette qu'on
+ * n'a pas honoree.
  *
  * @param {Array} lobbies
  * @param {string} lobbyId
@@ -1102,9 +1115,11 @@ export const cancelStaleBrLobbyOnServer = async (lobbies, lobbyId) => {
   const nextLobbies = cloneLobbies(lobbies || []);
   const lobby = findLobby(nextLobbies, lobbyId);
   if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
-  if (lobby.status !== 'scheduled') {
+  if (lobby.status !== 'scheduled' && lobby.status !== 'live') {
     return { lobbies: nextLobbies, cancelled: false, refunded: 0, errors: [] };
   }
+  const jamaisLance = lobby.status === 'scheduled';
+  const raison = jamaisLance ? 'NEVER_STARTED' : 'ARBITER_TIMEOUT';
 
   const errors = [];
   let refunded = 0;
@@ -1115,7 +1130,9 @@ export const cancelStaleBrLobbyOnServer = async (lobbies, lobbyId) => {
         await refundLockedEntry(
           player.userId,
           lobby.id,
-          `Salon BR annule (jamais lance) ${lobby.name}`,
+          jamaisLance
+            ? `Salon BR annule (jamais lance) ${lobby.name}`
+            : `Salon BR annule (arbitre absent) ${lobby.name}`,
         );
       });
       player.settled = true;
@@ -1135,13 +1152,13 @@ export const cancelStaleBrLobbyOnServer = async (lobbies, lobbyId) => {
   lobby.status = 'cancelled';
   lobby.finishedAt = getNow();
   lobby.updatedAt = lobby.finishedAt;
-  lobby.cancellationReason = 'NEVER_STARTED';
+  lobby.cancellationReason = raison;
   return { lobbies: nextLobbies, cancelled: true, refunded, errors };
 };
 
 /**
- * Nombre de salons BR programmes dont l'heure est depassee sans avoir jamais
- * ete lances.
+ * Nombre de salons BR en sequestre sans issue : programmes jamais lances, ou
+ * `live` abandonnee par l'arbitre.
  * @param {Array} lobbies
  * @param {number} [nowMs]
  * @returns {number}

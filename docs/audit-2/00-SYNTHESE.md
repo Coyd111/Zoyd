@@ -94,8 +94,8 @@ suivis.
 | ID | Constat | Impact |
 |---|---|---|
 | **C2** | Le cron de règlement BR ne prend **aucun** verrou (`cron.mjs:377-405`) | Il réécrit toute la collection et **supprime** les salons absents de son instantané → salon disparu, passes gelées. Contredit l'invariant du fichier lui-même. **CORRIGÉ le 23/10/2026** (verrou par salon + écriture par entité). |
-| **C3** | Match `disputed` + `payoutDistributed:'pending'` (`match-engine.mjs:1311-1318`) | Les deux filtres de reprise sont disjoints → reprise par **aucun** cron, part de cagnotte gelée, invisible dans `/api/health`. |
-| **C4** | États « en cours » jamais repris : salon BR `live`, tournoi `live`, ligue `qualifying` | Aucun balayage de péremption (l'équivalent existe pour les matchs) → passes gelées à jamais. |
+| **C3** | Match `disputed` + `payoutDistributed:'pending'` (`match-engine.mjs:1311-1318`) | Les deux filtres de reprise sont disjoints → reprise par **aucun** cron, part de cagnotte gelée, invisible dans `/api/health`. **CORRIGÉ le 23/10/2026** (échec de règlement → `awaiting_confirmation` sans deadline + filtre du job élargi aux litiges clos ; reprise testée). |
+| **C4** | États « en cours » jamais repris : salon BR `live`, tournoi `live`, ligue `qualifying` | Aucun balayage de péremption (l'équivalent existe pour les matchs) → passes gelées à jamais. **CORRIGÉ le 23/10/2026** (les trois balayages existants élargis, aucun nouveau job, annulations remboursantes sous leurs verrous respectifs). |
 
 ### 2.4 Front
 
@@ -149,7 +149,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 1 | **F1** — remonter les `useState` | Une page publique qui casse toute l'application. Visible par n'importe qui, en une URL. |
 | 2 | **A1 + A2 + A3** — job de réconciliation, clé d'idempotence, marquage — **LIVRÉ le 23/10/2026** (avec les deux défauts latents de la file de réconciliation) | De l'argent réellement perdu ou versé deux fois. A1 et A3 sont liés : livrer A3 avec A1 armerait la double remise. |
 | 3 | **C1 + C2** — écriture BR dans le verrou, cron BR sous verrou — **LIVRÉ le 23/10/2026** (double étage : verrou + écriture par entité, avec isolation par salon des jobs d'annulation) ; l'option structurelle recommandée par l'audit a été appliquée | Réinteressions : je les ai introduites ou laissées en partie. |
-| 4 | **C3 + C4** — reprise des états `disputed`/`live`/`qualifying` | Cagnottes gelées sans qu'aucun cron ne les reprenne. |
+| 4 | **C3 + C4** — reprise des états `disputed`/`live`/`qualifying` — **LIVRÉ le 23/10/2026** (C3 : échec de règlement de litige → dette reprise ; C4 : les trois balayages élargis aux états abandonnés, aucun nouveau job) | Cagnottes gelées sans qu'aucun cron ne les reprenne. |
 | 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |
 | 6 | **M1** — recopier `projectedPayouts` dans le store | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |
 | 7 | **M2, M3, M4, M5** — dérives front/serveur | `/br-league` cassée, montants affichés faux. |

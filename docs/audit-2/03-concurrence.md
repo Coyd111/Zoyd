@@ -38,8 +38,8 @@ explicitement marqué **NON VÉRIFIÉ** (§ 6).
 |----|-----------|--------|------------------------|
 | C1 | **Haute** — CORRIGÉ | BR — l'écriture de la collection sort du verrou par salon : inscription perdue, **pass gelé** | `server/routes/br.mjs:239` |
 | C2 | **Haute** — CORRIGÉ | BR — le cron de reprise des règlements ne prend **aucun** verrou : il peut supprimer un salon et ses passes | `server/cron.mjs:377-405` |
-| C3 | **Haute** | Match — `disputed` + `payoutDistributed:'pending'` : repris par **aucun** cron → part de cagnotte gelée | `server/match-engine.mjs:1311-1318` |
-| C4 | **Haute** | Salons BR, tournois et ligues « en cours » : **aucun** balayage de péremption → passes gelées à jamais | `server/br-engine.mjs:1076`, `server/tournament-engine.mjs:1212`, `server/league-engine.mjs:881` |
+| C3 | **Haute** — CORRIGÉ | Match — `disputed` + `payoutDistributed:'pending'` : repris par **aucun** cron → part de cagnotte gelée | `server/match-engine.mjs:1311-1318` |
+| C4 | **Haute** — CORRIGÉ | Salons BR, tournois et ligues « en cours » : **aucun** balayage de péremption → passes gelées à jamais | `server/br-engine.mjs:1076`, `server/tournament-engine.mjs:1212`, `server/league-engine.mjs:881` |
 | C5 | **Moyenne** | BR — la création de salon est hors de tout verrou : un salon peut disparaître | `server/routes/br.mjs:114-145` |
 | C6 | **Moyenne** | `updatePasswordHash` écrit un `payload` capturé **avant** la lecture de la révision → perte d'écriture d'argent | `server/persistence.mjs:2340-2384` |
 | C7 | **Moyenne** | `/api/health` ne compte pas les dettes de règlement des matchs : une cagnotte gelée est invisible | `server/persistence.mjs:3603-3614` |
@@ -358,6 +358,33 @@ l'incohérence entre les deux chemins qui est en cause.
   `payoutDistributed === 'pending' && (!confirmationDeadline || status ===
   'disputed')`.
 
+**Correctif (23/10/2026)** — appliqué tel que recommandé, en trois couches :
+
+1. `resolveDisputeOnServer` (`server/match-engine.mjs`) : en échec de
+   règlement, `status = 'awaiting_confirmation'` **et**
+   `confirmationDeadline = null`. Le match n'a plus de contestation à
+   trancher : deadline nulle le place immédiatement dans le radar de
+   `sweepPendingSettlements` (tick 60 s).
+2. `settlePendingMatchResult` : la clôture des règlements payés couvre
+   maintenant les deux statuts de dette — `disputed` **et**
+   `awaiting_confirmation` — et remet `confirmationDeadline` à null sur le
+   succès. En filigrane : un règlement réussi par la reprise laissait avant
+   ce correctif un match `awaiting_confirmation` alors que les gains étaient
+   versés — état trompeur que la même clôture corrige au passage.
+3. `sweepPendingSettlements` (exportée top-level, comme les deux jobs BR, pour
+   le test de câblage `server/match-recovery-wiring.test.mjs`) : le filtre
+   vise deux vagues — `'pending'` sans deadline **et** sans litige ouvert, OU
+   `'pending'` + `disputed` à litige clos. La garde litige ouvert est doublée
+   par celle du moteur (`settlePendingMatchResult` refuse un litige ouvert) ;
+   un match contesté en cours ne peut donc jamais être payé derrière le dos
+   de son perdant.
+   Tests : `server/dispute-settlement-recovery.test.mjs` (échec partiel →
+   radar de reprise, reprise → match fini entièrement payé, voie nominale
+   inchangée, litige ouvert toujours gelé) et
+   `server/match-recovery-wiring.test.mjs` (choix des cibles, écriture avec
+   le résultat du moteur, échec isolé, garde anti-chevauchement, fenêtres
+   expirées). Suite complète : 951 pass / 2 skip.
+
 ---
 
 ### C4 — Salons BR, tournois et ligues « en cours » : aucun balayage de péremption
@@ -405,6 +432,40 @@ collections, sur le modèle de `sweepMatchesWithoutArbiter` :
 - tournoi : `status === 'live' && now - startsAt > grâce` → annulation +
   `pendingRefunds` (leRefund existe déjà : `retryPendingTournamentRefunds`) ;
 - ligue : `status === 'qualifying' && now - qualifyingStarts > grâce` → idem.
+
+**Correctif (23/10/2026)** — appliqué **sans créer un seul nouveau job** : les
+trois balayages existants sont élargis aux états manquants, dans le même
+verrou et avec la même discipline « remboursement d'abord, clôture ensuite ».
+
+| Collection | Balayage élargi | Nouvelle cible | Grâce | Annulation |
+|---|---|---|---|---|
+| `brLobbies` | `getStaleBrLobbyIds` (`server/br-engine.mjs`) | `status === 'live' && startedAt` dépassée | `BR_STALE_LOBBY_GRACE_MS` (2 h, la même que la phase B des matchs 1v1-5v5) | `cancelStaleBrLobbyOnServer` accepte `scheduled` et `live`, motif `ARBITER_TIMEOUT` (mêmes mots que le balayage d'arbitrage) |
+| `tournaments` | `getExpiredTournamentIds` (`server/tournament-engine.mjs`) | `status === 'live' && startsAt` dépassée | 24 h (la même que `recruiting`) | `cancelStaleTournamentOnServer` accepte `recruiting` et `live` |
+| `leagues` | `getStaleLeagueSeasonIds` (`server/league-engine.mjs`) | `status === 'qualifying' && schedule.qualifyingStarts` dépassée | `LEAGUE_QUALIFYING_STALE_GRACE_MS` (7 jours, une qualification normale tient sa journée par jour) | `cancelStaleLeagueSeasonOnServer` accepte `registering` et `qualifying` |
+
+Trois points de sécurité qui ont guidé les choix :
+
+1. **Tournoi `live` : versé nul part avant la fin.** Les gains ne partent
+   qu'en `completed` (`applyTournamentSettlement` refuse tout autre statut) :
+   annuler un `live` n'a donc jamais de double paiement possible — les
+   `entryFee × teamSize` sont intégralement séquestrés.
+2. **Le cron passe un motif honnête.** Le sweep tournoi/ligue choisit le
+   texte d'annulation selon l'état réel du tournoi / de la saison (« pas
+   assez d'inscriptions » ≠ « lancé puis jamais terminé ») ; le salon BR
+   signe lui-même son motif dans `cancelStaleBrLobbyOnServer`.
+3. **Refus d'annulation pour les états en cours de traitement.** Un salon BR
+   en `settling` n'est pas péremptible : il appartient au job de reprise des
+   règlements (le confondre couperait la reprise en deux). De même, un
+   tournoi ou une saison close (`completed`, `final`) n'est jamais annulable
+   par ce chemin.
+
+Tests : `server/br-stale-lobby.test.mjs` (live récent épargné, live sans
+`startedAt` épargné, live abandonné repris et remboursé, échec non-clôture),
+`server/tournament-engine.test.mjs` (getter live/grâce/clos, annulation live
+rembourse tout, tournoi terminé refusé), `server/league-engine.test.mjs`
+(qualification ancienne oui / récente non / sans horloge non, annulation
+qualifying rembourse les inscrits), plus le harnais cron existant
+(`br-write-inside-lock.test.mjs`) qui continue de couvrir le câblage BR.
 
 ---
 
@@ -737,10 +798,10 @@ ouvert ; `withUserMutex` n'est pas pris par `updatePasswordHash` (C6).
 | `leagueClose` | 1 h | `leagues` | `withLeagueMutex` | `leagueCloseRunning` |
 | nettoyage mémoire | 1 h | — | — | — (synchrone) |
 | `runIntegrityCheck` | 1 h (+30 s) | — (lecture) | — | `integrityRunning` |
-| `tournamentSweep` | 6 h | `tournaments` | `withTournamentMutex` | `tournamentSweepRunning` |
-| `sweepPendingSettlements` | 60 s (+15 s) | `matches` | `withMatchMutex` | `pendingSettlementRunning` |
+| `tournamentSweep` | 6 h | `tournaments` | `withTournamentMutex` | `tournamentSweepRunning` — cible aussi les tournois `live` abandonnés (C4) |
+| `sweepPendingSettlements` | 60 s (+15 s) | `matches` | `withMatchMutex` | `pendingSettlementRunning` — vise aussi les litiges clos restés `disputed` (C3) |
 | `sweepPendingArbiterFees` | 30 min (+45 s) | `matches` | `withMatchMutex` | `arbiterFeeRetryRunning` |
-| **`sweepPendingBrSettlements`** | 5 min (+60 s) | `brLobbies` | **AUCUN** | `brSettlementRetryRunning` |
+| **`sweepPendingBrSettlements`** | 5 min (+60 s) | `brLobbies` | `withBrLobbyMutex` (par salon — **Correctif C2 appliqué le 23/10/2026**, l'écriture passe par `saveBrLobbies` par entité) | `brSettlementRetryRunning` |
 | `sweepStaleBrLobbies` | 30 min (+90 s) | `brLobbies` | `withBrLobbyMutex` (par salon) | `staleBrLobbyRunning` |
 | `sweepExpiredConfirmations` | 60 s (+25 s) | `matches` | `withMatchMutex` | `confirmationSweepRunning` |
 | `sweepPendingRefunds` | 6 h (+20 s) | `tournaments` | `withTournamentMutex` | `refundRetryRunning` |
@@ -751,8 +812,11 @@ ouvert ; `withUserMutex` n'est pas pris par `updatePasswordHash` (C6).
 | `sweepPendingLeagueRefunds` | 6 h (+24 s) | `leagues` | `withLeagueMutex` | `leagueRefundRetryRunning` |
 | tick d'automatisation | 30 s | `matches` | `withMatchMutex` | `matchAutomationRunning` |
 
-Les 16 jobs + le tick sont guarded. **Un seul job n'a pas le même verrou que
-sa route** : `sweepPendingBrSettlements` (C2).
+Les 16 jobs + le tick sont guarded. Depuis le Correctif C2 (23/10/2026),
+**tous prennent le même verrou que leur route** — plus aucun écart. Les
+cibles élargies du Correctif C4 ne changent ni le nombre de jobs ni leurs
+verrous : `sweepStaleBrLobbies` annule aussi les salons `live` abandonnés,
+`sweepStaleLeagues` les saisons `qualifying` abandonnées.
 
 ---
 

@@ -1052,12 +1052,18 @@ export const settlePendingMatchResult = async (matches, matchId) => {
 
   const settlementResult = await applyResultSettlement(match, match.result);
   match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
-  // La reprise peut solder un match que l'echec avait laisse en `disputed`.
-  // Sans cette cloture, il resterait `disputed` alors que tous les joueurs
-  // seraient payes : un etat qui ment sur la realite economique du match.
-  if (settlementResult.success && match.status === 'disputed') {
+  // La cloture doit couvrir les DEUX etats que le balayage peut rencontrer :
+  //   - `disputed`   : litige clos par l'admin, reglement passe en echec puis
+  //     repris ici (C3) ;
+  //   - `awaiting_confirmation` : remonte dans cet etat par la meme reparation
+  //     (deadline cassee pour etre repris), regle ici.
+  // Sans cette cloture, un match entierement paye resterait dans un statut
+  // ouvert : mentir sur la realite economique du match.
+  if (settlementResult.success
+    && (match.status === 'disputed' || match.status === 'awaiting_confirmation')) {
     match.status = 'finished';
     match.finishedAt = match.finishedAt || getNow();
+    match.confirmationDeadline = null;
   }
   return { matches: nextMatches, match, success: settlementResult.success };
 };
@@ -1311,9 +1317,28 @@ export const resolveDisputeOnServer = async (matches, actor, matchId, resolution
   if (action === 'settle' && match.result) {
     const settlementResult = await applyResultSettlement(match, match.result);
     match.result.payoutDistributed = payoutFlagAfterSettlement(settlementResult);
-    match.status = settlementResult.success ? 'finished' : 'disputed';
     if (settlementResult.success) {
+      match.status = 'finished';
       match.finishedAt = getNow();
+      match.confirmationDeadline = null;
+    } else {
+      // C3 — Echec PARTIEL : JAMAIS repris.
+      //
+      // `resolveOpenDisputes` a deja marque les contestations `resolved` :
+      // le match n'a plus de litige, il a une DETTE. Avant ce correctif,
+      // l'echec repassait le match en `disputed` en conservant
+      // `confirmationDeadline` — et cet etat etait invisible des quatre
+      // filtres de reprise : `sweepPendingSettlements` exige l'absence de
+      // deadline, `sweepExpiredConfirmations` exige
+      // `awaiting_confirmation`, l'automation saute `disputed`. La part
+      // non payee restait en sequestre pour toujours.
+      //
+      // On le remonte donc en `awaiting_confirmation` SANS fenetre (un
+      // litige clos n'a plus rien a confirmer) : deadline nulle place le
+      // match dans le radar de `sweepPendingSettlements`, et la voie du
+      // precedent `confirmMatchResultOnServer` — exactement ce que fait
+      // ce chemin quand le reglement passe en echec.
+      match.status = 'awaiting_confirmation';
       match.confirmationDeadline = null;
     }
   } else if (action === 'refund') {

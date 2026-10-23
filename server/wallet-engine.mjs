@@ -21,6 +21,13 @@
  *   de payer deux fois.
  * INVARIANT : la cle de gain est ecrite DANS le portefeuille : elle doit
  *   etre persistee avec lui, sinon la protection disparait au redemarrage.
+ * INVARIANT : `refundPendingWithdrawals` passe par `refundRejectedWithdrawal`,
+ *   IDEMPOTENT sur une trace `refund:` inscrite dans le portefeuille :
+ *   reconciliations successives ne crediteront JAMAIS deux fois.
+ * INVARIANT : dans la reconciliation, le remboursement PRECEDE le tag :
+ *   un contenu idempotent avant une trace fermant la dette. L'ordre inverse
+ *   perdait le remboursement si l'ecriture du remboursement echouait apres
+ *   un tag reussi.
  * PIEGE : l'historique est plafonne a 200 entrees : une cle stockee
  *   uniquement dans l'historique finit par disparaitre (d'ou `winningsKeys`
  *   et la liste dediee `payoutsEnAttente`).
@@ -41,7 +48,7 @@
  */
 
 import crypto from 'node:crypto';
-import { getWalletSnapshot, updateWalletSnapshot, hasSettledWinningsKey, trackWinningsKey } from './persistence.mjs';
+import { getWalletSnapshot, updateWalletSnapshot, hasSettledWinningsKey, trackWinningsKey, untrackWinningsKey } from './persistence.mjs';
 
 const MIN_WITHDRAWAL_ZC = 150;
 const WITHDRAWAL_FEE_RATE = 0.02;
@@ -172,6 +179,89 @@ return (await updateWalletSnapshot(userId, (wallet) => {
       }
     );
   })).wallet;
+};
+
+/**
+ * Rembourse un retrait REFUSE par le prestataire, de facon IDEMPOTENTE.
+ *
+ * La reconciliation des retraits traverse plusieurs cycles : une remise
+ * `pending_review` relue au cycle suivant PEUT repartir pour un second
+ * remboursement si seule la trace « remboursement effectue » manquait. Le
+ * raw `depositToWallet` n'a AUCUNE trace : on creditait deux fois.
+ *
+ * La trace est la meme que celle des gains : la cle vit DANS le portefeuille
+ * (`winningsKeys`, donc persistee avec lui) ET dans l'index memoire. C'est le
+ * seul endroit qui credite ET trace en meme temps, dans une seule ecriture.
+ *
+ * NOMENCLATURE : la cle doit etre derivee de cote appelant (`refund:` +
+ * cle d'idempotence du retrait, ou `refund:payout:` + payoutId). Elle partage
+ * l'espace des gains sans jamais entrer en collision : deux formats distincts.
+ *
+ * @param {string} userId - ID du joueur
+ * @param {number} montant - Montant a CREDITER (positif, jamais le negatif de l'historique)
+ * @param {string} refundKey - Cle d'idempotence du REMBOURSEMENT (pas du retrait)
+ * @param {object} [context] - { description, metadata } surchargeables
+ * @returns {Promise<object>} Portefeuille mis a jour
+ */
+export const refundRejectedWithdrawal = async (userId, montant, refundKey, context = {}) => {
+  const safeAmount = roundAmount(montant);
+  if (safeAmount <= 0) {
+    throw makeError('INVALID_AMOUNT', 'Le montant du remboursement est invalide.');
+  }
+  if (!refundKey) {
+    throw makeError('REFUND_KEY_REQUIRED', 'Remboursement sans cle d idempotence : refuse pour eviter un double credit.');
+  }
+
+  const description = context.description || 'Remboursement - retrait rejete par le prestataire';
+  const metadata = { reason: 'PAYOUT_REJECTED', winningsKey: refundKey, ...(context.metadata || {}) };
+
+  // Meme piege que `releaseWalletWinnings` : l'updater peut etre REEXECUTE par
+  // la boucle OCC. La decision « deja rembourse ? » est donc figee au premier
+  // passage — sinon la trace inscrite par CE MEME appel ferait croire le cycle
+  // suivant a un remboursement deja fait, et le joueur ne toucherait JAMAIS
+  // son argent.
+  let dejaRembourse = null;
+  try {
+    const result = await updateWalletSnapshot(userId, (wallet) => {
+      if (dejaRembourse === null) {
+        dejaRembourse = hasSettledWinningsKey(userId, refundKey, wallet);
+      }
+      if (dejaRembourse) {
+        // Deja credite : on rend le portefeuille intact. Ce n'est ni une
+        // erreur ni un echec : c'est la preuve que l argent a deja ete remis,
+        // utilisable par le cycle de reconciliation pour aller taguer.
+        return wallet;
+      }
+
+      // La trace est inscrite DANS le portefeuille, donc ecrite avec lui ;
+      // l'index memoire est alimente dans la foullee, avant l ecriture, pour
+      // qu un echec ulterieur ne laisse pas la porte ouverte a un double
+      // credit dans un cycle concurrent.
+      trackWinningsKey(userId, refundKey);
+
+      return withTransaction(
+        {
+          ...wallet,
+          cashBalance: roundAmount(wallet.cashBalance + safeAmount),
+          winningsKeys: [...(Array.isArray(wallet.winningsKeys) ? wallet.winningsKeys : []), refundKey],
+        },
+        {
+          type: 'refund',
+          amount: safeAmount,
+          description,
+          status: 'completed',
+          metadata,
+        }
+      );
+    });
+    return result.wallet;
+  } catch (error) {
+    // L'ecriture a echoue : la cle inscrite en memoire designe un credit qui
+    // n'a PAS eu lieu. On la retire, sinon le cycle suivant croirait avoir
+    // rembourse, ferait la dette comme close, et le joueur resterait debite.
+    untrackWinningsKey(userId, refundKey);
+    throw error;
+  }
 };
 
 /**
@@ -405,48 +495,61 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
   // deux fois, et l'ecart passait inapercu — aucun invariant ne compare le
   // solde au journal.
   const idempotencyKey = options.idempotencyKey || `${type}:${matchId}`;
-  return (await updateWalletSnapshot(userId, (wallet) => {
-    // La garde s'appuie sur `wallet.winningsKeys`, qui vit dans le payload du
-    // compte : ni plafonne comme l'historique, ni perdu au redemarrage.
-    const dejaVerse = hasSettledWinningsKey(userId, idempotencyKey, wallet);
-    if (dejaVerse) {
-      // Versement deja effectue : on rend le portefeuille intact. Rethrow
-      // n'est pas une option : l'appelant (reglement BR, ligue, tournoi)
-      // compterait cet etape comme traitee.
-      return wallet;
-    }
-    const reservation = wallet.lockedEntries?.[matchId];
-    const releasedAmount = reservation?.amount ?? 0;
-    const nextLockedEntries = { ...wallet.lockedEntries };
-    if (reservation) {
-      delete nextLockedEntries[matchId];
-    }
-    // La mise bonus du gagnant ne doit pas devenir du cash retirable :
-    // on la rend en bonus, le reste du gain part en cash.
-    const stakeBonus = roundAmount(reservation?.bonusAmount || 0);
-    const bonusRestore = Math.min(stakeBonus, safeAmount);
-const cashCredit = roundAmount(safeAmount - bonusRestore);
+  // La decision « est-ce deja verse ? » est PRISE UNE SEULE FOIS, au premier
+  // passage de l'updater, avant d'alimenter l'index.
+  //
+  // L updater peut etre REEXECUTE par la boucle OCC : au second passage, il
+  // reverifiait l index — que CE MEME appel venait d alimenter — et croyait
+  // le versement deja fait. Il rendait alors le portefeuille intact : l argent
+  // ne partait JAMAIS, et la reprise de la creance closait la dette. Le joueur
+  // perdait sa prime et gardait son pass bloque.
+  //
+  // La decision est donc figee au premier passage, sur le portefeuille le plus
+  // frais, et reutilisee telle quelle si l OCC rejoue l updater.
+  let dejaVerse = null;
+  try {
+    return (await updateWalletSnapshot(userId, (wallet) => {
+      if (dejaVerse === null) {
+        dejaVerse = hasSettledWinningsKey(userId, idempotencyKey, wallet);
+      }
+      if (dejaVerse) {
+        // Versement deja effectue : on rend le portefeuille intact. Rethrow
+        // n'est pas une option : l'appelant (reglement BR, ligue, tournoi)
+        // compterait cet etape comme traitee.
+        return wallet;
+      }
+      const reservation = wallet.lockedEntries?.[matchId];
+      const releasedAmount = reservation?.amount ?? 0;
+      const nextLockedEntries = { ...wallet.lockedEntries };
+      if (reservation) {
+        delete nextLockedEntries[matchId];
+      }
+      // La mise bonus du gagnant ne doit pas devenir du cash retirable :
+      // on la rend en bonus, le reste du gain part en cash.
+      const stakeBonus = roundAmount(reservation?.bonusAmount || 0);
+      const bonusRestore = Math.min(stakeBonus, safeAmount);
+      const cashCredit = roundAmount(safeAmount - bonusRestore);
 
       // La cle est inscrite DANS le portefeuille, donc ecriture en base avec
-      // lui : c est ce qui la fait survivre a un redemarrage. L index memoire
+      // lui : c'est ce qui la fait survivre a un redemarrage. L index memoire
       // est alimente dans la foullee, avant l ecriture, pour qu un echec
       // ulterieur ne laisse pas la porte ouverte.
       trackWinningsKey(userId, idempotencyKey);
 
       return withTransaction(
-      {
-        ...wallet,
-        cashBalance: roundAmount(wallet.cashBalance + cashCredit),
-        bonusBalance: roundAmount(wallet.bonusBalance + bonusRestore),
-        lockedBalance: roundAmount(Math.max(0, wallet.lockedBalance - releasedAmount)),
-        lockedEntries: nextLockedEntries,
-        winningsKeys: [...(Array.isArray(wallet.winningsKeys) ? wallet.winningsKeys : []), idempotencyKey],
-      },
-      {
-        type,
-        amount: safeAmount,
-        description: description || (type === 'arbitration_fee' ? `Commission arbitre ${matchId}` : `Gain ${matchId}`),
-status: 'completed',
+        {
+          ...wallet,
+          cashBalance: roundAmount(wallet.cashBalance + cashCredit),
+          bonusBalance: roundAmount(wallet.bonusBalance + bonusRestore),
+          lockedBalance: roundAmount(Math.max(0, wallet.lockedBalance - releasedAmount)),
+          lockedEntries: nextLockedEntries,
+          winningsKeys: [...(Array.isArray(wallet.winningsKeys) ? wallet.winningsKeys : []), idempotencyKey],
+        },
+        {
+          type,
+          amount: safeAmount,
+          description: description || (type === 'arbitration_fee' ? `Commission arbitre ${matchId}` : `Gain ${matchId}`),
+          status: 'completed',
           matchId,
           // La cle est stockee AVEC la transaction : c'est elle qui permet a
           // `hydrateWinningsKeys` de reconstruire l'index apres un redemarrage,
@@ -454,7 +557,15 @@ status: 'completed',
           metadata: { cashCredit, bonusRestore, winningsKey: idempotencyKey },
         }
       );
-  })).wallet;
+    }));
+  } catch (error) {
+    // L ecriture a echoue : la cle inscrite en memoire designe un versement
+    // qui n a pas eu lieu. On la retire, sinon la reprise croirait avoir verse,
+    // closerait la dette, et le joueur garderait son pass bloque pour une
+    // prime jamais versee.
+    untrackWinningsKey(userId, idempotencyKey);
+    throw error;
+  }
 };
 
 /**
@@ -580,13 +691,34 @@ export const reconcilePendingWithdrawals = async (
         // justice. Les tests existants passaient parce que leurs fixtures
         // portaient un montant positif.
         const montant = item.tx ? Math.abs(Number(item.tx.amount) || 0) : 0;
+
+        // ─── Ordre : remboursement AVANT tag ──────────────────────────────
+        //
+        // Le remboursement va AVANT le tag, parce que le remboursement est
+        // IDEMPOTENT (cote appelant : `refundRejectedWithdrawal` trace la cle
+        // dans le portefeuille), pas parce que c'est le plus intuitif :
+        //
+        // - L'ordre inverse (tag puis remboursement) perdait de l'argent si le
+        //   remboursement echouait APRES un tag reussi : l'entree sortoit de la
+        //   file et la transaction, deja marquee `failed`, n'etait PLUS JAMAIS
+        //   rescannee — remboursement silencieusement perdu.
+        // - Ici, chaque chemin d'echec reconverge : remboursement rate →
+        //   l'entree reste dans la file et est reprise au cycle suivant ;
+        //   tag rate apres remboursement → le cycle suivant relit le payout,
+        //   rejoue le remboursement (trace presente : aucun second credit),
+        //   puis va taguer. Un seul credit final, dans tous les cas.
+        //
+        // La trace accepte un retrait sans cle d'idempotence : `payoutId`
+        // arrive a toutes les sources de la file et est unique par dette.
         if (montant > 0) {
-          await refund(item.userId, montant, { idempotencyKey: item.idempotencyKey });
+          await refund(item.userId, montant, { idempotencyKey: item.idempotencyKey, payoutId: item.payoutId });
         } else {
           warn('Retrait en attente resolu sans transaction : aucun montant a rembourser', {
             userId: item.userId, payoutId: item.payoutId,
           });
         }
+        // Le tag sort l'entree de la file et porte le statut que l'UI lit —
+        // il ferme la dette en dernier, une fois l'argent effectivement rendu.
         await tagTx(item.userId, item.tx?.id || null, { ...marque, payoutStatus: 'failed', status: 'failed' });
         forgetKey(item.userId, item.idempotencyKey);
         refunded += 1;

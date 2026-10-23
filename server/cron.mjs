@@ -52,8 +52,7 @@ import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOn
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbiterFees, retryPendingArbiterFees } from './match-engine.mjs';
 import { countPendingBrSettlements, retryPendingBrSettlements, countStaleBrLobbies, getStaleBrLobbyIds, cancelStaleBrLobbyOnServer } from './br-engine.mjs';
-import { reconcilePendingWithdrawals } from './wallet-engine.mjs';
-import { depositToWallet } from './wallet-engine.mjs';
+import { reconcilePendingWithdrawals, refundRejectedWithdrawal } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 import { getNow } from './utils.mjs';
 
@@ -634,14 +633,33 @@ export const initCronJobs = () => {
         payoutSucceeded,
         payoutFailed,
         retrieveFedaPayPayout,
+        // Le 5e argument est `getWallet`, PAS `listUserIds`. On passait la
+        // liste des identifiants : `getWallet(userId)` renvoyait donc un TABLEAU,
+        // `wallet.payoutsEnAttente` etait toujours undefined, et le job ne
+        // trouvait JAMAIS aucun retrait en attente. C etait un no-op depuis
+        // toujours : les retraits `pending_review` restaient debites, sans
+        // refund ni alerte, et `/api/health` ne comptait pas ces dettes.
         () => listUserIds(),
-        () => listUserIds(),
+        (userId) => getUserById(userId)?.wallet,
         (userId, txId, patch) => tagWalletTransaction(userId, txId, patch),
-        (userId, amount, extra) => depositToWallet(userId, amount, 'Remboursement', {
-          type: 'refund',
-          description: 'Remboursement - retrait rejete par le prestataire',
-          metadata: { reason: 'PAYOUT_REJECTED', ...(extra || {}) },
-        }),
+        // (was: `depositToWallet` nu, sans trace). Le remboursement passe par
+        // un chemin IDEMPOTENT : la cle est tracee DANS le portefeuille au
+        // moment du credit, dans la meme ecriture. Si le tag d'echec tombe
+        // apres le remboursement, le cycle suivant rejoue ce callback — et la
+        // trace present rend le rejeu SANS effet sur le solde.
+        (userId, amount, extra) => refundRejectedWithdrawal(
+          userId, amount,
+          // Cle STABLE pour la meme dette, dans tous les cycles :
+          // derivee de la cle d'idempotence du retrait quand elle existe,
+          // du `payoutId` sinon.
+          extra?.idempotencyKey
+            ? `refund:${extra.idempotencyKey}`
+            : (extra?.payoutId != null ? `refund:payout:${extra.payoutId}` : null),
+          {
+            description: 'Remboursement - retrait rejete par le prestataire',
+            metadata: { reason: 'PAYOUT_REJECTED', payoutId: extra?.payoutId ?? null },
+          },
+        ),
         (userId, key) => forgetWithdrawalKey(userId, key),
         (message, detail) => log.warn(message, detail),
       );

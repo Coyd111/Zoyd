@@ -218,6 +218,15 @@ export const normalizeWalletSnapshot = (wallet) => ({
     // cle d'idempotence d'un retrait disparaitrait avec lui. Un rejeu passerait
     // alors le controle et declencherait un second versement.
     withdrawalKeys: Array.isArray(wallet?.withdrawalKeys) ? wallet.withdrawalKeys.slice(-MAX_TRACKED_WITHDRAWAL_KEYS) : [],
+  // La file de reconciliation des retraits « peut-etre partis » doit SUIVRE le
+  // portefeuille dans toute ecriture, et pas seulement les marquages issus de
+  // `tagWalletTransaction`. Le normalisateur ne la copiait pas : un depot, un
+  // retrait ou un gain — n'importe quelle mutation via
+  // `updateWalletSnapshot` — reconstruisait le portefeuille SANS elle, et une
+  // dette encore en attente sortait de la file sans aucun evenement visible.
+  // Elle ne survivaient alors qu'a l'historique, plafonne a 200 : au-dela,
+  // les remboursements attendus disparaissaient a jamais.
+  payoutsEnAttente: Array.isArray(wallet?.payoutsEnAttente) ? wallet.payoutsEnAttente : [],
 });
 
 /**
@@ -1106,7 +1115,8 @@ export const getHealthInfo = () => ({
   // retard est indiscernable d'un probleme : on lisait un log de deploiement
   // d'une version ancienne et on en concluait que le correctif n'etait pas
   // en ligne. Render injecte RENDER_GIT_COMMIT / RENDER_GIT_BRANCH.
-  deployedCommit: process.env.RENDER_GIT_COMMIT || null,  // Dettes de reglement en attente, par moteur.
+  deployedCommit: process.env.RENDER_GIT_COMMIT || null,
+  // Dettes de reglement en attente, par moteur.
   //
   // Elles n'etaient visibles que dans les logs : une dette qui s'eternisait —
   // un gain qui ne se verse plus parce que le compte du joueur est en erreur —
@@ -2030,6 +2040,22 @@ export const trackWinningsKey = (userId, key) => {
   set.add(key);
 };
 
+/**
+ * Retire une cle de l'index des gains.
+ *
+ * Contrepartie de `trackWinningsKey`, pour le cas ou l'ecriture ECHOUE.
+ * Sans elle, l index garde une cle pour un versement qui n a jamais eu lieu :
+ * la reprise croyait avoir verse, la dette se closait, et le pass restait
+ * bloque. Le joueur perdait sa prime ET son argent.
+ *
+ * @param {string} userId
+ * @param {string} key
+ */
+export const untrackWinningsKey = (userId, key) => {
+  if (!key) return;
+  getWinningsKeys(userId).delete(key);
+};
+
 /** Reconstruit l'index des gains depuis les portefeuilles charges. */
 export const hydrateWinningsKeys = () => {
   memoryWinningsKeys.clear();
@@ -2101,15 +2127,21 @@ export const tagWalletTransaction = async (userId, txId, patch) => {
             since: getNow(),
           });
         }
+        // Attache la file au portefeuille au cas ou elle n'existait pas encore :
+        // le `push` ci-dessus ne mute qu'une liste LOCALE dans ce cas.
+        if (user.wallet) user.wallet.payoutsEnAttente = file;
       } else if (statutResultant) {
         // Resolu : la dette sort de la file. Sans ce retrait, elle y resterait
-        // pour toujours, et chaque balayage际 reinterrogerait FedaPay.
+        // pour toujours, et chaque balayage reinterrogerait FedaPay.
+        // NB: `file` reference le tableau ORIGINE — reassigner ce dernier apres
+        // le filtre annulerait le filtre (la dette ne sortirait jamais).
         const payoutId = patch.payoutId || tx?.metadata?.payoutId;
-        user.wallet.payoutsEnAttente = payoutId
-          ? file.filter((p) => p?.payoutId !== payoutId)
-          : file;
+        if (user.wallet) {
+          user.wallet.payoutsEnAttente = payoutId
+            ? file.filter((p) => p?.payoutId !== payoutId)
+            : file;
+        }
       }
-      if (user.wallet) user.wallet.payoutsEnAttente = file;
       return user;
     });
     return tagged;

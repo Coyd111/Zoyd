@@ -71,9 +71,9 @@ suivis.
 
 | ID | Constat | Impact |
 |---|---|---|
-| **A1** | Le job de réconciliation des retraits est un no-op (`cron.mjs:638`) | Tout retrait en `pending_review` reste débité à jamais, sans refund ni alerte. `/api/health` ne compte pas ces dettes. |
-| **A2** | La clé d'idempotence est inscrite en mémoire **avant** l'écriture (`wallet-engine.mjs:434`) ; l'annulation du portefeuille (`persistence.mjs:1769`) ne l'annule pas | Échec d'écriture → le gain n'est jamais versé, la reprise croit avoir réussi, le pass reste bloqué. Un salon BR peut afficher une prime versée qui ne l'est pas. |
-| **A3** | Le remboursement précède le marquage (`wallet-engine.mjs:582`) | Si le marquage échoue, le cycle suivant rembourse une seconde fois. Latent — mais armé par A1. |
+| **A1** | Le job de réconciliation des retraits est un no-op (`cron.mjs:638`) | Tout retrait en `pending_review` reste débité à jamais, sans refund ni alerte. `/api/health` ne compte pas ces dettes. **CORRIGÉ le 23/10/2026.** |
+| **A2** | La clé d'idempotence est inscrite en mémoire **avant** l'écriture (`wallet-engine.mjs:434`) ; l'annulation du portefeuille (`persistence.mjs:1769`) ne l'annule pas | Échec d'écriture → le gain n'est jamais versé, la reprise croit avoir réussi, le pass reste bloqué. Un salon BR peut afficher une prime versée qui ne l'est pas. **CORRIGÉ le 23/10/2026.** |
+| **A3** | Le remboursement précède le marquage (`wallet-engine.mjs:582`) | Si le marquage échoue, le cycle suivant rembourse une seconde fois. Latent — mais armé par A1. **CORRIGÉ le 23/10/2026** (remboursement idempotent ; au passage, deux défauts de la file de réconciliation — écrasée par toute écriture du portefeuille, et filtre annulé par une réassignation — ont été trouvés et corrigés). |
 | **A4** | Les parts BR sont appliquées à `winnersPool` (pot − commission) au lieu du pot, alors que `validateBrPayout` les valide comme fractions du pot | Masse conservée, répartition fausse : le 5ᵉ est surpayé de 4,35 % du pot, les quatre premiers sous-payés. |
 | **A7** | `assignTournamentArbiterOnServer` n'exige aucun rôle | Tout joueur authentifié prend un slot d'arbitre, contrôle le résultat (aucun litige possible en tournoi) et touche 5–10 % du pot. Le BR exige un admin, la ligue aussi — le tournoi non. |
 | **A9** | Les montants réellement versés ne sont jamais écrits | `match.payouts` reste vide : l'export admin et les profils publics sont faux. |
@@ -145,7 +145,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | # | Action | Pourquoi d'abord |
 |---|---|---|
 | 1 | **F1** — remonter les `useState` | Une page publique qui casse toute l'application. Visible par n'importe qui, en une URL. |
-| 2 | **A1 + A2 + A3** — job de réconciliation, clé d'idempotence, marquage | De l'argent réellement perdu ou versé deux fois. A1 et A3 sont liés : livrer A3 avec A1 armerait la double remise. |
+| 2 | **A1 + A2 + A3** — job de réconciliation, clé d'idempotence, marquage — **LIVRÉ le 23/10/2026** (avec les deux défauts latents de la file de réconciliation) | De l'argent réellement perdu ou versé deux fois. A1 et A3 sont liés : livrer A3 avec A1 armerait la double remise. |
 | 3 | **C1 + C2** — écriture BR dans le verrou, cron BR sous verrou | Réinteressions : je les ai introduites ou laissées en partie. |
 | 4 | **C3 + C4** — reprise des états `disputed`/`live`/`qualifying` | Cagnottes gelées sans qu'aucun cron ne les reprenne. |
 | 5 | **S1 + S2 + S3** — TOTP sur les trois routes de résultat | L'admin sans 2FA peut écrire un résultat et l'argent part 30 min après. |

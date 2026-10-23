@@ -23,9 +23,9 @@ Aucun fichier applicatif n'a été modifié.
 
 | ID | Sévérité | Objet | Emplacement principal |
 |----|-----------|-------|------------------------|
-| A1 | **CRITIQUE** | La réconciliation des retraits n'est jamais branchée : le job est un no-op, l'argent des retraits « peut-être partis » reste retenu à jamais | `server/cron.mjs:638` |
-| A2 | **CRITIQUE** | Un échec d'écriture du portefeuille rend un gain définitivement perdu (index mémoire des gains non annulé) | `server/wallet-engine.mjs:434` |
-| A3 | **CRITIQUE** | La réconciliation rembourse deux fois si l'écriture du tag échoue (latent, révélé par la correction de A1) | `server/wallet-engine.mjs:582` |
+| A1 | **CRITIQUE** — CORRIGÉ | La réconciliation des retraits n'est jamais branchée : le job est un no-op, l'argent des retraits « peut-être partis » reste retenu à jamais | `server/cron.mjs:638` |
+| A2 | **CRITIQUE** — CORRIGÉ | Un échec d'écriture du portefeuille rend un gain définitivement perdu (index mémoire des gains non annulé) | `server/wallet-engine.mjs:434` |
+| A3 | **CRITIQUE** — CORRIGÉ | La réconciliation rembourse deux fois si l'écriture du tag échoue (latent, révélé par la correction de A1) | `server/wallet-engine.mjs:582` |
 | A4 | **ÉLEVÉE** | BR : le barème appliqué n'est pas le barème validé et affiché (5e surpayé, 4 premiers sous-payés) | `server/br-engine.mjs:1169` |
 | A5 | **ÉLEVÉE** | Un tournoi à 3 participants ne peut jamais se terminer : les passes restent bloquées à vie | `server/tournament-engine.mjs:365` |
 | A6 | **ÉLEVÉE** | Un tournoi à 2 participants détruit 18 % de la cagnotte (la 3e place n'existe pas) | `server/tournament-engine.mjs:498` |
@@ -37,7 +37,7 @@ Aucun fichier applicatif n'a été modifié.
 | A12 | **MOYENNE** | Le dépôt administrateur n'a pas de clé d'idempotence | `server/routes/wallet.mjs:173` |
 | A13 | **FAIBLE** | `settlementKeys` est plafonné à 500 : au-delà, les statistiques d'un vieux règlement peuvent être réappliquées | `server/persistence.mjs:246` |
 
-**Répartition : 3 Critique, 4 Élevée, 5 Moyenne, 1 Faible.**
+**Répartition : 3 Critique — A1, A2, A3 corrigés —, 4 Élevée, 5 Moyenne, 1 Faible.**
 
 > A1 est une **RÉINTÉRESSION** : `docs/audit-2/03-concurrence.md` §4 liste « Retrait
 > « peut-être parti » | corrigé | `pending_review` + file de réconciliation ».
@@ -120,7 +120,8 @@ if (pending.length === 0) return { resolved: 0, refunded: 0, stillPending: 0 };
 - L'aggravant : `depositToWallet` n'a aucune clé d'idempotence
   (`server/wallet-engine.mjs:149-175`). Le jour où le câblage sera corrigé, le
   défaut A3 devient immédiatement exploitable. Les deux correctifs doivent
-  tomber ensemble.
+  tomber ensemble. (A1 et A3 ont effectivement été corrigés ensemble le
+  23/10/2026 — voir les blocs « Correctif ».)
 
 **Pourquoi les tests ne l'ont pas vu.** `server/withdrawal-reconciliation.test.mjs:52-61`
 teste la fonction **unitairement** avec un `getWallet` correct
@@ -140,6 +141,14 @@ les commissions d'arbitre.
    `pending_review` en base → le remboursement est déclenché), sur le modèle de
    `server/arbiter-fee-wiring.test.mjs`.
 4. Corriger A3 **avant** de ré-activer le job.
+
+**Correctif (23/10/2026).**
+- `server/cron.mjs:643` : le 5ᵉ argument est désormais
+  `(userId) => getUserById(userId)?.wallet` — `payoutsEnAttente` et
+  `transactions` sont de nouveau lus, le balayage fait son travail.
+- Points 2 et 3 **restent à faire** : la dette n'est pas encore exposée sur
+  `/api/health`, et le branchement du cron lui-même n'a toujours pas de test
+  (le moteur, lui, est couvert par `server/withdrawal-refund-idempotence.test.mjs`).
 
 ---
 
@@ -230,6 +239,21 @@ versement ayant réussi).
    contient pas la transaction correspondante, au lieu de renvoyer le
    portefeuille intact.
 
+**Correctif (23/10/2026).**
+- `untrackWinningsKey(userId, key)` est exporté (`server/persistence.mjs`) et
+  appelé dans le `catch` de chaque écriture de versement
+  (`server/wallet-engine.mjs`, `releaseWalletWinnings`) : le rollback mémoire
+  annule désormais aussi l'index.
+- La décision « déjà versé ? » est **figée au premier passage de l'updater**
+  (`let dejaVerse = null` puis garde conditionnelle) : la boucle OCC peut
+  rejouer l'updater sans que la trace inscrite par l'itération précédente
+  fasse croire le versement déjà fait — le piège inverse d'un
+  `hasSettledWinningsKey` réévalué à chaque passage.
+- Couvert par `server/withdrawal-refund-idempotence.test.mjs` (échec d'écriture
+  injecté entre l'updater et l'écriture) et `server/stale-base-write.test.mjs`
+  pour la base. La contrainte UNIQUE en base (point 2) reste une piste pour le
+  multi-instance, non traitée.
+
 ---
 
 ### A3 — CRITIQUE — La réconciliation rembourse deux fois si l'écriture du tag échoue
@@ -278,10 +302,37 @@ doivent être livrés ensemble.
 2. Réordonner : marquer d'abord la transaction `failed` (donc sortir l'entrée
    de `payoutsEnAttente`), puis rembourser ; en cas d'échec du tag, on ne
    rembourse pas (le cycle suivant réessaiera).
-3. Dans tous les cas, ne pascrediter et ne pas marquer « traité » dans la même
+3. Dans tous les cas, ne pas crediter et ne pas marquer « traité » dans la même
    zone non transactionnelle : il faut une seule opération atomique
    (écriture de la trace + crédit), par exemple via `updateUserAccount` qui
    les écrit dans la même ligne `app_users`.
+
+**Correctif (23/10/2026).**
+- `refundRejectedWithdrawal(userId, montant, refundKey, context)`
+  (`server/wallet-engine.mjs:206`) : le crédit **et** la trace durable
+  (`wallet.winningsKeys` + transaction `refund` avec
+  `metadata.winningsKey`) sont écrits dans **une seule** opération — point 3.
+- Le callback du cron (`server/cron.mjs:650`) dérive une clé stable
+  `refund:${idempotencyKey}` (ou `refund:payout:${payoutId}`) ; un rejeu ne
+  crédite pas deux fois.
+- L'ordre choisi est remboursement
+  **puis** tag : le remboursement passe en premier car fermer la dette avant
+  de l'avoir rendue figerait un litige jamais remboursé, silencieux à vie.
+  L'idempotence du remboursement rend ce dernier sûr.
+- Deux défauts latents **découverts par les nouveaux tests** :
+  1. `normalizeWalletSnapshot` (`server/persistence.mjs:200`) ne copiait pas
+     `payoutsEnAttente` : **toute** écriture du portefeuille (dépôt, retrait,
+     gain) écrasait la file — la dette n'y survivait qu'à la chance (uniquement
+     via les marquages immédiatement suivi d'aucun mouvement de solde). La file
+     est désormais copiée.
+  2. `tagWalletTransaction` (`server/persistence.mjs:2134`) filtrait la file,
+     puis une réassignation finale écrasait le résultat avec le tableau
+     **précédent au filtre** : l'entrée refusée ne sortait **jamais** de la
+     file et resterait à vie (invisible jusqu'au point 1, puisque toute
+     écriture détruisait de toute façon la file). Corrigé en même temps.
+- Couverture : `server/withdrawal-refund-idempotence.test.mjs` (idempotence,
+  échec d'écriture, boucle avec tag en échec, ordre remboursement → tag,
+  survie de la file).
 
 ---
 
@@ -820,9 +871,9 @@ documentée ni testée, alors que celle de `winningsKeys` l'est
 
 | Chemin | Ce qui manque |
 |---|---|
-| **Câblage de la réconciliation des retraits** (A1) | aucun test n'exerce `sweepPendingWithdrawals` avec un vrai portefeuille ; le job est mocké (`server/arbiter-fee-wiring.test.mjs:55`) |
-| **Double remboursement de la réconciliation** (A3) | aucun test ne fait échouer le tag après un remboursement réussi |
-| **Échec d'écriture pendant un versement** (A2) | aucun test n'injecte une erreur d'écriture entre l'updater et l'écriture OCC |
+| **Câblage de la réconciliation des retraits** (A1) | corrigé : le moteur est couvert par `server/withdrawal-refund-idempotence.test.mjs` (boucle complète avec vrai portefeuille et vrai remboursement) ; **reste sans test** : le branchement du cron lui-même — le job est toujours mocké (`server/arbiter-fee-wiring.test.mjs:55`) |
+| **Double remboursement de la réconciliation** (A3) | corrigé et couvert : `server/withdrawal-refund-idempotence.test.mjs` fait échouer le tag après un remboursement réussi, puis rejoue le cycle |
+| **Échec d'écriture pendant un versement** (A2) | corrigé et couvert : `server/withdrawal-refund-idempotence.test.mjs` injecte une erreur d'écriture entre l'updater et l'écriture OCC |
 | **Barème BR, part par part** (A4) | seul le total est asservé (`server/br-engine.test.mjs:668`) |
 | **Tournoi à 2 ou 3 participants** (A5, A6) | aucun test ne couvre un bracket de taille 2 ou 3 (`maxEntries` 2 ou 3) ni l'absence de match de 3e place |
 | **Prise d'un slot d'arbitre par un non-admin** (A7) | aucun test sur `assignTournamentArbiterOnServer` ni sur `assignArbiterOnServer` côté rôle |

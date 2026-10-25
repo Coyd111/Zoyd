@@ -164,7 +164,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 8 | **F2, F3, F4, F5** — squelette permanent, fuite entre comptes, mensonge du dashboard, TOTP non demandé — **LIVRÉ le 23/10/2026** (F2 : `bootstrapFailed` + backoff + panneaux « Réessayer » sur les 5 écrans ; F3 : purge déléguée à `resetAllSessionStores` ; F4 : « indisponible » à la place du faux « 0 ZC » ; F5 : invite TOTP réutilisable + rejeu automatique de l'action) | Le joueur ne voit pas son solde ; le compte suivant hérite du précédent. |
 | 9 | **S4** — `proofHash` exposé publiquement — **LIVRÉ le 25/10/2026** (identifiants et preuves de litige retirés du payload public, preuves réservées aux parties, à l'arbitre et à un admin ; le faux hash ne sort plus et n'est plus affiché) | Fuite d'URL de captures. |
 | 10 | **A4, A7, A9** — parts BR, slot d'arbitre de tournoi, montants non écrits — **LIVRÉ le 25/10/2026** (A4 déjà réglé par M3 ; A7 : décision produit + rate limit ; A9 : versements réels écrits une seule fois, export CSV et projection nourris) | Répartition fausse et prise de contrôle. |
-| 11 | La documentation — corriger les affirmations fausses | Une doc qui ment est pire qu'une doc absente. |
+| 11 | La documentation — corriger les affirmations fausses — **LIVRÉ le 25/10/2026** (`05-invariants.md` : V2/V8/V10 marqués corrigés, V9 marqué faux et section 8 réécrite — 12 constats de fond corrigés, 3 INFO ouverts ; `03-securite.md` : la troisième garde `require2faIfAdmin` documentée ; `07-exploitation.md` : le DDL provisionné ; la matrice des balayages complète, 16 branchés ; note datée sous §1.3) | Une doc qui ment est pire qu'une doc absente. |
 
 ---
 
@@ -186,3 +186,11 @@ les aurait données :
 
 > La documentation de `docs/00-*.md` à `docs/08-*.md` est à revalider dans son
 > ensemble. Elle a été écrite une fois ; elle n'a pas été maintenue.
+
+> *Mise à jour du 25/10/2026 :* la revalidation est faite — c'était le rang 11.
+> Les affirmations devenues fausses par les correctifs livrés ont été corrigées
+> dans les documents de service (00-INDEX, 01-architecture, 02-modele-metier,
+> 03-securite, 04-api, 05-invariants, 06-tests, 07-exploitation) et dans cette
+> synthèse, chacune avec la date et le correctif qui la dépassent. Ne restent
+> volontairement ouverts que les trois constats INFO de code mort (V13, le
+> ternaire qui partage le repère V14, V15), suivis dans `04-code-mort.md`.

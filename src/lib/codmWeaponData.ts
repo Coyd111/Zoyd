@@ -244,17 +244,5 @@ export type AttachmentSlot = keyof typeof WEAPON_DATA.attachments;
 export type PerkSlot = keyof typeof WEAPON_DATA.perks;
 
 export const WEAPON_CATEGORIES = Object.keys(WEAPON_DATA.weapons) as WeaponCategory[];
-export const ATTACHMENT_SLOTS = Object.keys(WEAPON_DATA.attachments) as AttachmentSlot[];
-export const PERK_SLOTS = Object.keys(WEAPON_DATA.perks) as PerkSlot[];
 
 export const TOTAL_WEAPONS = Object.values(WEAPON_DATA.weapons).reduce((sum, arr) => sum + arr.length, 0);
-export const TOTAL_ATTACHMENTS = Object.values(WEAPON_DATA.attachments).reduce((sum, arr) => sum + arr.length, 0);
-export const TOTAL_PERKS = Object.values(WEAPON_DATA.perks).reduce((sum, arr) => sum + arr.length, 0);
-
-export function getWeaponCountByCategory(): Record<WeaponCategory, number> {
-  const result: Record<string, number> = {};
-  for (const [cat, weapons] of Object.entries(WEAPON_DATA.weapons)) {
-    result[cat] = weapons.length;
-  }
-  return result as Record<WeaponCategory, number>;
-}

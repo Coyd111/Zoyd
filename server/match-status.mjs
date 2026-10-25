@@ -52,21 +52,3 @@ export const CLOSED_STATUSES = Object.freeze([...source.CLOSED]);
 
 /** Ce qu'un joueur voit dans son historique. */
 export const HISTORY_STATUSES = Object.freeze([...source.HISTORY]);
-
-/** Tous les statuts connus. Sert au test de coherence. */
-export const ALL_MATCH_STATUSES = Object.freeze([...source.ALL]);
-
-/**
- * Le match est-il encore vivant ?
- * @param {string} status
- * @returns {boolean}
- */
-export const isActiveStatus = (status) => ACTIVE_STATUSES.includes(status);
-
-/**
- * Le match est-il termine ? Un litige n'est PAS termine : l'admin doit
- * encore trancher.
- * @param {string} status
- * @returns {boolean}
- */
-export const isClosedStatus = (status) => CLOSED_STATUSES.includes(status);

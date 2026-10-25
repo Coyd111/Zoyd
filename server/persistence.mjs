@@ -102,7 +102,7 @@ const MAX_CHAT_READS = 50000;
 const memoryStateSnapshots = new Map(); // `${kind}:${entityId}` -> payload (kept for compat)
 const memoryStateByKind = new Map();   // kind -> Map<entityId, payload> (O(1) lookups)
 const MAX_STATE_PER_KIND = 10000;
-const memoryAdminIds = new Set();     // fast admin lookup (avoids getAllUsers scan)
+const memoryAdminIds = new Set();     // fast admin lookup (avoids a full user scan)
 const memoryFriendRequests = new Map();
 const MAX_FRIEND_REQUESTS = 50000;
 const memoryFriendships = new Set();   // `${uid1}:${uid2}`
@@ -526,20 +526,6 @@ const occSupporte = async () => {
 
 /** Test hook : force l etat de la sonde (`null` pour re-sonder). */
 export const setOccSupportePourTest = (valeur) => { revisionSupporte = valeur; };
-
-/**
- * La colonne OCC est-elle presente en base ? `null` = pas encore sonde.
- *
- * Expose dans `/api/health` pour que l'etat soit CONNAISSABLE sans avoir a
- * ouvrir les journaux. V9 a montre que cette colonne avait ete creee a la
- * main en production, sans que le depot ne contienne le DDL : l'etat etait
- * donc inconnu, et un simple avertissement dans les logs ne suffit pas — on
- * ne lit pas les logs quand on cherche a savoir si le systeme est protege.
- *
- * `false` = la protection multi-instance est hors service, et les ecritures
- * sont inconditionnelles. C'est un etat qui doit etre visible, pas devine.
- */
-export const getOccRevisionColumn = () => revisionSupporte;
 
 /**
  * Test hook : place un payload arbitraire dans le cache memoire.
@@ -1483,13 +1469,6 @@ export const getPublicUserById = (userId) => {
   return user ? sanitizePublicUserPayload(user) : null;
 };
 
-export const getRawUserById = (userId) => {
-  if (!userId) return null;
-  const user = memoryUsers.get(userId);
-  if (!user) return null;
-  return { ...user };
-};
-
 /**
  * Verify a user's password without exposing the hash.
  * @param {string} userId
@@ -1520,14 +1499,6 @@ export const findUsersByPseudo = (query, limit = 20) => {
     }
   }
   return results;
-};
-
-/**
- * Get all users as an array of sanitized payloads.
- * @returns {object[]} Array of all user payloads
- */
-export const getAllUsers = () => {
-  return Array.from(memoryUsers.values()).map(sanitizeUserPayload);
 };
 
 export const getAdminIds = () => {
@@ -2968,9 +2939,6 @@ const lineageSupporte = async () => {
   }
   return sbLineageSupporte;
 };
-
-/** Test hooks : force l etat de la sonde (ou `null` pour re-sonder). */
-export const setLignageSupportePourTest = (valeur) => { sbLineageSupporte = valeur; };
 
 /**
  * @param {number} [absoluteExpiresAt] borne absolue ms de la famille de session

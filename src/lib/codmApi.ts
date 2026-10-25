@@ -57,24 +57,6 @@ export interface CodashopBundle {
 }
 
 // ---------------------------------------------------------------------------
-// Player data
-// ---------------------------------------------------------------------------
-
-export async function fetchCODMPlayer(userId: string, country = 'BJ'): Promise<CodashopPlayer | null> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(getApiUrl(`/api/codm/player/${encodeURIComponent(userId)}?country=${country}`), { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.ok ? data.player : null;
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Store bundles
 // ---------------------------------------------------------------------------
 
@@ -112,9 +94,4 @@ export async function fetchCODMStore(country = 'BJ'): Promise<CodashopStoreRespo
   } catch {
     return { bundles: [], catalogCurrency: 'INR', priceIsLocal: false };
   }
-}
-
-/** Reprise pour compatibilite : ne retourne que la liste de bundles. */
-export async function fetchCODMStoreBundles(country = 'BJ'): Promise<CodashopBundle[]> {
-  return (await fetchCODMStore(country)).bundles;
 }

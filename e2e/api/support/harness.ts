@@ -26,7 +26,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { request as apiRequest, type APIRequestContext } from '@playwright/test';
 
-export const API_BASE_URL = 'http://localhost:4001';
+const API_BASE_URL = 'http://localhost:4001';
 export const ADMIN_EMAIL = 'admin@zoyd.com';
 export const ADMIN_PASSWORD = process.env.ZOYD_ADMIN_PASSWORD || 'ZoydE2E!Admin2026';
 export const PLAYER_PASSWORD = 'ZoydE2E!Player2026';
@@ -215,7 +215,7 @@ const base32Decode = (encoded: string): Buffer => {
   return Buffer.from(bytes);
 };
 
-export const generateTotp = (base32Secret: string, atMs: number = Date.now()): string => {
+const generateTotp = (base32Secret: string, atMs: number = Date.now()): string => {
   const counter = Math.floor(atMs / 1000 / 30);
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);

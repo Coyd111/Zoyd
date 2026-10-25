@@ -65,14 +65,6 @@ export const startServerLeagueDay = async (seasonId: string, dayKey: LeagueDayKe
   return authorizedPost<LeagueResponse>(`/api/leagues/${seasonId}/days/${dayKey}/start`);
 };
 
-export const submitServerLeagueDayResults = async (
-  seasonId: string,
-  dayKey: LeagueDayKey,
-  results: Array<{ userId: string; placement: number; kills?: number }>
-): Promise<LeagueResponse> => {
-  return authorizedPost<LeagueResponse>(`/api/leagues/${seasonId}/days/${dayKey}/results`, { results });
-};
-
 export const advanceToServerLeagueFinal = async (seasonId: string): Promise<LeagueResponse> => {
   return authorizedPost<LeagueResponse>(`/api/leagues/${seasonId}/advance-to-final`);
 };
@@ -82,12 +74,6 @@ export const submitServerLeagueFinalResults = async (
   results: Array<{ userId: string; placement: number; kills?: number }>
 ): Promise<LeagueResponse> => {
   return authorizedPost<LeagueResponse>(`/api/leagues/${seasonId}/final-results`, { results });
-};
-
-export const fetchServerLeagueLeaderboard = async (
-  seasonId: string
-): Promise<{ ok: boolean; standings: LeagueSeason['standings'] }> => {
-  return authorizedGet(`/api/leagues/${seasonId}/leaderboard`);
 };
 
 export const updateServerLeagueSettings = async (

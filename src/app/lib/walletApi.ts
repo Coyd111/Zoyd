@@ -134,9 +134,6 @@ export const withdrawWalletBalance = async (
   return response;
 };
 
-/** Vide la cle en attente (tests, ou retrait abandonne definitivement). */
-export const resetPendingWithdrawalKey = () => { pendingWithdrawalKey = null; };
-
 export const verifyFedaPayTransaction = async (transactionId: number | string): Promise<WalletResponse> => {
   return authorizedPost<WalletResponse>('/api/wallet/verify-fedapay', { transactionId });
 };

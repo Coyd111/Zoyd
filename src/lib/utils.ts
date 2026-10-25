@@ -67,15 +67,6 @@ export function getCountdownDisplay(targetDate: Date | string): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-export function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(word => word[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 /**
  * Sanitize user input to prevent XSS attacks
  * Removes HTML tags, javascript: protocols, and event handlers

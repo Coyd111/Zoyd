@@ -26,8 +26,6 @@ export const CODM_RANGS = [
   'Legendary',
 ] as const;
 
-export const CODM_RANG_SHOWCASE = ['Rookie', 'Elite', 'Master', 'Legendary'] as const;
-
 export const DEVICE_OPTIONS = [
   { id: 'phone', label: 'Téléphone' },
   { id: 'tablet', label: 'Tablette' },
@@ -80,7 +78,6 @@ export const toCountryIso = (country?: string): string =>
 
 // Formats de match : 1VS1 à 5VS5 (limite serveur : voir match-engine/realtime-server).
 export const MJ_FORMATS = ['1VS1', '2VS2', '3VS3', '4VS4', '5VS5'] as const;
-export const MAX_TEAM_SIZE = 5;
 
 export const MJ_MODE_OPTIONS = [
   { id: 'snd', name: 'S&D', desc: 'Recherche et destruction' },

@@ -50,9 +50,6 @@ export const CLOSED_STATUSES = source.CLOSED as MatchStatus[];
 /** Ce qu'un joueur voit dans son historique. */
 export const HISTORY_STATUSES = source.HISTORY as MatchStatus[];
 
-/** Tous les statuts connus. */
-export const ALL_MATCH_STATUSES = source.ALL as MatchStatus[];
-
 /**
  * File de priorite de l administration : les matchs sur lesquels un admin a
  * quelque chose a faire.
@@ -73,18 +70,3 @@ export const PRIORITY_STATUSES: MatchStatus[] = [
   'ready',
   'in_progress',
 ];
-
-/**
- * Le match est-il encore vivant ?
- * @param status - Statut a tester.
- */
-export const isActiveStatus = (status: string | undefined | null): boolean =>
-  !!status && (ACTIVE_STATUSES as string[]).includes(status);
-
-/**
- * Le match est-il termine ? Un litige n'est PAS termine : l'admin doit
- * encore trancher.
- * @param status - Statut a tester.
- */
-export const isClosedStatus = (status: string | undefined | null): boolean =>
-  !!status && (CLOSED_STATUSES as string[]).includes(status);

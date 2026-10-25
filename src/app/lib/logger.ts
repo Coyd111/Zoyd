@@ -1,11 +1,9 @@
 /**
  * logger - journalisation client structuree, prefixee [ZOYD].
  *
- * Expose logError, logWarning et logInfo. En production, la sortie est un
+ * Expose logError et logWarning. En production, la sortie est un
  * JSON ; hors production, l'objet reste lisible dans la console.
  *
- * INVARIANT : logInfo n'ecrit RIEN en production. C'est le seul niveau
- * bruyant ; les erreurs et warnings sortent toujours.
  * PIEGE : la sortie console EST le comportement attendu de ce module.
  * Ne pas remplacer console.error/warn/log par autre chose sans changer le
  * contrat du fichier.
@@ -70,15 +68,5 @@ export function logWarning(message: string, context?: ErrorContext) {
     console.warn('[ZOYD]', JSON.stringify(payload));
   } else {
     console.warn('[ZOYD]', payload);
-  }
-}
-
-export function logInfo(message: string, context?: ErrorContext) {
-  if (!isProd) {
-    const payload: LogPayload = { level: 'info', message, context, timestamp: new Date().toISOString() };
-    // c'est le logger : la sortie console EST le comportement attendu, et
-    // uniquement hors production.
-    // eslint-disable-next-line no-console
-    console.log('[ZOYD]', payload);
   }
 }

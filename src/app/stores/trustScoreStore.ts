@@ -99,11 +99,3 @@ export const categoryLabels: Record<keyof Omit<TrustBreakdown, 'overall'>, strin
   disputes: 'Litiges',
   seniority: 'Ancienneté',
 };
-
-export const categoryIcons: Record<keyof Omit<TrustBreakdown, 'overall'>, string> = {
-  punctuality: '⏱',
-  fairPlay: '⚔',
-  results: '📊',
-  disputes: '🛡',
-  seniority: '⭐',
-};

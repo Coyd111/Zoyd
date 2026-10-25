@@ -166,6 +166,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 10 | **A4, A7, A9** — parts BR, slot d'arbitre de tournoi, montants non écrits — **LIVRÉ le 25/10/2026** (A4 déjà réglé par M3 ; A7 : décision produit + rate limit ; A9 : versements réels écrits une seule fois, export CSV et projection nourris) | Répartition fausse et prise de contrôle. |
 | 11 | La documentation — corriger les affirmations fausses — **LIVRÉ le 25/10/2026** (`05-invariants.md` : V2/V8/V10 marqués corrigés, V9 marqué faux et section 8 réécrite — 12 constats de fond corrigés, 3 INFO ouverts ; `03-securite.md` : la troisième garde `require2faIfAdmin` documentée ; `07-exploitation.md` : le DDL provisionné ; la matrice des balayages complète, 16 branchés ; note datée sous §1.3) | Une doc qui ment est pire qu'une doc absente. |
 | 12 | Le code mort INFO — purger M21, M24, M25 — **LIVRÉ le 25/10/2026** (V13 : `getMatchActivityForUser` supprimé avec son import ; V14 : `return 'ready';` ; V15 : `isInstantNoArbiter` et son garde supprimés — comportement dérivé inchangé, suites vertes) | Fermer la liste : plus aucun constat de code ouvert, plus d'exception « on décide de ne rien faire ». |
+| 13 | Les constats FAIBLE de `04-code-mort.md` — traiter les 17 restants — **LIVRÉ le 26/10/2026** (docs : M33-M36 remis à jour — l'en-tête de `matchStore.ts`, les listes de statuts de `02-modele-metier.md`, la ligne « code mort » sur `matchPayout.ts`, les coordonnées de `sanitizeMatchForBroadcast` ; triviaux : M22, M23, M27, M29 ; purge d'exports : M28, M30, M38 et M37 — avec rectification : `getStateEntity` est vivant, branché par C2 ; arbitrage produit : M26 le plafond par journée est branché dans `assignPlayersToDays` et sa branche est réellement atteignable, M31 les 23 composants `ui/` jamais importés sont supprimés, M32 les trois orphelins sont supprimés et le README cesse d'annoncer `LiveTicker`) | Fermer la liste : plus aucun constat FAIBLE ouvert. |
 
 ---
 
@@ -198,3 +199,14 @@ les aurait données :
 > *Purge le 25/10/2026 (rang 12, M21/M24/M25)* : plus aucun constat V ouvert.
 > Les autres constats FAIBLE de `04-code-mort.md` (M22, M23, M26 à M38) ne
 > sont pas repris ici — voir ce rapport pour leur état.
+>
+> *Clôture du 26/10/2026 (rang 13) :* les 17 constats FAIBLE restants sont
+> traités, chacun dans le lot qui lui convenait. Les corrections documentaires
+> et triviales sont livrées (M22, M23, M27, M29, M33-M36), les exports morts
+> sont purgés (M28, M30, M37 — avec rectification : `getStateEntity` est
+> vivant depuis C2 —, M38), et les trois arbitrages produit sont tranchés :
+> M26 branché (le plafond par journée est une règle du moteur, et sa branche
+> est réellement atteignable), M31 et M32 supprimés avec le README corrigé.
+> Plus aucun constat ouvert dans `04-code-mort.md` : chaque entrée porte sa
+> mention CORRIGÉ datée, ou son rectificatif quand le constat lui-même était
+> périmé.

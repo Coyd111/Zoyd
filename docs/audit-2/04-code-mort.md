@@ -899,22 +899,22 @@ Les deux branches sont identiques ; la ligne est de surcroît redondante avec le
 **CORRIGÉ le 25/10/2026** : la ligne est désormais `return 'ready';`
 (`server/match-engine.mjs:362`). Comportement dérivé inchangé, suites vertes.
 
-### M22 — FAIBLE — Ternaire à branches identiques sur le statut d'un résultat soumis (CORRIGÉ le 25/10/2026)
+### M22 — FAIBLE — Ternaire à branches identiques sur le statut d'un résultat soumis (CORRIGÉ le 26/10/2026)
 
 `server/match-engine.mjs:1004` :
 `match.status = fullResult.resolutionType === 'forfeit' ? 'awaiting_confirmation' : 'awaiting_confirmation';`
 **Impact** : aucun (les deux branches sont bien le même statut). **Correction** : affectation
 directe.
 
-**CORRIGÉ le 25/10/2026** : affectation directe (`server/match-engine.mjs:1095`).
+**CORRIGÉ le 26/10/2026** : affectation directe (`server/match-engine.mjs:1095`).
 
-### M23 — FAIBLE — Affectation sans effet (CORRIGÉ le 25/10/2026)
+### M23 — FAIBLE — Affectation sans effet (CORRIGÉ le 26/10/2026)
 
 `server/match-engine.mjs:1375` : `match.result = match.result || undefined;`
 `match.result` vaut `undefined` ou un objet truthy : l'affectation ne change rien.
 **Impact** : aucun. **Correction** : supprimer la ligne.
 
-**CORRIGÉ le 25/10/2026** : ligne supprimée (annulation d'un match par modération).
+**CORRIGÉ le 26/10/2026** : ligne supprimée (annulation d'un match par modération).
 
 ### M24 — FAIBLE — `isInstantNoArbiter` est inatteignable (V15, CORRIGÉ le 25/10/2026)
 
@@ -946,7 +946,7 @@ Le comportement équivalent vit côté front (`src/app/stores/matchStore.ts:512-
 dans l'en-tête de `server/match-status.mjs` (le commentaire citait
 `match-engine.mjs:8`, l'emplacement réel).
 
-### M26 — FAIBLE — `LEAGUE_PLAYERS_PER_DAY` est dérivée mais toujours sans effet (V12)
+### M26 — FAIBLE — `LEAGUE_PLAYERS_PER_DAY` est dérivée mais toujours sans effet (V12, CORRIGÉ le 26/10/2026)
 
 `server/league-engine.mjs:67`. Seules occurrences : la définition et
 `server/league-engine.test.mjs:846` (une assertion). **Aucun plafond par journée n'est
@@ -954,18 +954,28 @@ appliqué** dans le moteur : l'impact décrit par `docs/05-invariants.md:1067-10
 **Impact** : aucun contrôle effectif ; le constant existe mais ne borne rien.
 **Correction** : l'appliquer dans `assignPlayersToDays`, ou le supprimer.
 
-### M27 — FAIBLE — Le taux de commission d'arbitre est écrit en littéral là où une constante existe (CORRIGÉ le 25/10/2026)
+**CORRIGÉ le 26/10/2026** : le plafond est branché dans `assignPlayersToDays`
+(`server/league-engine.mjs:270`) — chaque journée est vérifiée après
+répartition, un dépassement de capacité est refusé (`NO_SLOT_AVAILABLE`,
+`:289`). La branche n'est pas du code mort : `updateLeagueSettingsOnServer`
+autorise un `maxPlayers` jusqu'à 1000 (`:1077`), donc plus de 500 inscrits est
+un état atteignable — le lancement est désormais refusé au lieu de produire
+des journées surpeuplées. Test de la branche :
+`server/league-engine.test.mjs:901`. La section V12 de `docs/05-invariants.md`
+est mise à jour en conséquence.
+
+### M27 — FAIBLE — Le taux de commission d'arbitre est écrit en littéral là où une constante existe (CORRIGÉ le 26/10/2026)
 
 `server/match-engine.mjs:601` : `arbiterFee: roundAmount(prizePool * 0.02)` alors que
 `ARBITER_FEE_RATE = 0.02` est défini `:186` et utilisé `:215` et `:372`.
 **Impact** : un changement du taux ne toucherait pas le champ figé — exactement la
 divergence que M4 exploite. **Correction** : `ARBITER_FEE_RATE`.
 
-**CORRIGÉ le 25/10/2026** : `roundAmount(prizePool * ARBITER_FEE_RATE)`
+**CORRIGÉ le 26/10/2026** : `roundAmount(prizePool * ARBITER_FEE_RATE)`
 (`server/match-engine.mjs:694`) — le champ figé suit désormais la constante
 comme les calculs de commission.
 
-### M28 — FAIBLE — Exports jamais importés, des deux côtés du canal de statuts (CORRIGÉ le 25/10/2026)
+### M28 — FAIBLE — Exports jamais importés, des deux côtés du canal de statuts (CORRIGÉ le 26/10/2026)
 
 `server/match-status.mjs:57` (`ALL_MATCH_STATUSES`), `:64` (`isActiveStatus`), `:72`
 (`isClosedStatus`) · `src/app/lib/matchStatus.ts:54`, `:81`, `:89`.
@@ -973,19 +983,19 @@ Recherche exhaustive : aucune occurrence hors définition. Le front duplique don
 helpers du serveur sans les importer.
 **Impact** : bruit. **Correction** : supprimer, ou importer réellement.
 
-**CORRIGÉ le 25/10/2026** : les six exports sont supprimés (trois côté serveur,
+**CORRIGÉ le 26/10/2026** : les six exports sont supprimés (trois côté serveur,
 trois côté front) — y compris le commentaire « Sert au test de coherence », qui
 était lui-même faux : le test de cohérence n'importe plus ce symbole.
 
-### M29 — FAIBLE — Import inutilisé (CORRIGÉ le 25/10/2026)
+### M29 — FAIBLE — Import inutilisé (CORRIGÉ le 26/10/2026)
 
 `server/routes/wallet.mjs:88` : `import { getPublicMatchesForUser } from '../match-engine.mjs';`
 Seule occurrence dans le fichier : l'import lui-même. **Impact** : bruit.
 **Correction** : supprimer l'import.
 
-**CORRIGÉ le 25/10/2026** : import supprimé de `server/routes/wallet.mjs`.
+**CORRIGÉ le 26/10/2026** : import supprimé de `server/routes/wallet.mjs`.
 
-### M30 — FAIBLE — Exports front jamais importés (CORRIGÉ le 25/10/2026)
+### M30 — FAIBLE — Exports front jamais importés (CORRIGÉ le 26/10/2026)
 
 Recherche exhaustive sur tout le dépôt (tests compris) :
 
@@ -1012,11 +1022,11 @@ Recherche exhaustive sur tout le dépôt (tests compris) :
 est le doublon d'une constante serveur ; il n'est pas utilisé, mais il donne l'illusion
 d'être la borne de format de match. **Correction** : supprimer, ou importer.
 
-**CORRIGÉ le 25/10/2026** : les seize exports sont supprimés, dont
+**CORRIGÉ le 26/10/2026** : les seize exports sont supprimés, dont
 `MAX_TEAM_SIZE` — le doublon qui donnait l'illusion d'une borne métier côté
 front (la borne réelle reste côté serveur).
 
-### M31 — FAIBLE — 23 composants `ui/` jamais importés
+### M31 — FAIBLE — 23 composants `ui/` jamais importés (CORRIGÉ le 26/10/2026)
 
 `src/app/components/ui/` : `Accordion`, `AlertDialog`, `AspectRatio`, `Avatar`, `Breadcrumb`,
 `Chart`, `Checkbox`, `Collapsible`, `ContextMenu`, `Dialog`, `DropdownMenu`, `HoverCard`,
@@ -1026,7 +1036,14 @@ Recherche exhaustive : aucun import depuis un autre fichier.
 **Impact** : bruit (bibliothèque de design embarquée, jamais utilisée).
 **Correction** : suppression, ou déclaration explicite « non utilisé ».
 
-### M32 — FAIBLE — Trois composants applicatifs jamais importés
+**CORRIGÉ le 26/10/2026** : les 23 composants sont supprimés. Contrôle
+définitif avant suppression : aucun import de ces noms dans tout le dépôt,
+y compris intra-`ui/` — les composants gardés (Sidebar, Form, Toggle…)
+n'importent que des gardés. Le dossier passe de 42 à 19 fichiers (17
+composants + `use-mobile.ts` + `utils.ts`). `docs/08-frontend.md` (§2 et
+§8.3) est cohérencé.
+
+### M32 — FAIBLE — Trois composants applicatifs jamais importés (CORRIGÉ le 26/10/2026)
 
 `src/app/components/CountdownTimer.tsx` · `src/app/components/LiveTicker.tsx` ·
 `src/app/components/figma/ImageWithFallback.tsx`.
@@ -1035,7 +1052,13 @@ matchs en cours »` comme une fonctionnalité livrée.
 **Impact** : bruit, plus une affirmation fausse dans le README.
 **Correction** : supprimer, ou brancher.
 
-### M33 — FAIBLE — En-tête de fichier faux : `matchStore.ts` décrit l'état *avant* V3 (CORRIGÉ le 25/10/2026)
+**CORRIGÉ le 26/10/2026** : les trois composants sont supprimés (le dossier
+`figma/`, devenu vide, disparaît). `PROJECT_README.md` ne liste plus
+`LiveTicker`/`CountdownTimer` dans l'arbre, et la fonctionnalité « LiveTicker
+pour matchs en cours » est décochée avec la mention de la suppression
+(audit-2 M32 : jamais branchée).
+
+### M33 — FAIBLE — En-tête de fichier faux : `matchStore.ts` décrit l'état *avant* V3 (CORRIGÉ le 26/10/2026)
 
 `src/app/stores/matchStore.ts:11-14` :
 ```
@@ -1048,11 +1071,11 @@ C'est faux : le fichier importe la source unique (`:29`), qui inclut `awaiting_a
 **Impact** : un lecteur qui se fie à l'en-tête croira que le bug V3 est présent.
 **Correction** : réécrire l'en-tête sur la source unique.
 
-**CORRIGÉ le 25/10/2026** : l'en-tête décrit désormais la source unique
+**CORRIGÉ le 26/10/2026** : l'en-tête décrit désormais la source unique
 (`shared/match-status.json` via `src/app/lib/matchStatus.ts`), où
 `awaiting_arbiter` est actif.
 
-### M34 — FAIBLE — `docs/02-modele-metier.md` décrit une liste de statuts périmée (CORRIGÉ le 25/10/2026)
+### M34 — FAIBLE — `docs/02-modele-metier.md` décrit une liste de statuts périmée (CORRIGÉ le 26/10/2026)
 
 `docs/02-modele-metier.md:208` :
 `| ACTIVE_STATUSES | server/match-engine.mjs:102 | recruiting, full, check_in, ready, in_progress, awaiting_confirmation |`
@@ -1062,12 +1085,12 @@ Les deux affirmations sont fausses : la liste vit dans `shared/match-status.json
 **Impact** : le document de référence du modèle métier décrit l'état avant le correctif.
 **Correction** : pointer `shared/match-status.json` / `server/match-status.mjs:48`.
 
-**CORRIGÉ le 25/10/2026** : la section 4.3 pointe la source unique et ses trois
+**CORRIGÉ le 26/10/2026** : la section 4.3 pointe la source unique et ses trois
 listes avec leur contenu réel. Au passage : l'obligation n°1 décrivait le sweep
 comme « non branché » alors que V1 est corrigé — rectifié, et la dérivation
 `awaiting_arbiter` est citée à sa ligne réelle (`match-engine.mjs:352`).
 
-### M35 — FAIBLE — `docs/05-invariants.md` : « les quinze constats sont traités » (CORRIGÉ le 25/10/2026)
+### M35 — FAIBLE — `docs/05-invariants.md` : « les quinze constats sont traités » (CORRIGÉ le 26/10/2026)
 
 `docs/05-invariants.md:1195` : « **Aucun.** Les quinze constats (V1 a V15) sont traites. »
 Faux sur trois points :
@@ -1086,13 +1109,13 @@ code mort » : c'est faux depuis le correctif V8, la fonction est appelée par
 **Impact** : le document donne un état des lieux faux sur les correctifs les plus récents.
 **Correction** : mettre à jour le tableau de synthèse et le §8.
 
-**CORRIGÉ le 25/10/2026** : le rang 11 avait réécrit le tableau et le §8
+**CORRIGÉ le 26/10/2026** : le rang 11 avait réécrit le tableau et le §8
 (l'affirmation « les quinze constats sont traités » n'existe plus). Il restait
 la ligne « code mort » sur `matchPayout.ts` : corrigée — depuis V5/V8, la part
 individuelle est lue (`ProfileView.tsx:358`, `profileMetrics.ts:210`,
 `communityInsights.ts:427`).
 
-### M36 — FAIBLE — `docs/08-frontend.md` et `docs/01-architecture.md` : coordonnées fausses (CORRIGÉ le 25/10/2026)
+### M36 — FAIBLE — `docs/08-frontend.md` et `docs/01-architecture.md` : coordonnées fausses (CORRIGÉ le 26/10/2026)
 
 - `docs/08-frontend.md:274` annonce que `useMatchStore` porte les « projections
   `projectedPayouts` (`:158-164`) » : le store **ne les porte pas** (M1) — il n'en garde que
@@ -1102,13 +1125,13 @@ individuelle est lue (`ProfileView.tsx:358`, `profileMetrics.ts:210`,
 **Impact** : bruit documentaire, mais dans un document qui sert de référence de
 cartographie. **Correction** : mettre à jour.
 
-**CORRIGÉ le 25/10/2026** : depuis M1 le store porte réellement les projections
+**CORRIGÉ le 26/10/2026** : depuis M1 le store porte réellement les projections
 (la phrase de `08-frontend.md` est redevenue vraie sur le fond) — seules les
 coordonnées sont mises à jour (`:186`, `:454-527`, `:29`). `01-architecture.md`
 cite désormais les lignes réelles de `sanitizeMatchForBroadcast` (`:175-257`,
 recalcul `:202`, `submittedBy` `:231-233`).
 
-### M37 — FAIBLE — Exports serveur jamais importés (CORRIGÉ le 25/10/2026, sauf `getStateEntity` — vivant)
+### M37 — FAIBLE — Exports serveur jamais importés (CORRIGÉ le 26/10/2026, sauf `getStateEntity` — vivant)
 
 Recherche exhaustive sur tout le dépôt (tests inclus) :
 
@@ -1124,13 +1147,13 @@ Recherche exhaustive sur tout le dépôt (tests inclus) :
 appelé nulle part : le test de non-régression qu'il suggère n'existe pas.
 **Correction** : supprimer, ou écrire le test.
 
-**CORRIGÉ le 25/10/2026** : quatre exports supprimés (`getOccRevisionColumn`,
+**CORRIGÉ le 26/10/2026** : quatre exports supprimés (`getOccRevisionColumn`,
 `getRawUserById`, `getAllUsers`, `setLignageSupportePourTest`). **Rectification
 du constat** : `getStateEntity` est vivant — importé et appelé par
 `server/state-helpers.mjs:45` et `:419`, mocké par trois tests — il a été
 branché par le correctif C2 (écriture par entité) et n'est pas supprimé.
 
-### M38 — FAIBLE — Exports `e2e/` jamais importés (CORRIGÉ le 25/10/2026)
+### M38 — FAIBLE — Exports `e2e/` jamais importés (CORRIGÉ le 26/10/2026)
 
 `e2e/api/support/harness.ts:29` (`API_BASE_URL`, utilisé en interne `:52` mais exporté sans
 raison), `:218` (`generateTotp`, utilisé en interne `:321`, `:336`, `:346`).
@@ -1139,7 +1162,7 @@ Le fichier lui-même documente qu'il n'est ni exécuté par `vitest` ni type-che
 **Impact** : bruit. **Correction** : retirer `export` sur les helpers internes, ou ajouter le
 fichier au périmètre de `tsc`.
 
-**CORRIGÉ le 25/10/2026** : `export` retiré sur `API_BASE_URL` et
+**CORRIGÉ le 26/10/2026** : `export` retiré sur `API_BASE_URL` et
 `generateTotp` (usage interne conservé) ; le fichier reste hors périmètre
 `tsc`.
 

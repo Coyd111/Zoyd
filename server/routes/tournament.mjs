@@ -180,6 +180,12 @@ if (req.method === 'POST' && tournamentLeave) {
 
 const tournamentArbiter = pathname.match(/^\/api\/tournaments\/([^/]+)\/arbiter$/);
 if (req.method === 'POST' && tournamentArbiter) {
+  // A7 (audit-2) : la nomination est "premier arrive" et la route etait la
+  // SEULE du domaine tournoi sans rate limit — pas d'usage legitime
+  // intensif (une nomination par tournoi, un compte humain), mais une
+  // proie pour le scripting anonyme. Groupe `social`, comme le jumeau
+  // match (POST /api/matches/:id/arbiter).
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });

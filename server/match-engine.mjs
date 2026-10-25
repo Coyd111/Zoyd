@@ -22,6 +22,10 @@
  * INVARIANT : `result.payoutDistributed` a TROIS valeurs - `true` (regle),
  *   `'pending'` (a solder), `false` (volontairement non verse). Seuls les
  *   `'pending'` sont repris par le cron.
+ * INVARIANT : `match.payouts` (A9) note les montants REELLEMENT verses,
+ *   ecrits UNE SEULE FOIS par joueur et par type (`recordActualPayout`) :
+ *   un rejeu de reglement ne les reecrit pas, et la projection
+ *   `getProjectedPayouts` les annonce des qu'ils existent.
  * INVARIANT : le statut est DERIVE par `getStatusFromMatch` et rafraichi par
  *   `updateMatchSnapshot` : il faut le recalculer apres tout changement de
  *   roster, de presence ou d'arbitre.
@@ -211,6 +215,30 @@ export const getLockedPot = (match) => {
  */
 export const getProjectedPayouts = (match) => {
   const lockedPot = getLockedPot(match);
+  // A9 (audit-2) : un match deja regle annonce ce qu'il a REELLEMENT verse
+  // (`match.payouts`, ecrit au fil du versement par `recordActualPayout`),
+  // plus la projection theorique. Apres payement les reservations sont
+  // liberees : `lockedPot` retombe a 0 et l'ancien chemin sortait alors un
+  // `basis` = `match.prizePool` (pot THEORIQUE de la creation, calcule sur
+  // maxPlayers) - le profil public d'un match a roster incomplet affichait
+  // des gains qui n'avaient jamais ete verses.
+  const encaisses = Array.isArray(match.payouts) ? match.payouts : [];
+  if (encaisses.length > 0) {
+    const partsGagnants = encaisses.filter((entry) => entry?.type === 'prize_win');
+    const totalGagnants = roundAmount(partsGagnants.reduce((sum, entry) => sum + Number(entry?.amount || 0), 0));
+    const arbitreReel = roundAmount(
+      encaisses
+        .filter((entry) => entry?.type === 'arbitration_fee')
+        .reduce((sum, entry) => sum + Number(entry?.amount || 0), 0)
+    );
+    return {
+      basis: roundAmount(totalGagnants + arbitreReel),
+      locked: lockedPot > 0,
+      arbiterFee: arbitreReel,
+      winner: totalGagnants,
+      perWinner: partsGagnants.length > 0 ? roundAmount(totalGagnants / partsGagnants.length) : 0,
+    };
+  }
   const basis = lockedPot > 0 ? lockedPot : Number(match.prizePool || 0);
   const arbiterFee = match.arbiter?.userId ? roundAmount(basis * ARBITER_FEE_RATE) : 0;
   const winner = Math.max(0, roundAmount(basis - arbiterFee));
@@ -223,7 +251,7 @@ export const getProjectedPayouts = (match) => {
   // anciens, dont la taille d'equipe n'est pas toujours renseignee.
   //
   // Diviser par le nombre TOTAL de joueurs donnait une part deux fois trop
-  // petite en 1v1 — la moitie du pot au lieu du pot entier — et en 2v2, la
+  // petite en 1v1 - la moitie du pot au lieu du pot entier - et en 2v2, la
   // moitie de la part reelle. Pire : la valeur erronee etait FIGEE par un
   // test, donc la correction aurait passe pour une regression.
   const joueurs = match.players || [];
@@ -238,6 +266,48 @@ export const getProjectedPayouts = (match) => {
     winner,
     perWinner: gagnants > 0 ? roundAmount(winner / gagnants) : 0,
   };
+};
+
+/**
+ * Note un versement REEL (A9, audit-2) dans `match.payouts`.
+ *
+ * Les montants verses ne vivaient que dans les transactions wallet :
+ * `applyResultSettlement` calculait `firstWinnerShare` / `sharePerWinner` /
+ * `arbiterFee` sans jamais les ecrire sur le match. Consequence : l'export
+ * admin publiait un `payouts` vide et une commission figee a la creation
+ * (pot theorique), et les profils publics retombaient sur le `prizePool`
+ * theorique des que les reservations etaient liberees.
+ *
+ * ECRITURE UNIQUE par couple (joueur, type) : le rejeu d'un reglement
+ * interrompu (`'pending'`) repasse le meme calcul, mais `releaseWalletWinnings`
+ * ignore les joueurs deja payes (cle d'idempotence `type:matchId` cote
+ * wallet). Sans cette garde, une reprise reecrirait le montant historique
+ * avec une valeur recalculee sur un pot PLUS PETIT (les reservations des
+ * joueurs payes sont liberees) : l'export raconterait des montants jamais
+ * verses. La premiere valeur ecrite est donc la seule conservee - c'est
+ * elle qui a fini sur un compte.
+ *
+ * @param {object} match - Match mute en place (le clone de collection)
+ * @param {string} userId - Paye
+ * @param {string} pseudo - Pseudo affiche (au moment du versement)
+ * @param {number} amount - Montant effectivement servi par releaseWalletWinnings
+ * @param {'prize_win'|'arbitration_fee'} type - Meme vocabulaire que le wallet
+ * @returns {boolean} true si l'entree a ete creee
+ */
+const recordActualPayout = (match, userId, pseudo, amount, type) => {
+  if (!userId || !(Number(amount) > 0)) return false;
+  match.payouts = Array.isArray(match.payouts) ? match.payouts : [];
+  if (match.payouts.some((entry) => entry?.userId === userId && entry.type === type)) {
+    return false;
+  }
+  match.payouts.push({
+    userId,
+    pseudo: pseudo || '',
+    amount: roundAmount(amount),
+    type,
+    paidAt: getNow(),
+  });
+  return true;
 };
 
 const cloneMatches = (matches) => matches.map((match) => structuredClone(match));
@@ -432,6 +502,11 @@ const applyResultSettlement = async (match, result) => {
             player.userId, amount, match.id, 'prize_win',
             `Gain du match ${match.rules?.mode || match.format} / ${match.rules?.map || 'Libre'}`
           );
+          // A9 : la part REELLEMENT versee est notee sur le match, apres que
+          // le versement a abouti (un echec ici ne note rien). Ecriture
+          // unique : au rejeu, un joueur deja paye est ignore par la garde
+          // d'idempotence du wallet ET par `recordActualPayout`.
+          recordActualPayout(match, player.userId, player.pseudo, amount, 'prize_win');
           await applyUserSettlementOnce(player.userId, `match:${match.id}:win`, (user) => {
             const nextStats = {
               ...user.stats,
@@ -482,18 +557,6 @@ const applyResultSettlement = async (match, result) => {
   }
 
   if (match.arbiter?.userId && arbiterFee > 0) {
-    // La creance sur la commission est COMPENSEE, pas perdue.
-    //
-    // Tant que la suite de `settlementErrors` englobait aussi l'arbitre, son
-    // echec declarait le match non solde alors que tous les joueurs etaient
-    // payes — et le gel etait definitif, faute de repli. On note donc
-    // explicitement la commission due, ce qui la rend visible et reprenable.
-    if (!settlementErrors.length && arbiterErrors.length) {
-      match.pendingArbiterFee = roundAmount(arbiterFee);
-    }
-    // La creance est soldee des que la commission aboutit : la laisser
-    // afficherait une dette inexistante.
-    if (!arbiterErrors.length) delete match.pendingArbiterFee;
     try {
       await withWalletMutex(match.arbiter.userId, async () => {
         await releaseWalletWinnings(
@@ -503,10 +566,39 @@ const applyResultSettlement = async (match, result) => {
           'arbitration_fee',
           `Commission arbitre ${match.id}`
         );
+        // A9 : la commission servie entre dans l'historique du match, avec la
+        // meme ecriture unique que les gains des joueurs. Le roster peut ne
+        // pas porter le pseudo de l'arbitre (matchs anciens) : on retombe sur
+        // le compte courant plutot que d'ecrire une cellule vide.
+        recordActualPayout(
+          match,
+          match.arbiter.userId,
+          match.arbiter.pseudo || getUserById(match.arbiter.userId)?.pseudo || '',
+          arbiterFee,
+          'arbitration_fee'
+        );
       });
-} catch (err) {
+    } catch (err) {
       log.error('Arbiter payout error', { matchId: match.id, arbiterId: match.arbiter.userId, error: err.message });
       arbiterErrors.push({ playerId: match.arbiter.userId, role: 'arbiter', error: err.message });
+    }
+    // La creance sur la commission est COMPENSEE, pas perdue.
+    //
+    // Tant que la suite de `settlementErrors` englobait aussi l'arbitre, son
+    // echec declarait le match non solde alors que tous les joueurs etaient
+    // payes - et le gel etait definitif, faute de repli. On note donc
+    // explicitement la commission due, ce qui la rend visible et reprenable.
+    //
+    // PIECE CORRIGEE (A9) : le if ci-dessous s'evaluait AVANT le try/catch,
+    // quand `arbiterErrors` est encore vide - une creance naissante n'etait
+    // donc jamais ecrite, et la file de reprise ne captait que les matchs
+    // donnes d'etat exteriorises. La note devient censee apres la tentative.
+    if (!settlementErrors.length && arbiterErrors.length) {
+      match.pendingArbiterFee = roundAmount(arbiterFee);
+    } else if (!arbiterErrors.length) {
+      // La creance est soldee des que la commission aboutit : la laisser
+      // afficherait une dette inexistante.
+      delete match.pendingArbiterFee;
     }
   }
 
@@ -1653,6 +1745,16 @@ export const retryPendingArbiterFees = async (matches) => {
       // La creance est soldee : elle doit sortir de la file, sinon elle
       // serait rejouee a chaque cycle, pour toujours.
       delete match.pendingArbiterFee;
+      // A9 : le versement rejoue entre dans l'historique du match. Sans
+      // cette ligne, la commission veteree restait invisible dans
+      // match.payouts et l'export admin tombait sur la valeur theorique.
+      recordActualPayout(
+        match,
+        arbiterId,
+        match.arbiter?.pseudo || getUserById(arbiterId)?.pseudo || '',
+        due,
+        'arbitration_fee'
+      );
       retried += 1;
     } catch (error) {
       log.warn('Commission d arbitre : reprise echouee', {

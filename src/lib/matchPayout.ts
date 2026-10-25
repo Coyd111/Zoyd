@@ -62,21 +62,37 @@ interface PayoutMatch {
   arbiterFee?: number;
   teamSize?: number;
   projectedPayouts?: MatchPayoutProjection;
+  /** Versements reels (A9) : l'UUID du paye est remplace par `isMe`. */
+  payouts?: Array<{ amount: number; type: string; isMe?: boolean }>;
 }
+
+/** Part du lecteur dans les versements reels, si le serveur l'a remappee. */
+const getMyPayout = (match: PayoutMatch, type: 'prize_win' | 'arbitration_fee') => {
+  const entry = match.payouts?.find((payout) => payout?.isMe === true && payout?.type === type);
+  return entry && Number(entry.amount) > 0 ? roundAmount(Number(entry.amount)) : undefined;
+};
 
 /**
  * Part par joueur GAGNANT.
  *
  * `getWinnerPayout` renvoie le TOTAL de l'equipe gagnante. L'additionner
  * comme gain personnel gonfle le profil du facteur taille d'equipe : 2x en
- * 2VS2, 5x en 5VS5. C'est un chiffre PUBLIC — c'est la reputation du joueur.
+ * 2VS2, 5x en 5VS5. C'est un chiffre PUBLIC - c'est la reputation du joueur.
  *
  * La source de verite est la projection serveur (`projectedPayouts.perWinner`),
  * qui divise par la taille de l'equipe gagnante, et par le nombre REEL de
  * gagnants quand le resultat est soumis. Le repli divise par la taille
  * d'equipe, pour les matchs sans projection (anciens payloads, tests).
+ *
+ * A9 : sur un profil possede (`isMe`), la part REELLEMENT versee au lecteur
+ * sert avant toute projection - le reglement a pu tourner a un pot different
+ * (roster incomplet, arrondi absorbe par le premier). Les profils vus par un
+ * tiers n'ont aucun `isMe` et retombent sur la projection, qui est en base
+ * reelle depuis le correctif (A9 cote serveur).
  */
 export const getWinnerPayoutPerPlayer = (match: PayoutMatch): number => {
+  const maPart = getMyPayout(match, 'prize_win');
+  if (maPart !== undefined) return maPart;
   const projection = match.projectedPayouts?.perWinner;
   if (typeof projection === 'number' && projection > 0) return roundAmount(projection);
   const size = match.teamSize && match.teamSize > 0 ? match.teamSize : 1;
@@ -84,8 +100,11 @@ export const getWinnerPayoutPerPlayer = (match: PayoutMatch): number => {
 };
 
 /** Commission d'arbitre retenue : projection serveur si presente, sinon champ du match. */
-export const getArbiterFee = (match: PayoutMatch): number =>
-  match.projectedPayouts?.arbiterFee ?? Number(match.arbiterFee || 0);
+export const getArbiterFee = (match: PayoutMatch): number => {
+  const maCommission = getMyPayout(match, 'arbitration_fee');
+  if (maCommission !== undefined) return maCommission;
+  return match.projectedPayouts?.arbiterFee ?? Number(match.arbiterFee || 0);
+};
 
 /** Part totale de l'equipe gagnante (base reelle si projection disponible). */
 export const getWinnerPayout = (match: PayoutMatch): number => {

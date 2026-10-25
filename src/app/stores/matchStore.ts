@@ -149,6 +149,24 @@ export interface MatchRules {
   notes?: string;
 }
 
+export type MatchPayoutType = 'prize_win' | 'arbitration_fee';
+
+/**
+ * Un versement reels effectue sur un match (A9) : part d'un gagnant
+ * (`prize_win`) ou commission de l'arbitre (`arbitration_fee`), tel que le
+ * reglement l'a servi - pas ce que la creation avait prevu.
+ */
+export interface MatchPayoutEntry {
+  /** UUID interne : absent du payload public (le sanitiseur le retire). */
+  userId?: string;
+  pseudo?: string;
+  amount: number;
+  type: MatchPayoutType;
+  /** true si ce versement est celui du lecteur (remap du sanitiseur). */
+  isMe?: boolean;
+  paidAt?: string;
+}
+
 export interface Match {
   id: string;
   creatorId: string;
@@ -172,6 +190,14 @@ export interface Match {
     winner: number;
     perWinner: number;
   };
+  /**
+   * Versements REELLEMENT effectues (A9, audit-2) : ecrit par le serveur au
+   * fil du reglement. L'UUID de chaque paye ne sort pas du payload (le
+   * sanitiseur le remplace par `isMe`, comme pour le roster) ; une part
+   * reconnue par `isMe` prime sur toute projection pour les gains du
+   * lecteur (profileMetrics).
+   */
+  payouts?: MatchPayoutEntry[];
   visibility: MatchVisibility;
   deviceRestriction: DeviceRestriction;
   controllerRestriction: ControllerRestriction;
@@ -306,6 +332,20 @@ interface StoredProjectedPayouts {
 }
 
 /**
+ * Versement brut venu du serveur. Le champ DOIT etre declare ici (A9) :
+ * sans lui, `normalizeStoredMatch` ecartait les versements et l'ecran du
+ * lecteur perdait la part reelle au profit de la projection seule.
+ */
+interface StoredPayout {
+  userId?: string;
+  pseudo?: string;
+  amount?: number;
+  type?: string;
+  isMe?: boolean;
+  paidAt?: string;
+}
+
+/**
  * Forme brute d'un match venant du serveur. Tous les champs sont optionnels
  * (le serveur peut envoyer une forme partielle) mais DOIVENT être déclarés
  * explicitement, et SANS index signature : avec `[key: string]: unknown`, chaque
@@ -349,6 +389,7 @@ interface StoredMatch {
   dispute?: StoredDispute;
   result?: StoredResult;
   projectedPayouts?: StoredProjectedPayouts;
+  payouts?: StoredPayout[];
 }
 
 const normalizeStoredDispute = (dispute: StoredDispute): Dispute => ({
@@ -425,6 +466,30 @@ const normalizeStoredProjection = (
     perWinner: Number.isFinite(perWinner) ? perWinner : 0,
   };
 };
+/**
+ * Recopie les versements reels (A9) sans les reconstruire : le serveur
+ * ecrit-au fil du reglement ce que le wallet a servi, avec l'UUID deja
+ * remplace par `isMe`. On ne garde que les types connus et un montant
+ * numerique : un payload partial ou ancien retombe sur `undefined` et les
+ * helpers continuent de lire la projection.
+ */
+const normalizeStoredPayouts = (payouts: StoredPayout[] | undefined): Match['payouts'] => {
+  if (!Array.isArray(payouts)) return undefined;
+  const entries: MatchPayoutEntry[] = [];
+  for (const payout of payouts) {
+    if (payout?.type !== 'prize_win' && payout?.type !== 'arbitration_fee') continue;
+    entries.push({
+      ...(payout.userId ? { userId: payout.userId } : {}),
+      pseudo: payout.pseudo || '',
+      amount: Number(payout.amount || 0),
+      type: payout.type,
+      ...(payout.isMe === true ? { isMe: true } : {}),
+      ...(payout.paidAt ? { paidAt: payout.paidAt } : {}),
+    });
+  }
+  return entries.length > 0 ? entries : undefined;
+};
+
 const normalizeStoredMatch = (match: StoredMatch): Match => ({
   id: match.id || '',
   creatorId: match.creatorId || '',
@@ -460,6 +525,7 @@ const normalizeStoredMatch = (match: StoredMatch): Match => ({
   trustScoreMin: match.trustScoreMin,
   isInstant: match.isInstant ?? false,
   projectedPayouts: normalizeStoredProjection(match.projectedPayouts),
+  payouts: normalizeStoredPayouts(match.payouts),
 });
 
 const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match[]) => {

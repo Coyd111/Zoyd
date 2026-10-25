@@ -75,6 +75,35 @@ describe('sanitizeMatchForBroadcast — aucune fuite de userId', () => {
     expect(raw).not.toContain('SALLE-1');
     expect(raw).not.toContain('preuve');
   });
+
+  it('remappe match.payouts en isMe sans exposer les UUID (A9)', () => {
+    // Les versements reels (A9) rejoignent le payload public avec leur
+    // montant, mais l'UUID de chaque paye doit suivre la meme regle que le
+    // roster : remplace par `isMe`. Sans cela, une reponse publique
+    // embarquait l'identifiant interne de chaque gagnant.
+    const avecPayouts = {
+      ...match(),
+      payouts: [
+        { userId: PLAYER_ID, pseudo: 'P1', amount: 196, type: 'prize_win', paidAt: '2026-01-01T00:00:00Z' },
+        { userId: OTHER_ID, pseudo: 'P2', amount: 196, type: 'prize_win', paidAt: '2026-01-01T00:00:00Z' },
+        { userId: ARBITER_ID, pseudo: 'ARB', amount: 4, type: 'arbitration_fee', paidAt: '2026-01-01T00:00:00Z' },
+      ],
+    };
+    const safe = sanitizeMatchForBroadcast(avecPayouts, PLAYER_ID);
+    const raw = JSON.stringify(safe);
+    expect(raw).not.toContain(PLAYER_ID);
+    expect(raw).not.toContain(OTHER_ID);
+    expect(raw).not.toContain(ARBITER_ID);
+    expect(safe.payouts).toHaveLength(3);
+    expect(safe.payouts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ pseudo: 'P1', amount: 196, isMe: true }),
+        expect.objectContaining({ pseudo: 'P2', isMe: false }),
+        expect.objectContaining({ pseudo: 'ARB', amount: 4, isMe: false }),
+      ]),
+    );
+    expect(safe.payouts.every((p) => p.userId === undefined)).toBe(true);
+  });
 });
 
 /**

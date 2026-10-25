@@ -397,6 +397,16 @@ Contrôle : pot 1 000 → 400 / 220 / 130 / 120 / **80** / 50, total 1 000 ✓.
 Ajouter un test qui asserte **chaque part** contre le barème déclaré (le test
 existant n'asserte que le total).
 
+**Correctif (livré avec M3 le 23/10/2026).**
+- La forme en vigueur est déjà celle proposée : les parts sont appliquées au
+  **pot** et le dernier bénéficiaire absorbe le reliquat après commission —
+  vérifié numériquement (pot 1 000 → 400 / 220 / 130 / 120 / 80 / 50).
+- Couverture M3 (`server/br-engine.test.mjs`) : chaque part est assertée
+  contre le barème déclaré, plus un cas de pot à décimales (999,97) qui
+  ferait éclater un reliquat mal absorbé.
+- Restant : relire l'affichage de la répartition côté interface (§3), non
+  couvert par ce lot.
+
 ---
 
 ### A5 — ÉLEVÉE — Un tournoi à 3 participants ne peut jamais se terminer : les passes restent bloquées à vie
@@ -590,6 +600,27 @@ de la qualité d'arbitre** qui n'est pas gardée.
 3. ajouter un rate limit sur `POST /api/tournaments/:id/arbiter` ;
 4. même garde pour `assignArbiterOnServer` côté match.
 
+**Correctif (25/10/2026) — décision produit et rate limit.**
+- **Décision produit : la garde admin n'est PAS appliquée.** La ligue reste
+  le seul domaine où l'arbitre est un admin. Pour les tournois et les
+  matchs, tout joueur authentifié peut se présenter volontaire : soit il
+  prend un slot créé en « premier arrivé », soit il crée son propre
+  match / tournoi. Exiger `role === 'admin'` (points 1 et 4) dénature le
+  modèle volontariat attendu. Le filet existant demeure : `ROLE_CONFLICT`
+  interdit d'arbitrer son propre tournoi, et le match impose la fenêtre de
+  confirmation au perdant.
+- **Point 2 : couvert par S3** — `require2faIfAdmin` (serveur) impose une
+  2FA fraîche à toute session admin qui passe par les routes de résultat ;
+  le joueur arbitre, lui, passe sans code.
+- **Point 3 : rate limit en place** — `POST /api/tournaments/:id/arbiter`
+  est passé au groupe `social` (comme son jumeau match
+  `POST /api/matches/:id/arbiter`), placé avant la session.
+- **Point de vigilance BR : `createBrLobbyOnServer` exige toujours un
+  arbitre admin** (correctif anti-fraude conservé en l'état). Si BR doit
+  rejoindre le modèle volontariat, c'est une décision produit distincte à
+  trancher — cette lacune n'est pas corrigée unilatéralement.
+
+
 ---
 
 ### A8 — MOYENNE — Le plafond de retraits cumulés sur 24 h est calculé sur un historique plafonné à 200 : il est contournable
@@ -683,6 +714,42 @@ const arbiterFee = match.arbiter?.userId ? roundAmount(lockedPot * ARBITER_FEE_R
    **réellement** versé ;
 3. faire de `match.payouts` la source de la projection **une fois le match
    clos** (au lieu du repli sur `prizePool`).
+
+**Correctif (25/10/2026).**
+- **Point 1 : `recordActualPayout`** (`server/match-engine.mjs`) écrit dans
+  `match.payouts` une entrée `(userId, pseudo, amount, type, paidAt)` au fil
+  du règlement : la part du vainqueur après réussite du versement, la
+  commission quand elle aboutit, et aussi la reprise A1/A3
+  (`retryPendingArbiterFees`) quand la créance est enfin payée.
+  **Écriture unique par (userId, type)** : le rejeu d'un règlement
+  interrompu recalcule la répartition sur un pot réduit (les réservations
+  des payés sont déjà libérées) ; la garde conserve la première valeur
+  écrite — la seule qui a fini sur un compte, l'idempotence du wallet
+  (`type:matchId` par utilisateur) rendant les relances silencieuses.
+- **Point 2 : export CSV** (`server/routes/admin.mjs`) — la colonne
+  `payouts` est remplie (uuid:pseudo:montant | …), et deux colonnes
+  s'ajoutent : `arbiterFeeReel` (somme des commissions réellement payées)
+  et `pendingArbiterFee` (créance restante, suivi de la reprise).
+  `arbiterFee` reste théorique, en vis-à-vis pour la comparaison.
+- **Point 3 : projection** — `getProjectedPayouts` bascule sur les montants
+  écrits dès que `match.payouts` existe (`basis` = total versé + commission
+  réelle), au lieu du repli sur `prizePool` théorique après libération des
+  réservations. Côté front, le tableau arrive normalisé
+  (`matchStore.normalizeStoredPayouts`) et `src/lib/matchPayout.ts` fait
+  primer la part **du lecteur** (`isMe`) sur la projection pour les gains
+  d'un profil possédé ; les profils vus par un tiers sont servis par la
+  projection, réelle depuis ce correctif.
+- **Sanitisation** : l'UUID de chaque payé ne sort plus du payload public —
+  remplacé par `isMe`, comme le roster.
+- **Défaut voisin découvert au passage** : la note de créance
+  `pendingArbiterFee` était évaluée **avant** la tentative de versement de
+  la commission (donc jamais écrite à la première tentative). La note est
+  désormais posée après le try/catch, quand elle reflète vraiment un échec.
+- Couverture : `server/match-engine.test.mjs` (bloc A9 — versement réel,
+  écriture unique au rejeu, commission en échec puis reprise, projection),
+  `server/state-helpers.test.mjs` (fuite d'UUID dans `payouts`),
+  `server/matches-export-csv.test.mjs` (schéma de colonnes de l'export).
+
 
 ---
 

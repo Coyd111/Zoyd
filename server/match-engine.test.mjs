@@ -973,3 +973,152 @@ describe('match-engine - confirmation obligatoire des deux equipes', () => {
     )).rejects.toThrow(/deja distribues/);
   });
 });
+
+/**
+ * A9 (audit-2) - les montants REELLEMENT verses sont ecrits sur le match.
+ *
+ * Avant le correctif, `applyResultSettlement` calculait
+ * `firstWinnerShare` / `sharePerWinner` / `arbiterFee` sans jamais les
+ * ecrire : `match.payouts` restait vide, l'export admin publiait une
+ * colonne `payouts` vide et une commission figee a la creation, et les
+ * profils publics retombaient sur le pot THEORIQUE (`prizePool =
+ * maxPlayers * entryFee`) des que les reservations etaient liberees.
+ *
+ * Convention d'ecriture : UNE SEULE entree par (joueur, type). Le rejeu
+ * d'un reglement interrompu repasse le meme calcul, mais le wallet ignore
+ * les payes deja servis (cle d'idempotence) : `recordActualPayout` doit
+ * garder la premiere valeur - c'est elle qui a fini sur un compte - au
+ * lieu d'ecraser l'historique avec la part recalculee d'un pot reduit
+ * (les reservations des payes sont liberees entre-deux).
+ */
+describe('match-engine - match.payouts : montants reels (A9)', () => {
+  const mkJoueur = (id, team, locked) => ({
+    id, userId: id, pseudo: id, role: 'player', team,
+    isReady: true, isCheckedIn: true, isCaptain: false, joinedAt: '2026-01-01T00:00:00Z', trustScore: 50,
+    stats: { elo: 1200, wins: 0, losses: 0, draws: 0, totalMatches: 0, totalEarnings: 0, winRate: 0, tournamentsWon: 0, tournamentsPlayed: 0, arbitratedMatches: 0 },
+    wallet: { lockedEntries: { 'M-A9': { amount: locked, cashAmount: locked, bonusAmount: 0, lockedAt: '2026-01-01T00:00:00Z' } } },
+  });
+
+  const makeMatch = (overrides = {}) => ({
+    id: 'M-A9',
+    creatorId: 'a', creatorPseudo: 'A',
+    format: '1VS1', teamSize: 1, maxPlayers: 2,
+    rules: { mode: 'S&D', map: 'Crossfire', scoreTarget: 7, bestOf: 1 },
+    entryFee: 100, prizePool: 200, zoydFee: 4, arbiterFee: 4,
+    visibility: 'public', deviceRestriction: 'open', controllerRestriction: 'open',
+    status: 'in_progress',
+    players: [mkJoueur('a', 0, 100), mkJoueur('b', 1, 100)],
+    arbiter: { userId: 'arb' },
+    disputes: [],
+    isInstant: false,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  });
+
+  const submit = (match) => matchEngine.submitMatchResultOnServer([match], { id: 'arb' }, 'M-A9', {
+    winnerTeam: 0,
+    scores: { team0: 7, team1: 2 },
+    proofs: { scoreboard: ['score.png'], finalResult: ['final.png'] },
+  }, { deferSettlement: true });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    releaseWalletWinnings.mockResolvedValue({});
+    getUserById.mockImplementation((id) => {
+      if (id === 'arb') return { id: 'arb', pseudo: 'Arbiter', role: 'arbiter', wallet: {} };
+      return mkJoueur(id, id === 'a' ? 0 : 1, 100);
+    });
+  });
+
+  it('ecrit les parts et la commission reellement verses', async () => {
+    const submitted = await submit(makeMatch());
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-A9');
+    const second = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-A9');
+
+    // 200 verrouilles = 196 au vainqueur + 4 a l'arbitre : l'ecriture
+    // documente ce qui a quitte le sequestre, pas ce que la creation avait
+    // prevu (`prizePool` 200 theorique ici, mais un `arbiterFee` fige sur
+    // un match a roster incomplet dans la realite).
+    expect(second.match.payouts).toHaveLength(2);
+    const partVictoire = second.match.payouts.find((v) => v.userId === 'a' && v.type === 'prize_win');
+    const commission = second.match.payouts.find((v) => v.userId === 'arb' && v.type === 'arbitration_fee');
+    expect(partVictoire).toMatchObject({ pseudo: 'a', amount: 196 });
+    expect(commission).toMatchObject({ pseudo: 'Arbiter', amount: 4 });
+    expect(second.match.payouts.reduce((sum, v) => sum + v.amount, 0)).toBe(200);
+    expect(second.match.result.payoutDistributed).toBe(true);
+  });
+
+  it('ecriture unique : rejouer le reglement ne duplique ni ne rEECRIT les versements', async () => {
+    const submitted = await submit(makeMatch());
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-A9');
+    const second = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-A9');
+    const historique = JSON.parse(JSON.stringify(second.match.payouts));
+
+    // Reproduit l'etat que lit le cron de reprise : un resultat `'pending'`
+    // a solder. La re-execution recalcule la meme repartition, mais
+    // `recordActualPayout` no-op sur les entrees existantes : les montants
+    // notes restent ceux du premier versement abouti.
+    second.match.result.payoutDistributed = 'pending';
+    const rejoue = await matchEngine.settlePendingMatchResult(second.matches, 'M-A9');
+    expect(rejoue.match.payouts).toEqual(historique);
+  });
+
+  it('commission en echec : rien n est note, puis la reprise ecrit le versement', async () => {
+    // L'arbitre a fait son travail, mais le versement de sa commission
+    // echoue (base indisponible) alors que le joueur est paye.
+    releaseWalletWinnings.mockImplementation(async (_userId, _amount, _matchId, type) => {
+      if (type === 'arbitration_fee') throw new Error('SUPABASE_DOWN');
+      return {};
+    });
+
+    const submitted = await submit(makeMatch());
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-A9');
+    const second = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-A9');
+
+    // Seule la part du joueur est notee : rien n'a quitte la poche de
+    // l'arbitre. La creance reste visible dans `pendingArbiterFee` (file
+    // A1/A3), mais ne doit PAS polluer l'historique des versements.
+    expect(second.match.payouts).toHaveLength(1);
+    expect(second.match.payouts[0].type).toBe('prize_win');
+    expect(second.match.pendingArbiterFee).toBe(4);
+
+    // La reprise paie la creance : elle entre dans l'historique du match.
+    releaseWalletWinnings.mockResolvedValue({});
+    const rejoue = await matchEngine.retryPendingArbiterFees(second.matches);
+    expect(rejoue.retried).toBe(1);
+    const commission = rejoue.matches[0].payouts.find((v) => v.type === 'arbitration_fee');
+    expect(commission).toMatchObject({ userId: 'arb', amount: 4 });
+    expect(rejoue.matches[0].pendingArbiterFee).toBeUndefined();
+  });
+
+  it('la projection annonce ce qui a ete verse des que match.payouts existe', () => {
+    // Apres reglement, les reservations sont liberees : sans ce chemin, le
+    // calcul retombait sur `prizePool` (pot THEORIQUE) - le profil public
+    // d'un match a roster incomplet affichait des gains jamais verses.
+    getUserById.mockImplementation(() => ({ wallet: {} }));
+    const match = {
+      id: 'M-A9',
+      prizePool: 2000,
+      arbiterFee: 40,
+      format: '2VS2', teamSize: 2,
+      players: [
+        { userId: 'a', team: 0 }, { userId: 'b', team: 0 },
+        { userId: 'c', team: 1 }, { userId: 'd', team: 1 },
+      ],
+      arbiter: { userId: 'arb', pseudo: 'Arbiter' },
+      payouts: [
+        { userId: 'a', pseudo: 'a', amount: 980, type: 'prize_win', paidAt: '2026-01-01T00:00:00Z' },
+        { userId: 'b', pseudo: 'b', amount: 981, type: 'prize_win', paidAt: '2026-01-01T00:00:00Z' },
+        { userId: 'arb', pseudo: 'Arbiter', amount: 39, type: 'arbitration_fee', paidAt: '2026-01-01T00:00:00Z' },
+      ],
+    };
+
+    const projection = matchEngine.getProjectedPayouts(match);
+    expect(projection.locked).toBe(false);
+    expect(projection.basis).toBe(2000);      // 1961 verses + 39 commission REELLE
+    expect(projection.winner).toBe(1961);
+    expect(projection.arbiterFee).toBe(39);   // pas la valeur figee 40
+    expect(projection.perWinner).toBe(980.5); // moyenne des deux parts reelles
+  });
+});

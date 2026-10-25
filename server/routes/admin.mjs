@@ -109,16 +109,29 @@ const csvCell = (value) => {
 const buildMatchesCsv = (matches) => {
   const columns = [
     'id', 'format', 'status', 'createdAt', 'finishedAt', 'scheduledAt',
-    'entryFee', 'prizePool', 'zoydFee', 'arbiterFee', 'creatorPseudo',
+    'entryFee', 'prizePool', 'zoydFee', 'arbiterFee', 'arbiterFeeReel',
+    'pendingArbiterFee', 'creatorPseudo',
     'players', 'winner', 'payouts',
   ];
 
   const rows = matches.map((match) => {
-    const payouts = Array.isArray(match.payouts)
-      ? match.payouts
-          .map((p) => `${p.userId || ''}:${p.pseudo || ''}:${p.amount ?? ''}`)
-          .join(' | ')
-      : '';
+    // A9 (audit-2) : `match.payouts` est ecrit au fil du reglement par
+    // `recordActualPayout` (match-engine). Avant ce correctif, la colonne
+    // `payouts` sortait toujours vide — rien n'etait jamais ecrit — et la
+    // colonne `arbiterFee` ressortait le montant FIGE a la creation (pot
+    // theorique `maxPlayers * entryFee`), alors que le versement prend 2%
+    // du pot REELLEMENT verrouille. L'export servait de sauvegarde de
+    // l'historique financier : il ne doit pas raconter des montants
+    // imaginaires.
+    const verses = Array.isArray(match.payouts) ? match.payouts : [];
+    const arbiterFeeReel = Number(
+      verses
+        .filter((paye) => paye?.type === 'arbitration_fee')
+        .reduce((sum, paye) => sum + Number(paye?.amount || 0), 0).toFixed(2)
+    );
+    const payouts = verses
+      .map((paye) => `${paye.userId || ''}:${paye.pseudo || ''}:${paye.amount ?? ''}`)
+      .join(' | ');
     return [
       match.id,
       match.format,
@@ -130,6 +143,8 @@ const buildMatchesCsv = (matches) => {
       match.prizePool ?? '',
       match.zoydFee ?? '',
       match.arbiterFee ?? '',
+      arbiterFeeReel,
+      match.pendingArbiterFee ?? '',
       match.creatorPseudo || '',
       Array.isArray(match.players) ? match.players.map((p) => p?.pseudo || p?.userId || '').join(' | ') : '',
       match.winner ?? '',
@@ -139,6 +154,8 @@ const buildMatchesCsv = (matches) => {
 
   return `\uFEFF${columns.join(',')}\n${rows.join('\n')}\n`;
 };
+
+export { buildMatchesCsv };
 
 /**
  * Traite les routes `/api/admin/*`.

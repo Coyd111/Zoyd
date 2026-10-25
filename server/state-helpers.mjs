@@ -231,6 +231,16 @@ const sanitizeMatchForBroadcast = (match, viewerId = null) => {
   if (safe.submittedBy === 'system-no-show' || safe.submittedBy === 'admin-dashboard') {
     safe.submittedBy = null;
   }
+  // A9 : les versements reels rejoignent le payload (`match.payouts`) avec
+  // leur montant et leur pseudo, mais SANS l'UUID - le lecteur reconnait sa
+  // propre part via `isMe`, exactement comme le roster. Sans cette remap,
+  // l'UUID de chaque paye fuyait dans une reponse publique.
+  if (Array.isArray(safe.payouts)) {
+    safe.payouts = safe.payouts.map((payout) => {
+      const { userId: _payee, ...publicPayout } = payout || {};
+      return { ...publicPayout, isMe: Boolean(viewerId && payout?.userId === viewerId) };
+    });
+  }
   if (safe.result) {
     // `confirmedByTeams` est un tableau de userIds. Il sert uniquement au
     // calcul de `hasConfirmed` ci-dessus ; laissé dans le payload, il

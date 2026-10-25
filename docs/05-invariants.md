@@ -262,13 +262,21 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | **Erreur** | `ARBITER_REQUIRED`, `FORBIDDEN` |
 | **Tests** | `server/br-engine.test.mjs:199` « refuse une elimination saisie par un joueur inscrit (pas l'arbitre) » · `:205` · `:211` « refuse toute saisie si le salon n'a pas d'arbitre designe » · `:224` · `e2e/api/br.spec.ts:172`, `:190` |
 
-### R7 — L'arbitre BR est un admin désigné à la création, et n'est pas joueur
+### R7 — L'arbitre BR est désigné à la création, n'est jamais joueur, et peut être n'importe quel compte existant
+
+**Décision produit du 25/10/2026 (volontariat, A7 audit-2)** : le rôle admin
+n'est plus requis, ni pour créer un salon ni pour en être l'arbitre (par
+défaut : le créateur). Les protections qui restaient intactes :
+l'arbitre **ne paie aucun pass** et **ne figure pas dans `players`**, et
+`requireLobbyArbiter` limite la saisie des éliminations et du règlement à
+l'arbitre désigné. L'action `finish` ajoute `require2faIfAdmin` (2FA fraîche
+d'une session admin ; le joueur arbitre passe sans code).
 
 | | |
 |---|---|
-| **Code** | `server/br-engine.mjs:281-290` (désignation), `:308-311` (pas de pass, pas dans `players`) |
-| **Erreur** | `INVALID_ARBITER` |
-| **Tests** | `server/br-engine.test.mjs:161` « designe le createur comme arbitre par defaut » · `:166` « refuse un arbitre inexistant ou non-admin » · `e2e/api/br.spec.ts:70`, `:153`, `:163` |
+| **Code** | `server/br-engine.mjs` (désignation et contrôle du compte existant), non-joueur dans le roster ; `requireLobbyArbiter` pour la saisie |
+| **Erreur** | `INVALID_ARBITER` (compte inexistant), `FORBIDDEN` (saisie par un non-arbitre), `2FA_REQUIRED` (admin sans TOTP sur `finish`) |
+| **Tests** | `server/br-engine.test.mjs` « designe le createur comme arbitre par defaut » · « accepte un joueur comme createur-arbitre (volontariat, A7) » · « refuse un arbitre inexistant et accepte un arbitre joueur » · `e2e/api/br.spec.ts:70`, `:153`, `:163` |
 
 ### R8 — En ligue, seul l'admin pilote — et il n'y a ni arbitre, ni fenêtre de confirmation
 
@@ -496,15 +504,15 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | # | Constat | Le rapport antérieur avait raison ? | Gravité |
 |---|---|---|---|
 | V1 | `sweepMatchesWithoutArbiter` n'est appelé par aucun cron, aucune route, aucun serveur | **OUI** — **CORRIGÉ** | ÉLEVÉE → résolu |
-| V2 | `pendingArbiterFee` est écrit mais jamais relu | **OUI** | MOYENNE → résolu |
+| V2 | `pendingArbiterFee` est écrit mais jamais relu | **OUI** — **CORRIGÉ** | MOYENNE → résolu |
 | V3 | `awaiting_arbiter` n est pas dans `ACTIVE_STATUSES` | **OUI** | MOYENNE -> resolu |
 | V4 | `archived` dans MATCH_ETATS_CLOS mais pas TERMINAL_STATUSES | **OUI** | MOYENNE -> resolu |
 | V5 | `perWinner` divise par le nombre total de joueurs | **OUI** sur le fond | FAIBLE (latent) -> resolu |
 | V6 | Une exception de règlement tue tout le balayage d'expiration des confirmations | **NOUVEAU** | ÉLEVÉE → résolu |
 | V7 | BR : le pass est verrouillé avant le contrôle `TEAM_FULL` → verrou orphelin | **NOUVEAU** | ÉLEVÉE → résolu |
-| V8 | Le front additionne le total de l'équipe gagnante aux gains d'un joueur | **NOUVEAU** | MOYENNE |
-| V9 | La migration de la colonne `revision` n'est dans aucun fichier SQL du dépôt | **NOUVEAU** | ÉLEVÉE (si non appliquée) |
-| V10 | BR : aucun cron de reprise d'un règlement interrompu | **NOUVEAU** | MOYENNE |
+| V8 | Le front additionne le total de l'équipe gagnante aux gains d'un joueur | **NOUVEAU** — **CORRIGÉ** | MOYENNE → résolu |
+| V9 | La migration de la colonne `revision` n'est dans aucun fichier SQL du dépôt | **FAUX** — provisionnée (`schema.sql:94-95`) | ÉLEVÉE → résolu |
+| V10 | BR : aucun cron de reprise d'un règlement interrompu | **NOUVEAU** — **CORRIGÉ** | MOYENNE → résolu |
 | V11 | `arbiterPayouts` utilise le `arbiterFee` fige sur le pot theorique | **NOUVEAU** | FAIBLE (latent) -> resolu |
 | V12 | `LEAGUE_PLAYERS_PER_DAY` est une constante morte | **NOUVEAU** | INFO -> resolu |
 | V13 | `getMatchActivityForUser` est du code mort | — | INFO |
@@ -974,10 +982,18 @@ suite tombe à **1 échec sur 70**.
 
 ---
 
-### V8 — Le front additionne le total de l'équipe gagnante aux gains d'un joueur
-**Gravité : MOYENNE (affichage)** — *constat nouveau, absent du rapport*
+### V8 — Le front additionne le total de l'équipe gagnante aux gains d'un joueur — **CORRIGÉ**
+**Gravité : MOYENNE (affichage) → résolu** — *constat nouveau, absent du rapport*
 
-**Vérification.**
+> **Statut : corrigé.** Les additions signalées lisent désormais la part
+> individuelle `getWinnerPayoutPerPlayer` (`src/lib/matchPayout.ts:93` :
+> versement réel du lecteur via `match.payouts`/`isMe`, puis projection
+> `projectedPayouts.perWinner` rendue effective côté client par M1, puis les
+> dérivations front M2-M5) : `src/lib/profileMetrics.ts:210`,
+> `src/lib/communityInsights.ts:427`. Aucun paiement réel n'a été en cause :
+> c'était une divergence d'affichage, corrigée des deux côtés.
+
+**Vérification (état d'origine).**
 
 | Emplacement | Code |
 |---|---|
@@ -995,10 +1011,21 @@ c'est une divergence d'affichage.
 
 ---
 
-### V9 — La migration de la colonne `revision` n'est dans aucun fichier SQL du dépôt
-**Gravité : ÉLEVÉE si la migration n'est pas appliquée en production** — *constat nouveau*
+### V9 — La migration de la colonne `revision` n'est dans aucun fichier SQL du dépôt — **CORRIGÉ**
+**Gravité : ÉLEVÉE → résolu** — *constat nouveau, infirmé depuis*
 
-**Vérification.**
+> **Statut : corrigé.** `supabase/schema.sql:94-95` provisionne désormais la
+> colonne et son index (`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS
+> revision BIGINT NOT NULL DEFAULT 0` + `idx_app_users_revision`).
+> Commit `b90264d` du 20/10/2026 (« fix(schema): declarer la colonne OCC, et
+> rendre son etat observable »). Toute base réinstantiée depuis ce schéma
+> l'obtient ; toute base antérieure est couverte au passage par le
+> `ADD COLUMN IF NOT EXISTS`. La réserve d'utilisabilité « application en
+> production non vérifiable depuis le dépôt » cède devant le dépôt : le
+> défaut de colonne reste observable à l'exécution (WARN au démarrage,
+> écritures inconditionnelles décrites ci-dessous).
+
+**Vérification (état d'origine).**
 
 | Fichier | Contenu |
 |---|---|
@@ -1026,10 +1053,20 @@ c'est une perte silencieuse ».
 
 ---
 
-### V10 — BR : aucun cron de reprise d'un règlement interrompu
-**Gravité : MOYENNE** — *constat nouveau*
+### V10 — BR : aucun cron de reprise d'un règlement interrompu — **CORRIGÉ**
+**Gravité : MOYENNE → résolu** — *constat nouveau, absent du rapport*
 
-**Vérification.** Aucune occurrence de `settling` dans `server/cron.mjs`. Le
+> **Statut : corrigé.** `sweepPendingBrSettlements` (`server/cron.mjs`)
+> reprend les salons `settling` toutes les **5 minutes** (`:629`) avec un
+> premier passage au boot (**60 s**, `:630`). La reprise est série mais
+> immédiatement dynamique : pour chaque salon, **relecture sous le verrou**
+> `withBrLobbyMutex(lobbyId)`, acteur = l'**arbitre du salon**
+> (`cible.arbiterId`), et persistance de la progression après chaque
+> versement (`onProgress`) — un salon interrompu et reprenable, pas un
+> double crédit. Le réglage initial par l'arbitre reste disponible
+> (`settleBrLobbyOnServer` accepte `settling`).
+
+**Vérification (état d'origine).** Aucune occurrence de `settling` dans `server/cron.mjs`. Le
 seul chemin de reprise est un **nouvel appel** de l'arbitre sur
 `POST /api/br/lobbies/:id/finish`, puisque `settleBrLobbyOnServer` accepte
 `settling` (`server/br-engine.mjs:710-712`).
@@ -1042,10 +1079,18 @@ une reprise automatique, le quatrième non.
 
 ---
 
-### V11 — `arbiterPayouts` utilise le `arbiterFee` figé sur le pot théorique
-**Gravité : FAIBLE** — *constat nouveau*
+### V11 — `arbiterPayouts` utilise le `arbiterFee` figé sur le pot théorique — **CORRIGÉ**
+**Gravité : FAIBLE → résolu** — *constat nouveau*
 
-**Vérification.** `server/persistence.mjs:1515-1521` lit `match.arbiterFee`,
+> **Statut : corrigé.** `getCommissionStats` lit la **transaction** du
+> versement (montant réellement versé) et plus le champ figé — le code le
+> documente et la lecture est déportée dans un module pur
+> (`commission-stats.mjs`), donc testable seule. Côté front, M4 fait lire la
+> commission du profil public via `getArbiterFee` (projection prioritaire).
+> A9 ajoute la création des colonnes `arbiterFeeReel`/`pendingArbiterFee`
+> dans l'export CSV admin, pour le suivi.
+
+**Vérification (état d'origine).** `server/persistence.mjs:1515-1521` lit `match.arbiterFee`,
 champ figé à la création sur le pot **théorique** (`server/match-engine.mjs:542`),
 alors que la commission réellement versée vaut 2 % du pot **réel**
 (`server/match-engine.mjs:313`). Le commentaire du code le reconnaît
@@ -1058,15 +1103,19 @@ frais de retrait (`server/persistence.mjs:1532`).
 
 ---
 
-### V12 — `LEAGUE_PLAYERS_PER_DAY` est une constante morte
-**Gravité : FAIBLE** — *constat nouveau*
+### V12 — `LEAGUE_PLAYERS_PER_DAY` est une constante morte — **CORRIGÉ**
+**Gravité : FAIBLE → résolu** — *constat nouveau*
 
-**Vérification.** `server/league-engine.mjs:18` déclare `LEAGUE_PLAYERS_PER_DAY = 100` ;
-aucune autre occurrence dans le dépôt.
+> **Statut : corrigé.** La constante est désormais **dérivée**
+> (`server/league-engine.mjs:67` — `LEAGUE_PLAYERS_PER_DAY =
+> Math.ceil(LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS)`) et vérifiée
+> (`server/league-engine.test.mjs:895` : chaque journée garde un effectif
+> plafonné). Plus de valeur écrite en dur : la borne suit
+> `LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS`, là où elle vivait en doublon.
 
-**Impact.** Aucun plafond par journée n'est appliqué : avec 500 inscrits et 5
-journées, une journée peut réunir 100 joueurs sans contrôle. La seule borne
-réelle est `maxPlayers ≤ 500` (`server/league-engine.mjs:16`).
+**Vérification (état d'origine).** `server/league-engine.mjs:18` déclarait
+`LEAGUE_PLAYERS_PER_DAY = 100` sans autre occurrence dans le dépôt : aucun
+plafond par journée n'était appliqué.
 
 ---
 
@@ -1137,8 +1186,8 @@ point par point** dans le code. Bilan :
 |---|---|
 | « Les statuts dérivés sont *jamais écrits* » | **Faux.** `updateMatchSnapshot` les écrit dans `match.status` (`server/match-engine.mjs:245`). Le test E2E `e2e/api/match.spec.ts:203` le prouve. |
 | « `perWinner` : l'UI affiche une part par joueur inférieure à la part réellement versée » | **Non vérifiable / inexact.** Le champ est faux et diffusé, mais **aucun composant ne le lit**. `src/lib/matchPayout.ts:52-56` est du code mort. |
-| « La commission d'arbitre en échec est une créance écrite mais jamais reprise, *contrairement* aux gains de tournoi et de ligue qui ont `pendingPayouts` + cron » | **Confirmé**, y compris la comparaison avec les crons de tournoi (`server/cron.mjs:365-388`) et de ligue (`:396-419`). |
-| Liste des balayages du rapport, §9 | **Incomplète.** Le rapport s'interrompait sur cette section. La matrice complète est dans `docs/02-modele-metier.md` §9.1 : 12 balayages branchés, 2 non branchés, 1 manuel. |
+| « La commission d'arbitre en échec est une créance écrite mais jamais reprise, *contrairement* aux gains de tournoi et de ligue qui ont `pendingPayouts` + cron » | **Confirmé** à l'audit-1, y compris la comparaison avec les crons de tournoi (`server/cron.mjs:365-388`) et de ligue (`:396-419`). **Dépassé le 23/10/2026** : la reprise existe (`sweepPendingArbiterFees`, cron 30 min + boot, `retryPendingArbiterFees`) — rang 2 d'audit-2. |
+| Liste des balayages du rapport, §9 | **Incomplète à l'audit-1.** Le rapport s'interrompait sur cette section. La matrice complète est dans `docs/02-modele-metier.md` §9.1. **Dépassé le 25/10/2026** : le décompte « 12 branchés, 2 non branchés, 1 manuel » ne tient plus — les trois lignes restantes (commissions d'arbitre, règlements BR, salons BR jamais lancés) sont toutes branchées depuis ; la matrice compte désormais 16 balayages. |
 | Le rapport annonçait 7 moteurs | **Confirmé**, mais le neuvième et le dixième fichiers structurants (`server/persistence.mjs`, `server/mutex.mjs`) sont traite à part dans le rapport lui-même. |
 
 ### Constats que le rapport n'avait pas vus
@@ -1151,10 +1200,16 @@ V12 (`LEAGUE_PLAYERS_PER_DAY` morte).
 
 ---
 
-### V14 — Un salon BR jamais lancé garde les passes verrouillés à jamais
-**Gravité : ÉLEVÉE** — *constat trouvé pendant la correction de V10, absent du rapport*
+### V14 — Un salon BR jamais lancé garde les passes verrouillés à jamais — **CORRIGÉ**
+**Gravité : ÉLEVÉE → résolu** — *constat trouvé pendant la correction de V10, absent du rapport*
 
-**Constat.** Un salon BR est créé avec `status: 'scheduled'` et une
+> **Statut : corrigé (C4, audit-2).** `sweepStaleBrLobbies`
+> (`server/cron.mjs`, intervalle **30 min** `:643`, boot **90 s** `:644`)
+> annule, avec remboursement des passes, les salons jamais lancés
+> (`scheduled` et anciens) comme ceux lancés puis abandonnés par l'arbitre
+> (`live`) — capsules ci-dessous de l'état d'origine.
+
+**Constat (état d'origine).** Un salon BR est créé avec `status: 'scheduled'` et une
 programmation à 24-48 h (`BR_MIN_DELAY_MS` / `BR_MAX_DELAY_MS`). Les joueurs
 s'inscrivent et **verrouillent leur pass**. Le salon ne passe `live` que si
 l'arbitre ou le créateur le lance (`startBrLobbyOnServer`), et ce lancement
@@ -1192,10 +1247,14 @@ mêmes drapeaux `settled` et la même reprise que V10.
 ---
 ## 8. Ce qu'il faut faire, par ordre de risque
 
-**Aucun.** Les quinze constats (V1 a V15) sont traites. La liste est vide
-volontairement : elle se remplit quand une anomalie est trouvee, et elle est
-le seul endroit ou l on decide de ne rien faire.
-
+Aucun constat de fond ne reste ouvert : les douze constats cotes
+ELEVEE/MOYENNE/FAIBLE (V1 a V12, plus le V14 des passes BR) sont corriges.
+Trois constats INFO restent volontairement ouverts — du code mort sans effet
+de bord : `getMatchActivityForUser` (V13), le ternaire mort qui partage le
+repere V14, et la branche inatteignable V15 — suivis dans
+`docs/audit-2/04-code-mort.md` (M25 pour V13). La liste se remplit quand une
+anomalie est trouvee, et elle est le seul endroit ou l on decide de ne rien
+faire.
 
 Ce qui reste n est pas du code : c est du produit. Voir docs/00-INDEX.md § 9.
 
@@ -1213,6 +1272,10 @@ Ce qui reste n est pas du code : c est du produit. Voir docs/00-INDEX.md § 9.
   verifie qu elle correspond exactement a ce que le reglement verse.
 - ✅ **V8** — le profil public annonce la PART du joueur, pas le total de son
   equipe. Un test compare le calcul du front au gain reellement verse.
+- ✅ **V9** — la colonne `app_users.revision` est provisionnee par le depot
+  (`supabase/schema.sql:94-95`, `ALTER TABLE ... IF NOT EXISTS` + index,
+  commit b90264d du 20/10/2026) : toute base reinstanciee l'obtient, toute
+  base anterieure est couverte au passage.
 - ✅ **V10** — un salon BR interrompu (\settling\) est repris par un job cron ;
   le drapeau \settled\ evite le double credit.
 - ✅ **V14** — un salon BR programme et jamais lance est annule et rembourse ;

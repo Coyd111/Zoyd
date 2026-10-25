@@ -34,7 +34,9 @@ hydraté par `GET /api/auth/me` (`server/routes/auth.mjs:313-326`). Le store
 vit dans le navigateur : il est modifiable.
 
 La seule barrière réelle est **côté serveur**. Et elle existe :
-`requireAdmin2fa` (`server/admin-totp.mjs:152-175`).
+`requireAdmin2fa` (`server/admin-totp.mjs:152-175`) pour `/api/admin/*`,
+complétée depuis (S1/S3, audit-2) par `require2faIfAdmin` sur les routes de
+résultat.
 
 Le fichier de test qui le prouve s'appelle `server/admin-totp-guard.test.mjs`,
 et son en-tête pose la question frontalement
@@ -48,12 +50,20 @@ Ce document est construit autour de cette distinction.
 
 ---
 
-## 2. Les rôles : deux gardes serveur, pas un
+## 2. Les gardes serveur — et pourquoi le front n'en est pas un
 
 | Garde | Condition | Réponse | Source |
 |---|---|---|---|
 | `requireAdmin` | session + rôle `admin` | 401 / 403 | `server/admin-totp.mjs:129-141` |
 | `requireAdmin2fa` | session + rôle `admin` + 2FA **activée** + 2FA **vérifiée** | 401 / 403 | `server/admin-totp.mjs:152-175` |
+| `require2faIfAdmin` | session (tout rôle) ; **si admin seulement** : 2FA activée + vérifiée (fenêtre 5 min) | 401 / 403 `2FA_REQUIRED` pour l'admin ; le joueur passe sans code | `server/admin-totp.mjs:233-252` |
+
+Le troisième garde est la réponse de S1/S3 (audit-2, livré le 23/10/2026) aux
+routes qui **distribuent de l'argent tout en restant ouvertes au volontariat
+A7** — matchs, tournois, `finish` BR : le joueur arbitre saisit et règle sans
+code (l'autorité y est métier — l'arbitre désigné, cf. `05-invariants.md`
+R7), tandis qu'une session admin doit présenter une 2FA fraîche (un mot de
+passe compromis sans le TOTP obtient un 403, pas un paiement).
 
 `requireAdmin` sert aux routes d'**enrôlement** de la 2FA (setup, enable,
 verify, status) : exiger la 2FA pour activer la 2FA serait circulaire.

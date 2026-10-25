@@ -349,8 +349,9 @@ top 40 en finale (`:19`), table finale de 100 (`:20`).
 **Cycle** :
 
 ```
-createBrLobbyOnServer:227   status = 'scheduled'  [admin]
-   │  l'arbitre est désigné ICI et doit être admin (`:281-290`)
+createBrLobbyOnServer:227   status = 'scheduled'  [joueur authentifie — volontariat A7]
+   │  l'arbitre est désigné ICI : n'importe quel compte existant, par
+   │  défaut le créateur ; il n'est jamais joueur du salon
    │  programming 24 h – 48 h (`:254-266`)
    ▼
 joinBrLobbyOnServer:335     lock du pass (`:357`)
@@ -657,11 +658,13 @@ dehors de `ecrireUserRow` — `server/occ-revision-invariant.test.mjs:29`.
 | Réconciliation des retraits incertains | `server/cron.mjs:429-463` | 30 min + boot | — | ✅ |
 | Contrôle d'intégrité | `server/cron.mjs:172-194` | 1 h | — | ✅ |
 | **Balayage des matchs sans arbitre (2 h)** | `sweepMatchesWithoutArbiter` | — | `server/match-engine.mjs:15-16` | ✅ **branché** (tick 30 s, via `runMatchAutomationOnServer`) |
-| **Reprise des commissions d'arbitre en échec** | `match.pendingArbiterFee` | — | `server/match-engine.mjs:433` | ❌ **jamais relu** |
-| Reprise des règlements BR interrompus | `lobby.status === 'settling'` | — | `server/br-engine.mjs:723` | ⚠️ **manuel** (l'arbitre rejoue `finish`) |
+| **Reprise des commissions d'arbitre en échec** | `match.pendingArbiterFee` | 30 min + boot | `sweepPendingArbiterFees` (`server/cron.mjs`) | ✅ **branché** (audit-2 A1/A3 — `retryPendingArbiterFees`) |
+| **Reprise des règlements BR interrompus** | `lobby.status === 'settling'` | 5 min | `sweepPendingBrSettlements` (`server/cron.mjs`) | ✅ **branché** (l'acteur de la reprise est l'arbitre du salon — A7) |
+| **Annulation des salons BR jamais lancés ou abandonnés** | `scheduled` dépassé / `live` abandonné | 30 min + boot | `sweepStaleBrLobbies` (`server/cron.mjs`) | ✅ **branché** (remboursement des passes — V14, C4) |
 
-Les deux lignes en ❌ et la ligne ⚠️ sont détaillées dans
-`docs/05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS ».
+Les balayages livrés le sont dans l'ordre de `docs/audit-2/00-SYNTHESE.md`
+§ 4 : chaque rang y est daté et les tests correspondants sont listés dans
+`docs/06-tests.md`.
 
 ---
 

@@ -739,7 +739,7 @@ le calcul de la commission, sinon le « net » affiché peut différer du verse.
 | 2 | POST | `/api/tournaments` | session | `default` | `400 INVALID_TOURNAMENT_NAME` (`:65`), `400 INVALID_FORMAT` (`:69`), `400 INVALID_MAX_ENTRIES` (`:73`), `400 INVALID_ENTRY_FEE` (`:77`) |
 | 3 | POST | `/api/tournaments/:id/register` | session | `default` | `409 ALREADY_JOINED`, `409 REGISTRATION_CLOSED`, `409 INSUFFICIENT_FUNDS` |
 | 4 | POST | `/api/tournaments/:id/leave` | session | `default` | `409 NOT_JOINED` |
-| 5 | POST | `/api/tournaments/:id/arbiter` | session | **—** | `409 ARBITER_TAKEN` |
+| 5 | POST | `/api/tournaments/:id/arbiter` | `social` | - | `409 ARBITER_TAKEN` |
 | 6 | POST | `/api/tournaments/:id/start` | session | **—** | `400 NOT_ENOUGH_PLAYERS` |
 | 7 | POST | `/api/tournaments/:id/matches/:mid/room` | session | **—** | `400 ROOM_INCOMPLETE`, `400 ROOM_TOO_EARLY` |
 | 8 | POST | `/api/tournaments/:id/matches/:mid/live` | session | **—** | `400 MATCH_NOT_READY` |
@@ -810,8 +810,9 @@ aucun pass et ne figure pas dans le roster (`server/routes/br.mjs:88-93`).
 Toutes les actions de salon sont sérialisées par `withBrLobbyMutex(lobbyId)`, et le
 snapshot est **relu à l'intérieur** du verrou (`server/routes/br.mjs:126-139`).
 
-> **`finish` exige `requireAdmin2fa` EN PLUS de l'autorité d'arbitre**
-> (`server/routes/br.mjs:168-173`). L'arbitre du salon ne dispense pas de la 2FA.
+> **`finish` exige `require2faIfAdmin` EN PLUS de l'autorité d'arbitre**
+> (`server/routes/br.mjs`). Une session admin doit montrer une 2FA fraîche ;
+> l'arbitre joueur (volontariat A7, audit-2) finit son salon sans code.
 
 #### 5.7.1 Le piège `ARBITER_REQUIRED`
 

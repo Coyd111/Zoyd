@@ -65,6 +65,14 @@ en-têtes de fichier. **La documentation de la session précédente est elle-mê
 en cause** : elle a été écrite avant les derniers correctifs, et ne les a pas
 suivis.
 
+> *Mise à jour du 25/10/2026 :* V5 et V8 sont rendus effectifs côté client
+> (M1, puis les dérivations front M2-M5 du 23/10) et V9 est provisionné dans
+> le dépôt (`supabase/schema.sql:94-95`, commit `b90264d` du 20/10/2026) —
+> les docs correspondants ont été corrigés (rang 11). Restent volontairement
+> ouverts, faute de correctif (et toujours vrais) : V13
+> (`getMatchActivityForUser` code mort, M25), le ternaire mort qui partage le
+> repère V14, et la branche inatteignable V15.
+
 ---
 
 ## 2. Les constats les plus graves

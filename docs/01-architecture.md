@@ -273,7 +273,7 @@ pas cosmétique : il détermine *ce qui est déjà validé* quand une garde s'ex
 | Clé d'idempotence validée **avant** le débit | `server/routes/wallet.mjs:174-181` | pas de debit sans clé |
 | Lecture de l'état d'idempotence **à l'intérieur** du verrou | `server/routes/wallet.mjs:203-207` | sinon TOCTOU : deux requêtes lisent le même instantané |
 | Verrou global **puis** verrou par entité | `server/routes/match.mjs:50` puis `:76` ; `server/routes/wallet.mjs:202` | ordre inverse = risque de deadlock (voir §8.3) |
-| `requireAdmin2fa` **en plus** de l'autorité métier | `POST /api/br/lobbies/:id/finish` (`server/routes/br.mjs:168-173`) | l'arbitre du salon ne dispense pas de la 2FA |
+| `require2faIfAdmin` **en plus** de l'autorité métier | `POST /api/br/lobbies/:id/finish` (`server/routes/br.mjs`) | session admin = 2FA fraîche ; le joueur arbitre (volontariat A7) finit sans code |
 
 ---
 
@@ -1005,7 +1005,7 @@ Déroulement en quatre phases :
 | 2 | POST | `/api/tournaments` | `default` | session ; `name` ≥ 3 car., `format` requis, `maxEntries` ∈ [2,256], `entryFee` arrondi à 2 décimales |
 | 3 | POST | `/api/tournaments/:id/register` | `default` | session |
 | 4 | POST | `/api/tournaments/:id/leave` | `default` | session |
-| 5 | POST | `/api/tournaments/:id/arbiter` | *aucun* | session |
+| 5 | POST | `/api/tournaments/:id/arbiter` | `social` | session (audit-2 A7 : la route n'avait aucun quota) |
 | 6 | POST | `/api/tournaments/:id/start` | *aucun* | session ; notifie tous les participants |
 | 7 | POST | `/api/tournaments/:id/matches/:mid/room` | *aucun* | session |
 | 8 | POST | `/api/tournaments/:id/matches/:mid/live` | *aucun* | session |
@@ -1071,10 +1071,12 @@ Pièges :
   (`server/routes/br.mjs:138-139`) — sinon le second appel partirait de l'instantané
   d'avant le premier.
 - `eliminate` exige `body.userId` **string** (400 `INVALID_JSON` sinon).
-- `finish` exige `requireAdmin2fa` **en plus** de l'autorité d'arbitre
-  (`server/routes/br.mjs:168-173`) ; le garde écrit la réponse lui-même, donc la route
-  renvoie `{aborted: true}` puis `if (outcome.aborted) return true;`
-  (`server/routes/br.mjs:173`, `:197`).
+- `finish` exige `require2faIfAdmin` **en plus** de l'autorité d'arbitre
+  (`server/routes/br.mjs`) : une session admin doit montrer une 2FA fraîche, le
+  joueur arbitre (volontariat A7) passe sans code ; le garde écrit la réponse
+  lui-même, donc la route renvoie `{aborted: true}` puis
+  `if (outcome.aborted) return true;` (`server/routes/br.mjs`,
+  `:197`).
 
 > « `join`/`leave` touchent l'argent MAIS restent sur le quota general : les mettre dans
 > `wallet` (20 requetes / 10 min, partage avec les depots/retraits) rendait le produit

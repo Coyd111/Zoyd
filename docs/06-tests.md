@@ -663,7 +663,7 @@ Ce qu'il **ne** prouve **pas**, point par point :
 | **Que le produit est le bon produit** | Aucun test ne dit s'il faut d'un arbitre payé à 2 %, si le seuil de retrait de 150 ZC est le bon, si le joueur comprend le différend entre `br` et `br-league`. Les tests figent des décisions, ils ne les valident pas. |
 | **Que la fonctionnalité est branchée** | V1 : le sweep d'arbitre est vert et absent de la production. |
 | **Que le code testé est le code déployé** | Aucune vérification de parité entre le commit local et l'image Docker/Render/Vercel. |
-| **Que les soldes réels ne dérivent pas** | Les tests de moteur sont mockés (§4.7) ; l'OCC est testée **sur la source** (`server/occ-revision-invariant.test.mjs`), pas sur un vrai déploiement à deux instances — et la colonne `revision` peut ne pas exister (**V9**). |
+| **Que les soldes réels ne dérivent pas** | Les tests de moteur sont mockés (§4.7) ; l'OCC est testée **sur la source** (`server/occ-revision-invariant.test.mjs`), pas sur un vrai déploiement à deux instances - et la colonne `revision` peut être absente d'une base créée avant le DDL provisionné (V9 — la déclaration est désormais verrouillée par `schema-coverage.test.mjs:121-126`, et l'état réel est exposé dans `/api/health`). |
 | **Que le chemin FedaPay fonctionne** | Aucun test automatique ne va jusqu'au bout d'un dépôt FedaPay réel (`e2e/api/wallet.spec.ts:24-27`). Les deux témoins de double-payout sont sautés (§4.6). |
 | **Que la production est saine** | Les 38 tests live ne tournent **que sur demande explicite** (§4.5). Le niveau 2 tourne en **mode mémoire**, sur une base vide. |
 | **Que le DOM est correct** | `environment: 'node'` (§1.1). La couverture navigateur, c'est 48 tests UI + le build. |

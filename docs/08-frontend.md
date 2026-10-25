@@ -271,7 +271,7 @@ qui décide.
 |---|---|---|
 | `useAuthStore` | `authStore.ts` | `user`, `isAuthenticated`, `isLoading`, `expiresAt` (`:65-76`). **Cookie-only** : le token vit dans le cookie httpOnly `zoyd_auth`, jamais en JS (`:86-88`) |
 | `useWalletStore` | `walletStore.ts` | `cashBalance`, `bonusBalance`, `lockedBalance`, `pendingWinnings`, `transactions`, `lockedEntries`, politique de retrait (`:40-72`) |
-| `useMatchStore` | `matchStore.ts` | `matches`, filtres, projections `projectedPayouts` (`:158-164`), `ACTIVE_STATUSES` (`:239`) |
+| `useMatchStore` | `matchStore.ts` | `matches`, filtres, projections `projectedPayouts` portées depuis M1 (`:186`, `:454-527`), `ACTIVE_STATUSES` (`:29`) |
 | `useTournamentStore` | `tournamentStore.ts` | tournois, brackets, `callerEntryByTournament`, `callerArbiterSlotByTournament`, `openArbiterSlotsByTournament` |
 | `useLeagueStore` | `leagueStore.ts` | saisons, classements, joueurs de ligue |
 | `useChatStore` | `chatStore.ts` | canaux, messages, non-lus |

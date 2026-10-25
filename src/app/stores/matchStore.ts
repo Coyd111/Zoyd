@@ -8,10 +8,10 @@
  * INVARIANT : hydrateFromServer FUSIONNE (delta socket), replaceFromServer
  * REMPLACE. Le socket diffuse des deltas : remplacer effacerait tous les
  * autres matchs de la liste.
- * INVARIANT : ACTIVE_STATUSES = recruiting, full, check_in, ready,
- * in_progress, awaiting_confirmation. `awaiting_arbiter` en est ABSENT : un
- * match vivant sans arbitre n'apparait donc pas dans les matchs actifs. Tout
- * composant qui filtre sur match.status doit le savoir.
+ * INVARIANT : ACTIVE_STATUSES vient de la source unique (`../lib/matchStatus`
+ * -> `shared/match-status.json`) et inclut `awaiting_arbiter` : un match
+ * vivant sans arbitre EST un match actif, cagnotte bloquee. Tout composant
+ * qui filtre sur match.status doit le savoir.
  * INVARIANT : le serveur retire userId du payload et livre `isMe`, calcule
  * POUR chaque destinataire. Sur un match observe par un tiers, `isMe` vaut
  * false pour tout le monde : c'est le seul repere du joueur courant.

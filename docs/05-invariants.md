@@ -1182,16 +1182,18 @@ point par point** dans le code. Bilan :
    « jamais écrit tel quel » (V3).
 4. `archived` ∈ `MATCH_ETATS_CLOS` mais ∉ `TERMINAL_STATUSES` — **confirmé** (V4).
 5. `getProjectedPayouts.perWinner` divise par le nombre total de joueurs —
-   **confirmé sur le fond**, mais l'impact annoncé était **exagéré** : aucun
-   composant du front ne lit ce champ aujourd'hui, et le test qui le « couvre »
-   fige la valeur fausse (V5).
+   **confirmé sur le fond**, mais l'impact annoncé était **exagéré** : à
+   l'audit, aucun composant du front ne lisait ce champ et le test qui le
+   « couvre » figeait la valeur fausse (V5). Dépassé ensuite : depuis les
+   correctifs V5/V8, la part individuelle est lue (`ProfileView.tsx:358`,
+   `profileMetrics.ts:210`, `communityInsights.ts:427`).
 
 ### Infirmés ou corrigés
 
 | Affirmation du rapport | Réalité vérifiée |
 |---|---|
 | « Les statuts dérivés sont *jamais écrits* » | **Faux.** `updateMatchSnapshot` les écrit dans `match.status` (`server/match-engine.mjs:245`). Le test E2E `e2e/api/match.spec.ts:203` le prouve. |
-| « `perWinner` : l'UI affiche une part par joueur inférieure à la part réellement versée » | **Non vérifiable / inexact.** Le champ est faux et diffusé, mais **aucun composant ne le lit**. `src/lib/matchPayout.ts:52-56` est du code mort. |
+| « `perWinner` : l'UI affiche une part par joueur inférieure à la part réellement versée » | **Dépassé** (V5, V8 corrigés) : la part par gagnant divise par l'équipe gagnante et est désormais lue — `src/app/components/profile/ProfileView.tsx:358`, `src/lib/profileMetrics.ts:210`, `src/lib/communityInsights.ts:427`. |
 | « La commission d'arbitre en échec est une créance écrite mais jamais reprise, *contrairement* aux gains de tournoi et de ligue qui ont `pendingPayouts` + cron » | **Confirmé** à l'audit-1, y compris la comparaison avec les crons de tournoi (`server/cron.mjs:365-388`) et de ligue (`:396-419`). **Dépassé le 23/10/2026** : la reprise existe (`sweepPendingArbiterFees`, cron 30 min + boot, `retryPendingArbiterFees`) — rang 2 d'audit-2. |
 | Liste des balayages du rapport, §9 | **Incomplète à l'audit-1.** Le rapport s'interrompait sur cette section. La matrice complète est dans `docs/02-modele-metier.md` §9.1. **Dépassé le 25/10/2026** : le décompte « 12 branchés, 2 non branchés, 1 manuel » ne tient plus — les trois lignes restantes (commissions d'arbitre, règlements BR, salons BR jamais lancés) sont toutes branchées depuis ; la matrice compte désormais 16 balayages. |
 | Le rapport annonçait 7 moteurs | **Confirmé**, mais le neuvième et le dixième fichiers structurants (`server/persistence.mjs`, `server/mutex.mjs`) sont traite à part dans le rapport lui-même. |

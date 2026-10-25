@@ -126,7 +126,7 @@ Ce sont cinq obligations **distinctes**, avec cinq sanctions distinctes.
 
 | # | Obligation | Où elle est vérifiée | Sanction si manquée |
 |---|---|---|---|
-| 1 | **Être désigné** | `server/match-engine.mjs:223` (dérivation `awaiting_arbiter`) | Match bloqué ; remboursement prévu par le sweep (§9.1) — **non branché** |
+| 1 | **Être désigné** | `server/match-engine.mjs:352` (dérivation `awaiting_arbiter`) | Match bloqué ; remboursement par le sweep (§9.1) — **branché** sur le tick de 30 s (V1 corrigé) |
 | 2 | **Publier la salle** | `server/match-engine.mjs:765-784` | `ROOM_TOO_EARLY` (> 10 min avant) ; `ROOM_INCOMPLETE` |
 | 3 | **Lancer le match** | `server/match-engine.mjs:806-824` | `FORBIDDEN` (811-813) ; `MATCH_NOT_READY` (822-824) |
 | 4 | **Trancher le résultat** | `server/match-engine.mjs:872-874` puis `server/match-engine.mjs:306-308` | `ARBITER_REQUIRED` — **double garde** : à la soumission *et* à la sortie d'argent |
@@ -203,21 +203,22 @@ en base**, pas une vue volatile — ce que confirme le test E2E
 
 ### 4.3 Les trois listes de statuts, et leur divergence
 
-| Liste | Ligne | Contenu |
+La source unique vit dans `shared/match-status.json`, importée par le serveur
+(`server/match-status.mjs:48-54`) et par le front (`src/app/lib/matchStatus.ts`).
+Les copies divergentes ont été fusionnées (V3, V4 corrigés) :
+
+| Liste | Source | Contenu |
 |---|---|---|
-| `ACTIVE_STATUSES` | `server/match-engine.mjs:102` | `recruiting`, `full`, `check_in`, `ready`, `in_progress`, `awaiting_confirmation` |
-| `TERMINAL_STATUSES` | `server/match-engine.mjs:103` | `finished`, `cancelled`, `forfeited` |
-| `MATCH_ETATS_CLOS` | `server/match-engine.mjs:18` | `cancelled`, `forfeited`, `archived`, `finished` |
+| `ACTIVE_STATUSES` | `shared/match-status.json` (`server/match-status.mjs:48`) | `recruiting`, `full`, `awaiting_arbiter`, `check_in`, `ready`, `in_progress`, `awaiting_confirmation` |
+| `CLOSED_STATUSES` | `shared/match-status.json` (`server/match-status.mjs:51`) | `cancelled`, `forfeited`, `archived`, `finished` |
+| `HISTORY_STATUSES` | `shared/match-status.json` (`server/match-status.mjs:54`) | les CLOSED plus `disputed` |
 
-Trois divergences en découlent, toutes documentées en
-`docs/05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS » :
-
-- `awaiting_arbiter` ∉ `ACTIVE_STATUSES` (V3) ;
-- `archived` ∈ `MATCH_ETATS_CLOS` mais ∉ `TERMINAL_STATUSES` (V4) ;
-- `full` ∈ `ACTIVE_STATUSES` mais n'est **plus jamais produit** par
-  `getStatusFromMatch` (le commentaire `server/match-engine.mjs:216-222`
-  explique pourquoi : `full` se lisait « lobby complet » alors que le match
-  était bloqué).
+Les trois divergences historiques sont résolues :
+- `awaiting_arbiter` ∈ `ACTIVE_STATUSES` (V3, corrigé) ;
+- `archived` ∈ `CLOSED_STATUSES` (V4, corrigé) ;
+- `full` reste listé pour les données anciennes mais n'est plus jamais
+  produit par `getStatusFromMatch` — marqué legacy dans
+  `server/match-status.mjs:37-39`.
 
 ### 4.4 Transitions
 

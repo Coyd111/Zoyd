@@ -814,12 +814,12 @@ n'a plus de socket **et** `role === 'spectator'` il est **supprimé** ; sinon il
 > `saveBrLobbies` diffusait l'etat brut via `io.emit`, donc la sanitisation HTTP ne
 > protegeait rien. » — `server/state-helpers.mjs:260-276`
 
-`sanitizeMatchForBroadcast(match, viewerId)` (`server/state-helpers.mjs:125-162`) retire
+`sanitizeMatchForBroadcast(match, viewerId)` (`server/state-helpers.mjs:175-257`) retire
 `roomPassword`, `roomName`, `screenshots`, `result.confirmedByTeams`, `result.proofs`,
 retire les `userId` des joueurs et de l'arbitre, **ajoute** `isMe`, `hasConfirmed`,
-`gameId`, recalcule `projectedPayouts` (`server/state-helpers.mjs:149`), et met
+`gameId`, recalcule `projectedPayouts` (`server/state-helpers.mjs:202`), et met
 `submittedBy` à `null` pour `system-no-show` / `admin-dashboard`
-(`server/state-helpers.mjs:150-152`).
+(`server/state-helpers.mjs:231-233`).
 
 L'identité live est figée à la soumission du résultat
 (`LIVE_IDENTITY_STATUSES = { recruiting, full, check_in, ready, in_progress }`,

@@ -515,10 +515,10 @@ d'une session admin ; le joueur arbitre passe sans code).
 | V10 | BR : aucun cron de reprise d'un règlement interrompu | **NOUVEAU** — **CORRIGÉ** | MOYENNE → résolu |
 | V11 | `arbiterPayouts` utilise le `arbiterFee` fige sur le pot theorique | **NOUVEAU** | FAIBLE (latent) -> resolu |
 | V12 | `LEAGUE_PLAYERS_PER_DAY` est une constante morte | **NOUVEAU** | INFO -> resolu |
-| V13 | `getMatchActivityForUser` est du code mort | — | INFO |
+| V13 | `getMatchActivityForUser` est du code mort | **OUI** — **CORRIGÉ** | INFO → résolu |
 | V14 | Un salon BR jamais lance garde les passes verrouillees | **NOUVEAU** | ELEVE -> resolu |
-| V14 | Ternaire mort dans `getStatusFromMatch` | — | INFO |
-| V15 | `isInstantNoArbiter` est inatteignable | — | INFO |
+| V14 | Ternaire mort dans `getStatusFromMatch` | **OUI** — **CORRIGÉ** | INFO → résolu |
+| V15 | `isInstantNoArbiter` est inatteignable | **OUI** — **CORRIGÉ** | INFO → résolu |
 
 ---
 
@@ -707,7 +707,8 @@ moyen de remédier à la situation.
 (`server/match-engine.mjs:1441`) est lui-même du **code mort** : aucune
 occurrence ailleurs dans le dépôt. Le comportement observable vient donc de
 `src/app/stores/matchStore.ts`, pas du serveur. Le bug est réel, mais il vit
-dans le front — ce que le rapport ne précisait pas.
+dans le front — ce que le rapport ne précisait pas. La fonction a été
+supprimée depuis (25/10/2026, M25).
 
 ---
 
@@ -1119,25 +1120,30 @@ plafond par journée n'était appliqué.
 
 ---
 
-### V13 — `getMatchActivityForUser` est du code mort
-**Gravité : INFORMATIONNELLE**
+### V13 — `getMatchActivityForUser` est du code mort — **CORRIGÉ**
+**Gravité : INFORMATIONNELLE → résolu**
 
 `server/match-engine.mjs:1441` — aucune occurrence ailleurs dans le dépôt.
 Voir V3 : le comportement équivalent est implémenté côté front
 (`src/app/stores/matchStore.ts:505-517`).
 
-### V14 — Ternaire mort dans `getStatusFromMatch`
+**CORRIGÉ le 25/10/2026.** Fonction supprimée, avec l'import devenu inutile
+(`ACTIVE_STATUSES`, `HISTORY_STATUSES`) et la citation reprise dans l'en-tête
+de `server/match-status.mjs`.
+
+### V14 — Ternaire mort dans `getStatusFromMatch` — **CORRIGÉ**
 
 `server/match-engine.mjs:233` : `return match.arbiter ? 'ready' : 'ready';` —
-les deux branches sont identiques. Sans effet.
+les deux branches sont identiques. Sans effet. **CORRIGÉ le 25/10/2026** :
+`return 'ready';`.
 
-### V15 — `isInstantNoArbiter` est inatteignable
+### V15 — `isInstantNoArbiter` est inatteignable — **CORRIGÉ**
 
 `server/match-engine.mjs:906-918`. Pour atteindre `:906`, il faut être
 l'arbitre — donc `match.arbiter` existe, donc `isInstantNoArbiter === false` —
 ou être admin — donc `isAdminOverride === true`, ce qui neutralise déjà `:908`.
 La branche `:916` est donc **inatteignable**. Le rapport antérieur avait raison
-sur ce point.
+sur ce point. **CORRIGÉ le 25/10/2026** : variable, filtre et garde supprimés.
 
 ---
 
@@ -1247,13 +1253,13 @@ mêmes drapeaux `settled` et la même reprise que V10.
 ---
 ## 8. Ce qu'il faut faire, par ordre de risque
 
-Aucun constat de fond ne reste ouvert : les douze constats cotes
-ELEVEE/MOYENNE/FAIBLE (V1 a V12, plus le V14 des passes BR) sont corriges.
-Trois constats INFO restent volontairement ouverts — du code mort sans effet
-de bord : `getMatchActivityForUser` (V13), le ternaire mort qui partage le
-repere V14, et la branche inatteignable V15 — suivis dans
-`docs/audit-2/04-code-mort.md` (M25 pour V13). La liste se remplit quand une
-anomalie est trouvee, et elle est le seul endroit ou l on decide de ne rien
+Aucun constat ne reste ouvert : les douze constats cotés
+ELEVÉE/MOYENNE/FAIBLE (V1 à V12, plus le V14 des passes BR) sont corrigés,
+et les trois constats INFO ont été purgés le 25/10/2026 — le code mort
+`getMatchActivityForUser` (V13), le ternaire mort de `getStatusFromMatch`
+(V14) et la branche inatteignable `isInstantNoArbiter` (V15), suivis dans
+`docs/audit-2/04-code-mort.md` (M25, M21, M24). La liste se remplit quand une
+anomalie est trouvée, et elle est le seul endroit où l'on décide de ne rien
 faire.
 
 Ce qui reste n est pas du code : c est du produit. Voir docs/00-INDEX.md § 9.

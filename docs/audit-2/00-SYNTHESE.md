@@ -68,10 +68,10 @@ suivis.
 > *Mise à jour du 25/10/2026 :* V5 et V8 sont rendus effectifs côté client
 > (M1, puis les dérivations front M2-M5 du 23/10) et V9 est provisionné dans
 > le dépôt (`supabase/schema.sql:94-95`, commit `b90264d` du 20/10/2026) —
-> les docs correspondants ont été corrigés (rang 11). Restent volontairement
-> ouverts, faute de correctif (et toujours vrais) : V13
-> (`getMatchActivityForUser` code mort, M25), le ternaire mort qui partage le
-> repère V14, et la branche inatteignable V15.
+> les docs correspondants ont été corrigés (rang 11). Les trois constats INFO
+> restés ouverts à ce rang (V13, le ternaire mort qui partage le repère V14,
+> la branche inatteignable V15) ont été purgés le 25/10/2026 (rang 12 :
+> M21, M24, M25).
 
 ---
 
@@ -165,6 +165,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 9 | **S4** — `proofHash` exposé publiquement — **LIVRÉ le 25/10/2026** (identifiants et preuves de litige retirés du payload public, preuves réservées aux parties, à l'arbitre et à un admin ; le faux hash ne sort plus et n'est plus affiché) | Fuite d'URL de captures. |
 | 10 | **A4, A7, A9** — parts BR, slot d'arbitre de tournoi, montants non écrits — **LIVRÉ le 25/10/2026** (A4 déjà réglé par M3 ; A7 : décision produit + rate limit ; A9 : versements réels écrits une seule fois, export CSV et projection nourris) | Répartition fausse et prise de contrôle. |
 | 11 | La documentation — corriger les affirmations fausses — **LIVRÉ le 25/10/2026** (`05-invariants.md` : V2/V8/V10 marqués corrigés, V9 marqué faux et section 8 réécrite — 12 constats de fond corrigés, 3 INFO ouverts ; `03-securite.md` : la troisième garde `require2faIfAdmin` documentée ; `07-exploitation.md` : le DDL provisionné ; la matrice des balayages complète, 16 branchés ; note datée sous §1.3) | Une doc qui ment est pire qu'une doc absente. |
+| 12 | Le code mort INFO — purger M21, M24, M25 — **LIVRÉ le 25/10/2026** (V13 : `getMatchActivityForUser` supprimé avec son import ; V14 : `return 'ready';` ; V15 : `isInstantNoArbiter` et son garde supprimés — comportement dérivé inchangé, suites vertes) | Fermer la liste : plus aucun constat de code ouvert, plus d'exception « on décide de ne rien faire ». |
 
 ---
 
@@ -194,3 +195,6 @@ les aurait données :
 > synthèse, chacune avec la date et le correctif qui la dépassent. Ne restent
 > volontairement ouverts que les trois constats INFO de code mort (V13, le
 > ternaire qui partage le repère V14, V15), suivis dans `04-code-mort.md`.
+> *Purge le 25/10/2026 (rang 12, M21/M24/M25)* : plus aucun constat V ouvert.
+> Les autres constats FAIBLE de `04-code-mort.md` (M22, M23, M26 à M38) ne
+> sont pas repris ici — voir ce rapport pour leur état.

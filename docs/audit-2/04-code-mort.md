@@ -889,12 +889,15 @@ par la projection serveur (M1).
 
 ## 4. Constats FAIBLE
 
-### M21 — FAIBLE — Ternaire à branches identiques dans `getStatusFromMatch` (V14, non corrigé)
+### M21 — FAIBLE — Ternaire à branches identiques dans `getStatusFromMatch` (V14, CORRIGÉ le 25/10/2026)
 
 `server/match-engine.mjs:292` : `return match.arbiter ? 'ready' : 'ready';`
 Les deux branches sont identiques ; la ligne est de surcroît redondante avec le garde
 `:282` (`if (!match.arbiter?.userId) return 'awaiting_arbiter';`).
 **Impact** : aucun. **Correction** : `return 'ready';`.
+
+**CORRIGÉ le 25/10/2026** : la ligne est désormais `return 'ready';`
+(`server/match-engine.mjs:362`). Comportement dérivé inchangé, suites vertes.
 
 ### M22 — FAIBLE — Ternaire à branches identiques sur le statut d'un résultat soumis
 
@@ -909,7 +912,7 @@ directe.
 `match.result` vaut `undefined` ou un objet truthy : l'affectation ne change rien.
 **Impact** : aucun. **Correction** : supprimer la ligne.
 
-### M24 — FAIBLE — `isInstantNoArbiter` est inatteignable (V15, non corrigé)
+### M24 — FAIBLE — `isInstantNoArbiter` est inatteignable (V15, CORRIGÉ le 25/10/2026)
 
 `server/match-engine.mjs:965` : `const isInstantNoArbiter = !match.arbiter && match.isInstant;`
 Pour atteindre cette ligne, il faut avoir passé le garde `:931` (`isArbiter` ou rôle admin) :
@@ -921,12 +924,23 @@ Le garde `:975-977` (`PROOFS_REQUIRED` pour match instantané sans arbitre) est 
 **inatteignable**. **Impact** : aucun (le garde est redondant, pas manquant).
 **Correction** : supprimer `isInstantNoArbiter` et le garde `:975`.
 
-### M25 — FAIBLE — `getMatchActivityForUser` est toujours du code mort (V13, non corrigé)
+**CORRIGÉ le 25/10/2026** : la variable, le filtre `&& !isInstantNoArbiter` de
+`requiresMandatoryProofs` et le garde `PROOFS_REQUIRED` « capture d'écran » sont
+supprimés ; un commentaire documente pourquoi le cas est impossible
+(`server/match-engine.mjs:1058-1062`). L'e2e `match.spec.ts:342`
+(`PROOFS_REQUIRED`) passe toujours par le garde des preuves obligatoires.
+
+### M25 — FAIBLE — `getMatchActivityForUser` est toujours du code mort (V13, CORRIGÉ le 25/10/2026)
 
 `server/match-engine.mjs:1658-1669`. Recherche exhaustive sur tout le dépôt (tests
 inclus) : **aucune occurrence** hors la définition et le commentaire `server/match-engine.mjs:8`.
 Le comportement équivalent vit côté front (`src/app/stores/matchStore.ts:512-524`).
 **Impact** : aucun. **Correction** : supprimer la fonction.
+
+**CORRIGÉ le 25/10/2026** : fonction supprimée, avec l'import devenu inutile
+(`ACTIVE_STATUSES`, `HISTORY_STATUSES`) dans le moteur et la citation reprise
+dans l'en-tête de `server/match-status.mjs` (le commentaire citait
+`match-engine.mjs:8`, l'emplacement réel).
 
 ### M26 — FAIBLE — `LEAGUE_PLAYERS_PER_DAY` est dérivée mais toujours sans effet (V12)
 

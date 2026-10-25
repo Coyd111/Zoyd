@@ -142,7 +142,7 @@ import {
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 export { addXpToProgression };
-import { ACTIVE_STATUSES, CLOSED_STATUSES, HISTORY_STATUSES } from './match-status.mjs';
+import { CLOSED_STATUSES } from './match-status.mjs';
 
 const log = createLogger('match-engine');
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
@@ -359,7 +359,8 @@ export const getStatusFromMatch = (match) => {
     return 'in_progress';
   }
 
-  return match.arbiter ? 'ready' : 'ready';
+  // Ici l arbitre existe (garde ci-dessus) : pret a lancer.
+  return 'ready';
 };
 
 const updateMatchSnapshot = (match, updates) => {
@@ -1054,18 +1055,16 @@ if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
   const normalizedScreenshots = Array.isArray(resultPayload.screenshots) && resultPayload.screenshots.length
     ? normalizeProofRefs(resultPayload.screenshots)
     : flattenedProofs;
-  const isInstantNoArbiter = !match.arbiter && match.isInstant;
+  // Pas de cas « instant sans arbitre » : pour atteindre ce point, l acteur
+  // est l arbitre (match.arbiter existe donc) ou un admin, dont l override
+  // court-circuite deja les preuves. Audit-2 M24.
   const requiresMandatoryProofs =
-    resultPayload.resolutionType !== 'forfeit' && !isAdminOverride && !isInstantNoArbiter;
+    resultPayload.resolutionType !== 'forfeit' && !isAdminOverride;
 
   if (requiresMandatoryProofs &&
     (!normalizedProofs || normalizedProofs.scoreboard.length === 0 || normalizedProofs.finalResult.length === 0)
   ) {
     throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un ecran final avant de valider le score.');
-  }
-
-  if (isInstantNoArbiter && !normalizedScreenshots.length && !isAdminOverride) {
-    throw makeError('PROOFS_REQUIRED', 'Ajoute au moins une capture d\'ecran pour valider le score.');
   }
 
   const fullResult = {
@@ -1781,19 +1780,6 @@ export const getPublicMatchesForUser = (matches, currentUser) =>
 
     return deviceAllowed && controllerAllowed;
   });
-
-export const getMatchActivityForUser = (matches, userId) => ({
-  active: matches.filter(
-    (match) =>
-      ACTIVE_STATUSES.includes(match.status) &&
-      (match.players.some((player) => player.userId === userId) || match.arbiter?.userId === userId)
-  ),
-  history: matches.filter(
-    (match) =>
-      HISTORY_STATUSES.includes(match.status) &&
-      (match.players.some((player) => player.userId === userId) || match.arbiter?.userId === userId)
-  ),
-});
 
 /**
  * Add additional evidence to an active dispute on a match.

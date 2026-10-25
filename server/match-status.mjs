@@ -5,8 +5,8 @@
  * --------------------------
  * Les statuts etaient redecrites a cinq endroits, dans deux langages :
  * `server/match-engine.mjs` (MATCH_ETATS_CLOS, ACTIVE_STATUSES,
- * TERMINAL_STATUSES), `server/match-engine.mjs:getMatchActivityForUser`
- * (la liste d'historique), `src/app/stores/matchStore.ts` et
+ * TERMINAL_STATUSES, et la liste d'historique d'une fonction d'activite
+ * supprimee depuis), `src/app/stores/matchStore.ts` et
  * `src/app/pages/DashboardPage.tsx` (deux listes encore differentes).
  *
  * Elles ne se contredisaient pas de la meme facon : le serveur ignorait

@@ -691,7 +691,7 @@ export const createMatchOnServer = async (matches, actor, input) => {
     entryFee: roundAmount(input.entryFee),
     prizePool,
     zoydFee: 0,
-    arbiterFee: roundAmount(prizePool * 0.02),
+    arbiterFee: roundAmount(prizePool * ARBITER_FEE_RATE),
     visibility: input.visibility || 'public',
     privacy: input.visibility || 'public',
     // 'open' par defaut, ou la valeur demandee. On NE copie PLUS le device /
@@ -1092,7 +1092,7 @@ if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
     // equipes : c'est le seul moment ou le perdant peut encore contester
     // (openDispute l'autorise sur 'awaiting_confirmation') sans que la
     // cagnotte ait deja quitte le compte du gagnant.
-    match.status = fullResult.resolutionType === 'forfeit' ? 'awaiting_confirmation' : 'awaiting_confirmation';
+    match.status = 'awaiting_confirmation';
     match.confirmationDeadline = new Date(Date.now() + CONFIRMATION_WINDOW_MS).toISOString();
     match.finishedAt = null;
     return {
@@ -1488,7 +1488,6 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
   match.status = 'cancelled';
   match.finishedAt = getNow();
   match.updatedAt = getNow();
-  match.result = match.result || undefined;
 
   return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
 };

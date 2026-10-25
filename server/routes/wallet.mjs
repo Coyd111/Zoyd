@@ -85,7 +85,6 @@ import {
   parsePhoneForFedaPay,
   verifyFedaPayTransactionAndCredit,
 } from '../payment-engine.mjs';
-import { getPublicMatchesForUser } from '../match-engine.mjs';
 import {
   getStoredTournaments,
   sanitizeMatchForBroadcast,

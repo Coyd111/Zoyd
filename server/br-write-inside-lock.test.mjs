@@ -208,7 +208,10 @@ vi.mock('./rate-limiter.mjs', () => ({
 }));
 
 vi.mock('./admin-totp.mjs', () => ({
+  // Le harnais ne teste pas le TOTP lui-meme : la garde est branchee pour
+  // laisser passer et retourner la session courante du test.
   requireAdmin2fa: vi.fn(() => h.sessionCourante),
+  require2faIfAdmin: vi.fn(() => h.sessionCourante),
 }));
 
 vi.mock('./mutex.mjs', () => ({

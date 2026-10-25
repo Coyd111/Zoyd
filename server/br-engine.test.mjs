@@ -126,7 +126,7 @@ describe('br-engine - createBrLobbyOnServer', () => {
 
   it('accepte un joueur comme createur-arbitre (volontariat, A7)', () => {
     // Decision produit du 25/10/2026 : le salon BR rejoint le volontariat des
-    // matchs et tournois — le createur arbitre son salon, le role admin n'est
+    // matchs et tournois - le createur arbitre son salon, le role admin n'est
     // plus requis (seule la ligue garde ses arbitres admin).
     const created = brEngine.createBrLobbyOnServer([], player('p1'), {
       mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: inWindow(), payout: defaultPayout,

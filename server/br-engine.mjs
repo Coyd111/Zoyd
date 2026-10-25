@@ -266,7 +266,7 @@ export const validateBrPayout = (payout) => {
 export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
   const actorUser = actor?.user || actor;
   // A7 (audit-2), decision produit du 25/10/2026 : les matchs, les tournois et
-  // les salons BR suivent le meme volontariat — tout joueur authentifie peut
+  // les salons BR suivent le meme volontariat - tout joueur authentifie peut
   // creer le sien (et l'arbitrer par defaut). Seule la ligue reste arbitree
   // par un admin. La garde anti-fraude ne vit PAS ici : elle est portee par
   // `requireLobbyArbiter` (seul l'arbitre designe saisit les eliminations) et
@@ -323,7 +323,7 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
   // L'arbitre est designe A LA CREATION, pas apres : sinon un joueur inscrit
   // pourrait s'auto-designer arbitre via POST /arbiter et saisir lui-meme
   // ses eliminations. Depuis la decision produit du 25/10/2026 (A7, audit-2),
-  // n'importe quel compte existant peut arbitrer — l'admin n'est plus requis.
+  // n'importe quel compte existant peut arbitrer - l'admin n'est plus requis.
   // La protection anti-fraude n'est pas son role : c'est `requireLobbyArbiter`
   // et son statut de non-joueur (il ne paie aucun pass et ne figure pas dans
   // `players`).

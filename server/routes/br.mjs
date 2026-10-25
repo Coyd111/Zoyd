@@ -9,7 +9,8 @@
  * `admin` pour `finish`) -> `withBrLobbyMutex(lobbyId)` -> RE-LECTURE du
  * snapshot DANS le verrou -> moteur (liste restreinte au salon cible) ->
  * `saveBrLobbies` DANS LE MEME VERROU -> reponse. L'action `finish` ajoute
- * `requireAdmin2fa`.
+ * `require2faIfAdmin` : la session admin doit montrer une 2FA fraiche, le
+ * joueur arbitre (volontariat A7) passe sans code.
  *
  * INVARIANT : le snapshot est RELU A L'INTERIEUR du verrou : dehors, la
  *   seconde requete travaillerait encore sur l'instantane de la premiere (les
@@ -26,8 +27,9 @@
  *   `wallet` : mutualiser le quota des retraits rendait le produit inutilisable
  *   (inscrire puis se desinscrire epuisait le quota avant de pouvoir retirer
  *   ses gains).
- * INVARIANT : `finish` exige la 2FA EN PLUS de l'autorite de l'arbitre du
- *   salon : l'arbitre du salon ne dispense pas de la 2FA, de l'argent part.
+ * INVARIANT : `finish` exige la 2FA d'une session ADMIN EN PLUS de l'autorite
+ *   de l'arbitre du salon (`require2faIfAdmin`, patron S1/S3) : l'arbitre
+ *   joueur (volontariat A7) passe sans code, l'admin paie un TOTP frais.
  * INVARIANT : le reglement persiste sa progression apres chaque versement
  *   (`onProgress` -> `saveBrLobbies`) : un arret de processus laisse un salon
  *   reprenable, pas un double credit.
@@ -52,7 +54,7 @@ import {
   respondJson,
   respondMappedError,
 } from '../http-utils.mjs';
-import { requireAdmin2fa } from '../admin-totp.mjs';
+import { require2faIfAdmin } from '../admin-totp.mjs';
 import { withBrLobbyMutex } from '../mutex.mjs';
 import {
   BR_MAPS,
@@ -166,7 +168,8 @@ if (brLobbyAction && req.method === 'POST') {
   // depots/retraits) rendait le produit inutilisable — un joueur qui
   // s'inscrit puis se desinscrit de 3 salons epuisait le quota avant meme
   // de pouvoir retirer ses gains.
-  // `finish` est reserve a l'arbitre et tire de l'argent : quota admin.
+  // `finish` est reserve a l'arbitre du salon (voie volontariat A7) et tire
+  // de l'argent : group `admin`, le quota le plus genereux.
   const rateGroup = action === 'finish' ? 'admin' : 'default';
   if (!rateLimitGuard(res, getClientIp(req), rateGroup)) { return true; }
 
@@ -219,11 +222,12 @@ if (brLobbyAction && req.method === 'POST') {
         });
       } else {
         // `finish` distribue la cagnotte. L'autorite est l'ARBITRE du salon
-        // (verifie dans le moteur), pas la 2FA admin : dans ce modele l'arbitre
-        // est le seul a avoir vu la partie. La 2FA reste demandee en plus, car
-        // de l'argent part.
-        const adminSession = requireAdmin2fa(req, res);
-        if (!adminSession) return { aborted: true };
+        // (verifie dans le moteur), pas un role : dans ce modele l'arbitre est
+        // le seul a avoir vu la partie. A7 (audit-2) : depuis le volontariat,
+        // l'arbitre est un joueur — la 2FA ne porte que sur une session ADMIN
+        // (require2faIfAdmin, patron S1/S3). Le joueur arbitre finit sans
+        // code ; le garde moteur `requireLobbyArbiter` reste la vraie garde.
+        if (!require2faIfAdmin(req, res)) return { aborted: true };
 
         // Le reglement persiste sa progression a chaque versement. Si le
         // processus meurt au milieu, le salon est deja marque `settling` et les

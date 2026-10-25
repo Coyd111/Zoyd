@@ -1,5 +1,6 @@
 /**
- * BrLobbyCreatePanel - creation d'un salon Battle Royale (admin).
+ * BrLobbyCreatePanel - creation d'un salon Battle Royale (volontariat : tout
+ * utilisateur connecte peut creer, et l'arbitre par defaut est le createur).
  *
  * Regle carte, mode, horaire, nombre de places et repartition des gains,
  * puis cree le salon via l'API.
@@ -86,7 +87,9 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    if (user?.role !== 'admin') return;
+    // A7 (audit-2) : la creation est ouverte a tout utilisateur connecte (le
+    // referentiel est public via GET /api/br/config), pas qu'aux admins.
+    if (!user) return;
     fetchBrConfig()
       .then(setConfig)
       .catch(() => toast.error('Referentiel BR indisponible.'));
@@ -140,7 +143,9 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
   const canSubmit = Boolean(config) && !payoutError && !scheduleError && !feeError
     && !saving && name.trim().length >= 3;
 
-  if (user?.role !== 'admin') return null;
+  // Volontariat A7 : affiche des qu'un utilisateur est connecte (un visiteur
+  // non connecte verrait le formulaire mais le serveur repondrait 401).
+  if (!user) return null;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

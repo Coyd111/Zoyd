@@ -272,8 +272,8 @@ const BrPage: React.FC = () => {
           <div className="text-center py-16 text-white/60 text-sm">Chargement des salons...</div>
         ) : (
           <div className="space-y-6">
-            {/* Formulaire de creation : reserve a l'admin, qui sera aussi
-                l'arbitre du salon qu'il cree. */}
+            {/* Formulaire de creation (volontariat A7) : tout utilisateur
+                connecte peut creer son salon et l'arbitrer par defaut. */}
             <BrLobbyCreatePanel onCreated={() => void load()} />
 
             {lobbies.length === 0 ? (

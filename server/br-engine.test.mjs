@@ -124,10 +124,15 @@ describe('br-engine - createBrLobbyOnServer', () => {
     expect(lobby.players).toEqual([]);
   });
 
-  it('refuse un non-admin', () => {
-    expect(() => brEngine.createBrLobbyOnServer([], player('p1'), {
+  it('accepte un joueur comme createur-arbitre (volontariat, A7)', () => {
+    // Decision produit du 25/10/2026 : le salon BR rejoint le volontariat des
+    // matchs et tournois — le createur arbitre son salon, le role admin n'est
+    // plus requis (seule la ligue garde ses arbitres admin).
+    const created = brEngine.createBrLobbyOnServer([], player('p1'), {
       mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: inWindow(), payout: defaultPayout,
-    })).toThrow(/administrateur/);
+    });
+    expect(created.lobby.creatorId).toBe('p1');
+    expect(created.lobby.arbiterId).toBe('p1');
   });
 
   it('refuse une map inconnue', () => {
@@ -163,10 +168,20 @@ describe('br-engine - createBrLobbyOnServer', () => {
     expect(lobby.arbiterId).toBe(admin.id);
   });
 
-  it('refuse un arbitre inexistant ou non-admin', () => {
-    // La creation est synchrone : `expect(...).toThrow()`, pas `.rejects`.
-    expect(() => createLobby({ arbiterId: 'fantome' })).toThrow(/administrateur/);
-    expect(() => createLobby({ arbiterId: 'p1' })).toThrow(/administrateur/);
+  it('refuse un arbitre inexistant et accepte un arbitre joueur', () => {
+    // Volontariat (A7) : seul un compte EXISTANT est requis, admin ou joueur.
+    // Nota : `createLobby` rebranche le mock sur l'admin, on pose donc le
+    // mock a la main pour ce cas.
+    getUserById.mockImplementation((id) => (id === 'p1' ? player('p1') : null));
+    const payload = {
+      name: 'Salon arbitre', mode: 'solo', map: 'isolated', entryFee: 50,
+      scheduledAt: inWindow(), payout: defaultPayout,
+    };
+    expect(() => brEngine.createBrLobbyOnServer([], admin, { ...payload, arbiterId: 'fantome' }))
+      .toThrow(/compte existant/);
+    const tiers = brEngine.createBrLobbyOnServer([], admin, { ...payload, arbiterId: 'p1' });
+    expect(tiers.lobby.arbiterId).toBe('p1');
+    expect(tiers.lobby.arbiterPseudo).toBe('P1');
   });
 });
 

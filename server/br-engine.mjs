@@ -265,8 +265,14 @@ export const validateBrPayout = (payout) => {
  */
 export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
   const actorUser = actor?.user || actor;
-  if (!actorUser || actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul un administrateur peut creer un salon BR.');
+  // A7 (audit-2), decision produit du 25/10/2026 : les matchs, les tournois et
+  // les salons BR suivent le meme volontariat — tout joueur authentifie peut
+  // creer le sien (et l'arbitrer par defaut). Seule la ligue reste arbitree
+  // par un admin. La garde anti-fraude ne vit PAS ici : elle est portee par
+  // `requireLobbyArbiter` (seul l'arbitre designe saisit les eliminations) et
+  // par le statut de non-joueur de l'arbitre (pas de pass, pas dans players).
+  if (!actorUser) {
+    throw makeError('AUTH_REQUIRED', 'Session joueur requise.');
   }
 
   const mode = String(input.mode || '').trim();
@@ -316,15 +322,19 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
 
   // L'arbitre est designe A LA CREATION, pas apres : sinon un joueur inscrit
   // pourrait s'auto-designer arbitre via POST /arbiter et saisir lui-meme
-  // ses eliminations. Il doit etre inscrit au salon.
+  // ses eliminations. Depuis la decision produit du 25/10/2026 (A7, audit-2),
+  // n'importe quel compte existant peut arbitrer — l'admin n'est plus requis.
+  // La protection anti-fraude n'est pas son role : c'est `requireLobbyArbiter`
+  // et son statut de non-joueur (il ne paie aucun pass et ne figure pas dans
+  // `players`).
   const arbiterId = typeof input.arbiterId === 'string' && input.arbiterId.trim()
     ? input.arbiterId.trim()
     : actorUser.id;
   const arbiter = getUserById(arbiterId);
-  if (!arbiter || arbiter.role !== 'admin') {
+  if (!arbiter) {
     throw makeError(
       'INVALID_ARBITER',
-      'L\'arbitre doit etre un administrateur existant et inscrit au salon.',
+      'L\'arbitre doit etre un compte existant.',
     );
   }
 

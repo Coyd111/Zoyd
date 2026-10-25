@@ -615,10 +615,14 @@ de la qualité d'arbitre** qui n'est pas gardée.
 - **Point 3 : rate limit en place** — `POST /api/tournaments/:id/arbiter`
   est passé au groupe `social` (comme son jumeau match
   `POST /api/matches/:id/arbiter`), placé avant la session.
-- **Point de vigilance BR : `createBrLobbyOnServer` exige toujours un
-  arbitre admin** (correctif anti-fraude conservé en l'état). Si BR doit
-  rejoindre le modèle volontariat, c'est une décision produit distincte à
-  trancher — cette lacune n'est pas corrigée unilatéralement.
+- **Tranche BR (même jour)** : `createBrLobbyOnServer` rejoint le
+  volontariat — tout joueur authentifié peut créer son salon (créateur =
+  arbitre par défaut), et l'arbitre désigné peut être **n'importe quel
+  compte existant**. La protection anti-fraude ne repose plus sur le rôle :
+  l'arbitre n'est **jamais** un joueur du salon (il ne paie aucun pass et ne
+  figure pas dans `players`), et `requireLobbyArbiter` limite la saisie des
+  éliminations à l'arbitre désigné. La ligue reste le seul domaine arbitré
+  par des admins.
 
 
 ---

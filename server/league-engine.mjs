@@ -53,16 +53,19 @@ const LEAGUE_ENTRY_FEE = 50;
 const LEAGUE_MAX_PLAYERS = 500;
 const LEAGUE_QUALIFY_DAYS = 5;
 /**
- * Effectif ATTENDU par journee de qualification.
+ * Effectif MAXIMAL par journee de qualification.
  *
- * Ce n'etait pas un nombre magique : la repartition est un tourniquet
- * (`assignPlayersToDays`, `i % LEAGUE_QUALIFY_DAYS`) sur `LEAGUE_MAX_PLAYERS`
- * inscrits au maximum. La journee maximale vaut donc exactement
- * `LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS`.
+ * La repartition est un tourniquet (`assignPlayersToDays`,
+ * `i % LEAGUE_QUALIFY_DAYS`) ; ce plafond est verifie apres repartition :
+ * une journee ne peut pas accueillir plus de joueurs que l'effectif
+ * maximal prevu. La capacite totale des journees vaut
+ * `LEAGUE_PLAYERS_PER_DAY * LEAGUE_QUALIFY_DAYS` (soit
+ * `LEAGUE_MAX_PLAYERS`, arrondi au superieur) : au-dela, la repartition
+ * est refusee plutot que de produire des journees surpeuplees.
  *
- * La constante etait definie — a la bonne valeur — mais JAMAIS UTILISEE. Un
- * nombre ecrit en dur duplique une regle : il derive des que l une des deux
- * sources change. Ici, il est DERIVE, donc il ne peut plus diverger.
+ * La constante est DERIVEE des deux bornes, donc elle ne peut plus diverger.
+ * Elle a longtemps ne borne rien du tout (definie, testee, jamais appliquee) :
+ * le plafond est desormais une regle du moteur, pas une consequence.
  */
 export const LEAGUE_PLAYERS_PER_DAY = Math.ceil(LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS);
 const LEAGUE_FINALISTS_COUNT = 40;
@@ -272,6 +275,21 @@ export const assignPlayersToDays = (playerIds) => {
   for (let i = 0; i < shuffled.length; i++) {
     const dayIndex = i % LEAGUE_QUALIFY_DAYS;
     groups[DAY_KEYS[dayIndex]].push(shuffled[i]);
+  }
+
+  // Le plafond par journee est une regle du moteur, pas une propriete
+  // accidentelle du tourniquet. Tant que l'effectif reste dans la capacite
+  // prevue (LEAGUE_MAX_PLAYERS), il ne mord pas. Mais un admin peut monter
+  // `maxPlayers` jusqu'a 1000 (updateLeagueSettingsOnServer), donc plus de
+  // 500 inscrits est un etat atteignable : la repartition est refusee au
+  // lieu de produire silencieusement des journees surpeuplees.
+  for (const day of DAY_KEYS) {
+    if (groups[day].length > LEAGUE_PLAYERS_PER_DAY) {
+      throw makeError(
+        'NO_SLOT_AVAILABLE',
+        `Effectif au-dela de la capacite de la qualification : ${shuffled.length} inscrits pour ${LEAGUE_QUALIFY_DAYS} journees de ${LEAGUE_PLAYERS_PER_DAY} joueurs au maximum.`
+      );
+    }
   }
 
   return groups;

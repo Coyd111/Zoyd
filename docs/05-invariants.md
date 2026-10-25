@@ -1107,12 +1107,19 @@ frais de retrait (`server/persistence.mjs:1532`).
 ### V12 — `LEAGUE_PLAYERS_PER_DAY` est une constante morte — **CORRIGÉ**
 **Gravité : FAIBLE → résolu** — *constat nouveau*
 
-> **Statut : corrigé.** La constante est désormais **dérivée**
-> (`server/league-engine.mjs:67` — `LEAGUE_PLAYERS_PER_DAY =
-> Math.ceil(LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS)`) et vérifiée
-> (`server/league-engine.test.mjs:895` : chaque journée garde un effectif
-> plafonné). Plus de valeur écrite en dur : la borne suit
-> `LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS`, là où elle vivait en doublon.
+> **Statut : corrigé.** La constante est **dérivée** (`server/league-engine.mjs:70` —
+> `LEAGUE_PLAYERS_PER_DAY = Math.ceil(LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS)`)
+> puis **appliquée** (audit-2 M26, 2026-10-26) : `assignPlayersToDays`
+> (`server/league-engine.mjs:270`) vérifie le plafond de chaque journée après
+> répartition et refuse au-delà de la capacité (`NO_SLOT_AVAILABLE`,
+> `:289`) au lieu de produire silencieusement des journées surpeuplées. La
+> branche est réellement atteignable : `updateLeagueSettingsOnServer`
+> autorise un `maxPlayers` jusqu'à 1000 (`server/league-engine.mjs:1077`),
+> donc plus de 500 inscrits
+> est un état possible. Le test `server/league-engine.test.mjs:886` vérifie la
+> conséquence sur 500 inscrits, `:901` la branche de refus. Plus de valeur
+> écrite en dur : la borne suit `LEAGUE_MAX_PLAYERS / LEAGUE_QUALIFY_DAYS`,
+> là où elle vivait en doublon.
 
 **Vérification (état d'origine).** `server/league-engine.mjs:18` déclarait
 `LEAGUE_PLAYERS_PER_DAY = 100` sans autre occurrence dans le dépôt : aucun

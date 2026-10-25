@@ -430,6 +430,32 @@ suppression de `creatorId`, `disputes`, `dispute`, `proofHash`.
 (remplacer par un condensat réel, ou le supprimer). Si les litiges doivent rester visibles,
 les rendre par socket aux seules parties (comme `isMe`).
 
+**Correctif (25/10/2026)** — appliqué dans `sanitizeMatchForBroadcast`
+(`server/state-helpers.mjs`), selon l'option « litiges visibles au plan
+structurel, preuves aux seules parties » :
+
+- `creatorId` est retiré du payload avec `roomPassword`/`roomName`/`screenshots`
+  (le créateur reste visible via `creatorPseudo`) ;
+- chaque litige — dans `disputes[]` **et** dans la copie connexe `dispute`
+  (posée à la création du litige, `match-engine.mjs:1260`) — perd
+  `requestedBy` **et** `openedByPseudo` (identité du demandeur) **et**
+  `evidence` ; le statut, le niveau, la raison, la cagnotte gelée et les
+  horodatages restent publics ;
+- `evidence` sort conservée pour les personas habilitées, calculées comme le
+  `isMe` des joueurs : l'auteur du litige et les joueurs du match (ils doivent
+  pouvoir scruter la preuve qu'ils contestent), l'arbitre du match, et un
+  admin (il doit trancher — le rôle est relu via `getUserById`) ; pour tout
+  autre lecteur, l'écran ne montre aucune pièce jointe ;
+- `result.proofHash` est retiré — il n'est pas un condensé mais la
+  concaténation en clair des URL de captures ; le champ reste dans le match
+  stocké côté serveur (piste de vérification), il ne sort plus jamais.
+
+Cinq tests ajoutés à `server/state-helpers.test.mjs` (mêmes harnais que la
+sanitisation existante — `getUserById` mocké) verrouillent : anonyme sans
+identité ni URL ni `proofHash` mais avec statut/raison du litige ; partie avec
+preuve visible ; arbitre idem ; admin idem mais toujours sans UUID ; lecteur
+hors partie sans preuve. Suite complète : 92 fichiers, 990 pass.
+
 ---
 
 ### S5 — MOYENNE — La saison de ligue n'est jamais sanitisée : ni en HTTP, ni en socket

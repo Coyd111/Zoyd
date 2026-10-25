@@ -652,6 +652,19 @@ côté front).
 **Correction.** Ne pas afficher le `proofHash` à l'écran (ou n'afficher qu'un
 condensé de 8 caractères calculé par le serveur).
 
+**Correctif (25/10/2026)** — la première option est appliquée, en amont **et**
+en aval :
+
+- affichage : le bloc « Hash de preuve : … » de `MatchResults.tsx` est
+  supprimé (un artefact interne technique n'a rien à faire à l'écran) ;
+- reconstruction : `normalizeStoredResult` (`matchStore.ts`) ne *re-fabrique*
+  plus un `proofHash` local à partir des captures — calculer une valeur que
+  le serveur ne concède pas, c'est encore mentir au store. Le champ n'existe
+  dans le store que si le payload la porte déjà (matchs anciens persistés) ;
+- la vraie barrière est dans le serveur : depuis S4 (voir le bloc Correctif
+  sous S4 de `02-autorisation.md`), `proofHash` ne sort plus du tout du
+  payload public.
+
 ---
 
 ### F14 — FAIBLE — Crash latent sur la recherche de tournois (`rules.mapPool` peut être `undefined`)

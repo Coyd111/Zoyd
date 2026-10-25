@@ -160,11 +160,22 @@ const LIVE_IDENTITY_STATUSES = new Set([
  * modifiable, le gameId ne l'est pas, et il est deja public (il figure dans
  * les payloads de profil public).
  *
+ * S4 : `creatorId`, `disputes[].requestedBy` + `openedByPseudo` (l'identite
+ * du demandeur du litige), la `result.proofHash` (qui n'est PAS un hash:
+ * c'est la concatenation en clair des URL de captures) ne sortent jamais.
+ * Les pieces jointes du litige (`evidence`) ne sortent que pour les
+ * personnes habilitees : les parties, l'arbitre et un admin — le meme
+ * modele que `isMe`. Pour un lecteur exterieur, la structure du litige
+ * (statut, niveau, cagnotte gelee) reste visible ; l'URL, non.
+ *
  * @param {object} match - Match to sanitize
  * @param {string|null} viewerId - userId du destinataire (null = anonyme)
  * @returns {object} A shallow copy with sensitive fields stripped
  */
-const sanitizeMatchForBroadcast = (match, viewerId = null) => {  const { roomPassword, roomName, screenshots, ...safe } = match;
+const sanitizeMatchForBroadcast = (match, viewerId = null) => {
+  // S4 : les captures restent cote serveur ; `creatorId` est un UUID de
+  // compte interne, le createur reste visible via `creatorPseudo`.
+  const { roomPassword, roomName, screenshots, creatorId, ...safe } = match;
   if (safe.arbiter) {
     const { roomPassword: _ap, roomName: _an, userId: arbiterUserId, ...safeArbiter } = safe.arbiter;
     safe.arbiter = { ...safeArbiter, isMe: Boolean(viewerId && arbiterUserId === viewerId) };
@@ -189,6 +200,34 @@ const sanitizeMatchForBroadcast = (match, viewerId = null) => {  const { roomPas
   // cagnotte reellement verrouillee). Evite au front de recalculer un
   // pourcentage arbitre et d'afficher un montant different du verse.
   safe.projectedPayouts = getProjectedPayouts(match);
+  // S4 : le litige reste VISIBLE (statut, niveau, cagnotte gelee, raison de
+  // contestation) mais son demandeur (UUID + pseudo, qui reliait un compte)
+  // et ses pieces jointes ne sortent que pour les personnes habilitees :
+  // les parties du match, l'arbitre et un admin. Meme modele que le `isMe`
+  // des joueurs : meme ecran pour tous, la preuve en plus pour celui qui
+  // doit juger.
+  if ((Array.isArray(safe.disputes) && safe.disputes.length > 0) || safe.dispute) {
+    const arbiterUserId = match.arbiter?.userId;
+    const isParty = Boolean(viewerId) && (
+      viewerId === arbiterUserId
+      || (Array.isArray(match.players) && match.players.some((player) => player?.userId === viewerId))
+    );
+    const isAdmin = Boolean(viewerId) && getUserById(viewerId)?.role === 'admin';
+    const canSeeEvidence = isParty || isAdmin;
+    const sanitizeDispute = (dispute) => {
+      const { requestedBy: _rb, openedByPseudo: _op, evidence, ...publicDispute } = dispute || {};
+      return { ...publicDispute, evidence: canSeeEvidence ? evidence : [] };
+    };
+    if (Array.isArray(safe.disputes)) {
+      safe.disputes = safe.disputes.map(sanitizeDispute);
+    }
+    // `dispute` est la copie connexe du litige (posee a la creation du
+    // litige, match-engine.mjs:1260) : sans la remapper elle aurait suivi le
+    // chemin public A COTE de `disputes`, avec l'objet brut dedans.
+    if (safe.dispute) {
+      safe.dispute = sanitizeDispute(safe.dispute);
+    }
+  }
   if (safe.submittedBy === 'system-no-show' || safe.submittedBy === 'admin-dashboard') {
     safe.submittedBy = null;
   }
@@ -197,7 +236,11 @@ const sanitizeMatchForBroadcast = (match, viewerId = null) => {  const { roomPas
     // calcul de `hasConfirmed` ci-dessus ; laissé dans le payload, il
     // livrait à chaque socket l'identifiant interne de tous les joueurs
     // ayant confirmé — exactement ce que le roster masque par ailleurs.
-    const { screenshots: _rs, proofs: _rp, confirmedByTeams: _cb, ...safeResult } = safe.result;
+    // S4 : `proofHash` ne sort pas non plus — il n'est PAS un hash, c'est la
+    // concatenation des URL de captures (buildProofHash). Il reste stocke
+    // cote serveur (piste de verification) mais n'est plus diffuse, et le
+    // front ne l'affichait plus (F13).
+    const { screenshots: _rs, proofs: _rp, confirmedByTeams: _cb, proofHash: _ph, ...safeResult } = safe.result;
     safe.result = safeResult;
   }
   return safe;

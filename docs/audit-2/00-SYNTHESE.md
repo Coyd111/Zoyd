@@ -87,7 +87,7 @@ suivis.
 | **S1** | `POST /api/matches/:id/result` : l'override admin du moteur permet d'écrire le vainqueur **sans TOTP** | La route jumelle `/api/admin/matches/:id/award` est, elle, sous `requireAdmin2fa`. Le cron règle la cagnotte 30 min après. **CORRIGÉ le 23/10/2026** (`require2faIfAdmin` sur result + arbiter : l'admin paie un TOTP frais, l'arbitre joueur passe sans code). |
 | **S2** | `/api/leagues/:id/final-results` (+ `days/:day/results`, `advance-to-final`) : rôle admin seul, aucun TOTP | `applyLeagueSettlement` verse la cagnotte réelle. Le remboursement voisin est en revanche sous 2FA. **CORRIGÉ le 23/10/2026** (les trois routes de la chaîne passent sous `requireAdmin2fa`, alignées sur refund/payments). |
 | **S3** | `POST /api/tournaments/:id/matches/:mid/result` : l'admin contourne le slot d'arbitre | Déclenche `applyTournamentSettlement`. **CORRIGÉ le 23/10/2026** (`require2faIfAdmin` ; l'arbitre assigné continue de passer sans code). |
-| **S4** | `GET /api/matches` est publique et `sanitizeMatchForBroadcast` est incomplète | Sortent `creatorId`, `disputes[].requestedBy`, `disputes[].evidence`, et surtout `result.proofHash` — qui n'est **pas** un hash mais la concaténation en clair des URL de captures (le front l'affiche). |
+| **S4** | `GET /api/matches` est publique et `sanitizeMatchForBroadcast` est incomplète | Sortent `creatorId`, `disputes[].requestedBy`, `disputes[].evidence`, et surtout `result.proofHash` — qui n'est **pas** un hash mais la concaténation en clair des URL de captures (le front l'affiche). **CORRIGÉ le 25/10/2026** (`creatorId` retiré du payload ; litiges anonymisés — l'identité du demandeur et les preuves ne sortent plus, réservées aux parties, à l'arbitre et à l'admin ; `proofHash` supprimé du payload, le front n'affiche plus de « Hash de preuve »). |
 
 ### 2.3 Concurrence
 
@@ -154,7 +154,7 @@ Il faut le dire, sinon la liste ci-dessus donnerait une image fausse.
 | 6 | **M1** — recopier `projectedPayouts` dans le store — **LIVRÉ le 23/10/2026** | C'est ce qui rend V5 et V8 effectifs. Et c'est ce qui a permis à deux « corrections » de passer inaperçues. |
 | 7 | **M2, M3, M4, M5** — dérives front/serveur — **LIVRÉ le 23/10/2026** (M2 : statut `cancelled` + replis défensifs ; M3 : les taux BR appliqués au pot des deux côtés, projection serveur prioritaire à l'écran ; M4 : commissions du profil via projection ; M5 : repli local de tranchage supprimé) | `/br-league` cassée, montants affichés faux. |
 | 8 | **F2, F3, F4, F5** — squelette permanent, fuite entre comptes, mensonge du dashboard, TOTP non demandé — **LIVRÉ le 23/10/2026** (F2 : `bootstrapFailed` + backoff + panneaux « Réessayer » sur les 5 écrans ; F3 : purge déléguée à `resetAllSessionStores` ; F4 : « indisponible » à la place du faux « 0 ZC » ; F5 : invite TOTP réutilisable + rejeu automatique de l'action) | Le joueur ne voit pas son solde ; le compte suivant hérite du précédent. |
-| 9 | **S4** — `proofHash` exposé publiquement | Fuite d'URL de captures. |
+| 9 | **S4** — `proofHash` exposé publiquement — **LIVRÉ le 25/10/2026** (identifiants et preuves de litige retirés du payload public, preuves réservées aux parties, à l'arbitre et à un admin ; le faux hash ne sort plus et n'est plus affiché) | Fuite d'URL de captures. |
 | 10 | **A4, A7, A9** — parts BR, slot d'arbitre de tournoi, montants non écrits | Répartition fausse et prise de contrôle. |
 | 11 | La documentation — corriger les affirmations fausses | Une doc qui ment est pire qu'une doc absente. |
 

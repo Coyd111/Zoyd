@@ -87,11 +87,9 @@ export const MatchResults: React.FC<MatchResultsProps> = ({ match, forfeitLabel 
           <EvidencePanel title="Autres preuves" items={resultProofSummary.extraEvidence} />
         </div>
       ) : null}
-      {match.result.proofHash ? (
-        <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/60">
-          Hash de preuve : {match.result.proofHash}
-        </div>
-      ) : null}
+      {/* F13 : le "hash de preuve" n'etait pas un condense mais une
+          concatenation des URL de captures en clair (S4) : il ne sort plus
+          du serveur et n'est plus affiche a l'ecran. */}
     </div>
   );
 };

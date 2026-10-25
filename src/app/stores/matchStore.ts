@@ -254,8 +254,6 @@ const flattenProofs = (proofs?: MatchProofBundle) =>
         ...proofs.extraEvidence,
       ]
     : [];
-const buildProofHash = (matchId: string, winnerTeam: MatchTeam, scores: { team0: number; team1: number }, refs: string[]) =>
-  [matchId, winnerTeam, scores.team0, scores.team1, ...refs.map((ref) => ref.toLowerCase())].join('|');
 interface StoredDispute {
   id?: string;
   level?: number;
@@ -373,7 +371,7 @@ const normalizeStoredProofs = (proofs: StoredProofs): MatchProofBundle => ({
   roomCapture: Array.isArray(proofs?.roomCapture) ? proofs.roomCapture : [],
   extraEvidence: Array.isArray(proofs?.extraEvidence) ? proofs.extraEvidence : [],
 });
-const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResult => {
+const normalizeStoredResult = (_matchId: string, result: StoredResult): MatchResult => {
   const proofs = result?.proofs ? normalizeStoredProofs(result.proofs) : undefined;
   const screenshots = Array.isArray(result?.screenshots) ? result.screenshots : flattenProofs(proofs);
   // 'pending' doit survivre à la normalisation : l'écraser en `false`
@@ -389,14 +387,12 @@ const normalizeStoredResult = (matchId: string, result: StoredResult): MatchResu
     screenshots,
     proofs,
     resolutionType: result?.resolutionType || 'played',
-    proofHash:
-      result?.proofHash ||
-      buildProofHash(
-        matchId,
-        result?.winnerTeam ?? 0,
-        result?.scores || { team0: 0, team1: 0 },
-        screenshots
-      ),
+    // S4 + F13 : le champ ne sort plus du serveur (c'etait la concatenation
+    // en clair des URL de captures, pas un hash) et aucun ecran ne l'affiche
+    // plus. On ne le RECALCULE plus ici non plus : refabriquer une valeur
+    // que le serveur n'a jamais concede, c'est encore mentir au store. Il ne
+    // survit que si le payload persiste deja la valeur (matchs anciens).
+    proofHash: result?.proofHash || undefined,
     arbiterNotes: result?.arbiterNotes,
     forfeitTeam: result?.forfeitTeam,
     submittedBy: result?.submittedBy || '',

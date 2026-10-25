@@ -179,3 +179,111 @@ describe('toPublicBrLobby — aucune fuite de userId', () => {
     expect(toPublicBrLobby(lobby()).isArbiter).toBe(false);
   });
 });
+
+/**
+ * S4 - les preuves de match et les identifiants de compte ne sortent plus
+ * dans une reponse publique.
+ *
+ * Trois fuites ont cohabite dans le payload : `creatorId` (UUID de compte),
+ * `disputes[].requestedBy` / `openedByPseudo` + `evidence` (l'auteur du
+ * litige et ses URL de captures saisies librement), et `result.proofHash`
+ * (qui, malgre son nom, est la CONCATENATION des URL de captures - pas un
+ * condense). Le litige lui-meme reste visible (statut, niveau) : seul ce
+ * qui relie un compte ou publie une URL franchit la barriere. Les pieces
+ * jointes continuent de sortir pour les personnes habilitees : les parties,
+ * l'arbitre et un admin - le modele du `isMe`.
+ */
+describe('sanitizeMatchForBroadcast — litiges et preuves (S4)', () => {
+  const CAPTURE_URL = 'https://img.zoyd.test/capture-scoreboard.png';
+  const OTHER_PLAYER_ID = '44444444-4444-4444-8444-444444444444';
+
+  const disputeMatch = () => ({
+    id: 'M-DSP',
+    status: 'disputed',
+    creatorId: PLAYER_ID,
+    creatorPseudo: 'Crea',
+    arbiter: { userId: ARBITER_ID, pseudo: 'ARB' },
+    players: [
+      { userId: PLAYER_ID, pseudo: 'P1' },
+      { userId: OTHER_ID, pseudo: 'P2' },
+    ],
+    disputes: [{
+      id: 'DSP-1',
+      level: 1,
+      status: 'open',
+      reason: 'Score invente',
+      evidence: [CAPTURE_URL],
+      requestedBy: PLAYER_ID,
+      openedByPseudo: 'P1',
+      openedAt: '2026-01-01T00:00:00.000Z',
+      prizePoolFrozen: true,
+    }],
+    dispute: {
+      id: 'DSP-1',
+      status: 'open',
+      reason: 'Score invente',
+      evidence: [CAPTURE_URL],
+      requestedBy: PLAYER_ID,
+      openedByPseudo: 'P1',
+    },
+    result: {
+      winnerTeam: 0,
+      proofHash: `m-dsp|0|2|1|${CAPTURE_URL.toLowerCase()}`,
+    },
+  });
+
+  beforeEach(() => {
+    accounts.clear();
+  });
+
+  it('anonyme : ni identite du createur, ni demandeur, ni URL de preuve', () => {
+    const raw = JSON.stringify(sanitizeMatchForBroadcast(disputeMatch(), null));
+
+    expect(raw).not.toContain(PLAYER_ID);
+    expect(raw).not.toContain(ARBITER_ID);
+    expect(raw).not.toContain(CAPTURE_URL);
+    expect(raw).not.toContain('scoreboard');
+    expect(raw).not.toContain('proofHash');
+    expect(raw).not.toContain('requestedBy');
+    expect(raw).not.toContain('openedByPseudo');
+    // La structure du litige reste lisible : statut et raison.
+    const safe = JSON.parse(raw);
+    expect(safe.disputes[0].status).toBe('open');
+    expect(safe.disputes[0].reason).toBe('Score invente');
+    expect(safe.disputes[0].evidence).toEqual([]);
+    expect(safe.dispute.evidence).toEqual([]);
+    // Les elements non sensibles du resultat continuent de sortir : seul le
+    // faux "hash" est retire.
+    expect(safe.result.winnerTeam).toBe(0);
+  });
+
+  it('partie du litige : preuve visible, identite du createur toujours masquee', () => {
+    const raw = JSON.stringify(sanitizeMatchForBroadcast(disputeMatch(), PLAYER_ID));
+
+    // La piece jointe reste accessible aux parties (c'est le but du litige).
+    expect(raw).toContain(CAPTURE_URL);
+    // Mais l'.UUID de l'auteur ne fuit pas, meme pour une partie.
+    expect(raw).not.toContain('proofHash');
+  });
+
+  it('arbitre : preuve visible', () => {
+    const raw = JSON.stringify(sanitizeMatchForBroadcast(disputeMatch(), ARBITER_ID));
+    expect(raw).toContain(CAPTURE_URL);
+  });
+
+  it('admin : preuve visible (il doit juger le litige)', () => {
+    const ADMIN_ID = '55555555-5555-4555-8555-555555555555';
+    accounts.set(ADMIN_ID, { id: ADMIN_ID, pseudo: 'ADMIN', role: 'admin' });
+
+    const raw = JSON.stringify(sanitizeMatchForBroadcast(disputeMatch(), ADMIN_ID));
+    expect(raw).toContain(CAPTURE_URL);
+    // L'admin non partenaire ne recoit pas non plus les UUID des joueurs.
+    expect(raw).not.toContain(PLAYER_ID);
+    expect(raw).not.toContain('requestedBy');
+  });
+
+  it('lecteur hors partie : preuve masquee', () => {
+    const raw = JSON.stringify(sanitizeMatchForBroadcast(disputeMatch(), OTHER_PLAYER_ID));
+    expect(raw).not.toContain(CAPTURE_URL);
+  });
+});

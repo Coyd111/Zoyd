@@ -7,7 +7,8 @@
 > surface de sécurité (→ `docs/03-securite.md`), ni les invariants d'argent
 > (→ `docs/05-invariants.md`), ni les tests (→ `docs/06-tests.md`).
 >
-> **Portée :** `src/` — 197 fichiers (mesuré le 2026-10-20).
+> **Portée :** `src/` — 171 fichiers (mesuré le 2026-10-20 à 197 ; purge
+> M31/M32 le 2026-10-26).
 
 **Source :** lecture directe du code. Base : dépôt local
 `E:\web_app\projrt\Z.O.Y.D\Zoyd`, commit de travail `0328dc8`.
@@ -66,18 +67,18 @@ le **comportement constaté**, pas la configuration déclarée.
 
 ## 2. L'arborescence de `src/`
 
-Mesuré le 2026-10-20 (197 fichiers).
+Mesuré le 2026-10-20 (197 fichiers) ; mis à jour le 2026-10-26 après la purge
+des composants morts (audit-2 M31, M32 : 26 fichiers supprimés, 171 restants).
 
 ```
 src/                                    2   main.tsx, vite-env.d.ts
 ├── app/                                2   App.tsx, routes.tsx
-│   ├── components/                     7   MatchCard, SEOHead, ErrorBoundary,
-│   │   │                                   RouteErrorBoundary, EmptyPanel,
-│   │   │                                   CountdownTimer, LiveTicker
+│   ├── components/                     5   MatchCard, SEOHead, ErrorBoundary,
+│   │   │                                   RouteErrorBoundary, EmptyPanel
 │   │   ├── components/admin/            6   AdminOverviewTab, AdminMatchesTab,
 │   │   │                                   AdminUsersTab, AdminReportsTab,
 │   │   │                                   AdminUrgencyTab, AdminTabShared
-│   │   ├── components/ui/              42   40 composants + use-mobile.ts + utils.ts
+│   │   ├── components/ui/              19   17 composants + use-mobile.ts + utils.ts
 │   │   ├── components/layout/           3   Navbar, Sidebar, BottomNav
 │   │   ├── components/notifications/    3   NotificationDropdown, ToastContainer,
 │   │   │                                   NotificationSettingsModal
@@ -85,8 +86,7 @@ src/                                    2   main.tsx, vite-env.d.ts
 │   │   ├── components/social/           1   FriendsWidget
 │   │   ├── components/trust/            1   TrustScoreBadge
 │   │   ├── components/wallet/           1   WithdrawalFeesNotice
-│   │   ├── components/branding/         1   ZoydLogo
-│   │   └── components/figma/            1   ImageWithFallback
+│   │   └── components/branding/         1   ZoydLogo
 │   ├── layouts/                        3   RootLayout, AppLayout, AuthLayout
 │   ├── pages/                         15   (voir §10)
 │   ├── pages/auth/                     4   Login, Register, Activate, ForgotPassword
@@ -504,19 +504,21 @@ CSS, pour éviter le flash blanc.
 `animate-marquee` (`:142-147`), `scrollbar-hide` (`:150-151`) et le bloc
 `prefers-reduced-motion` (`:154-161`).
 
-### 8.3 Les 40 composants de `src/app/components/ui/`
+### 8.3 Les 17 composants de `src/app/components/ui/`
 
-Portés de shadcn/ui, adaptés au design system ZOYD.
+Portés de shadcn/ui, adaptés au design system ZOYD. La bibliothèque initiale en
+comptait 40 : les 23 jamais importés ont été supprimés le 2026-10-26
+(audit-2 M31) — git conserve l'historique si besoin futur.
 
 | Famille | Composants |
 |---|---|
-| Actions | `Button`, `Badge`, `Toggle`, `ToggleGroup` |
-| Formulaires | `Input`, `Textarea`, `Label`, `Form`, `Checkbox`, `RadioGroup`, `Select`, `Slider`, `Switch` |
-| Conteneurs | `Card`, `Table`, `Tabs`, `Accordion`, `Collapsible`, `Sheet`, `Dialog`, `AlertDialog`, `Popover`, `HoverCard`, `Tooltip`, `DropdownMenu`, `ContextMenu`, `Menubar`, `NavigationMenu` |
-| Affichage | `Avatar`, `Breadcrumb`, `Chart`, `Pagination`, `ProgressBar`, `ScrollArea`, `Separator`, `Skeleton`, `AspectRatio`, `Modal`, `Sidebar`, `Alert` |
+| Actions | `Button`, `Badge`, `Toggle` |
+| Formulaires | `Input`, `Label`, `Form` |
+| Conteneurs | `Card`, `Table`, `Tabs`, `Sheet`, `Tooltip` |
+| Affichage | `ProgressBar`, `Separator`, `Skeleton`, `Modal`, `Sidebar`, `Alert` |
 | Aides | `use-mobile.ts`, `utils.ts` (`cn`) |
 
-**Les 40 composants listés ci-dessus sont portés de shadcn/ui** et adaptés au
+**Les 17 composants listés ci-dessus sont portés de shadcn/ui** et adaptés au
 design system ZOYD. Les deux qui structurent le reste sont `Button` et `Badge`.
 
 `cn` (`src/app/components/ui/utils.ts:4-6`) = `twMerge(clsx(inputs))` — la

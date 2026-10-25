@@ -42,9 +42,7 @@ src/
 │   ├── components/
 │   │   ├── ui/              # Composants de base (Button, Card, Input, etc.)
 │   │   ├── layout/          # Layout (Navbar, Sidebar, BottomNav)
-│   │   ├── MatchCard.tsx    # Composant match spécifique
-│   │   ├── LiveTicker.tsx   # Ticker de matchs live
-│   │   └── CountdownTimer.tsx
+│   │   └── MatchCard.tsx    # Composant match spécifique
 │   ├── layouts/
 │   │   ├── RootLayout.tsx
 │   │   ├── AuthLayout.tsx
@@ -172,7 +170,7 @@ animate-bounce-slow     /* Bounce lent pour indicateurs */
 - [x] Listing matchs disponibles
 - [x] Preview tournois
 - [x] Mini classement hebdomadaire
-- [x] LiveTicker pour matchs en cours
+- [ ] LiveTicker pour matchs en cours (supprimé le 26/10/2026, audit-2 M32 : le composant n'a jamais été branché)
 
 ### ✅ Phase 4 - Match Flow (Partiel)
 - [x] Page création de match (wizard 4 étapes)

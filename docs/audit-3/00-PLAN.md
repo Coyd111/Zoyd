@@ -29,7 +29,7 @@ cassée ou divergeante), FAIBLE (bruit, doc fausse), INFO (remarque).
 | 8 | Fondations (cron, moderation, chat, push) | `08-fondations.md` | terminé 2026-10-26 (0 FAIBLE, 5 INFO) |
 | 9 | Routes | `09-routes.md` | terminé 2026-10-26 (1 MAJEUR, 6 INFO) |
 | 10 | Realtime | `10-realtime.md` | terminé 2026-10-26 (0 FAIBLE, 5 INFO) |
-| 11 | Front lib | `11-front-lib.md` | - |
+| 11 | Front lib | `11-front-lib.md` | terminé 2026-10-26 (0 FAIBLE, 6 INFO) |
 | 12 | Front stores | `12-front-stores.md` | - |
 | 13 | Front pages et features | `13-front-pages.md` | - |
 | 14 | Config et deploiement | `14-config.md` | - |

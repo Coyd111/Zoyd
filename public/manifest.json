@@ -9,40 +9,12 @@
   "theme_color": "#000000",
   "orientation": "portrait",
   "categories": ["games", "entertainment"],
-  "screenshots": [
-    {
-      "src": "/screenshot-home.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Page d'accueil ZOYD"
-    },
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Version mobile ZOYD"
-    }
-  ],
   "icons": [
     {
       "src": "/logo-icon.png",
-      "sizes": "96x96",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "/logo-icon.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/logo-icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
     }
   ]
 }

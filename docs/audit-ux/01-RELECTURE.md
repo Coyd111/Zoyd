@@ -100,5 +100,57 @@ Aucun correctif n'est requis par ce rapport. Trois pistes produit, à arbitrer :
 
 ---
 
+## 4. Pass logo et icône — le 2026-10-26
+
+Pass demandé en dehors du rapport : vérifier que l'icône et le logo sont
+utilisés chacun dans leur rôle, sur tout le site.
+
+### 4.1 Ce qui était correct (séparation des rôles respectée)
+
+- `logo.png` (940×264, symbole + wordmark « OYD ») : le branding UI — via
+  `ZoydLogo` (LoginPage, RegisterPage, ModeSelectionPage, footer de la
+  landing) et en rendu direct (Navbar `:46`, LandingPage `:530`). Aucun
+  endroit de l'interface n'affiche l'icône à la place du logo.
+- `logo-icon.png` (le « Z » seul) : les usages système — favicon
+  (`index.html:82`), notifications PWA (`notificationStore.ts:123-124`,
+  `sw.js:128-129/:151-152`), manifest PWA.
+- `og.png` (1200×630) : le partage social (`index.html:37/:48`,
+  `SEOHead.tsx:52`).
+
+### 4.2 Les défauts trouvés
+
+1. **`logo-icon.png` mesurait 1024×650 — pas carré**, alors que favicon,
+   notifications et installation PWA attendent un carré. Le manifest
+   déclarait en outre `96x96`, `192x192`, `512x512` (toutes fausses) avec
+   `purpose: "any maskable"` : le recadrage Android coupait les coins du Z.
+2. **`index.html:83` — inversion de rôle** : `apple-touch-icon` pointait sur
+   `logo.png` (logo horizontal 940×264) — iOS le recadre en carré, wordmark
+   coupé.
+3. **Screenshots fantômes** : le manifest référençait `/screenshot-home.png`
+   et `/screenshot-mobile.png`, absents de `public/` (404 à l'installation).
+4. `og.svg` orphelin — référencé nulle part.
+
+### 4.3 Corrections livrées
+
+- `logo-icon.png` régénéré : **canvas noir 1024×1024, le Z déposé tel quel**
+  (aucun redimensionnement, aucune déformation), centré verticalement
+  (bandes de 187 px en haut et en bas). Décision produit : le Z reste
+  bord à bord horizontalement, donc `purpose: "maskable"` est retiré du
+  manifest — il serait mensonger (le masque Android couperait les
+  extrémités du Z).
+- `manifest.json` : une seule entrée véridique (`sizes: "1024x1024"`,
+  `purpose: "any"`) — Chrome réduit automatiquement ; la section
+  `screenshots` fantôme est retirée.
+- `index.html` : `apple-touch-icon` pointe sur l'icône carrée (rôle
+  rétabli) ; le favicon inchangé.
+- `og.svg` supprimé.
+
+*Non traité, à considérer plus tard : centraliser les trois rendus directs
+de logo (Navbar `?v=2`, LandingPage `:530`) sur le composant `ZoydLogo` —
+incohérence de code, pas visuelle ; déclinaisons favicon 16/32 si besoin
+de finesse sur les vieux navigateurs.*
+
+---
+
 *Relecture faite le 2026-10-26, après le rang 13 de l'audit-2 (plus aucun constat
 ouvert de ce rapport ne requiert de correctif).*

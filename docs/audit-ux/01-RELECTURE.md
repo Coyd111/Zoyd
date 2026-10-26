@@ -145,10 +145,12 @@ utilisés chacun dans leur rôle, sur tout le site.
   rétabli) ; le favicon inchangé.
 - `og.svg` supprimé.
 
-*Non traité, à considérer plus tard : centraliser les trois rendus directs
-de logo (Navbar `?v=2`, LandingPage `:530`) sur le composant `ZoydLogo` —
-incohérence de code, pas visuelle ; déclinaisons favicon 16/32 si besoin
-de finesse sur les vieux navigateurs.*
+*Non traité, à considérer plus tard : déclinaisons favicon 16/32 si besoin
+de finesse sur les vieux navigateurs. Fait dans la foulée (2026-10-26) :
+les trois rendus directs de logo (Navbar — son `?v=2` était un cache-buster
+vestige d'un ancien remplacement de fichier, l'URL `/logo.png` reste celle
+que sert `ZoydLogo` — et LandingPage `:530`) passent par le composant
+`ZoydLogo` ; visuellement rien ne change.*
 
 ---
 

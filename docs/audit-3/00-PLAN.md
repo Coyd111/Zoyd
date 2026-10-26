@@ -30,7 +30,7 @@ cassée ou divergeante), FAIBLE (bruit, doc fausse), INFO (remarque).
 | 9 | Routes | `09-routes.md` | terminé 2026-10-26 (1 MAJEUR, 6 INFO) |
 | 10 | Realtime | `10-realtime.md` | terminé 2026-10-26 (0 FAIBLE, 5 INFO) |
 | 11 | Front lib | `11-front-lib.md` | terminé 2026-10-26 (0 FAIBLE, 6 INFO) |
-| 12 | Front stores | `12-front-stores.md` | - |
+| 12 | Front stores | `12-front-stores.md` | terminé 2026-10-26 (1 MAJEUR, 3 FAIBLE, 4 INFO) |
 | 13 | Front pages et features | `13-front-pages.md` | - |
 | 14 | Config et deploiement | `14-config.md` | - |
 | 15 | e2e | `15-e2e.md` | - |

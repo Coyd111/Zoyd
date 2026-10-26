@@ -20,7 +20,7 @@ cassée ou divergeante), FAIBLE (bruit, doc fausse), INFO (remarque).
 | # | Partie | Fichier de constats | État |
 |---|---|---|---|
 | 1 | Noyau serveur | `01-noyau-serveur.md` | terminé 2026-10-26 (3 FAIBLE, 4 INFO) |
-| 2 | Données (persistence, state-helpers) | `02-donnees.md` | - |
+| 2 | Données (persistence, state-helpers) | `02-donnees.md` | terminé 2026-10-26 (2 FAIBLE, 4 INFO) |
 | 3 | Match | `03-match.md` | - |
 | 4 | Argent (wallet, paiement) | `04-argent.md` | - |
 | 5 | Tournoi | `05-tournoi.md` | - |

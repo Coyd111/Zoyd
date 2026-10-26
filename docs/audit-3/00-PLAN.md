@@ -27,7 +27,7 @@ cassée ou divergeante), FAIBLE (bruit, doc fausse), INFO (remarque).
 | 6 | Ligue | `06-ligue.md` | terminé 2026-10-26 (2 FAIBLE, 4 INFO) |
 | 7 | BR | `07-br.md` | terminé 2026-10-26 (1 FAIBLE, 4 INFO) |
 | 8 | Fondations (cron, moderation, chat, push) | `08-fondations.md` | terminé 2026-10-26 (0 FAIBLE, 5 INFO) |
-| 9 | Routes | `09-routes.md` | - |
+| 9 | Routes | `09-routes.md` | terminé 2026-10-26 (1 MAJEUR, 6 INFO) |
 | 10 | Realtime | `10-realtime.md` | - |
 | 11 | Front lib | `11-front-lib.md` | - |
 | 12 | Front stores | `12-front-stores.md` | - |

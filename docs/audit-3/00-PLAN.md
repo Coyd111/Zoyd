@@ -24,7 +24,7 @@ cassée ou divergeante), FAIBLE (bruit, doc fausse), INFO (remarque).
 | 3 | Match | `03-match.md` | terminé 2026-10-26 (1 MAJEUR, 1 FAIBLE, 3 INFO) |
 | 4 | Argent (wallet, paiement) | `04-argent.md` | terminé 2026-10-26 (1 MAJEUR, 1 FAIBLE, 2 INFO) |
 | 5 | Tournoi | `05-tournoi.md` | terminé 2026-10-26 (1 CRITIQUE, 1 FAIBLE, 3 INFO) |
-| 6 | Ligue | `06-ligue.md` | - |
+| 6 | Ligue | `06-ligue.md` | terminé 2026-10-26 (2 FAIBLE, 4 INFO) |
 | 7 | BR | `07-br.md` | - |
 | 8 | Fondations (cron, moderation, chat, push) | `08-fondations.md` | - |
 | 9 | Routes | `09-routes.md` | - |

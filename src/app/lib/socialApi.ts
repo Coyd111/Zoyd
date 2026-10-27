@@ -31,7 +31,12 @@ export interface Report {
 }
 
 export const sendServerFriendRequest = async (targetId: string, message?: string) => {
-  return authorizedPost<{ ok: boolean; request: FriendRequest }>('/api/social/request', { targetId, message });
+  // P12 C1 (audit-3) : le serveur renvoie la demande SANS senderPseudo
+  // (persistence.mjs). Le type precedent pretendait `FriendRequest` complet
+  // (senderPseudo requis) : le typecheck ne voyait jamais le mensonge et
+  // l'objet brut casse le rendu de la section 'Demandes'. Le store
+  // normalise a l'insertion (normalizeServerRequest).
+  return authorizedPost<{ ok: boolean; request: Omit<FriendRequest, 'senderPseudo'> & { senderPseudo?: string } }>('/api/social/request', { targetId, message });
 };
 
 export const acceptServerFriendRequest = async (requestId: string) => {

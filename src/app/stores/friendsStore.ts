@@ -65,6 +65,27 @@ export interface FriendRequest {
   message?: string;
 }
 
+/**
+ * La demande telle que le SERVEUR la produit (voie REST comme voie hydrate) :
+ * `senderPseudo`, `status` et `timestamp` ne sont pas garantis — P12 C1
+ * (audit-3). La normalisation vers `FriendRequest` est UNIQUE
+ * (`normalizeServerRequest`) : les deux voies d'entree doivent produire le
+ * meme objet, sinon l'une des deux casse le rendu.
+ */
+export type ServerFriendRequestInput = Omit<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'>
+  & Partial<Pick<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'>>;
+
+const normalizeServerRequest = (request: ServerFriendRequestInput): FriendRequest => ({
+  ...request,
+  // Defensif : sans ce fallback, la demande envoyee (le serveur ne renvoie
+  // pas le pseudo du demandeur) entrait brute dans la liste et le premier
+  // rendu de la section 'Demandes' jetait sur `.slice` (FriendsWidget,
+  // DashboardPage) : tableau de bord mort pour la session.
+  senderPseudo: request.senderPseudo || 'Joueur',
+  status: request.status || 'pending',
+  timestamp: request.timestamp || new Date().toISOString(),
+});
+
 export interface Report {
   id: string;
   targetId: string;
@@ -93,7 +114,7 @@ export interface FriendsState {
   // Actions
   hydrateFromServer: (
     friends: FriendProfileInput[],
-    requests: Array<Omit<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'> & Partial<Pick<FriendRequest, 'senderPseudo' | 'timestamp' | 'status'>>>,
+    requests: ServerFriendRequestInput[],
     blockedIds: string[]
   ) => void;
   /**
@@ -176,12 +197,7 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
       })),
       // Défensifs : le serveur normalise déjà, mais un `senderPseudo` absent
       // affichait "undefined veut t'ajouter".
-      requests: requests.map((request) => ({
-        ...request,
-        senderPseudo: request.senderPseudo || 'Joueur',
-        status: request.status || 'pending',
-        timestamp: request.timestamp || new Date().toISOString(),
-      })),
+      requests: requests.map(normalizeServerRequest),
       blockedIds,
     });
   },
@@ -193,7 +209,11 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
     try {
       const res = await sendServerFriendRequest(targetId, message);
       if (res.ok && res.request) {
-        set((state) => ({ requests: [res.request, ...state.requests] }));
+        // P12 C1 (audit-3) : normaliser a l'insertion, comme l'hydrate — la
+        // demande servie par la route n'a pas de senderPseudo, et l'objet
+        // brut casse le premier rendu de la section 'Demandes' (.slice sur
+        // undefined : tableau de bord mort pour la session).
+        set((state) => ({ requests: [normalizeServerRequest(res.request!), ...state.requests] }));
       }
     } catch {
       useToastStore.getState().addToast({ type: 'error', title: 'Erreur', message: "Impossible d'envoyer la demande d'ami.", duration: 4000 });

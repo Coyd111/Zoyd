@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useFriendsStore } from './friendsStore';
+import { sendServerFriendRequest } from '../lib/socialApi';
 
 const { reportServerUser } = vi.hoisted(() => ({
   reportServerUser: vi.fn(),
@@ -179,5 +180,95 @@ describe('friendsStore — reportUser utilise l identifiant du serveur', () => {
     reportServerUser.mockRejectedValue(new Error('reseau'));
     await useFriendsStore.getState().reportUser('U6', 'harassment', 'x');
     expect(useFriendsStore.getState().pendingId).toBeNull();
+  });
+});
+
+/**
+ * P12 C1 (audit-3) : la demande d'ami envoyee plantait le tableau de bord
+ * pour toute la session.
+ *
+ * Le serveur renvoie la demande SANS `senderPseudo`. L'hydrate normalisait
+ * (`senderPseudo || 'Joueur'`), la voie envoi insérait l'objet BRUT : le
+ * premier rendu de la section 'Demandes' (`FriendsWidget`, `DashboardPage`,
+ * `.slice` sur undefined) jetait — `RouteErrorBoundary` prenait la page, le
+ * tableau de bord et l'onglet 'Demandes' morts pour la session (aucune
+ * hydratation inbound ne reparait la liste : la demande envoyee n'y revient
+ * pas).
+ *
+ * Le repro ci-dessous est celui execute par l'audit (test temporaire
+ * supprime depuis) : maintenant PERMANENT.
+ */
+describe('friendsStore — demande envoyee normalisee a l insertion (P12 C1)', () => {
+  beforeEach(() => {
+    reset();
+    vi.mocked(sendServerFriendRequest).mockReset();
+  });
+
+  it('repro audit-3 : une demande sans senderPseudo entre normalisee (voie envoi)', async () => {
+    vi.mocked(sendServerFriendRequest).mockResolvedValue({
+      ok: true,
+      request: {
+        id: 'FR-1',
+        senderId: 'U1',
+        targetId: 'U2',
+        status: 'pending',
+        message: null,
+        timestamp: '2026-10-26T00:00:00.000Z',
+      } as never,
+    });
+
+    await useFriendsStore.getState().sendRequest('U2', 'Bob');
+
+    const [r] = useFriendsStore.getState().requests;
+    expect(r.id).toBe('FR-1');
+    expect(r.senderPseudo).toBe('Joueur');
+    expect(r.status).toBe('pending');
+    expect(r.timestamp).toBe('2026-10-26T00:00:00.000Z');
+    // Les deux voies (envoi et hydrate) produisent le MEME objet.
+    useFriendsStore.getState().hydrateFromServer([], [{
+      id: 'FR-1',
+      senderId: 'U1',
+      targetId: 'U2',
+      status: 'pending',
+      message: null,
+      timestamp: '2026-10-26T00:00:00.000Z',
+    }] as never, []);
+    const [hydrated] = useFriendsStore.getState().requests;
+    expect(hydrated.senderPseudo).toBe('Joueur');
+    expect(hydrated).toEqual(r);
+  });
+
+  it('le pseudo fourni par le serveur est conserve (pas ecrase par le fallback)', async () => {
+    vi.mocked(sendServerFriendRequest).mockResolvedValue({
+      ok: true,
+      request: {
+        id: 'FR-2',
+        senderId: 'U1',
+        senderPseudo: 'Alice',
+        targetId: 'U2',
+        status: 'pending',
+        timestamp: '2026-10-26T00:00:00.000Z',
+      } as never,
+    });
+
+    await useFriendsStore.getState().sendRequest('U2', 'Bob');
+
+    expect(useFriendsStore.getState().requests[0].senderPseudo).toBe('Alice');
+  });
+
+  it('un timestamp absent est rempli (voie envoi aussi)', async () => {
+    vi.mocked(sendServerFriendRequest).mockResolvedValue({
+      ok: true,
+      request: {
+        id: 'FR-3',
+        senderId: 'U1',
+        targetId: 'U2',
+        status: 'pending',
+      } as never,
+    });
+
+    await useFriendsStore.getState().sendRequest('U2', 'Bob');
+
+    expect(useFriendsStore.getState().requests[0].timestamp).toBeTruthy();
   });
 });

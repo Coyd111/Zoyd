@@ -20,7 +20,7 @@ vi.mock('./wallet-engine.mjs', () => ({
   debitFromWallet: vi.fn(),
 }));
 
-import { verifyFedaPayTransactionAndCredit, isTransactionOwnedBy } from './payment-engine.mjs';
+import { verifyFedaPayTransactionAndCredit, isTransactionOwnedBy, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 import { Transaction } from 'fedapay';
 import {
   hasTransactionBeenProcessed,
@@ -193,5 +193,46 @@ describe('payment-engine - isTransactionOwnedBy', () => {
     expect(isTransactionOwnedBy({ description: 'x', customer: { phone_number: '+22800000000', email: 'stranger@x.com' } }, user)).toBe(false);
     expect(isTransactionOwnedBy({}, user)).toBe(false);
     expect(isTransactionOwnedBy(null, user)).toBe(false);
+  });
+});
+
+describe('payment-engine - vocabulaire de statuts payout (audit-3 P4 C1)', () => {
+  // Cycle de vie OFFICIEL FedaPay : pending -> started -> processing ->
+  // sent -> failed. Le statut final de SUCCES est `sent` : sans lui, un
+  // payout verse reste 'en attente' pour toujours dans la reconciliation.
+  it('succes : sent (cas nominal FedaPay) et transferred sont reconnus', () => {
+    expect(payoutSucceeded('sent')).toBe(true);
+    expect(payoutSucceeded('transferred')).toBe(true);
+  });
+
+  it('succes : le vocabulaire historique reste couvert', () => {
+    for (const statut of ['success', 'successful', 'completed', 'paid', 'done']) {
+      expect(payoutSucceeded(statut)).toBe(true);
+    }
+  });
+
+  it('succes : les statuts non finaux ne resolvent RIEN', () => {
+    for (const statut of ['pending', 'started', 'processing', 'failed', '', 'unknown']) {
+      expect(payoutSucceeded(statut)).toBe(false);
+    }
+    expect(payoutSucceeded(undefined)).toBe(false);
+  });
+
+  it('echec : failed et les refus operateur (refused, declined) sont reconnus', () => {
+    for (const statut of ['failed', 'failure', 'error', 'rejected', 'refused', 'declined', 'cancelled', 'canceled']) {
+      expect(payoutFailed(statut)).toBe(true);
+    }
+  });
+
+  it('echec : un statut non final n est jamais un echec DEFINITIF', () => {
+    for (const statut of ['pending', 'started', 'processing', 'sent', '', 'unknown']) {
+      expect(payoutFailed(statut)).toBe(false);
+    }
+    expect(payoutFailed(undefined)).toBe(false);
+  });
+
+  it('la casse et les espaces ne changent pas la decision', () => {
+    expect(payoutSucceeded('SENT')).toBe(true);
+    expect(payoutFailed('Failed')).toBe(true);
   });
 });

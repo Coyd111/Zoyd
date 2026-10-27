@@ -415,14 +415,27 @@ export const retrieveFedaPayPayout = async (payoutId) => {
   }
 };
 
-/** L'argent a-t-il atteint le joueur ? */
+/**
+ * L'argent a-t-il atteint le joueur ?
+ *
+ * Cycle de vie OFFICIEL FedaPay (docs "Gestion des depots") :
+ * `pending -> started -> processing -> sent -> failed`. Le statut final de
+ * SUCCES est `sent` : un payout verse restait 'en attente' pour toujours
+ * si le predicat l'ignore — la file de reconciliation grossissait a vie et
+ * l'etat du joueur etait faux (audit-3 P4 C1). Les autres vocabulaires
+ * couvrent les libelles historiques et la variante `transferred`.
+ */
 export const payoutSucceeded = (status) => {
   const n = String(status || '').toLowerCase();
-  return ['success', 'successful', 'completed', 'paid', 'done'].includes(n);
+  return ['success', 'successful', 'completed', 'paid', 'done', 'sent', 'transferred'].includes(n);
 };
 
-/** Echec DEFINITIF : le prestataire a refuse, aucune reconciliation ne changera rien. */
+/**
+ * Echec DEFINITIF : le prestataire a refuse, aucune reconciliation ne
+ * changera rien. `failed` est le statut final FedaPay ; `refused` et
+ * `declined` couvrent les refus restitues par les operateurs Mobile Money.
+ */
 export const payoutFailed = (status) => {
   const n = String(status || '').toLowerCase();
-  return ['failed', 'failure', 'error', 'rejected', 'cancelled', 'canceled'].includes(n);
+  return ['failed', 'failure', 'error', 'rejected', 'refused', 'declined', 'cancelled', 'canceled'].includes(n);
 };

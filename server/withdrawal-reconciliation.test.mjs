@@ -28,10 +28,18 @@ vi.mock('./supabase.mjs', () => ({
   },
 }));
 
-import { reconcilePendingWithdrawals, countPendingWithdrawals } from './wallet-engine.mjs';
+// Le harnais injecte les PREDICATS DE PRODUCTION (payment-engine), pas des
+// copies locales : un detecteur calque sur la meme hypothese que le module
+// teste ne peut pas detecter son propre defaut de vocabulaire (audit-3 P4 C1
+// — FedaPay tranche le succes final sur `sent`, jamais liste ici).
+vi.mock('fedapay', () => ({
+  FedaPay: { setApiKey: vi.fn(), setEnvironment: vi.fn(), apiKey: null },
+  Transaction: { retrieve: vi.fn() },
+  Payout: { retrieve: vi.fn() },
+}));
 
-const PAIEMENT_REUSSITE = (s) => ['success', 'successful', 'completed'].includes(String(s).toLowerCase());
-const PAIEMENT_ECHEC = (s) => ['failed', 'rejected', 'cancelled'].includes(String(s).toLowerCase());
+import { reconcilePendingWithdrawals, countPendingWithdrawals } from './wallet-engine.mjs';
+import { payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 
 /** Fabrique le harnais minimal attendu par la fonction. */
 const harnais = (statuts, lectureEchoue = false) => {
@@ -50,7 +58,7 @@ const harnais = (statuts, lectureEchoue = false) => {
   return {
     appels,
     run: () => reconcilePendingWithdrawals(
-      PAIEMENT_REUSSITE, PAIEMENT_ECHEC, retrieve,
+      payoutSucceeded, payoutFailed, retrieve,
       () => ['u1'],
       () => ({ transactions: [tx] }),
       async (userId, txId, patch) => { appels.tags.push(patch); return true; },
@@ -65,7 +73,9 @@ beforeEach(() => vi.clearAllMocks());
 
 describe('Reconciliation des retraits incertains', () => {
   it('un payout reussi honore le retrait, sans remboursement', async () => {
-    const h = harnais('success');
+    // `sent` est le statut final de SUCCES chez FedaPay : c'est le cas
+    // nominal de la production, pas un vocabulaire de confort.
+    const h = harnais('sent');
     const res = await h.run();
 
     expect(res.resolved).toBe(1);
@@ -96,7 +106,9 @@ describe('Reconciliation des retraits incertains', () => {
   it('une lecture en echec ne rembourse SURTOUT PAS', async () => {
     // Le point le plus important. Rembourser parce qu on n a pas su lire le
     // statut, ce serait exactement le double versement que la route evite.
-    const h = harnais('success', true);
+    // Fixture `sent` : meme un statut qui aurait tranche en succes ne vaut
+    // rien si la lecture a echoue.
+    const h = harnais('sent', true);
     const res = await h.run();
 
     expect(res.stillPending).toBe(1);
@@ -106,7 +118,7 @@ describe('Reconciliation des retraits incertains', () => {
 
   it('rien a faire quand aucun retrait n est incertain', async () => {
     const res = await reconcilePendingWithdrawals(
-      PAIEMENT_REUSSITE, PAIEMENT_ECHEC, async () => { throw new Error('appele a tort'); },
+      payoutSucceeded, payoutFailed, async () => { throw new Error('appele a tort'); },
       () => [], () => undefined, async () => true, async () => {}, () => {}, vi.fn(),
     );
     expect(res).toEqual({ resolved: 0, refunded: 0, stillPending: 0 });

@@ -14,9 +14,10 @@
  * PIEGE : `awaiting_arbiter` est un match VIVANT, bloque faute d'arbitre. Il
  * n'apparait pas dans ACTIVE_STATUSES du store matchStore : ne pas en
  * deduire qu'un tel match est termine.
- * PIEGE : la salle CODM (nom + mot de passe) n'est visible que par les
- * participants et l'arbitre (canSeeRoom). Ne jamais la mettre dans un etat
- * partage.
+ * PIEGE : la salle CODM voyage PAR destinataire, dans `match.room`
+ * (P13 C2 audit-3) : l'arbitre, les participants et un admin la recoivent,
+ * un lecteur exterieur ne la recoit JAMAIS. Ne pas contourner ce contrat
+ * en l'ecrivant dans un etat partage au-dela de cette projection.
  * PIEGE : la diffusion doit etre PER SOCKET. Un composant qui lit `isMe`
  * ne peut pas etre servi par une diffusion globale : le drapeau n'a de
  * sens que pour le destinataire.
@@ -199,9 +200,11 @@ const MatchDetailPage: React.FC = () => {
   useEffect(() => {
     if (!match) return;
     setScheduleValue(match.scheduledAt ? match.scheduledAt.slice(0, 16) : '');
-    setRoomName(match.roomName || '');
-    setRoomPassword(match.roomPassword || '');
-  }, [match?.id, match?.roomName, match?.roomPassword, match?.scheduledAt]);
+    // P13 C2 (audit-3) : la salle arrive PAR destinataire (`match.room`).
+    // Pre-remplissage du formulaire de l'arbitre avec la salle deja publiee.
+    setRoomName(match.room?.name || '');
+    setRoomPassword(match.room?.password || '');
+  }, [match?.id, match?.room, match?.scheduledAt]);
 
   const currentPlayer = useMemo(
     () => match?.players.find((player) => player.isMe),
@@ -228,7 +231,9 @@ const MatchDetailPage: React.FC = () => {
   const canJoinArbiterSlot = !!match && !!user && canJoinAsArbiter(match.id);
   const canCheckIn = !!match && !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);
   const canToggleReady = !!match && !!currentPlayer && currentPlayer.isCheckedIn && ['check_in', 'ready'].includes(match.status);
-  const canLaunch = !!match && isArbiter && !!match.roomName && !!match.roomPassword && match.players.every((player) => player.isCheckedIn && player.isReady);
+  // P13 C2 (audit-3) : la salle est livree par destinataire (`match.room`) ;
+  // le serveur exige LUI AUSSI la salle au lancement (MATCH_NOT_READY).
+  const canLaunch = !!match && isArbiter && !!match.room?.name && !!match.room?.password && match.players.every((player) => player.isCheckedIn && player.isReady);
   // Le serveur refuse tout litige sur un match clos (`openDisputeOnServer`
   // leve MATCH_CLOSED). Depuis la confirmation obligatoire, un résultat
   // n'est plus un match clos : tant que la cagnotte n'est pas partie

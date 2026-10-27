@@ -99,7 +99,8 @@ export type DisputeMatch = Match & {
     openedAt?: string;
   };
   result?: unknown;
-  roomName?: string;
+  /** Salle livree par destinataire (P13 C2) : l'admin la recoit. */
+  room?: { name: string | null; password: string | null };
 };
 
 export type FlaggedUser = {

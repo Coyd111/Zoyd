@@ -139,11 +139,14 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
                   : 'À confirmer'
               }
             />
-            <RuleRow label="Salle" value={participantMatch.roomName || 'À partager'} />
+            {/* P13 C2 (audit-3) : la salle des duels est livree par
+                destinataire (`match.room`) - 'A partager' tant qu'elle est
+                absente du payload. */}
+            <RuleRow label="Salle" value={participantMatch.room?.name || 'À partager'} />
           </div>
-          {participantMatch.roomPassword ? (
+          {participantMatch.room?.password ? (
             <div className="mt-4 border border-white/10 bg-black/40 px-4 py-3 text-sm text-white/70">
-              Mot de passe de la salle: <strong className="text-white">{participantMatch.roomPassword}</strong>
+              Mot de passe de la salle: <strong className="text-white">{participantMatch.room.password}</strong>
             </div>
           ) : null}
         </div>

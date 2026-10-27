@@ -17,7 +17,7 @@ vi.mock('./persistence.mjs', async (importOriginal) => {
   return { ...actual, getUserById: (id) => accounts.get(id) || null };
 });
 
-const { sanitizeMatchForBroadcast, toPublicBrLobby } = await import('./state-helpers.mjs');
+const { sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, toPublicBrLobby } = await import('./state-helpers.mjs');
 
 /**
  * Ces tests verrouillent l'absence d'identifiant joueur dans ce qui part
@@ -69,11 +69,23 @@ describe('sanitizeMatchForBroadcast — aucune fuite de userId', () => {
     expect(safe.arbiter.isMe).toBe(false);
   });
 
-  it('ne laisse ni salle ni captures dans le payload', () => {
-    const raw = JSON.stringify(sanitizeMatchForBroadcast(match(), PLAYER_ID));
-    expect(raw).not.toContain('secret');
-    expect(raw).not.toContain('SALLE-1');
+  it('livre la salle PAR destinataire (P13 C2), sans champs bruts ni captures', () => {
+    // La salle voyage DANS le champ dedie `room`, pour le destinataire
+    // habilite seulement. Les champs bruts `roomName`/`roomPassword` et les
+    // captures ne sortent toujours JAMAIS.
+    const safe = sanitizeMatchForBroadcast(match(), PLAYER_ID);
+    expect(safe.room).toEqual({ name: 'SALLE-1', password: 'secret' });
+    expect(safe.roomName).toBeUndefined();
+    expect(safe.roomPassword).toBeUndefined();
+    const raw = JSON.stringify(safe);
+    expect(raw).not.toContain('screenshots');
     expect(raw).not.toContain('preuve');
+
+    // Lecteur exterieur ou anonyme : aucune salle, sous aucune forme.
+    expect(sanitizeMatchForBroadcast(match(), null).room).toBeUndefined();
+    const rawExterieur = JSON.stringify(sanitizeMatchForBroadcast(match(), '99999999-9999-4999-8999-999999999999'));
+    expect(rawExterieur).not.toContain('secret');
+    expect(rawExterieur).not.toContain('SALLE-1');
   });
 
   it('remappe match.payouts en isMe sans exposer les UUID (A9)', () => {
@@ -103,6 +115,112 @@ describe('sanitizeMatchForBroadcast — aucune fuite de userId', () => {
       ]),
     );
     expect(safe.payouts.every((p) => p.userId === undefined)).toBe(true);
+  });
+});
+
+/**
+ * P13 C2 (audit-3) : la salle CODM n'etait JAMAIS livree au front — le
+ * sanitizer la retirait de toutes les sorties. `canLaunch` (MatchDetailPage)
+ * exigeait sa presence : tout match arbitre restait inerte depuis l'UI, le
+ * bouton « Demarrer le match » inactivable, la commission d'arbitre promise
+ * jamais percue. Contract nouveau : la salle voyage dans `room`, par
+ * destinataire (arbitre, participants, holders de tournoi, admin).
+ */
+describe('sanitizeMatchForBroadcast — livraison de la salle (P13 C2)', () => {
+  const ADMIN_ID = '44444444-4444-4444-8444-444444444444';
+  const E3_CAPTAIN = '88888888-8888-4888-8888-888888888888';
+
+  const roomMatch = () => ({
+    id: 'M-ROOM',
+    roomName: 'SALLE-ROOM',
+    roomPassword: 'secret-room',
+    arbiter: { userId: ARBITER_ID, pseudo: 'ARB', roomName: 'SALLE-ROOM', roomPassword: 'secret-room' },
+    players: [
+      { userId: PLAYER_ID, pseudo: 'P1', isCheckedIn: true },
+      { userId: OTHER_ID, pseudo: 'P2' },
+    ],
+    disputes: [],
+  });
+
+  beforeEach(() => {
+    accounts.clear();
+  });
+
+  it('l arbitre et chaque participant recoivent la salle', () => {
+    for (const viewer of [ARBITER_ID, PLAYER_ID, OTHER_ID]) {
+      expect(sanitizeMatchForBroadcast(roomMatch(), viewer).room)
+        .toEqual({ name: 'SALLE-ROOM', password: 'secret-room' });
+    }
+  });
+
+  it('un admin recoit la salle (meme modele que les preuves de litige)', () => {
+    accounts.set(ADMIN_ID, { id: ADMIN_ID, role: 'admin' });
+    expect(sanitizeMatchForBroadcast(roomMatch(), ADMIN_ID).room)
+      .toEqual({ name: 'SALLE-ROOM', password: 'secret-room' });
+  });
+
+  it('un lecteur exterieur (ou anonyme) ne recoit RIEN, sous aucune forme', () => {
+    for (const viewer of [null, '99999999-9999-4999-8999-999999999999']) {
+      const safe = sanitizeMatchForBroadcast(roomMatch(), viewer);
+      expect(safe.room).toBeUndefined();
+      expect(safe.roomName).toBeUndefined();
+      expect(safe.roomPassword).toBeUndefined();
+      const raw = JSON.stringify(safe);
+      expect(raw).not.toContain('secret-room');
+      expect(raw).not.toContain('SALLE-ROOM');
+    }
+  });
+
+  it('les copies embarquees (arbiter) ne fuient pas les champs bruts', () => {
+    const safe = sanitizeMatchForBroadcast(roomMatch(), PLAYER_ID);
+    expect(safe.arbiter).not.toHaveProperty('roomName');
+    expect(safe.arbiter).not.toHaveProperty('roomPassword');
+  });
+
+  it('salle non publiee : un habilite recoit null/null', () => {
+    const sansSalle = { ...roomMatch(), roomName: undefined, roomPassword: undefined };
+    expect(sanitizeMatchForBroadcast(sansSalle, PLAYER_ID).room).toEqual({ name: null, password: null });
+  });
+
+  it('tournoi : la salle des duels va aux membres des entries et aux arbitres, pas aux autres', () => {
+    const tournament = {
+      id: 'T-ROOM',
+      entries: [
+        { id: 'E1', captainId: PLAYER_ID, squadName: 'P1', members: [{ userId: PLAYER_ID }] },
+        { id: 'E2', captainId: OTHER_ID, squadName: 'P2', members: [{ userId: OTHER_ID }] },
+        { id: 'E3', captainId: E3_CAPTAIN, squadName: 'E3', members: [{ userId: E3_CAPTAIN }] },
+      ],
+      arbiters: [{ slot: 1, userId: ARBITER_ID, pseudo: 'ARB' }],
+      matches: [
+        {
+          id: 'TM-ROOM-1', tournamentId: 'T-ROOM', bracketType: 'main', round: 1, position: 1,
+          entryAId: 'E1', entryBId: 'E2', status: 'ready',
+          roomName: 'SALLE-DUEL', roomPassword: 'secret-duel',
+        },
+        {
+          id: 'TM-ROOM-2', tournamentId: 'T-ROOM', bracketType: 'main', round: 1, position: 2,
+          entryAId: 'E3', status: 'pending',
+          roomName: 'SALLE-2', roomPassword: 'secret-2',
+        },
+      ],
+    };
+
+    const safePlayer = sanitizeTournamentForBroadcast(tournament, PLAYER_ID);
+    expect(safePlayer.matches[0].room).toEqual({ name: 'SALLE-DUEL', password: 'secret-duel' });
+    expect(safePlayer.matches[1].room).toBeUndefined();
+
+    const safeArbiter = sanitizeTournamentForBroadcast(tournament, ARBITER_ID);
+    expect(safeArbiter.matches[0].room).toEqual({ name: 'SALLE-DUEL', password: 'secret-duel' });
+    expect(safeArbiter.matches[1].room).toEqual({ name: 'SALLE-2', password: 'secret-2' });
+
+    const safeE3 = sanitizeTournamentForBroadcast(tournament, E3_CAPTAIN);
+    expect(safeE3.matches[0].room).toBeUndefined();
+    expect(safeE3.matches[1].room).toEqual({ name: 'SALLE-2', password: 'secret-2' });
+
+    // Les champs bruts restent absents de toutes les sorties.
+    const raw = JSON.stringify(safeArbiter);
+    expect(raw).not.toContain('"roomName"');
+    expect(raw).not.toContain('"roomPassword"');
   });
 });
 

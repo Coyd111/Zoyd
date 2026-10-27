@@ -54,10 +54,12 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
     {canSeeRoom && (
       <div className="p-6">
         <h2 className="text-lg font-display font-black uppercase italic mb-4">Salle privée du match</h2>
-        {match.roomName && match.roomPassword ? (
+        {/* P13 C2 (audit-3) : la salle est livree par destinataire
+            (`match.room`) ; les champs bruts ne sortent jamais du serveur. */}
+        {match.room?.name && match.room?.password ? (
           <div className="grid md:grid-cols-2 gap-4">
-            <RuleRow label="Nom de la salle" value={match.roomName} />
-            <RuleRow label="Mot de passe" value={match.roomPassword} />
+            <RuleRow label="Nom de la salle" value={match.room.name} />
+            <RuleRow label="Mot de passe" value={match.room.password} />
           </div>
         ) : (
           <p className="text-white/70 text-sm">

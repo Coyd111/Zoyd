@@ -261,3 +261,48 @@ describe('matchStore — projection projectedPayouts (M1)', () => {
     expect(getArbiterFee(storedMatch)).toBe(2);
   });
 });
+
+/**
+ * P13 C2 (audit-3) : la salle CODM arrive PAR destinataire dans `match.room`.
+ * Avant le correctif, le sanitizer la retirait de toutes les sorties :
+ * `canLaunch` restait toujours false et tout match arbitre etait inerte
+ * depuis l'UI. Ces tests verrouillent la survie du champ a la normalisation
+ * du store — sans elle, l'ecran perdrait la salle a chaque hydratation.
+ */
+describe('matchStore — salle livree par destinataire (P13 C2)', () => {
+  beforeEach(() => {
+    useMatchStore.setState({ matches: [], filters: { format: 'all', status: 'all' } });
+  });
+
+  it('la salle du destinataire survit a la normalisation (chemin socket delta)', () => {
+    useMatchStore.getState().hydrateFromServer([
+      match({
+        id: 'M-ROOM',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        room: { name: 'SALLE-1', password: 'secret' },
+      }),
+    ]);
+
+    expect(current()[0].room).toEqual({ name: 'SALLE-1', password: 'secret' });
+  });
+
+  it('l\'absence de salle reste absente (lecteur non habilite)', () => {
+    useMatchStore.getState().replaceFromServer([match({ id: 'M-PUBLIC' })]);
+
+    expect(current()[0].room).toBeUndefined();
+  });
+
+  it('un delta plus frais remplace la salle (l\'arbitre re-partage une autre salle)', () => {
+    useMatchStore.setState({
+      matches: [
+        match({ id: 'M-ROOM', updatedAt: '2026-01-01T10:00:00.000Z', room: { name: 'ANCIENNE', password: 'a' } }),
+      ] as never,
+    });
+
+    useMatchStore.getState().hydrateFromServer([
+      match({ id: 'M-ROOM', updatedAt: '2026-01-01T11:00:00.000Z', room: { name: 'NOUVELLE', password: 'b' } }),
+    ]);
+
+    expect(current()[0].room).toEqual({ name: 'NOUVELLE', password: 'b' });
+  });
+});

@@ -95,8 +95,8 @@ export interface TournamentMatch {
   status: TournamentMatchStatus;
   scheduledAt?: string;
   arbiterSlot?: 1 | 2;
-  roomName?: string;
-  roomPassword?: string;
+  /** Salle livree par destinataire (P13 C2) : membres des entries + arbitres. */
+  room?: { name: string | null; password: string | null };
   notes?: string;
   updatedAt: string;
 }

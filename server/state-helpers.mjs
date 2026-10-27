@@ -168,14 +168,38 @@ const LIVE_IDENTITY_STATUSES = new Set([
  * modele que `isMe`. Pour un lecteur exterieur, la structure du litige
  * (statut, niveau, cagnotte gelee) reste visible ; l'URL, non.
  *
+ * P13 C2 (audit-3) : la salle CODM (`roomName`/`roomPassword`) voyage selon
+ * le meme modele, dans un champ dedie `room`. L'arbitre et les participants
+ * DOIVENT la recevoir : le front active « Demarrer le match » sur sa
+ * presence (`canLaunch`) et `MatchRules` l'affiche — sans livraison, tout
+ * match arbitre restait inerte depuis l'UI. Pour les duels de tournoi (pas
+ * de tableau `players`), `roomHolders` porte les membres des deux entries
+ * affrontees et les arbitres (calcule par `sanitizeTournamentForBroadcast`).
+ * Un admin suit le modele des preuves de litige. Le mot de passe ne quitte
+ * JAMAIS l'objet `room` : aucun lecteur non habilite ne le recoit, et le
+ * champ brut reste absent de toutes les sorties.
+ *
  * @param {object} match - Match to sanitize
  * @param {string|null} viewerId - userId du destinataire (null = anonyme)
+ * @param {string[]|null} [roomHolders] - userIds supplementaires habilites a
+ *   voir la salle (duels de tournoi) ; inutile pour les matchs MJ
  * @returns {object} A shallow copy with sensitive fields stripped
  */
-const sanitizeMatchForBroadcast = (match, viewerId = null) => {
+const sanitizeMatchForBroadcast = (match, viewerId = null, roomHolders = null) => {
   // S4 : les captures restent cote serveur ; `creatorId` est un UUID de
   // compte interne, le createur reste visible via `creatorPseudo`.
   const { roomPassword, roomName, screenshots, creatorId, ...safe } = match;
+
+  const isRoomHolder = Boolean(viewerId) && (
+    viewerId === match.arbiter?.userId
+    || (Array.isArray(match.players) && match.players.some((player) => player?.userId === viewerId))
+    || (Array.isArray(roomHolders) && roomHolders.includes(viewerId))
+    || getUserById(viewerId)?.role === 'admin'
+  );
+  if (isRoomHolder) {
+    safe.room = { name: roomName || null, password: roomPassword || null };
+  }
+
   if (safe.arbiter) {
     const { roomPassword: _ap, roomName: _an, userId: arbiterUserId, ...safeArbiter } = safe.arbiter;
     safe.arbiter = { ...safeArbiter, isMe: Boolean(viewerId && arbiterUserId === viewerId) };
@@ -280,7 +304,9 @@ const refreshLiveMatchIdentities = (io, userId) => {
 };
 
 /**
- * Sanitize a tournament: strip roomPassword from all embedded matches.
+ * Sanitize a tournament: room credentials of embedded duels are NOT stripped
+ * globally anymore - they are delivered per recipient (`room`) to the duel's
+ * members and the tournament arbiters, via `sanitizeMatchForBroadcast`.
  * Also strip admin internal IDs from public view, including entry members and captains.
  * @param {object} tournament - The tournament to sanitize
  * @returns {object} A sanitized copy safe for public broadcast
@@ -288,7 +314,32 @@ const refreshLiveMatchIdentities = (io, userId) => {
 const sanitizeTournamentForBroadcast = (tournament, viewerId = null) => {
   const safe = { ...tournament };
   if (Array.isArray(safe.matches)) {
-    safe.matches = safe.matches.map((match) => sanitizeMatchForBroadcast(match, viewerId));
+    // P13 C2 (audit-3) : un duel de tournoi n'a pas de tableau `players` —
+    // ses holders de salle sont les membres (captain compris) des deux
+    // entries affrontees, plus les arbitres du tournoi. La salle est alors
+    // livree par `sanitizeMatchForBroadcast`, par destinataire.
+    const arbiterIds = (Array.isArray(tournament?.arbiters) ? tournament.arbiters : [])
+      .map((arbiter) => arbiter?.userId)
+      .filter(Boolean);
+    const membersOf = (entryId) => {
+      const ids = new Set();
+      if (!entryId) return ids;
+      const entry = (Array.isArray(tournament?.entries) ? tournament.entries : [])
+        .find((candidate) => candidate?.id === entryId);
+      if (entry?.captainId) ids.add(entry.captainId);
+      if (Array.isArray(entry?.members)) {
+        for (const member of entry.members) if (member?.userId) ids.add(member.userId);
+      }
+      return ids;
+    };
+    safe.matches = safe.matches.map((match) => {
+      const holders = new Set([
+        ...arbiterIds,
+        ...membersOf(match?.entryAId),
+        ...membersOf(match?.entryBId),
+      ]);
+      return sanitizeMatchForBroadcast(match, viewerId, [...holders]);
+    });
   }
   if (Array.isArray(safe.arbiters)) {
     safe.arbiters = safe.arbiters.map(({ userId, ...rest }) => ({

@@ -93,7 +93,7 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
               <div className="flex flex-wrap gap-4 text-[11px] text-white/70">
                 <span>Prizepool {formatZC(match.prizePool)}</span>
                 <span>Maj {getRelativeTime(match.updatedAt || match.createdAt)}</span>
-                <span>{match.roomName ? 'Room publiée' : 'Room non publiée'}</span>
+                <span>{match.room?.name ? 'Room publiée' : 'Room non publiée'}</span>
               </div>
             </div>
 

@@ -300,8 +300,8 @@ connect: (user) => {
       }
 
       if (
-        match.roomName &&
-        match.roomPassword &&
+        match.room?.name &&
+        match.room?.password &&
         match.status !== 'finished' &&
         match.status !== 'forfeited' &&
         match.status !== 'cancelled'
@@ -338,7 +338,7 @@ connect: (user) => {
         );
       }
 
-      if (isArbiter && match.scheduledAt && !match.roomName) {
+      if (isArbiter && match.scheduledAt && !match.room?.name) {
         const minutesUntilMatch = Math.round((new Date(match.scheduledAt).getTime() - now) / 60000);
         if (minutesUntilMatch <= 10 && minutesUntilMatch >= -5) {
           pushRealtimeReminder(
@@ -367,7 +367,7 @@ connect: (user) => {
           format: match.format,
           pot: match.prizePool,
           status: match.status,
-          roomReady: Boolean(match.roomName && match.roomPassword),
+          roomReady: Boolean(match.room?.name && match.room?.password),
         })),
     }));
 

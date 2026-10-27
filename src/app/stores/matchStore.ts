@@ -167,6 +167,18 @@ export interface MatchPayoutEntry {
   paidAt?: string;
 }
 
+/**
+ * La salle CODM livree PAR destinataire (P13 C2, audit-3) : le serveur ne la
+ * donne qu'aux participants du match, a son arbitre et a un admin — meme
+ * modele que `isMe`. Sans cette livraison, `canLaunch` restait toujours
+ * false et tout match arbitre etait inerte depuis l'UI. Absente (ou
+ * `null`/`null`) tant que l'arbitre n'a pas partage la salle.
+ */
+export interface MatchRoom {
+  name: string | null;
+  password: string | null;
+}
+
 export interface Match {
   id: string;
   creatorId: string;
@@ -212,8 +224,12 @@ export interface Match {
   finishedAt?: string;
   /** ISO : fin de la fenêtre de confirmation, présente sur 'awaiting_confirmation'. */
   confirmationDeadline?: string;
-  roomName?: string;
-  roomPassword?: string;
+  /**
+   * Salle CODM livree PAR destinataire (P13 C2) : absente pour un lecteur
+   * exterieur. Les champs bruts `roomName`/`roomPassword` ne sortent JAMAIS
+   * du serveur — ne pas les attendre sur ce type.
+   */
+  room?: MatchRoom;
   chatChannelId: string;
   channelId: string;
   createdAt: string;
@@ -376,8 +392,7 @@ interface StoredMatch {
   finishedAt?: string;
   /** ISO : fin de la fenêtre de confirmation, présente sur 'awaiting_confirmation'. */
   confirmationDeadline?: string;
-  roomName?: string;
-  roomPassword?: string;
+  room?: MatchRoom | null;
   chatChannelId?: string;
   channelId?: string;
   createdAt?: string;
@@ -515,8 +530,10 @@ const normalizeStoredMatch = (match: StoredMatch): Match => ({
   startedAt: match.startedAt,
   finishedAt: match.finishedAt,
   confirmationDeadline: match.confirmationDeadline,
-  roomName: match.roomName,
-  roomPassword: match.roomPassword,
+  // Salle livree par destinataire (P13 C2) : normalisee en { name, password }
+  // non nuls-absents, pour que `canLaunch`/`MatchRules` lisent une forme
+  // stable.
+  room: match.room ? { name: match.room.name ?? null, password: match.room.password ?? null } : undefined,
   chatChannelId: match.chatChannelId || '',
   channelId: match.channelId || '',
   createdAt: match.createdAt || '',

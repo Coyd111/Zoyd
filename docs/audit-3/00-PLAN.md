@@ -33,7 +33,7 @@ cassée ou divergeante), FAIBLE (bruit, doc fausse), INFO (remarque).
 | 12 | Front stores | `12-front-stores.md` | terminé 2026-10-26 (1 MAJEUR, 3 FAIBLE, 4 INFO) |
 | 13 | Front pages et features | `13-front-pages.md` | terminé 2026-10-26 (2 MAJEUR, 11 FAIBLE, 4 INFO) |
 | 14 | Config et deploiement | `14-config.md` | terminé 2026-10-26 (6 FAIBLE, 6 INFO) |
-| 15 | e2e | `15-e2e.md` | - |
+| 15 | e2e | `15-e2e.md` | terminé 2026-10-27 (4 FAIBLE, 3 INFO) |
 | 16 | Docs de service (00-08) | `16-docs.md` | - |
 
 La synthèse finale : `00-SYNTHESE.md`, écrite à la clôture.

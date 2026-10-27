@@ -332,6 +332,17 @@ export const getStatusFromMatch = (match) => {
     return match.status;
   }
 
+  // P3 C1 (audit-3) : la fenetre de confirmation est un etat ACTIF
+  // (match-status.json). Une action de jeu benigne qui repasse par cette
+  // derive ne doit pas la transformer en `finished` (statut CLOS) : le pot
+  // gelait alors hors de tous les radars, avec confirmation refusee
+  // (ALREADY_CONFIRMED), contestation refusee et sweeps aveugles. Un
+  // reglement interrompu dans un statut deja ferme reste ferme : sa reprise
+  // passe par `payoutDistributed` (cron), pas par le statut.
+  if (match.result?.payoutDistributed === 'pending') {
+    return 'awaiting_confirmation';
+  }
+
   if (match.result || match.finishedAt) {
     return 'finished';
   }
@@ -833,6 +844,12 @@ export const checkInMatchOnServer = (matches, actor, matchId) => {
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+  // P3 C1 (audit-3) : pendant la fenetre de confirmation le match est encore
+  // ACTIF mais deja arbitre. Un re-check-in ne doit ni muter le match, ni
+  // rouvrir la derive de statut vers un etat clos.
+  if (CLOSED_STATUSES.includes(match.status) || match.status === 'awaiting_confirmation') {
+    throw makeError('MATCH_CLOSED', 'Ce match est clos ou attend une confirmation de resultat.');
+  }
 
   const player = match.players.find((entry) => entry.userId === actorUser.id);
   if (!player) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas a ce match.');
@@ -857,6 +874,13 @@ export const toggleReadyOnServer = (matches, actor, matchId) => {
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+  // P3 C1 (audit-3) : meme garde que le check-in, et pour une raison de plus
+  // - le chemin "tout le monde pret sans arbitre" ecrit `in_progress` EN
+  // DIRECT (hors derive) : sur un match en attente de confirmation, il
+  // fabriquait un etat impossible.
+  if (CLOSED_STATUSES.includes(match.status) || match.status === 'awaiting_confirmation') {
+    throw makeError('MATCH_CLOSED', 'Ce match est clos ou attend une confirmation de resultat.');
+  }
 
   const player = match.players.find((entry) => entry.userId === actorUser.id);
   if (!player) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas a ce match.');

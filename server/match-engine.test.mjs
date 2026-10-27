@@ -215,6 +215,42 @@ describe('match-engine - Match Status', () => {
     expect(matchEngine.getStatusFromMatch(match)).toBe('finished');
   });
 
+  // P3 C1 (audit-3) : la fenetre de confirmation est un etat ACTIF - la
+  // derive ne doit pas la trancher en `finished` (statut CLOS).
+  it('renvoie awaiting_confirmation quand le reglement est en attente', () => {
+    const match = {
+      status: 'awaiting_confirmation',
+      disputes: [],
+      result: { winnerTeam: 0, payoutDistributed: 'pending' },
+      players: [],
+      maxPlayers: 4,
+    };
+    expect(matchEngine.getStatusFromMatch(match)).toBe('awaiting_confirmation');
+  });
+
+  it('un reglement interrompu dans un statut ferme reste ferme (reprise par le cron)', () => {
+    const match = {
+      status: 'finished',
+      disputes: [],
+      result: { winnerTeam: 0, payoutDistributed: 'pending' },
+      players: [],
+      maxPlayers: 4,
+    };
+    expect(matchEngine.getStatusFromMatch(match)).toBe('finished');
+  });
+
+  it('un result deja solde, refuse, ou legacy ne rouvre pas la fenetre', () => {
+    for (const payoutDistributed of [true, false, undefined]) {
+      expect(matchEngine.getStatusFromMatch({
+        status: 'ready',
+        disputes: [],
+        result: { winnerTeam: 0, payoutDistributed },
+        players: [],
+        maxPlayers: 4,
+      })).toBe('finished');
+    }
+  });
+
   it('should return recruiting when not all players present', () => {
     const match = {
       status: 'recruiting',
@@ -971,6 +1007,49 @@ describe('match-engine - confirmation obligatoire des deux equipes', () => {
     await expect(matchEngine.resolveDisputeOnServer(
       done.matches, { id: 'root' }, 'M-C', 'trop tard', { action: 'refund' },
     )).rejects.toThrow(/deja distribues/);
+  });
+
+  // P3 C1 (audit-3) : la derive de statut. Une action de jeu ordinaire
+  // pendant la fenetre de confirmation repassait par updateMatchSnapshot,
+  // qui tranchait `finished` (statut CLOS) des que `result` existait - le
+  // pot gelait hors de tous les radars : confirmation refusee
+  // (ALREADY_CONFIRMED), contestation refusee, sweeps aveugles.
+  it('une action de lobby pendant la fenetre ne clos PAS le match', async () => {
+    const submitted = await submit(makeMatch());
+    expect(submitted.match.status).toBe('awaiting_confirmation');
+
+    // Replanifier (participant autorise) : la derive reconnait desormais
+    // la fenetre de confirmation et la conserve.
+    const replanifie = matchEngine.scheduleMatchOnServer(
+      submitted.matches, { id: 'a' }, 'M-C',
+      new Date(Date.now() + 3600000).toISOString(),
+    );
+    expect(replanifie.match.status).toBe('awaiting_confirmation');
+    expect(replanifie.match.result.payoutDistributed).toBe('pending');
+    expect(replanifie.match.confirmationDeadline).toBeTruthy();
+  });
+
+  it('re-check-in et toggle ready pendant la fenetre sont REFUSES, sans fuite de statut', async () => {
+    const submitted = await submit(makeMatch());
+
+    expect(() => matchEngine.checkInMatchOnServer(submitted.matches, { id: 'a' }, 'M-C'))
+      .toThrow(/clos ou attend une confirmation/);
+    expect(() => matchEngine.toggleReadyOnServer(submitted.matches, { id: 'a' }, 'M-C'))
+      .toThrow(/clos ou attend une confirmation/);
+
+    // Aucune mutation n a fuite : le match reste dans son etat de fenetre.
+    expect(submitted.matches[0].status).toBe('awaiting_confirmation');
+    expect(submitted.matches[0].result.payoutDistributed).toBe('pending');
+  });
+
+  it('la confirmation et la contestation restent POSSIBLES pendant la fenetre', async () => {
+    const submitted = await submit(makeMatch());
+
+    // La derive n a pas ferme la fenetre : le perdant peut contester.
+    const disputed = matchEngine.openDisputeOnServer(
+      submitted.matches, { id: 'b' }, 'M-C', { reason: 'Score invente', evidence: ['x.png'] },
+    );
+    expect(disputed.match.status).toBe('disputed');
   });
 });
 

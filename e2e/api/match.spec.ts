@@ -293,7 +293,9 @@ test.describe('Match lifecycle', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
-    // La salle n'est jamais diffusée en clair dans la réponse.
+    // P13 C2 : la salle est livree PAR destinataire — l'arbitre la recoit
+    // dans le champ dedie `room`. Les champs bruts ne sortent jamais.
+    expect(res.body.match.room).toEqual({ name: `Room-${matchId}`, password: 'test123' });
     expect(res.body.match.roomName).toBeUndefined();
     expect(res.body.match.roomPassword).toBeUndefined();
   });

@@ -91,13 +91,16 @@ test.describe('Battle Royale UI', () => {
     await disposeActors();
   });
 
-  test('le formulaire de creation est reserve a l\'admin', async ({ page }) => {
+  test('le formulaire de creation est accessible a un joueur simple (A7)', async ({ page }) => {
+    // A7 (volontariat) : tout joueur connecte peut creer un salon et
+    // l'arbitrer par defaut. L'ancien test attendait l'ABSENCE du bouton
+    // pour un joueur (ancien contrat admin-only) : rouge depuis l'application
+    // d'A7 des deux cotes (br-engine, BrLobbyCreatePanel).
     const player = await registerPlayer('BRUI7');
     await login(page, player.pseudo, password);
     await page.goto('/br');
     await expect(page.getByRole('heading', { name: /BR — UN SALON/i })).toBeVisible({ timeout: 15_000 });
-    // Un joueur ne doit pas pouvoir creer un salon.
-    await expect(page.getByRole('button', { name: /Creer un salon BR/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Creer un salon BR/i })).toBeVisible();
   });
 
   test('l\'admin voit le formulaire, valide la repartition et cree le salon', async ({ page }) => {

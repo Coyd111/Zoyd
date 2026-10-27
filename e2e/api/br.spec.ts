@@ -10,7 +10,8 @@ import {
   type Actor,
 } from './support/harness';
 
-// Cycle de vie complet d'un salon BR : creation (admin) -> inscription ->
+// Cycle de vie complet d'un salon BR : creation (A7 : tout joueur
+// authentifie, arbitre par defaut le createur) -> inscription ->
 // check-in -> demarrage -> eliminations -> reglement de la cagnotte.
 //
 // Ce que ces tests verrouillent :
@@ -92,21 +93,35 @@ test.describe('Battle Royale API', () => {
     expect(after.body.wallet.cashBalance).toBe(balanceBefore);
   });
 
-  test('refuse la creation a un non-administrateur', async () => {
-    // Un joueur ne peut pas creer de salon : il n'en serait pas l'arbitre.
-    const broke = await registerPlayer('BRBROKE');
-    const res = await call(broke, 'POST', '/api/br/lobbies', {
-      mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(), payout,
-    });
-    expect(res.status).toBe(403);
-  });
-
-  test('POST /api/br/lobbies — refuse un non-admin', async () => {
-    const player = await registerPlayer('BRNOPE');
+  test('un joueur simple cree son salon (A7 : volontariat)', async () => {
+    // A7 (decision produit du 25/10) : tout joueur authentifie peut creer un
+    // salon et l'arbitrer par defaut. L'ancien test attendait 403 sur
+    // l'ancien contrat admin-only — rouge depuis l'application d'A7.
+    const player = await registerPlayer('BRCREATE');
     const res = await call(player, 'POST', '/api/br/lobbies', {
       mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(), payout,
     });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(201);
+    // Le createur est l'ARBITRE, pas un joueur : roster vide, aucun debit.
+    expect(res.body.lobby.players).toHaveLength(0);
+    expect(res.body.lobby.isArbiter).toBe(true);
+    expect(res.body.lobby.creatorId).toBeUndefined();
+  });
+
+  test('un arbitre designe quelconque existant est accepte (A7)', async () => {
+    // L'arbitre n'est plus requis admin : n'importe quel compte existant
+    // peut arbitrer. La garde reelle est `requireLobbyArbiter` (seul
+    // l'arbitre designe saisit les eliminations), pas son role.
+    const player = await registerPlayer('BRCREATE');
+    const arbiter = await registerPlayer('BRARBOK');
+    const res = await call(player, 'POST', '/api/br/lobbies', {
+      mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(),
+      payout, arbiterId: arbiter.id,
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.lobby.players).toHaveLength(0);
+    // L'id de l'arbitre ne sort pas de l'API publique.
+    expect(res.body.lobby.arbiterId).toBeUndefined();
   });
 
   test('POST /api/br/lobbies — refuse une repartition qui ne somme pas a 100%', async () => {
@@ -160,7 +175,11 @@ test.describe('Battle Royale API', () => {
     expect(res.body.lobby.isArbiter).toBe(true);
   });
 
-  test('refuse un arbitre qui n\'est pas administrateur', async () => {
+  test('refuse un arbitre inexistant', async () => {
+    // La regle A7 accepte tout compte existant comme arbitre ; un id qui ne
+    // designe aucun compte est refuse (INVALID_ARBITER). L'ancien titre
+    // ('pas administrateur') mentait : le 400 ne venait pas du role mais du
+    // compte inexistant — le test passait par coincidence.
     const res = await call(admin, 'POST', '/api/br/lobbies', {
       mode: 'solo', map: 'isolated', entryFee: 50, scheduledAt: in24h(),
       payout, arbiterId: 'quelquun',

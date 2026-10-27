@@ -2,7 +2,8 @@
  * BottomNav - barre de navigation basse (mobile), avec un menu ' Plus '.
  *
  * Version mobile de la Sidebar : memes destinations, plus un tiroir qui
- * regroupe les entrees secondaires (BR League, classements, gains, infos).
+ * regroupe les entrees secondaires (salons et ligue BR, classements, gains,
+ * infos).
  *
  * INVARIANT : la liste de destinations doit rester coherente avec la
  * Sidebar. Une destination presente dans l'une et absente de l'autre est un
@@ -17,7 +18,7 @@
  */
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper, Shield, TrendingUp, Plus } from 'lucide-react';
+import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper, Shield, ShieldCheck, TrendingUp, Plus } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../../stores/authStore';
@@ -30,7 +31,11 @@ const navItems = [
 ];
 
 const moreNavItems = [
-  { icon: Zap, label: 'BR LEAGUE', path: '/br-league' },
+  // P13 C1 (audit-3) : /br n'etait atteignable depuis aucun chemin mobile —
+  // seule la Sidebar desktop l'exposait. Liste miroir de la Sidebar :
+  // 'BR SALON' (/br) avant 'BR LEAGUE' (/br-league), icons comprises.
+  { icon: Zap, label: 'BR SALON', path: '/br' },
+  { icon: ShieldCheck, label: 'BR LEAGUE', path: '/br-league' },
   { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
   { icon: TrendingUp, label: 'GAINS', path: '/earnings' },
   { icon: Newspaper, label: 'INFOS', path: '/infos' },

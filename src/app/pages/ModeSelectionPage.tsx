@@ -16,7 +16,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Gamepad2, Swords, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Gamepad2, Swords, Wallet, Zap } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
@@ -31,6 +31,13 @@ const ModeSelectionPage: React.FC = () => {
 
   const handleBRClick = () => {
     navigate('/br-league');
+  };
+
+  // P13 C1 (audit-3) : le salon BR etait absent de cet ecran — le seul bouton
+  // BR menait a /br-league. Deux modes BR distincts : les salons ouverts (/br)
+  // et la ligue hebdomadaire (/br-league).
+  const handleBrSalonClick = () => {
+    navigate('/br');
   };
 
   return (
@@ -172,6 +179,38 @@ const ModeSelectionPage: React.FC = () => {
             </div>
           </motion.button>
         </div>
+
+        {/* P13 C1 (audit-3) : le salon BR n'etait atteignable depuis aucun
+            chemin standard (seule la Sidebar desktop l'exposait, et les
+            retours internes BR). Carte compacte, DISTINCTE de la carte
+            BR League ci-dessus : /br = salons ouverts, /br-league = ligue
+            hebdomadaire. A7 : le volontariat couvre les salons BR. */}
+        <motion.button
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.16 }}
+          onClick={handleBrSalonClick}
+          className="group w-full mt-6 md:mt-8 text-left"
+        >
+          <div className="border border-white/8 bg-zoyd-surface/20 hover:border-zoyd-yellow transition-all duration-300 px-5 md:px-6 py-4 md:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3 md:gap-4">
+              <Zap className="w-5 h-5 text-zoyd-yellow shrink-0 mt-1" />
+              <div>
+                <div className="flex items-center gap-3 mb-1 flex-wrap">
+                  <span className="text-base sm:text-lg font-display font-black uppercase italic text-white">Battle Royale</span>
+                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">Salons</span>
+                </div>
+                <div className="text-sm text-white/60">
+                  Inscription directe dans les salons ouverts. Le pass est remboursable avant le lancement.
+                </div>
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zoyd-yellow shrink-0">
+              Entrer dans les salons
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </motion.button>
 
         <div className="mt-8 md:mt-10 border border-white/8 bg-zoyd-surface/20 px-5 md:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

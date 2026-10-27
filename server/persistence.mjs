@@ -916,7 +916,11 @@ export const loadFromSupabase = async () => {
     // Push subscriptions
     const subs = await fetchAllRows('push_subscriptions');
     for (const s of subs) {
-      memoryPushSubscriptions.set(s.endpoint, s.payload);
+      // P9 C1 (audit-3) : fusionner la colonne user_id dans le payload
+      // memoire - le front ne l'envoie pas, donc sans cette fusion une
+      // souscription reloadee n'appartenait a personne : 0 notification
+      // apres chaque redemarrage.
+      memoryPushSubscriptions.set(s.endpoint, { ...s.payload, userId: s.user_id });
     }
 
     // Processed transactions (FedaPay idempotency)
@@ -3325,7 +3329,14 @@ export const deleteRealtimeSessionsForUser = (userId) => {
 // ─── Push Subscriptions ─────────────────────────────────────────────────────
 export const upsertPushSubscription = (userId, subscription) => {
   evictOldest(memoryPushSubscriptions, MAX_PUSH_SUBSCRIPTIONS);
-  memoryPushSubscriptions.set(subscription.endpoint, subscription);
+  // P9 C1 (audit-3) : le userId doit vivre DANS le payload memoire, pas
+  // seulement dans la colonne Supabase. La resolution utilisateur ->
+  // souscriptions (getPushSubscriptionsForUser, purge a la suppression de
+  // compte) filtre sur le payload : le front n'envoie pas de userId (la route
+  // fournit l'acteur authentifie via la session), donc sans cette fusion
+  // aucune souscription n'etait jamais retrouvee - Web Push livrait 0
+  // notification a tout le monde, en silence.
+  memoryPushSubscriptions.set(subscription.endpoint, { ...subscription, userId });
   sbFire('upsertPushSubscription', () => sbUpsert('push_subscriptions', { user_id: userId, endpoint: subscription.endpoint, payload: subscription, updated_at: getNow() }));
 };
 

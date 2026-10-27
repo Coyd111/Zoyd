@@ -24,7 +24,17 @@
  *   debite sur le capitaine.
  * INVARIANT : le tableau est reconstruit par `normalizeMatches` : le statut
  *   d'un match est derive de la presence de ses deux entrants (`ready`) ou
- *   de leur absence (`pending`).
+ *   de leur absence (`pending`). Les placements (vainqueur vers le tour
+ *   suivant, perdant de demi-finale vers la petite finale) ne sont JAMAIS
+ *   poses pendant une `map` : la reconstruction ecraserait la mutation
+ *   (audit-3 P5 C1). Trois passes : reparation des placements perdus
+ *   (tournois legacy), UN walkover par iteration applique au tableau
+ *   complet, puis statuts purs.
+ * INVARIANT : un match a un seul entrant ne passe en walkover ("Auto avance
+ *   via bye") que si sa case vide ne sera JAMAIS remplie - round 1 sans
+ *   adversaire, ou match source incapable de produire le participant
+ *   attendu (vainqueur pour le bracket principal, perdant REEL pour la
+ *   petite finale : un walkover du source ne produit pas de perdant).
  * PIEGE : le format est limite a 1VS1-5VS5 comme les matchs : un 12VS12
  *   prelevait 12 fois le pass sur le capitaine.
  * PIEGE : `buildPayout` est recalcule a chaque normalisation : il depend du
@@ -396,21 +406,77 @@ const getNextMainMatchMeta = (match, mainRounds) => {
   };
 };
 
+/**
+ * P5 C1 (audit-3) : les gagnants de bye doivent traverser le tableau.
+ *
+ * `getFeederMeta` decrit le match source qui alimente une case donnee. Pour
+ * le bracket principal : le VAINQUEUR du match precedent (position 2P-1 pour
+ * la case A, 2P pour la case B - mapping inverse de `getNextMainMatchMeta`).
+ * Pour la petite finale : le PERDANT de la demi-finale (round mainRounds-1).
+ * L'ancien code cherchait le feeder du bronze au round `mainRounds`
+ * (inexistant : le bracket principal s'arrete a `mainRounds`) et le bronze
+ * s'auto-avancait des qu'une seule demi-finale etait jouee.
+ */
+const getFeederMeta = (match, field, mainRounds) => {
+  if (match.bracketType === 'third_place') {
+    if (mainRounds < 2) return null;
+    return {
+      bracketType: 'main',
+      round: mainRounds - 1,
+      position: field === 'entryAId' ? 1 : 2,
+      participant: 'loser',
+    };
+  }
+  if (match.round <= 1 || match.round > mainRounds) return null;
+  return {
+    bracketType: 'main',
+    round: match.round - 1,
+    position: field === 'entryAId' ? match.position * 2 - 1 : match.position * 2,
+    participant: 'winner',
+  };
+};
+
+/**
+ * La case sera-t-elle un jour remplie ? `false` n'est retourne que si on peut
+ * le PROUVER (source inexistant, ou source qui ne produira jamais le
+ * participant attendu) : dans le doute, on attend un vrai resultat - c'est
+ * ce qui empeche le bracket de s'auto-trancher pendant les cascades de byes.
+ */
+const willFillField = (matches, match, field, mainRounds) => {
+  if (match[field]) return true;
+  const feederMeta = getFeederMeta(match, field, mainRounds);
+  if (!feederMeta) return false;
+  const feederMatch = getSourceMatch(matches, feederMeta.bracketType, feederMeta.round, feederMeta.position);
+  if (!feederMatch) return false;
+  if (feederMeta.participant === 'winner') {
+    if (feederMatch.winnerEntryId) return true;
+    // Le source produira un vainqueur des qu'il aura au moins un entrant
+    // (resultat reel a deux entrants, ou walkover a un seul). Zero entrant :
+    // le source lui-meme doit pouvoir en recevoir un pour prouver l'espoir.
+    if (feederMatch.entryAId || feederMatch.entryBId) return true;
+    return (
+      willFillField(matches, feederMatch, 'entryAId', mainRounds) ||
+      willFillField(matches, feederMatch, 'entryBId', mainRounds)
+    );
+  }
+  // Petite finale : il faut un PERDANT, donc un resultat REEL (les deux
+  // cases du source remplies). Un walkover du source ne produit pas de
+  // perdant : la case du bronze restera vide pour jamais.
+  return (
+    willFillField(matches, feederMatch, 'entryAId', mainRounds) &&
+    willFillField(matches, feederMatch, 'entryBId', mainRounds)
+  );
+};
+
+/**
+ * Walkover legitime : exactement un entrant, et la case vide ne sera JAMAIS
+ * remplie. Round 1 : la case vide n'a aucun source (seed absent) => bye.
+ */
 const shouldAutoAdvance = (match, matches, mainRounds) => {
   const hasA = !!match.entryAId;
   const hasB = !!match.entryBId;
   if (hasA === hasB) return false;
-  if (match.round === 1) return true;
-
-  const feederPosition = hasA ? match.position * 2 : match.position * 2 - 1;
-  const feederMatch = getSourceMatch(matches, 'main', match.round - 1, feederPosition);
-  if (!feederMatch) return true;
-  if (feederMatch.winnerEntryId) return false;
-  if (feederMatch.entryAId || feederMatch.entryBId) return false;
-
-  const feederNextMeta = getNextMainMatchMeta(feederMatch, mainRounds);
-  if (!feederNextMeta) return true;
-  return true;
+  return !willFillField(matches, match, hasA ? 'entryBId' : 'entryAId', mainRounds);
 };
 
 const placeWinner = (matches, match, mainRounds, winnerEntryId) => {
@@ -430,69 +496,112 @@ const placeSemifinalLoser = (matches, match, mainRounds, loserEntryId) => {
   return setMatchField(matches, bronzeMatch.id, match.position === 1 ? 'entryAId' : 'entryBId', loserEntryId);
 };
 
+/**
+ * Passe de reparation (audit-3 P5 C1) : les tournois legacy demarres avec
+ * l'ancien bug portent des placements PERDUS (vainqueur de bye jamais pose,
+ * perdant de demi-finale jamais pose). Tout match source deja fini doit
+ * alimenter sa case cible si celle-ci est encore vide. Gardes
+ * anti-ecrasement (case occupee, match cible fini) et anti-doublon (l'entree
+ * est deja dans le match cible).
+ */
+const repairMissingPlacements = (matches, mainRounds) => {
+  let nextMatches = matches;
+  for (const match of matches) {
+    if (match.bracketType !== 'main' || match.status !== 'finished' || !match.winnerEntryId) continue;
+
+    const nextMeta = getNextMainMatchMeta(match, mainRounds);
+    if (nextMeta) {
+      const nextMatch = getSourceMatch(nextMatches, 'main', nextMeta.round, nextMeta.position);
+      const occupied =
+        !nextMatch ||
+        nextMatch[nextMeta.field] ||
+        nextMatch.winnerEntryId ||
+        nextMatch.status === 'finished' ||
+        nextMatch.entryAId === match.winnerEntryId ||
+        nextMatch.entryBId === match.winnerEntryId;
+      if (!occupied) {
+        nextMatches = setMatchField(nextMatches, nextMatch.id, nextMeta.field, match.winnerEntryId);
+      }
+    }
+
+    if (mainRounds >= 2 && match.round === mainRounds - 1) {
+      const loserEntryId = match.winnerEntryId === match.entryAId ? match.entryBId : match.entryAId;
+      const bronzeMatch = nextMatches.find((entry) => entry.bracketType === 'third_place');
+      const field = match.position === 1 ? 'entryAId' : 'entryBId';
+      const occupied =
+        !bronzeMatch ||
+        !loserEntryId ||
+        bronzeMatch[field] ||
+        bronzeMatch.winnerEntryId ||
+        bronzeMatch.status === 'finished';
+      if (!occupied) {
+        nextMatches = setMatchField(nextMatches, bronzeMatch.id, field, loserEntryId);
+      }
+    }
+  }
+  return nextMatches;
+};
+
+/**
+ * Un walkover applique au TABLEAU COMPLET (hors `map`, comme
+ * `advanceTournament`) : le gagnant du bye est pose dans le tour suivant et
+ * survit a la reconstruction. Un seul walkover par iteration de
+ * `normalizeMatches` : la cascade (bye round 1 -> walkover round 2 -> ...)
+ * converge iteration apres iteration.
+ */
+const applyAutoAdvance = (matches, match, mainRounds) => {
+  const winnerEntryId = match.entryAId || match.entryBId;
+  if (!winnerEntryId) return matches;
+  const nextMatches = matches.map((entry) =>
+    entry.id === match.id
+      ? {
+          ...entry,
+          winnerEntryId,
+          loserEntryId: undefined,
+          scoreA: entry.entryAId ? 1 : 0,
+          scoreB: entry.entryBId ? 1 : 0,
+          notes: 'Auto avance via bye',
+          status: 'finished',
+          updatedAt: getNow(),
+        }
+      : entry
+  );
+  return placeWinner(nextMatches, match, mainRounds, winnerEntryId);
+};
+
+/**
+ * Reconstruction du tableau en trois passes (audit-3 P5 C1) :
+ * 1. reparation des placements perdus (tournois legacy) ;
+ * 2. UN walkover par iteration, applique au tableau complet - la cascade de
+ *    byes converge iteration apres iteration, chaque walkover clot
+ *    definitivement son match (gain de `winnerEntryId` monotone) ;
+ * 3. statuts purs : `ready` des que les deux entrants sont presents,
+ *    `pending` sinon.
+ * Les placements ne sont JAMAIS poses dans une callback de `map` : la
+ * reconstruction du tour ecraserait la mutation.
+ */
 const normalizeMatches = (matches, mainRounds) => {
   let nextMatches = matches.map((match) => ({ ...match }));
-  let changed = true;
 
-  while (changed) {
-    changed = false;
+  for (;;) {
+    nextMatches = repairMissingPlacements(nextMatches, mainRounds);
 
-    nextMatches = nextMatches.map((match) => {
-      if (match.status === 'live' || match.winnerEntryId) return match;
-
-      const hasA = !!match.entryAId;
-      const hasB = !!match.entryBId;
-
-      if (hasA && hasB) {
-        if (match.status !== 'ready') {
-          changed = true;
-          return { ...match, status: 'ready', updatedAt: getNow() };
-        }
-        return match;
-      }
-
-      if (!hasA && !hasB) {
-        if (match.status !== 'pending') {
-          changed = true;
-          return { ...match, status: 'pending', updatedAt: getNow() };
-        }
-        return match;
-      }
-
-      if (shouldAutoAdvance(match, nextMatches, mainRounds)) {
-        const winnerEntryId = match.entryAId || match.entryBId;
-        if (!winnerEntryId) return match;
-
-        changed = true;
-        let mutatedMatches = nextMatches.map((entry) =>
-          entry.id === match.id
-            ? {
-                ...entry,
-                winnerEntryId,
-                loserEntryId: undefined,
-                scoreA: entry.entryAId ? 1 : 0,
-                scoreB: entry.entryBId ? 1 : 0,
-                notes: 'Auto avance via bye',
-                status: 'finished',
-                updatedAt: getNow(),
-              }
-            : entry
-        );
-        mutatedMatches = placeWinner(mutatedMatches, match, mainRounds, winnerEntryId);
-        nextMatches = mutatedMatches;
-        return mutatedMatches.find((entry) => entry.id === match.id) || match;
-      }
-
-      if (match.status !== 'pending') {
-        changed = true;
-        return { ...match, status: 'pending', updatedAt: getNow() };
-      }
-
-      return match;
-    });
+    const walkoverMatch = nextMatches.find(
+      (match) =>
+        match.status !== 'live' &&
+        !match.winnerEntryId &&
+        shouldAutoAdvance(match, nextMatches, mainRounds)
+    );
+    if (!walkoverMatch) break;
+    nextMatches = applyAutoAdvance(nextMatches, walkoverMatch, mainRounds);
   }
 
-  return nextMatches;
+  return nextMatches.map((match) => {
+    if (match.status === 'live' || match.winnerEntryId) return match;
+    const status = match.entryAId && match.entryBId ? 'ready' : 'pending';
+    if (match.status === status) return match;
+    return { ...match, status, updatedAt: getNow() };
+  });
 };
 
 const finalizeTournamentPlacements = (tournament) => {

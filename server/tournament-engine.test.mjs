@@ -28,6 +28,8 @@ import { getUserById, updateUserAccount } from './persistence.mjs';
 import {
   lockEntryFee,
   refundLockedEntry,
+  releaseWalletWinnings,
+  settleMatchLossWallet,
 } from './wallet-engine.mjs';
 
 const mockAdmin = { id: 'admin-1', pseudo: 'Admin', role: 'admin', wallet: {} };
@@ -680,5 +682,263 @@ describe('tournament-engine - C4 : tournoi live abandonne', () => {
     await expect(
       tournamentEngine.cancelStaleTournamentOnServer([fini], 'T-VIEUX'),
     ).rejects.toMatchObject({ code: 'MATCH_CLOSED' });
+  });
+});
+
+describe('tournament-engine - propagation des byes (audit-3 P5 C1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  const getMatch = (tournament, key) =>
+    tournament.matches.find((match) => match.id === `TM-${tournament.id}-${key}`);
+
+  const play = async (tournament, key, winnerEntryId) => {
+    const result = await tournamentEngine.submitTournamentMatchResultOnServer(
+      [tournament],
+      mockAdmin,
+      tournament.id,
+      `TM-${tournament.id}-${key}`,
+      { winnerEntryId, scoreA: 7, scoreB: 3 }
+    );
+    return result.tournament;
+  };
+
+  const startBracket = (tournamentId, entries, maxEntries, extra = {}) => {
+    const tournament = tournamentEngine.normalizeTournamentCollection([{
+      id: tournamentId,
+      maxEntries,
+      status: 'recruiting',
+      format: '1VS1',
+      entryFee: 100,
+      entries,
+      arbiters: [{ userId: 'admin-1', pseudo: 'Admin', slot: 1, assignedAt: new Date().toISOString() }],
+      ...extra,
+    }])[0];
+    return tournamentEngine.startTournamentOnServer([tournament], mockAdmin, tournamentId).tournament;
+  };
+
+  // Les appels de gains : (captainId, montant, tournoi, 'prize_win', libelle).
+  const prizeWinCalls = () => releaseWalletWinnings.mock.calls.filter((call) => call[3] === 'prize_win');
+
+  it('controle 4/4 : le bracket sans bye reste intact (4 soumissions, podium complet)', async () => {
+    let tournament = startBracket('T-CTL4', [
+      makeEntry('p1', 'P1', 1),
+      makeEntry('p2', 'P2', 2),
+      makeEntry('p3', 'P3', 3),
+      makeEntry('p4', 'P4', 4),
+    ], 4);
+
+    tournament = await play(tournament, 'main:1:1', 'ENTRY-1');
+    // Le bronze n a qu un perdant tant que M2 n est pas joue : il ATTEND.
+    expect(getMatch(tournament, 'third_place:3:1').status).toBe('pending');
+
+    tournament = await play(tournament, 'main:1:2', 'ENTRY-3');
+    expect(getMatch(tournament, 'third_place:3:1').status).toBe('ready');
+
+    tournament = await play(tournament, 'third_place:3:1', 'ENTRY-2');
+    tournament = await play(tournament, 'main:2:1', 'ENTRY-1');
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-1').finalPlacement).toBe(1);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-3').finalPlacement).toBe(2);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-2').finalPlacement).toBe(3);
+    expect(settleMatchLossWallet.mock.calls.map((call) => call[0])).toEqual(['p4']);
+    expect(prizeWinCalls().map((call) => [call[0], call[1]])).toEqual([
+      ['p1', 190],
+      ['p2', 76],
+      ['p3', 114],
+    ]);
+    expect(tournament.pendingPayouts).toEqual([]);
+  });
+
+  it('5/8 : le bye traverse tout le bracket - ENTRY-5 attend en finale, le bronze s auto-avance apres une seule vraie demi-finale', async () => {
+    let tournament = startBracket('T-BYE5', [
+      makeEntry('p1', 'P1', 1),
+      makeEntry('p2', 'P2', 2),
+      makeEntry('p3', 'P3', 3),
+      makeEntry('p4', 'P4', 4),
+      makeEntry('p5', 'P5', 5),
+    ], 8);
+
+    const byeMatch = getMatch(tournament, 'main:1:3');
+    expect(byeMatch.status).toBe('finished');
+    expect(byeMatch.winnerEntryId).toBe('ENTRY-5');
+    expect(byeMatch.notes).toBe('Auto avance via bye');
+
+    const semiB = getMatch(tournament, 'main:2:2');
+    expect(semiB.entryAId).toBe('ENTRY-5');
+    expect(semiB.status).toBe('finished'); // walkover : l adversaire du bye n existera jamais
+    expect(semiB.winnerEntryId).toBe('ENTRY-5');
+
+    const finale = getMatch(tournament, 'main:3:1');
+    expect(finale.entryBId).toBe('ENTRY-5');
+    expect(finale.status).toBe('pending'); // ATTEND : aucun champion auto-designe
+    expect(tournament.status).toBe('live');
+
+    tournament = await play(tournament, 'main:1:1', 'ENTRY-1');
+    tournament = await play(tournament, 'main:1:2', 'ENTRY-3');
+    tournament = await play(tournament, 'main:2:1', 'ENTRY-1');
+
+    const bronze = getMatch(tournament, 'third_place:4:1');
+    expect(bronze.status).toBe('finished'); // une seule vraie demi-finale jouable
+    expect(bronze.winnerEntryId).toBe('ENTRY-3');
+    expect(bronze.notes).toBe('Auto avance via bye');
+
+    tournament = await play(tournament, 'main:3:1', 'ENTRY-1');
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-1').finalPlacement).toBe(1);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-5').finalPlacement).toBe(2);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-3').finalPlacement).toBe(3);
+    expect(settleMatchLossWallet.mock.calls.map((call) => call[0])).toEqual(['p2', 'p4']);
+    expect(prizeWinCalls().map((call) => [call[0], call[1]])).toEqual([
+      ['p1', 237.5],
+      ['p3', 95],
+      ['p5', 142.5],
+    ]);
+    expect(tournament.pendingPayouts).toEqual([]);
+  });
+
+  it('7/8 : le bye du round 1 est place des le start - la demi-finale se joue (gel gueri)', async () => {
+    let tournament = startBracket('T-BYE7', [
+      makeEntry('p1', 'P1', 1),
+      makeEntry('p2', 'P2', 2),
+      makeEntry('p3', 'P3', 3),
+      makeEntry('p4', 'P4', 4),
+      makeEntry('p5', 'P5', 5),
+      makeEntry('p6', 'P6', 6),
+      makeEntry('p7', 'P7', 7),
+    ], 8);
+
+    const byeMatch = getMatch(tournament, 'main:1:4');
+    expect(byeMatch.status).toBe('finished');
+    expect(byeMatch.winnerEntryId).toBe('ENTRY-7');
+
+    const semiB = getMatch(tournament, 'main:2:2');
+    expect(semiB.entryBId).toBe('ENTRY-7');
+    expect(semiB.status).toBe('pending'); // un seul entrant tant que M3 n est pas joue
+
+    tournament = await play(tournament, 'main:1:3', 'ENTRY-5');
+    expect(getMatch(tournament, 'main:2:2').status).toBe('ready');
+
+    tournament = await play(tournament, 'main:1:1', 'ENTRY-1');
+    tournament = await play(tournament, 'main:1:2', 'ENTRY-3');
+    tournament = await play(tournament, 'main:2:2', 'ENTRY-7');
+    tournament = await play(tournament, 'main:2:1', 'ENTRY-1');
+    tournament = await play(tournament, 'third_place:4:1', 'ENTRY-3');
+    tournament = await play(tournament, 'main:3:1', 'ENTRY-1');
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-1').finalPlacement).toBe(1);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-7').finalPlacement).toBe(2);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-3').finalPlacement).toBe(3);
+    expect(settleMatchLossWallet.mock.calls.map((call) => call[0])).toEqual(['p2', 'p4', 'p5', 'p6']);
+  });
+
+  it('3/4 : le bye envoie ENTRY-3 en finale (qui attend) et le bronze s auto-avance - podium complet, aucun pass consomme', async () => {
+    let tournament = startBracket('T-BYE3', [
+      makeEntry('p1', 'P1', 1),
+      makeEntry('p2', 'P2', 2),
+      makeEntry('p3', 'P3', 3),
+    ], 4, { minEntries: 3 });
+
+    const finale = getMatch(tournament, 'main:2:1');
+    expect(finale.entryBId).toBe('ENTRY-3'); // M2 (position paire) -> cote B
+    expect(finale.status).toBe('pending');
+    expect(tournament.status).toBe('live');
+
+    tournament = await play(tournament, 'main:1:1', 'ENTRY-1');
+
+    const bronze = getMatch(tournament, 'third_place:3:1');
+    expect(bronze.status).toBe('finished'); // la demi-finale du bye ne produira jamais de perdant
+    expect(bronze.winnerEntryId).toBe('ENTRY-2');
+    expect(bronze.notes).toBe('Auto avance via bye');
+
+    tournament = await play(tournament, 'main:2:1', 'ENTRY-1');
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-1').finalPlacement).toBe(1);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-3').finalPlacement).toBe(2);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-2').finalPlacement).toBe(3);
+    expect(settleMatchLossWallet).not.toHaveBeenCalled();
+    expect(prizeWinCalls().map((call) => [call[0], call[1]])).toEqual([
+      ['p1', 142.5],
+      ['p2', 57],
+      ['p3', 85.5],
+    ]);
+    expect(tournament.pendingPayouts).toEqual([]);
+  });
+
+  it('reparation legacy : un tournoi live au bracket casse se guerit a la prochaine soumission', async () => {
+    const legacyMatch = (bracketType, round, position, extra = {}) => ({
+      id: `TM-T-LEG7-${bracketType}:${round}:${position}`,
+      tournamentId: 'T-LEG7',
+      bracketType,
+      round,
+      position,
+      status: 'pending',
+      arbiterSlot: 1,
+      updatedAt: new Date().toISOString(),
+      ...extra,
+    });
+
+    let tournament = tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-LEG7',
+      name: 'Legacy',
+      maxEntries: 8,
+      status: 'live',
+      format: '1VS1',
+      entryFee: 100,
+      mainRounds: 3,
+      entries: [
+        makeEntry('p1', 'P1', 1),
+        makeEntry('p2', 'P2', 2),
+        makeEntry('p3', 'P3', 3),
+        makeEntry('p4', 'P4', 4),
+        makeEntry('p5', 'P5', 5),
+        makeEntry('p6', 'P6', 6),
+        makeEntry('p7', 'P7', 7),
+      ],
+      arbiters: [{ userId: 'admin-1', pseudo: 'Admin', slot: 1, assignedAt: new Date().toISOString() }],
+      matches: [
+        legacyMatch('main', 1, 1, { entryAId: 'ENTRY-1', entryBId: 'ENTRY-2', status: 'ready' }),
+        legacyMatch('main', 1, 2, { entryAId: 'ENTRY-3', entryBId: 'ENTRY-4', status: 'ready' }),
+        legacyMatch('main', 1, 3, {
+          entryAId: 'ENTRY-5', entryBId: 'ENTRY-6', status: 'finished',
+          winnerEntryId: 'ENTRY-5', loserEntryId: 'ENTRY-6', scoreA: 7, scoreB: 3,
+        }),
+        // Le bye de M4 est fini mais son placement dans M6 a ete ECRASE
+        // (l ancien bug) : M6 n a que son cote A, venu d une soumission reelle.
+        legacyMatch('main', 1, 4, {
+          entryAId: 'ENTRY-7', status: 'finished', winnerEntryId: 'ENTRY-7',
+          loserEntryId: undefined, scoreA: 1, scoreB: 0, notes: 'Auto avance via bye',
+        }),
+        legacyMatch('main', 2, 1),
+        legacyMatch('main', 2, 2, { entryAId: 'ENTRY-5' }),
+        legacyMatch('main', 3, 1),
+        legacyMatch('third_place', 4, 1),
+      ],
+    }])[0];
+
+    expect(getMatch(tournament, 'main:2:2').entryBId).toBeUndefined();
+
+    tournament = await play(tournament, 'main:1:1', 'ENTRY-1');
+
+    const healed = getMatch(tournament, 'main:2:2');
+    expect(healed.entryBId).toBe('ENTRY-7');
+    expect(healed.status).toBe('ready');
+
+    tournament = await play(tournament, 'main:1:2', 'ENTRY-3');
+    tournament = await play(tournament, 'main:2:2', 'ENTRY-7');
+    tournament = await play(tournament, 'main:2:1', 'ENTRY-1');
+    tournament = await play(tournament, 'third_place:4:1', 'ENTRY-3');
+    tournament = await play(tournament, 'main:3:1', 'ENTRY-1');
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-1').finalPlacement).toBe(1);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-7').finalPlacement).toBe(2);
+    expect(tournament.entries.find((entry) => entry.id === 'ENTRY-3').finalPlacement).toBe(3);
   });
 });

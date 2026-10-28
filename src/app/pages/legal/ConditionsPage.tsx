@@ -23,7 +23,7 @@ const ConditionsPage: React.FC = () => (
     title="Conditions d'utilisation"
     description="Conditions d'utilisation ZOYD : compte, matchs avec mises, dépôts, retraits Mobile Money, litiges et règles de jeu."
     path="/conditions"
-    updatedAt="21 septembre 2026"
+    updatedAt="28 octobre 2026"
   >
     <LegalSection n="1" title="Qui édite ZOYD">
       <p>
@@ -91,7 +91,10 @@ const ConditionsPage: React.FC = () => (
       <p>
         Retrait <strong className="text-white">minimum : 150 ZC (1 500 FCFA)</strong> —{' '}
         <strong className="text-white">commission ZOYD : 2 %</strong> affichés avant validation. Maximum :{' '}
-        <strong className="text-white">1 000 000 FCFA par retrait</strong>. Le retrait part vers le numéro
+        <strong className="text-white">1 000 000 FCFA par retrait</strong>, dans la limite d'un{' '}
+        <strong className="text-white">plafond quotidien de 50 000 ZC (500 000 FCFA) sur 24 heures glissantes</strong> :
+        le cumul de tous tes retraits des dernières 24 h ne peut pas dépasser ce plafond, même si chaque retrait
+        reste sous le maximum. Le retrait part vers le numéro
         Mobile Money du pays de ton profil, via FedaPay.
       </p>
       <p>

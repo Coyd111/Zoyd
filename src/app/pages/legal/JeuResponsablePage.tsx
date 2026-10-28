@@ -10,6 +10,11 @@
  * PIEGE : ce document doit rester lisible et actionnable : c'est la page
  * qui explique au joueur comment se faire aider. Eviter le jargon et les
  * blocs de texte sans structure.
+ * P13 C9 (audit-3) : la liste des outils ne mentionne PAS de « plafond de
+ * depot » - aucune regle serveur ne l'implemente (grep depositLimit :
+ * rien), et une promesse sans mecanisme est le pire defaut possible dans
+ * une page de jeu responsable. Le reintroduire suppose d'implementer le
+ * mecanisme serveur d'abord.
  *
  * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
@@ -21,7 +26,7 @@ const JeuResponsablePage: React.FC = () => (
     title="Jeu responsable"
     description="Jeu responsable sur ZOYD : interdit aux mineurs, conseils et outils pour garder le contrôle de tes mises."
     path="/jeu-responsable"
-    updatedAt="21 septembre 2026"
+    updatedAt="28 octobre 2026"
   >
     <div className="border border-zoyd-yellow/40 bg-zoyd-yellow/5 px-5 py-4">
       <p className="font-display font-black text-white uppercase italic">
@@ -44,10 +49,6 @@ const JeuResponsablePage: React.FC = () => (
       <ul className="list-disc pl-5 space-y-1">
         <li>
           <strong className="text-white">Pause temporaire</strong> : blocage de ton compte 24 heures, 7 jours ou plus.
-        </li>
-        <li>
-          <strong className="text-white">Plafond de dépôt</strong> : limite maximale que tu choisis, modifiable
-          uniquement après un délai de réflexion.
         </li>
         <li>
           <strong className="text-white">Fermeture définitive</strong> : ton compte est fermé (pense à retirer ton

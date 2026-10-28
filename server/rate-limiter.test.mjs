@@ -61,7 +61,7 @@ describe('Separation du quota de logout', () => {
   // `logout` ne demande aucune authentification : le token est facultatif et la
   // route repond 200 sans session. Tant qu il consomme le groupe `auth`, il
   // permet a n importe qui de verrouiller `login`, `register`,
-  // `forgot-password` et `reset-password` � 50 appels, 15 minutes, sur toute
+  // `forgot-password` et `reset-password` : 50 appels, 15 minutes, sur toute
   // IP partagee.
   //
   // Ce test est ici, et non en E2E, parce que le rate limiter est

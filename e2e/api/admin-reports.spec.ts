@@ -193,7 +193,7 @@ test.describe('POST /api/admin/2fa/setup', () => {
   //
   // Avant, une session admin volee suffisait : l'attaquant s'enrolait un code
   // TOTP valide et obtenait l'acces financier complet. Le garde anti-takeover
-  // ne protégeait que si le Map en memoire etait deja rempli — au demarrage du
+  // ne protegeait que si le Map en memoire etait deja rempli - au demarrage du
   // processus, il ne l'est pas.
   test('refuse sans mot de passe', async () => {
     const admin = await loginAdminWithout2fa();

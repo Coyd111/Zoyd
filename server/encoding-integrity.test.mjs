@@ -63,6 +63,28 @@ describe('Integrite de l encodage des sources', () => {
     expect(corrompus.length, 'fichiers a reparer un par un : ' + corrompus.join(', ')).toBe(0);
   });
 
+  it('aucun fichier source ne contient de caractere de remplacement U+FFFD', () => {
+    // P15 C4 (audit-3) : contrairement au double encodage ci-dessus, un
+    // U+FFFD (replacement character) est irrécupérable — les octets d'origine
+    // sont déjà perdus, remplacés au décodage. Invisible au `node --check`
+    // comme au lint, il ne trébuche qu'à la relecture de l'invariant
+    // documenté. Deux occurrences vécues : `e2e/api/admin-reports.spec.ts`
+    // (garde anti-takeover) et `server/rate-limiter.test.mjs` (quota auth).
+    const FFFD = /\uFFFD/;
+    const fichiers = PARCOURIR('.', ['.mjs', '.ts', '.tsx', '.js', '.sql']);
+    const corrompus = [];
+    for (const fichier of fichiers) {
+      let contenu;
+      try {
+        contenu = readFileSync(fichier, 'utf8');
+      } catch {
+        continue;
+      }
+      if (FFFD.test(contenu)) corrompus.push(fichier);
+    }
+    expect(corrompus.length, 'fichiers a reparer un par un : ' + corrompus.join(', ')).toBe(0);
+  });
+
   it('les sources critiques sont bien en UTF-8 lisible', () => {
     // Contrôle ciblé : ces fichiers portent l'encodage des accents dans leurs
     // commentaires d'invariant, et une régression y serait particulièrement

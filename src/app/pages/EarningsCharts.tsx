@@ -26,6 +26,7 @@ import {
   Cell,
 } from 'recharts';
 import { formatZC } from '../../lib/utils';
+import { CHART_YELLOW } from '../../lib/chartColors';
 
 interface TrendPoint {
   day: string;
@@ -51,8 +52,8 @@ export const EarningsAreaChart: React.FC<{ data: TrendPoint[] }> = ({ data }) =>
     <AreaChart data={data}>
       <defs>
         <linearGradient id="earningsArea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#FFCC00" stopOpacity={0.3} />
-          <stop offset="95%" stopColor="#FFCC00" stopOpacity={0} />
+          <stop offset="5%" stopColor={CHART_YELLOW} stopOpacity={0.3} />
+          <stop offset="95%" stopColor={CHART_YELLOW} stopOpacity={0} />
         </linearGradient>
       </defs>
       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
@@ -63,7 +64,7 @@ export const EarningsAreaChart: React.FC<{ data: TrendPoint[] }> = ({ data }) =>
         formatter={(value: number, _name, payload) => [formatZC(value), payload?.payload?.label || 'Jour']}
         labelFormatter={(_value, payload) => payload?.[0]?.payload?.label || ''}
       />
-      <Area type="monotone" dataKey="amount" stroke="#FFCC00" strokeWidth={3} fillOpacity={1} fill="url(#earningsArea)" />
+      <Area type="monotone" dataKey="amount" stroke={CHART_YELLOW} strokeWidth={3} fillOpacity={1} fill="url(#earningsArea)" />
     </AreaChart>
   </ResponsiveContainer>
 );

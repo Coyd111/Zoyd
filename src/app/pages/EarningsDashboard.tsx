@@ -62,6 +62,7 @@ import { useWalletStore } from '../stores/walletStore';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { buildWalletInsights } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
+import { CHART_YELLOW, CHART_BLUE } from '../../lib/chartColors';
 import { SEOHead } from '../components/SEOHead';
 
 const getDeltaLabel = (current: number, previous: number, emptyLabel: string) => {
@@ -109,8 +110,8 @@ const EarningsDashboard: React.FC = () => {
     const totalPlayed = summary?.stats.totalMatches || 0;
     const arbitrated = summary?.arbiterStats.arbitratedMatches || 0;
     return [
-      { name: 'Matchs Joués', value: totalPlayed, color: '#FFCC00' },
-      { name: 'Matchs Arbitrés', value: arbitrated, color: '#009EE2' },
+      { name: 'Matchs Joués', value: totalPlayed, color: CHART_YELLOW },
+      { name: 'Matchs Arbitrés', value: arbitrated, color: CHART_BLUE },
     ];
   }, [summary]);
 

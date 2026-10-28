@@ -511,11 +511,13 @@ if (!payoutCountry) {
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">Frais de retrait</div>
-                <div className="text-xl md:text-2xl font-display font-black text-zoyd-yellow">2%</div>
+                {/* P13 C10 (audit-3) : le taux est publie par le serveur (walletStore.withdrawalFeeRate) -
+                    le "2%" en dur divergeait a la premiere edition de la politique. */}
+                <div className="text-xl md:text-2xl font-display font-black text-zoyd-yellow">{Math.round(withdrawalFeeRate * 10000) / 100}%</div>
               </div>
               <div className="border border-white/5 p-4 bg-black/40">
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/70 mb-2">Retrait minimum</div>
-                <div className="text-xl md:text-2xl font-display font-black text-white">150 ZC</div>
+                <div className="text-xl md:text-2xl font-display font-black text-white">{formatZC(withdrawalMinAmount)}</div>
               </div>
             </div>
             <p className="mt-4 text-[11px] font-mono uppercase tracking-widest text-white/40">

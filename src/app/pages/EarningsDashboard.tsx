@@ -63,6 +63,7 @@ import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { buildWalletInsights } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
 import { CHART_YELLOW, CHART_BLUE } from '../../lib/chartColors';
+import { getTrustLabel } from '../stores/trustScoreStore';
 import { SEOHead } from '../components/SEOHead';
 
 const getDeltaLabel = (current: number, previous: number, emptyLabel: string) => {
@@ -74,12 +75,13 @@ const getDeltaLabel = (current: number, previous: number, emptyLabel: string) =>
   return `${delta > 0 ? '+' : ''}${delta}% par rapport à avant`;
 };
 
+// P13 C11 (audit-3) : le statut de fiabilite vient du store de confiance
+// (getTrustLabel, source de verite partagee) : les seuils locaux 90/75/50
+// creaien un joueur "Solide" ici et "FIABLE" ailleurs - 75 n'existe pas
+// dans la regle partagee (90/80/50/30).
 const getTrustStatus = (trustScore?: number) => {
   if (typeof trustScore !== 'number') return 'A construire';
-  if (trustScore >= 90) return 'Tres fiable';
-  if (trustScore >= 75) return 'Solide';
-  if (trustScore >= 50) return 'A surveiller';
-  return 'Fragile';
+  return getTrustLabel(trustScore);
 };
 
 const EarningsDashboard: React.FC = () => {

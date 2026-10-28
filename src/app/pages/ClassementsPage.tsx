@@ -27,6 +27,7 @@ import { useFriendsStore } from '../stores/friendsStore';
 import { useMatchStore } from '../stores/matchStore';
 import { useTournamentStore } from '../stores/tournamentStore';
 import { useSocketStore } from '../stores/socketStore';
+import { getTrustColor } from '../stores/trustScoreStore';
 import { Skeleton } from '../components/ui/Skeleton';
 import BootstrapFailedPanel from '../components/BootstrapFailedPanel';
 import {
@@ -401,13 +402,11 @@ const ClassementsPage: React.FC = () => {
                   <div className="col-span-1 text-right">
                     <span
                       className={`text-[10px] font-mono font-black ${
-                        typeof entry.trust === 'number'
-                          ? entry.trust >= 90
-                            ? 'text-green-400'
-                            : entry.trust >= 70
-                              ? 'text-white/60'
-                              : 'text-red-300'
-                          : 'text-white/70'
+                        // P13 C11 (audit-3) : la regle de couleur vient du store de
+                        // confiance (getTrustColor) : les seuils locaux 90/70
+                        // coloraient le meme joueur en blanc ici et "FIABLE" (jaune)
+                        // au profil.
+                        typeof entry.trust === 'number' ? getTrustColor(entry.trust) : 'text-white/70'
                       }`}
                     >
                       {typeof entry.trust === 'number' ? entry.trust : '--'}
@@ -424,15 +423,21 @@ const ClassementsPage: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-display font-black text-white text-sm uppercase italic truncate">{entry.label}</div>
-                    <div className="flex items-center gap-3 text-[10px] font-mono text-white/60">
+                    {/* P13 C11 (audit-3) : la variante mobile n'affichait NI la
+                        metrique de classement (ELO, victoires...) NI le taux de
+                        victoire : des rangs sans ce qui les definit. La regle de
+                        couleur du trust vient du store (meme source que desktop). */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] font-mono text-white/60">
                       <span>{entry.countryCode}</span>
                       <span>{entry.detail}</span>
+                      <span className="text-white/80">{entry.value} {tabColumns[activeTab].value}</span>
+                      <span>{entry.rate}%</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="font-display font-black text-zoyd-yellow text-sm italic">{formatZC(entry.earnings)}</div>
                     {typeof entry.trust === 'number' && (
-                      <div className={`text-[10px] font-mono font-black ${entry.trust >= 90 ? 'text-green-400' : entry.trust >= 70 ? 'text-white/60' : 'text-red-300'}`}>
+                      <div className={`text-[10px] font-mono font-black ${getTrustColor(entry.trust)}`}>
                         {entry.trust}
                       </div>
                     )}

@@ -15,16 +15,28 @@
  * et se propage aux autres onglets par l'evenement socket chat:read.
  * PIEGE : ne jamais afficher un message systeme comme un message de joueur :
  * le rendu distingue les deux (isSystem).
+ * P13 C3 (audit-3) : la creation de canal prive etait mono-participant
+ * (participants: [user.id]) — un salon sans interlocuteur, et le bouton
+ * "Nouvelle discussion" n'avait aucun autre moyen de designer le destinaire.
+ * La voie est openDm : find-or-create du canal PRIVE A DEUX (le serveur
+ * ajoute la session aux participants valides, chat.mjs:131), declenche par
+ * le selecteur d'amis ici, le bouton Message du widget amis, ou un profil
+ * public via /chat?dm=<id> (effet dedie). PIEGE : le find passe par un
+ * bootstrap FRAIS (fetchChatBootstrap), pas par les canaux deja hydrates :
+ * au demarrage a froid via /chat?dm=, le bootstrap App peut encore etre en
+ * vol et un find local raterait le canal existant (les ids de canal sont
+ * des timestamps : aucune deduplication par participants cote serveur).
  *
  * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from '../lib/toast';
 import {
   createServerChatChannel,
+  fetchChatBootstrap,
   fetchServerChatChannel,
   markServerChatChannelRead,
   sendServerChatMessage,
@@ -63,7 +75,13 @@ const ChatPage: React.FC = () => {
   const friends = useFriendsStore((s) => s.friends);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [showFriendPicker, setShowFriendPicker] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // P13 C3 : le dm=<id> deja traite (evite de rejouer a chaque rendu de
+  // l'effet) et le garde anti double-creation en vol.
+  const dmHandledRef = useRef<string | null>(null);
+  const isCreatingDmRef = useRef(false);
 
   const currentMessages = useMemo(
     () => (activeChannelId ? getMessagesForChannel(activeChannelId) : []),
@@ -95,6 +113,66 @@ const ChatPage: React.FC = () => {
       cancelled = true;
     };
   }, [activeChannelId, hydrateFromServer, user]);
+
+  /**
+   * P13 C3 (audit-3) : ouvre — ou cree si besoin — le canal prive a deux
+   * avec un joueur. Le front n'envoie QUE l'autre participant : le serveur
+   * ajoute la session aux participants valides (chat.mjs:131) — envoyer
+   * user.id recreait le canal mono-participant du constat. Le nom du canal
+   * est le pseudo de l'interlocuteur (lorsqu'il est un ami hydrate) : les
+   * deux côtés voient ainsi le pseudo de l'autre, sans champ usurpable.
+   */
+  const openDm = useCallback((targetId: string) => {
+    if (!user || isCreatingDmRef.current) return;
+    isCreatingDmRef.current = true;
+    const nameHint = friends.find((friend) => friend.id === targetId)?.pseudo || 'Conversation privée';
+    // Le find passe par un bootstrap FRAIS, pas par les canaux deja
+    // hydrates : au demarrage a froid le bootstrap App peut encore etre en
+    // vol (voir docstring).
+    fetchChatBootstrap()
+      .then((payload) => {
+        const existing = payload.channels.find(
+          (channel) =>
+            channel.type === 'private' &&
+            channel.participants.length === 2 &&
+            channel.participants.includes(user.id) &&
+            channel.participants.includes(targetId)
+        );
+        if (existing) {
+          hydrateFromServer(payload.channels, payload.messages);
+          setActiveChannel(existing.id);
+          return null;
+        }
+        return createServerChatChannel({ type: 'private', name: nameHint, participants: [targetId] });
+      })
+      .then((created) => {
+        if (created) {
+          hydrateFromServer([created.channel], created.messages);
+          setActiveChannel(created.channel.id);
+        }
+      })
+      .catch((error) => {
+        // Re-autorise un essai ulterieur (nouveau clic, nouvelle navigation).
+        dmHandledRef.current = null;
+        toast.error(error instanceof Error ? error.message : "Impossible d'ouvrir cette conversation.");
+      })
+      .finally(() => {
+        isCreatingDmRef.current = false;
+      });
+  }, [user, friends, hydrateFromServer, setActiveChannel]);
+
+  // P13 C3 : point d'entree /chat?dm=<id> (bouton Message du widget amis et
+  // des profils publics). Le parametre est purge apres lecture : la
+  // conversation ouverte reste active via le store, le rafraichissement ne
+  // rejoue pas la creation.
+  useEffect(() => {
+    const dmId = searchParams.get('dm');
+    if (!dmId || !user) return;
+    if (dmHandledRef.current === dmId) return;
+    dmHandledRef.current = dmId;
+    openDm(dmId);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, user, openDm, setSearchParams]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -176,33 +254,49 @@ const ChatPage: React.FC = () => {
         )}>
           <img src="/assets/images/codm-7.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
           <div className="p-4 border-b border-white/5">
+            {/* P13 C3 (audit-3) : l'ancien bouton creait un canal prive
+                mono-participant (participants: [user.id]) — un salon sans
+                interlocuteur. Il ouvre maintenant un selecteur parmi les
+                amis : le canal a deux passe par openDm (find-or-create,
+                voir docstring). */}
             <button
               onClick={() => {
                 if (!user) {
                   navigate('/auth/login');
                   return;
                 }
-
-                void createServerChatChannel({
-                  type: 'private',
-                  name: 'Nouvelle conversation',
-                  participants: [user.id],
-                })
-                  .then((payload) => {
-                    hydrateFromServer([payload.channel], payload.messages);
-                    setActiveChannel(payload.channel.id);
-                  })
-                  .catch((error) => {
-                    toast.error(
-                      error instanceof Error ? error.message : 'Impossible de créer cette conversation.'
-                    );
-                  });
+                setShowFriendPicker((open) => !open);
               }}
+              aria-expanded={showFriendPicker}
               className="w-full bg-white text-black py-3 font-display font-black text-[10px] tracking-[0.2em] uppercase italic hover:bg-zoyd-yellow transition-colors"
-              aria-label="Créer une nouvelle discussion"
+              aria-label="Choisir un ami pour démarrer une discussion"
             >
               Nouvelle discussion
             </button>
+            {showFriendPicker && (
+              <div className="mt-2 max-h-52 overflow-y-auto border border-white/10 bg-zoyd-black/80">
+                {friends.length === 0 ? (
+                  <p className="p-3 text-[10px] font-mono text-white/70">
+                    Ajoute des amis pour démarrer une conversation privée.
+                  </p>
+                ) : (
+                  friends.map((friend) => (
+                    <button
+                      key={friend.id}
+                      onClick={() => {
+                        setShowFriendPicker(false);
+                        openDm(friend.id);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-left text-[11px] font-display font-black uppercase italic text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                      aria-label={`Ouvrir une conversation avec ${friend.pseudo}`}
+                    >
+                      <span className="truncate">{friend.pseudo}</span>
+                      <span className={cn('w-2 h-2 rounded-full shrink-0', friend.status === 'online' ? 'bg-green-500' : 'bg-white/10')} />
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">

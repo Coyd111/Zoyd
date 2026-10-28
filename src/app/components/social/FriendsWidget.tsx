@@ -12,10 +12,15 @@
  * PIEGE : une demande en attente est refusee tant qu'une autre est en
  * cours (pendingId) : le bouton doit rester desactive, sinon le joueur
  * spamme le serveur.
+ * P13 C3 (audit-3) : le bouton Message n'avait AUCUN onClick — un clic
+ * mort sur chaque ami. Il ouvre maintenant la conversation privee a deux
+ * via /chat?dm=<id>, que ChatPage resout par find-or-create (le serveur
+ * accepte les participants supplementaires existants, chat.mjs:131).
  *
  * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
  */
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { toast } from '../../lib/toast';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -42,6 +47,7 @@ const statusColors: Record<string, string> = {
 };
 
 const FriendsWidget: React.FC = () => {
+  const navigate = useNavigate();
   const friends = useFriendsStore((s) => s.friends);
   const requests = useFriendsStore((s) => s.requests);
   const blockedIds = useFriendsStore((s) => s.blockedIds);
@@ -193,7 +199,12 @@ const FriendsWidget: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1.5 text-white/70 hover:text-zoyd-blue transition-colors" title="Message" aria-label={`Envoyer un message à ${friend.pseudo}`}>
+                        <button
+                          onClick={() => navigate(`/chat?dm=${encodeURIComponent(friend.id)}`)}
+                          className="p-1.5 text-white/70 hover:text-zoyd-blue transition-colors"
+                          title="Message"
+                          aria-label={`Envoyer un message à ${friend.pseudo}`}
+                        >
                           <MessageCircle className="w-3.5 h-3.5" />
                         </button>
                         <button

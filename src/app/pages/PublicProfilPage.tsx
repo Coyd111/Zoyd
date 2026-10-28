@@ -18,7 +18,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useReducedMotion } from 'motion/react';
-import { AlertTriangle, ArrowLeft, Swords, UserPlus, UserX } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, MessageCircle, UserPlus, UserX } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { useMatchStore } from '../stores/matchStore';
@@ -157,12 +157,18 @@ const PublicProfilPage = () => {
     }
   };
 
-  const handleInviteMatch = () => {
+  // P13 C3 (audit-3) : l'ancien bouton "Inviter en match" naviguait vers
+  // /mj/creer?invite=<id>, un parametre qu'AUCUN ecran ne lit — et aucun
+  // champ adversaire n'existe dans le createur de match : un match est un
+  // salon ouvert, pas une adresse. Le libelle mentait. La voie reelle pour
+  // contacter ce joueur est la conversation privee : ChatPage ouvre (ou
+  // cree, find-or-create) le canal prive a deux via ?dm=.
+  const handleMessage = () => {
     if (!currentUser) {
       navigate('/auth/login');
       return;
     }
-    navigate(`/mj/creer?invite=${encodeURIComponent(id)}`);
+    navigate(`/chat?dm=${encodeURIComponent(id)}`);
   };
 
   const handleBlock = async () => {
@@ -239,9 +245,9 @@ const PublicProfilPage = () => {
               <UserPlus className="w-4 h-4 mr-2" aria-hidden="true" />
               {alreadyFriend ? 'Déjà ami' : blocked ? 'Bloqué' : 'Ajouter en ami'}
             </Button>
-            <Button variant="secondary" size="sm" onClick={handleInviteMatch} className="touch-target" aria-label={`Inviter ${publicProfile.pseudo} en match`}>
-              <Swords className="w-4 h-4 mr-2" aria-hidden="true" />
-              Inviter en match
+            <Button variant="secondary" size="sm" onClick={handleMessage} className="touch-target" aria-label={`Envoyer un message à ${publicProfile.pseudo}`}>
+              <MessageCircle className="w-4 h-4 mr-2" aria-hidden="true" />
+              Message
             </Button>
             <Button variant="danger" size="sm" onClick={() => setConfirmAction('block')} className="touch-target" aria-label={`Bloquer ${publicProfile.pseudo}`}>
               <UserX className="w-4 h-4 mr-2" aria-hidden="true" />

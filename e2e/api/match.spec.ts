@@ -134,7 +134,10 @@ test.describe('Match lifecycle', () => {
     expect(match.arbiterFee).toBe(ARBITER_FEE);
     expect(match.status).toBe('recruiting');
     expect(match.visibility).toBe('public');
-    expect(match.creatorId).toBe(creator.id);
+    // S4 (audit-2) : l'UUID interne du createur ne sort JAMAIS
+    // (state-helpers.mjs:189-191) — le createur reste visible via creatorPseudo.
+    expect(match.creatorId).toBeUndefined();
+    expect(match.creatorPseudo).toBe(creator.pseudo);
     expect(match.players).toHaveLength(1);
     expect(match.players[0].pseudo).toBe(creator.pseudo);
     expect(match.players[0].isCaptain).toBe(true);
@@ -385,7 +388,10 @@ test.describe('Match lifecycle', () => {
     // `proofs`/`screenshots` ci-dessous).
     expect(match.result.confirmedByTeams).toBeUndefined();
     expect(match.confirmationDeadline).toBeTruthy();
-    expect(typeof match.result.proofHash).toBe('string');
+    // S4 (audit-2) : `proofHash` ne sort pas — il n'est PAS un hash, c'est la
+    // concatenation des URL de captures (buildProofHash, state-helpers.mjs:273).
+    // Il reste stocke cote serveur comme piste de verification.
+    expect(match.result.proofHash).toBeUndefined();
     // Les preuves ne sont jamais rediffusées dans la charge utile publique.
     expect(match.result.proofs).toBeUndefined();
     expect(match.result.screenshots).toBeUndefined();
@@ -541,7 +547,11 @@ test.describe('Match lifecycle', () => {
     expect(res.body.match.disputes).toHaveLength(1);
     expect(res.body.match.disputes[0].status).toBe('open');
     expect(res.body.match.disputes[0].prizePoolFrozen).toBe(true);
-    expect(res.body.match.disputes[0].openedByPseudo).toBe(creator.pseudo);
+    // S4 (audit-2) : l'identite du demandeur ne sort jamais — ni l'UUID
+    // (`requestedBy`), ni le pseudo (`openedByPseudo`, state-helpers.mjs:242) ;
+    // les pieces jointes ne sortent que pour les habilites (le createur l'est).
+    expect(res.body.match.disputes[0].requestedBy).toBeUndefined();
+    expect(res.body.match.disputes[0].openedByPseudo).toBeUndefined();
     expect(res.body.match.disputes[0].evidence).toEqual(['https://example.com/proof.png']);
   });
 

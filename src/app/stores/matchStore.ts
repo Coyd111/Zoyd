@@ -82,8 +82,10 @@ export interface MatchArbiter {
 pseudo: string;
   assignedAt: string;
   trustScore: number;
-  roomName?: string;
-  roomPassword?: string;
+  // P13 C2 (audit-3) : roomName/roomPassword de l'arbitre ne sont PLUS
+  // envoyes (sanitizeMatchForBroadcast les retire comme le userId ci-dessus).
+  // La salle voyage dans `match.room`, par destinataire. roomPublishedAt
+  // reste livre et affiche (MatchRules).
   roomPublishedAt?: string;
   hasSubmittedResult: boolean;
   /** Même contrat que `MatchPlayer.isMe` : calculé pour le demandeur. */

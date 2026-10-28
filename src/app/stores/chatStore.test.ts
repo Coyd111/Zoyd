@@ -62,14 +62,6 @@ describe('chatStore', () => {
     expect(useChatStore.getState().messages[0].text).toBe('Hello');
   });
 
-  it('should mute and unmute channel', () => {
-    useChatStore.getState().replaceFromServer([makeChannel('ch1')], []);
-    useChatStore.getState().muteChannel('ch1');
-    expect(useChatStore.getState().channels[0].isMuted).toBe(true);
-    useChatStore.getState().unmuteChannel('ch1');
-    expect(useChatStore.getState().channels[0].isMuted).toBe(false);
-  });
-
   it('should get messages for channel', () => {
     useChatStore.getState().replaceFromServer(
       [makeChannel('ch1'), makeChannel('ch2')],

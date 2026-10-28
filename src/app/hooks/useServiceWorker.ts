@@ -19,6 +19,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { subscribeToRealtimePush } from '../lib/realtimeClient';
 import { logWarning } from '../lib/logger';
+import { waitForServiceWorkerReady } from '../lib/serviceWorkerReady';
 
 let registrationPromise: Promise<ServiceWorkerRegistration> | null = null;
 
@@ -116,8 +117,21 @@ export function useServiceWorker() {
     setNotificationPermission(permission);
 
     if (permission === 'granted' && user && 'serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.ready;
-      await subscribeToRealtimePush(user, registration);
+      // P13 C16 (audit-3) : ce bloc awaitait `navigator.serviceWorker.ready`
+      // (sans timeout) PUIS `subscribeToRealtimePush` — deux rejets possibles
+      // qui remontaient a NotificationDropdown, dont l'onClick fait `void
+      // requestNotificationPermission()` : unhandled rejection. Blinde ici :
+      // le joueur a ACCEPTE la permission — l'echec d'abonnement push
+      // (timeout SW, refusee) ne doit pas apparaitre comme un refus, le
+      // consentement reste ce que l'utilisateur a vu.
+      try {
+        const registration = await waitForServiceWorkerReady();
+        if (registration) {
+          await subscribeToRealtimePush(user, registration);
+        }
+      } catch (err) {
+        logWarning('SW Push subscription failed', { component: 'useServiceWorker', message: err instanceof Error ? err.message : String(err) });
+      }
     }
 
     return permission;

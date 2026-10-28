@@ -63,6 +63,7 @@ import { buildCompetitiveSummary } from '../../lib/profileMetrics';
 import { buildWalletInsights } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
 import { CHART_YELLOW, CHART_BLUE } from '../../lib/chartColors';
+import { getTransactionTypeLabel } from '../../lib/transactionLabels';
 import { getTrustLabel } from '../stores/trustScoreStore';
 import { SEOHead } from '../components/SEOHead';
 
@@ -342,7 +343,10 @@ const EarningsDashboard: React.FC = () => {
                         {transaction.description}
                       </div>
                       <div className="text-[10px] font-mono text-white/70 uppercase mt-1">
-                        {new Date(transaction.timestamp).toLocaleDateString('fr-FR')} / {transaction.type}
+                        {/* P13 C16 (audit-3) : le type brut anglais (payout, deposit...)
+                            s'affichait tel quel ; la table FR est partagee avec
+                            WalletPage (transactionLabels). */}
+                        {new Date(transaction.timestamp).toLocaleDateString('fr-FR')} / {getTransactionTypeLabel(transaction.type)}
                       </div>
                     </div>
                   </div>

@@ -69,9 +69,32 @@ export const AdminPanel = ({
     }
   };
 
+  // P13 C16 (audit-3) : l'effet ne gardait aucun `cancelled` — si l'onglet
+  // changeait ou le panneau se demonait pendant le fetch, la reponse tardive
+  // ecrasait l'etat d'un autre onglet (ou d'un composant disparu). Meme
+  // pattern que ChatPage : garde `cancelled`, reponse ignoree si perimee.
+  // `loadPayments` reste pour le rafraichissement manuel (bouton de l'onglet).
   useEffect(() => {
-    if (settingsTab === 'payments') loadPayments();
-  }, [settingsTab]);
+    if (settingsTab !== 'payments') return;
+    let cancelled = false;
+    setLoadingPayments(true);
+    fetchServerLeaguePayments(season.id)
+      .then((response) => {
+        if (cancelled) return;
+        setPayments(response.payments);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toast.error("Erreur lors du chargement des paiements.");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingPayments(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsTab, season.id]);
 
   const handleSaveSettings = () => {
     onAdminAction('update-settings', { maxPlayers, entryFee });
@@ -147,8 +170,12 @@ export const AdminPanel = ({
             </div>
           </div>
           <div className="flex items-center justify-between border-t border-white/5 pt-3">
+            {/* P13 C16 (audit-3) : le pot combinait les inscrits ACTUELS avec
+                l'entryFee EDITE (state local, non encore sauvegarde) : le
+                chiffre affiche n'etait vrai qu'apres "Sauvegarder". Le
+                libelle le dit maintenant. */}
             <span className="text-[10px] text-white/70">
-              {season.registeredPlayers.length} inscrits — Pot: {formatZC(season.registeredPlayers.length * entryFee)}
+              {season.registeredPlayers.length} inscrits — Pot apres sauvegarde : {formatZC(season.registeredPlayers.length * entryFee)}
             </span>
             <button
               onClick={handleSaveSettings}

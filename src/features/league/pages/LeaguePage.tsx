@@ -275,6 +275,9 @@ const LeaguePage: React.FC = () => {
 
   const handleStartQualification = async (seasonId: string) => {
     if (actionLoading || user?.role !== 'admin') return;
+    // P13 C16 (audit-3) : sans saison active, l'ancien code appelait
+    // l'API avec un id vide : une requete vouee a l'erreur serveur.
+    if (!seasonId) return;
     try {
       setActionLoading(true);
       const response = await startServerLeagueQualification(seasonId);
@@ -452,7 +455,13 @@ const LeaguePage: React.FC = () => {
             <p className="text-sm text-yellow-300">Démarrer les qualifications ? Cette action est irréversible.</p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
-              <button onClick={() => { setConfirmAction(null); void handleStartQualification(activeSeason?.id || ''); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
+              {/* P13 C16 (audit-3) : Confirmer est desactive sans saison
+                  active — l'ancien onClick passait un id vide a l'API. */}
+              <button
+                onClick={() => { setConfirmAction(null); void handleStartQualification(activeSeason?.id || ''); }}
+                disabled={!activeSeason?.id}
+                className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >Confirmer</button>
             </div>
           </div>
         </div>

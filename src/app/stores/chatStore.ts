@@ -66,8 +66,6 @@ export interface ChatState {
   sendMessage: (channelId: string, text: string, senderId: string, senderPseudo: string, isSystem?: boolean) => void;
   deleteMessage: (messageId: string) => void;
   markAsRead: (channelId: string) => void;
-  muteChannel: (channelId: string) => void;
-  unmuteChannel: (channelId: string) => void;
   getMessagesForChannel: (channelId: string) => ChatMessage[];
   getChannelById: (channelId: string) => ChatChannelDef | undefined;
   getUnreadTotal: () => number;
@@ -318,26 +316,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
   },
 
-  muteChannel: (channelId) => {
-    set((state) => ({
-      channels: state.channels.map((channel) =>
-        channel.id === channelId ? { ...channel, isMuted: true } : channel
-      ),
-    }));
-  },
-
-  unmuteChannel: (channelId) => {
-    set((state) => ({
-      channels: state.channels.map((channel) =>
-        channel.id === channelId ? { ...channel, isMuted: false } : channel
-      ),
-    }));
-  },
-
   getMessagesForChannel: (channelId) => get().messages.filter((message) => message.channelId === channelId),
 
   getChannelById: (channelId) => get().channels.find((channel) => channel.id === channelId),
 
+  // P13 C16 (audit-3) : plus de filtre isMuted — le mute du canal etait une
+  // fiction (route serveur inexistante, etat perdu au rechargement). Le
+  // champ isMuted reste dans ChatChannelDef comme miroir du JSON serveur.
   getUnreadTotal: () =>
-    get().channels.reduce((sum, channel) => sum + (channel.isMuted ? 0 : channel.unreadCount), 0),
+    get().channels.reduce((sum, channel) => sum + channel.unreadCount, 0),
 }));

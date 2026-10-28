@@ -4,6 +4,16 @@
  * Saisit le code d'activation, permet de le renvoyer (avec un delai) et de
  * changer l'email de destination.
  *
+ * ORPHELINE (P13 C16, audit-3) : depuis la decision produit du 2026-09-18
+ * (auth.mjs :127-128), l'inscription cree le compte DIRECTEMENT ACTIF —
+ * aucun navigateur de tout le front ne mene a /auth/activate, et
+ * `requiresActivation` (authApi) n'est lu par aucun ecran. La page reste
+ * fonctionnelle (l'API /api/auth/activate existe toujours) mais est
+ * INJOIGNABLE par navigation : une voie heritee, maintenue en parallele du
+ * flux actuel. Son retrait est une DECISION PRODUIT (suppression egalement
+ * des routes serveur d'activation) : la documenter ici evite de la prendre
+ * pour un flux vivant et de cabler un lien vers elle par erreur.
+ *
  * INVARIANT : le delai de renvoi du code est de 60 s : le bouton doit
  * respecter ce delai, sinon le joueur declenche une rafale de requetes.
  * PIEGE : le compte n'existe qu'apres activation : le routeur doit continuer

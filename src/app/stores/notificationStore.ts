@@ -22,6 +22,8 @@
 import { create } from 'zustand';
 import { useToastStore, type ToastType } from './toastStore';
 import { markServerNotificationRead, markAllServerNotificationsRead } from '../lib/notificationApi';
+import { waitForServiceWorkerReady } from '../lib/serviceWorkerReady';
+import { logWarning } from '../lib/logger';
 
 export type NotificationType =
   | 'match_start'
@@ -117,7 +119,14 @@ const showBrowserNotification = async (notification: Notification) => {
     return;
   }
 
-  const registration = await navigator.serviceWorker.ready;
+  // P13 C16 (audit-3) : `navigator.serviceWorker.ready` n'a aucun timeout —
+  // sans SW enregistré, l'await restait pending pour toujours et la
+  // notification ne s'affichait jamais sans qu'on le sache. Le helper
+  // resout null au plafond de temps : on saute simplement l'affichage.
+  const registration = await waitForServiceWorkerReady();
+  if (!registration) {
+    return;
+  }
   await registration.showNotification(notification.title, {
     body: notification.message,
     icon: '/logo-icon.png',
@@ -180,7 +189,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       });
     }
 
-    void showBrowserNotification(createdNotification);
+    // P13 C16 (audit-3) : fire-and-forget avec catch loggee — un rejet ici
+    // (showNotification refuse, SW mort) devenait un unhandled rejection
+    // puisque l'appel n'est pas attendu.
+    void showBrowserNotification(createdNotification).catch((err) => {
+      logWarning('Browser notification display failed', { component: 'notificationStore', message: err instanceof Error ? err.message : String(err) });
+    });
   },
 
   markAsRead: (id) => {

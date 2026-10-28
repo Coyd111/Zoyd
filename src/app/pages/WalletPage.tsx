@@ -36,6 +36,7 @@ import BootstrapFailedPanel from '../components/BootstrapFailedPanel';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
 import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormatError, formatPhoneInput, type PayoutOperator } from '../../lib/payoutOperators';
 import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
+import { getTransactionTypeLabel } from '../../lib/transactionLabels';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { WithdrawalFeesNotice, useWithdrawalFeesNoticeDismissed } from '../components/wallet/WithdrawalFeesNotice';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
@@ -861,30 +862,11 @@ interface TransactionRowProps {
 const TransactionRow = React.memo(({ type, amount, description, status, timestamp, metadata }: TransactionRowProps) => {
   const safeAmount = Number.isFinite(amount) ? amount : 0;
   const isPositive = safeAmount >= 0;
-  const typeLabel =
-    type === 'deposit'
-      ? 'Ajout'
-      : type === 'withdraw'
-        ? 'Retrait'
-        : type === 'prize_win'
-          ? 'Gain'
-          : type === 'entry_fee'
-            ? 'Pass'
-            : type === 'refund'
-              ? 'Remboursement'
-              : type === 'bonus'
-                ? 'Bonus'
-                : type === 'arbitration_fee'
-                  ? 'Arbitrage'
-                  : type === 'match_loss'
-                    ? 'Partie'
-                    : type === 'debit'
-                      ? 'Débit'
-                      : type === 'penalty'
-                        ? 'Pénalité'
-                        : type === 'referral'
-                          ? 'Parrainage'
-                          : type;
+  // P13 C16 (audit-3) : la table des libelles FR vit desormais dans
+  // transactionLabels (partagee avec EarningsDashboard, qui affichait les
+  // types bruts). Le fallback est le type brut : un type inconnu reste
+  // visible, jamais masque.
+  const typeLabel = getTransactionTypeLabel(type);
 
   const statusIcon =
     status === 'completed' ? (

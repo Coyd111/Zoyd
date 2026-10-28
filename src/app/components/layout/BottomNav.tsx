@@ -42,7 +42,9 @@ const moreNavItems = [
 ];
 
 const menuItems = [
-  { icon: Wallet, label: 'WALLET', path: '/wallet' },
+  // P13 C16 (audit-3) : WALLET etait duplique — deja dans la barre (navItems)
+  // ET premier du menu : deux chemins visuels vers la meme page dans un
+  // espace de 5 items. Le menu garde PROFIL et PARAMETRES.
   { icon: User, label: 'PROFIL', path: '/profil' },
   { icon: Settings, label: 'PARAMÈTRES', path: '/parametres' },
 ];

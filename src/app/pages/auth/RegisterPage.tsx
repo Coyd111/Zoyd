@@ -85,7 +85,10 @@ const registerFormBaseSchema = z.object({
 
 const step1Schema = registerFormBaseSchema
   .extend({
-    pseudo: z.string().min(3, 'Minimum 3 caractères').max(20, 'Maximum 20 caractères').optional(),
+    // P13 C16 (audit-3) : max 30, aligne sur la troncature serveur
+    // (auth.mjs:439) et sur ParametresPage (maxLength=30) : les deux ecrans
+    // divergeaient (20 ici, 30 a l'edition) pour un meme plafond reel.
+    pseudo: z.string().min(3, 'Minimum 3 caractères').max(30, 'Maximum 30 caractères').optional(),
     email: z.string().email('Email invalide').optional(),
     // `.min(8)` laissait passer `+2290165240654` : dix chiffres après l'indicatif
 // alors qu'un mobile béninois en compte huit. Le compte était stocké avec un

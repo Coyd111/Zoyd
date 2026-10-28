@@ -12,6 +12,12 @@
  * exposes dans les projections diffusees.
  * PIEGE : un joueur sans activite ne doit pas etre classe. Filtrer sur
  * activityCount / totalMatches / totalEarnings, comme le fait deja le code.
+ * EXCEPTION DOCUMENTEE (P13 C16, audit-3) : le joueur courant (isMe) est
+ * force inclus meme sans activite — il doit toujours voir sa propre ligne
+ * (rang, valeur a zero) plutot qu'une absence qui ressemblerait a un bug.
+ * Cette exception est VOULUE, en tension avec la regle ci-dessus : ne pas
+ * la retirer par ze only-filtre ni l'elargir aux autres joueurs sans
+ * activite.
  * PIEGE : les graphes et cartesUsesocket pour la presence : hors ligne,
  * la page doit afficher un etat, pas une liste figee presentee comme
  * vivante.
@@ -142,6 +148,9 @@ const ClassementsPage: React.FC = () => {
   }, [players]);
 
   const rowsByActiveTab = useMemo<RankingRow[]>(() => {
+    // EXCEPTION VOULUE (voir docstring) : `|| player.isMe` inclut toujours
+    // le joueur courant, meme sans activite, pour qu'il voie sa propre
+    // ligne dans chaque classement.
     const indexedPlayers = players.filter(
       (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0 || player.isMe
     );

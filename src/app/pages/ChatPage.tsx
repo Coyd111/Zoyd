@@ -31,7 +31,7 @@
  */
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { Send, Hash, Lock, Globe, Users, MessageSquare, BellOff, MoreVertical, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Send, Hash, Lock, Globe, Users, MessageSquare, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from '../lib/toast';
 import {
@@ -47,7 +47,6 @@ import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
 import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
 import { SEOHead } from '../components/SEOHead';
-import { getApiUrl, getAuthHeaders } from '../lib/apiClient';
 
 const channelIcons: Record<string, React.ReactNode> = {
   global: <Globe className="w-4 h-4" />,
@@ -68,8 +67,6 @@ const ChatPage: React.FC = () => {
   const hydrateFromServer = useChatStore((s) => s.hydrateFromServer);
   const receiveServerMessage = useChatStore((s) => s.receiveServerMessage);
   const markAsRead = useChatStore((s) => s.markAsRead);
-  const muteChannel = useChatStore((s) => s.muteChannel);
-  const unmuteChannel = useChatStore((s) => s.unmuteChannel);
   const getMessagesForChannel = useChatStore((s) => s.getMessagesForChannel);
   const getUnreadTotal = useChatStore((s) => s.getUnreadTotal);
   const friends = useFriendsStore((s) => s.friends);
@@ -317,8 +314,7 @@ const ChatPage: React.FC = () => {
                   <span className="truncate max-w-[120px]">{channel.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {channel.isMuted && <BellOff className="w-3 h-3 text-white/70" />}
-                  {channel.unreadCount > 0 && !channel.isMuted && (
+                  {channel.unreadCount > 0 && (
                     <span className="bg-zoyd-blue text-white text-[10px] px-1.5 py-0.5 font-mono font-bold">
                       {channel.unreadCount}
                     </span>
@@ -359,36 +355,18 @@ const ChatPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    const newMuted = !activeChannel.isMuted;
-                    const channelId = activeChannel.id;
-                    const previousState = activeChannel.isMuted;
-                    // Optimistic update
-                    if (newMuted) {
-                      muteChannel(channelId);
-                    } else {
-                      unmuteChannel(channelId);
-                    }
-                    fetch(getApiUrl(`/api/chat/channels/${channelId}/${newMuted ? 'mute' : 'unmute'}`), {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                      credentials: 'include',
-                    }).catch(() => {
-                      // Rollback on failure
-                      if (previousState) {
-                        muteChannel(channelId);
-                      } else {
-                        unmuteChannel(channelId);
-                      }
-                    });
-                  }}
-                  className="touch-target text-white/70 hover:text-white transition-colors"
-                  aria-label={activeChannel.isMuted ? 'Activer les notifications' : 'Couper les notifications'}
-                >
-                  {activeChannel.isMuted ? <BellOff className="w-4 h-4" /> : <MoreVertical className="w-4 h-4" />}
-                </button>
               </div>
+              {/* P13 C16 (audit-3) : le bouton mute/unmute du canal est retire.
+                  Son fetch POST /api/chat/channels/:id/mute pointait sur une
+                  route qui N'EXISTE PAS cote serveur (grep server : aucune
+                  route mute) : le fetch repondait 404 sans rejeter, le
+                  rollback du catch n'a jamais pu s'executer, et l'etat
+                  isMuted n'etait qu'une fiction de session perdue au
+                  rechargement. De plus isMuted est un champ GLOBAL du canal :
+                  l'implementer tel quel mueterait le canal pour TOUS les
+                  participants. Un vrai mute est une preference PAR
+                  UTILISATEUR (mutedChannelIds persistes + routes serveur) :
+                  le reintroduire suppose ce mecanisme d'abord. */}
 
               <div ref={containerRef} role="log" aria-live="polite" className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                 <AnimatePresence>

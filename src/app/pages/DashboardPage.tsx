@@ -393,29 +393,49 @@ const DashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {recentNotifications.map((n) => (
-                  <Link
-                    key={n.id}
-                    to={n.actionUrl || '#'}
-                    className={`group flex items-start gap-3 p-3 border bg-zoyd-surface/20 hover:border-white/10 transition-all ${
-                      n.read ? 'border-white/5' : 'border-zoyd-blue/20'
-                    }`}
-                  >
-                    <NotifIcon type={n.type} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-display font-black text-xs text-white uppercase italic tracking-tight truncate">
-                          {n.title}
-                        </span>
-                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-zoyd-blue shrink-0" />}
+                {/* P13 C16 (audit-3) : `to={n.actionUrl || '#'}` rendait un lien
+                    mort silencieux quand la notification n'a pas d'URL :
+                    sans actionUrl, la carte est un simple div non cliquable
+                    (meme rendu), avec actionUrl elle navigue. */}
+                {recentNotifications.map((n) => {
+                  const card = (
+                    <>
+                      <NotifIcon type={n.type} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-display font-black text-xs text-white uppercase italic tracking-tight truncate">
+                            {n.title}
+                          </span>
+                          {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-zoyd-blue shrink-0" />}
+                        </div>
+                        <div className="text-[10px] font-mono text-white/70 truncate">{n.message}</div>
                       </div>
-                      <div className="text-[10px] font-mono text-white/70 truncate">{n.message}</div>
+                      <div className="text-[10px] font-mono text-white/60 whitespace-nowrap shrink-0">
+                        {getRelativeTime(n.timestamp)}
+                      </div>
+                    </>
+                  );
+                  return n.actionUrl ? (
+                    <Link
+                      key={n.id}
+                      to={n.actionUrl}
+                      className={`group flex items-start gap-3 p-3 border bg-zoyd-surface/20 hover:border-white/10 transition-all ${
+                        n.read ? 'border-white/5' : 'border-zoyd-blue/20'
+                      }`}
+                    >
+                      {card}
+                    </Link>
+                  ) : (
+                    <div
+                      key={n.id}
+                      className={`flex items-start gap-3 p-3 border bg-zoyd-surface/20 ${
+                        n.read ? 'border-white/5' : 'border-zoyd-blue/20'
+                      }`}
+                    >
+                      {card}
                     </div>
-                    <div className="text-[10px] font-mono text-white/60 whitespace-nowrap shrink-0">
-                      {getRelativeTime(n.timestamp)}
-                    </div>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -582,7 +602,9 @@ const DashboardPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Elo</div>
-                <div className="font-display font-black text-sm text-zoyd-blue italic">{user.stats?.elo || 1000}</div>
+                {/* P13 C16 (audit-3) : `??` et non `||` — un elo a 0 doit
+                    s'afficher 0, pas le defaut 1000. */}
+                <div className="font-display font-black text-sm text-zoyd-blue italic">{user.stats?.elo ?? 1000}</div>
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Trust</div>

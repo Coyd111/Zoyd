@@ -2,7 +2,19 @@ openapi: 3.0.3
 info:
   title: ZOYD API
   version: 1.0.0
-  description: API for ZOYD competitive gaming platform — wagers, tournaments, leagues, and wallets.
+  description: |
+    API for ZOYD competitive gaming platform — wagers, tournaments, leagues, and wallets.
+
+    > **CONTRAT PARTIEL — deprecated.** Ce fichier ne decrit que 10 chemins sur
+    > ~108 routes reelles reparties sur 11 modules (`docs/04-api.md` §12 fait
+    > reference, pas ce fichier). Il ne doit servir que d'apercu, jamais de
+    > contrat d'integration.
+    >
+    > Mode d'authentification REEL : cookie httpOnly `zoyd_auth` + garde
+    > d'origine (CSRF). AUCUN token Bearer sur l'API REST — le bearer n'existe
+    > que pour la connexion temps reel socket.io. Le token n'apparait dans un
+    > corps de reponse QUE si `ALLOW_DEBUG_CODES=true` (dev/test, fail-closed
+    > en production).
 
 servers:
   - url: https://zoyd.onrender.com
@@ -37,7 +49,11 @@ paths:
                 device: { type: string }
                 country: { type: string }
       responses:
-        '201': { description: Account created }
+        '201':
+          description: |
+            Account created : Set-Cookie httpOnly `zoyd_auth` + corps
+            { ok, user, expiresAt }. Le token n'est dans le corps QUE si
+            ALLOW_DEBUG_CODES=true (dev/test, jamais en production).
         '409': { description: Email/pseudo already taken }
 
   /api/auth/login:
@@ -53,13 +69,18 @@ paths:
                 identifier: { type: string, description: Email or pseudo }
                 password: { type: string }
       responses:
-        '200': { description: Login successful, returns token + user }
+        '200':
+          description: |
+            Login successful : Set-Cookie httpOnly `zoyd_auth` (seul credential
+            du navigateur) + corps { ok, user, expiresAt }. Le token n'est
+            renvoye dans le corps QUE si ALLOW_DEBUG_CODES=true — jamais en
+            production (server/routes/auth.mjs, fail-closed).
         '401': { description: Invalid credentials }
 
   /api/auth/me:
     get:
       summary: Get current user profile
-      security: [{ BearerAuth: [] }]
+      security: [{ cookieAuth: [] }]
       responses:
         '200': { description: Current user }
         '401': { description: Not authenticated }
@@ -67,42 +88,67 @@ paths:
   /api/wallet/me:
     get:
       summary: Get wallet snapshot
-      security: [{ BearerAuth: [] }]
+      security: [{ cookieAuth: [] }]
       responses:
         '200': { description: Wallet balance + transactions }
+        '401': { description: Not authenticated }
 
   /api/wallet/deposit:
     post:
-      summary: Deposit funds
-      security: [{ BearerAuth: [] }]
+      summary: Admin — credit a player wallet
+      description: |
+        Operation financiere reservee a l'admin avec 2FA verifiee
+        (`requireAdmin2fa`, server/routes/wallet.mjs:153) : 401 sans session,
+        403 ADMIN_REQUIRED hors role admin, 403 2FA_REQUIRED si la 2FA n'est
+        pas activee ou pas fraichement verifiee. En production, les depots
+        joueurs passent par /api/wallet/verify-fedapay (confirmation du
+        paiement FedaPay), pas par cette route manuelle.
+      security: [{ cookieAuth: [] }]
       requestBody:
         content:
           application/json:
             schema:
               type: object
-              required: [amount, method]
+              required: [userId, amount]
               properties:
-                amount: { type: number }
-                method: { type: string }
+                userId: { type: string, description: Joueur credite }
+                amount: { type: number, description: En ZC }
+                method: { type: string, default: admin-credit }
       responses:
         '200': { description: Deposit confirmed }
+        '401': { description: Not authenticated }
+        '403': { description: Admin role or verified 2FA missing (ADMIN_REQUIRED / 2FA_REQUIRED) }
 
   /api/wallet/withdraw:
     post:
-      summary: Withdraw funds
-      security: [{ BearerAuth: [] }]
+      summary: Withdraw funds to Mobile Money
+      description: |
+        Commission ZOYD : 2 % (WITHDRAWAL_FEE_RATE, server/wallet-engine.mjs).
+        Montant : 150 a 100 000 ZC (INVALID_AMOUNT sinon). L'operateur
+        (`method`) doit appartenir au pays : le pays vient du corps, sinon du
+        profil, sinon Benin par defaut — un pays non supporte est
+        INVALID_COUNTRY, jamais un repli silencieux. La cle d'idempotence est
+        OBLIGATOIRE (corps `idempotencyKey` ou en-tete `x-idempotency-key`) :
+        sans elle, 400 IDEMPOTENCY_KEY_REQUIRED — sans elle, un double-clic
+        debite deux fois.
+      security: [{ cookieAuth: [] }]
       requestBody:
         content:
           application/json:
             schema:
               type: object
-              required: [amount, method, phone]
+              required: [amount, method, phone, idempotencyKey]
               properties:
-                amount: { type: number }
-                method: { type: string }
-                phone: { type: string }
+                amount: { type: number, minimum: 150, maximum: 100000, description: En ZC }
+                method: { type: string, description: Operateur Mobile Money du pays }
+                country: { type: string, description: 'Pays (ISO) ; defaut : profil, puis Benin' }
+                phone: { type: string, description: Format international du pays }
+                idempotencyKey: { type: string, description: "Alternative : en-tete x-idempotency-key" }
       responses:
         '200': { description: Withdrawal confirmed }
+        '400':
+          description: IDEMPOTENCY_KEY_REQUIRED / INVALID_AMOUNT / INVALID_COUNTRY / INVALID_OPERATOR / INVALID_PHONE
+        '401': { description: Not authenticated }
 
   /api/matches:
     get:
@@ -111,14 +157,15 @@ paths:
         '200': { description: Match list }
     post:
       summary: Create a new match
-      security: [{ BearerAuth: [] }]
+      security: [{ cookieAuth: [] }]
       responses:
         '201': { description: Match created }
+        '401': { description: Not authenticated }
 
   /api/matches/{matchId}/join:
     post:
       summary: Join a match
-      security: [{ BearerAuth: [] }]
+      security: [{ cookieAuth: [] }]
       parameters:
         - name: matchId
           in: path
@@ -126,11 +173,12 @@ paths:
           schema: { type: string }
       responses:
         '200': { description: Joined successfully }
+        '401': { description: Not authenticated }
 
   /api/matches/{matchId}/result:
     post:
       summary: Submit match result
-      security: [{ BearerAuth: [] }]
+      security: [{ cookieAuth: [] }]
       parameters:
         - name: matchId
           in: path
@@ -138,11 +186,12 @@ paths:
           schema: { type: string }
       responses:
         '200': { description: Result submitted }
+        '401': { description: Not authenticated }
 
   /api/admin/matches/{matchId}/award:
     post:
       summary: Admin: award match result
-      security: [{ BearerAuth: [] }]
+      security: [{ cookieAuth: [] }]
       parameters:
         - name: matchId
           in: path
@@ -150,12 +199,12 @@ paths:
           schema: { type: string }
       responses:
         '200': { description: Match awarded }
-        '403': { description: Admin only }
+        '403': { description: Admin only (ADMIN_REQUIRED / 2FA_REQUIRED) }
 
   /api/admin/2fa/verify:
     post:
       summary: Admin: verify 2FA code
-      security: [{ BearerAuth: [] }]
+      security: [{ cookieAuth: [] }]
       requestBody:
         content:
           application/json:
@@ -168,12 +217,23 @@ paths:
         '200': { description: 2FA verified }
         '400': { description: Invalid code }
 
-security:
-  - BearerAuth: []
-
 components:
   securitySchemes:
-    BearerAuth:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: zoyd_auth
+      description: |
+        Cookie de session httpOnly pose par /api/auth/login et
+        /api/auth/register (server/http-utils.mjs, serializeAuthCookie). Les
+        requetes mutatrices sont en plus filtreees par la garde d'origine
+        (CSRF) : aucun token CSRF a manipuler, le navigateur porte le
+        credential. docs/03-securite.md.
+    RealtimeBearer:
       type: http
       scheme: bearer
       bearerFormat: UUID
+      description: |
+        UNIQUEMENT pour la connexion temps reel socket.io. Aucune route REST
+        ne lit de Bearer : le cookie `zoyd_auth` est le seul credential du
+        navigateur.

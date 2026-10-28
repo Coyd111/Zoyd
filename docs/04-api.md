@@ -9,8 +9,14 @@
 > (→ `03-securite.md`), ni les invariants à ne pas casser (→ `05-invariants.md`).
 > Le déploiement et l'exploitation sont dans `07-exploitation.md`.
 >
-> **Source :** lecture directe de `server/`. Les citations `fichier:ligne` renvoient
-> à l'état du dépôt au moment de la rédaction.
+> **Source :** lecture directe de `server/`. Base : commit `5f4b796`
+> (27/10/2026), citations repassées le 28/10/2026 (audit-3 P16).
+>
+> **Convention de citation :** les renvois `fichier:ligne` datent de leur
+> vérification : toute modification du fichier les décale. L'ancrage fiable
+> est le **nom du symbole ou du code d'erreur** ; la ligne est un indice,
+> pas une garantie.
+>
 > **Point d'entrée :** `server/realtime-server.mjs` (serveur `http` natif, pas
 > Express — `docs/01-architecture.md:74-76`).
 
@@ -34,8 +40,8 @@ Deux formes, et deux seulement :
 | `code` | chaîne | Code **machine**, stable, à tester côté client. |
 
 La production de l'enveloppe d'erreur est centralisée dans `respondMappedError`
-(`server/http-utils.mjs:442-448`) : elle passe par `mapPersistenceError`
-(`server/http-utils.mjs:303-435`) pour choisir le statut HTTP, puis écrit
+(`server/http-utils.mjs:480-486`) : elle passe par `mapPersistenceError`
+(`server/http-utils.mjs:341-473`) pour choisir le statut HTTP, puis écrit
 `{ ok:false, error, code }`.
 
 Deux exceptions à connaître :
@@ -49,12 +55,12 @@ Deux exceptions à connaître :
 
 **Invariant.** Toute erreur métier doit porter un `error.code`. Sans lui, elle
 tombe dans le `default` de `mapPersistenceError` et devient un **500 à message
-générique** `'Une erreur serveur est survenue.'` (`server/http-utils.mjs:432-434`).
+générique** `'Une erreur serveur est survenue.'` (`server/http-utils.mjs:470-472`).
 C'est la cause n°1 de « 500 alors que c'est une faute de saisie ».
 
 ### 1.2 En-têtes
 
-Posés à **chaque** réponse JSON par `respondJson` (`server/http-utils.mjs:110-131`) :
+Posés à **chaque** réponse JSON par `respondJson` (`server/http-utils.mjs:148-169`) :
 
 | En-tête | Valeur |
 |---|---|
@@ -70,24 +76,24 @@ Posés à **chaque** réponse JSON par `respondJson` (`server/http-utils.mjs:110
 | `Vary` | `Origin` |
 
 Pas de `X-XSS-Protection` (déprécié, ignoré) ni de CSP : les deux sont
-argumentés en `server/http-utils.mjs:118-130`. La CSP effective est celle de
+argumentés en `server/http-utils.mjs:156-168`. La CSP effective est celle de
 `vercel.json` (`vercel.json:32`), sur les documents.
 
 ### 1.3 Corps de requête
 
 | Contrainte | Valeur | Source |
 |---|---|---|
-| Taille maximale | **1 Mo** | `BODY_SIZE_LIMIT`, `server/http-utils.mjs:167` |
-| Dépassement | socket coupé (`req.destroy()`), `code:'PAYLOAD_TOO_LARGE'` | `server/http-utils.mjs:180-186` |
-| JSON invalide | `code:'INVALID_JSON'` | `server/http-utils.mjs:203` |
-| Corps vide | traité comme `{}` | `server/http-utils.mjs:199` |
-| Socket coupé par le client | `code:'CLIENT_ABORTED'` (≠ session invalide) | `server/http-utils.mjs:193-195` |
+| Taille maximale | **1 Mo** | `BODY_SIZE_LIMIT`, `server/http-utils.mjs:205` |
+| Dépassement | socket coupé (`req.destroy()`), `code:'PAYLOAD_TOO_LARGE'` | `server/http-utils.mjs:218-224` |
+| JSON invalide | `code:'INVALID_JSON'` | `server/http-utils.mjs:241` |
+| Corps vide | traité comme `{}` | `server/http-utils.mjs:237` |
+| Socket coupé par le client | `code:'CLIENT_ABORTED'` (≠ session invalide) | `server/http-utils.mjs:231-233` |
 
 ### 1.4 Pagination
 
-`parseQueryParams` (`server/http-utils.mjs:148-154`) : `limit` borné à
+`parseQueryParams` (`server/http-utils.mjs:186-192`) : `limit` borné à
 **[1, 500]**, défaut **100** ; `offset ≥ 0`, défaut 0.
-`paginate` renvoie `{ items, hasMore }` (`server/http-utils.mjs:161-164`).
+`paginate` renvoie `{ items, hasMore }` (`server/http-utils.mjs:199-202`).
 
 Plafonds **spécifiques par route**, plus stricts que le global :
 
@@ -100,8 +106,8 @@ Plafonds **spécifiques par route**, plus stricts que le global :
 
 ## 2. Table des codes erreur → statut HTTP
 
-Source unique : `mapPersistenceError` (`server/http-utils.mjs:303-435`).
-`respondMappedError` (`server/http-utils.mjs:442-448`) **ne journalise en `error`
+Source unique : `mapPersistenceError` (`server/http-utils.mjs:341-473`).
+`respondMappedError` (`server/http-utils.mjs:480-486`) **ne journalise en `error`
 que le 500** — les 4xx ne sont pas logués comme erreur.
 
 ### 2.1 400 — Bad Request (41 codes)
@@ -111,137 +117,137 @@ correction de la requête.**
 
 | # | Code | Ligne | Origine typique |
 |---|---|---|---|
-| 1 | `INVALID_REGISTRATION` | `:307` | inscription |
-| 2 | `IDEMPOTENCY_KEY_REQUIRED` | `:308` | `POST /api/wallet/withdraw` |
-| 3 | `ACTIVE_WAGER` | `:309` | mise en cours |
-| 4 | `INVALID_JSON` | `:311` | corps malformé, `tournamentId` non-UUID, `userId` absent |
-| 5 | `PAYLOAD_TOO_LARGE` | `:312` | corps > 1 Mo |
-| 6 | `INVALID_TRANSACTION_ID` | `:313` | `transactionId` FedaPay non numérique |
-| 7 | `INVALID_AMOUNT` | `:314` | montant hors bornes |
-| 8 | `WITHDRAWAL_MIN` | `:315` | sous le minimum de retrait |
-| 9 | `MATCH_SEGMENT_MISMATCH` | `:316` | |
-| 10 | `ROOM_INCOMPLETE` | `:317` | |
-| 11 | `ROOM_TOO_EARLY` | `:318` | |
-| 12 | `PROOFS_REQUIRED` | `:319` | |
-| 13 | `DISPUTE_INCOMPLETE` | `:320` | |
-| 14 | `MATCH_NOT_READY` | `:321` | |
-| 15 | `CHECKIN_REQUIRED` | `:322` | |
-| 16 | `INVALID_MATCH` | `:323` | |
-| 17 | `NOT_ENOUGH_PLAYERS` | `:324` | |
-| 18 | `QUALIFICATION_INCOMPLETE` | `:325` | |
-| 19 | `REGISTRATION_CLOSED` | `:326` | |
-| 20 | `NOT_JOINED` | `:327` | |
-| 21 | `MATCH_ALREADY_LIVE` | `:328` | |
-| 22 | `NO_PLAYERS` | `:329` | |
-| 23 | `INVALID_DAY` | `:330` | |
-| 24 | `INVALID_RESULTS` | `:331` | |
-| 25 | `INVALID_ARBITER` | `:332` | |
-| 26 | `INVALID_PAYOUT` | `:333` | |
-| 27 | `INVALID_MODE` | `:334` | |
-| 28 | `INVALID_MAP` | `:335` | |
-| 29 | `INVALID_RANKING_MODE` | `:336` | |
-| 30 | `INVALID_DATE` | `:337` | |
-| 31 | `WEAK_PASSWORD` | `:348` | politique de mot de passe |
-| 32 | `RESET_FAILED` | `:349` | code de réinitialisation invalide |
-| 33 | `INVALID_EMAIL` | `:350` | |
-| 34 | `INVALID_OPERATOR` | `:351` | opérateur de payout inconnu du pays |
-| 35 | `INVALID_PHONE` | `:352` | |
-| 36 | `INVALID_COUNTRY` | `:353` | pays de payout non supporté |
-| 37 | `LEGAL_NOT_ACCEPTED` | `:354` | consentement 18+/CGU non coché |
-| 38 | `INVALID_FORMAT` | `:355` | format de match hors 1VS1–5VS5 |
-| 39 | `PAYMENT_NOT_CONFIGURED` | `:379` | `FEDAPAY_SECRET_KEY` absent |
-| 40 | `TRANSACTION_NOT_APPROVED` | `:380` | FedaPay refuse la transaction |
-| 41 | `FEDAPAY_API_ERROR` | `:381` | erreur amont FedaPay |
+| 1 | `INVALID_REGISTRATION` | `:345` | inscription |
+| 2 | `IDEMPOTENCY_KEY_REQUIRED` | `:346` | `POST /api/wallet/withdraw` |
+| 3 | `ACTIVE_WAGER` | `:347` | mise en cours |
+| 4 | `INVALID_JSON` | `:349` | corps malformé, `tournamentId` non-UUID, `userId` absent |
+| 5 | `PAYLOAD_TOO_LARGE` | `:350` | corps > 1 Mo |
+| 6 | `INVALID_TRANSACTION_ID` | `:351` | `transactionId` FedaPay non numérique |
+| 7 | `INVALID_AMOUNT` | `:352` | montant hors bornes |
+| 8 | `WITHDRAWAL_MIN` | `:353` | sous le minimum de retrait |
+| 9 | `MATCH_SEGMENT_MISMATCH` | `:354` | |
+| 10 | `ROOM_INCOMPLETE` | `:355` | |
+| 11 | `ROOM_TOO_EARLY` | `:356` | |
+| 12 | `PROOFS_REQUIRED` | `:357` | |
+| 13 | `DISPUTE_INCOMPLETE` | `:358` | |
+| 14 | `MATCH_NOT_READY` | `:359` | |
+| 15 | `CHECKIN_REQUIRED` | `:360` | |
+| 16 | `INVALID_MATCH` | `:361` | |
+| 17 | `NOT_ENOUGH_PLAYERS` | `:362` | |
+| 18 | `QUALIFICATION_INCOMPLETE` | `:363` | |
+| 19 | `REGISTRATION_CLOSED` | `:364` | |
+| 20 | `NOT_JOINED` | `:365` | |
+| 21 | `MATCH_ALREADY_LIVE` | `:366` | |
+| 22 | `NO_PLAYERS` | `:367` | |
+| 23 | `INVALID_DAY` | `:368` | |
+| 24 | `INVALID_RESULTS` | `:369` | |
+| 25 | `INVALID_ARBITER` | `:370` | |
+| 26 | `INVALID_PAYOUT` | `:371` | |
+| 27 | `INVALID_MODE` | `:372` | |
+| 28 | `INVALID_MAP` | `:373` | |
+| 29 | `INVALID_RANKING_MODE` | `:374` | |
+| 30 | `INVALID_DATE` | `:375` | |
+| 31 | `WEAK_PASSWORD` | `:386` | politique de mot de passe |
+| 32 | `RESET_FAILED` | `:387` | code de réinitialisation invalide |
+| 33 | `INVALID_EMAIL` | `:388` | |
+| 34 | `INVALID_OPERATOR` | `:389` | opérateur de payout inconnu du pays |
+| 35 | `INVALID_PHONE` | `:390` | |
+| 36 | `INVALID_COUNTRY` | `:391` | pays de payout non supporté |
+| 37 | `LEGAL_NOT_ACCEPTED` | `:392` | consentement 18+/CGU non coché |
+| 38 | `INVALID_FORMAT` | `:393` | format de match hors 1VS1–5VS5 |
+| 39 | `PAYMENT_NOT_CONFIGURED` | `:417` | `FEDAPAY_SECRET_KEY` absent |
+| 40 | `TRANSACTION_NOT_APPROVED` | `:418` | FedaPay refuse la transaction |
+| 41 | `FEDAPAY_API_ERROR` | `:419` | erreur amont FedaPay |
 
 > `LEGAL_NOT_ACCEPTED` et `INVALID_FORMAT` ont été déplacés dans ce groupe
 > précisément parce qu'ils tombaient dans le `default` → 500 pour une simple
-> erreur de saisie côté client (`server/http-utils.mjs:344-347`).
+> erreur de saisie côté client (`server/http-utils.mjs:382-385`).
 
 ### 2.2 401 — Unauthorized (2 codes mappés)
 
 | Code | Ligne | Signification |
 |---|---|---|
-| `INVALID_CREDENTIALS` | `:339` | identifiant ou mot de passe faux |
-| `UNAUTHORIZED` | `:340` | Bearer absent ou faux — **aussi utilisé par `/metrics`** (`server/routes/public.mjs:315`) |
+| `INVALID_CREDENTIALS` | `:377` | identifiant ou mot de passe faux |
+| `UNAUTHORIZED` | `:378` | Bearer absent ou faux — **aussi utilisé par `/metrics`** (`server/routes/public.mjs:356`) |
 
 ### 2.3 403 — Forbidden (3 codes mappés)
 
 | Code | Ligne | Signification |
 |---|---|---|
-| `FORBIDDEN` | `:357` | droit refusé |
-| `TRANSACTION_NOT_OWNED` | `:358` | transaction FedaPay d'un autre compte |
-| `ACCOUNT_NOT_ACTIVATED` | `:359` | compte non activé |
+| `FORBIDDEN` | `:395` | droit refusé |
+| `TRANSACTION_NOT_OWNED` | `:396` | transaction FedaPay d'un autre compte |
+| `ACCOUNT_NOT_ACTIVATED` | `:397` | compte non activé |
 
 ### 2.4 404 — Not Found (8 codes)
 
 | Code | Ligne |
 |---|---|
-| `NOT_FOUND` | `:402` |
-| `MATCH_NOT_FOUND` | `:403` |
-| `TOURNAMENT_NOT_FOUND` | `:404` |
-| `LEAGUE_NOT_FOUND` | `:405` |
-| `CHANNEL_NOT_FOUND` | `:406` |
-| `PLAYER_NOT_FOUND` | `:407` |
-| `USER_NOT_FOUND` | `:408` |
-| `LOBBY_NOT_FOUND` | `:409` |
+| `NOT_FOUND` | `:440` |
+| `MATCH_NOT_FOUND` | `:441` |
+| `TOURNAMENT_NOT_FOUND` | `:442` |
+| `LEAGUE_NOT_FOUND` | `:443` |
+| `CHANNEL_NOT_FOUND` | `:444` |
+| `PLAYER_NOT_FOUND` | `:445` |
+| `USER_NOT_FOUND` | `:446` |
+| `LOBBY_NOT_FOUND` | `:447` |
 
 ### 2.5 409 — Conflict (38 codes)
 
 **C'est le statut « l'état du monde n'est pas celui qu'on attend ».** Salons
 pleins ou lancés, joueur déjà inscrit ou éliminé, clé d'idempotence déjà
 consommée, transaction déjà traitée. Le commentaire du code le dit :
-« 409 et non 400 : le client peut reessayer » (`server/http-utils.mjs:411-414`).
+« 409 et non 400 : le client peut reessayer » (`server/http-utils.mjs:449-452`).
 
 | # | Code | Ligne | | # | Code | Ligne |
 |---|---|---|---|---|---|---|
-| 1 | `DUPLICATE_PSEUDO` | `:361` | | 20 | `DISPUTE_NOT_FOUND` | `:394` |
-| 2 | `DUPLICATE_EMAIL` | `:362` | | 21 | `DISPUTE_ALREADY_ESCALATED` | `:395` |
-| 3 | `DUPLICATE_PHONE` | `:363` | | 22 | `ALREADY_FRIENDS` | `:396` |
-| 4 | `DUPLICATE_GAME_ID` | `:364` | | 23 | `ACCOUNT_ALREADY_ACTIVE` | `:397` |
-| 5 | `ALREADY_LOCKED` | `:365` | | 24 | `REQUEST_PENDING` | `:398` |
-| 6 | `TRANSACTION_IN_PROGRESS` | `:366` | | 25 | `ALREADY_CONFIRMED` | `:399` |
-| 7 | `INSUFFICIENT_FUNDS` | `:367` | | 26 | `INVALID_REQUEST` | `:400` |
-| 8 | `DAILY_WITHDRAWAL_LIMIT` | `:368` | | 27 | `ALREADY_CHECKED_IN` | `:415` |
-| 9 | `MATCH_CLOSED` | `:369` | | 28 | `ALREADY_LIVE` | `:416` |
-| 10 | `MATCH_NOT_LIVE` | `:370` | | 29 | `ALREADY_ELIMINATED` | `:417` |
-| 11 | `ALREADY_JOINED` | `:371` | | 30 | `ALREADY_FINISHED` | `:418` |
-| 12 | `ROLE_CONFLICT` | `:372` | | 31 | `TEAM_FULL` | `:419` |
-| 13 | `TRUST_REQUIRED` | `:373` | | 32 | `LOBBY_FULL` | `:420` |
-| 14 | `NO_SLOT_AVAILABLE` | `:374` | | 33 | `LOBBY_CLOSED` | `:421` |
-| 15 | `ARBITER_TAKEN` | `:375` | | 34 | `LOBBY_NOT_LIVE` | `:422` |
-| 16 | `SELF_BLOCK` | `:376` | | 35 | `PLAYER_DEAD` | `:423` |
-| 17 | `TRANSACTION_ALREADY_PROCESSED` | `:377` | | 36 | `PLAYER_ABSENT` | `:424` |
-| 18 | `2FA_ALREADY_ENABLED` | `:387` | | 37 | `TOO_EARLY` | `:425` |
-| 19 | `RESULT_NOT_FOUND` | `:391` | | 38 | `ARBITER_REQUIRED` / `NO_PRESENT` | `:429` / `:430` |
+| 1 | `DUPLICATE_PSEUDO` | `:399` | | 20 | `DISPUTE_NOT_FOUND` | `:432` |
+| 2 | `DUPLICATE_EMAIL` | `:400` | | 21 | `DISPUTE_ALREADY_ESCALATED` | `:433` |
+| 3 | `DUPLICATE_PHONE` | `:401` | | 22 | `ALREADY_FRIENDS` | `:434` |
+| 4 | `DUPLICATE_GAME_ID` | `:402` | | 23 | `ACCOUNT_ALREADY_ACTIVE` | `:435` |
+| 5 | `ALREADY_LOCKED` | `:403` | | 24 | `REQUEST_PENDING` | `:436` |
+| 6 | `TRANSACTION_IN_PROGRESS` | `:404` | | 25 | `ALREADY_CONFIRMED` | `:437` |
+| 7 | `INSUFFICIENT_FUNDS` | `:405` | | 26 | `INVALID_REQUEST` | `:438` |
+| 8 | `DAILY_WITHDRAWAL_LIMIT` | `:406` | | 27 | `ALREADY_CHECKED_IN` | `:453` |
+| 9 | `MATCH_CLOSED` | `:407` | | 28 | `ALREADY_LIVE` | `:454` |
+| 10 | `MATCH_NOT_LIVE` | `:408` | | 29 | `ALREADY_ELIMINATED` | `:455` |
+| 11 | `ALREADY_JOINED` | `:409` | | 30 | `ALREADY_FINISHED` | `:456` |
+| 12 | `ROLE_CONFLICT` | `:410` | | 31 | `TEAM_FULL` | `:457` |
+| 13 | `TRUST_REQUIRED` | `:411` | | 32 | `LOBBY_FULL` | `:458` |
+| 14 | `NO_SLOT_AVAILABLE` | `:412` | | 33 | `LOBBY_CLOSED` | `:459` |
+| 15 | `ARBITER_TAKEN` | `:413` | | 34 | `LOBBY_NOT_LIVE` | `:460` |
+| 16 | `SELF_BLOCK` | `:414` | | 35 | `PLAYER_DEAD` | `:461` |
+| 17 | `TRANSACTION_ALREADY_PROCESSED` | `:415` | | 36 | `PLAYER_ABSENT` | `:462` |
+| 18 | `2FA_ALREADY_ENABLED` | `:425` | | 37 | `TOO_EARLY` | `:463` |
+| 19 | `RESULT_NOT_FOUND` | `:429` | | 38 | `ARBITER_REQUIRED` / `NO_PRESENT` | `:467` / `:468` |
 
 ### 2.6 423 — Locked
 
 | Code | Ligne | Signification |
 |---|---|---|
-| `ACCOUNT_LOCKED` | `:342` | verrouillage de connexion (durable via `login_attempts`) |
+| `ACCOUNT_LOCKED` | `:380` | verrouillage de connexion (durable via `login_attempts`) |
 
 ### 2.7 502 — Bad Gateway
 
 | Code | Ligne | Signification |
 |---|---|---|
-| `PAYOUT_FAILED` | `:383` | FedaPay a refusé le virement. **Remboursement automatique si l'échec est certain** (`server/routes/wallet.mjs:279-365`) |
+| `PAYOUT_FAILED` | `:421` | FedaPay a refusé le virement. **Remboursement automatique si l'échec est certain** (`server/routes/wallet.mjs:360-377`) |
 
 ### 2.8 503 — Service Unavailable
 
 | Code | Ligne | Signification |
 |---|---|---|
-| `SERVER_BUSY` | `:385` | base injoignable, ou écriture refusée |
-| `DELETE_FAILED` | `:389` | suppression impossible |
+| `SERVER_BUSY` | `:423` | base injoignable, ou écriture refusée |
+| `DELETE_FAILED` | `:427` | suppression impossible |
 
 ### 2.9 500 — défaut
 
 Tout code non listé → `{ status: 500, message: 'Une erreur serveur est survenue.' }`
-(`server/http-utils.mjs:432-434`). Le `code` d'origine est **conservé** dans la
+(`server/http-utils.mjs:470-472`). Le `code` d'origine est **conservé** dans la
 réponse, ce qui permet de le retrouver malgré le statut générique.
 
 Exception hors mapping : le filet de sécurité global du serveur renvoie
 `{ ok:false, error:'Erreur serveur inattendue.', code:'INTERNAL_ERROR' }`
-(`server/realtime-server.mjs:271-276`).
+(`server/realtime-server.mjs:312-317`).
 
 ### 2.10 Codes émis **directement** par les routes (hors table)
 
@@ -251,12 +257,12 @@ table ci-dessus les manque.
 
 | Statut | Codes | Rejetés par |
 |---|---|---|
-| **400** | `MISSING_FIELDS` | `auth.mjs:166,196,225,252,299,509` · `social.mjs:186` · `realtime.mjs:114,138` |
-| | `INVALID_ENUM` | `auth.mjs:355,359,363` · `chat.mjs:89` |
-| | `INVALID_PLAYER_ID` | `public.mjs:212` |
-| | `ACTIVATION_FAILED` | `auth.mjs:173` |
-| | `PSEUDO_REQUIRED` | `auth.mjs:397` |
-| | `CONFIRM_REQUIRED` | `auth.mjs:551` |
+| **400** | `MISSING_FIELDS` | `auth.mjs:214,246,273,300,347,557` · `social.mjs:186` · `realtime.mjs:114,138` |
+| | `INVALID_ENUM` | `auth.mjs:403,407,411` · `chat.mjs:89` |
+| | `INVALID_PLAYER_ID` | `public.mjs:253` |
+| | `ACTIVATION_FAILED` | `auth.mjs:221` |
+| | `PSEUDO_REQUIRED` | `auth.mjs:445` |
+| | `CONFIRM_REQUIRED` | `auth.mjs:599` |
 | | `INVALID_TOURNAMENT_NAME` | `tournament.mjs:65` |
 | | `INVALID_MAX_ENTRIES` | `tournament.mjs:73` |
 | | `INVALID_ENTRY_FEE` | `tournament.mjs:77` · `match.mjs:63` |
@@ -271,22 +277,22 @@ table ci-dessus les manque.
 | | `EMPTY_MESSAGE` | `chat.mjs:140` |
 | | `PAYMENT_FAILED` | `wallet.mjs:440` (repli quand le code métier est absent) |
 | **401** | `AUTH_REQUIRED` | **partout** — émis directement, absent de la table de mapping |
-| **403** | `ACCOUNT_SANCTIONED` | `auth.mjs:121-135` (porte l'objet `sanction`) |
-| | `WRONG_PASSWORD` | `auth.mjs:524` |
-| | `PASSWORD_CONFIRMATION_REQUIRED` | `auth.mjs:429` |
-| | `ADMIN_REQUIRED` | `admin-totp.mjs:162` |
-| | `2FA_REQUIRED` | `admin-totp.mjs:167,171` (porte `requires2fa:true`) |
-| | `INVALID_PASSWORD` | `admin.mjs:441` (setup 2FA) |
-| | `ARBITER_REQUIRED` | `br.mjs:269` — **voir l'avertissement §5.4** |
-| | `METRICS_DISABLED` | `public.mjs:309` |
+| **403** | `ACCOUNT_SANCTIONED` | `auth.mjs:169-183` (porte l'objet `sanction`) |
+| | `WRONG_PASSWORD` | `auth.mjs:572` |
+| | `PASSWORD_CONFIRMATION_REQUIRED` | `auth.mjs:477` |
+| | `ADMIN_REQUIRED` | `admin-totp.mjs:200` |
+| | `2FA_REQUIRED` | `admin-totp.mjs:205,209` (porte `requires2fa:true`) |
+| | `INVALID_PASSWORD` | `admin.mjs:501` (setup 2FA) |
+| | `ARBITER_REQUIRED` | `br.mjs:335` — **voir l'avertissement §5.4** |
+| | `METRICS_DISABLED` | `public.mjs:350` |
 | **404** | `SANCTION_NOT_FOUND` | `admin.mjs:320` |
 | | `REPORT_NOT_FOUND` | `admin.mjs:243` |
 | **409** | `ALREADY_REVIEWED` | `admin.mjs:238-246` |
-| | `PAYOUT_PENDING_REVIEW` | `wallet.mjs:222-227` (porte `idempotencyKey`) |
-| **415** | `UNSUPPORTED_MEDIA_TYPE` | `realtime-server.mjs:245` |
-| **429** | `RATE_LIMITED` | `rate-limiter.mjs:209` (+ en-tête `Retry-After`) |
+| | `PAYOUT_PENDING_REVIEW` | `wallet.mjs:260-276` (porte `idempotencyKey`) |
+| **415** | `UNSUPPORTED_MEDIA_TYPE` | `realtime-server.mjs:286` |
+| **429** | `RATE_LIMITED` | `rate-limiter.mjs:246` (+ en-tête `Retry-After`) |
 | **502** | `UPSTREAM_ERROR` | `public.mjs:150,233` |
-| **500** | `INTERNAL_ERROR` | `realtime-server.mjs:274` |
+| **500** | `INTERNAL_ERROR` | `realtime-server.mjs:315` |
 | | `LOAD_ERROR` | `public.mjs:356,389,408` · `social.mjs:46,60` · `wallet.mjs:99` · `chat.mjs:42,71` · `tournament.mjs:46` · `league.mjs:64,87` |
 | | `SEARCH_ERROR` | `public.mjs:433` |
 | | `STORE_PROXY_ERROR` | `public.mjs:193` |
@@ -331,9 +337,9 @@ if (origin && !ALLOWED_ORIGINS.includes(origin)) → 403 CSRF_ORIGIN_REJECTED
 
 Liste = `ZOYD_ALLOWED_ORIGINS` (CSV) **plus** les trois domaines de production
 toujours ajoutés en dur : `https://zoyd.vercel.app`, `https://zoyd.africa`,
-`https://www.zoyd.africa` (`server/http-utils.mjs:60-67`). En développement,
+`https://www.zoyd.africa` (`server/http-utils.mjs:98-105`). En développement,
 `http://localhost:5173` et `http://127.0.0.1:5173` sont ajoutés **seulement si**
-`NODE_ENV !== 'production'` (`server/http-utils.mjs:59`).
+`NODE_ENV !== 'production'` (`server/http-utils.mjs:97`).
 
 **Niveau 2 — `Content-Type: application/json`.**
 
@@ -373,7 +379,7 @@ du cookie `SameSite=None`.
 
 ### 4.1 Le cookie `zoyd_auth`
 
-Sérialisé par `serializeAuthCookie` (`server/http-utils.mjs:47-56`).
+Sérialisé par `serializeAuthCookie` (`server/http-utils.mjs:85-94`).
 
 | Attribut | Production (`NODE_ENV=production`) | Développement |
 |---|---|---|
@@ -384,14 +390,14 @@ Sérialisé par `serializeAuthCookie` (`server/http-utils.mjs:47-56`).
 | `Max-Age` | `21600` (**6 h**) | idem |
 
 `SameSite=None` est **obligatoire** : le front (Vercel) et l'API (Render) sont
-cross-origin, `Lax` empêcherait le cookie de partir (`server/http-utils.mjs:40-43`).
+cross-origin, `Lax` empêcherait le cookie de partir (`server/http-utils.mjs:78-81`).
 
 Le `Max-Age` est posé à **trois** endroits, toujours `6 * 60 * 60` :
 - création de session à l'inscription (`server/routes/auth.mjs:82`)
 - création de session à la connexion (`server/routes/auth.mjs:142`)
-- rotation de session posée par `respondJson` (`server/http-utils.mjs:103`)
+- rotation de session posée par `respondJson` (`server/http-utils.mjs:141`)
 
-**Durée de vie côté serveur** (`server/persistence.mjs:2818-2840`) :
+**Durée de vie côté serveur** (`server/persistence.mjs:2890-2912`) :
 
 | Notion | Durée | Comportement |
 |---|---|---|
@@ -399,14 +405,14 @@ Le `Max-Age` est posé à **trois** endroits, toujours `6 * 60 * 60` :
 | `SESSION_ABSOLUTE_LIFETIME_MS` | **30 j** | plafond de la famille de sessions, calculé une fois et hérité |
 
 **Rotation.** `getAuthenticatedAppSession` passe `emitToken` à `getAuthSession`
-(`server/http-utils.mjs:244-253`) : le nouveau jeton est déposé dans
+(`server/http-utils.mjs:282-291`) : le nouveau jeton est déposé dans
 `req._authRotation`, et `respondJson` le convertit en `Set-Cookie`
-(`server/http-utils.mjs:100-108`) — **une seule tentative**, la rotation étant
+(`server/http-utils.mjs:138-146`) — **une seule tentative**, la rotation étant
 asynchrone.
 
 > **Piège.** La durée du cookie de rotation est **fixe à 6 h**, alors que la
 > session mère peut avoir une `absoluteExpiresAt` plus courte
-> (`server/http-utils.mjs:103` vs `server/persistence.mjs:3059-3066`). Le cookie
+> (`server/http-utils.mjs:141` vs `server/persistence.mjs:3128-3135`). Le cookie
 > peut donc survivre à la session. Voir `docs/01-architecture.md:1355-1360`.
 
 ### 4.2 L'alternative `Authorization: Bearer`
@@ -415,14 +421,14 @@ Deux notions de token coexistent. **Les confondre produit un 401 silencieux.**
 
 | Token | Où il est lu | Priorité |
 |---|---|---|
-| **Token app** (cookie `zoyd_auth` **ou** Bearer) | `getAuthenticatedAppSession` (`server/http-utils.mjs:244-253`) | **Bearer d'abord**, sinon cookie |
-| **Token realtime** (Bearer **uniquement**) | `getAuthenticatedRealtimeSession` (`server/http-utils.mjs:260-270`) | Bearer **exclusivement** |
+| **Token app** (cookie `zoyd_auth` **ou** Bearer) | `getAuthenticatedAppSession` (`server/http-utils.mjs:282-291`) | **Bearer d'abord**, sinon cookie |
+| **Token realtime** (Bearer **uniquement**) | `getAuthenticatedRealtimeSession` (`server/http-utils.mjs:298-308`) | Bearer **exclusivement** |
 
 > « L'en-tête Authorization d'abord, PAS `readBearerToken` : celui-ci privilégie le
 > cookie `zoyd_auth`, qui n'est PAS un token realtime. »
-> — `server/http-utils.mjs:261-266`
+> — `server/http-utils.mjs:299-304`
 
-`readBearerToken` (`server/http-utils.mjs:212-229`) fait l'**inverse** : cookie
+`readBearerToken` (`server/http-utils.mjs:250-267`) fait l'**inverse** : cookie
 d'abord, puis Bearer. Il est utilisé par `POST /api/auth/logout`,
 `POST /api/auth/change-password`, `DELETE /api/auth/me`, `GET /api/matches` et
 `markAdmin2faVerified`.
@@ -497,13 +503,13 @@ exhaustivement documentées ici.
 - `GET /api/health` → `{ ok, service:'zoyd-api', persistence:{ …health, reloadInProgress }, timestamp }`.
   Le bloc `persistence` contient notamment `stateTrusted`, `integrity.ok`,
   `loginLockoutPersisted`, `sanctionsPersisted`, `deployedCommitShort`,
-  `deployedBranch`, `pendingSettlementDebts` (`server/persistence.mjs:990-1038`).
+  `deployedBranch`, `pendingSettlementDebts` (`server/persistence.mjs:1070-1127`).
   → voir `07-exploitation.md` §5 (runbook).
 - `GET /api/leaderboard` → `{ ok, players, total, hasMore }`.
 - `GET /api/matches` → `{ ok, matches, total, hasMore }`, chaque match passé par
-  `sanitizeMatchForBroadcast(match, viewerId)` (`server/routes/public.mjs:383-386`) :
+  `sanitizeMatchForBroadcast(match, viewerId)` (`server/routes/public.mjs:422-425`) :
   **jamais de `userId`, jamais de `roomPassword`/`roomName`/`screenshots`**
-  (`server/state-helpers.mjs:125-162`).
+  (`server/state-helpers.mjs:188-191`).
 - `GET /api/tournaments` → `{ ok, tournaments, total, hasMore }`, sanitisés avec
   `isMe` calculé par `getAuthenticatedAppSession(req)?.userId`
   (`server/routes/public.mjs:403`).
@@ -533,36 +539,36 @@ toute l'API.** Elles sont exhaustivement documentées ici.
 
 | # | Méthode | Chemin | Rate limit | Corps attendu | Erreurs pertinentes |
 |---|---|---|---|---|---|
-| 1 | POST | `/api/auth/register` | `auth` | 15 champs max (voir §5.2.1) | `400 INVALID_EMAIL` (`:60`), `400 WEAK_PASSWORD`, `400 LEGAL_NOT_ACCEPTED`, `409 DUPLICATE_PSEUDO/EMAIL/PHONE/GAME_ID` |
-| 2 | POST | `/api/auth/login` | `auth` | `{ identifier, password }` | `401 INVALID_CREDENTIALS`, `403 ACCOUNT_SANCTIONED` (`:121`), `423 ACCOUNT_LOCKED` |
-| 3 | POST | `/api/auth/activate` | `auth` | `{ email, code }` | `400 MISSING_FIELDS` (`:166`), `400 ACTIVATION_FAILED` (`:173`) |
-| 4 | POST | `/api/auth/resend-code` | `auth` | `{ email }` | `400 MISSING_FIELDS` (`:196`) |
-| 5 | POST | `/api/auth/activation-email` | `auth` | `{ oldEmail, newEmail }` | `400 MISSING_FIELDS` (`:225`) |
-| 6 | POST | `/api/auth/forgot-password` | `auth` | `{ identifier }` | `400 MISSING_FIELDS` (`:252`) — **réponse identique** que le compte existe ou non |
-| 7 | POST | `/api/auth/reset-password` | `auth` | `{ identifier, code, newPassword }` | `400 MISSING_FIELDS` (`:299`), `400 RESET_FAILED`, `400 WEAK_PASSWORD` |
-| 8 | GET | `/api/auth/me` | **—** | — | `401 AUTH_REQUIRED` (`:316`) |
-| 9 | PATCH | `/api/auth/me` | `auth` | 13 champs max (voir §5.2.2) | `401 AUTH_REQUIRED` (`:331`), `400 INVALID_ENUM` (`:355,359,363`), `400 INVALID_PHONE` (`:381`), `400 PSEUDO_REQUIRED` (`:397`), `400 INVALID_EMAIL` (`:415`), `409 DUPLICATE_EMAIL` (`:419`), `403 PASSWORD_CONFIRMATION_REQUIRED` (`:429`) |
-| 10 | POST | `/api/auth/logout` | `auth_logout` | — | **jamais d'erreur** : répond `200` même sans session (`:492`) |
-| 11 | POST | `/api/auth/change-password` | `auth` | `{ currentPassword, newPassword }` | `401 AUTH_REQUIRED` (`:502`), `400 MISSING_FIELDS` (`:509`), `400 WEAK_PASSWORD`, `404 USER_NOT_FOUND` (`:520`), `403 WRONG_PASSWORD` (`:524`) |
-| 12 | DELETE | `/api/auth/me` | `auth` | `{ confirmForfeit: true }` | `401 AUTH_REQUIRED` (`:545`), `400 CONFIRM_REQUIRED` (`:551`) |
+| 1 | POST | `/api/auth/register` | `auth` | 15 champs max (voir §5.2.1) | `400 INVALID_EMAIL` (`:108`), `400 WEAK_PASSWORD`, `400 LEGAL_NOT_ACCEPTED`, `409 DUPLICATE_PSEUDO/EMAIL/PHONE/GAME_ID` |
+| 2 | POST | `/api/auth/login` | `auth` | `{ identifier, password }` | `401 INVALID_CREDENTIALS`, `403 ACCOUNT_SANCTIONED` (`:169`), `423 ACCOUNT_LOCKED` |
+| 3 | POST | `/api/auth/activate` | `auth` | `{ email, code }` | `400 MISSING_FIELDS` (`:214`), `400 ACTIVATION_FAILED` (`:221`) |
+| 4 | POST | `/api/auth/resend-code` | `auth` | `{ email }` | `400 MISSING_FIELDS` (`:246`) |
+| 5 | POST | `/api/auth/activation-email` | `auth` | `{ oldEmail, newEmail }` | `400 MISSING_FIELDS` (`:273`) |
+| 6 | POST | `/api/auth/forgot-password` | `auth` | `{ identifier }` | `400 MISSING_FIELDS` (`:300`) — **réponse identique** que le compte existe ou non |
+| 7 | POST | `/api/auth/reset-password` | `auth` | `{ identifier, code, newPassword }` | `400 MISSING_FIELDS` (`:347`), `400 RESET_FAILED`, `400 WEAK_PASSWORD` |
+| 8 | GET | `/api/auth/me` | **—** | — | `401 AUTH_REQUIRED` (`:364`) |
+| 9 | PATCH | `/api/auth/me` | `auth` | 13 champs max (voir §5.2.2) | `401 AUTH_REQUIRED` (`:379`), `400 INVALID_ENUM` (`:403,407,411`), `400 INVALID_PHONE` (`:430`), `400 PSEUDO_REQUIRED` (`:445`), `400 INVALID_EMAIL` (`:463`), `409 DUPLICATE_EMAIL` (`:467`), `403 PASSWORD_CONFIRMATION_REQUIRED` (`:477`) |
+| 10 | POST | `/api/auth/logout` | `auth_logout` | — | **jamais d'erreur** : répond `200` même sans session (`:540`) |
+| 11 | POST | `/api/auth/change-password` | `auth` | `{ currentPassword, newPassword }` | `401 AUTH_REQUIRED` (`:550`), `400 MISSING_FIELDS` (`:557`), `400 WEAK_PASSWORD`, `404 USER_NOT_FOUND` (`:568`), `403 WRONG_PASSWORD` (`:572`) |
+| 12 | DELETE | `/api/auth/me` | `auth` | `{ confirmForfeit: true }` | `401 AUTH_REQUIRED` (`:593`), `400 CONFIRM_REQUIRED` (`:599`) |
 
 #### 5.2.1 `POST /api/auth/register`
 
-Whitelist **stricte** de 15 champs (`server/routes/auth.mjs:65-70`) :
+Whitelist **stricte** de 15 champs (`server/routes/auth.mjs:113-118`) :
 `pseudo`, `email`, `phone`, `password`, `gameId`, `controllerType`, `device`,
 `levelCODM`, `rankMJ`, `rankBR`, `country`, `streamerMode`, `streamerPseudo`,
 `acceptAdult`, `acceptTerms`, `acceptedAt`.
 
 > Sans cette whitelist, un `POST {id, wallet, trustScore, stats}` écrasait un
 > compte en RAM + base **et créditait un solde arbitraire**
-> (`server/routes/auth.mjs:63-64`).
+> (`server/routes/auth.mjs:111-112`).
 
 `pseudo`, `bio`, `streamerPseudo` passent par `sanitizeText`
-(`server/routes/auth.mjs:75-77`).
+(`server/routes/auth.mjs:123-125`).
 
 **Réponse** : `201` + cookie `zoyd_auth` 6 h + `{ ok, user, expiresAt, message }`.
 Le champ `token` n'est renvoyé **que si `ALLOW_DEBUG_CODES=true`**
-(`server/routes/auth.mjs:89`).
+(`server/routes/auth.mjs:137`).
 
 > **V1 (décision 2026-09-18)** : le compte est **directement actif**, session
 > immédiate, sans code d'activation (`server/routes/auth.mjs:79-80`). Les routes
@@ -793,22 +799,22 @@ de la monnaie.
 
 | # | Méthode | Chemin | Rôle | Rate limit | Erreurs pertinentes |
 |---|---|---|---|---|---|
-| 1 | GET | `/api/br/config` | public | **—** | — (`:45-58`) |
-| 2 | GET | `/api/br/lobbies` | public | `default` | — (`:60-72`) |
-| 3 | POST | `/api/br/lobbies` | session | **`match` → repli `default`** | `400 INVALID_MODE`, `400 INVALID_MAP`, `400 INVALID_RANKING_MODE` (`:74-105`) |
-| 4 | POST | `/api/br/lobbies/:id/{join\|leave\|checkin\|start\|eliminate\|finish}` | session | `admin` pour `finish`, `default` sinon | `400 INVALID_JSON` (`:157`) si `eliminate` sans `userId` ; `403 ADMIN_REQUIRED`/`2FA_REQUIRED` sur `finish` (`:172`) |
-| 5 | GET | `/api/br/lobbies/:id` | public | `default` | `404 LOBBY_NOT_FOUND` (`:223`) |
-| 6 | GET | `/api/br/lobbies/:id/arbiter` | **arbiter** | `default` | `404 LOBBY_NOT_FOUND` (`:260`), **`403 ARBITER_REQUIRED`** (`:269`) |
+| 1 | GET | `/api/br/config` | public | **—** | — (`:94`) |
+| 2 | GET | `/api/br/lobbies` | public | `default` | — (`:109`) |
+| 3 | POST | `/api/br/lobbies` | session | **`match` → repli `default`** | `400 INVALID_MODE`, `400 INVALID_MAP`, `400 INVALID_RANKING_MODE` (`:123`) |
+| 4 | POST | `/api/br/lobbies/:id/{join\|leave\|checkin\|start\|eliminate\|finish}` | session | `admin` pour `finish`, `default` sinon | `400 INVALID_JSON` (`:216`) si `eliminate` sans `userId` ; `403 ADMIN_REQUIRED`/`2FA_REQUIRED` sur `finish` (`:228-230`) |
+| 5 | GET | `/api/br/lobbies/:id` | public | `default` | `404 LOBBY_NOT_FOUND` (`:287`) |
+| 6 | GET | `/api/br/lobbies/:id/arbiter` | **arbiter** | `default` | `404 LOBBY_NOT_FOUND` (`:324`), **`403 ARBITER_REQUIRED`** (`:335`) |
 
 **Le créateur d'un salon en devient l'**arbitre**, pas un joueur** : il ne paie
-aucun pass et ne figure pas dans le roster (`server/routes/br.mjs:88-93`).
+aucun pass et ne figure pas dans le roster (`server/routes/br.mjs:137-142`).
 
 `GET /api/br/lobbies/:id/arbiter` est **la seule vue qui rend les `userId`**
-(`server/routes/br.mjs:242-249`). Le roster public les masque
-(`server/state-helpers.mjs:260-276`).
+(`server/routes/br.mjs:306-313`). Le roster public les masque
+(`server/state-helpers.mjs:425-432`).
 
 Toutes les actions de salon sont sérialisées par `withBrLobbyMutex(lobbyId)`, et le
-snapshot est **relu à l'intérieur** du verrou (`server/routes/br.mjs:126-139`).
+snapshot est **relu à l'intérieur** du verrou (`server/routes/br.mjs:180-194`).
 
 > **`finish` exige `require2faIfAdmin` EN PLUS de l'autorité d'arbitre**
 > (`server/routes/br.mjs`). Une session admin doit montrer une 2FA fraîche ;
@@ -820,8 +826,8 @@ Le même code est émis avec **deux statuts différents** :
 
 | Contexte | Statut | Source |
 |---|---|---|
-| `GET /api/br/lobbies/:id/arbiter`, lecteur non autorisé | **403** | `server/routes/br.mjs:268-273` |
-| Table de mapping `mapPersistenceError` | **409** | `server/http-utils.mjs:429-431` |
+| `GET /api/br/lobbies/:id/arbiter`, lecteur non autorisé | **403** | `server/routes/br.mjs:331-337` |
+| Table de mapping `mapPersistenceError` | **409** | `server/http-utils.mjs:467-469` |
 
 Un client qui traite `ARBITER_REQUIRED` comme « à réessayer plus tard » (409)
 prendra une mauvaise décision sur le 403. **Tester le statut HTTP, pas seulement
@@ -873,7 +879,7 @@ Le parsing du corps est **hors** du verrou global (`server/routes/match.mjs:42`)
 | 6 | POST | `/api/admin/sanctions/:id/revoke` | admin2fa | `404 SANCTION_NOT_FOUND` (`:320`), `500 REVOKE_ERROR` (`:329`) |
 | 7 | GET | `/api/admin/matches/export` | admin2fa | `503 SERVER_BUSY` (`:358`, `:368`), `500 EXPORT_ERROR` (`:400`) |
 | 8 | GET | `/api/admin/2fa/status` | **admin** (sans 2FA) | — |
-| 9 | POST | `/api/admin/2fa/setup` | **admin** | `403 INVALID_PASSWORD` (`:441`), `409 2FA_ALREADY_ENABLED` (`:454`) |
+| 9 | POST | `/api/admin/2fa/setup` | **admin** | `403 INVALID_PASSWORD` (`:501`), `409 2FA_ALREADY_ENABLED` (`:515`) |
 | 10 | POST | `/api/admin/2fa/enable` | **admin** | `400 MFA_REQUIRED` (`:481`), `400 MFA_ALREADY_ACTIVE` (`:490`), `400 MFA_INVALID` (`:495`) |
 | 11 | POST | `/api/admin/2fa/verify` | **admin** | `400 MFA_REQUIRED` (`:521`), `400 MFA_NOT_ACTIVE` (`:526`), `400 MFA_INVALID` (`:531`) |
 | 12 | POST | `/api/admin/matches/:id/award` | admin2fa | `400 INVALID_WINNER` (`:550`) |
@@ -930,7 +936,7 @@ Le texte est `sanitizeText(...)` puis **tronqué à 2000 caractères**
 | 6 | POST | `/api/realtime/push/test` | **realtime** | **—** | `{ title?, body?, url?, tag? }` | `500 PUSH_ERROR` (`:172`) |
 
 **Les routes 3→6 exigent un token realtime en `Authorization: Bearer`**, pas le
-cookie `zoyd_auth` (`server/http-utils.mjs:260-270`). Le client l'obtient via
+cookie `zoyd_auth` (`server/http-utils.mjs:298-308`). Le client l'obtient via
 `buildAuthHeaders()` (`src/app/lib/realtimeClient.ts:266-271`), qui appelle
 `POST /api/realtime/auth/session`.
 
@@ -973,7 +979,7 @@ contrôlable par l'appelant. **Derrière le LB Render, il faut `TRUST_PROXY=true
 (`render.yaml:30-31`) : sinon tous les utilisateurs partagent un seul bucket.
 
 > **Groupe `'match'` — piège.** `POST /api/br/lobbies` utilise le groupe
-> `'match'` (`server/routes/br.mjs:80`), **absent de `RATE_LIMIT_CONFIG`**. Le
+> `'match'` (`server/routes/br.mjs:129`), **absent de `RATE_LIMIT_CONFIG`**. Le
 > repli silencieux `RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default`
 > (`server/rate-limiter.mjs:74`) applique donc **60/min** au lieu du quota prévu.
 > Aucun log, aucune erreur.
@@ -991,15 +997,15 @@ contrôlable par l'appelant. **Derrière le LB Render, il faut `TRUST_PROXY=true
 | Token absent/faux | **`401 UNAUTHORIZED`** | `server/routes/public.mjs:314-317` |
 | Comparaison | SHA-256 + `timingSafeEqual` | `server/routes/public.mjs:53-57` |
 | Format de sortie | `text/plain; version=0.0.4; charset=utf-8` | `server/routes/public.mjs:325` |
-| Normalisation des paths | UUID → `/*` ; `/M-*`, `/T-*`, `/FR-*`, `/BR-*`, `/LS-*`, `/NOTIF-*` | `server/http-utils.mjs:284-296` |
+| Normalisation des paths | UUID → `/*` ; `/M-*`, `/T-*`, `/FR-*`, `/BR-*`, `/LS-*`, `/NOTIF-*` | `server/http-utils.mjs:322-334` |
 
 **Métriques exposées :**
 
 | Métrique | Origine |
 |---|---|
-| `zoyd_http_requests_total{method,status}` | `server/http-utils.mjs:138` |
-| `zoyd_http_request_duration_seconds{method,pathname}` | `server/http-utils.mjs:139` |
-| `zoyd_http_errors_total` (status ≥ 500) | `server/http-utils.mjs:140` |
+| `zoyd_http_requests_total{method,status}` | `server/http-utils.mjs:176` |
+| `zoyd_http_request_duration_seconds{method,pathname}` | `server/http-utils.mjs:177` |
+| `zoyd_http_errors_total` (status ≥ 500) | `server/http-utils.mjs:178` |
 | `zoyd_channels`, `zoyd_push_subscriptions`, `zoyd_stored_matches`, `zoyd_stored_tournaments`, `zoyd_stored_leagues`, `zoyd_stored_users` | `server/routes/public.mjs:318-323` |
 | `zoyd_uptime_seconds`, `zoyd_node_heap_used_bytes`, `zoyd_node_heap_total_bytes`, `zoyd_node_rss_bytes`, `zoyd_node_external_bytes` | `server/metrics.mjs:172-178` |
 | `zoyd_socket_connections_total`, `zoyd_socket_disconnects_total`, `zoyd_socket_connections` | `server/realtime-server.mjs:403-404`, `:582-583` |
@@ -1040,9 +1046,9 @@ afficher le refus, ne surtout pas déconnecter.**
 | Cas | Code | Particularité |
 |---|---|---|
 | Rôle ≠ admin | `ADMIN_REQUIRED` | `requireAdmin2fa` (`admin-totp.mjs:162`) |
-| 2FA non activée ou fenêtre expirée | `2FA_REQUIRED` | porte `requires2fa:true` (`admin-totp.mjs:167,171`) |
+| 2FA non activée ou fenêtre expirée | `2FA_REQUIRED` | porte `requires2fa:true` (`admin-totp.mjs:205,209`) |
 | Mot de passe actuel faux (changement d'email / setup 2FA) | `PASSWORD_CONFIRMATION_REQUIRED` / `WRONG_PASSWORD` / `INVALID_PASSWORD` | |
-| Compte banni ou suspendu | `ACCOUNT_SANCTIONED` | porte l'objet `sanction` (`auth.mjs:121-135`) |
+| Compte banni ou suspendu | `ACCOUNT_SANCTIONED` | porte l'objet `sanction` (`auth.mjs:169-183`) |
 | Transaction FedaPay d'un autre compte | `TRANSACTION_NOT_OWNED` | |
 | Lecteur non-autorisé de la vue arbitre BR | `ARBITER_REQUIRED` | **403 ici, 409 dans la table** (§5.7.1) |
 | Origine hors liste blanche (CSRF) | `CSRF_ORIGIN_REJECTED` | |
@@ -1070,7 +1076,7 @@ une action alternative.
 
 > « Conflits d'etat : le salon est deja plein/lance/regle, le joueur est deja
 > inscrit ou elimine. 409 et non 400 : le client peut reessayer. »
-> — `server/http-utils.mjs:411-414`
+> — `server/http-utils.mjs:449-452`
 
 ### 7.4 Ce qui n'est dans aucune des trois cases
 

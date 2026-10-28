@@ -7,18 +7,17 @@
 > surface de sécurité (→ `docs/03-securite.md`), ni les invariants d'argent
 > (→ `docs/05-invariants.md`), ni les tests (→ `docs/06-tests.md`).
 >
-> **Portée :** `src/` — 171 fichiers (mesuré le 2026-10-20 à 197 ; purge
-> M31/M32 le 2026-10-26).
+> **Portée :** `src/` — 180 fichiers (re-mesuré le 2026-10-28 ; purge
+> M31/M32 le 2026-10-26 : 26 fichiers supprimés).
 
 **Source :** lecture directe du code. Base : dépôt local
-`E:\web_app\projrt\Z.O.Y.D\Zoyd`, commit de travail `0328dc8`.
+`E:\web_app\projrt\Z.O.Y.D\Zoyd`, commit de travail `5f4b796` (27/10/2026).
 
 **Conventions de citation :** `fichier:ligne`. Les lignes renvoient à l'**état
-du working tree au moment de la rédaction** (2026-10-20), pas au commit
-`0328dc8` : le dépôt reçoit en parallèle l'insertion d'en-têtes d'invariants
-en tête des fichiers `server/`, ce qui décale les numéros de ligne de quelques
-dizaines. Les citations `server/` sont donc doublées du **nom du symbole**,
-qui reste l'ancre stable.
+du working tree au moment de leur vérification** (rédaction initiale le
+2026-10-20 ; re-passé le 2026-10-28, audit-3 P16) : toute modification du
+fichier les décale. L'ancrage fiable est le **nom du symbole** (fonction,
+constante, classe CSS) ; la ligne est un indice, pas une garantie.
 
 ---
 
@@ -67,17 +66,20 @@ le **comportement constaté**, pas la configuration déclarée.
 
 ## 2. L'arborescence de `src/`
 
-Mesuré le 2026-10-20 (197 fichiers) ; mis à jour le 2026-10-26 après la purge
-des composants morts (audit-2 M31, M32 : 26 fichiers supprimés, 171 restants).
+Mesuré le 2026-10-20 (197 fichiers) ; purge des composants morts le 2026-10-26
+(audit-2 M31, M32 : 26 fichiers supprimés) ; re-mesuré le 2026-10-28 :
+**180 fichiers** (`git ls-files src`).
 
 ```
 src/                                    2   main.tsx, vite-env.d.ts
 ├── app/                                2   App.tsx, routes.tsx
-│   ├── components/                     5   MatchCard, SEOHead, ErrorBoundary,
-│   │   │                                   RouteErrorBoundary, EmptyPanel
-│   │   ├── components/admin/            6   AdminOverviewTab, AdminMatchesTab,
+│   ├── components/                     7   MatchCard, SEOHead, ErrorBoundary,
+│   │   │                                   RouteErrorBoundary, EmptyPanel,
+│   │   │                                   SocialLinks, BootstrapFailedPanel
+│   │   ├── components/admin/            7   AdminOverviewTab, AdminMatchesTab,
 │   │   │                                   AdminUsersTab, AdminReportsTab,
-│   │   │                                   AdminUrgencyTab, AdminTabShared
+│   │   │                                   AdminUrgencyTab, AdminTabShared,
+│   │   │                                   TwoFactorPrompt
 │   │   ├── components/ui/              19   17 composants + use-mobile.ts + utils.ts
 │   │   ├── components/layout/           3   Navbar, Sidebar, BottomNav
 │   │   ├── components/notifications/    3   NotificationDropdown, ToastContainer,
@@ -86,21 +88,21 @@ src/                                    2   main.tsx, vite-env.d.ts
 │   │   ├── components/social/           1   FriendsWidget
 │   │   ├── components/trust/            1   TrustScoreBadge
 │   │   ├── components/wallet/           1   WithdrawalFeesNotice
-│   │   └── components/branding/         1   ZoydLogo
+│   │   └── components/branding/         2   ZoydLogo, SocialIcons
 │   ├── layouts/                        3   RootLayout, AppLayout, AuthLayout
 │   ├── pages/                         15   (voir §10)
 │   ├── pages/auth/                     4   Login, Register, Activate, ForgotPassword
 │   ├── pages/legal/                    7   LegalLayout + 6 pages
 │   ├── pages/mj/                       3   HubMJPage, CreateMatchPage, CreateTournamentPage
 │   ├── stores/                        25   14 modules + 11 tests
-│   ├── lib/                           20   18 modules + 2 tests
+│   ├── lib/                           22   19 modules + 3 tests
 │   └── hooks/                          7   (voir §6.1)
 ├── features/                          27
 │   ├── match/                          8   MatchDetailPage + 7 composants
 │   ├── tournament/                     8   TournoisPage, TournamentBracketPage + 6 composants
 │   ├── league/                         7   LeaguePage, LeagueSeasonPage + 5 composants
 │   └── br/                             4   BrPage, BrLobbyDetailPage + 2 composants
-├── lib/                               10   9 modules + 1 test
+├── lib/                               13   10 modules + 3 tests
 ├── styles/                             4   index.css, tailwind.css, theme.css, fonts.css
 └── test/                               1   setup.ts
 ```
@@ -381,10 +383,10 @@ refermer le cycle (`realtimeClient.ts:4-6`).
 
 | Élément | Valeur | Ligne |
 |---|---|---|
-| `path` | `/socket.io` | `realtimeClient.ts:127` |
+| `path` | `/socket.io` | `realtimeClient.ts:150` |
 | `transports` | `['websocket', 'polling']` | `:128` |
-| `autoConnect` | **false** | `:129` |
-| `withCredentials` | **true** | `:131` |
+| `autoConnect` | **false** | `:152` |
+| `withCredentials` | **true** | `:154` |
 
 `autoConnect: false` est nécessaire : le socket ne doit se connecter qu'après
 l'obtention d'une session temps réel valide.
@@ -816,11 +818,24 @@ réessai au lieu d'éjecter l'utilisateur.
 
 ---
 
-## 12. `src/lib/matchPayout.ts` — le champ `perWinner`
+## 12. `src/lib/matchPayout.ts` — le champ `perWinner` — **CORRIGÉ**
 
 > **Un agent a signalé que `perWinner` y est du code mort (aucun composant ne
-> lit le champ) et que le serveur calcule autrement. C'est vérifié — et c'est
-> exact.**
+> lit le champ) et que le serveur calcule autrement. C'était vérifié — et
+> c'était exact. Les trois problèmes pointés ont été corrigés depuis
+> (25/10-27/10/2026) : tout ce qui suit décrit l'état d'AVANT correctif.**
+>
+> **État actuel (vérifié le 2026-10-28) :**
+>
+> | Symbole | État |
+> |---|---|
+> | `hasAuthoritativePayout` | **purgé** — 0 occurrence dans `src/` (audit-2 M28/M30/M37/M38, commit `cbd1b7a`) |
+> | `getWinnerPayoutPerPlayer` | **vivant et branché** — définition `src/lib/matchPayout.ts:93` ; appelé par `profileMetrics.ts:210`, `communityInsights.ts:427`, `ProfileView.tsx:358` ; testé (`matchStore.test.ts:246` = 43.22) |
+> | `perWinner` (projection serveur) | **corrigé** — divise par l'équipe gagnante (`server/match-engine.mjs:267`) ; le test figé a été corrigé (`match-engine.test.mjs:429` commente l'ancien 490, `:449` asserte 980) |
+> | `getWinnerPayout` | total d'ÉQUIPE ; les trois appelants fautifs (V8) lisent désormais `getWinnerPayoutPerPlayer` |
+>
+> A9 (audit-2) a en outre remappé `isMe` côté payout (`matchPayout.ts:70-73`,
+> `:87-91`).
 
 ### 12.1 Vérification 1 — `perWinner` n'est lu par aucun composant
 

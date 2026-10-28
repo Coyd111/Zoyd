@@ -517,7 +517,7 @@ d'une session admin ; le joueur arbitre passe sans code).
 | V12 | `LEAGUE_PLAYERS_PER_DAY` est une constante morte | **NOUVEAU** | INFO -> resolu |
 | V13 | `getMatchActivityForUser` est du code mort | **OUI** — **CORRIGÉ** | INFO → résolu |
 | V14 | Un salon BR jamais lance garde les passes verrouillees | **NOUVEAU** | ELEVE -> resolu |
-| V14 | Ternaire mort dans `getStatusFromMatch` | **OUI** — **CORRIGÉ** | INFO → résolu |
+| V16 | Ternaire mort dans `getStatusFromMatch` | **OUI** — **CORRIGÉ** | INFO → résolu |
 | V15 | `isInstantNoArbiter` est inatteignable | **OUI** — **CORRIGÉ** | INFO → résolu |
 
 ---
@@ -787,15 +787,20 @@ tournoi, de ligue et de salon BR étant des entités distinctes.
 Mutation vérifiée : réintroduire une liste locale → le test tombe.
 
 ---
-### V5 — `getProjectedPayouts.perWinner` divise par le nombre total de joueurs
-**Gravité : FAIBLE en l'état, latente**
+### V5 — `getProjectedPayouts.perWinner` divise par le nombre total de joueurs — **CORRIGÉ**
+**Gravité : FAIBLE en l'état, latente → résolu**
+
+> **Statut : corrigé.** La projection divise désormais par le nombre de
+> joueurs de l'équipe gagnante, le consommateur front est branché, et le
+> test qui figeait le bug a été corrigé. La description ci-dessous est
+> conservée telle quelle : elle documente l'état *avant* le correctif.
 
 **Vérification.**
 
 | Lieu | Calcul |
 |---|---|
-| Projection | `server/match-engine.mjs:178-180` — `perWinner: winner / match.players.length` |
-| Règlement | `server/match-engine.mjs:355-356` — `payout / winnerCount` (`winnerCount` = nombre de **gagnants**) |
+| Projection | `server/match-engine.mjs` (avant correctif) — `perWinner: winner / match.players.length` |
+| Règlement | `server/match-engine.mjs` — `payout / winnerCount` (`winnerCount` = nombre de **gagnants**) |
 
 **Conclusion : CONFIRMÉ sur le fond, INFIRMÉ sur l'impact annoncé.**
 
@@ -805,31 +810,31 @@ partir de `projectedPayouts`. » La première phrase est **inexacte en l'état
 du code** :
 
 - Le champ fautif est bien calculé et **diffusé à tous les clients**
-  (`server/state-helpers.mjs:149`), mais **aucun composant du front ne le lit** :
-  `src/lib/matchPayout.ts:52-56` (`getWinnerPayoutPerPlayer`) est le seul
-  consommateur et il n'est appelé nulle part ; `src/app/stores/matchStore.ts:163`
-  ne porte que la déclaration de type.
+  (`server/state-helpers.mjs`), mais **aucun composant du front ne le lit** :
+  `getWinnerPayoutPerPlayer` (`src/lib/matchPayout.ts`) est le seul
+  consommateur et il n'est appelé nulle part.
 - Ce que l'UI affiche effectivement est `projectedPayouts.winner` — le **total
-  de l'équipe gagnante** — qui est correct : `src/app/components/admin/AdminUrgencyTab.tsx:93-94`
-  et `src/features/match/pages/MatchDetailPage.tsx:735`.
+  de l'équipe gagnante** — qui est correct.
 
 **Impact utilisateur concret : nul aujourd'hui.** Risque latent : le champ est
 faux, il est envoyé à tous les clients, et le premier écran qui l'affichera
 affichera un montant faux.
 
-**Le test qui « couvre » ce point fige le bug.** `server/match-engine.test.mjs:389-402`
-s'intitule « should split the winner pot across the players of the winning
-team » mais asserte `expect(projection.perWinner).toBe(490)` pour 4 joueurs et
+**Le test qui « couvrait » ce point figeait le bug.** `server/match-engine.test.mjs`
+s'intitulait « should split the winner pot across the players of the winning
+team » mais assertait `expect(projection.perWinner).toBe(490)` pour 4 joueurs et
 1 960 ZC — soit 1 960 / 4. Le règlement réel verse 980 par gagnant (1 960 / 2).
-Un test vert ne prouve donc **rien** ici : il certifie le comportement faux.
+Un test vert ne prouvait donc **rien** ici : il certifiait le comportement faux.
 C'est un cas d'école de la règle « un test qui reste vert après avoir cassé le
 code ne prouve rien » (`docs/00-INDEX.md` §6).
 
-**Correction à faire.** `perWinner` doit diviser par le nombre de joueurs de
-l'équipe gagnante. Attention : la projection est calculée pour un match **non
-soldé** (`server/state-helpers.mjs:149` s'exécute à chaque broadcast), donc
-`winnerTeam` n'existe pas encore — il faut soit la taille d'équipe
-(`teamSize`), soit passer le vainqueur en paramètre.
+**CORRIGÉ :** la projection divise par l'équipe gagnante
+(`server/match-engine.mjs:267` — `perWinner: gagnants > 0 ? roundAmount(winner / gagnants) : 0`)
+; le consommateur `getWinnerPayoutPerPlayer` (`src/lib/matchPayout.ts:93`) est
+branché et testé (`src/app/stores/matchStore.test.ts:246` = 43.22, appelé par
+`profileMetrics.ts:210`, `communityInsights.ts:427`, `ProfileView.tsx:358`) ;
+et le test figé a été corrigé : `server/match-engine.test.mjs:429` commente
+l'ancien 490, `:449` asserte **980** — la part réellement versée.
 
 ---
 
@@ -1138,7 +1143,7 @@ Voir V3 : le comportement équivalent est implémenté côté front
 (`ACTIVE_STATUSES`, `HISTORY_STATUSES`) et la citation reprise dans l'en-tête
 de `server/match-status.mjs`.
 
-### V14 — Ternaire mort dans `getStatusFromMatch` — **CORRIGÉ**
+### V16 — Ternaire mort dans `getStatusFromMatch` — **CORRIGÉ**
 
 `server/match-engine.mjs:233` : `return match.arbiter ? 'ready' : 'ready';` —
 les deux branches sont identiques. Sans effet. **CORRIGÉ le 25/10/2026** :
@@ -1160,7 +1165,6 @@ sur ce point. **CORRIGÉ le 25/10/2026** : variable, filtre et garde supprimés.
 |---|---|
 | Que `sweepMatchesWithoutArbiter` tourne en production | Le test est unitaire : il appelle la fonction directement (`server/arbiter-sweep.test.mjs:41`). Aucun test ne vérifie qu'un cron ou une route l'appelle. Un test « qui appelle la fonction » ne prouve pas qu'elle est branchée — c'est exactement le cas de V1. |
 | Que la créance d'arbitre en échec est reprise | Aucun test ne la relit : rien ne la relit (V2). |
-| Que `perWinner` est correct | Le test qui existe fige la valeur fausse (V5). |
 | Que les soldes ne dérivent pas en multi-instance | L'OCC est testée **sur la source** (`server/occ-revision-invariant.test.mjs`), pas sur un vrai déploiement à deux instances. Et la colonne peut ne pas exister (V9). |
 | Qu'un match BR `TEAM_FULL` ne coûte rien au joueur | `lockEntryFee` est un mock sans effet dans le test (`server/br-engine.test.mjs:9-14`) — voir V7. |
 | Qu'un joueur listé deux fois dans un roster de match n'est payé qu'une fois | Le chemin `paidWinners` (`server/match-engine.mjs:369`) n'est exercé par aucun test identifiable — voir I5. |
@@ -1266,7 +1270,7 @@ Aucun constat ne reste ouvert : les douze constats cotés
 ELEVÉE/MOYENNE/FAIBLE (V1 à V12, plus le V14 des passes BR) sont corrigés,
 et les trois constats INFO ont été purgés le 25/10/2026 — le code mort
 `getMatchActivityForUser` (V13), le ternaire mort de `getStatusFromMatch`
-(V14) et la branche inatteignable `isInstantNoArbiter` (V15), suivis dans
+(V16) et la branche inatteignable `isInstantNoArbiter` (V15), suivis dans
 `docs/audit-2/04-code-mort.md` (M25, M21, M24). La liste se remplit quand une
 anomalie est trouvée, et elle est le seul endroit où l'on décide de ne rien
 faire.
@@ -1291,8 +1295,8 @@ Ce qui reste n est pas du code : c est du produit. Voir docs/00-INDEX.md § 9.
   (`supabase/schema.sql:94-95`, `ALTER TABLE ... IF NOT EXISTS` + index,
   commit b90264d du 20/10/2026) : toute base reinstanciee l'obtient, toute
   base anterieure est couverte au passage.
-- ✅ **V10** — un salon BR interrompu (\settling\) est repris par un job cron ;
-  le drapeau \settled\ evite le double credit.
+- ✅ **V10** — un salon BR interrompu ("settling") est repris par un job cron ;
+  le drapeau "settled" evite le double credit.
 - ✅ **V14** — un salon BR programme et jamais lance est annule et rembourse ;
   un joueur ne paie plus un salon qui n existe plus.
 - ✅ **V11** — la sortie de tresorerie vers les arbitres est lue sur les

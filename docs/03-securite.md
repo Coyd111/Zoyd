@@ -3,10 +3,16 @@
 > Ce document décrit **ce que le code fait**, pas ce qu'il devrait faire.
 > Chaque affirmation structurante porte sa référence `fichier:ligne`.
 > Quand une affirmation n'a pas pu être vérifiée dans le code, c'est écrit.
+>
+> **Convention de citation (audit-3 P16).** Les renvois `fichier:ligne` datent
+> de la vérification indiquée ci-dessous : toute modification du fichier les
+> décale. L'ancrage fiable est le **nom du symbole** (fonction, constante) ;
+> la ligne est un indice, pas une garantie.
 
 Dernière vérification : lecture directe des sources du dépôt `Zoyd/`
 (serveur `server/`, front `src/`, schéma `supabase/`, config `vercel.json`,
-`render.yaml`).
+`render.yaml`), base commit `5f4b796` (27/10/2026), citations repassées le
+28/10/2026.
 
 ---
 
@@ -111,7 +117,7 @@ route finit en 500 sur une réponse déjà écrite. Le commentaire de
 
 Deux points de vigilance supplémentaires :
 
-- **L'ordre est inverted par rapport à l'habitude.** Dans
+- **L'ordre est inversé par rapport à l'habitude.** Dans
   `server/routes/wallet.mjs:104-110`, la 2FA est vérifiée **avant** le rate
   limit ; dans `server/routes/admin.mjs:114-116`, c'est l'inverse (rate limit
   d'abord, 2FA ensuite). Les deux ordres sont défendables, mais ils ne sont pas
@@ -151,7 +157,7 @@ Deux points de vigilance supplémentaires :
 | Comparaison | `crypto.timingSafeEqual` | `server/admin-totp.mjs:96` |
 | Type du code | `typeof code !== 'string'` → refus | `server/admin-totp.mjs:87` |
 
-La fenêtre à 0 pas est un choix assumé, documented
+La fenêtre à 0 pas est un choix assumé, documenté
 (`server/admin-totp.mjs:49-63`) : un code ne peut pas être rejoué, sa durée de
 vie est de 30 s au lieu de 90 s. Le prix — un téléphone dont l'horloge dérive
 de plus d'une quinzaine de secondes voit son code refusé — est couvert par le
@@ -245,7 +251,7 @@ couvre le chemin heureux. Ce n'est pas un test de « la route admin répond
 
 ## 4. Ce qu'un garde client donne l'illusion de faire
 
-Cette section est volontairement placed avant les mécanismes techniques : c'est
+Cette section est volontairement placée avant les mécanismes techniques : c'est
 elle qui évite qu'un lecteur conclude « le `/admin` est protégé ».
 
 | Ce que le code semble faire | Ce qu'il fait réellement | Source |
@@ -536,19 +542,21 @@ L'OCC ne couvre **que** `app_users`. Voici où le protection s'arrête :
   (`supabase/schema.sql:170-176`) — et s'écrit par `sbUpsert` direct
   (`server/persistence.mjs:3592`, `3475`). **L'OCC ne s'y applique pas** :
   deux instances qui modifient le même match s'écrasent toujours.
-- **La colonne `revision` n'est pas dans `schema.sql`.** Le `CREATE TABLE
-  app_users` (`supabase/schema.sql:7-18`) ne la contient pas, et il n'existe
-  **aucun** `ALTER TABLE app_users ADD COLUMN revision` dans le fichier de
-  migration — les seuls `ADD COLUMN` du schéma concernent `auth_sessions` et
-  `user_reports` (`supabase/schema.sql:54-55`, `402-406`). Le DDL attendu
-  n'apparaît que dans un message de log
-  (`server/persistence.mjs:447`). Une base créée depuis `schema.sql` n'a donc
-  **pas** la colonne.
-- **La dégradation n'est pas visible dans `/api/health`.**
-  `getHealthInfo` (`server/persistence.mjs:985-1038`) expose `stateTrusted`,
-  `integrity`, `loginLockoutPersisted`, `sanctionsPersisted`… mais **pas**
-  `revisionSupporte`. Le seul signal est un `log.warn`
-  (`server/persistence.mjs:444-449`).
+- **La colonne `revision` est désormais dans `schema.sql` — CORRIGÉ le
+  20/10/2026 (commit `b90264d`).** Le `ALTER TABLE app_users ADD COLUMN IF NOT
+  EXISTS revision BIGINT NOT NULL DEFAULT 0` et son index sont provisionnés
+  dans le fichier (`supabase/schema.sql:94-95`) : une base recréée depuis le
+  dépôt porte la protection OCC, et `server/schema-coverage.test.mjs:121-126`
+  verrouille la présence de la colonne (sans ce test, l'écart peut se rouvrir
+  — c'est exactement ce qui s'était passé). État d'avant : le `CREATE TABLE
+  app_users` ne la contenait pas et le DDL n'existait que dans un message de
+  log. Verdict V9 du doc 05 : le rapport antérieur était FAUX.
+- **La dégradation est désormais visible dans `/api/health`.**
+  `getHealthInfo` expose `occRevisionColumn` (`server/persistence.mjs:1099`) :
+  `true` = la colonne existe, les écritures sont conditionnelles ; `false` =
+  elle est absente, les écritures deviennent inconditionnelles et la fenêtre
+  multi-instance s'ouvre ; `null` = pas encore sondé. État d'avant : le seul
+  signal était un `log.warn`.
 - **Si la colonne est absente**, le serveur retombe sur l'écriture
   **inconditionnelle** d'avant (`server/persistence.mjs:526-534`) : refuser les
   mutations serait pire que la fenêtre laissée ouverte, mais la fenêtre est
@@ -656,7 +664,7 @@ recréait une session valide de 6 h après un logout.
 
 `deleteAuthSession` ne supprime pas seulement le token présenté : il remonte la
 chaîne `supersedes` et supprime aussi le successeur direct
-(`server/persistence.mjs:3119-3151`). Le raison est donnée
+(`server/persistence.mjs:3119-3151`). La raison est donnée
 (`server/persistence.mjs:3123-3134`) : présenter le jeton **fils** (le cas
 normal après rotation) ne supprimait que le fils ; la mère demeurait valable
 et **un cookie volé survivait au logout de la victime**.
@@ -828,7 +836,7 @@ respondJson(res, 200, {
 });
 ```
 
-Le commentair explique pourquoi c'est **différent** de l'inscription
+Le commentaire explique pourquoi c'est **différent** de l'inscription
 (`server/routes/auth.mjs:263-277`) :
 
 > *« La reponse disait `found: false` ET un message different. C'etait un oracle
@@ -1208,7 +1216,7 @@ La 2FA admin est exigée sur les routes financières et de modération
 (`server/routes/admin.mjs`, `server/routes/wallet.mjs:108`). Mais un joueur
 connecté peut retirer des fonds **sans ressaisir son mot de passe** : la
 session suffit (`server/routes/wallet.mjs:137-143`). C'est un choix cohérent
-avec le modèle (la session EST lecredential), mais il faut le savoir : la
+avec le modèle (la session EST le credential), mais il faut le savoir : la
 protection du compte repose entièrement sur le cookie `HttpOnly` + la rotation
 + la révocation.
 

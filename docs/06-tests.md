@@ -8,7 +8,7 @@
 > que la fonctionnalité est branchée en production, **ni** que le code testé
 > est le code qui tourne.
 >
-> Ce document est lePendant de `docs/05-invariants.md` : celui-ci énonce les
+> Ce document est le pendant de `docs/05-invariants.md` : celui-ci énonce les
 > règles métier et signale celles qui sont violées ; celui-ci explique pourquoi
 > **la suite de tests n'a pas détecté** ces violations.
 
@@ -21,7 +21,7 @@ du working tree au moment de la rédaction** (2026-10-20), pas au commit
 `0328dc8` : le dépôt reçoit en parallèle l'insertion d'en-têtes
 d'invariants en tête des fichiers `server/`, ce qui décale les numéros de
 ligne de quelques dizaines. Chaque citation structurante est donc doublée du
-**nom du symbole** cited, qui reste l'ancre stable.
+**nom du symbole** cité, qui reste l'ancre stable.
 
 ---
 
@@ -177,21 +177,21 @@ ni retrait : ces chemins passent par FedaPay (widget sandbox / vrai payout) et
 
 ```
 Zoyd/
-├── server/                         ← 61 fichiers *.test.mjs (niveau 1, serveur)
+├── server/                         ← 77 fichiers *.test.mjs (niveau 1, serveur)
 │   ├── match-engine.test.mjs
 │   ├── wallet-engine.test.mjs
 │   ├── arbiter-required.test.mjs
 │   ├── arbiter-sweep.test.mjs
 │   ├── admin-totp-guard.test.mjs
 │   ├── encoding-integrity.test.mjs
-│   └── … (61 au total)
-├── src/                            ← 14 fichiers *.test.ts (niveau 1, front)
-│   ├── app/stores/                 ← 9 fichiers .test.ts (authStore, walletStore,
+│   └── … (77 au total)
+├── src/                            ← 17 fichiers *.test.ts (niveau 1, front)
+│   ├── app/stores/                 ← 11 fichiers .test.ts (authStore, walletStore,
 │   │                                  matchStore, tournamentStore, leagueStore,
 │   │                                  chatStore, friendsStore, presenceStore,
 │   │                                  notificationStore, toastStore, socketConnectionStore)
-│   ├── app/lib/                    ← sessionPurge.test.ts, apiClient.payoutReason.test.ts
-│   └── lib/                        ← payoutOperators.test.ts
+│   ├── app/lib/                    ← brApi.test.ts, sessionPurge.test.ts, apiClient.payoutReason.test.ts
+│   └── lib/                        ← payoutOperators.test.ts, profileMetrics.test.ts, social.test.ts
 ├── e2e/
 │   ├── api/                        ← niveau 2 : 11 fichiers *.spec.ts + support/harness.ts
 │   ├── ui/                         ← niveau 2/3 : 6 fichiers *.spec.ts + globalSetup.ts
@@ -234,14 +234,14 @@ que `**/*.@(spec|test).*` et Vitest n'inclut que `server/**` et `src/**`
 
 ### 2.3 Ce que Vitest collecte — et ce qu'il ne collecte pas
 
-Point vérifié sur la session du 2026-10-20 :
+Point vérifié sur la session du 2026-10-28 :
 
 ```
-Test Files  75 passed (75)
-     Tests  846 passed | 2 skipped (848)
+Test Files  94 passed (94)
+     Tests  1035 passed | 2 skipped (1037)
 ```
 
-75 fichiers = 61 serveur + 14 front. Les **2 tests sautés** sont
+94 fichiers = 77 serveur + 17 front. Les **2 tests sautés** sont
 `server/withdrawal-double-payout.test.mjs:150` et `:160` : tous deux exigent
 FedaPay configuré (« exige FedaPay configure » dans leur titre).
 
@@ -489,25 +489,36 @@ câblage.
 
 ### 4.2 Un test peut figer le bug au lieu de le couvrir
 
-Cas frère du précédent, documenté en **V5** (`docs/05-invariants.md:693-736`).
+Cas frère du précédent, documenté en **V5** (`docs/05-invariants.md` § V5).
 
-`server/match-engine.test.mjs:389-402` s'intitule « should split the winner pot
-across the players of the winning team » et asserte
+L'exemple ci-dessous est désormais HISTORIQUE : le test a été corrigé le
+25/10/2026. Il documente un mécanisme qui a réellement existé, et la leçon
+reste entière — un lecteur qui va vérifier dans le code trouvera l'état
+corrigé, avec la trace de l'ancien en commentaire.
+
+`server/match-engine.test.mjs` s'intitulait « should split the winner pot
+across the players of the winning team » et assertait
 `expect(projection.perWinner).toBe(490)` pour 4 joueurs et 1 960 ZC — soit
 1 960 / 4.
 
 Or le règlement réel verse 980 par gagnant (1 960 / 2) : il divise par
 `winnerIds.size`, le nombre de **gagnants**
-(`server/match-engine.mjs:401-402`), alors que la projection divise par
-`match.players.length`, le nombre total de joueurs
-(`server/match-engine.mjs:224-226`).
+(`server/match-engine.mjs:496-497`), alors que la projection divise par le
+nombre total de joueurs — c'est ce biais que le test figeait.
 
 > « Un test vert ne prouve donc **rien** ici : il certifie le comportement
 > faux. C'est un cas d'école de la règle "un test qui reste vert après avoir
-> cassé le code ne prouve rien". » — `docs/05-invariants.md:727-729`
+> cassé le code ne prouve rien". » — `docs/05-invariants.md` § V5
 
 **Le test n'est pas seulement muet : il est faux.** Un test qui asserte une
 valeur fausse n'est pas neutre — il **protège** le bug.
+
+**État actuel du test.** Corrigé : `server/match-engine.test.mjs:429` commente
+l'assertion d'origine (« L'assertion d'origine (490) divisait par le nombre
+TOTAL de joueurs ») et `:449` asserte **980** — la part réellement versée. La
+projection, elle, divise par les gagnants (`server/match-engine.mjs:267`). La
+recette de mutation reste applicable : réintroduire un diviseur par le total
+de joueurs doit faire tomber ce test.
 
 ### 4.3 Le test de garde admin : ce qu'il prouve, et sa recette de mutation
 
@@ -553,7 +564,7 @@ mutation a bien fait tomber le test.**
 `.sql`) ne contient de double encodage UTF-8 (mojibake). La détection repose
 sur une **liste de signatures** (`encoding-integrity.test.mjs:27`) : la double
 lettre `A-accent` suivie d'un caractère de Latin-1, le BOM `ï»¿`, et les
-séquences dOpening/closing quotes décodées une fois.
+séquences d'ouverture/fermeture de guillemets décodées une fois.
 
 | Test | Ligne | Ce qui est vérifié |
 |---|---|---|
@@ -575,7 +586,7 @@ n'apparaissait qu'au lint, sous le nom opaque « irregular whitespace ».
 **Ce que ce test ne prouve pas :**
 
 1. **Ce n'est pas un test de sécurité.** C'est un test d'**intégrité
-   documentary**. Il ne dit rien du comportement du code.
+   documentaire**. Il ne dit rien du comportement du code.
 2. **Sa portée est limitée aux extensions listées** (`:44`). Le `.gitignore`
    du dépôt est lui-même corrompu (les mots accentués y sont en double
    encodage) — il n'est simplement pas couvert. Même limite pour `.md`,
@@ -646,9 +657,9 @@ détecter qu'un joueur a été débité pour une inscription qui a échoué.
 d'argent, il faut soit le grand livre (`server/wallet-engine.test.mjs:300`),
 soit un test HTTP (`e2e/api/wallet.spec.ts`).
 
-### 4.8 Ce que 846 + 158 ne prouvent pas
+### 4.8 Ce que 1035 + 158 ne prouvent pas
 
-**Les chiffres, mesurés le 2026-10-20 :** 846 tests unitaires verts (75
+**Les chiffres, re-mesurés le 2026-10-28 :** 1035 tests unitaires verts (94
 fichiers, 2 sautés) + 158 tests E2E API verts (11 fichiers) + 48 tests UI + 38
 tests live. *(Ces nombres sont un instantané — voir la réserve du §8.)*
 
@@ -873,7 +884,7 @@ change → on conclut que le correctif n'a pas été appliqué.
 | `projectedPayouts` | `MatchDetailPage-*.js`, `BrLobbyDetailPage-*.js`, `AdminDashboardPage-*.js`, `matchPayout-*.js` | **absent** → faux « build périmé » |
 | `getWinnerPayoutPerPlayer` | **absent partout** (élagué par Rollup) | absent |
 
-Deux lessons en une seule observation :
+Deux leçons en une seule observation :
 
 1. La classe corrigée (`hover:border-zoyd-yellow/50`) est bien **dans le build**,
    mais **dans `Card-DgtkzJh4.js`**, pas dans `index-CPMSP_XE.js`. Un lecteur
@@ -991,11 +1002,11 @@ seul test exécuté.
 
 ## 8. État mesuré au moment de la rédaction
 
-Mesures exécutées le **2026-10-20** sur le dépôt local.
+Mesures exécutées le **2026-10-28** sur le dépôt local.
 
 | Mesure | Commande | Résultat |
 |---|---|---|
-| Tests unitaires | `npx vitest run` | **846 passés**, 2 sautés, **75 fichiers**, 83 s |
+| Tests unitaires | `npx vitest run` | **1035 passés**, 2 sautés, **94 fichiers**, 165 s |
 | Tests E2E API | `npx playwright test --project=api --list` | **158 tests**, 11 fichiers |
 | Tests E2E UI | `npx playwright test --project=ui --list` | **48 tests**, 6 fichiers |
 | Tests live | `ZOYD_ALLOW_LIVE_TESTS=1 npx playwright test --project=live-api --project=live-ui --list` | **38 tests**, 2 fichiers |

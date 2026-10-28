@@ -4,7 +4,7 @@
 > Il t'oriente vers tout le reste et te dit ce qui est vérifié, ce qui ne l'est pas,
 > et ce qui est périmé.
 
-Dernière mise à jour : projet à `0328dc8`.
+Dernière mise à jour : projet à `5f4b796` (27/10/2026).
 
 ---
 
@@ -32,7 +32,7 @@ code en dépend (voir §5).
 
 **La seule recette de ZOYD est la commission de retrait.** Les pots ne génèrent pas de
 rake plateforme. Ce n'est pas un détail : c'est un invariant codé en dur dans les
-tests E2E. Voir `docs/08-invariants.md` (à écrire).
+tests E2E. Voir `docs/05-invariants.md`.
 
 ---
 
@@ -40,9 +40,9 @@ tests E2E. Voir `docs/08-invariants.md` (à écrire).
 
 ```
 Zoyd/
-├── src/          Front React (Vite)      ~32 700 lignes, 193 fichiers
-├── server/       Back Node (Express)     ~28 500 lignes,  99 fichiers
-├── e2e/          Tests Playwright         ~3 900 lignes,  21 fichiers
+├── src/          Front React (Vite)      ~36 900 lignes, 180 fichiers
+├── server/       Back Node (http natif)  ~39 100 lignes, 117 fichiers
+├── e2e/          Tests Playwright         ~4 500 lignes,  21 fichiers
 ├── public/       Fichiers statiques servis par Vercel
 ├── docs/         Documentation (ce dossier)
 └── *.md          Documents racine — voir §4
@@ -105,7 +105,7 @@ sans revérifier dans le code.
 Le pitch indique : « Premier terrain : Call of Duty Mobile ».
 
 Conséquence pratique : **ne supposes jamais qu'un changement est indépendant du jeu.**
-Vérifie d'abord ce que le pitch et le READMEPromettent vraiment.
+Vérifie d'abord ce que le pitch et le README promettent vraiment.
 
 ---
 
@@ -129,7 +129,7 @@ L'étape 5 a déjà payé : `server/admin-totp-guard.test.mjs` a été gardé pa
 
 ## 7. La documentation
 
-Neuf documents, ~8 500 lignes, tous sourcés par `fichier:ligne`. Ce qui suit n'est
+Neuf documents, ~8 900 lignes, tous sourcés par `fichier:ligne`. Ce qui suit n'est
 pas une description de ce que le projet **devrait** faire : c'est ce qu'il **fait**,
 au moment de l'écriture.
 
@@ -139,7 +139,7 @@ au moment de l'écriture.
 | [`02-modele-metier.md`](02-modele-metier.md) | Les 7 moteurs, les 4 cycles de vie, les statuts écrits vs dérivés, les 5 obligations de l'arbitre, le cycle de l'argent, l'OCC |
 | [`03-securite.md`](03-securite.md) | 4 portes du garde admin, CSRF, rate-limiter, sessions, mot de passe, **menaces couvertes** et **menaces non couvertes** |
 | [`04-api.md`](04-api.md) | Convention de réponse, table complète des codes erreur → statut, routes par domaine |
-| [`05-invariants.md`](05-invariants.md) | **54 invariants numérotés** + les 15 violations constatées |
+| [`05-invariants.md`](05-invariants.md) | **54 invariants numérotés** + les 16 violations constatées |
 | [`06-tests.md`](06-tests.md) | Les 3 niveaux, **ce que les tests ne prouvent pas**, recette de mutation |
 | [`07-exploitation.md`](07-exploitation.md) | Déploiement Vercel + Render, variables d'environnement, schéma Supabase, runbook |
 | [`08-frontend.md`](08-frontend.md) | Routes, stores, client temps réel, design system, SEO, les 4 bugs corrigés |
@@ -152,7 +152,7 @@ les invariants et les pièges, avec renvoi vers le document détaillé.
 
 ## 8. Ce que la documentation a trouvé — à corriger ensuite
 
-La lecture n'a pas servi qu'à décrire : elle a **confirmé 15 anomalies**. Les plus
+La lecture n'a pas servi qu'à décrire : elle a **confirmé 16 anomalies**. Les plus
 graves, avec l'impact concret :
 
 | # | Anomalie | Impact |
@@ -167,12 +167,14 @@ graves, avec l'impact concret :
 | **V8** | Le front additionne le total d'équipe aux gains d'un joueur | ✅ **CORRIGÉ** — le profil public affichait le double de la part réelle en 2VS2 |
 | **V5** | `perWinner` : la part annoncée par joueur était 2x trop petite | ✅ **CORRIGÉ** — la projection annonce la part réelle, et un test vérifie qu'elle correspond au règlement |
 | **V10** | BR : aucun cron de reprise d'un règlement interrompu | ✅ **CORRIGÉ** — un salon BR bloqué en `settling` est désormais repris, sans double crédit |
-| **V14** | Un salon BR jamais lance garde les passes verrouillees a jamais | **CORRIGE** - balayage des salons perimes, avec remboursement |
+| **V14** | Un salon BR jamais lancé garde les passes verrouillées à jamais | ✅ **CORRIGÉ** — balayage des salons périmés, avec remboursement |
 | **V11** | `arbiterPayouts` : la sortie de trésorerie était mesurée sur le pot théorique | ✅ **CORRIGÉ** — lue désormais sur les transactions réellement versées |
-
 | **V12** | `LEAGUE_PLAYERS_PER_DAY` : constante morte, dérivée de la source de vérité | ✅ **CORRIGÉ** |
+| **V13** | `getMatchActivityForUser` : code mort | ✅ **CORRIGÉ** — fonction supprimée, import devenu inutile |
+| **V15** | `isInstantNoArbiter` : branche inatteignable | ✅ **CORRIGÉ** — variable, filtre et garde supprimés |
+| **V16** | Ternaire mort dans `getStatusFromMatch` | ✅ **CORRIGÉ** — `return 'ready';` |
+
 Le détail de chacune, avec les emplacements exacts, est dans
-| **Réseaux sociaux** | Discord, TikTok, WhatsApp (communauté) | ✅ **AJOUTÉS** — icônes de marque officielles, source unique, `sameAs` dans le JSON-LD |
 [`05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS »](05-invariants.md).
 
 **V1 était le plus important, et il est corrigé.** La session précédente avait
@@ -204,5 +206,5 @@ match : l'auteur connaissait le motif, il l'avait oublié 20 lignes plus bas.
 
 - Production Render : saine (`ok=true`, `integrity.ok=true`)
 - Front Vercel : branché sur `principale`, déploiement automatique **fonctionnel**
-- Validation : 846 unitaires · 158 E2E API · TSC 0 · lint 0
+- Validation : 1035 unitaires (94 fichiers) · 206 E2E (158 API + 48 UI) · TSC 0 · lint 0
 - FedaPay : **parqué**, en attente de la spécification de signature webhook

@@ -8,9 +8,15 @@
 > Les règles qui ne doivent jamais casser sont dans `docs/05-invariants.md`.
 > Les écarts constatés entre le modèle voulu et le code livré sont listés dans
 > `docs/05-invariants.md` § « INVARIANTS VIOLÉS OU NON COUVERTS ».
+>
+> **Convention de citation (audit-3 P16).** Les renvois `fichier:ligne` datent
+> de la vérification indiquée ci-dessous : toute modification du fichier les
+> décale. L'ancrage fiable est le **nom du symbole** (fonction, constante) ;
+> la ligne est un indice, pas une garantie.
 
-Base de lecture : `server/` (Node/Express) + `src/` (React/Vite).
-Dernière vérification : dépôt local, commit de travail `0328dc8` (cf. `docs/00-INDEX.md`).
+Base de lecture : `server/` (Node, http natif) + `src/` (React/Vite).
+Dernière vérification : dépôt local, commit `5f4b796` (27/10/2026), repassé le
+28/10/2026 (audit-3 P16).
 
 ---
 
@@ -44,7 +50,7 @@ Trois garde-fous matérielisent cette règle :
 > la commission réellement versée vaut 2 % du pot **réellement verrouillé**
 > (`server/match-engine.mjs:313`). Le commentaire du code le reconnaît
 > (`server/persistence.mjs:1515-1517`). Ce n'est pas un chiffre de revenu :
-> c'est un indicateur d'écart, approximatif. Voir `docs/05-invariants.md` V9.
+> c'est un indicateur d'écart, approximatif. Voir `docs/05-invariants.md` V11.
 
 ### 1.2 L'unité
 
@@ -61,20 +67,20 @@ Trois garde-fous matérielisent cette règle :
 
 | # | Fichier | Lignes | Rôle | Rémunération d'arbitre |
 |---|---|---|---|---|
-| 1 | `server/match-engine.mjs` | 1 545 | Match 1VS1 → 5VS5, deux équipes, un tiers | **2 %** du pot verrouillé |
-| 2 | `server/tournament-engine.mjs` | 1 419 | Tournoi à bracket, 1 ou 2 arbitres à *slots* | **5 %** (1 arbitre) / **10 %** (2 arbitres) |
-| 3 | `server/league-engine.mjs` | 1 144 | Ligue BR saisonnière (5 journées, top 40, finale) | **0 %** — l'admin *est* l'arbitre |
-| 4 | `server/br-engine.mjs` | 947 | Salon Battle Royale (5 → 100 joueurs, un lobby) | **≤ 5 %** du pot |
-| 5 | `server/wallet-engine.mjs` | 576 | Portefeuille, séquestre, retraits, réconciliation | — |
-| 6 | `server/payment-engine.mjs` | 393 | FedaPay : dépôts (crédit ZC) et retraits (payout) | — |
-| 7 | `server/cron.mjs` | 548 | Orchestrateur des balayages automatiques | — |
+| 1 | `server/match-engine.mjs` | 1 898 | Match 1VS1 → 5VS5, deux équipes, un tiers | **2 %** du pot verrouillé |
+| 2 | `server/tournament-engine.mjs` | 1 588 | Tournoi à bracket, 1 ou 2 arbitres à *slots* | **5 %** (1 arbitre) / **10 %** (2 arbitres) |
+| 3 | `server/league-engine.mjs` | 1 239 | Ligue BR saisonnière (5 journées, top 40, finale) | **0 %** — l'admin *est* l'arbitre |
+| 4 | `server/br-engine.mjs` | 1 230 | Salon Battle Royale (5 → 100 joueurs, un lobby) | **≤ 5 %** du pot |
+| 5 | `server/wallet-engine.mjs` | 750 | Portefeuille, séquestre, retraits, réconciliation | — |
+| 6 | `server/payment-engine.mjs` | 441 | FedaPay : dépôts (crédit ZC) et retraits (payout) | — |
+| 7 | `server/cron.mjs` | 904 | Orchestrateur des balayages automatiques | — |
 
 Socle transversal, non compté ci-dessus :
 
-- `server/persistence.mjs` (4 361 l.) — lecture/écriture, Supabase, OCC.
-- `server/mutex.mjs` (171 l.) — verrous **de processus** (`async-mutex`).
-- `server/state-helpers.mjs` (356 l.) — ce qui est diffusé au client.
-- `server/single-process-guard.mjs` (135 l.) — refuse de démarrer en multi-processus.
+- `server/persistence.mjs` (4 456 l.) — lecture/écriture, Supabase, OCC.
+- `server/mutex.mjs` (202 l.) — verrous **de processus** (`async-mutex`).
+- `server/state-helpers.mjs` (525 l.) — ce qui est diffusé au client.
+- `server/single-process-guard.mjs` (164 l.) — refuse de démarrer en multi-processus.
 
 ### 2.1 Graphe de dépendances
 
@@ -89,10 +95,10 @@ routes/{match,admin,br,league,tournament,wallet}.mjs ──> moteurs + mutex.mjs
 ```
 
 Il n'existe **pas** de `dispute-engine.mjs` : la gestion des litiges est
-intégrée au moteur de match (`openDisputeOnServer` `server/match-engine.mjs:1120`,
-`resolveDisputeOnServer` `server/match-engine.mjs:1198`,
-`addEvidenceToDisputeOnServer` `server/match-engine.mjs:1463`,
-`escalateDisputeOnServer` `server/match-engine.mjs:1510`).
+intégrée au moteur de match (`openDisputeOnServer` `server/match-engine.mjs:1330`,
+`resolveDisputeOnServer` `server/match-engine.mjs:1408`,
+`addEvidenceToDisputeOnServer` `server/match-engine.mjs:1816`,
+`escalateDisputeOnServer` `server/match-engine.mjs:1863`).
 
 ---
 
@@ -105,7 +111,7 @@ intégrée au moteur de match (`openDisputeOnServer` `server/match-engine.mjs:11
 | Match | n'importe quel joueur connecté, **hors joueurs du match** | `server/match-engine.mjs:647-654` |
 | Tournoi | le créateur est slot 1 par défaut ; sinon un joueur inscrit ne peut pas | `server/tournament-engine.mjs:736-746`, `server/tournament-engine.mjs:1193-1195` |
 | Ligue | **pas d'arbitre** — toutes les transitions sont admin | `server/league-engine.mjs:233`, `:364`, `:409`, `:442`, `:517`, `:550` |
-| BR | désigné **à la création**, doit être `role === 'admin'` | `server/br-engine.mjs:281-290` |
+| BR | désigné **à la création** (défaut : le créateur), tout compte existant — volontariat A7, **pas de test de rôle** | `server/br-engine.mjs:330-339` |
 
 **Un joueur ne peut pas être joueur ET arbitre.** C'est le même invariant dans
 les trois moteurs qui connaissent un roster de joueurs :
@@ -243,7 +249,7 @@ Les trois divergences historiques sont résolues :
 | 17 | Automation « pas d'arbitre à l'heure » | `processMatchAutomationOnServer:1381` | — | `cancelled` | remboursement |
 | 18 | Automation « une seule équipe prête » | `processMatchAutomationOnServer:1408` | — | `forfeited` | forfait |
 | 19 | Admin | `cancelMatchOnServer:1260` | — | `cancelled` | remboursement (`:1277`) |
-| 20 | Sweep arbitrage 2 h | `sweepMatchesWithoutArbiter:32` | — | `cancelled` | remboursement — **non branché** (§9) |
+| 20 | Sweep arbitrage 2 h | `sweepMatchesWithoutArbiter:81` | — | `cancelled` | remboursement — **branché ✅** (tick 30 s, §9.1) |
 
 ### 4.5 Le litige
 
@@ -252,7 +258,7 @@ Trois niveaux, un seul gel :
 - `open` (`server/match-engine.mjs:1159`) : litige frais, `prizePoolFrozen: true`
   (`:1162`), statut `disputed` (`:1167`) ;
 - `under_review` (`server/match-engine.mjs:1535`) : escaladé au niveau 2 par
-  l'arbitre (`:1510`) ;
+  l'arbitre (`:1863`) ;
 - `resolved` (`server/match-engine.mjs:495`) : clos par l'admin.
 
 Pendant qu'un litige est actif, **deux** chemins de versement sont gelés :
@@ -680,4 +686,5 @@ Les balayages livrés le sont dans l'ordre de `docs/audit-2/00-SYNTHESE.md`
 - **Pas de racket plateforme** : la seule monétisation est le retrait.
 - **Pas de mode « inter-espèces »** : tout se règle en ZC.
 - **Le salon BR est la seule surface où l'arbitre n'est pas un joueur** : il est
-  un admin désigné à la création (`server/br-engine.mjs:281-290`).
+  désigné à la création (défaut : le créateur) parmi tout compte existant —
+  volontariat A7, pas de test de rôle (`server/br-engine.mjs:330-339`).

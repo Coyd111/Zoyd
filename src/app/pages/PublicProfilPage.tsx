@@ -188,7 +188,10 @@ const PublicProfilPage = () => {
       return;
     }
     reportUser(id, 'other', `Signalement manuel depuis le profil public de ${publicProfile.pseudo}.`);
-    toast.success(`Signalement enregistré pour ${publicProfile.pseudo}.`);
+    // P12 C12 (audit-3) : PAS de toast ici. Le store `reportUser` annonce
+    // deja l'issue (succes " Signalement envoye " ou erreur reseau) - un
+    // toast inconditionnel annoncait le succes meme quand l'API echouait,
+    // en double avec celui du store.
     setConfirmReport(false);
   };
 

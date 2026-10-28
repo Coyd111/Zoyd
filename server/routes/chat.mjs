@@ -16,7 +16,14 @@
  * INVARIANT : l'expediteur est la SESSION (`senderId`, `senderPseudo`), pas
  *   un champ du corps de requete.
  * INVARIANT : les participants d'un canal cree sont la session plus les
- *   utilisateurs EXISTANTS : un identifiant inconnu est ecarte silencieusement.
+ *   utilisateurs EXISTANTS : un identifiant inconnu est ecarte
+ *   silencieusement. P9 C2 (audit-3) : la liste est BORNEE a 50 avant le
+ *   filtre d'existence, le name du canal est sanitize + tronque a 80, et
+ *   un canal private a la meme paire existant est RETOURNE (200) au lieu
+ *   d'en creer un second (deduplication de la course DM).
+ * INVARIANT : replyTo n'est conserve que s'il reference un message NON
+ *   SUPPRIME du canal courant (P9 C2 : sinon l'identifiant fantome
+ *   passait tel quel).
  * INVARIANT : la diffusion suit les helpers de chat-helpers.mjs (global,
  *   scope public, ou room `user:<id>` de chaque participant).
  * PIEGE : le refus d'acces est un 404 : un 403 confirmerait l'existence du
@@ -40,6 +47,7 @@ import {
 import {
   getUserById,
   getChatChannelById,
+  getChatChannelsForUser,
   getChatMessagesForChannel,
   appendChatMessage,
   upsertChatChannel,
@@ -121,13 +129,44 @@ if (req.method === 'POST' && pathname === '/api/chat/channels') {
       respondJson(res, 400, { ok: false, error: `Type de canal invalide. Valeurs acceptees: ${CHANNEL_TYPES.join(', ')}`, code: 'INVALID_ENUM' });
       return true;
     }
-    // Validate participants — only existing user IDs allowed
-    const rawParticipants = Array.isArray(body.participants) ? body.participants.filter(Boolean) : [];
+    // Validate participants — only existing user IDs allowed.
+    // P9 C2 (audit-3) : bornage AVANT le filtre d'existence - chaque id
+    // declenche un getUserById (scan de la Map users) : un tableau de
+    // 10 000 identifiants etait un DoS d'entree gratuite (famille S12,
+    // ledger audit-2 #94). Plafond 50 : le DM en attend 1, une equipe
+    // 5vs5 en a 10 (MAX_TEAM_SIZE) - 50 garde toute marge.
+    const rawParticipants = (Array.isArray(body.participants) ? body.participants.filter(Boolean) : []).slice(0, 50);
     const validParticipants = rawParticipants.filter((id) => getUserById(id));
+
+    // P9 C2 (audit-3) : le name partait BRUT du corps de requete - le
+    // createur nommait le canal CHEZ LES AUTRES participants (usurpation :
+    // "Support officiel ZOYD"), sans sanitisation ni bornage.
+    const channelName = sanitizeText(`${body.name || ''}`.trim()).slice(0, 80) || 'Nouvelle conversation';
+
+    // P9 C2 (audit-3) : deux utilisateurs qui se creent chacun un canal DM
+    // vers l'autre produisaient DEUX canaux jumeaux (id = timestamp :
+    // aucune deduplication par paire). Un canal private a EXACTEMENT la
+    // meme paire existant est retourne tel quel (200) au lieu d'en creer
+    // un second : le front fait deja un find-or-create cote client, ce
+    // garde ferme la course de deux clics simultanes.
+    if (channelType === 'private') {
+      const pair = [...new Set([session.user.id, ...validParticipants])];
+      if (pair.length === 2) {
+        const pairSet = new Set(pair);
+        const twin = getChatChannelsForUser(session.user.id).find(
+          (candidate) => candidate.type === 'private' && candidate.participants.length === 2 && candidate.participants.every((id) => pairSet.has(id))
+        );
+        if (twin) {
+          respondJson(res, 200, { ok: true, channel: twin, messages: getChatMessagesForChannel(twin.id, 150) });
+          return true;
+        }
+      }
+    }
+
     const channel = upsertChatChannel({
       id: `CH-${body.type || 'private'}-${Date.now().toString(36).toUpperCase()}`,
       type: body.type || 'private',
-      name: body.name || 'Nouvelle conversation',
+      name: channelName,
       participants: [session.user.id, ...validParticipants],
       scope: 'participants',
       inbox: 'participants',
@@ -173,6 +212,17 @@ if (req.method === 'POST' && chatChannelMessages) {
       return true;
     }
 
+    // P9 C2 (audit-3) : replyTo partait sans validation - un identifiant
+    // fantome (message d'un autre canal, ou invente) passait tel quel. Il
+    // n'est conserve que s'il reference un message NON SUPPRIME du canal
+    // courant (la memoire borne chaque canal a 500 messages : la fenetre
+    // 500 couvre tout).
+    let replyTo = typeof body.replyTo === 'string' ? body.replyTo.trim() : '';
+    if (replyTo) {
+      const referenced = getChatMessagesForChannel(channel.id, 500).some((m) => m.id === replyTo && !m.isDeleted);
+      if (!referenced) replyTo = '';
+    }
+
     const message = await appendChatMessage({
       id: `MSG-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
       channelId: channel.id,
@@ -180,7 +230,7 @@ if (req.method === 'POST' && chatChannelMessages) {
       senderId: session.user.id,
       senderPseudo: session.user.pseudo,
       text,
-      replyTo: body.replyTo,
+      replyTo: replyTo || undefined,
       timestamp: getNow(),
     });
     const updatedChannel = getChatChannelById(channel.id);

@@ -469,13 +469,18 @@ test.describe('Battle Royale API', () => {
     expect(finish.status, JSON.stringify(finish.body)).toBe(200);
     expect(finish.body.lobby.status).toBe('finished');
 
-    // Contrat de repartition : la commission d'arbitre sort du pot, et les
-    // pourcentages de places s'appliquent au SOLDE (pot - commission).
+    // Contrat de repartition (b4c522c, M2-M5) : les taux de places
+    // s'appliquent au POT complet - les six taux (5 places + commission)
+    // somment a 100 % (validateBrPayout), la derniere place primee absorbe
+    // l'arrondi. L'ancien contrat verrouille ici (taux sur le solde
+    // pot - commission) faussait la repartition : le 5e etait paye PLUS
+    // que le 4e, et l'ecran (splitBrPayout, applique au pot) montrait un
+    // montant different du versement.
     const pot = 6 * 50;
     const winnersPool = Math.round(pot * (1 - payout.arbiterRate) * 100) / 100;
     const ranks = [entrants[5], entrants[4], entrants[3], entrants[2], entrants[1]];
-    const expected = [winnersPool * payout.first, winnersPool * payout.second,
-      winnersPool * payout.third, winnersPool * payout.fourth, null];
+    const expected = [pot * payout.first, pot * payout.second,
+      pot * payout.third, pot * payout.fourth, null];
     // Le dernier Beneficiaire absorbe l'arrondi : la somme doit tomber juste.
     expected[4] = Math.round((winnersPool - expected.slice(0, 4)
       .reduce((a, b) => a + Math.round(b * 100) / 100, 0)) * 100) / 100;

@@ -120,7 +120,7 @@ describe('Schema SQL — nothing the code reads may be missing', () => {
 
   it("la colonne OCC de app_users est declaree — sans elle, la protection multi-instance est hors service", () => {
     // L'invariant est verifie dans le CODE par `occ-revision-invariant.test.mjs`.
-    // Ici on verifie l'autre moitie : que le SCHEMA peut lporter.
+    // Ici on verifie l'autre moitie : que le SCHEMA peut la porter.
     const appUsers = declares.get('app_users');
     expect(appUsers, 'table app_users absente du schema').toBeDefined();
     expect(appUsers.has('revision'), 'app_users.revision absente du schema').toBe(true);

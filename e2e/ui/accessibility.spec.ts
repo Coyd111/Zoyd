@@ -15,12 +15,19 @@ import AxeBuilder from '@axe-core/playwright';
  * qui bloquent reellement quelqu'un. Les regles `moderate` (rapport de
  * contraste, par exemple) sont bruitées par le theme sombre.
  */
-const PAGES = [
+const PAGES: Array<{ name: string; path: string; heading?: string }> = [
   { name: 'Accueil', path: '/' },
   { name: 'Connexion', path: '/auth/login' },
   { name: 'Inscription', path: '/auth/register' },
   { name: 'Mot de passe oublie', path: '/auth/forgot-password' },
-  { name: 'Selection de mode', path: '/selection-mode' },
+  // P15 C2 (audit-3) : le chemin historique '/selection-mode' n'existe pas
+  // dans le routeur (la vraie route est '/mode', src/app/routes.tsx:94-97).
+  // Le fallback SPA servait index.html, React Router rendait la 404
+  // (RouteErrorBoundary) et axe-core analysait CETTE page : le test
+  // « Selection de mode » restait vert sans jamais rendre ModeSelectionPage.
+  // `heading` est la garde : la page analysee doit vraiment être celle
+  // annoncee, sinon c'est une 404 qui se fait passer pour elle.
+  { name: 'Selection de mode', path: '/mode', heading: 'terrain de jeu' },
 ];
 
 /**
@@ -64,6 +71,17 @@ test.describe('Accessibilite (axe-core, violations serious/critical)', () => {
         return Boolean(root && root.childElementCount > 0);
       }, undefined, { timeout: 45_000 });
       await page.waitForTimeout(1_000);
+
+      // P15 C2 (audit-3) : verifier que la page rendue est bien celle
+      // annoncee AVANT l'analyse. Un chemin fantome produit un DOM non vide
+      // (la 404 de la SPA est rendue) — sans cette garde, axe-core analyse
+      // cette page en la croyant la cible et le test reste vert a tort.
+      if (target.heading) {
+        await expect(
+          page.getByRole('heading', { level: 1, name: target.heading }),
+          `la page ${target.path} doit rendre son titre, sinon axe analyse la page 404`
+        ).toBeVisible();
+      }
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

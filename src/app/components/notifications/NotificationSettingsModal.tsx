@@ -1,23 +1,34 @@
 /**
- * NotificationSettingsModal - reglages de notification et permission navigateur.
+ * NotificationSettingsModal - permission de notification navigateur.
  *
- * Demande la permission du navigateur, affiche l'etat du service worker et
- * permet de declencher la mise a jour en attente.
+ * P13 C5 (audit-3) : modale epuree pour n'afficher que ce qui est
+ * REELLEMENT connecte. La seule chose connectee ici est la permission
+ * navigateur (Notification.requestPermission), lue par
+ * notificationStore.showBrowserNotification au moment de l'envoi.
+ *
+ * PIEGE (retire en C5) : cette modale affichait cinq toggles decoratifs
+ * (types de notifications) et un fichier .ics fictif - aucun reglage
+ * n'etait persiste nulle part : "Sauvegarder" ne faisait que fermer la
+ * fenetre, l'etat se perdait au demontage, et l'ics annoncait un match
+ * fictif a now+1h qui ne correspondait a aucun match reel. Les
+ * reintroduire suppose d'implementer des preferences persistees ET leur
+ * filtrage dans notificationStore.addNotification d'abord : un ecran qui
+ * donne l'illusion d'une preference enregistree est une tromperie douce
+ * sur l'etat (famille C5 audit-2).
+ * PIEGE : la mise a jour du service worker (SKIP_WAITING, useServiceWorker)
+ * n'a jamais eu de bouton ici - l'ancienne docstring la promettait a tort.
  *
  * INVARIANT : la permission navigateur ne se demande qu'APRES une action
  * explicite de l'utilisateur. Un `Notification.requestPermission()` au
  * montage est refuse par les navigateurs.
  * PIEGE : la permission peut etre accordee, refusee ou unsupported selon le
  * navigateur : `unsupported` n'est pas une erreur, c'est un etat legitime.
- * PIEGE : appliquer une mise a jour du service worker passe par
- * SKIP_WAITING puis un rechargement. Ne pas recharger sur une PREMIERE
- * installation : l'utilisateur ne verrait qu'un aller-retour inutile.
  *
  * Voir aussi : docs/08-frontend.md - section 7.4 (Le push Web)
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Bell, Calendar, Download, CheckCircle, AlertCircle, Monitor, Smartphone, Clock } from 'lucide-react';
+import { X, Bell, CheckCircle, Monitor } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface NotificationSettingsModalProps {
@@ -39,12 +50,6 @@ function useBrowserNotifyPermission(): PermState {
 const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ open, onClose }) => {
   const notifyPerm = useBrowserNotifyPermission();
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [agendaEnabled, setAgendaEnabled] = useState(false);
-  const [matchReminders, setMatchReminders] = useState(true);
-  const [tournamentReminders, setTournamentReminders] = useState(true);
-  const [friendActivity, setFriendActivity] = useState(true);
-  const [walletAlerts, setWalletAlerts] = useState(true);
-  const [disputeAlerts, setDisputeAlerts] = useState(true);
 
   useEffect(() => {
     if (open) {
@@ -57,41 +62,6 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
     const result = await Notification.requestPermission();
     if (result === 'granted') setPushEnabled(true);
   }, []);
-
-  const generateICS = () => {
-    const start = new Date(Date.now() + 3600000);
-    const end = new Date(start.getTime() + 7200000);
-    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//ZOYD//Match Reminder//FR',
-      'BEGIN:VEVENT',
-      `DTSTART:${fmt(start)}`,
-      `DTEND:${fmt(end)}`,
-      'SUMMARY:Match ZOYD - Check-in requis',
-      'DESCRIPTION:Rappel de match sur ZOYD. Connecte-toi pour le check-in 10 min avant.',
-      'LOCATION:ZOYD App',
-      'BEGIN:VALARM',
-      'ACTION:DISPLAY',
-      'DESCRIPTION:Rappel match ZOYD',
-      'TRIGGER:-PT10M',
-      'END:VALARM',
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n');
-
-    const blob = new Blob([ics], { type: 'text/calendar' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'zoyd-match-reminder.ics';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setAgendaEnabled(true);
-  };
 
   return (
     <AnimatePresence>
@@ -126,7 +96,9 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
             </div>
 
             <div className="p-6 space-y-8">
-              {/* SECTION PUSH NAVIGATEUR */}
+              {/* SECTION PUSH NAVIGATEUR — seule section cablee : la permission
+                  navigateur est l'etat reel lu par notificationStore au moment
+                  d'afficher une alerte hors onglet. */}
               <section>
                 <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
                   <Monitor className="w-3.5 h-3.5" /> Push Navigateur
@@ -151,53 +123,13 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
                   </div>
                 </div>
               </section>
-
-              {/* SECTION AGENDA */}
-              <section>
-                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5" /> Agenda & Rappels
-                </h3>
-                <div className="hud-panel p-4 bg-zoyd-surface/20 border border-white/5 space-y-3">
-                  <p className="text-[10px] font-mono text-white/60 leading-relaxed">
-                    Télécharge un événement <strong className="text-white/60">.ics</strong> pour ajouter tes matchs et tournois à ton agenda (Google Calendar, Outlook, Apple Calendar).
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-white/60">
-                      <Clock className="w-4 h-4 text-zoyd-blue" />
-                      Rappel auto 10 min avant
-                    </div>
-                    <Button variant="secondary" size="sm" onClick={generateICS} disabled={agendaEnabled}>
-                      <Download className="w-3.5 h-3.5 mr-1.5" />
-                      {agendaEnabled ? 'Ajouté' : 'Ajouter au calendrier'}
-                    </Button>
-                  </div>
-                  {agendaEnabled && (
-                    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 text-[10px] font-mono text-green-400">
-                      <CheckCircle className="w-3.5 h-3.5" /> Événement téléchargé. Ouvre le fichier .ics dans ton application agenda.
-                    </motion.div>
-                  )}
-                </div>
-              </section>
-
-              {/* SECTION TYPES DE NOTIFS */}
-              <section>
-                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
-                  <Smartphone className="w-3.5 h-3.5" /> Types de notifications
-                </h3>
-                <div className="space-y-2">
-                  <ToggleRow label="Rappels de match" icon={<Clock className="w-3.5 h-3.5" />} value={matchReminders} onChange={setMatchReminders} />
-                  <ToggleRow label="Tournois & inscriptions" icon={<Calendar className="w-3.5 h-3.5" />} value={tournamentReminders} onChange={setTournamentReminders} />
-                  <ToggleRow label="Activité amis" icon={<Bell className="w-3.5 h-3.5" />} value={friendActivity} onChange={setFriendActivity} />
-                  <ToggleRow label="Transactions wallet" icon={<AlertCircle className="w-3.5 h-3.5" />} value={walletAlerts} onChange={setWalletAlerts} />
-                  <ToggleRow label="Litiges & arbitrage" icon={<AlertCircle className="w-3.5 h-3.5" />} value={disputeAlerts} onChange={setDisputeAlerts} />
-                </div>
-              </section>
             </div>
 
-            {/* FOOTER */}
+            {/* FOOTER — "Fermer" : il n'y a RIEN a sauvegarder ici (P13 C5) :
+                l'ancien bouton "Sauvegarder" ne faisait que fermer la modale
+                en laissant croire a un enregistrement. */}
             <div className="px-6 py-4 border-t border-white/5 bg-zoyd-surface/20 flex justify-end gap-3">
-              <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
-              <Button variant="primary" size="sm" onClick={onClose}>Sauvegarder</Button>
+              <Button variant="ghost" size="sm" onClick={onClose}>Fermer</Button>
             </div>
           </motion.div>
         </motion.div>
@@ -205,23 +137,5 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
     </AnimatePresence>
   );
 };
-
-const ToggleRow = ({ label, icon, value, onChange }: { label: string; icon: React.ReactNode; value: boolean; onChange: (v: boolean) => void }) => (
-  <div className="flex items-center justify-between px-4 py-3 bg-zoyd-surface/10 border border-white/5 hover:bg-zoyd-surface/20 transition-colors">
-    <div className="flex items-center gap-3 text-xs text-white/70">
-      <span className="text-white/60">{icon}</span>
-      {label}
-    </div>
-    <button
-      onClick={() => onChange(!value)}
-      className={`w-9 h-5 rounded-full relative transition-colors ${value ? 'bg-zoyd-blue' : 'bg-white/10'}`}
-      aria-pressed={value ? 'true' : 'false'}
-      aria-label={label}
-      title={label}
-    >
-      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${value ? 'translate-x-4' : 'translate-x-0'}`} />
-    </button>
-  </div>
-);
 
 export default NotificationSettingsModal;

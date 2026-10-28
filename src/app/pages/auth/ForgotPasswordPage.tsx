@@ -40,18 +40,15 @@ const ForgotPasswordPage: React.FC = () => {
     setIsRequesting(true);
     try {
       const response = await requestPasswordReset(identifier.trim());
-      // Compte inconnu : on reste sur l'étape 1 avec un message clair.
-      if (response.found === false) {
-        toast.error(response.message || 'Aucun compte associé à cet identifiant.');
-        return;
-      }
+      // P13 C14 (audit-3) : le serveur repond found: true TOUJOURS
+      // (auth.mjs:326-332, anti-enumeration) et n'y divulgue jamais le
+      // detail de l'envoi (pas de champ delivery sur cette route) : les
+      // branches found === false et delivery === 'pending-provider' ne
+      // pouvaient jamais s'ouvrir. La reponse identique est le choix
+      // produit : le message affiche ne revele pas l'existence du compte.
       if (response.resetCode) setDevCode(response.resetCode);
       setCodeSent(true);
-      if (response.delivery === 'pending-provider') {
-        toast.warning(response.message);
-      } else {
-        toast.success(response.message);
-      }
+      toast.success(response.message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Demande impossible.');
     } finally {

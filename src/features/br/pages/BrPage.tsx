@@ -2,7 +2,8 @@
  * BrPage - liste des salons Battle Royale et creation de salon.
  *
  * Affiche les salons ouverts, le nombre de places, la carte, l'horaire et
- * le prix du pass, et permet a un admin de creer un salon.
+ * le prix du pass, et permet a tout utilisateur connecte de creer un salon
+ * (volontariat A7 : le createur devient arbitre par defaut).
  *
  * INVARIANT : la liste des salons vient de brApi.ts. Ne pas creer un salon
  * localement "pour voir le rendu".

@@ -5,14 +5,17 @@
  * Regle carte, mode, horaire, nombre de places et repartition des gains,
  * puis cree le salon via l'API.
  *
- * INVARIANT : la creation est reservee au role admin cote serveur. Le
- * panneau peut etre masque, mais ce n'est pas une barriere.
+ * INVARIANT : la creation est ouverte a tout utilisateur connecte
+ * (volontariat A7) : le createur devient arbitre par defaut ; une session
+ * admin paie un TOTP frais (require2faIfAdmin), le joueur passe sans code.
+ * L'ancien texte ("reserve au role admin") contredisait le moteur, dont le
+ * test cree un salon avec un simple joueur (br-engine.test.mjs:131).
  * INVARIANT : la repartition des gains est une regle serveur : le form
  * peut la saisir, il ne doit pas la calculer ni la deduire.
  * PIEGE : le nombre de places et la taille d'equipe doivent etre coherents
  * avec la carte et le mode choisis : une incoherence est refusee par le
  * serveur, apres avoir deja rempli le formulaire.
- * PIEGE : l'horaire conditionne la possibility de se desinscrire avec
+ * PIEGE : l'horaire conditionne la possibilite de se desinscrire avec
  * remboursement : une heure dans le passe rend le salon inexploitable.
  *
  * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)

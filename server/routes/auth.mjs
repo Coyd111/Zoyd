@@ -300,9 +300,11 @@ if (req.method === 'POST' && pathname === '/api/auth/forgot-password') {
       respondJson(res, 400, { ok: false, error: 'Identifiant requis.', code: 'MISSING_FIELDS' });
       return true;
     }
-    // UX v1 : le front a besoin de savoir si le compte existe pour rester
-    // sur l'étape 1 avec un message clair (choix produit assumé : cela
-    // rend l'existence des comptes devinable, acceptable pour la v1).
+    // P13 C14 (audit-3) : l'ancien commentaire affirmait ici l'inverse du
+    // code (« le front a besoin de savoir si le compte existe », residu
+    // d'un choix produit abandonne). La reponse ci-dessous est IDENTIQUE
+    // que le compte existe ou non : anti-enumeration, voir le bloc
+    // detaille quelques lignes plus bas.
     const result = requestPasswordReset(identifier);
     let delivery = { delivered: false };
     if (result.found) {
@@ -314,7 +316,7 @@ if (req.method === 'POST' && pathname === '/api/auth/forgot-password') {
     // associe a cet identifiant »). C etait un oracle d enumeration gratuit :
     // il suffisait de soumettre un email pour savoir s il etait inscrit.
     //
-    // Ici, contrairement a l inscription, rien n excuse de repondre : during
+    // Ici, contrairement a l inscription, rien n excuse de repondre : pendant
     // l inscription, le joueur doit savoir quel champ est deja pris. Pour une
     // reinitialisation, l attaquant n a aucun besoin legitime de le savoir, et
     // l inscription d un compte inexistant ne peut pas « echouer » puisque

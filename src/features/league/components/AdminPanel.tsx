@@ -165,7 +165,7 @@ export const AdminPanel = ({
         <div className="border border-white/10 bg-zoyd-surface/20 p-5 space-y-4">
           <h3 className="text-sm font-bold text-white mb-3">Reassigner un joueur</h3>
           {season.status !== 'qualifying' ? (
-            <p className="text-sm text-white/70">La reassignment n est possible que pendant la qualification.</p>
+            <p className="text-sm text-white/70">Le reassignement n'est possible que pendant la qualification.</p>
           ) : (
             <>
               <div>

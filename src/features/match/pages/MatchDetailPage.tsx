@@ -380,7 +380,7 @@ const MatchDetailPage: React.FC = () => {
     try {
       const response = await setServerRoomDetails(match.id, roomName, roomPassword);
       applyMatchResponse(response);
-      toast.success('La salle privée à bien été partagée.');
+      toast.success('La salle privée a bien été partagée.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : roomPublishWindow.message);
     } finally {

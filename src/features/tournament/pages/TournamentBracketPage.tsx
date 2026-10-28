@@ -246,7 +246,7 @@ const TournamentBracketPage: React.FC = () => {
         return;
       }
       if (cleanedTeammates.some((entry) => entry.length < 2)) {
-        toast.error(`Ajouté les ${tournament.teamSize - 1} coéquipiers avant de confirmer ton équipe.`);
+        toast.error(`Ajoute les ${tournament.teamSize - 1} coéquipiers avant de confirmer ton équipe.`);
         return;
       }
 
@@ -262,7 +262,7 @@ const TournamentBracketPage: React.FC = () => {
     }
 
     if (availableSpend < registrationCost) {
-      toast.error("Solde insuffisant. Ajouté des ZC avant de confirmer ton inscription.");
+      toast.error("Solde insuffisant. Ajoute des ZC avant de confirmer ton inscription.");
       navigate(fundingPath);
       return;
     }
@@ -358,7 +358,7 @@ const TournamentBracketPage: React.FC = () => {
     const bravo = parseInt(scoreB, 10);
 
     if (isNaN(alpha) || isNaN(bravo) || alpha < 0 || bravo < 0) {
-      toast.error('Scores invalidés.');
+      toast.error('Scores invalides.');
       return;
     }
 

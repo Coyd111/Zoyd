@@ -117,7 +117,7 @@ const BrLobbyCard: React.FC<{
         Classement : {ranking?.label || lobby.rankingMode} · Pass {formatZC(lobby.entryFee)}
       </div>
 
-      {/* Note permanente : c'est la regle quisurvit / punit les absents. */}
+      {/* Note permanente : c'est la regle qui survit / punit les absents. */}
       <p className="text-[10px] text-white/60 border-l-2 border-zoyd-yellow/40 pl-2 mb-4 leading-relaxed">
         Ton pass est preleve a l'inscription. <strong className="text-white">Pas de remboursement</strong>{' '}
         si tu ne te presentes pas le jour du lancement : ta part finance la

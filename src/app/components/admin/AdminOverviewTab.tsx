@@ -117,9 +117,9 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                 accent="bg-green-500"
               />
               <StatusLane
-                label="Signaléments en attente"
+                label="Signalements en attente"
                 count={pendingReportsCount}
-                body="Signaléments utilisateurs qui attendent un triage."
+                body="Signalements utilisateurs qui attendent un triage."
                 accent="bg-zoyd-yellow"
               />
             </div>

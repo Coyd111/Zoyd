@@ -641,7 +641,7 @@ const CreateTournamentPage: React.FC = () => {
               </div>
               <p className="text-sm text-white/60 mb-6">
                 Ton tournoi apparaîtra d&apos;abord dans les inscriptions ouvertes. Les joueurs rejoignent ensuite
-                depuis leur profil, pendant que tu gardès la main sur l&apos;organisation.
+                depuis leur profil, pendant que tu gardes la main sur l&apos;organisation.
               </p>
               {teamSize > 1 ? (
                 <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 p-4 text-sm text-white/60 mb-6">
@@ -658,7 +658,7 @@ const CreateTournamentPage: React.FC = () => {
                 disabled={isSubmitting}
                 className={`touch-target w-full py-5 font-display font-black italic tracking-widest uppercase transition-all ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}
               >
-                {isSubmitting ? 'Publication...' : 'Publiér le tournoi'}
+                {isSubmitting ? 'Publication...' : 'Publier le tournoi'}
               </button>
             </div>
           </aside>

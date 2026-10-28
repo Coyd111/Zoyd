@@ -381,7 +381,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         <p className="text-[10px] text-white/60 border-l-2 border-zoyd-yellow/40 pl-2 leading-relaxed flex gap-2">
           <Info className="w-3 h-3 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
-            Tu es l'arbitre du salon : tu sera le seul a saisir les eliminations et
+            Tu es l'arbitre du salon : tu seras le seul a saisir les eliminations et
             a declencher le reglement. Le pass de chaque inscrit est bloque et
             n'est <strong className="text-white">pas rembourse</strong> s'il ne se
             presente pas au lancement.

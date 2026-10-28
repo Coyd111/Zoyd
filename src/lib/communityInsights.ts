@@ -637,7 +637,7 @@ export const buildAdminInsights = ({
   const recentEvents: ModerationEvent[] = [
     ...reports.map((report): ModerationEvent => ({
       id: report.id,
-      action: isReportOpen(report) ? 'Signalément reçu' : 'Signalément traite',
+      action: isReportOpen(report) ? 'Signalement reçu' : 'Signalement traité',
       target: playerIndex.get(report.targetId)?.pseudo || report.targetId,
       timestamp: report.timestamp,
       tone: isReportOpen(report) ? 'warning' : 'neutral',

@@ -139,7 +139,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
               ))}
             </div>
             <p className="text-xs text-white/70">
-              Le capitaine confirmé l'inscription pour toute l'équipe de {teamSize} joueurs.
+              Le capitaine confirme l'inscription pour toute l'équipe de {teamSize} joueurs.
             </p>
           </div>
         ) : null}

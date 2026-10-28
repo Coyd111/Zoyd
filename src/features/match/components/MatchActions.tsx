@@ -696,7 +696,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             <textarea
               value={disputeState.evidence}
               onChange={(event) => disputeState.setEvidence(event.target.value)}
-              placeholder="Scréénshots, room logs ou preuves, séparés par des virgules"
+              placeholder="Screenshots, room logs ou preuves, séparés par des virgules"
               aria-label="Preuves du litige"
               className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />

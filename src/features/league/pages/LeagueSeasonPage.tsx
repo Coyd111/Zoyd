@@ -167,7 +167,7 @@ const LeagueSeasonPage = () => {
       let message = '';
       switch (action) {
         case 'refund':
-          message = `Confirmer le remboursément pour le joueur ${payload?.userId || ''} ?`;
+          message = `Confirmer le remboursement pour le joueur ${payload?.userId || ''} ?`;
           break;
         case 'reassign':
           message = `Confirmer la reassignation du joueur du ${payload?.fromDay} au ${payload?.toDay} ?`;

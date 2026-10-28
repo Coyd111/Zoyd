@@ -187,8 +187,8 @@ const PublicProfilPage = () => {
       setConfirmReport(true);
       return;
     }
-    reportUser(id, 'other', `Signalément manuel depuis le profil public de ${publicProfile.pseudo}.`);
-    toast.success(`Signalément enregistré pour ${publicProfile.pseudo}.`);
+    reportUser(id, 'other', `Signalement manuel depuis le profil public de ${publicProfile.pseudo}.`);
+    toast.success(`Signalement enregistré pour ${publicProfile.pseudo}.`);
     setConfirmReport(false);
   };
 

@@ -139,7 +139,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
   const handleStart = async () => {
     const absentCount = absent.length;
     const warning = absentCount > 0
-      ? `${absentCount} joueur(s) n'ont pas confirme leur presence : leur pass sera consommé et ils seront.classes derniers.`
+      ? `${absentCount} joueur(s) n'ont pas confirme leur presence : leur pass sera consommé et ils seront classés derniers.`
       : 'Les presents seront figes dans le roster de depart.';
     if (!window.confirm(`Lancer la partie ?\n\n${warning}\n\nCette action est irreversible : plus aucun remboursement.`)) {
       return;
@@ -326,7 +326,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                     htmlFor="br-killer"
                     className="block text-[9px] font-mono text-white/50 uppercase mb-1"
                   >
-                    Tue par (laisser vide si mort/mort)
+                    Tué par (laisser vide si mort sans tueur)
                   </label>
                   <select
                     id="br-killer"

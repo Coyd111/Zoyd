@@ -64,7 +64,7 @@ export interface BrLobbyPlayer {
  */
 export interface BrArbiterPlayer extends BrLobbyPlayer {
   userId: string;
-  /** Id du joueur qui l'a éliminé (`null` si mort/mort ou absent). */
+  /** Id du joueur qui l'a éliminé (`null` si mort sans tueur ou absent). */
   killedBy: string | null;
   eliminatedAt: string | null;
   /** Absent au lancement : son pass est consommé, il ne peut pas tuer. */

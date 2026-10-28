@@ -343,7 +343,7 @@ connect: (user) => {
         if (minutesUntilMatch <= 10 && minutesUntilMatch >= -5) {
           pushRealtimeReminder(
             'system',
-            'Publiér la salle',
+            'Publier la salle',
             `${match.id}: partage la room CODM maintenant pour lancer le match a l'heure.`,
             `/mj/match/${match.id}`,
             `rt-arbiter-room-${match.id}-${currentUser.id}`,

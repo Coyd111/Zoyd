@@ -96,25 +96,27 @@ test.describe('LIVE — Register Page', () => {
 });
 
 test.describe('LIVE — Protected Routes', () => {
-  test('dashboard redirects to login', async ({ page }) => {
+  // P15 C3 (audit-3) : la regex /\/(auth\/login|route)/ acceptait les DEUX
+  // issues (redirection OU maintien) — tautologique. Croise avec le code :
+  // /wallet et /mj sont sous AppLayout, qui rend <Navigate to="/auth/login"
+  // replace /> pour un anonyme (AppLayout.tsx:49-51). /dashboard n'est PAS
+  // une route (35 entrees, routes.tsx ; doc 08 §3) : le catchall '*'
+  // (routes.tsx:241-243) rend NotFoundPage — c'est ce statut que son test
+  // affirme desormais. Budgets 30 s : le bootstrap /api/auth/me d'un Render
+  // endormi peut consommer tout le timeout du fetch avant de rendre.
+  test('dashboard unknown route shows the 404 page', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.waitForTimeout(3000);
-    const url = page.url();
-    expect(url).toMatch(/\/(auth\/login|dashboard)/);
+    await expect(page.getByRole('heading', { level: 1, name: '404' })).toBeVisible({ timeout: 30_000 });
   });
 
   test('wallet redirects to login', async ({ page }) => {
     await page.goto('/wallet');
-    await page.waitForTimeout(3000);
-    const url = page.url();
-    expect(url).toMatch(/\/(auth\/login|wallet)/);
+    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 30_000 });
   });
 
   test('mj redirects to login', async ({ page }) => {
     await page.goto('/mj');
-    await page.waitForTimeout(3000);
-    const url = page.url();
-    expect(url).toMatch(/\/(auth\/login|mj)/);
+    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 30_000 });
   });
 });
 
@@ -127,11 +129,12 @@ test.describe('LIVE — SPA Routing', () => {
     }
   });
 
-  test('unknown route shows 404 or landing', async ({ page }) => {
+  test('unknown route shows the 404 page', async ({ page }) => {
     await page.goto('/this-does-not-exist-xyz');
-    await page.waitForTimeout(2000);
-    const body = await page.locator('body').textContent();
-    expect(body).toBeTruthy();
+    // P15 C3 (audit-3) : pas de « 404 ou landing » — le comportement reel est
+    // deterministe : le catchall '*' rend NotFoundPage (routes.tsx:241-243,
+    // h1 « 404 »). « body truthy » n'affirmait rien.
+    await expect(page.getByRole('heading', { level: 1, name: '404' })).toBeVisible({ timeout: 30_000 });
   });
 });
 

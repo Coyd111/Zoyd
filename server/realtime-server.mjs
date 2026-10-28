@@ -49,7 +49,7 @@ import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from 
 import { serializeAuthCookie, ALLOWED_ORIGINS, ALLOW_DEBUG_CODES, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
 import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs';
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
-import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel } from './channel-presence.mjs';
+import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel, startChannelPresenceCleanupTimer } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
 import { saveMatches, refreshLiveMatchIdentities, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies, toPublicBrLobby, toPublicBrRanking } from './state-helpers.mjs';
 import { deliverAuthCode } from './code-delivery.mjs';
@@ -120,6 +120,7 @@ import {
   getStateLoadError,
   getHealthInfo,
   verifyDataIntegrity,
+  startMemoryCleanupTimer,
   loadAdminTotpSecrets,
   markChatChannelRead,
   removePushSubscription,
@@ -677,6 +678,14 @@ const start = async () => {
     hydrateWinningsKeys();
 
   initCronJobs();
+
+  // P9 C6 (audit-3) : les timers memoire de purge (sessions expirees,
+  // demandes d'ami, notifications lues, cartes de presence) ne demarrent
+  // plus a l'IMPORT de persistence/channel-presence — chaque import creait
+  // un timer vivant, y compris dans les tests. Ils demarrent ici,
+  // explicitement, unref.
+  startMemoryCleanupTimer();
+  startChannelPresenceCleanupTimer();
 
   matchAutomationIntervalId = setInterval(async () => {
     if (matchAutomationRunning) {

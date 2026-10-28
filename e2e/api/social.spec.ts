@@ -103,15 +103,34 @@ test.describe('Routes sociales', () => {
     }
   });
 
-  test('signalement exige une cible et un motif', async () => {
+  test('signalement exige une cible et un motif', async ({ }) => {
     const alice = await registerPlayer('Signal');
+    const bob = await registerPlayer('SignalB');
 
     const vide = await call(alice, 'POST', '/api/social/report', {});
     expect(vide.status).toBe(400);
     expect(vide.body?.code).toBe('MISSING_FIELDS');
 
-    const complet = await call(alice, 'POST', '/api/social/report', {
+    // P9 C5 (audit-3) : la cible est verifiee — un compte inexistant
+    // produisait un signalement sans pseudo cible chez l'admin.
+    const cibleInconnue = await call(alice, 'POST', '/api/social/report', {
       targetId: '00000000-0000-4000-8000-000000000000',
+      reason: 'Test de signalement',
+    });
+    expect(cibleInconnue.status).toBe(400);
+    expect(cibleInconnue.body?.code).toBe('TARGET_NOT_FOUND');
+
+    // P9 C5 (audit-3) : se signaler soi-meme est refuse.
+    const soiMeme = await call(alice, 'POST', '/api/social/report', {
+      targetId: alice.id,
+      reason: 'Test de signalement',
+    });
+    expect(soiMeme.status).toBe(400);
+    expect(soiMeme.body?.code).toBe('SELF_REPORT');
+
+    // Le flux valide : une cible REELLE est acceptee.
+    const complet = await call(alice, 'POST', '/api/social/report', {
+      targetId: bob.id,
       reason: 'Test de signalement',
     });
     expect(complet.status).toBe(201);

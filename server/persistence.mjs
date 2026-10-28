@@ -3036,8 +3036,13 @@ const ROTATION_GRACE_MS = 10 * 60 * 1000;
 /** Delai au-dela duquel une session est renouvelee. */
 const SESSION_ROTATION_MS = 30 * 60 * 1000;
 
-// Timer-based session cleanup (every 5 minutes instead of per-request)
-setInterval(() => {
+// P9 C6 (audit-3) : ce timer demarrait a l'IMPORT du module — chaque
+// import creait un timer vivant, y compris dans les tests qui n'en veulent
+// pas. Il demarre maintenant EXPLICITEMENT au lancement du serveur
+// (startMemoryCleanupTimer, appele par realtime-server a cote de
+// initCronJobs), et `.unref()` garantit qu'il ne tient pas un process en
+// vie.
+export const startMemoryCleanupTimer = () => setInterval(() => {
   cleanupExpired(memoryAuthSessions);
   cleanupExpired(memoryRealtimeSessions);
 
@@ -3061,7 +3066,7 @@ setInterval(() => {
       if (userUnread) userUnread.delete(id);
     }
   }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
 
 /**
  * Create an auth session with a 6-hour TTL. Persists to memory and Supabase.

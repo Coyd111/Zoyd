@@ -38,6 +38,10 @@
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+// P9 C3 (audit-3) : import EXPLICITE de randomUUID - `crypto.randomUUID()`
+// marchait par le global WebCrypto de Node >= 19, dependance non declaree
+// (un downgrade de runtime aurait leve un ReferenceError par message).
+import { randomUUID } from 'node:crypto';
 import {
   getAuthenticatedAppSession,
   parseRequestBody,
@@ -91,6 +95,10 @@ if (req.method === 'GET' && chatChannelDetail) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // P9 C4 (audit-3) : la SEULE route du fichier sans rate limit alors que
+  // l'en-tete laissait croire le contraire pour toutes. Groupe 'chat'
+  // comme les 4 autres (60/min).
+  if (!rateLimitGuard(res, getClientIp(req), 'chat')) { return true; }
 
   const channel = getChatChannelById(chatChannelDetail[1]);
   if (!channel || !canAccessChatChannel(channel, session.user)) {
@@ -224,7 +232,7 @@ if (req.method === 'POST' && chatChannelMessages) {
     }
 
     const message = await appendChatMessage({
-      id: `MSG-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+      id: `MSG-${Date.now()}-${randomUUID().slice(0, 8)}`,
       channelId: channel.id,
       channelType: channel.type,
       senderId: session.user.id,

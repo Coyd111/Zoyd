@@ -74,7 +74,11 @@ const cleanupChannelMaps = () => {
   }
 };
 
-setInterval(cleanupChannelMaps, 10 * 60 * 1000);
+// P9 C6 (audit-3) : meme motif que persistence.mjs - le timer demarrait a
+// l'IMPORT. Encapsule dans un demarrage explicite (appele par
+// realtime-server) + unref.
+export const startChannelPresenceCleanupTimer = () =>
+  setInterval(cleanupChannelMaps, 10 * 60 * 1000).unref();
 
 /**
  * Get or create the member map for a channel.

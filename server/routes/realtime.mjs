@@ -94,6 +94,11 @@ if (req.method === 'GET' && pathname.startsWith('/api/realtime/state/bootstrap')
     respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // P9 C4 (audit-3) : la lecture la plus couteuse du domaine (100 matchs +
+  // 50 tournois sanitises + 4 listes) appelable en boucle etait la SEULE
+  // du fichier sans rate limit (le groupe 'default', 60/min, couvre le
+  // rythme d'un client : 1 appel a la connexion et aux reconnexions).
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
 
   try {
 const allMatches = getStateCollection('matches');

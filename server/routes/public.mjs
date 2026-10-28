@@ -40,7 +40,11 @@
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
-import { createHash, timingSafeEqual } from 'node:crypto';
+// P9 C3 (audit-3) : import EXPLICITE - `crypto.randomUUID()` marchait par
+// le global WebCrypto de Node >= 19 (engines : 22.13, verifie), mais la
+// dependance n'etait declaree nulle part : un downgrade de runtime aurait
+// leve un ReferenceError a chaque proxy CODM et message de chat.
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
   getAuthenticatedAppSession,
   paginate,
@@ -148,7 +152,7 @@ if (req.method === 'GET' && pathname === '/api/codm/store') {
     // checkout Codashop, qui facture dans la devise du pays du joueur.
     // `country` est conserve : il sera utile des que Codashop l'exposera.
     const shopLang = 'fr_bj';
-    const deviceId = crypto.randomUUID();
+    const deviceId = randomUUID();
 
     const graphqlBody = {
       operationName: 'GetDynamicSkuInfo',
@@ -256,7 +260,7 @@ if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
 
     const storeUrl = new URL(req.url, 'http://localhost');
     const country = (storeUrl.searchParams.get('country') || 'IN').replace(/[^A-Z]/g, '').slice(0, 2);
-    const deviceId = crypto.randomUUID();
+    const deviceId = randomUUID();
 
     const upstream = await fetch('https://order-sg.codashop.com/validate', {
       method: 'POST',

@@ -11,6 +11,11 @@
  * Les resultats et places d'arbitre ajoutent `require2faIfAdmin` : une
  * session admin doit avoir une 2FA fraiche, un joueur arbitre passe sans
  * code (l'override admin ne doit pas couter moins que /api/admin/*).
+ * P9 C4 (audit-3) : le rate limit `social` couvre create/join/arbiter/
+ * check-in/ready SEULEMENT. Schedule/room/launch/result/confirm/disputes/
+ * evidence/escalate n'en ont PAS - par choix : les gardes du moteur bornent
+ * l'impact de chacun (etats, droits, mutex) ; l'en-tete historique laissait
+ * croire qu'il couvrait tout le fichier.
  *
  * INVARIANT : le verrou GLOBAL est pris AVANT le verrou par portefeuille :
  *   l'ordre inverse ouvre la porte a un deadlock.

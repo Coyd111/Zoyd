@@ -35,6 +35,9 @@
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+// P9 C5 (audit-3) : import EXPLICITE de randomUUID - le suffixe aleatoire
+// de l'identifiant de signalement ferme la collision de milliseconde.
+import { randomUUID } from 'node:crypto';
 import {
   respondJson,
   parseQueryParams,
@@ -53,6 +56,7 @@ import {
   removeFriend,
   blockUser,
   unblockUser,
+  getUserById,
   getUnreadNotificationsForUser,
   markNotificationAsRead,
   markAllNotificationsAsRead,
@@ -222,13 +226,29 @@ if (req.method === 'POST' && pathname === '/api/social/report') {
       respondJson(res, 400, { ok: false, error: 'targetId et reason requis.', code: 'MISSING_FIELDS' });
       return true;
     }
+    // P9 C5 (audit-3, famille S12) : la cible n'etait NI verifiee NI
+    // distinguee du signaleur : l'admin recevait un signalement sans pseudo
+    // cible (compte inexistant), et un joueur pouvait se signaler lui-meme.
+    if (body.targetId === session.user.id) {
+      respondJson(res, 400, { ok: false, error: 'Vous ne pouvez pas vous signaler vous-meme.', code: 'SELF_REPORT' });
+      return true;
+    }
+    if (!getUserById(body.targetId)) {
+      respondJson(res, 400, { ok: false, error: 'Joueur cible introuvable.', code: 'TARGET_NOT_FOUND' });
+      return true;
+    }
     const report = {
-      id: `RP-${Date.now().toString(36).toUpperCase()}`,
+      // P9 C5 (audit-3) : le suffixe aleatoire ferme la collision - deux
+      // depots dans la MEME milliseconde partageaient l'id et sbUpsert
+      // ecrasait le premier signalement.
+      id: `RP-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8)}`,
       reporterId: session.user.id,
       reporterPseudo: session.user.pseudo,
       targetId: body.targetId,
-      reason: sanitizeText(body.reason),
-      description: sanitizeText(body.description || ''),
+      // P9 C5 (audit-3) : sanitises mais SANS slice - le corps pouvait
+      // porter des description/reason de n'importe quelle taille.
+      reason: sanitizeText(body.reason).slice(0, 500),
+      description: sanitizeText(body.description || '').slice(0, 1000),
       status: 'pending',
       createdAt: getNow(),
     };

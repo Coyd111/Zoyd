@@ -22,6 +22,9 @@ import type { Match } from '../../stores/matchStore';
 export const statusToneMap: Record<string, string> = {
   recruiting: 'text-white/75 border-white/10',
   full: 'text-zoyd-yellow border-zoyd-yellow/30',
+  // P13 C7 (audit-3) : match VIVANT bloque faute d'arbitre (file de priorite
+  // admin, matchStatus.ts:66-72) - meme palette jaune que les autres attentes.
+  awaiting_arbiter: 'text-zoyd-yellow border-zoyd-yellow/30',
   check_in: 'text-zoyd-blue border-zoyd-blue/30',
   ready: 'text-green-400 border-green-500/30',
   in_progress: 'text-green-400 border-green-500/30',
@@ -30,11 +33,15 @@ export const statusToneMap: Record<string, string> = {
   finished: 'text-white/60 border-white/10',
   cancelled: 'text-red-300 border-red-500/20',
   forfeited: 'text-red-300 border-red-500/20',
+  // Statut terminal pose par le cron d'archivage (matchStatus.ts:21-23) :
+  // neutre, comme finished.
+  archived: 'text-white/60 border-white/10',
 };
 
 export const statusLabelFR: Record<string, string> = {
   recruiting: 'INSCRIPTIONS',
   full: 'COMPLET',
+  awaiting_arbiter: 'EN ATTENTE ARBITRE',
   check_in: 'PRÉSENCE',
   ready: 'PRÊT',
   in_progress: 'EN COURS',
@@ -43,6 +50,7 @@ export const statusLabelFR: Record<string, string> = {
   finished: 'TERMINÉ',
   cancelled: 'ANNULÉ',
   forfeited: 'FORFAIT',
+  archived: 'ARCHIVÉ',
 };
 
 export const userStatusLabelFR: Record<string, string> = {

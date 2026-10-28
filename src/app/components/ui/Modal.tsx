@@ -102,7 +102,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-zoyd-black-80 backdrop-blur-sm"
+            // P13 C6 (audit-3) : `bg-zoyd-black-80` n'existe pas - aucun token
+            // d'opacite dans theme.css (@theme inline, :25-33), la classe ne
+            // generait RIEN : le backdrop restait transparent + flou. L'opacite
+            // arbitraire Tailwind est la convention du projet (BottomNav:79).
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
           />
 
           {/* Modal */}

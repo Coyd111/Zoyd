@@ -124,19 +124,14 @@ bg-zoyd-white    /* #FFFFFF */
 bg-zoyd-yellow   /* #FFFF00 */
 bg-zoyd-blue     /* #0070FF */
 
-/* Opacités blanches */
-bg-zoyd-white-3  /* rgba(255, 255, 255, 0.03) */
-bg-zoyd-white-5  /* rgba(255, 255, 255, 0.05) */
-bg-zoyd-white-10 /* rgba(255, 255, 255, 0.10) */
-bg-zoyd-white-20 /* rgba(255, 255, 255, 0.20) */
-bg-zoyd-white-30 /* rgba(255, 255, 255, 0.30) */
-bg-zoyd-white-50 /* rgba(255, 255, 255, 0.50) */
-bg-zoyd-white-60 /* rgba(255, 255, 255, 0.60) */
+/* Surfaces — valeurs réelles : src/styles/theme.css */
+bg-zoyd-surface  /* #0A0A0A */
+border-zoyd-border /* #1A1A1A */
+text-zoyd-muted  /* rgba(255, 255, 255, 0.4) */
 
-/* Opacités noires */
-bg-zoyd-black-60 /* rgba(0, 0, 0, 0.60) */
-bg-zoyd-black-75 /* rgba(0, 0, 0, 0.75) */
-bg-zoyd-black-80 /* rgba(0, 0, 0, 0.80) */
+/* Fonds semi-transparents : opacités arbitraires Tailwind sur les couleurs
+   natives (bg-black/80, bg-white/5, ...). AUCUN token d'opacité dédié
+   n'existe dans theme.css — ne pas écrire bg-zoyd-black-80. */
 ```
 
 ### Animations Custom

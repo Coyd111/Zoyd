@@ -1,8 +1,10 @@
 /**
  * BrLobbyDetailPage - detail d'un salon Battle Royale.
  *
- * Affiche le roster, le check-in, la salle CODM, les regles du pass et les
- * actions (rejoindre, quitter, demarrer) selon le role du joueur.
+ * Affiche le roster, le check-in, les regles du pass et les actions
+ * (rejoindre, quitter, demarrer) selon le role du joueur. (P13 C6 audit-3 :
+ * la docstring annoncait une salle CODM - residu d'un autre ecran ; le
+ * payload BR ne porte aucun champ de salle.)
  *
  * INVARIANT : le pass BR est paye a l'inscription et JAMAIS rembourse une
  * fois la partie lancee. Le seul remboursement possible est une

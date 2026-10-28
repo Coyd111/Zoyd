@@ -8,9 +8,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * le rate limiter (20 requetes / 10 min par IP), contournable trivialement ─│
  * depuis plusieurs IP, ou simplement en attendant.
  *
- * Le cumul est lu dans l'historique du portefeuille plutot que dans un registre
- * separe : c'est la seule source deja persistee et rattachee au compte, donc
- * elle survit a un redemarrage.
+ * Le cumul vit dans un registre dedie du portefeuille (`retraitCumul`,
+ * P4 C2 audit-3) : non plafonne par l'activite du joueur — l'historique, lui,
+ * est plafonne a 200 entrees et un bourrage y poussait les retraits hors de
+ * la fenetre. Il vit DANS le portefeuille, donc persiste et survit a un
+ * redemarrage ; l'historique reste lu en heritage pour les portefeuilles
+ * anterieurs au registre.
  */
 
 vi.mock('./supabase.mjs', () => ({
@@ -33,7 +36,7 @@ import {
   depositToWallet,
   MAX_WITHDRAWAL_DAILY_ZC,
 } from './wallet-engine.mjs';
-import { createUserAccount, getUserById } from './persistence.mjs';
+import { createUserAccount, getUserById, tagWalletTransaction } from './persistence.mjs';
 
 const PASSWORD = 'MotDePasseSolide2026!';
 const settle = () => new Promise((r) => setTimeout(r, 10));
@@ -74,6 +77,25 @@ describe('Cumul des retraits sur 24 h', () => {
       transactions: [
         { type: 'withdraw', amount: 1000, status: 'completed', timestamp: ilYA(60 * 60 * 1000) },
         { type: 'withdraw', amount: 9999, status: 'completed', timestamp: ilYA(48 * 60 * 60 * 1000) },
+      ],
+    };
+    expect(getWindowedWithdrawalTotal(wallet)).toBe(1000);
+  });
+
+  it('lit le registre dedie et l historique heritage sans compter deux fois (P4 C2)', () => {
+    // TX-A est dans les DEUX sources (retrait recent : registre + historique) :
+    // sans dedoublonnage, il compterait 1400 au lieu de 1000. TX-B n est que
+    // dans le registre, TX-C que dans l historique (portefeuille anterieur
+    // au registre). Les deux sources se completent, elles ne s additionnent
+    // pas en double.
+    const wallet = {
+      transactions: [
+        { id: 'TX-A', type: 'withdraw', amount: -700, status: 'completed', timestamp: ilYA(60 * 60 * 1000) },
+        { id: 'TX-C', type: 'withdraw', amount: -100, status: 'completed', timestamp: ilYA(45 * 60 * 1000) },
+      ],
+      retraitCumul: [
+        { txId: 'TX-A', timestamp: ilYA(60 * 60 * 1000), amount: 700 },
+        { txId: 'TX-B', timestamp: ilYA(30 * 60 * 1000), amount: 200 },
       ],
     };
     expect(getWindowedWithdrawalTotal(wallet)).toBe(1000);
@@ -121,6 +143,53 @@ describe('Cumul des retraits sur 24 h', () => {
 
     // Et le solde n a pas ete debit du second essai.
     expect(getUserById(user.id).wallet.cashBalance, 'le solde doit avoir ete debite du seul retrait passe').toBe(70_000);
+  });
+
+  it('le plafond survit au bourrage de l historique (registre dedie, P4 C2)', async () => {
+    // L'historique est plafonne a 200 entrees. Avant le registre dedie, un
+    // joueur le bourrait de transactions sans retrait (des depots de 1 ZC :
+    // aucune garde sur leur frequence) pour pousser ses retraits hors de la
+    // fenetre et remettre le cumul a zero — le plafond ne limitait plus rien.
+    // Le registre `retraitCumul` n'est PAS plafonne : le premier retrait
+    // reste consigne apres le bourrage.
+    const user = await nouveauCompte();
+    await depositToWallet(user.id, 100_000, 'test');
+    await settle();
+
+    await withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'b1' });
+
+    // Bourrage : 200 ecritures generales, aucune n est un retrait.
+    for (let i = 0; i < 200; i += 1) {
+      await depositToWallet(user.id, 1, 'test');
+    }
+    await settle();
+
+    await expect(
+      withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'b2' })
+    ).rejects.toMatchObject({ code: 'DAILY_WITHDRAWAL_LIMIT' });
+
+    // Le registre raconte ce que la fenetre 200 a perdu.
+    expect(getUserById(user.id).wallet.retraitCumul.some((e) => e?.amount === 30_000)).toBe(true);
+  });
+
+  it('un retrait refuse ne compte plus apres le tag d echec (registre purge, P4 C2)', async () => {
+    // La remise FedaPay est refusee : le retrait est re-tagge failed ET
+    // rembourse. L'entree correspondante sort du registre, sinon le cumul
+    // resterait gonfle et bloquerait un joueur legitime.
+    const user = await nouveauCompte();
+    await depositToWallet(user.id, 100_000, 'test');
+    await settle();
+
+    await withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'f1' });
+
+    const retrait = getUserById(user.id).wallet.transactions.find((t) => t?.type === 'withdraw');
+    await tagWalletTransaction(user.id, retrait.id, { payoutStatus: 'failed', status: 'failed' });
+    await settle();
+
+    expect(getUserById(user.id).wallet.retraitCumul, 'l entree echouee sort du registre').toHaveLength(0);
+    await expect(
+      withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'f2' })
+    ).resolves.toBeTruthy();
   });
 
   it('laisse passer un retrait qui reste sous le plafond', async () => {

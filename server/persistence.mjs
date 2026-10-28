@@ -227,6 +227,13 @@ export const normalizeWalletSnapshot = (wallet) => ({
   // Elle ne survivaient alors qu'a l'historique, plafonne a 200 : au-dela,
   // les remboursements attendus disparaissaient a jamais.
   payoutsEnAttente: Array.isArray(wallet?.payoutsEnAttente) ? wallet.payoutsEnAttente : [],
+  // P4 C2 (audit-3) : registre dedie du cumul des retraits sur 24 h. La meme
+  // raison que `payoutsEnAttente` : l'historique est plafonne a 200 entrees,
+  // et un cumul y lu disparaissait des qu'un joueur le bourrait de
+  // transactions sans retrait. Ce registre n'est pas plafonne, purge au fil
+  // de l'eau des entrees sorties de la fenetre par le moteur (`pushRetraitCumul`).
+  // Il vit DANS le portefeuille : il survit a un redemarrage.
+  retraitCumul: Array.isArray(wallet?.retraitCumul) ? wallet.retraitCumul : [],
 });
 
 /**
@@ -2115,6 +2122,19 @@ export const tagWalletTransaction = async (userId, txId, patch) => {
           user.wallet.payoutsEnAttente = payoutId
             ? file.filter((p) => p?.payoutId !== payoutId)
             : file;
+        }
+      }
+      // ─── Registre du cumul journalier ───────────────────────────────────
+      // P4 C2 (audit-3) : un retrait REFUSE (et rembourse) ne doit plus peser
+      // sur le plafond des 24 h. Le cumul vit dans `retraitCumul` — le
+      // registre dedie, non plafonne — dont l'entree de ce `txId` sort ici,
+      // MEME quand la transaction elle-meme est deja sortie de la fenetre de
+      // 200 : c'est justement le cas que l'historique ne sait plus raconter.
+      // Le registre ne contient que des txIds de retraits (pose par
+      // `withdrawFromWallet`) : un filtrage par txId ne peut rien rater.
+      if (patch.status === 'failed' || patch.payoutStatus === 'failed') {
+        if (user.wallet && Array.isArray(user.wallet.retraitCumul) && user.wallet.retraitCumul.length > 0) {
+          user.wallet.retraitCumul = user.wallet.retraitCumul.filter((e) => e?.txId !== txId);
         }
       }
       return user;

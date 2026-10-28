@@ -70,11 +70,37 @@ const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
 export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE, MAX_WITHDRAWAL_DAILY_ZC };
 
 /**
+ * Consigne un retrait dans le registre dedie du cumul journalier.
+ *
+ * P4 C2 (audit-3) : l'historique du portefeuille est plafonne a 200 entrees —
+ * un joueur peut le bourrer de transactions sans retrait pour pousser ses
+ * retraits hors de la fenetre et remettre le cumul a zero. Ce registre n'est
+ * pas plafonne par l'activite du joueur ; les entrees sorties de la fenetre
+ * glissante y sont purgees a chaque ecriture (elles ne peuvent plus revenir).
+ *
+ * @param {unknown} existant - registre actuel (tolere undefined)
+ * @param {{ txId: string, timestamp: string, amount: number }} entree
+ * @param {number} [nowMs]
+ * @returns {Array<{ txId: string, timestamp: string, amount: number }>} registre mis a jour
+ */
+const pushRetraitCumul = (existant, entree, nowMs = Date.now()) => {
+  const debut = nowMs - DAILY_WINDOW_MS;
+  const restants = (Array.isArray(existant) ? existant : []).filter(
+    (e) => e?.txId
+      && e.txId !== entree.txId
+      && new Date(e.timestamp || 0).getTime() > debut,
+  );
+  return [...restants, entree];
+};
+
+/**
  * Somme des retraits du joueur sur la fenetre glissante.
  *
- * Lue dans l historique du portefeuille plutot que dans un registre separe :
- * c est la seule source deja persistee et rattachee au compte, donc elle
- * survit a un redemarrage.
+ * P4 C2 (audit-3) : le cumul vit dans un registre dedie (`retraitCumul`,
+ * non plafonne), la source fiable depuis son introduction. L'historique reste
+ * lu pour les portefeuilles anterieurs au registre (heritage), en ecartant
+ * les tx deja consignees dans le registre — un retrait recent est present
+ * dans les DEUX sources : sans ce dedoublonnage, il compterait deux fois.
  *
  * @param {object} wallet
  * @param {number} [nowMs]
@@ -83,9 +109,16 @@ export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE, MAX_WITHDRAWAL_DAILY_ZC };
 export const getWindowedWithdrawalTotal = (wallet, nowMs = Date.now()) => {
   const debut = nowMs - DAILY_WINDOW_MS;
   let total = 0;
+  for (const entree of wallet?.retraitCumul || []) {
+    const quand = new Date(entree?.timestamp || 0).getTime();
+    if (!quand || quand < debut) continue;
+    total += Math.abs(Number(entree?.amount) || 0);
+  }
+  const consignes = new Set((wallet?.retraitCumul || []).map((e) => e?.txId));
   for (const tx of wallet?.transactions || []) {
     if (tx?.type !== 'withdraw') continue;
     if (tx?.status === 'failed') continue;
+    if (tx?.id && consignes.has(tx.id)) continue;
     const quand = new Date(tx?.timestamp || 0).getTime();
     if (!quand || quand < debut) continue;
     // ATTENTION : amount est NEGATIF sur une transaction de retrait. C est
@@ -296,19 +329,30 @@ export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money'
     }
     const { feeAmount, netAmount } = calcWithdrawNet(safeAmount);
 
-    return withTransaction(
-      {
-        ...wallet,
-        cashBalance: roundAmount(wallet.cashBalance - safeAmount),
-      },
-      {
-        type: 'withdraw',
-        amount: -safeAmount,
-        description: `Retrait ${method} vers ${phone || 'compte mobile'}`,
-        status: 'completed',
-        metadata: { method, phone, feeAmount, netAmount, ...extraMetadata },
-      }
-    );
+    // P4 C2 (audit-3) : la transaction est CONSTRUITE ici (id + timestamp
+    // poses par buildTransaction) pour consigner le retrait dans le registre
+    // dedie `retraitCumul` dans la MEME ecriture atomique que le debit et
+    // l'historique. `withTransaction` ne peut pas etre reutilisee : elle
+    // repasserait buildTransaction et remplacerait l id — le prefixe
+    // historique est donc fait ici, a l'identique (un tx deja construit).
+    const retrait = buildTransaction({
+      type: 'withdraw',
+      amount: -safeAmount,
+      description: `Retrait ${method} vers ${phone || 'compte mobile'}`,
+      status: 'completed',
+      metadata: { method, phone, feeAmount, netAmount, ...extraMetadata },
+    });
+
+    return {
+      ...wallet,
+      cashBalance: roundAmount(wallet.cashBalance - safeAmount),
+      retraitCumul: pushRetraitCumul(
+        wallet.retraitCumul,
+        { txId: retrait.id, timestamp: retrait.timestamp, amount: safeAmount },
+        getNow(),
+      ),
+      transactions: [retrait, ...(Array.isArray(wallet.transactions) ? wallet.transactions : [])].slice(0, 200),
+    };
   })).wallet;
 };
 

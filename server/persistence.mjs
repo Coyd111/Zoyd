@@ -1732,11 +1732,18 @@ export const updateUserAccount = async (userId, updater) => {
     // entre-temps : `recalculer` reapplique le MEME updater au payload que
     // l'autre instance vient de poser. Rejouer l'ancien patch ecrirait
     // exactement ce qu'on cherche a empecher.
+    // P2 C1 (audit-3) : le patch ne porte PLUS `password_hash` — la colonne
+    // appartient a updatePasswordHash seul. Avant, la ligne portait le hash
+    // lu en memoire locale AVANT l'ecriture : en conflit OCC, la ligne
+    // initiale ET le rejeu reecrivaient ce hash perime et ressuscitaient le
+    // mot de passe que l'autre instance venait de remplacer (effet differe au
+    // rechargement). Une colonne absente du patch n'est pas touchee par
+    // l'UPDATE PostgREST.
     const ligne = () => ({
       pseudo_key: normalizePseudoKey(next.pseudo),
       email_key: normalizeEmailKey(next.email), phone_key: normalizePhoneKey(next.phone),
       game_id_key: normalizeGameIdKey(next.gameId), role: next.role,
-      password_hash: passwordHash, payload: next,
+      payload: next,
       created_at: current.dateJoined, updated_at: getNow(),
     });
     const persisted = await ecrireUserRow(userId, ligne(), (frais) => {
@@ -1749,8 +1756,8 @@ export const updateUserAccount = async (userId, updater) => {
         phone_key: normalizePhoneKey(rafraichi.phone),
         game_id_key: normalizeGameIdKey(rafraichi.gameId),
         role: rafraichi.role,
-        password_hash: passwordHash, payload: rafraichi,
-created_at: rafraichi.dateJoined, updated_at: getNow(),
+        payload: rafraichi,
+        created_at: rafraichi.dateJoined, updated_at: getNow(),
         };
       }, { revisionObservee });
 
@@ -2561,13 +2568,14 @@ export const changeActivationEmail = async (oldEmail, newEmail) => {
     if (passwordHash) storePasswordHash(userId, passwordHash, current.pseudo, current.email, current.phone);
     memoryActivationCodes.delete(oldEmail);
     const code = generateActivationCode(current.email, userId);
-const ecritActivation = await ecrireUserRow(userId, {
+    // P2 C1 (audit-3) : `password_hash` omet du patch — la colonne appartient
+    // a updatePasswordHash seul (voir le commentaire de updateUserAccount).
+    const ecritActivation = await ecrireUserRow(userId, {
           pseudo_key: normalizePseudoKey(current.pseudo),
           email_key: normalizeEmailKey(current.email),
           phone_key: normalizePhoneKey(current.phone),
           game_id_key: normalizeGameIdKey(current.gameId),
           role: current.role,
-          password_hash: passwordHash,
           payload: current,
           updated_at: getNow(),
         }, (frais) => {
@@ -2593,7 +2601,6 @@ const ecritActivation = await ecrireUserRow(userId, {
             phone_key: normalizePhoneKey(rafraichi.phone),
             game_id_key: normalizeGameIdKey(rafraichi.gameId),
             role: rafraichi.role,
-            password_hash: passwordHash,
             payload: rafraichi,
             updated_at: getNow(),
           };
@@ -4361,20 +4368,38 @@ export const exportMatchHistory = async ({ from, to } = {}) => {
   const debut = from ? new Date(from).getTime() : null;
   const fin = to ? new Date(to).getTime() + 86_399_999 : null;
 
-  const { data, error } = await supabase
-    .from('state_snapshots')
-    .select('entity_id, payload, updated_at')
-    .eq('kind', 'matches');
+  // P2 C2 (audit-3) : le select etait lu SANS pagination — PostgREST plafonne
+  // chaque reponse a 1000 lignes SANS erreur : l'export omettait les plus
+  // anciens silencieusement (exactement ce que le commentaire ci-dessus veut
+  // eviter). Boucle paginee identique au chargement des users (fetchAllRows,
+  // PAGE_SIZE 1000, garde anti-boucle).
+  const PAGE_SIZE = 1000;
+  const rowsLues = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('state_snapshots')
+      .select('entity_id, payload, updated_at')
+      .eq('kind', 'matches')
+      .range(offset, offset + PAGE_SIZE - 1);
 
-  if (error) {
-    log.error('match history export error', { message: error.message, code: error.code });
-    return { ok: false, matches: [], total: 0 };
+    if (error) {
+      log.error('match history export error', { message: error.message, code: error.code });
+      return { ok: false, matches: [], total: 0 };
+    }
+    if (!data || data.length === 0) break;
+    rowsLues.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    // Garde-fou : evite une boucle infinie si l'API ignore `range`.
+    if (rowsLues.length > 200_000) {
+      log.error('Pagination de l export interrompue — table suspicieusement grande', { rows: rowsLues.length });
+      break;
+    }
   }
 
   const debutMs = Number.isFinite(debut) ? debut : null;
   const finMs = Number.isFinite(fin) ? fin : null;
 
-  const matches = (data || [])
+  const matches = rowsLues
     .map((row) => (row.payload && typeof row.payload === 'object' ? row.payload : null))
     .filter(Boolean)
     .filter((match) => {

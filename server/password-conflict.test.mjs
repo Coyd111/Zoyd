@@ -36,6 +36,9 @@ let colonnesUsers = ['id', 'payload', 'updated_at', 'revision', 'pseudo_key', 'e
 /** Declenche une ecriture concurrente juste apres notre lecture de revision. */
 let sabotageApresLecture = false;
 
+/** Patches app_users capturees (audit-3 P2 C1 : le profil ne porte pas le hash). */
+const patchesUsers = [];
+
 vi.mock('./supabase.mjs', () => ({
   supabase: {
     from: (name) => {
@@ -59,7 +62,7 @@ vi.mock('./supabase.mjs', () => ({
           else liste.push({ ...payload });
           return Promise.resolve({ error: null });
         },
-        update: (patch) => { api._patch = patch; return api; },
+        update: (patch) => { api._patch = patch; if (name === 'app_users') patchesUsers.push(patch); return api; },
         delete: () => { api._suppression = true; return api; },
         insert: (payload) => Promise.resolve({ error: null }),
         eq: (c, v) => {
@@ -105,6 +108,7 @@ vi.mock('./supabase.mjs', () => ({
 
 import {
   createUserAccount,
+  updateUserAccount,
   updatePasswordHash,
   setOccSupportePourTest,
 } from './persistence.mjs';
@@ -201,5 +205,46 @@ describe('Conflit sur changement de mot de passe', () => {
     // Le client a ete prevenu ; la base n'a pas change. L'echec est coherent
     // des deux cotes : pas de divergence silencieuse.
     expect(hashEnBase(joueur.id)).toBe(avant);
+  });
+});
+
+describe('Le patch de profil ne porte jamais password_hash (P2 C1, audit-3)', () => {
+  it('la ligne initiale et le rejeu omettent la colonne', async () => {
+    const joueur = await nouveauJoueur();
+    patchesUsers.length = 0;
+    await updateUserAccount(joueur.id, (u) => {
+      u.bio = 'profil sans toucher au mot de passe';
+      return u;
+    });
+    await settle();
+    expect(patchesUsers.length).toBeGreaterThan(0);
+    for (const patch of patchesUsers) {
+      expect(patch, 'aucun patch de profil ne doit porter le hash').not.toHaveProperty('password_hash');
+    }
+  });
+
+  it("un profil rejoue apres conflit ne ressuscite pas le mot de passe change en base", async () => {
+    const joueur = await nouveauJoueur();
+    const hashInitial = hashEnBase(joueur.id);
+    expect(hashInitial).toBeTruthy();
+
+    // L'instance B a change le mot de passe : la base porte desormais son
+    // hash. Notre copie memoire (instance A) garde l'ancien — c'est la course.
+    const ligneB = enBase(joueur.id);
+    ligneB.password_hash = 'hash-instance-B';
+    ligneB.revision = Number(ligneB.revision || 0) + 1;
+
+    // L'instance A ecrit un profil : son premier update rate la revision
+    // (conflit), le callback rejoue sur l'etat frais. Avant le fix, ce rejeu
+    // portait le hash de la memoire de A (ancien) et ressuscitait le mot de
+    // passe remplace en base.
+    sabotageApresLecture = true;
+    await updateUserAccount(joueur.id, (u) => {
+      u.bio = 'ecrit par la vieille instance';
+      return u;
+    });
+    await settle();
+
+    expect(hashEnBase(joueur.id), 'le hash pose par B doit rester').toBe('hash-instance-B');
   });
 });

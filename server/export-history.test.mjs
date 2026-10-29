@@ -10,10 +10,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const state = { result: { data: [], error: null } };
 
 const makeThenable = (result) => {
+  let offset = 0;
   const t = {
     eq() { return t; },
     select() { return t; },
-    then(onOk) { return Promise.resolve(onOk(result)); },
+    range(off) { offset = off; return t; },
+    then(onOk) {
+      if (result.error) return Promise.resolve(onOk(result));
+      const data = result.data || [];
+      // Simule le plafond PostgREST : 1000 lignes par requete maximum.
+      const page = data.slice(offset, offset + 1000);
+      return Promise.resolve(onOk({ data: page, error: null }));
+    },
   };
   return t;
 };
@@ -142,5 +150,24 @@ describe('exportMatchHistory', () => {
 
     const res = await exportMatchHistory({});
     expect(res.total).toBe(2);
+  });
+
+  // P2 C2 (audit-3) : le select etait lu SANS pagination — PostgREST plafonne
+  // a 1000 lignes SANS erreur : l'export omettait les plus anciens
+  // silencieusement (le pire defaut possible pour une sauvegarde). Le mock
+  // applique le plafond : 1001 lignes en base, deux requetes.
+  it('pagine au-dela du plafond de 1000 lignes de PostgREST', async () => {
+    state.result = {
+      data: Array.from({ length: 1001 }, (_, i) =>
+        row({ id: `M-${i}`, finishedAt: '2026-01-01T00:00:00.000Z' })),
+      error: null,
+    };
+
+    const res = await exportMatchHistory({});
+    expect(res.ok).toBe(true);
+    expect(res.total).toBe(1001);
+    expect(res.matches).toHaveLength(1001);
+    expect(res.matches[0].id).toBe('M-0');
+    expect(res.matches[1000].id).toBe('M-1000');
   });
 });

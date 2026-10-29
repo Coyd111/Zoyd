@@ -34,6 +34,9 @@ let colonnesUsers = ['id', 'payload', 'updated_at', 'revision', 'pseudo_key', 'e
 /** Ecriture concurrente declenchee juste apres notre lecture de revision. */
 let sabotageApresLecture = null;
 
+/** Patches app_users capturees (audit-3 P2 C1 : le profil ne porte pas le hash). */
+const patchesUsers = [];
+
 vi.mock('./supabase.mjs', () => ({
   supabase: {
     from: (name) => {
@@ -55,7 +58,7 @@ vi.mock('./supabase.mjs', () => ({
           else liste.push({ ...payload });
           return Promise.resolve({ error: null });
         },
-        update: (patch) => { api._patch = patch; return api; },
+        update: (patch) => { api._patch = patch; if (name === 'app_users') patchesUsers.push(patch); return api; },
         delete: () => { api._suppression = true; return api; },
         insert: (payload) => Promise.resolve({ error: null }),
         eq: (c, v) => {
@@ -206,5 +209,21 @@ describe('Rejeu — changement d email d activation', () => {
     await expect(
       changeActivationEmail(joueur.email, 'trop-tard@test.local')
     ).rejects.toMatchObject({ code: 'ACCOUNT_ALREADY_ACTIVE' });
+  });
+});
+
+describe('Le patch d email d activation ne porte pas password_hash (P2 C1, audit-3)', () => {
+  it('la ligne initiale omet la colonne (elle appartient a updatePasswordHash)', async () => {
+    const joueur = await nouveauJoueur();
+    patchesUsers.length = 0;
+    // Email unique : la memoire interne (index email, memoryPasswordHashes)
+    // survit a tables.clear(), et le test precedent a deja pris
+    // 'corrige@test.local'.
+    await changeActivationEmail(joueur.email, `corrige-${Date.now()}@test.local`);
+    await settle();
+    expect(patchesUsers.length).toBeGreaterThan(0);
+    for (const patch of patchesUsers) {
+      expect(patch, 'aucun patch ne doit porter le hash').not.toHaveProperty('password_hash');
+    }
   });
 });

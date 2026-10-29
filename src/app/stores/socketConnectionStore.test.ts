@@ -3,7 +3,10 @@ import { useSocketConnectionStore } from './socketConnectionStore';
 import { useNotificationStore } from './notificationStore';
 
 const { handlers, fetchRealtimeBootstrap } = vi.hoisted(() => ({
-  handlers: { current: null as Record<string, () => void> | null },
+  // P11 (audit-3, hors constat) : `Record<string, () => void>` refusait
+  // l'appel `onPushDelivery!(payload)` (TS2554 sous `npm run typecheck`)
+  // — le type doit tolérer n'importe quelle signature de callback.
+  handlers: { current: null as Record<string, (...args: unknown[]) => void> | null },
   fetchRealtimeBootstrap: vi.fn(),
 }));
 

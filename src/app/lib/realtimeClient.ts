@@ -229,6 +229,18 @@ export const connectRealtimeSocket = async (user: User) => {
 export const disconnectRealtimeSocket = () => {
   identifiedUser = null;
   activeSession = null;
+  // P11 C2 (audit-3) : la promesse de session n'était pas invalidée — si le
+  // compte B se connectait pendant que le POST /api/realtime/auth/session du
+  // compte A était EN VOL, `ensureRealtimeSession` (garde `if (sessionPromise)
+  // return sessionPromise`) rendait la promesse de A : activeSession devient
+  // la session de A et le socket de B s'authentifie avec le token de A
+  // (rooms user:A, notifications de A) jusqu'à déconnexion ou expiration
+  // (6 h). Fenêtre = durée du POST, aucune escalade — mais une ligne suffit :
+  // la déconnexion coupe aussi la course. La recopie tardive de la promesse
+  // résolue ne contamine plus rien : le socket lu via `await
+  // ensureRealtimeSession(user)` est par appel, et le garde
+  // `isSessionValid` refuse une session qui ne correspond pas au compte.
+  sessionPromise = null;
   socket?.disconnect();
 };
 
@@ -293,17 +305,6 @@ const buildAuthHeaders = async (user: User) => {
   };
 };
 
-export const fetchRealtimeBootstrap = async (user: User) => {
-  const headers = await buildAuthHeaders(user);
-  const response = await fetch(getApiUrl('/api/realtime/state/bootstrap'), {
-    headers,
-    signal: AbortSignal.timeout(15000),
-  });
-
-  if (!response.ok) {
-    throw new Error('Unable to fetch realtime bootstrap.');
-  }
-
 /**
  * Le serveur renvoie `getFriendsForUser()` = `getPublicUserById()` sur chaque
  * ami, donc des PROFILS PUBLICS (`id`, `country`, `controllerType`,
@@ -311,6 +312,12 @@ export const fetchRealtimeBootstrap = async (user: User) => {
  * Le type précédent annonçait `userId`/`status`/`createdAt` : `friend.id`
  * valait undefined à l'exécution et la liste d'amis était cassée.
  * `status` et `isStreamer` sont dérivés côté store.
+ *
+ * P11 C4 (audit-3) : ces trois interfaces vivaient DANS le corps de
+ * `fetchRealtimeBootstrap`, entre le garde `response.ok` et le `return` —
+ * légal en TypeScript (types de bloc, aucun impact runtime), mais un
+ * placement accidentel qui mentait sur la structure. Remontées au niveau
+ * module, aucun changement de comportement.
  */
 interface BootstrapFriend {
   id: string;
@@ -345,6 +352,17 @@ interface BootstrapNotification {
   isRead: boolean;
   createdAt: string;
 }
+
+export const fetchRealtimeBootstrap = async (user: User) => {
+  const headers = await buildAuthHeaders(user);
+  const response = await fetch(getApiUrl('/api/realtime/state/bootstrap'), {
+    headers,
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to fetch realtime bootstrap.');
+  }
 
   return (await response.json()) as {
     ok: boolean;
@@ -403,7 +421,7 @@ export const subscribeToRealtimePush = async (user: User, registration: ServiceW
   }
 
   const headers = await buildAuthHeaders(user);
-  await fetch(getApiUrl('/api/realtime/push/subscribe'), {
+  const response = await fetch(getApiUrl('/api/realtime/push/subscribe'), {
     method: 'POST',
     headers: {
       ...headers,
@@ -414,6 +432,16 @@ export const subscribeToRealtimePush = async (user: User, registration: ServiceW
     }),
   });
 
+  // P11 C3 (audit-3) : la réponse serveur n'était pas lue — un 401 (session
+  // temps réel expirée entre-temps) ou un 500 répondaient `true`, et
+  // l'avertissement du hook ne se déclenchait que si le fetch JETTAIT.
+  // Aligné sur fetchRealtimeBootstrap / fetchVapidPublicKey qui, eux,
+  // vérifient : échec applicatif = échec annoncé. Les appels existants sont
+  // couverts (useServiceWorker logue, useLogout avale volontairement).
+  if (!response.ok) {
+    throw new Error(`Realtime push subscribe refused: HTTP ${response.status}`);
+  }
+
   return true;
 };
 
@@ -422,7 +450,7 @@ export const unsubscribeFromRealtimePush = async (user: User, registration: Serv
   if (!subscription) return;
 
   const headers = await buildAuthHeaders(user);
-  await fetch(getApiUrl('/api/realtime/push/unsubscribe'), {
+  const response = await fetch(getApiUrl('/api/realtime/push/unsubscribe'), {
     method: 'POST',
     headers: {
       ...headers,
@@ -432,6 +460,15 @@ export const unsubscribeFromRealtimePush = async (user: User, registration: Serv
       endpoint: subscription.endpoint,
     }),
   });
+
+  // P11 C3 (audit-3) : la désinscription navigateur n'avait lieu QUE SI le
+  // serveur a accepté — avant, un 500 côté serveur laissait l'abonnement
+  // navigateur supprimé avec une entrée orpheline côté serveur. L'échec est
+  // annoncé (throw) ; l'appelant useLogout avale volontairement, le
+  // navigateur retente à la prochaine déconnexion.
+  if (!response.ok) {
+    throw new Error(`Realtime push unsubscribe refused: HTTP ${response.status}`);
+  }
 
   await subscription.unsubscribe();
 };

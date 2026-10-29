@@ -782,12 +782,45 @@ export const reconcilePendingWithdrawals = async (
   return { resolved, refunded, stillPending };
 };
 
-/** Nombre de retraits en attente de reconciliation (sante). */
+/**
+ * Nombre de retraits en attente de reconciliation (sante).
+ *
+ * P4 C3 (audit-3) : ne compte que ce que `reconcilePendingWithdrawals` va
+ * REELLEMENT relire, miroir de ses deux sources :
+ *   1. la file dediee `payoutsEnAttente` — la seule source fiable, non
+ *      plafonnee par l'activite du joueur (l'historique, lui, est plafonne
+ *      a 200 entrees et perdait les retraits sortis de sa fenetre) ;
+ *   2. l'historique `transactions` : filet de securite pour les
+ *      portefeuilles enregistres avant la liste, dedoublonne par
+ *      `payoutId` pour ne pas compter deux fois une dette deja vue par
+ *      la file.
+ * Une tx `pending_review` sans `payoutId` n'est pas recouvrable : la
+ * reconciliation ne peut pas la relire aupres du prestataire, donc elle
+ * n'entre pas dans le compteur — la sante annonce la reprise en cours,
+ * pas l'heritage irrecouvrable.
+ *
+ * @param {() => string[]} listUserIds - registre des comptes
+ * @param {(userId: string) => object|undefined} getWallet
+ * @returns {number} dettes distinctes en attente (tous comptes)
+ */
 export const countPendingWithdrawals = (listUserIds, getWallet) => {
   let total = 0;
   for (const userId of listUserIds()) {
-    for (const tx of getWallet(userId)?.transactions || []) {
-      if (tx?.type === 'withdraw' && tx.metadata?.payoutStatus === 'pending_review') total += 1;
+    const wallet = getWallet(userId);
+    const dejaComptees = new Set();
+    for (const entree of wallet?.payoutsEnAttente || []) {
+      if (!entree?.payoutId) continue;
+      if (dejaComptees.has(entree.payoutId)) continue;
+      dejaComptees.add(entree.payoutId);
+      total += 1;
+    }
+    for (const tx of wallet?.transactions || []) {
+      if (tx?.type !== 'withdraw') continue;
+      if (tx?.metadata?.payoutStatus !== 'pending_review') continue;
+      const payoutId = tx?.metadata?.payoutId;
+      if (!payoutId || dejaComptees.has(payoutId)) continue;
+      dejaComptees.add(payoutId);
+      total += 1;
     }
   }
   return total;

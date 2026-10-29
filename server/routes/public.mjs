@@ -16,6 +16,11 @@
  *   fin : le dispatcheur s'arrete au premier `true`.
  * INVARIANT : `/api/health` repond 503 quand l'etat n'est pas fiable : un
  *   orchestrateur doit savoir que les ecritures sont refusees.
+ * INVARIANT (P4 C3 audit-3) : `persistence.pendingWithdrawals` est le
+ *   miroir exact de ce que `reconcilePendingWithdrawals` relira a la
+ *   reprise — file dediee + historique de tx, dedoublonne par payoutId.
+ *   La sante ne re-invente pas la regle, elle compte par le module qui
+ *   recouvre, et n'expose qu'un TOTAL anonyme (ni identifiant, ni montant).
  * INVARIANT : `/metrics` n'est PAS une route JSON : elle ecrit du
  *   `text/plain` en `res.writeHead`, donc elle echappe aux en-tetes et aux
  *   metriques de `respondJson`.
@@ -64,8 +69,13 @@ import {
   getStateCollection,
   getUserById,
   isReloadInProgress,
+  listUserIds,
   sanitizeText,
 } from '../persistence.mjs';
+// P4 C3 (audit-3) : la sante expose le nombre de retraits en attente de
+// reconciliation, compte par le meme module qui les reluira (miroir fidele
+// de `reconcilePendingWithdrawals`) — la sante ne re-invente pas la regle.
+import { countPendingWithdrawals } from '../wallet-engine.mjs';
 import { metricsToPrometheus, setGauge } from '../metrics.mjs';
 import { channels } from '../channel-presence.mjs';
 import {
@@ -104,12 +114,26 @@ const secretsEqual = (a, b) => {
 export const handlePublicRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'GET' && pathname === '/api/health') {
   const health = getHealthInfo();
+  // P4 C3 (audit-3) : `pendingWithdrawals` compte les dettes de retrait que
+  // la reprise relira reellement (file dediee + historique, dedoublonnees
+  // par payoutId) — un orchestrateur voit l'arriere-plan de reprise sans
+  // scraper une route admin. La valeur reste un TOTAL anonyme : ni liste
+  // d'identifiants, ni montant, donc rien a fuiter sur une route sans
+  // garde. Lectures memoire pures, pas d'ecriture : la sante partagée
+  // reste sans effet de bord.
   // ok=false quand l'état mémoire n'est pas fiable : les écritures sont
   // refusées, un orchestrateur doit le savoir plutôt que de croire au vert.
   respondJson(res, health.stateTrusted ? 200 : 503, {
     ok: health.stateTrusted,
     service: 'zoyd-api',
-    persistence: { ...health, reloadInProgress: isReloadInProgress() },
+    persistence: {
+      ...health,
+      reloadInProgress: isReloadInProgress(),
+      pendingWithdrawals: countPendingWithdrawals(
+        listUserIds,
+        (userId) => getUserById(userId)?.wallet,
+      ),
+    },
     timestamp: getNow(),
   });
   return true;

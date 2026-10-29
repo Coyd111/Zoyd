@@ -126,17 +126,36 @@ describe('Reconciliation des retraits incertains', () => {
 });
 
 describe('Comptage des retraits en attente', () => {
-  it('ne compte que les retraits marques pending_review', () => {
+  it('miroir exact de la reprise (P4 C3) : file dediee + historique, dedoublonnes par payoutId', () => {
+    // La sante annonce la dette RECUPERABLE, pas l heritage : u1 porte 2
+    // dossiers dans la file dediee ; l historique recite le 101 (deja vu
+    // par la file, skip) et apporte le 103 (comptable, absent de la file).
+    // Le 104 `sent` n est pas pending_review, le deposit est hors sujet,
+    // et le portefeuille vide de u2 ne doit rien lever.
     const n = countPendingWithdrawals(
       () => ['u1', 'u2'],
       (userId) => (userId === 'u1'
-        ? { transactions: [
-          { type: 'withdraw', metadata: { payoutStatus: 'pending_review' } },
-          { type: 'withdraw', metadata: { payoutStatus: 'success' } },
-          { type: 'deposit', metadata: {} },
-        ] }
-        : { transactions: [{ type: 'withdraw', metadata: { payoutStatus: 'pending_review' } }] }),
+        ? {
+          payoutsEnAttente: [{ payoutId: 101 }, { payoutId: 102 }],
+          transactions: [
+            { type: 'withdraw', metadata: { payoutStatus: 'pending_review', payoutId: 101 } },
+            { type: 'withdraw', metadata: { payoutStatus: 'pending_review', payoutId: 103 } },
+            { type: 'withdraw', metadata: { payoutStatus: 'sent', payoutId: 104 } },
+            { type: 'deposit', metadata: {} },
+          ],
+        }
+        : undefined),
     );
-    expect(n).toBe(2);
+    expect(n).toBe(3);
+  });
+
+  it('une tx pending_review sans payoutId n est pas recouvrable : non comptee (P4 C3)', () => {
+    // Sans cle de reprise, la reconciliation ne peut pas relire cette dette
+    // aupres du prestataire : la compter serait mentir sur la reprise.
+    const n = countPendingWithdrawals(
+      () => ['u1'],
+      () => ({ transactions: [{ type: 'withdraw', metadata: { payoutStatus: 'pending_review' } }] }),
+    );
+    expect(n).toBe(0);
   });
 });

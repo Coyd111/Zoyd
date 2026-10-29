@@ -17,7 +17,7 @@
  * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
  */
 import { authorizedPost, authorizedDelete, authorizedGet } from './apiClient';
-import type { Friend, FriendRequest } from '../stores/friendsStore';
+import type { FriendProfileInput, FriendRequest } from '../stores/friendsStore';
 
 export interface Report {
   id: string;
@@ -40,7 +40,13 @@ export const sendServerFriendRequest = async (targetId: string, message?: string
 };
 
 export const acceptServerFriendRequest = async (requestId: string) => {
-  return authorizedPost<{ ok: boolean; friend: Friend }>('/api/social/accept', { requestId });
+  // Audit-4 C1 : le serveur livre ici le profil PUBLIC du demandeur
+  // (getPublicUserById, miroir de getFriendsForUser), pas un `Friend`
+  // complet — le type precedent pretendait `status`/`isStreamer` presents et
+  // le typecheck ne voyait jamais les champs derives absents. Le store
+  // normalise a l'insertion (normalizeServerFriend), comme le fix P12 C1
+  // sur les demandes (voir ci-dessus).
+  return authorizedPost<{ ok: boolean; friend: FriendProfileInput }>('/api/social/accept', { requestId });
 };
 
 export const declineServerFriendRequest = async (requestId: string) => {

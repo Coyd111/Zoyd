@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useFriendsStore } from './friendsStore';
-import { sendServerFriendRequest } from '../lib/socialApi';
+import { sendServerFriendRequest, acceptServerFriendRequest } from '../lib/socialApi';
 
 const { reportServerUser } = vi.hoisted(() => ({
   reportServerUser: vi.fn(),
@@ -270,5 +270,72 @@ describe('friendsStore — demande envoyee normalisee a l insertion (P12 C1)', (
     await useFriendsStore.getState().sendRequest('U2', 'Bob');
 
     expect(useFriendsStore.getState().requests[0].timestamp).toBeTruthy();
+  });
+});
+
+/**
+ * Audit-4 C1 : l'acceptation d'une demande insere d'office dans `friends`.
+ * Le serveur livre un profil PUBLIC (sans `status`/`isStreamer`, avec
+ * `streamerMode`) : sans normalisation, un objet brut arrachait ces champs
+ * derives (le type de l'API pretendait le contraire). La normalisation
+ * doit etre UNIQUE : l'ami accepte et l'ami hydrate produisent le MEME
+ * objet (mirroir du bloc P12 C1 ci-dessus).
+ */
+describe('friendsStore — ami accepte normalise a l insertion (audit-4 C1)', () => {
+  beforeEach(() => {
+    reset();
+    vi.mocked(acceptServerFriendRequest).mockReset();
+  });
+
+  it('repro audit-4 : le profil livre entre avec isStreamer/status derives', async () => {
+    vi.mocked(acceptServerFriendRequest).mockResolvedValue({
+      ok: true,
+      friend: {
+        id: 'U1',
+        pseudo: 'Alice',
+        country: 'CI',
+        trustScore: 100,
+        controllerType: 'Mobile',
+        streamerMode: true,
+      } as never,
+    });
+
+    await useFriendsStore.getState().acceptRequest('FR-1');
+
+    const [friend] = useFriendsStore.getState().friends;
+    expect(friend.id).toBe('U1');
+    expect(friend.isStreamer).toBe(true);
+    expect(friend.status).toBe('offline');
+    expect(useFriendsStore.getState().requests).toHaveLength(0);
+
+    // Les deux voies (accept et hydrate) produisent le MEME objet.
+    useFriendsStore.getState().hydrateFromServer([{
+      id: 'U1',
+      pseudo: 'Alice',
+      country: 'CI',
+      trustScore: 100,
+      controllerType: 'Mobile',
+      streamerMode: true,
+    } as never], [], []);
+    expect(useFriendsStore.getState().friends[0]).toEqual(friend);
+  });
+
+  it('streamerMode absent (serveur) donne un isStreamer false, jamais undefined', async () => {
+    vi.mocked(acceptServerFriendRequest).mockResolvedValue({
+      ok: true,
+      friend: {
+        id: 'U2',
+        pseudo: 'Bob',
+        country: 'SN',
+        trustScore: 90,
+        controllerType: 'Mobile',
+      } as never,
+    });
+
+    await useFriendsStore.getState().acceptRequest('FR-2');
+
+    const [friend] = useFriendsStore.getState().friends;
+    expect(friend.isStreamer).toBe(false);
+    expect(friend.status).toBe('offline');
   });
 });

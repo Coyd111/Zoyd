@@ -86,6 +86,19 @@ const normalizeServerRequest = (request: ServerFriendRequestInput): FriendReques
   timestamp: request.timestamp || new Date().toISOString(),
 });
 
+/**
+ * Normalisation UNIQUE d'un ami recu du serveur, miroir de
+ * `normalizeServerRequest` : le profil livre est PUBLIC (sans `status` ni
+ * `isStreamer`, avec `streamerMode`). Les deux voies d'entree — hydratation
+ * ET acceptation d'une demande (audit-4 C1) — doivent produire le meme
+ * objet : l'objet brut insere dans `friends` arrachait ces champs derives.
+ */
+const normalizeServerFriend = (friend: FriendProfileInput): Friend => ({
+  ...friend,
+  isStreamer: Boolean(friend.streamerMode),
+  status: 'offline' as FriendStatus,
+});
+
 export interface Report {
   id: string;
   targetId: string;
@@ -185,16 +198,11 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
   },
 
   hydrateFromServer: (friends, requests, blockedIds) => {
-    // Le serveur renvoie des profils publics (id/pseudo/country/trustScore/…)
-    // et aucun `status` : on force `offline` et on dérive `isStreamer`. Le
-    // temps réel est ensuite poussé par le socket
-    // (`friend:presence` → updateFriendStatus).
+    // Le serveur renvoie des profils publics : normalizeServerFriend derive
+    // `status` et `isStreamer` ; le temps reel est ensuite pousse par le
+    // socket (friend:presence -> updateFriendStatus).
     set({
-      friends: friends.map((friend) => ({
-        ...friend,
-        isStreamer: Boolean(friend.streamerMode),
-        status: 'offline' as FriendStatus,
-      })),
+      friends: friends.map(normalizeServerFriend),
       // Défensifs : le serveur normalise déjà, mais un `senderPseudo` absent
       // affichait "undefined veut t'ajouter".
       requests: requests.map(normalizeServerRequest),
@@ -228,9 +236,12 @@ export const useFriendsStore = create<FriendsState>()((set, get) => ({
     try {
       const res = await acceptServerFriendRequest(requestId);
       if (res.ok && res.friend) {
+        // Audit-4 C1 : normaliser a l'insertion, comme l'hydrate — le serveur
+        // livre un profil PUBLIC (sans status/isStreamer) et un objet brut
+        // perdait les champs derives. Mirroir du fix P12 C1 sur les demandes.
         set((state) => ({
           requests: state.requests.filter((r) => r.id !== requestId),
-          friends: [res.friend, ...state.friends],
+          friends: [normalizeServerFriend(res.friend!), ...state.friends],
         }));
       }
     } catch {

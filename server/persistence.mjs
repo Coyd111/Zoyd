@@ -3824,7 +3824,16 @@ export const acceptFriendRequest = (requestId, userId) => {
   sbFire('acceptFriendRequest', () => sbUpsert('friendships', { user_id_1: req.sender_id, user_id_2: req.target_id, created_at: getNow() }));
   sbFire('acceptFriendRequest', () => sbUpsert('friendships', { user_id_1: req.target_id, user_id_2: req.sender_id, created_at: getNow() }));
 
-  return getUserById(req.sender_id);
+  // Le retour est livre tel quel par /api/social/accept et insere direct dans
+  // la liste d'amis du front (friendsStore.acceptRequest) : livrer le profil
+  // INTERNE (sanitizeUserPayload conserve email, phone, wallet) exposait les
+  // donnees privees du demandeur au destinataire. La liste d'amis est, elle,
+  // hydratee depuis la version publique (getFriendsForUser ->
+  // getPublicUserById) : l'acceptation doit livrer la meme.
+  // Audit-4 C1. Le champ `id` (utilise par la notification de la route) et
+  // les champs publics survivent — seuls wallet/walletBalance/email/phone/
+  // legal sont retires.
+  return getPublicUserById(req.sender_id);
 };
 
 export const declineFriendRequest = (requestId, userId) => {

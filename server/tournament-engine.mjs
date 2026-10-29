@@ -170,10 +170,10 @@ const normalizeTournamentSnapshot = (tournament) => {
     mainRounds: Number(tournament?.mainRounds || 0),
     cancelReason: tournament?.cancelReason,
     cancelledAt: tournament?.cancelledAt,
-    // Dette de remboursement : préservée au chargement, sinon un redémarrage
-    // Dette de GAINS : preservee au chargement pour la meme raison que
-    // pendingRefunds. Sans cela, un redemarrage entre l'echec et la reprise
-    // perdrait definitivement des ZC.
+    // dette de GAINS (P5 C5 audit-3) : preservee au chargement pour la meme
+    // raison que pendingRefunds — sans cela, un redemarrage entre l'echec et
+    // la reprise perdrait definitivement des ZC. (Commentaire rendu entier :
+    // sa suite orpheline avait derivé sous pendingRefunds.)
     pendingPayouts: Array.isArray(tournament?.pendingPayouts)
       ? tournament.pendingPayouts.map((item) => ({
           kind: item?.kind,
@@ -186,7 +186,9 @@ const normalizeTournamentSnapshot = (tournament) => {
           lastError: item?.lastError,
         })).filter((item) => item.kind && (item.captainId || item.arbiterUserId))
       : [],
-    // entre l'échec et le retry perdrait définitivement des ZC bloqués.
+    // dette de REMBOURSEMENT (P5 C5 audit-3) : preservée au chargement, sinon
+    // un redémarrage entre l'échec et le retry perdrait définitivement des ZC
+    // bloqués.
     pendingRefunds: Array.isArray(tournament?.pendingRefunds)
       ? tournament.pendingRefunds.map((item) => ({
           captainId: item?.captainId,
@@ -311,7 +313,12 @@ const createTournamentBase = (options) => {
       weaponRestrictions: options.rules?.weaponRestrictions || 'Toutes armes selon reglement',
       pointstreaks: options.rules?.pointstreaks === 'allowed' ? 'allowed' : 'restricted',
       meleeAllowed: Boolean(options.rules?.meleeAllowed),
-      notes: options.rules?.notes || 'Pas de matchs entre 00h00 et 07h00.',
+      // P5 C2 (audit-3) : les notes vivantes entrent par une libre saisie
+      // (route et socket, via createTournamentOnServer) : sanitize + borne
+      // AU MOTEUR, comme les champs de salle (:1463). Sans garde, le texte
+      // vit non borne dans les snapshots et est diffuse en public.
+      notes: sanitizeText(`${options.rules?.notes || ''}`.trim().slice(0, 300))
+        || 'Pas de matchs entre 00h00 et 07h00.',
     },
     startsAt: options.startsAt,
     estimatedDurationHours: Number(options.maxEntries || 4) > 8 ? 3 : 2,
@@ -1359,6 +1366,14 @@ export const assignTournamentArbiterOnServer = (tournaments, actor, tournamentId
   const tournament = findTournament(nextTournaments, tournamentId);
 
   if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
+  // P5 C4 (audit-3) : la designation existe pendant le recrutement UNIQUEMENT.
+  // Sur un tournoi annule ou termine, des slots vides pouvaient rester
+  // occupables : mutation cosmétique de l'historique, sans effet sur l argent.
+  // En live la garde ne change rien : tous les slots sont couverts avant le
+  // lancement, donc aucun cas légitime n est refusé.
+  if (tournament.status !== 'recruiting') {
+    throw makeError('MATCH_CLOSED', 'La designation des arbitres se fait seulement pendant le recrutement.');
+  }
   if (tournament.entries.some((entry) => entry.members.some((member) => member.userId === actorUser.id))) {
     throw makeError('ROLE_CONFLICT', 'Un joueur ne peut pas arbitrer son propre tournoi.');
   }
@@ -1563,7 +1578,11 @@ export const submitTournamentMatchResultOnServer = async (tournaments, actor, to
     winnerEntryId,
     scoreA,
     scoreB,
-    `${payload?.notes || ''}`.trim() || undefined
+    // P5 C2 (audit-3) : la note de duel est une libre saisie de l arbitre,
+    // persistee sans qu aucune limite ne la borne, puis diffusee en public
+    // (sanitizeMatchForBroadcast ne la retire pas). Sanitize + borne, comme
+    // les champs de salle ; une note vide ne s ecrit pas du tout.
+    sanitizeText(`${payload?.notes || ''}`.trim().slice(0, 300)) || undefined
   );
   const tournamentIndex = nextTournaments.findIndex((entry) => entry.id === tournamentId);
   nextTournaments[tournamentIndex] = nextTournament;

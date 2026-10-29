@@ -7,6 +7,10 @@ vi.mock('./persistence.mjs', () => ({  // Applique une seule fois par competitio
   getUserById: vi.fn(),
   getUserByExactPseudo: vi.fn(),
   updateUserAccount: vi.fn(),
+  // P5 C2 (audit-3) : slot du sanitizeur — le moteur l importe dorenavant
+  // (notes de creation + notes de duel). Meme contrat que les autres tests :
+  // trim pur, le borneage reste porte par le moteur.
+  sanitizeText: vi.fn((value) => String(value || '').trim()),
 }));
 
 vi.mock('./mutex.mjs', () => ({
@@ -940,5 +944,88 @@ describe('tournament-engine - propagation des byes (audit-3 P5 C1)', () => {
     expect(tournament.entries.find((entry) => entry.id === 'ENTRY-1').finalPlacement).toBe(1);
     expect(tournament.entries.find((entry) => entry.id === 'ENTRY-7').finalPlacement).toBe(2);
     expect(tournament.entries.find((entry) => entry.id === 'ENTRY-3').finalPlacement).toBe(3);
+  });
+});
+
+describe('tournament-engine - P5 C2/C4 (audit-3) : notes et designation bornees', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('C2 - creation : les rules.notes sont bornees a 300 caracteres', () => {
+    const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      rules: { notes: `${'A'.repeat(350)}<script>alert(1)</script>` },
+    });
+    // Le moteur borne AVANT de sanitiser (patron des champs de salle), donc
+    // la note resultante ne peut depasser 300 quoi que fasse la saisie.
+    expect(result.tournament.rules.notes).toHaveLength(300);
+  });
+
+  it('C2 - creation : des notes vides retombent sur le defaut', () => {
+    const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      rules: { notes: '   ' },
+    });
+    expect(result.tournament.rules.notes).toBe('Pas de matchs entre 00h00 et 07h00.');
+  });
+
+  it('C2 - soumission : la note de duel est bornee a 300, une note vide ne s ecrit pas', async () => {
+    const buildTournament = () => tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-NOTES',
+      maxEntries: 4,
+      status: 'live',
+      format: '1VS1',
+      entries: [makeEntry('p1', 'P1', 1), makeEntry('p2', 'P2', 2)],
+      arbiters: [{ userId: 'admin-1', pseudo: 'Admin', slot: 1, assignedAt: new Date().toISOString(), matchesHandled: 0 }],
+      matches: [
+        {
+          id: 'TM-1',
+          bracketType: 'main',
+          round: 0,
+          position: 0,
+          entryAId: 'ENTRY-P1-1',
+          entryBId: 'ENTRY-P2-2',
+          status: 'ready',
+          roomName: 'room1',
+          roomPassword: 'pass1',
+          arbiterSlot: 1,
+        },
+      ],
+    }])[0];
+
+    const borne = await tournamentEngine.submitTournamentMatchResultOnServer(
+      [buildTournament()], mockAdmin, 'T-NOTES', 'TM-1',
+      { winnerEntryId: 'ENTRY-P1-1', scoreA: 7, scoreB: 3, notes: 'x'.repeat(400) }
+    );
+    // Le bracket s avance : une finale duale a remplace le match source.
+    const noteTraitee = borne.tournament.matches.find((m) => m.id === 'TM-1').notes;
+    expect(noteTraitee).toHaveLength(300);
+
+    const vide = await tournamentEngine.submitTournamentMatchResultOnServer(
+      [buildTournament()], mockAdmin, 'T-NOTES', 'TM-1',
+      { winnerEntryId: 'ENTRY-P1-1', scoreA: 7, scoreB: 3, notes: '   ' }
+    );
+    expect(vide.tournament.matches.find((m) => m.id === 'TM-1').notes).toBeUndefined();
+  });
+
+  it('C4 - designation d arbitre refusee hors recrutement (cancelled et completed)', () => {
+    const base = {
+      id: 'T-C4',
+      status: 'cancelled',
+      format: '1VS1',
+      maxEntries: 4,
+      entries: [makeEntry('p1', 'P1', 1)],
+      arbiters: [{ slot: 1, matchesHandled: 0 }],
+    };
+    const annule = tournamentEngine.normalizeTournamentCollection([base])[0];
+    expect(() =>
+      tournamentEngine.assignTournamentArbiterOnServer([annule], mockPlayer, 'T-C4')
+    ).toThrow('recrutement');
+    const termine = { ...annule, status: 'completed' };
+    expect(() =>
+      tournamentEngine.assignTournamentArbiterOnServer([termine], mockPlayer2, 'T-C4')
+    ).toThrow('recrutement');
   });
 });

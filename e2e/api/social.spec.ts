@@ -103,7 +103,7 @@ test.describe('Routes sociales', () => {
     }
   });
 
-  test('signalement exige une cible et un motif', async ({ }) => {
+  test('signalement exige une cible et un motif', async () => {
     const alice = await registerPlayer('Signal');
     const bob = await registerPlayer('SignalB');
 

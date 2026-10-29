@@ -169,7 +169,9 @@ export const withChannelMutex = async (channelId, fn) => {
 };
 
 // Periodic cleanup of idle mutexes (runs every 5 minutes)
-const cleanupIdleMutexes = () => {
+// P1 C4 (audit-3) : exportee pour etre verrouillee par les tests (les maps
+// internes ne le sont pas).
+export const cleanupIdleMutexes = () => {
   const now = Date.now();
   for (const [userId, timestamp] of walletMutexTimestamps) {
     if (now - timestamp > WALLET_MUTEX_MAX_AGE) {
@@ -198,5 +200,23 @@ const cleanupIdleMutexes = () => {
       }
     }
   }
+  // P1 C4 (audit-3) : la famille BR vivait hors de la purge — ses mutex
+  // inactifs n'etaient evinces qu'a saturation (plafond 10000). Hygiene
+  // incoherente avec les trois autres familles : meme regle (age, verrou
+  // actif jamais evince).
+  for (const [lobbyId, timestamp] of brLobbyMutexTimestamps) {
+    if (now - timestamp > WALLET_MUTEX_MAX_AGE) {
+      const mutex = brLobbyMutex.get(lobbyId);
+      if (mutex && !mutex.isLocked()) {
+        brLobbyMutex.delete(lobbyId);
+        brLobbyMutexTimestamps.delete(lobbyId);
+      }
+    }
+  }
 };
-setInterval(cleanupIdleMutexes, 5 * 60 * 1000);
+
+// P1 C4 (audit-3) — occurrence du type P9 C6 : ce timer demarrait a l'IMPORT
+// du module — chaque import creait un timer vivant, y compris dans les tests.
+// Il demarre desormais explicitement au lancement du serveur (realtime-server).
+export const startMutexCleanupTimer = () =>
+  setInterval(cleanupIdleMutexes, 5 * 60 * 1000).unref();

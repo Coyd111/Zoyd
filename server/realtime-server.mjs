@@ -164,7 +164,7 @@ import {
   onWalletUpdated,
 } from './persistence.mjs';
 import { depositToWallet, getServerWallet, withdrawFromWallet, calcWithdrawNet, MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE } from './wallet-engine.mjs';
-import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex } from './mutex.mjs';
+import { withMatchMutex, withTournamentMutex, withLeagueMutex, withWalletMutex, withUserMutex, startMutexCleanupTimer } from './mutex.mjs';
 import { initCronJobs } from './cron.mjs';
 import { getNow, roundAmount } from './utils.mjs';
 import {
@@ -686,6 +686,8 @@ const start = async () => {
   // explicitement, unref.
   startMemoryCleanupTimer();
   startChannelPresenceCleanupTimer();
+  // P1 C4 (audit-3) : meme regle pour la purge des mutex (famille BR ajoutee).
+  startMutexCleanupTimer();
 
   matchAutomationIntervalId = setInterval(async () => {
     if (matchAutomationRunning) {

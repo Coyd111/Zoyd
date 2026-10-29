@@ -225,7 +225,15 @@ export default function ProfileView({
                   {lvl.label}
                 </div>
                 <div className="text-3xl font-display font-black text-white italic">{progression!.xp}</div>
-                <div className="text-[10px] font-mono text-white/70 mt-1 mb-3">/ {progression!.nextLevelXp} XP</div>
+                {/* P1 C6 (audit-3) : pour un joueur PRO, `nextLevelXp` vaut
+                    Infinity cote serveur (LEVEL_THRESHOLDS.PRO) — serialise
+                    null en JSON. React rend alors un vide : on affiche
+                    « MAX » dans ce cas. */}
+                <div className="text-[10px] font-mono text-white/70 mt-1 mb-3">
+                  {Number.isFinite(progression!.nextLevelXp)
+                    ? `/ ${progression!.nextLevelXp} XP`
+                    : '/ MAX'}
+                </div>
                 <ProgressBar
                   value={progressPercent}
                   barClassName={

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { withUserMutex } from './mutex.mjs';
+import { withUserMutex, withBrLobbyMutex, cleanupIdleMutexes, startMutexCleanupTimer } from './mutex.mjs';
 
 // Plafond interne (non exporte) : on le reproduit pour declencher l'eviction.
 const MUTEX_MAX_SIZE = 10000;
@@ -79,5 +79,63 @@ describe('mutex - exclusion mutuelle', () => {
     await Promise.all([first, churn, second]);
 
     expect(maxConcurrent).toBe(1);
+  });
+});
+
+describe('mutex - purge periodique de la famille BR (audit-3 P1 C4)', () => {
+  it('purge les mutex BR inactifs vieillis, epargne le verrou actif', async () => {
+    await withBrLobbyMutex('br-purge-a', async () => {});
+    await withBrLobbyMutex('br-purge-b', async () => {});
+
+    // Un verrou tenu : il doit survivre a la purge, meme vieilli.
+    let openGate;
+    const gate = new Promise((resolve) => { openGate = resolve; });
+    const active = withBrLobbyMutex('br-purge-live', () => gate);
+    await new Promise((r) => setTimeout(r, 5));
+
+    const realNow = Date.now();
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(realNow + 31 * 60 * 1000);
+    const deleteSpy = vi.spyOn(Map.prototype, 'delete');
+    try {
+      cleanupIdleMutexes();
+      // Les inactifs vieillis sont purges.
+      expect(deleteSpy).toHaveBeenCalledWith('br-purge-a');
+      expect(deleteSpy).toHaveBeenCalledWith('br-purge-b');
+      // Le verrou actif n'est JAMAIS evince.
+      expect(deleteSpy).not.toHaveBeenCalledWith('br-purge-live');
+    } finally {
+      nowSpy.mockRestore();
+      deleteSpy.mockRestore();
+    }
+
+    openGate();
+    await active;
+
+    // Relache et vieilli, il devient purgeable au tour suivant.
+    const realNow2 = Date.now();
+    const nowSpy2 = vi.spyOn(Date, 'now').mockReturnValue(realNow2 + 31 * 60 * 1000);
+    const deleteSpy2 = vi.spyOn(Map.prototype, 'delete');
+    try {
+      cleanupIdleMutexes();
+      expect(deleteSpy2).toHaveBeenCalledWith('br-purge-live');
+    } finally {
+      nowSpy2.mockRestore();
+      deleteSpy2.mockRestore();
+    }
+  });
+
+  it('startMutexCleanupTimer demarre explicitement, unref, et tourne sans crash', () => {
+    vi.useFakeTimers();
+    try {
+      const countBefore = vi.getTimerCount();
+      const timer = startMutexCleanupTimer();
+      // Le timer ne vit qu'a partir de l'appel explicite (plus de timer a
+      // l'IMPORT du module — occurrence du type P9 C6).
+      expect(vi.getTimerCount()).toBe(countBefore + 1);
+      expect(typeof timer.unref).toBe('function');
+      expect(() => vi.advanceTimersByTime(2 * 5 * 60 * 1000)).not.toThrow();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

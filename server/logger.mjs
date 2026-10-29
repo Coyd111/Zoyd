@@ -38,8 +38,12 @@ const formatTime = () => new Date().toISOString();
  * Champs de structure du log : jamais ecrasables par `extra`.
  * Un `log.info('x', { level: 'error' })` faisait passer l'entree pour une
  * erreur, et `{ msg: ... }` reecrivait le message.
+ * P1 C2 (audit-3) : `data` est le sac ou les cles reservees sont deplacees
+ * (`write`) — non reservee, un `extra.data` objet ecrasait ce sac, et le
+ * couplage des deux ordres levait un TypeError sur un `extra` primitif
+ * (assigner une propriete d'une primitive, mode strict ESM).
  */
-const RESERVED_KEYS = new Set(['time', 'level', 'module', 'msg']);
+const RESERVED_KEYS = new Set(['time', 'level', 'module', 'msg', 'data']);
 
 const write = (level, msg, extra, module) => {
   if (LEVELS[level] < currentLevel) return;

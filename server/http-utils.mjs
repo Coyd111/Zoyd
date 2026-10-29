@@ -346,6 +346,12 @@ export const mapPersistenceError = (error) => {
     case 'IDEMPOTENCY_KEY_REQUIRED':
     case 'ACTIVE_WAGER':
       return { status: 400, message, code };
+    // P1 C1 (audit-3) : CLIENT_ABORTED (le client a coupe la connexion pendant
+    // la lecture du corps, parseRequestBody) tombait dans le `default` →
+    // faux 500 logge en erreur et compte dans les metriques 5xx
+    // (respondMappedError ne logge que les 500, le compteur que les >= 500).
+    // La requete a ete recue puis abandonnee : meme groupe que INVALID_JSON.
+    case 'CLIENT_ABORTED':
     case 'INVALID_JSON':
     case 'PAYLOAD_TOO_LARGE':
     case 'INVALID_TRANSACTION_ID':

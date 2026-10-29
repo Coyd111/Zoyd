@@ -48,7 +48,9 @@ export const getNow = () => new Date().toISOString();
  * @param {object} [details] - champs additionnels copies sur l'erreur
  */
 export const makeError = (code, message, details = null) =>
-  Object.assign(new Error(message), { code }, details || {});
+  // P1 C5 (audit-3) : `code` en dernier — un `details.code` ne doit jamais
+  // ecraser le code metier (le mapping HTTP en depend, faux 500 sinon).
+  Object.assign(new Error(message), details || {}, { code });
 
 /**
  * Formatage d'un montant ZC pour les notifications serveur.

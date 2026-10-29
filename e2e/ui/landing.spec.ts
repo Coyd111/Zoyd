@@ -36,9 +36,12 @@ test.describe('Landing Page', () => {
     await expect(page.locator('text=Battle Royale').first()).toBeVisible();
   });
 
-  test('displays ticker or competition items', async ({ page }) => {
+  test('displays the ticker items', async ({ page }) => {
     await page.goto('/');
-    const body = await page.locator('body').textContent();
-    expect(body).toBeTruthy();
+    // P15 C7 (audit-3) : « body truthy » n'affirmait rien — le marquee
+    // (LANDING_TICKER_ITEMS, competition.ts:128, rendu LandingPage.tsx:276-285)
+    // pouvait disparaitre sans que le test ne devienne rouge.
+    await expect(page.getByText('Profil joueur unique').first()).toBeVisible();
+    await expect(page.getByText('Wallet ZC').first()).toBeVisible();
   });
 });

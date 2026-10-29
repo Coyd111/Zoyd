@@ -112,7 +112,7 @@ test.describe('Avertissement frais de retrait', () => {
     await expect(modal.locator('#withdraw-phone-error')).toHaveCount(0);
   });
 
-  test('un numero mal saisit affiche une raison, jamais un clic muet', async ({ page }) => {
+  test('un numero mal saisi affiche une raison, jamais un clic muet', async ({ page }) => {
     await login(page);
     const modal = await openWithdrawModal(page);
 

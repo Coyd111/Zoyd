@@ -201,9 +201,9 @@ test.describe('Match lifecycle', () => {
     expect(res.body.match.players[1].pseudo).toBe(joiner.pseudo);
     expect(res.body.match.players[1].team).toBe(1);
     // Le lobby est complet mais le match ne peut PAS avancer : pas d'arbitre.
-      // L'ancien contrat disait `full`, ce qui se lisait « prêt » alors que rien
-      // ne pouvait se passer — le joueur ne comprenait pas pourquoi.
-      expect(res.body.match.status).toBe('awaiting_arbiter');
+    // L'ancien contrat disait `full`, ce qui se lisait « prêt » alors que rien
+    // ne pouvait se passer — le joueur ne comprenait pas pourquoi.
+    expect(res.body.match.status).toBe('awaiting_arbiter');
     expect(res.body.wallet.cashBalance).toBe(START_BALANCE - ENTRY_FEE);
     expect(res.body.wallet.lockedBalance).toBe(ENTRY_FEE);
   });
@@ -329,11 +329,11 @@ test.describe('Match lifecycle', () => {
       },
     });
 
-// 409, pas 403 : le match n'est pas interdit, il est dans un etat qui bloque
-      // encore l'action — exactement comme un litige ouvert. Le joueur doit lire
-      // « en attente d'un arbitre », pas « acces refuse ».
-      expect(res.status).toBe(409);
-      expect(res.body.code).toBe('ARBITER_REQUIRED');
+    // 409, pas 403 : le match n'est pas interdit, il est dans un etat qui bloque
+    // encore l'action — exactement comme un litige ouvert. Le joueur doit lire
+    // « en attente d'un arbitre », pas « acces refuse ».
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('ARBITER_REQUIRED');
     });
 
     test('POST /api/matches/:id/result — 400 sans scoreboard ni écran final', async () => {

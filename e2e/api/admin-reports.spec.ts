@@ -94,7 +94,7 @@ test.describe('GET /api/admin/reports', () => {
     await disposeActors();
   });
 
-  test('borne la pagination et la reflects dans la reponse', async () => {
+  test('borne la pagination et la reflète dans la réponse', async () => {
     const admin = await openAdminSession();
     const res = await call(admin, 'GET', '/api/admin/reports?limit=25&offset=50');
     expect(res.status).toBe(200);

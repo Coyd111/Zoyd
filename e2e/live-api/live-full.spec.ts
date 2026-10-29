@@ -32,7 +32,7 @@ import { test, expect } from '@playwright/test';
 //
 // C'est arrivé pendant la session de travail : `playwright test` lancé sans
 // `--project` a exécuté ce fichier, simplement parce qu'il était dans la liste.
-// Les tests vivaient touchaient la production sans que ce soit demandé.
+// Les tests live touchaient la production sans que ce soit demandé.
 //
 // On refuse tant que l'intention n'est pas explicite. Le message est
 // volontairement bruyant : mieux vaut un échec sans conséquence qu'une base de

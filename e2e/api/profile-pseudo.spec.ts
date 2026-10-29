@@ -19,7 +19,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe('Changement de pseudo', () => {
-  test("accepte un pseudo libre, sans mot de passe (changement d'lidentite en jeu)", async () => {
+  test("accepte un pseudo libre, sans mot de passe (changement d'identité en jeu)", async () => {
     const { actor } = await registerPlayerWithResponse('Pseudo');
     const nouveau = `Zeyno_${Date.now()}`;
 

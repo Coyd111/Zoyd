@@ -12,7 +12,7 @@ const BASE = '/api';
 
 /**
  * Deux failles d'authentification confirmees par la lecture exhaustive, sur les
- * vraies routes ” pas sur des doubles.
+ * vraies routes — pas sur des doubles.
  *
  * 1. Le telephone n'etait valide par RIEN dans `PATCH /api/auth/me`, alors
  *    qu'il alimente une cle d'unicite `phone_key` non nullable. `normalizePhoneKey`
@@ -22,12 +22,17 @@ const BASE = '/api';
  *    de profil de tous les autres.
  *
  * 2. `POST /api/auth/logout` ne demande aucune authentification (le token est
- *    facultatif) mais consomait le MÃŠME quota que `login`, `register`,
+ *    facultatif) mais consommait le MÊME quota que `login`, `register`,
  *    `forgot-password` et `reset-password`. 50 appels suffisaient a renvoyer 429
  *    partout pendant 15 minutes : un deni de connexion de masse sur IP partagee.
+ *
+ *    P15 C7 (audit-3) : cette suite ne teste que la faille 1. La seconde est
+ *    verrouillee en UNITÉ (`rate-limiter.test.mjs:60-83`, separation du groupe
+ *    `auth_logout`, rate-limiter.mjs:31-53) — l'en-tete laissait croire que
+ *    les deux etaient couvertes ici.
  */
 
-test.describe('PATCH /api/auth/me ” telephone valide', () => {
+test.describe('PATCH /api/auth/me — telephone valide', () => {
   test('refuse un telephone vide, qui occuperait la cle unique vide', async () => {
     const player = await registerPlayer('phonevide');
     const res = await call(player, 'PATCH', `${BASE}/auth/me`, { phone: '' });

@@ -42,7 +42,7 @@ test.describe('API publique - routes de lecture', () => {
   }
 
   for (const route of AUTHENTICATED_READ_ROUTES) {
-    test(`GET ${route} refuse l anonyme et accepte une session`, async () => {
+    test(`GET ${route} refuse l'anonyme et accepte une session`, async () => {
       // Regression : la saison expose le userId de tous les joueurs de ligue.
       const anonymous = await callAnonymous('GET', route);
       expect(anonymous.status).toBe(401);
@@ -55,7 +55,7 @@ test.describe('API publique - routes de lecture', () => {
     });
   }
 
-  test('GET /api/leagues/:id refuse aussi l anonyme', async () => {
+  test('GET /api/leagues/:id refuse aussi l\'anonyme', async () => {
     // Une saison isolee ne doit pas servir de raccourci pour contourner la
     // fermeture de la liste.
     const actor: Actor = await registerPlayer('league-read-one');

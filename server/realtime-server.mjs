@@ -49,7 +49,7 @@ import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from 
 import { serializeAuthCookie, ALLOWED_ORIGINS, ALLOW_DEBUG_CODES, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
 import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs';
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
-import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel, startChannelPresenceCleanupTimer } from './channel-presence.mjs';
+import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel, startChannelPresenceCleanupTimer, PRESENCE_ROLES, presenceTeamOf } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
 import { saveMatches, refreshLiveMatchIdentities, getStoredTournaments, saveTournaments, buildMatchActionPayload, sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, buildTournamentActionPayload, getStoredLeagues, saveLeagues, buildLeagueActionPayload, getStoredBrLobbies, saveBrLobbies, toPublicBrLobby, toPublicBrRanking } from './state-helpers.mjs';
 import { deliverAuthCode } from './code-delivery.mjs';
@@ -510,8 +510,11 @@ io.on('connection', (socket) => {
       const createdMember = upsertChannelMember(socket, safePayload);
       if (!createdMember) return;
     } else {
-      existingMember.role = ['player', 'arbiter', 'spectator'].includes(safePayload.role) ? safePayload.role : existingMember.role;
-      existingMember.team = typeof safePayload.team === 'number' && safePayload.team <= 1 ? safePayload.team : existingMember.team;
+      // P10 C1 (audit-3) : valeur invalide = valeur precedente conservee
+      // (pas de reset a undefined) ; role filtre par PRESENCE_ROLES (le
+      // contrat partage avec channel-presence), team entier 0/1 seulement.
+      existingMember.role = PRESENCE_ROLES.includes(safePayload.role) ? safePayload.role : existingMember.role;
+      existingMember.team = presenceTeamOf(safePayload.team) ?? existingMember.team;
       existingMember.isCheckedIn = Boolean(safePayload.isCheckedIn);
       existingMember.isReady = Boolean(safePayload.isReady);
       existingMember.lastActiveAt = getNow();

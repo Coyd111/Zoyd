@@ -15,8 +15,11 @@
  *   exposees : aucun identifiant interne supplementaire n'y est ajoute.
  * PIEGE : a saturation de MAX_ACTIVE_CHANNELS, `getChannelMemberMap` renvoie
  *   une Map VIDE : l'appelant voit un canal sans membre, pas une erreur.
- * PIEGE : le role d'un membre est borne par l'appelant (player / arbiter /
- *   spectator) et `team` a 0 ou 1 : ce module ne valide pas, il applique.
+ * PIEGE : le role d'un membre et `team` sont WHITELISTES ICI depuis
+ *   P10 C1/C2 (audit-3) : role dans player/arbiter/spectator (sinon
+ *   spectator), team entier 0/1 (sinon l'ancienne valeur est conservee).
+ *   Les deux voies d'ecriture passent par `upsertChannelMember`, la
+ *   mise a jour d'un membre existant durcit pareil dans realtime-server.
  * PIEGE : le nettoyage periodique (10 min) supprime aussi les canaux de chat
  *   inactifs depuis plus de 24 h, SAUF `global` - qui n'est jamais supprime.
  * PIEGE : les canaux supprimes ici sont des canaux EN MEMOIRE ; les canaux
@@ -178,6 +181,35 @@ const untrackSocketChannel = (socketId, channelId) => {
 };
 
 /**
+ * Contrat de presence (P10 C1/C2 audit-3) — une SEULE definition pour les
+ * deux fichiers qui ecrivent un membre : `upsertChannelMember` ici
+ * (presence:join + creation dans presence:update) et la mise a jour d'un
+ * membre existant dans realtime-server. Le contrat est celui du front
+ * (`realtimeClient.ts`) : role `player`/`arbiter`/`spectator`, team `0|1`.
+ *
+ * Avant le durcissement, `presence:update` acceptait tout nombre <= 1
+ * (-5, 0.5 : auto-sabotage d'affichage) et `presence:join` laissait se
+ * declarer `role: 'admin'` dans les snapshots (cosmetique, mais de la
+ * frime que plus personne ne devient possible).
+ *
+ * @param {string} role - Valeur libre, presque toujours du payload client
+ * @returns {string} role whitelist, sinon `spectator` par defaut
+ */
+export const PRESENCE_ROLES = ['player', 'arbiter', 'spectator'];
+
+export const presenceRoleOf = (role) => (PRESENCE_ROLES.includes(role) ? role : 'spectator');
+
+/**
+ * `team` n'existe que pour 0 et 1 : un entier quelconque du payload client
+ * est refuse (la fonction renvoie indetermine).
+ *
+ * @param {number|undefined} team
+ * @returns {number|undefined} team valide, sinon indetermine
+ */
+export const presenceTeamOf = (team) =>
+  (Number.isInteger(team) && team >= 0 && team <= 1 ? team : undefined);
+
+/**
  * Insert or update a member in a channel and join the socket to the room.
  * @param {object} socket - Socket.IO socket
  * @param {object} payload
@@ -201,7 +233,8 @@ const upsertChannelMember = (socket, payload) => {
       userId,
       pseudo,
       role,
-      team,
+      // team n'est PAS ensemence brut : la whitelist ci-dessous le pose
+      // (un payload pourri -5/0.5 ne doit pas fuiter dans la creation).
       isCheckedIn,
       isReady,
       socketIds: new Set(),
@@ -209,8 +242,12 @@ const upsertChannelMember = (socket, payload) => {
     };
 
   nextMember.pseudo = pseudo;
-  nextMember.role = role;
-  nextMember.team = typeof team === 'number' ? team : nextMember.team;
+  // P10 C1/C2 (audit-3) : whitelist ici aussi — la mise a jour d'un membre
+  // existant durcit deja dans realtime-server, mais presence:join ET la
+  // CREATION dans presence:update passaient SANS garde : un membre pouvait
+  // se declarer 'admin' et donner a son team -5 ou 0.5.
+  nextMember.role = presenceRoleOf(role);
+  nextMember.team = presenceTeamOf(team) ?? nextMember.team;
   nextMember.isCheckedIn = Boolean(isCheckedIn);
   nextMember.isReady = Boolean(isReady);
   nextMember.lastActiveAt = getNow();

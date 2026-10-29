@@ -95,12 +95,15 @@ export const subscribeToMatches = (onUpdate: () => void) => {
 };
 
 export const fetchAllMatchesFromDb = async (): Promise<Match[]> => {
-  try {
-    const res = await authorizedGet<MatchListResponse>('/api/matches');
-    return res.matches || [];
-  } catch {
-    return [];
-  }
+  // Audit-4 C4 : ce fetch avalait TOUT en resolvant [] — les .catch de
+  // RootLayout (bootstrap, rattrapage de coupure, polling 30 s) etaient du
+  // code mort, et chaque echec devenait replaceFromServer([]) : EFFACEMENT
+  // du store matchs pendant l'indisponibilite serveur (hub affiche
+  // « aucun match » au lieu de dire que la lecture a echoue). Rejeter ici
+  // protege le store : les appelants catchent et loggent deja. Un []
+  // AUTHENTIQUE (base sans match) reste livre tel quel.
+  const res = await authorizedGet<MatchListResponse>('/api/matches');
+  return res.matches || [];
 };
 
 export const createServerMatch = async (payload: CreateMatchPayload) => {

@@ -51,8 +51,8 @@ const RuleRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 const disputeCategoryLabels: Record<DisputeCategory, string> = {
-  result: 'Score conteste',
-  room_issue: 'Probleme de salle',
+  result: 'Score contesté',
+  room_issue: 'Problème de salle',
   no_show: 'Absence / retard',
   conduct: 'Comportement',
   other: 'Autre',

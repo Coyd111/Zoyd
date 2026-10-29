@@ -155,7 +155,7 @@ const FriendsWidget: React.FC = () => {
                     type="text"
                     value={tab === 'friends' ? search : invitePseudo}
                     onChange={(event) => (tab === 'friends' ? setSearch(event.target.value) : setInvitePseudo(event.target.value))}
-                    placeholder={tab === 'friends' ? 'Rechercher un ami...' : 'Pseudo a ajouter...'}
+                    placeholder={tab === 'friends' ? 'Rechercher un ami...' : 'Pseudo à ajouter...'}
                     aria-label={tab === 'friends' ? 'Rechercher un ami' : 'Saisir un pseudo à ajouter'}
                     className="w-full bg-black border border-white/10 pl-8 pr-3 py-2 text-[11px] font-display font-bold tracking-wider text-white focus:border-zoyd-yellow transition-colors"
                   />
@@ -173,7 +173,7 @@ const FriendsWidget: React.FC = () => {
                 <div className="divide-y divide-white/5">
                   {filteredFriends.length === 0 && (
                     <div className="p-4 text-center text-[10px] font-mono text-white/70 uppercase">
-                      Aucun ami trouve
+                      Aucun ami trouvé
                     </div>
                   )}
                   {filteredFriends.map((friend) => (
@@ -287,7 +287,7 @@ const FriendsWidget: React.FC = () => {
                         className="text-[10px] font-mono text-white/60 hover:text-white uppercase"
                         aria-label={`Débloquer ${blockedId}`}
                       >
-                        Debloquer
+                        Débloquer
                       </button>
                     </div>
                   ))}

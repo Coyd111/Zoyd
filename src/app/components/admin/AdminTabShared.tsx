@@ -67,8 +67,8 @@ export const moderationToneMap: Record<string, string> = {
 };
 
 export const disputeCategoryLabels: Record<string, string> = {
-  result: 'Score conteste',
-  room_issue: 'Probleme de salle',
+  result: 'Score contesté',
+  room_issue: 'Problème de salle',
   no_show: 'Absence / retard',
   conduct: 'Comportement',
   other: 'Autre',

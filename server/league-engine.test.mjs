@@ -243,6 +243,20 @@ describe('league-engine - saisons restées en inscription (sweeper)', () => {
     expect(ids).toEqual(['LS-TEST']);
   });
 
+  // P6 C2 (audit-3) : le sweep ne vise plus une saison PLEINE — son propre
+  // commentaire annonce « moins de 10 inscrits » mais le code ne verifiait
+  // jamais l'effectif : un redemarrage autour d'une cloture annulait une
+  // saison a 10+ inscrits (passes rembourses en masse, motif de log faux)
+  // avant le cron de fermeture, qui n'a pas de boot differe contrairement au
+  // sweep (+22 s).
+  it('ignore une saison pleine (10 inscrits ou plus) meme passe la cloture', () => {
+    const full = staleSeason(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10']);
+    expect(leagueEngine.getStaleLeagueSeasonIds([full])).toEqual([]);
+    // Garde limite : neuf inscrits restent vises par le sweep.
+    const almost = staleSeason(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9']);
+    expect(leagueEngine.getStaleLeagueSeasonIds([almost])).toEqual(['LS-TEST']);
+  });
+
   it('ignore une saison encore ouverte ou deja lancée', () => {
     const open = makeSeason({
       schedule: {
@@ -804,6 +818,75 @@ describe('league-engine - Score Z System', () => {
       leagueEngine.submitLeagueDayResultsOnServer(
         [season], mockAdmin, 'LS-TEST', 'tuesday',
         [{ userId: 'player-1', placement: 101, kills: 5 }]
+      )
+    ).toThrow();
+  });
+
+  // P6 C1 (audit-3) : la garde de placement etait `Number(x) < 1 || > 100` —
+  // NaN passe les deux comparaisons (fail-open), puis `PLACEMENT_POINTS[NaN]`
+  // valait undefined et `placements.push(NaN)` corrompait les standings de
+  // facon persistante. Meme piege sur `kills`, sans garde finie ni borne
+  // inferieure (`kills: -100` sabotait le total d'un joueur).
+  it('should reject non-integer, NaN and negative day inputs', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    const badResults = [
+      { userId: 'player-1', placement: 'abc', kills: 5 },
+      { userId: 'player-1', placement: 1.5, kills: 5 },
+      { userId: 'player-1', placement: 1, kills: 'abc' },
+      { userId: 'player-1', placement: 1, kills: -5 },
+      { userId: 'player-1', placement: 1, kills: 1.5 },
+    ];
+    for (const bad of badResults) {
+      expect(() =>
+        leagueEngine.submitLeagueDayResultsOnServer(
+          [season], mockAdmin, 'LS-TEST', 'tuesday', [bad]
+        )
+      ).toThrow();
+    }
+  });
+
+  // P6 C1 (audit-3) : deux joueurs a la meme place de journee cumulaient les
+  // memes points de survie — la finale refuse deja cet etat (unicite des
+  // places).
+  it('should reject duplicate placement in day results', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [
+        { userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() },
+        { userId: 'player-2', pseudo: 'Ghost', joinedAt: new Date().toISOString() },
+      ],
+      qualificationGroups: {
+        tuesday: { players: ['player-1', 'player-2'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] },
+        { userId: 'player-2', pseudo: 'Ghost', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] },
+      ],
+    });
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday',
+        [
+          { userId: 'player-1', placement: 1, kills: 5 },
+          { userId: 'player-2', placement: 1, kills: 3 },
+        ]
       )
     ).toThrow();
   });

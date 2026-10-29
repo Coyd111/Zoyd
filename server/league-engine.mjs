@@ -525,6 +525,7 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
   // Pas de doublon : sans cette garde, le meme joueur listee deux fois
   // cumulait ses points ET ses `matchesPlayed` (integrite du classement).
   const seenDayUserIds = new Set();
+  const seenDayPlacements = new Set();
   for (const r of results) {
     if (!r.userId || !registeredIds.has(r.userId)) {
       throw makeError('INVALID_RESULTS', 'Un resultats reference un joueur non inscrit a cette journee.');
@@ -533,9 +534,30 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
       throw makeError('INVALID_RESULTS', 'Ce joueur apparait plusieurs fois dans les resultats de la journee.');
     }
     seenDayUserIds.add(r.userId);
-    if (Number(r.placement) < 1 || Number(r.placement) > 100) {
-      throw makeError('INVALID_RESULTS', 'Le classement doit etre entre 1 et 100.');
+    // P6 C1 (audit-3) : garde NaN fail-open. `Number('abc') < 1` ET
+    // `Number('abc') > 100` sont tous deux faux : un `placement: "abc"`
+    // passait, puis `PLACEMENT_POINTS[NaN]` valait `undefined` et
+    // `placements.push(NaN)` corrompait les standings de facon persistante
+    // (ils decident de la qualification, donc du podium). Meme garde que la
+    // finale (:641), ou que les reglages (:1091).
+    const placement = Number(r.placement);
+    if (!Number.isInteger(placement) || placement < 1 || placement > 100) {
+      throw makeError('INVALID_RESULTS', 'Le classement doit etre un entier entre 1 et 100.');
     }
+    // Meme piege sur `kills` : sans garde finie, `kills: "abc"` donnait
+    // `points: NaN` -> le classement triait sur un NaN ; sans borne
+    // inferieure, `kills: -100` sabotait le total d'un joueur.
+    const kills = Number(r.kills || 0);
+    if (!Number.isInteger(kills) || kills < 0) {
+      throw makeError('INVALID_RESULTS', 'Les eliminations doivent etre un entier positif ou nul.');
+    }
+    // Deux joueurs a la meme place de journee cumulaient les memes points de
+    // survie : le classement devenait incoherent. La finale refuse deja cet
+    // etat (unicite des places).
+    if (seenDayPlacements.has(placement)) {
+      throw makeError('INVALID_RESULTS', 'Deux joueurs ne peuvent pas partager la meme place.');
+    }
+    seenDayPlacements.add(placement);
   }
 
   const processedResults = results.map((r) => {
@@ -917,6 +939,15 @@ export const getStaleLeagueSeasonIds = (seasons, graceMs = 60 * 60 * 1000) => {
   return (Array.isArray(seasons) ? seasons : [])
     .filter((season) => {
       if (season?.status === 'registering') {
+        // P6 C2 (audit-3) : ce commentaire annoncait « moins de 10 inscrits »
+        // mais le code ne verifiait JAMAIS l'effectif. Un redemarrage autour
+        // d'une cloture annulait une saison PLEINE avant que le cron de
+        // fermeture (toutes les heures, sans premier passage differe au boot,
+        // contrairement au sweep : +22 s) ait pu lancer la qualification —
+        // passes rembourses en masse et motif de log faux. Le sweep ne vise
+        // plus que ce que son propre commentaire annonce (garde alignee sur
+        // le cron de fermeture cron.mjs:458 et sur le moteur :437).
+        if ((season.registeredPlayers?.length ?? 0) >= 10) return false;
         const closesAt = season?.schedule?.registrationCloses;
         if (!closesAt) return false;
         const ts = new Date(closesAt).getTime();

@@ -24,7 +24,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  *      n'ecrit que le salon traite (les autres salons survivent) ;
  *   3. `sweepStaleBrLobbies` ecrit aussi par entite, dans le verrou ;
  *   4. la garde anti-chevauchement des jobs BR est effective ;
- *   5. aucune ecriture BR ne passe par `replaceStateCollection`.
+ *   5. aucune ecriture BR ne passe par `replaceStateCollection` ;
+ *   6. la CREATION est sous verrou sentinelle et n'ecrit que l'entite
+ *      creee (C1 audit-3, reprise du C5 audit-2) : un join / check-in
+ *      concurrent sur un autre salon n'est plus ecrase par l'instantane
+ *      perime que la creation persistait auparavant.
  *
  * Les tests appellent `handleBrRoutes` et les fonctions exportees par
  * `server/cron.mjs` - pas les fonctions des moteurs.
@@ -243,6 +247,13 @@ const actionRoute = (nom, lobbyId = 'BR-1') => handleBrRoutes({
   pathname: `/api/br/lobbies/${lobbyId}/${nom}`,
 });
 
+const creationRoute = () => handleBrRoutes({
+  req: { method: 'POST' },
+  res: {},
+  io: null,
+  pathname: '/api/br/lobbies',
+});
+
 const salonDeBase = (id, surcharge = {}) => ({
   id,
   name: `Salon ${id}`,
@@ -443,5 +454,84 @@ describe('C2 - la garde anti-chevauchement des jobs BR', () => {
     await premier;
     await new Promise((resolve) => setImmediate(resolve));
     expect(h.traces.filter((t) => t === 'br:lock')).toHaveLength(1);
+  });
+});
+
+/**
+ * C1 (audit-3, suite du C5 audit-2) - la creation de salon est verrouillee
+ * et n'ecrit qu'elle-meme.
+ *
+ * `POST /api/br/lobbies` relisait l'instantane hors verrou puis persistait
+ * la collection COMPLETE clonee : un join / check-in / eliminate concurrent
+ * sur un AUTRE salon etait ecrase par la copie perimee (le perdant : un
+ * joueur qui a PAYE son pass, marque absent au lancement). La correction
+ * calque la creation sur la discipline de la route d'action : verrou
+ * sentinelle, ecriture dans le verrou, RESTREINTE a l'entite creee.
+ */
+describe('C1 - la CREATION de salon est sous verrou et n ecrit qu elle-meme', () => {
+  const nouveauSalon = () => ({
+    id: 'BR-NEW',
+    name: 'Salon nouveau',
+    status: 'scheduled',
+    arbiterId: 'arb-1',
+    creatorId: 'arb-1',
+    entryFee: 10,
+    pot: 0,
+    players: [],
+    teams: [],
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  });
+
+  it('le cycle complet est dans le verrou sentinelle et l ecriture est restreinte', async () => {
+    h.sessionCourante = { user: { id: 'arb-1' } };
+    h.engine.createBrLobbyOnServer.mockImplementation(() => {
+      h.traces.push('moteur:create');
+      const salon = nouveauSalon();
+      return { lobby: salon, lobbies: [salon] };
+    });
+
+    const traite = await creationRoute();
+
+    expect(traite).toBe(true);
+    expect(h.traces).toEqual(['br:lock', 'moteur:create', 'save', 'br:unlock', 'reponse:201']);
+    // Seule l'ENTITE CREEE est ecrite : la creation ne persiste plus la
+    // collection complete clonee depuis son instantane.
+    expect(h.ecritures).toEqual(['BR-NEW']);
+    expect(h.derniereReponse.ok).toBe(true);
+  });
+
+  it('une action concurrente sur un AUTRE salon n est plus ecrasee', async () => {
+    h.sessionCourante = { user: { id: 'arb-1' } };
+    seedLobby(salonDeBase('BR-VOISIN', {
+      players: [{ userId: 'p-1', pseudo: 'P1', checkedIn: false }],
+    }));
+
+    h.engine.createBrLobbyOnServer.mockImplementation((lobbies) => {
+      h.traces.push('moteur:create');
+      // Instantane PERIME : le clone de BR-VOISIN tel qu'il etait AVANT
+      // l'action concurrente.
+      const voisinPerime = JSON.parse(JSON.stringify(lobbies.find((l) => l.id === 'BR-VOISIN')));
+      // Simule un check-in concurrent sur BR-VOISIN qui se persiste PENDANT
+      // la fenetre d'ecriture de la creation : verru per-salon, sans
+      // coordination possible avec le verrou de creation.
+      h.etat.get('brLobbies').set('BR-VOISIN', {
+        ...voisinPerime,
+        players: voisinPerime.players.map((j) => ({ ...j, checkedIn: true })),
+      });
+      const salon = nouveauSalon();
+      return { lobby: salon, lobbies: [voisinPerime, salon] };
+    });
+
+    const traite = await creationRoute();
+
+    expect(traite).toBe(true);
+    // La creation n'ecrit QUE son salon : l'entite creee est neuve, aucun
+    // upsert ne porte le clone perime du voisin.
+    expect(h.ecritures).toEqual(['BR-NEW']);
+    // Le check-in concurrent SURVIT : avant la retouche, saveBrLobbies
+    // recevait la collection complete et re-ecrivait checkedIn: false -
+    // le joueur payant devenait absent au lancement.
+    expect(h.etat.get('brLobbies').get('BR-VOISIN').players[0].checkedIn).toBe(true);
   });
 });

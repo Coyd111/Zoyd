@@ -8,7 +8,9 @@
  * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`default`,
  * `admin` pour `finish`) -> `withBrLobbyMutex(lobbyId)` -> RE-LECTURE du
  * snapshot DANS le verrou -> moteur (liste restreinte au salon cible) ->
- * `saveBrLobbies` DANS LE MEME VERROU -> reponse. L'action `finish` ajoute
+ * `saveBrLobbies` DANS LE MEME VERROU -> reponse. La CREATION suit la
+ * meme discipline avec un verrou SENTINELLE (`BR_LOBBY_CREATION_KEY`,
+ * C1 audit-3) et n'ecrit QUE l'entite creee. L'action `finish` ajoute
  * `require2faIfAdmin` : la session admin doit montrer une 2FA fraiche, le
  * joueur arbitre (volontariat A7) passe sans code.
  *
@@ -90,6 +92,11 @@ import { createLogger } from '../logger.mjs';
 
 const log = createLogger('br-routes');
 
+// C1 (audit-3, suite du C5 audit-2) : verrou SENTINELLE des creations de
+// salon. Les identifiants de salon sont generes `BR-...` : cette cle ne
+// peut pas entrer en collision avec le verrou d'un salon existant.
+const BR_LOBBY_CREATION_KEY = 'creation';
+
 export const handleBrRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'GET' && pathname === '/api/br/config') {
   respondJson(res, 200, {
@@ -129,18 +136,37 @@ if (req.method === 'POST' && pathname === '/api/br/lobbies') {
   if (!rateLimitGuard(res, getClientIp(req), 'match')) { return true; }
   try {
     const body = await parseRequestBody(req);
-    const created = createBrLobbyOnServer(
-      getStoredBrLobbies(),
-      { user: getUserById(session.user.id) || session.user },
-      body,
-    );
-    // Le createur est l'ARBITRE du salon, pas un joueur : il ne paie aucun
-    // pass et ne figure pas dans le roster. Avant, on l'auto-inscrivait et on
-    // bloquait son pass — il devait donc avoir les moyens de payer pour creer
-    // un salon, et sa presence conditionnait le demarrage. La cagnotte ne
-    // contient plus que des joueurs payants, et le classement n'a plus a
-    // exclure l'arbitre de la liste (il n'y est plus).
-    await saveBrLobbies(io, created.lobbies);
+    // C1 (audit-3, remonter du C5 audit-2 encore ouvert) : la creation
+    // relisait l'instantane HORS verrou puis persistait la collection
+    // COMPLETE clonee depuis ce snapshot. Un join / check-in / eliminate
+    // concurrent sur un AUTRE salon etait ecrase par la copie perimee
+    // (`saveBrLobbies` est un upsert par entite : l'entite modifiee
+    // concurrente, presente dans la liste avec son etat d'avant, etait
+    // re-ecrite) - le perdant : un joueur qui a PAYE son pass, elimine
+    // du roster au lancement (absent -> pass consomme). Deux gardes,
+    // calques sur la discipline de la route d'action ci-dessous :
+    //   1. un verrou SENTINELLE serialise les POST de creation ;
+    //   2. l'ecriture part DANS le verrou et n'est RESTREINTE qu'a
+    //      l'entite creee : un upsert qui ne liste que le nouveau salon
+    //      ne peut plus ecraser une entite concurrente, quelle qu'elle
+    //      soit (l'entite creee est nouvelle : personne ne l'a jamais
+    //      vue avant).
+    const created = await withBrLobbyMutex(BR_LOBBY_CREATION_KEY, async () => {
+      const resultat = createBrLobbyOnServer(
+        getStoredBrLobbies(),
+        { user: getUserById(session.user.id) || session.user },
+        body,
+      );
+      // Le createur est l'ARBITRE du salon, pas un joueur : il ne paie aucun
+      // pass et ne figure pas dans le roster (A7, audit-2). Avant, on
+      // l'auto-inscrivait et on bloquait son pass — il devait donc avoir les
+      // moyens de payer pour creer un salon, et sa presence conditionnait le
+      // demarrage. La cagnotte ne contient plus que des joueurs payants, et
+      // le classement n'a plus a exclure l'arbitre de la liste (il n'y est
+      // plus).
+      await saveBrLobbies(io, [resultat.lobby]);
+      return resultat;
+    });
     log.info('BR lobby created', { lobbyId: created.lobby.id, by: session.user.id });
     respondJson(res, 201, {
       ok: true,

@@ -390,9 +390,14 @@ export const joinBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
   requireLobbyJoinable(lobby);
 
-  // Le createur n'est pas auto-inscrit par `createBrLobbyOnServer` : c'est
-  // l'appelant (la route) qui l'inscrit via cette fonction, comme tout le
-  // monde, pour que son pass soit reellement bloque.
+  // C3 (audit-3) : ce commentaire disait l'INVERSE de la realite, il
+  // pretendait que la route inscrivait le createur ici comme tout le monde.
+  // Or le createur est l'ARBITRE du salon (A7, audit-2) : aucun code ne
+  // l'inscrit, il ne paie aucun pass et ne figure que dans `arbiterId`
+  // (jamais dans `players`). Un tel commentaire invitait a reintroduire
+  // l'auto-inscription corrigee : le createur paierait un pass pour son
+  // propre salon, et serait exclu du classement (statut d'arbitre) — pass
+  // perdu sans jamais pouvoir gagner.
   if (lobby.players.some((p) => p.userId === actorUser.id)) {
     throw makeError('ALREADY_JOINED', 'Tu es deja inscrit dans ce salon.');
   }

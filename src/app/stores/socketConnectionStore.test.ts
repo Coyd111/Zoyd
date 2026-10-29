@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useSocketConnectionStore } from './socketConnectionStore';
+import { useNotificationStore } from './notificationStore';
 
 const { handlers, fetchRealtimeBootstrap } = vi.hoisted(() => ({
   handlers: { current: null as Record<string, () => void> | null },
@@ -193,5 +194,63 @@ describe('socketConnectionStore — echec de bootstrap visible (F2)', () => {
     // Deco volontaire (logout) : la session suivante repart a zero, l'echec
     // ne doit pas trainer.
     expect(useSocketConnectionStore.getState().bootstrapFailed).toBe(false);
+  });
+});
+
+/**
+ * P12 C6 (audit-3) : le push serveur ne contourne PLUS le garde documente.
+ *
+ * Avant le correctif, `deliverServerNotification` posait `showBrowser: true`
+ * sur toute notification socket : le garde « priorite haute/urgente ET
+ * onglet en arriere-plan » de notificationStore etait contourné
+ * systematiquement, et la notification navigateur s'affichait meme
+ * au-dessus d un onglet actif. Desormais le socket prend les notifications
+ * comme les chemins REST : le garde tranche.
+ */
+describe('socketConnectionStore — push serveur sans contourner le garde (P12 C6)', () => {
+  beforeEach(() => {
+    handlers.current = null;
+    fetchRealtimeBootstrap.mockReset();
+    fetchRealtimeBootstrap.mockResolvedValue({
+      friends: [],
+      friendRequests: [],
+      blockedIds: [],
+      notifications: [],
+      matches: [],
+      tournaments: [],
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+    useNotificationStore.setState({ notifications: [] });
+    useSocketConnectionStore.getState().disconnect();
+    useSocketConnectionStore.setState({
+      isConnected: false,
+      serverConnected: false,
+      bootstrapReady: false,
+      bootstrapFailed: false,
+      dirtySinceDisconnect: false,
+      connectionLabel: 'offline',
+    });
+  });
+
+  afterEach(() => {
+    useNotificationStore.setState({ notifications: [] });
+  });
+
+  it('onPushDelivery ne pose PAS showBrowser, le garde d arriere-plan decide', () => {
+    useSocketConnectionStore.getState().connect(user);
+
+    handlers.current!.onPushDelivery!({
+      title: 'Salle disponible',
+      body: 'Le match est pret.',
+      url: '/matches',
+      tag: 'room-1',
+      requireInteraction: false,
+    } as never);
+
+    const [notif] = useNotificationStore.getState().notifications;
+    expect(notif).toBeDefined();
+    expect(notif?.metadata?.showBrowser).not.toBe(true);
+    expect(notif?.priority).toBe('high');
+    expect(notif?.metadata?.source).toBe('server-push');
   });
 });

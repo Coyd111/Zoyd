@@ -96,7 +96,13 @@ const deliverServerNotification = (payload: PushDeliveryPayload) => {
     metadata: {
       dedupeKey: `server-push-${payload.tag || payload.title}-${payload.url || '/'}`,
       showToast: true,
-      showBrowser: true,
+      // P12 C6 (audit-3) : PAS de `showBrowser` force. Le garde documente de
+      // notificationStore (priorite haute/urgente ET onglet en arriere-plan)
+      // s applique desormais a TOUTES les sources, socket inclus — poser
+      // true ici le contournait systematiquement : la notification
+      // navigateur s affichait meme au-dessus de l onglet actif. La
+      // priorite reste haute/urgente ci-dessus, donc le push navigateur
+      // part exactement quand le garde le veut.
       browserTag: payload.tag,
       source: 'server-push',
     },

@@ -234,7 +234,7 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           if (payload.user) {
             useAuthStore.getState().updateUser(payload.user);
           }
-          pushWalletNotification('Depot confirme', `${formatZC(safeAmount)} ajoutées via ${method}.`);
+          pushWalletNotification('Dépôt confirmé', `${formatZC(safeAmount)} ajoutées via ${method}.`);
         },
 
         withdraw: async (amount, method, phone, country) => {
@@ -258,12 +258,12 @@ export const useWalletStore = create<WalletState>()((set, get) => {
           // Mention explicite des frais FedaPay : le net annonce est ce que
           // ZOYD envoie a FedaPay, pas necessairement ce qui est credite sur
           // le numero du joueur (FedaPay preleve son propre taux par-dessus).
-          const fedapayNote = 'FedaPay preleve encore ses propres frais de transfert, qui ne reviennent pas a ZOYD : le montant credite peut etre inferieur.';
+          const fedapayNote = 'FedaPay prélève encore ses propres frais de transfert, qui ne reviennent pas à ZOYD : le montant crédité peut être inférieur.';
           pushWalletNotification(
-            'Retrait envoye a FedaPay',
+            'Retrait envoyé à FedaPay',
             feeAmount !== null
-              ? `${formatZC(netAmount)} nets apres ${formatZC(feeAmount)} de commission ZOYD (${feeRatePercent} %). ${fedapayNote}`
-              : `${formatZC(netAmount)} nets apres la commission ZOYD. ${fedapayNote}`,
+              ? `${formatZC(netAmount)} nets après ${formatZC(feeAmount)} de commission ZOYD (${feeRatePercent} %). ${fedapayNote}`
+              : `${formatZC(netAmount)} nets après la commission ZOYD. ${fedapayNote}`,
           );
         },
 

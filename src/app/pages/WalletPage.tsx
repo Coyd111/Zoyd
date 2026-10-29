@@ -322,7 +322,7 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
         markSettled();
         if (resp.reason === 'CHECKOUT COMPLETE') {
           if (!resp.transaction?.id) {
-            toast.error('Transaction invalidé.');
+            toast.error('Transaction invalide.');
             return;
           }
           toast.loading('Vérification de la transaction...');
@@ -385,7 +385,7 @@ if (!payoutCountry) {
     try {
       const amount = parseFloat(withdrawAmount);
       if (isNaN(amount) || amount <= 0) {
-        toast.error('Montant invalidé.');
+        toast.error('Montant invalide.');
         return;
       }
       await withdraw(amount, withdrawOperator, cleanPhone, payoutCountry.iso);

@@ -95,19 +95,19 @@ export const getFundingPromptCopy = (context: FundingContext) => {
     case 'match-join':
       return {
         title: 'Ajouter des ZC pour bloquer ton pass de match',
-        body: "Une fois le pass charge, tu peux revenir prendre ta place dans l'équipe choisie.",
+        body: "Une fois le pass chargé, tu peux revenir prendre ta place dans l'équipe choisie.",
         returnLabel: 'Retour au match',
       };
     case 'match-create':
       return {
         title: 'Ajouter des ZC avant de publier cette partie',
-        body: "Le createur engagé aussi son pass. Recharge ton portefeuille puis reviens publier ton match.",
-        returnLabel: 'Retour à la creation',
+        body: "Le créateur engage aussi son pass. Recharge ton portefeuille puis reviens publier ton match.",
+        returnLabel: 'Retour à la création',
       };
     case 'tournament-entry':
       return {
         title: 'Ajouter des ZC pour confirmer cette inscription',
-        body: "Le pass se bloqué des que ton inscription est validée. Recharge puis reviens finaliser ton entrée.",
+        body: "Le pass se bloque dès que ton inscription est validée. Recharge puis reviens finaliser ton entrée.",
         returnLabel: 'Retour au tournoi',
       };
   }

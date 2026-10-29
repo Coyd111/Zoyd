@@ -116,7 +116,7 @@ phone: z
 
 const step2Schema = registerFormBaseSchema.extend({
   gameId: z.string().min(1, 'UID CODM requis').optional(),
-  levelCODM: levelCODMSchema.pipe(z.number().min(1, 'Niveau invalidé')).optional(),
+  levelCODM: levelCODMSchema.pipe(z.number().min(1, 'Niveau invalide')).optional(),
 });
 
 // Les valeurs du formulaire ne sont pas le payload : chaque étape n'en renseigne

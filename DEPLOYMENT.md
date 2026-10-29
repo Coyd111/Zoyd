@@ -2,7 +2,7 @@
 
 ## Prérequis
 
-- Node.js 18+
+- Node.js 22.13+ (`engines >= 22.13` dans `package.json`, `.nvmrc` = 22)
 - pnpm (avec `--config.node-linker=hoisted` pour disque exFAT)
 - Compte Vercel (frontend)
 - Compte Render (backend)
@@ -71,7 +71,7 @@ annoncé actif, et l'argent cesserait d'être persisté sans la moindre alerte.
 | `ZOYD_RATE_LIMIT_MAX` | `100000` | Plafond global. **N'agit que si `NODE_ENV=test` et `ALLOW_DEBUG_CODES=true`** |
 | `ZOYD_BR_START_EARLY_MS` | — | Avance le démarrage d'une partie BR, en millisecondes |
 | `ZOYD_API_KEY_ROTATION_DAYS` | `90` | Âge au-delà duquel une clé d'API est signalée à renouveler |
-| `ALLOW_DEBUG_CODES` | `false` | **Nernels jamais en production** : expose les codes de vérification dans les réponses |
+| `ALLOW_DEBUG_CODES` | `false` | **Jamais en production** : expose les codes de vérification dans les réponses |
 
 ### Intégrations facultatives
 
@@ -106,7 +106,7 @@ reconstruit. Ne jamais y placer de secret — il serait public.
 ### Fournies automatiquement par Render
 
 `RENDER_GIT_COMMIT` et `RENDER_GIT_BRANCH` sont injectés par la plateforme et
-sert à `/api/health`, qui expose `persistence.deployedCommitShort`. C'est le
+servent à `/api/health`, qui expose `persistence.deployedCommitShort`. C'est le
 moyen fiable de vérifier quel commit tourne réellement en production.
 
 ### Tests et développement local uniquement
@@ -133,7 +133,7 @@ Les deux dernières catégories sont particulièrement trompeuses :
 
 ```bash
 # Frontend
-cd "Multiplayer Gaming Platform"
+cd Zoyd
 CI=true pnpm install --config.node-linker=hoisted
 
 # Lancer le dev server
@@ -170,7 +170,7 @@ Tout push sur `main` déclenche un build Vercel automatique.
 1. Connecter le repo GitHub sur Render
 2. Type: Web Service
 3. Runtime: Node
-4. Build command: `npm install` (ou `CI=true pnpm install --config.node-linker=hoisted`)
+4. Build command: `pnpm install --no-frozen-lockfile --config.node-linker=hoisted` (aligné sur `render.yaml` ; npm ne lit pas `pnpm-lock.yaml`)
 5. Start command: `node server/realtime-server.mjs`
 6. Health check path: `/api/health`
 
@@ -371,8 +371,8 @@ pas.
 
 **Piège courant** : configurer SMTP sur Render gratuit sans lire la ligne
 du dessus. Le serveur tente, expire, journalise un avertissement, puis passe
-au canal suivant — la.delivery finit par réussir mais on perd plusieurs
-plusieurs delais a chaque envoi, et le joueur attend.
+au canal suivant — la delivery finit par réussir, mais on perd plusieurs
+délais à chaque envoi, et le joueur attend.
 
 Si tu veux forcer un canal précis, ne configure que celui-là.
 ## Monitoring
@@ -419,7 +419,7 @@ Supabase supporte les backups automatiques. Restore via le dashboard Supabase.
 $env:CI="true"; node --experimental-vm-modules node_modules/vitest/vitest.mjs run --reporter=verbose --no-file-parallelism --exclude='e2e/**'
 ```
 
-220 tests couvrant :
+Plus de 1 000 tests unitaires (vitest, 97 fichiers de test) couvrant :
 - Persistance (hashing, normalisation)
 - Métriques
 - Match engine (XP, Elo, résultats)
@@ -442,6 +442,6 @@ npx playwright test
 | `pnpm install` échoue sur exFAT | `CI=true pnpm install --config.node-linker=hoisted` |
 | Build Vite timeout | Augmenter le timeout (300s) |
 | Backend Render dort | Premier appel = ~30s de warmup |
-| SW cache stale | Bump de la version dans `sw.js` (`CACHE_NAME` n existe plus) |
+| SW cache stale | Bump de la version dans `sw.js` (`CACHE_NAME` n'existe plus) |
 | Token expiré | Le client redirige vers `/auth/login` automatiquement |
 | CORS error | Vérifier **`ZOYD_ALLOWED_ORIGINS`** (pas `ALLOWED_ORIGINS`, que le code ne lit pas) |

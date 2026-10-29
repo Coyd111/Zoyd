@@ -62,7 +62,7 @@ self.addEventListener('fetch', (event) => {
   //
   // Conséquences réelles : sur un appareil partagé, le joueur suivant —
   // ou le même joueur hors ligne — voit l'état du précédent ; et comme la
-  // clé de cache est l'URL, une réponse 401/200 Pinvalidée peut réapparaître
+  // clé de cache est l'URL, une réponse 401/200 invalidée peut réapparaître
   // après le changement de compte. Une entrée de menu, pas une information
   // périmée.
   //

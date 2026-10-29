@@ -4,6 +4,10 @@ dist-proof-check
 .env
 .env.*
 .env.server
+# Gabarits a copier-renommer (P14 C3, audit-3) : sans ces negations,
+# .env.* avalait aussi les exemples - un clonateur n'avait aucun gabarit.
+!.env.example
+!.env.server.example
 .DS_Store
 build.log
 public/assets/codm/raw_unity/

@@ -41,6 +41,11 @@
  * automatiquement sur un signalement unique reviendrait a laisser n'importe
  * quel joueur faire bannir son rival en le signalant une fois : le
  * signalement est une accusation, pas une preuve.
+ *
+ * Severite MAXIMALE jamais levee : le definitif n'est jamais automatique,
+ * il se choisit. Cette borne sert de garde-fou, pas de politique. (P8 C3
+ * audit-3 : le commentaire vivait au-dessus de `isSanctionKind`, sans
+ * rapport avec lui.)
  */
 export const REPORT_SEVERITIES = {
   harassment: 'grave',
@@ -96,8 +101,11 @@ export const recommendedSanction = (severity) => {
 };
 
 /**
- * Severite MAXIMALE jamais levee. Le definitif n'est jamais automatique :
- * il se choisit. Cette borne sert de garde-fou, pas de politique.
+ * Predicat de whitelist (P8 C3 audit-3) : le kind est-il l un de ceux que
+ * le module gère ? `SANCTION_KINDS.includes(kind)` — le seul filtre des
+ * kinds acceptés par l'admin (INVARIANT d'en-tête : une résolution hors
+ * liste doit etre refusee, pas reinterpretee). La politique du lien entre
+ * gravite et sanction est dans la table ci-dessus et `recommendedSanction`.
  */
 export const isSanctionKind = (kind) => SANCTION_KINDS.includes(kind);
 

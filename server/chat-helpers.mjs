@@ -119,8 +119,14 @@ export const buildChatBootstrapPayload = (userId) => {
 export const broadcastChatChannel = (io, channel) => {
   if (!channel) return;
 
+  // P8 C2 (audit-3) : quand le canal est émis à TOUT LE MONDE, la boucle
+  // participants réémettait le canal une seconde fois à chacun d'eux
+  // (payload identique, l'écrasement front est idempotent : pur bruit
+  // socket). Miroir du patron `broadcastChatMessage` sur le canal global :
+  // early return, une seule émission par destinataire.
   if (channel.inbox === 'all') {
     io.emit('chat:channel', { channel });
+    return;
   }
 
   for (const participantId of channel.participants || []) {

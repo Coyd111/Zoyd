@@ -87,8 +87,14 @@ export const base32Decode = (encoded) => {
  * Fenêtre de tolérance, en pas de temps.
  *
  * `0` = le code n'est accepté que pendant SON pas de 30 s. C'est le choix
- * fait : un code ne peut pas être rejoué, et sa durée de vie est de 30 s au
- * lieu de 90 s (±1 pas avant).
+ * fait : sa durée de vie est de 30 s au lieu de 90 s (±1 pas avant).
+ *
+ * P8 C1 (audit-3) — le rejeu précisé : sans cache de codes utilisés, un
+ * code reste VALIDE tout au long de son pas de 30 s et peut etre soumis
+ * plusieurs fois ; ce que la fenêtre 0 bloque, c'est le rejeu D'UN PAS A
+ * L'AUTRE. L'exposition reelle reste etroite : il faut le code ET une
+ * session admin valide (le flag `admin2faVerified` est posé SUR la
+ * session).
  *
  * Le compromis assumé : si l'horloge du téléphone de l'administrateur dérive
  * de plus d'une quinzaine de secondes, le code sera refusé alors qu'il est
@@ -110,6 +116,14 @@ export const TOTP_WINDOW_STEPS = 0;
 export const verifyTotp = (secret, code) => {
   const key = base32Decode(secret);
   const now = Math.floor(Date.now() / 1000 / TOTP_PERIOD);
+  // Type STRICT a la porte de la boucle (P8 C1 audit-3) : le garde vivait
+  // DANS la boucle HMAC — fenêtre 0 = une iteration, donc invisible ; passer
+  // `TOTP_WINDOW_STEPS` a ±1 le re-evaluerait une fois par pas au lieu d'une
+  // fois par appel. Coercer un nombre en chaine ferait passer
+  // `verifyTotp(secret, 287082)` alors que le type ne correspond pas : une
+  // fonction tolérante sur les types est un piege, meme si la route filtre
+  // deja le corps de la requete.
+  if (typeof code !== 'string' || code.length !== TOTP_DIGITS) return false;
   for (let offset = -TOTP_WINDOW_STEPS; offset <= TOTP_WINDOW_STEPS; offset++) {
     const counter = now + offset;
     const counterBuffer = Buffer.alloc(8);
@@ -118,13 +132,7 @@ export const verifyTotp = (secret, code) => {
     const hmac = crypto.createHmac(TOTP_ALGORITHM, key).update(counterBuffer).digest();
     const offset2 = hmac[hmac.length - 1] & 0x0f;
     const otp = ((hmac[offset2] & 0x7f) << 24) | (hmac[offset2 + 1] << 16) | (hmac[offset2 + 2] << 8) | hmac[offset2 + 3];
-    // Type STRICT avant toute comparaison. Coercer un nombre en chaine ferait
-  // passer `verifyTotp(secret, 287082)` alors que le type ne correspond pas :
-  // une fonction tolérante sur les types est un piege, meme si la route
-  // filtre deja le corps de la requete.
-  if (typeof code !== 'string' || code.length !== TOTP_DIGITS) return false;
-
-  const expected = String(otp % Math.pow(10, TOTP_DIGITS)).padStart(TOTP_DIGITS, '0');
+    const expected = String(otp % Math.pow(10, TOTP_DIGITS)).padStart(TOTP_DIGITS, '0');
     // Comparaison en temps constant : deux entrees de tailles differentes ne
     // peuvent pas etre comparees, et `timingSafeEqual` leve sur des tampons
     // de tailles inegales.

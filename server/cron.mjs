@@ -389,7 +389,11 @@ export const initCronJobs = () => {
   let leagueCloseRunning = false;
 
   // Nettoyage des matchs inactifs — toutes les 6 heures
-  setInterval(async () => {
+  // P8 C4 (audit-3) : corps extrait en runner nommé, comme les jobs
+  // d'argent, pour recevoir un premier passage différé au boot — sans lui,
+  // les matchs éligibles a l'archivage attendent jusqu'au premier tick de
+  // 6 h après un redémarrage.
+  const runMatchCleanup = async () => {
     if (matchCleanupRunning) {
       log.warn('Nettoyage matchs sauté : tick précédent encore en cours.');
       return;
@@ -435,7 +439,12 @@ export const initCronJobs = () => {
     } finally {
       matchCleanupRunning = false;
     }
-  }, 6 * 60 * 60 * 1000);
+  };
+  // Premier passage différé au boot (P8 C4), comme les jobs d'argent :
+  // décalé a 35 s, juste après le sweep des règlements (15 s) qui partage
+  // le même verrou de match.
+  setTimeout(() => { void runMatchCleanup(); }, 35 * 1000);
+  setInterval(() => { void runMatchCleanup(); }, 6 * 60 * 60 * 1000);
 
   // Fermeture automatique des inscriptions ligue — toutes les heures
   setInterval(async () => {

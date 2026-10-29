@@ -20,7 +20,7 @@ vi.mock('./wallet-engine.mjs', () => ({
 
 import * as matchEngine from './match-engine.mjs';
 import { getUserById } from './persistence.mjs';
-import { releaseWalletWinnings } from './wallet-engine.mjs';
+import { releaseWalletWinnings, settleMatchLossWallet } from './wallet-engine.mjs';
 
 describe('match-engine - XP Progression', () => {
   it('should add XP and stay at same level when below threshold', () => {
@@ -1199,5 +1199,161 @@ describe('match-engine - match.payouts : montants reels (A9)', () => {
     expect(projection.winner).toBe(1961);
     expect(projection.arbiterFee).toBe(39);   // pas la valeur figee 40
     expect(projection.perWinner).toBe(980.5); // moyenne des deux parts reelles
+  });
+});
+
+/**
+ * C2 (audit-3) - la base du reglement est figee au premier essai.
+ *
+ * `applyResultSettlement` recalculait le pot a CHAQUE essai via
+ * `getLockedPot`, alors que ce premier essai LIBERE des reservations :
+ * gagnant paye -> prise liberee, perdant -> pass consomme. La reprise
+ * d'un reglement interrompu ('pending') repartissait d'un pot RESIDUEL,
+ * la commission et les parts etant recalculees trop petites : les
+ * impayes etaient sous-payes (exemple audit : pot 2, A servi 1,96, pot
+ * residuel 1, B recoit 0,98 au lieu de 1,96).
+ *
+ * La base evaluee au premier essai (pot > 0) est figee sur la RACINE du
+ * match - jamais sur `match.result`, qui est le spread du payload client
+ * (`submitMatchResultOnServer` : un `settlementBasis` forgerait la
+ * cagnotte) - et reutilisee telle quelle au rejeu.
+ *
+ * Contrairement au describe A9 ci-dessus, `getUserById` rend ici les
+ * COMPTES vivants de `comptes` : les reservations disparaissent au fil
+ * des versements et des prises de pass, comme dans le vrai wallet, pour
+ * exposer le pot residuel vu par la reprise.
+ */
+describe('match-engine - base de reglement figee au premier essai (C2)', () => {
+  const mkJoueur = (id, team) => ({
+    id, userId: id, pseudo: id, role: 'player', team,
+    isReady: true, isCheckedIn: true, isCaptain: false, joinedAt: '2026-01-01T00:00:00Z', trustScore: 50,
+    stats: { elo: 1200, wins: 0, losses: 0, draws: 0, totalMatches: 0, totalEarnings: 0, winRate: 0, tournamentsWon: 0, tournamentsPlayed: 0, arbitratedMatches: 0 },
+    wallet: {},
+  });
+
+  const makeMatch = () => ({
+    id: 'M-C2',
+    creatorId: 'a', creatorPseudo: 'A',
+    format: '2VS2', teamSize: 2, maxPlayers: 4,
+    rules: { mode: 'S&D', map: 'Crossfire', scoreTarget: 7, bestOf: 1 },
+    entryFee: 100, prizePool: 400, zoydFee: 8, arbiterFee: 8,
+    visibility: 'public', deviceRestriction: 'open', controllerRestriction: 'open',
+    status: 'in_progress',
+    players: [mkJoueur('a', 0), mkJoueur('b', 0), mkJoueur('c', 1), mkJoueur('d', 1)],
+    arbiter: { userId: 'arb' },
+    disputes: [],
+    isInstant: false,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  });
+
+  // Etat vivant des tests : comptes avec reservations, deja payes
+  // (idempotence), versements ordonnes, panne du premier essai.
+  const comptes = new Map(); // userId -> compte (wallet.lockedEntries vivant)
+  const dejaPayes = new Set(); // idempotence du mock : un seul versement par compte
+  const paiments = []; // versements ORDONNES : { userId, amount, type }
+  let panne = false;
+
+  const installer = () => {
+    comptes.clear();
+    dejaPayes.clear();
+    paiments.length = 0;
+    panne = false;
+    const match = makeMatch();
+    for (const player of match.players) {
+      comptes.set(player.userId, {
+        ...player,
+        wallet: { lockedEntries: { 'M-C2': { amount: 100, cashAmount: 100, bonusAmount: 0, lockedAt: '2026-01-01T00:00:00Z' } } },
+      });
+    }
+    comptes.set('arb', { id: 'arb', pseudo: 'Arbiter', role: 'arbiter', wallet: {} });
+    getUserById.mockImplementation((id) => comptes.get(id) || null);
+    releaseWalletWinnings.mockImplementation(async (userId, amount, _matchId, type) => {
+      // Idempotence reelle du wallet : deja verse -> wallet intact, pas d erreur.
+      if (dejaPayes.has(userId)) return {};
+      if (panne && type === 'prize_win' && userId === 'b') throw new Error('SUPABASE_DOWN');
+      dejaPayes.add(userId);
+      paiments.push({ userId, amount, type });
+      delete comptes.get(userId)?.wallet?.lockedEntries?.['M-C2'];
+      return {};
+    });
+    settleMatchLossWallet.mockImplementation(async (userId) => {
+      delete comptes.get(userId)?.wallet?.lockedEntries?.['M-C2'];
+      return {};
+    });
+    return match;
+  };
+
+  const submit = (match) => matchEngine.submitMatchResultOnServer([match], { id: 'arb' }, 'M-C2', {
+    winnerTeam: 0,
+    scores: { team0: 7, team1: 2 },
+    proofs: { scoreboard: ['score.png'], finalResult: ['final.png'] },
+  }, { deferSettlement: true });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installer();
+  });
+
+  it('la reprise sert l impaye sur le pot INITIAL, pas sur le residu', async () => {
+    const match = installer();
+    panne = true; // le versement du 2e gagnant (b) echouera au 1er essai
+    const submitted = await submit(match);
+    expect(submitted.match.status).toBe('awaiting_confirmation');
+
+    // 2v2 : le reglement part a la DERNIERE confirmation (a, b, c, d).
+    const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-C2');
+    const second = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-C2');
+    const third = await matchEngine.confirmMatchResultOnServer(second.matches, { id: 'c' }, 'M-C2');
+    const dernier = await matchEngine.confirmMatchResultOnServer(third.matches, { id: 'd' }, 'M-C2');
+
+    // Premier essai : `a` servi 196, `b` en panne, `c` et `d` perdent leurs
+    // pass. Le pot de 400 est fige sur la racine du match des cet essai.
+    expect(dernier.match.result.payoutDistributed).toBe('pending');
+    expect(dernier.match.settlementBasis).toEqual({ lockedPot: 400 });
+    expect(paiments.find((p) => p.userId === 'a')).toEqual({ userId: 'a', amount: 196, type: 'prize_win' });
+    expect(paiments.some((p) => p.userId === 'b')).toBe(false);
+    expect(comptes.get('c').wallet.lockedEntries['M-C2']).toBeUndefined();
+    expect(comptes.get('d').wallet.lockedEntries['M-C2']).toBeUndefined();
+    expect(matchEngine.getLockedPot(dernier.matches[0])).toBe(100); // pot residuel
+
+    // Panne levee : le cron reprend le reglement.
+    panne = false;
+    const rejoue = await matchEngine.settlePendingMatchResult(dernier.matches, 'M-C2');
+    expect(rejoue.match.result.payoutDistributed).toBe(true);
+    expect(rejoue.match.settlementBasis).toEqual({ lockedPot: 400 });
+
+    // `b` recoit sa part sur le pot INITIAL : 196, pas (100 - 2) / 2 = 49.
+    expect(paiments.filter((p) => p.userId === 'b')).toEqual([{ userId: 'b', amount: 196, type: 'prize_win' }]);
+    // `a` n est jamais resservi (idempotence wallet + garde moteur).
+    expect(paiments.filter((p) => p.userId === 'a')).toHaveLength(1);
+    // L'historique A9 note exactement ce qui est parti : 3 entrees = 400.
+    expect(rejoue.match.payouts.filter((v) => v.type === 'prize_win'))
+      .toEqual([expect.objectContaining({ userId: 'a', amount: 196 }), expect.objectContaining({ userId: 'b', amount: 196 })]);
+    const commission = rejoue.match.payouts.find((v) => v.type === 'arbitration_fee');
+    expect(commission).toMatchObject({ userId: 'arb', amount: 8 });
+  });
+
+  it('essai avec pot nul : rien n est fige', async () => {
+    installer();
+    const match = makeMatch();
+    // Etat pathologique : plus AUCUNE reservation sur les comptes (deja
+    // consommees avant le reglement). La base est lue a 0 a l essai.
+    for (const player of match.players) {
+      delete comptes.get(player.userId).wallet.lockedEntries['M-C2'];
+    }
+    // Resultat en attente, tel que la reprise cron le lit (pattern A9).
+    match.result = {
+      winnerTeam: 0,
+      scores: { team0: 7, team1: 2 },
+      proofs: { scoreboard: ['score.png'], finalResult: ['final.png'] },
+      payoutDistributed: 'pending',
+      confirmedByTeams: [],
+    };
+    const rejoue = await matchEngine.settlePendingMatchResult([match], 'M-C2');
+    // Rien n est fige : pas de base { lockedPot: 0 } qui figerait une
+    // repartition de valeur nulle pour l'essai suivant.
+    expect(rejoue.match.result.payoutDistributed).toBe(true);
+    expect(rejoue.match.settlementBasis).toBeUndefined();
   });
 });

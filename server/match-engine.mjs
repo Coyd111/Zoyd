@@ -26,6 +26,11 @@
  *   ecrits UNE SEULE FOIS par joueur et par type (`recordActualPayout`) :
  *   un rejeu de reglement ne les reecrit pas, et la projection
  *   `getProjectedPayouts` les annonce des qu'ils existent.
+ * INVARIANT : la base du reglement est FIGEE au premier essai
+ *   (`match.settlementBasis`, C2 audit-3) : au rejeu d'un reglement
+ *   interrompu, les reservations deja servies (payes et perdants) quittent
+ *   le sequestre : la base ne se RECALCULE pas sur ce residu — les impayes
+ *   gardent leur part du pot constate au premier essai.
  * INVARIANT : le statut est DERIVE par `getStatusFromMatch` et rafraichi par
  *   `updateMatchSnapshot` : il faut le recalculer apres tout changement de
  *   roster, de presence ou d'arbitre.
@@ -451,8 +456,37 @@ const applyResultSettlement = async (match, result) => {
   // match.prizePool est calculé sur maxPlayers à la création ; s'il servait de
   // base, un match à roster incomplet paierait un pot fantôme.
   const lockedPot = getLockedPot(match);
-  const arbiterFee = match.arbiter?.userId ? roundAmount(lockedPot * ARBITER_FEE_RATE) : 0;
-  const payout = Math.max(0, roundAmount(lockedPot - arbiterFee));
+  //
+  // C2 (audit-3) : la base du reglement est FIGEE au premier essai.
+  //
+  // Chaque versement libere la reservation du gagnant paye et la prise de
+  // pass du perdant consomme la sienne : au rejeu d'un reglement interrompu
+  // ('pending'), `getLockedPot` ne lit plus que les reservations
+  // survivantes. Recalculer commission et parts sur ce residu sous-paye les
+  // impayes (exemple de l'audit : pot 2, A servi 1,96, pot residuel 1, B
+  // recoit 0,98 au lieu de 1,96). La base evaluee au premier essai - quand
+  // toutes les reservations sont encore en sequestre - est donc figee sur
+  // la racine du match et reutilisee telle quelle aux essais suivants.
+  //
+  // Figee seulement si pot > 0 : sans mise verrouillee il n'y a rien a
+  // conserver, et un match regle avec pot nul continue de deriver sa
+  // repartition de son pot courant.
+  //
+  // Stockee sur `match`, PAS sur `match.result` : `result` est le spread du
+  // payload client (`submitMatchResultOnServer`), un `settlementBasis`
+  // envoye par un client y serait cru tel quel et forgerait la cagnotte.
+  // Aucun spread client n'atteint la racine d'un match, et la persistance
+  // `state_snapshots` rejoue le payload integralement (aucune normalisation
+  // restrictive au chargement) : la base survit au rechargement qui suit la
+  // panne.
+  if (lockedPot > 0 && !(match.settlementBasis?.lockedPot > 0)) {
+    match.settlementBasis = { lockedPot };
+  }
+  const basePot = match.settlementBasis?.lockedPot > 0
+    ? match.settlementBasis.lockedPot
+    : lockedPot;
+  const arbiterFee = match.arbiter?.userId ? roundAmount(basePot * ARBITER_FEE_RATE) : 0;
+  const payout = Math.max(0, roundAmount(basePot - arbiterFee));
   const settlementErrors = [];
   // Les echecs de la commission d'arbitre sont TENUS A PART : ils ne doivent
   // pas declarer le match non solde alors que tous les joueurs sont payes.
@@ -1716,7 +1750,8 @@ export const countPendingArbiterFees = (matches) =>
  * Pourquoi cette file existe
  * --------------------------
  * `applyResultSettlement` paie d'abord les joueurs, puis l'arbitre. Si le
- * versement de la commission echoue — base indisponible,钱包 indisponible —
+ * versement de la commission echoue — base indisponible, wallet
+ * indisponible —
  * les joueurs sont deja payes et le match est `finished`. La commission, elle,
  * disparait : `pendingArbiterFee` etait ecrit, et jamais relu par AUCUN cron,
  * aucune route, aucun moteur. L'arbitre avait fait son travail ; il perdait

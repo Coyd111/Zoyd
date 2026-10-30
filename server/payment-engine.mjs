@@ -295,6 +295,8 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
     throw makeError('INVALID_OPERATOR', `Opérateur non supporté (${cfg.label}) : ${Object.keys(cfg.operators).join(', ')}.`);
   }
 
+  // Taux de paiement : miroir du front (ZC_TO_FCFA dans src/lib/utils.ts).
+  // Changer un seul des deux cotes rend la conversion fausse en silence.
   const amountFCFA = Math.round(amountZC * 10);
   if (amountFCFA <= 0 || amountFCFA > 1_000_000) {
     throw makeError('INVALID_AMOUNT', 'Montant invalide pour le retrait (max 1 000 000 FCFA).');

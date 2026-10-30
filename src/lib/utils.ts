@@ -34,8 +34,15 @@ export function roundAmount(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+// Audit-4 INFO : le taux 1 ZC = 10 FCFA etait re-encode a la main dans
+// chaque page (WalletPage) et cote serveur (payment-engine.mjs:298).
+// La constante est la source unique front ; le site serveur reste son
+// miroir declare : changer un seul des deux rend la conversion
+// silencieusement fausse.
+export const ZC_TO_FCFA = 10;
+
 export function formatFCFA(amount: number): string {
-  return `${(amount * 10).toLocaleString('fr-FR')} FCFA`;
+  return `${(amount * ZC_TO_FCFA).toLocaleString('fr-FR')} FCFA`;
 }
 
 export function getRelativeTime(date: Date | string): string {

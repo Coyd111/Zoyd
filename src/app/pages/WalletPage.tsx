@@ -35,7 +35,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import BootstrapFailedPanel from '../components/BootstrapFailedPanel';
 import { getFundingPromptCopy, parseFundingPrompt } from '../../lib/walletFunding';
 import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormatError, formatPhoneInput, type PayoutOperator } from '../../lib/payoutOperators';
-import { formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
+import { ZC_TO_FCFA, formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { getTransactionTypeLabel } from '../../lib/transactionLabels';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { WithdrawalFeesNotice, useWithdrawalFeesNoticeDismissed } from '../components/wallet/WithdrawalFeesNotice';
@@ -272,7 +272,7 @@ const { dismissed: feesNoticeDismissed, dismissForever: dismissFeesNoticeForever
       return;
     }
     const depositAmountNum = parseFloat(depositAmount);
-    const amountFCFA = depositAmountNum * 10; // 1 ZC = 10 FCFA
+    const amountFCFA = depositAmountNum * ZC_TO_FCFA; // miroir de payment-engine.mjs
 
     const publicKey = import.meta.env.VITE_FEDAPAY_PUBLIC_KEY;
 
@@ -589,7 +589,7 @@ if (!payoutCountry) {
                 onChange={(event) => setDepositAmount(event.target.value)}
                 placeholder="Montant personnalisé"
                 error={depositAmountError || undefined}
-                helperText="1 ZC = 10 FCFA. Le montant est débité par FedaPay sur ton opérateur."
+                helperText={`1 ZC = ${ZC_TO_FCFA} FCFA. Le montant est débité par FedaPay sur ton opérateur.`}
               />
             </div>
 
@@ -651,7 +651,7 @@ if (!payoutCountry) {
                 inputMode="numeric"
                 value={withdrawAmount}
                 onChange={(event) => setWithdrawAmount(event.target.value)}
-                placeholder={`${withdrawalMinAmount} ZC minimum (${withdrawalMinAmount * 10} FCFA)`}
+                placeholder={`${withdrawalMinAmount} ZC minimum (${formatFCFA(withdrawalMinAmount)})`}
                 error={withdrawAmountError || undefined}
                 max={cashBalance}
               />

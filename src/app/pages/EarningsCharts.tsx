@@ -61,7 +61,9 @@ export const EarningsAreaChart: React.FC<{ data: TrendPoint[] }> = ({ data }) =>
       <YAxis stroke="#ffffff20" fontSize={10} fontFamily="monospace" tickLine={false} axisLine={false} tickFormatter={(value) => `${value}ZC`} />
       <Tooltip
         contentStyle={tooltipStyle}
-        formatter={(value: number, _name, payload) => [formatZC(value), payload?.payload?.label || 'Jour']}
+        // recharts 3 : formatter recoit ValueType (number | string | string[]).
+        // Les series sont toujours numeriques ; Number() reste un cast honnete.
+        formatter={(value, _name, item) => [formatZC(Number(value)), item?.payload?.label || 'Jour']}
         labelFormatter={(_value, payload) => payload?.[0]?.payload?.label || ''}
       />
       <Area type="monotone" dataKey="amount" stroke={CHART_YELLOW} strokeWidth={3} fillOpacity={1} fill="url(#earningsArea)" />

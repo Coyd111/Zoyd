@@ -93,14 +93,6 @@ const getTournamentPlacementPayout = (entry: TournamentEntry, tournament: Tourna
   return 0;
 };
 
-const getTrustTier = (trustScore?: number) => {
-  if (typeof trustScore !== 'number') return 'unknown';
-  if (trustScore >= 90) return 'elite';
-  if (trustScore >= 75) return 'stable';
-  if (trustScore >= 50) return 'watch';
-  return 'critical';
-};
-
 const getNetCompetitiveAmount = (transaction: Transaction) => {
   if (transaction.status !== 'completed') return 0;
 
@@ -260,7 +252,6 @@ export interface CommunityPlayer {
   disputedMatches: number;
   forfeits: number;
   reportsCount: number;
-  trustTier: 'unknown' | 'elite' | 'stable' | 'watch' | 'critical';
   elo: number;
 }
 
@@ -505,7 +496,6 @@ export const buildCommunityPlayers = ({
         disputedMatches: player.disputedMatches.size,
         forfeits: player.forfeitedMatches.size,
         reportsCount: player.reportsCount,
-        trustTier: getTrustTier(player.trustScore),
         elo: player.elo,
       } satisfies CommunityPlayer;
     })

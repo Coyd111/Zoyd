@@ -10,7 +10,7 @@ function figmaAssetResolver() {
     resolveId(id: string) {
       if (id.startsWith('figma:asset/')) {
         const filename = id.replace('figma:asset/', '')
-        return path.resolve(__dirname, 'src/assets', filename)
+        return path.resolve(import.meta.dirname, 'src/assets', filename)
       }
     },
   }
@@ -20,7 +20,7 @@ function excludeHeavyPublicDirs(dirs: string[]) {
   return {
     name: 'exclude-heavy-public-dirs',
     closeBundle() {
-      const distPublic = path.resolve(__dirname, 'dist', 'assets', 'codm');
+      const distPublic = path.resolve(import.meta.dirname, 'dist', 'assets', 'codm');
       for (const dir of dirs) {
         const target = path.join(distPublic, dir);
         if (fs.existsSync(target)) {
@@ -40,7 +40,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   server: {

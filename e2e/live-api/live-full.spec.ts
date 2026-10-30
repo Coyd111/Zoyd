@@ -51,6 +51,18 @@ const BASE = 'https://zoyd.onrender.com/api';
 const ORIGIN = 'https://zoyd.vercel.app';
 const HEADERS = { Origin: ORIGIN } as const;
 const UNIQ = Date.now().toString(36).slice(-6);
+/**
+ * Phone VALIDE au format beninois courant : indicatif +229, plan national
+ * a 10 chiffres (migration ARCEP du 30/11/2024), 0 initial inclus.
+ *
+ * Les couches de validation de l'insertion sont ORDONNEES
+ * (persistence.mjs insertUser) : format de phone PAYABLE, puis password,
+ * puis CGU. Un phone invalide renverrait donc INVALID_PHONE a la
+ * premiere couche et masquerait la couche que le test vise. Les tests
+ * de CGU/password utilisent un phone de cette forme (jamais persiste :
+ * la validation echoue AVANT l'unicite et l'ecriture).
+ */
+const PHONE_VALID = `+22901${(Date.now() % 100000000).toString().padStart(8, '0')}`;
 /** Identifiant unique : un seul appel par route pour ne pas déclencher 429. */
 const once = async (request: any, method: string, url: string, opts: any = {}) =>
   method === 'GET' ? request.get(url, opts) : request.post(url, opts);
@@ -100,12 +112,15 @@ test.describe('LIVE — surface publique (aucun compte cree)', () => {
 
   test('register : 18+/CGU non confirmes -> 400 (et non 500)', async ({ request }) => {
     // Regression : LEGAL_NOT_ACCEPTED absent de mapPersistenceError -> 500.
+    // Phone valide : la couche testee est le CONSENTEMENT (l ordre de
+    // validation du serveur met le phone payant en premier, voir
+    // PHONE_VALID et persistence.mjs insertUser).
     const r = await once(request, 'POST', `${BASE}/auth/register`, {
       headers: HEADERS,
       data: {
         pseudo: `NOCONSENT_${UNIQ}`,
         email: `noconsent_${UNIQ}@example.com`,
-        phone: `+2299${UNIQ}0000`,
+        phone: PHONE_VALID,
         gameId: `NOCONSENT_${UNIQ}`,
         password: 'MotDePasse1!',
         acceptAdult: false,
@@ -116,13 +131,37 @@ test.describe('LIVE — surface publique (aucun compte cree)', () => {
     expect((await r.json()).code).toBe('LEGAL_NOT_ACCEPTED');
   });
 
+  // Couche 1 de la frontiere de confiance : le serveur refuse un format
+  // qu'aucun retrait FedaPay ne pourra jamais payer (11 chiffres apres
+  // l indicatif : ni 10 chiffres ARCEP, ni 8 legacy). Historique : de tels
+  // numeros etaient stockes puis le joueur echouait au retrait.
+  test('register : phone non payant -> 400 INVALID_PHONE', async ({ request }) => {
+    const r = await once(request, 'POST', `${BASE}/auth/register`, {
+      headers: HEADERS,
+      data: {
+        pseudo: `BADPHONE_${UNIQ}`,
+        email: `badphone_${UNIQ}@example.com`,
+        phone: `+2299${UNIQ}0000`,
+        gameId: `BADPHONE_${UNIQ}`,
+        password: 'MotDePasse1!',
+        acceptAdult: true,
+        acceptTerms: true,
+        acceptedAt: new Date().toISOString(),
+      },
+    });
+    expect(r.status()).toBe(400);
+    expect((await r.json()).code).toBe('INVALID_PHONE');
+  });
+
   test('register : mot de passe faible -> 400 WEAK_PASSWORD', async ({ request }) => {
+    // Phone valide : la couche testee est le MOT DE PASSE (couche 2, avant
+    // la CGU, apres le phone, voir persistence.mjs insertUser).
     const r = await once(request, 'POST', `${BASE}/auth/register`, {
       headers: HEADERS,
       data: {
         pseudo: `WEAK_${UNIQ}`,
         email: `weak_${UNIQ}@example.com`,
-        phone: `+2298${UNIQ}0000`,
+        phone: PHONE_VALID,
         gameId: `WEAK_${UNIQ}`,
         password: 'court',
         acceptAdult: true,
@@ -134,10 +173,14 @@ test.describe('LIVE — surface publique (aucun compte cree)', () => {
     expect((await r.json()).code).toBe('WEAK_PASSWORD');
   });
 
-  test('listes publiques accessibles sans session', async ({ request }) => {
+  test('listes publiques sans session (leagues : 401 voulu)', async ({ request }) => {
     expect((await once(request, 'GET', `${BASE}/matches`, { headers: HEADERS })).status()).toBe(200);
     expect((await once(request, 'GET', `${BASE}/tournaments`, { headers: HEADERS })).status()).toBe(200);
-    expect((await once(request, 'GET', `${BASE}/leagues`, { headers: HEADERS })).status()).toBe(200);
+    // La liste des ligues exige une session VOLONTAIREMENT (server/routes/
+    // league.mjs) : la reponse anonyme embarquait le userId de chaque
+    // inscrit — une carte sociale pseudo -> compte. Aligne sur le spec
+    // local e2e/api/public-read.spec.ts, qui documente la meme decision.
+    expect((await once(request, 'GET', `${BASE}/leagues`, { headers: HEADERS })).status()).toBe(401);
   });
 
   test('liste des matchs ne fuite aucun mot de passe de salle', async ({ request }) => {

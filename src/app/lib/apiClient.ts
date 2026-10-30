@@ -111,7 +111,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   DISPUTE_ALREADY_OPEN: 'Un litige est actif sur ce match : règle-le avant de valider un score.',
   RESULT_NOT_FOUND: 'Résultat introuvable.',
   RESULT_ALREADY_EXISTS: 'Un résultat a déjà été soumis.',
-  WITHDRAWAL_MIN: 'Retrait minimum: 150 ZC.',
+  WITHDRAWAL_MIN: 'Retrait : le montant est en dessous du minimum requis.',
   INVALID_PHONE: 'Numéro de téléphone invalide.',
   INVALID_CREDENTIALS: 'Identifiants invalides. Vérifie ton pseudo/email et ton mot de passe.',
   LEGAL_NOT_ACCEPTED: 'Confirme avoir 18 ans ou plus et accepter les Conditions pour créer un compte.',

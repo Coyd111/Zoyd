@@ -328,7 +328,10 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
 
     // Le panneau bascule en saisie.
     await expect(page.getByLabel(/Joueur elimine/i)).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByLabel(/Tue par/i)).toBeVisible();
+    // Le label produit porte l accent : Tue par (matcher avec e accentue).
+    // Un /Tue par/ sans accent ne matche jamais le label reel getByLabel :
+    // le matching Playwright n est pas insensible aux accents.
+    await expect(page.getByLabel(/Tué par/i)).toBeVisible();
 
     // Elimination : le joueur choisi disparait du select (il est mort) et
     // apparait dans la liste des elimines.

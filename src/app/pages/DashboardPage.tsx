@@ -59,18 +59,18 @@ const quickActions = [
 
 const statusLabel: Record<string, string> = {
   recruiting: 'Inscriptions',
-full: 'Complet',
-    awaiting_arbiter: 'En attente d\'arbitre',
-    check_in: 'Check-in',
+  full: 'Complet',
+  awaiting_arbiter: 'En attente d\'arbitre',
+  check_in: 'Check-in',
   ready: 'Pret',
   in_progress: 'En cours',
 };
 
 const statusColor: Record<string, string> = {
   recruiting: 'text-green-400',
-full: 'text-zoyd-yellow',
-    awaiting_arbiter: 'text-zoyd-yellow',
-    check_in: 'text-zoyd-blue',
+  full: 'text-zoyd-yellow',
+  awaiting_arbiter: 'text-zoyd-yellow',
+  check_in: 'text-zoyd-blue',
   ready: 'text-zoyd-yellow',
   in_progress: 'text-green-400',
 };

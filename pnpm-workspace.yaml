@@ -4,6 +4,17 @@
 # `canvas` n'est PAS une dependance de ce projet : sa ligne avait ete laissee
 # enPlaceholder (`set this to true or false`) par un `pnpm approve-builds`, ce
 # qui est invalide et fait echouer l'analyse du fichier.
+#
+# nodeLinker hoisted : le depot vit sur exFAT (pas de symlinks). Sans cette
+# clef, pnpm 11 ignore le node-linker=hoisted de .npmrc et plante en EISDIR.
+# La passe audit-4 INFO pousse les transitifs vulnerables (axios via le SDK
+# fedapay, follow-redirects, engine.io de socket.io) vers leurs minimales
+# corrigees — les directes (zod, nodemailer) vivent dans package.json.
+nodeLinker: hoisted
+overrides:
+  axios: ^0.34.0
+  follow-redirects: ^1.16.1
+  engine.io: ^6.6.10
 allowBuilds:
   '@tailwindcss/oxide': true
   esbuild: true

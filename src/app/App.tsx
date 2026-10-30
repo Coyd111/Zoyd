@@ -15,7 +15,7 @@
  *
  * Voir aussi : docs/08-frontend.md - section 1 (Vue d'ensemble)
  */
-import { RouterProvider } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { MotionConfig, useReducedMotion } from 'motion/react';
 import { useEffect } from 'react';

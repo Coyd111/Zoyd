@@ -70,7 +70,7 @@ const callRealtime = async (
     headers: { Authorization: `Bearer ${realtimeToken}` },
     data: data === undefined ? undefined : (data as Record<string, unknown>),
   });
-  let body: any = null;
+  let body: any;
   try {
     body = await response.json();
   } catch {

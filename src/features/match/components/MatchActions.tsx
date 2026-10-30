@@ -521,7 +521,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               {openDisputeRecord.evidence.length > 0 ? (
                 <div className="space-y-1.5">
                   {openDisputeRecord.evidence.map((item: string, i: number) => {
-                    let isSafe = false;
+                    let isSafe: boolean;
                     try {
                       const u = new URL(item);
                       isSafe = u.protocol === 'https:';

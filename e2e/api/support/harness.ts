@@ -84,7 +84,7 @@ export const call = async <T = any>(
     headers: { Authorization: `Bearer ${actor.token}` },
     data: data === undefined ? undefined : (data as Record<string, unknown>),
   });
-  let body: any = null;
+  let body: any;
   try {
     body = await response.json();
   } catch {
@@ -112,7 +112,7 @@ export const callAnonymous = async <T = any>(
       method,
       data: data === undefined ? undefined : (data as Record<string, unknown>),
     });
-    let body: any = null;
+    let body: any;
     try {
       body = await response.json();
     } catch {
@@ -167,7 +167,7 @@ export const registerPlayerWithResponse = async (
     ...overrides,
   };
   const response = await context.post('/api/auth/register', { data: payload });
-  let body: any = null;
+  let body: any;
   try {
     body = await response.json();
   } catch {
@@ -270,7 +270,7 @@ export const loginAdminWithout2fa = async (): Promise<Actor> => {
   const login = await context.post('/api/auth/login', {
     data: { identifier: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
-  let body: any = null;
+  let body: any;
   try {
     body = await login.json();
   } catch {

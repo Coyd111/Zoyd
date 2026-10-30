@@ -6,6 +6,11 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
+    /* TS 6/7 : inclusion explicite des types node. Sous TS 7 (tsgo),
+       l inclusion automatique des @types// n existe plus ; le runtime
+       est node 24 et les tests src importent node:fs. */
+    "types": ["node"],
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

@@ -58,32 +58,40 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   animate?: boolean;
+  // React 19 : ref passee comme une prop ordinaire (forwardRef est
+  // deprecie depuis 19.0, cf. react.dev/blog/2024/12/05/react-19).
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, fullWidth, animate = true, children, ...props }, ref) => {
-    const buttonContent = (
-      <button
-        className={cn(buttonVariants({ variant, size, fullWidth, className }))}
-        ref={ref}
-        {...props}
-      >
-        {children}
-      </button>
+const Button = ({
+  className,
+  variant,
+  size,
+  fullWidth,
+  animate = true,
+  children,
+  ref,
+  ...props
+}: ButtonProps) => {
+  const buttonContent = (
+    <button
+      className={cn(buttonVariants({ variant, size, fullWidth, className }))}
+      ref={ref}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+
+  if (animate) {
+    return (
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={fullWidth ? 'w-full' : 'inline-block'}>
+        {buttonContent}
+      </motion.div>
     );
-
-    if (animate) {
-      return (
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={fullWidth ? 'w-full' : 'inline-block'}>
-          {buttonContent}
-        </motion.div>
-      );
-    }
-
-    return buttonContent;
   }
-);
 
-Button.displayName = 'Button';
+  return buttonContent;
+};
 
 export { Button, buttonVariants };

@@ -23,78 +23,64 @@ import { motion, type MotionProps } from 'motion/react';
 type NativeCardProps = React.HTMLAttributes<HTMLDivElement>;
 type MotionOverriddenKeys = Extract<keyof NativeCardProps, keyof MotionProps>;
 
+// React 19 : `ref` est une prop ordinaire (forwardRef est deprecie depuis
+// 19.0, cf. react.dev/blog/2024/12/05/react-19). Chaque composant de cette
+// famille declare son ancre typée explicitement.
+type RefProp<T> = { ref?: React.Ref<T> };
+
 interface CardProps extends Omit<NativeCardProps, MotionOverriddenKeys> {
   children?: React.ReactNode;
   hover?: boolean;
   animate?: boolean;
 }
 
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, hover = false, animate = false, children, ...props }, ref) => {
-    const cardClasses = cn(
-      'bg-zoyd-black border border-white/10 p-6 overflow-hidden',
-      hover && 'transition-all duration-200 hover:border-zoyd-yellow/50 hover:shadow-lg hover:shadow-zoyd-yellow/10',
-      className
-    );
+const Card = ({ className, hover = false, animate = false, children, ref, ...props }: CardProps & RefProp<HTMLDivElement>) => {
+  const cardClasses = cn(
+    'bg-zoyd-black border border-white/10 p-6 overflow-hidden',
+    hover && 'transition-all duration-200 hover:border-zoyd-yellow/50 hover:shadow-lg hover:shadow-zoyd-yellow/10',
+    className
+  );
 
-    if (animate) {
-      return (
-        <motion.div
-          ref={ref}
-          className={cardClasses}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          {...props}
-        >
-          {children}
-        </motion.div>
-      );
-    }
-
+  if (animate) {
     return (
-      <div ref={ref} className={cardClasses} {...props}>
+      <motion.div
+        ref={ref}
+        className={cardClasses}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        {...props}
+      >
         {children}
-      </div>
+      </motion.div>
     );
   }
+
+  return (
+    <div ref={ref} className={cardClasses} {...props}>
+      {children}
+    </div>
+  );
+};
+
+const CardHeader = ({ className, ref, ...props }: NativeCardProps & RefProp<HTMLDivElement>) => (
+  <div ref={ref} className={cn('flex flex-col space-y-1.5 pb-4', className)} {...props} />
 );
 
-Card.displayName = 'Card';
-
-const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col space-y-1.5 pb-4', className)} {...props} />
-  )
+const CardTitle = ({ className, ref, ...props }: React.HTMLAttributes<HTMLHeadingElement> & RefProp<HTMLHeadingElement>) => (
+  <h3 ref={ref} className={cn('font-display text-xl font-bold text-white', className)} {...props} />
 );
-CardHeader.displayName = 'CardHeader';
 
-const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn('font-display text-xl font-bold text-white', className)} {...props} />
-  )
+const CardDescription = ({ className, ref, ...props }: React.HTMLAttributes<HTMLParagraphElement> & RefProp<HTMLParagraphElement>) => (
+  <p ref={ref} className={cn('text-sm text-white/60', className)} {...props} />
 );
-CardTitle.displayName = 'CardTitle';
 
-const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn('text-sm text-white/60', className)} {...props} />
-  )
+const CardContent = ({ className, ref, ...props }: NativeCardProps & RefProp<HTMLDivElement>) => (
+  <div ref={ref} className={cn('pt-0', className)} {...props} />
 );
-CardDescription.displayName = 'CardDescription';
 
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('pt-0', className)} {...props} />
-  )
+const CardFooter = ({ className, ref, ...props }: NativeCardProps & RefProp<HTMLDivElement>) => (
+  <div ref={ref} className={cn('flex items-center pt-4', className)} {...props} />
 );
-CardContent.displayName = 'CardContent';
-
-const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex items-center pt-4', className)} {...props} />
-  )
-);
-CardFooter.displayName = 'CardFooter';
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };

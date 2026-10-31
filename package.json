@@ -11,7 +11,7 @@
     "dev:realtime": "node server/realtime-server.mjs",
     "dev:full": "node server/dev-runner.mjs",
     "start": "node server/realtime-server.mjs",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck": "node node_modules/typescript7/bin/tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint src server e2e --max-warnings 0",
     "test": "vitest",
     "test:run": "vitest run",
@@ -90,7 +90,8 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^6.0.3",
+    "typescript": "npm:typescript@^6.0.3",
+    "typescript7": "npm:typescript@^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },

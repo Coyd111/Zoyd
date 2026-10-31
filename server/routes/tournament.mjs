@@ -114,8 +114,12 @@ if (req.method === 'POST' && pathname === '/api/tournaments') {
       respondJson(res, 400, { ok: false, error: 'maxEntries doit être entre 2 et 256.', code: 'INVALID_MAX_ENTRIES' });
       return true;
     }
-    if (body.entryFee !== undefined && (typeof body.entryFee !== 'number' || !Number.isFinite(body.entryFee) || body.entryFee < 0)) {
-      respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
+    // audit-5 (B-4) : le tarif est desormais REQUIS et strictement positif.
+    // Avant, la validation ne portait que si le champ etait defini : un
+    // tournoi gratuit (0 ou absent) etait creatable, puis aucune inscription
+    // n'etait possible (lockEntryFee rejette un montant nul).
+    if (typeof body.entryFee !== 'number' || !Number.isFinite(body.entryFee) || body.entryFee <= 0) {
+      respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre strictement positif.', code: 'INVALID_ENTRY_FEE' });
       return true;
     }
     // Le tarif est arrondi a 2 decimales AVANT tout calcul de pot.
@@ -124,11 +128,9 @@ if (req.method === 'POST' && pathname === '/api/tournaments') {
     // alors que l argent reellement bloque est une SOMME d arrondis par equipe.
     // Les deux coincident tant que le tarif a au plus 2 decimales — au-dela,
     // le produit et la somme divergent de quelques centimes, et le reglement
-    // cree ou detruit de la monnaie. Le tarif n etait valide que comme
-    // « nombre positif », donc 10.005 passait.
-    const normalizedBody = body.entryFee === undefined
-      ? body
-      : { ...body, entryFee: roundAmount(body.entryFee) };
+    // cree ou detruit de la monnaie. audit-5 (B-4) : le tarif etant desormais
+    // requis, la branche « undefined » est morte ici.
+    const normalizedBody = { ...body, entryFee: roundAmount(body.entryFee) };
 
     const outcome = createTournamentOnServer(getStoredTournaments(), session.user, normalizedBody);
     await saveTournaments(io, outcome.tournaments, outcome.tournament);

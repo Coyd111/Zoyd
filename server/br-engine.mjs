@@ -401,6 +401,15 @@ export const joinBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   if (lobby.players.some((p) => p.userId === actorUser.id)) {
     throw makeError('ALREADY_JOINED', 'Tu es deja inscrit dans ce salon.');
   }
+  // audit-5 : l'arbitre (createur par defaut, ou tierce designe a la
+  // creation) pouvait s'inscrire JOUEUR dans son propre salon : son pass
+  // gonflait un pot dont il est exclu du classement (computeBrRanking ne
+  // garde pas l'arbitre), et l'arbitre actif du salon pouvait fausser les
+  // eliminations (collusion). Refuse AVANT le blocage du pass, comme les
+  // autres gardes de cette fonction.
+  if (lobby.arbiterId && lobby.arbiterId === actorUser.id) {
+    throw makeError('ARBITER_CANNOT_JOIN', 'L\'arbitre du salon ne peut pas s\'y inscrire comme joueur.');
+  }
   if (lobby.players.length >= lobby.maxPlayers) {
     throw makeError('LOBBY_FULL', `Salon complet (${lobby.maxPlayers} joueurs max).`);
   }

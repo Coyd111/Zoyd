@@ -888,6 +888,15 @@ export const createTournamentOnServer = (tournaments, actor, input) => {
   if (!formatMatch || formatMatch[1] !== formatMatch[2] || formatTeamSize < 1 || formatTeamSize > 5) {
     throw makeError('INVALID_FORMAT', 'Format de tournoi invalide : de 1VS1 a 5VS5.');
   }
+  // audit-5 (B-4) : sans garde, un tournoi cree avec entryFee 0 ou absent
+  // (defaut :909) etait CREATABLE mais INSCRIPTIBLE JAMAIS : lockEntryFee
+  // rejette un montant nul (INVALID_AMOUNT). Arbitrage audit-5 : un tournoi
+  // se paye — la creation exige un tarif strictement positif. La borne
+  // haute passe par la route (montant arrondi 2 decimales avant).
+  const entryFeeCandidate = roundAmount(Number(input.entryFee));
+  if (!Number.isFinite(entryFeeCandidate) || entryFeeCandidate <= 0) {
+    throw makeError('INVALID_ENTRY_FEE', 'Le droit d entree doit etre un nombre strictement positif.');
+  }
   const tournamentId = `T-MJ-${Date.now().toString(36).toUpperCase()}`;
   const reserveCreatorAsArbiter = input.reserveCreatorAsArbiter !== false;
   const normalizedStart = normalizePlayableDate(new Date(input.startsAt || getNow())).toISOString();
@@ -906,7 +915,7 @@ export const createTournamentOnServer = (tournaments, actor, input) => {
     name: normalizeLabel(input.name),
     format: input.format,
     maxEntries: Number(input.maxEntries || 4),
-    entryFee: Number(input.entryFee || 0),
+    entryFee: roundAmount(entryFeeCandidate),
     startsAt: normalizedStart,
     deviceRestriction: input.deviceRestriction || 'open',
     controllerRestriction: input.controllerRestriction || 'open',

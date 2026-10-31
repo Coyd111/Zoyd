@@ -72,7 +72,10 @@ test.describe('API publique - routes de lecture', () => {
       name: uniqueName(),
       format: '1VS1',
       maxEntries: 8,
-      entryFee: 0,
+      // audit-5 (B-4) : un tarif nul est desormais refuse a la creation (un
+      // tournoi gratuit n'est jamais inscriptible). Le test vise l'isMe de
+      // la liste, pas le tarif : 50 ZC fait l'affaire.
+      entryFee: 50,
     });
     expect(created.status).toBe(201);
 

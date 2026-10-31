@@ -328,6 +328,24 @@ describe('br-engine - joinBrLobbyOnServer', () => {
     expect(next.pot).toBe(50);
   });
 
+  // audit-5 : l'arbitre du salon (createur par defaut, ou tierce designe a
+  // la creation) pouvait s'inscrire comme JOUEUR : son pass gonflait un pot
+  // dont il est exclu du classement (computeBrRanking), et l'arbitre actif
+  // pouvait fausser les eliminations (collusion). Refuse AVANT le blocage.
+  it("refuse l'inscription de l'arbitre (createur par defaut) sans bloquer son pass", async () => {
+    await expect(brEngine.joinBrLobbyOnServer([lobby], admin, lobby.id))
+      .rejects.toThrow(/arbitre/);
+    expect(lockEntryFee).not.toHaveBeenCalled();
+  });
+
+  it('refuse un arbitre designe tierce dans son propre salon', async () => {
+    const salonTierce = createLobby({ arbiterId: 'tierce-1' });
+    const arbitre = player('tierce-1');
+    await expect(brEngine.joinBrLobbyOnServer([salonTierce], arbitre, salonTierce.id))
+      .rejects.toThrow(/arbitre/);
+    expect(lockEntryFee).not.toHaveBeenCalled();
+  });
+
   it('refuse une double inscription', async () => {
     const { lobbies } = await brEngine.joinBrLobbyOnServer([lobby], player('p1'), lobby.id);
     await expect(brEngine.joinBrLobbyOnServer(lobbies, player('p1'), lobby.id))

@@ -20,7 +20,7 @@ vi.mock('./wallet-engine.mjs', () => ({
 
 import * as matchEngine from './match-engine.mjs';
 import { getUserById } from './persistence.mjs';
-import { releaseWalletWinnings, settleMatchLossWallet } from './wallet-engine.mjs';
+import { lockEntryFee, releaseWalletWinnings, settleMatchLossWallet } from './wallet-engine.mjs';
 
 describe('match-engine - XP Progression', () => {
   it('should add XP and stay at same level when below threshold', () => {
@@ -83,6 +83,47 @@ describe('match-engine - XP Progression', () => {
     expect(result.xp).toBe(500);
     expect(result.level).toBe('BEGINNER');
     expect(result.nextLevelXp).toBe(1000);
+  });
+});
+
+// audit-5 (B-1) : un creatorTeam hors {0,1} arrivait tel quel dans
+// players[].team. Au reglement, teamElos[player.team].push crashait sur
+// l'index inconnu : le match restait bloque EN REGLANT, pot verrouille.
+// La garde est posee AVANT le blocage du pass (lockEntryFee).
+describe('match-engine - createMatchOnServer : creatorTeam borne a {0,1}', () => {
+  const creator = { id: 'creator-b1', pseudo: 'CreatorB1', stats: {} };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(creator);
+  });
+
+  it('accepte team 0 et team 1, et pose la team du createur', async () => {
+    const zero = await matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1', entryFee: 10, creatorTeam: 0,
+    });
+    expect(zero.match.players[0].team).toBe(0);
+    const un = await matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1', entryFee: 10, creatorTeam: 1,
+    });
+    expect(un.match.players[0].team).toBe(1);
+  });
+
+  it('refuse une team inconnue SANS bloquer le pass', async () => {
+    await expect(matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1', entryFee: 10, creatorTeam: 2,
+    })).rejects.toThrow(/0 ou 1/);
+    await expect(matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1', entryFee: 10, creatorTeam: 'premier',
+    })).rejects.toThrow(/0 ou 1/);
+    expect(lockEntryFee).not.toHaveBeenCalled();
+  });
+
+  it('defaut 0 quand creatorTeam est absent', async () => {
+    const { match } = await matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1', entryFee: 10,
+    });
+    expect(match.players[0].team).toBe(0);
   });
 });
 

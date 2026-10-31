@@ -351,10 +351,15 @@ export const mapPersistenceError = (error) => {
     // faux 500 logge en erreur et compte dans les metriques 5xx
     // (respondMappedError ne logge que les 500, le compteur que les >= 500).
     // La requete a ete recue puis abandonnee : meme groupe que INVALID_JSON.
+    // audit-5 (B-1) : INVALID_TEAM limite creatorTeam a {0,1} a la creation
+    // (le reglement crashait sinon sur l'index Elo inconnu) ; audit-5 (B-4)
+    // : INVALID_ENTRY_FEE refuse la creation d'un tournoi gratuit, qui ne
+    // pourrait JAMAIS etre inscript (lockEntryFee rejette un montant nul).
     case 'CLIENT_ABORTED':
     case 'INVALID_JSON':
     case 'PAYLOAD_TOO_LARGE':
     case 'INVALID_TRANSACTION_ID':
+    case 'INVALID_ENTRY_FEE':
     case 'INVALID_AMOUNT':
     case 'WITHDRAWAL_MIN':
     case 'MATCH_SEGMENT_MISMATCH':
@@ -365,6 +370,7 @@ export const mapPersistenceError = (error) => {
     case 'MATCH_NOT_READY':
     case 'CHECKIN_REQUIRED':
     case 'INVALID_MATCH':
+    case 'INVALID_TEAM':
     case 'NOT_ENOUGH_PLAYERS':
     case 'QUALIFICATION_INCOMPLETE':
     case 'REGISTRATION_CLOSED':
@@ -456,6 +462,9 @@ case 'INSUFFICIENT_FUNDS':
     // Conflits d'etat : le salon est deja plein/lance/regle, le joueur est
     // deja inscrit ou elimine. 409 et non 400 : le client peut reessayer.
     // (`ALREADY_JOINED` et `NOT_ENOUGH_PLAYERS` sont deja mappes plus haut.)
+    // audit-5 : l'arbitre du salon ne peut pas s'y inscrire joueur (conflit
+    // de role permanent — la designation est figee a la creation).
+    case 'ARBITER_CANNOT_JOIN':
     case 'ALREADY_CHECKED_IN':
     case 'ALREADY_LIVE':
     case 'ALREADY_ELIMINATED':

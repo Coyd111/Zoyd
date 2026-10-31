@@ -717,11 +717,19 @@ export const createMatchOnServer = async (matches, actor, input) => {
   if (input.entryFee === undefined || input.entryFee === null || Number(input.entryFee) < 0) {
     throw makeError('INVALID_AMOUNT', 'Le droit dentree est requis et doit etre positif.');
   }
+  // audit-5 (B-1) : creatorTeam atterrissait TEL QUEL dans players[].team.
+  // Au reglement, teamElos[player.team].push crashait sur une valeur hors
+  // {0,1} (index jamais alloue) : le match restait bloque EN REGLANT, pot
+  // verrouille. Refuse a la creation, AVANT le blocage du pass. Le front
+  // legal n'envoie que 0/1 (CreateMatchPage normalise deja).
+  const creatorTeam = input.creatorTeam ?? 0;
+  if (creatorTeam !== 0 && creatorTeam !== 1) {
+    throw makeError('INVALID_TEAM', 'L\'equipe du createur est limitee a 0 ou 1.');
+  }
 
   const matchId = `M-${Date.now().toString(36).toUpperCase()}`;
   const maxPlayers = teamSize * 2;
   const prizePool = roundAmount(input.entryFee * maxPlayers);
-  const creatorTeam = input.creatorTeam ?? 0;
 
   await lockEntryFee(actorUser.id, input.entryFee, matchId);
 

@@ -103,6 +103,7 @@ describe('tournament-engine - createTournamentOnServer', () => {
   it('should set default rules', () => {
     const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
       name: 'Test Cup',
+      entryFee: 100,
     });
     expect(result.tournament.rules.scoreTarget).toBe(7);
     expect(result.tournament.rules.bestOf).toBe(1);
@@ -110,10 +111,28 @@ describe('tournament-engine - createTournamentOnServer', () => {
     expect(result.tournament.rules.mapPool).toEqual(['Raid', 'Standoff', 'Crash']);
   });
 
+  // audit-5 (B-4) : un tournoi cree avec entryFee 0 ou absent (defaut :909)
+  // restait CREATABLE mais impossible a INSCRIRE : lockEntryFee rejette un
+  // montant nul (INVALID_AMOUNT, wallet-engine.mjs:368-370). Arbitrage
+  // audit-5 : un tournoi se paye — la creation exige un tarif strictement
+  // positif (l'UI ne propose jamais 0 : ENTRY_OPTIONS 50..1000).
+  it('refuse la creation gratuite (entryFee 0 ou absent ou negatif)', () => {
+    expect(() => tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup', format: '1VS1', entryFee: 0,
+    })).toThrow(/strictement positif/);
+    expect(() => tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup', format: '1VS1',
+    })).toThrow(/strictement positif/);
+    expect(() => tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup', format: '1VS1', entryFee: -5,
+    })).toThrow(/strictement positif/);
+  });
+
   it('should reserve creator as arbiter by default', () => {
     const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
       name: 'Test Cup',
       maxEntries: 12,
+      entryFee: 100,
     });
     const hasArbiter = result.tournament.arbiters.some(
       (s) => s.userId === 'admin-1'
@@ -125,6 +144,7 @@ describe('tournament-engine - createTournamentOnServer', () => {
     const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
       name: 'Test Cup',
       maxEntries: 12,
+      entryFee: 100,
       reserveCreatorAsArbiter: false,
     });
     const hasArbiter = result.tournament.arbiters.some(
@@ -956,6 +976,7 @@ describe('tournament-engine - P5 C2/C4 (audit-3) : notes et designation bornees'
   it('C2 - creation : les rules.notes sont bornees a 300 caracteres', () => {
     const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
       name: 'Test Cup',
+      entryFee: 100,
       rules: { notes: `${'A'.repeat(350)}<script>alert(1)</script>` },
     });
     // Le moteur borne AVANT de sanitiser (patron des champs de salle), donc
@@ -966,6 +987,7 @@ describe('tournament-engine - P5 C2/C4 (audit-3) : notes et designation bornees'
   it('C2 - creation : des notes vides retombent sur le defaut', () => {
     const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
       name: 'Test Cup',
+      entryFee: 100,
       rules: { notes: '   ' },
     });
     expect(result.tournament.rules.notes).toBe('Pas de matchs entre 00h00 et 07h00.');

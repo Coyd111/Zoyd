@@ -225,8 +225,8 @@ export default function LandingPage() {
                       {/* En-tête Match */}
                       <div className="flex items-center justify-between pb-4">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-xs font-mono uppercase tracking-widest text-white/75">Match en direct</span>
+                          <span className="w-2 h-2 rounded-full bg-zoyd-yellow/70" />
+                          <span className="text-xs font-mono uppercase tracking-widest text-white/75">Match de démo</span>
                         </div>
                         <div className="text-zoyd-yellow text-[10px] font-mono uppercase tracking-widest">
                           Pari 1v1
@@ -265,8 +265,8 @@ export default function LandingPage() {
                             <span className="text-sm font-bold text-white/90">Mod_Alpha</span>
                           </div>
                         </div>
-                        <span className="text-[10px] text-green-400 font-mono flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                        <span className="text-[10px] text-white/60 font-mono flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
                           Spectateur
                         </span>
                       </div>

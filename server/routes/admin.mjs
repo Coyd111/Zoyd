@@ -97,13 +97,24 @@ const log = createLogger('admin-routes');
  * retour a la ligne. Sans echappement, la ligne se decale et tout l export
  * devient illisible a partir de la premiere virgule parasite — silencieusement.
  *
+ * Injection de formule (OWASP CSV) : une cellule qui COMMENCE par `=`, `+`,
+ * `@` ou `-` (hors nombre pur) est un operateur pour Excel / Sheets /
+ * LibreOffice, evalue a l'ouverture du fichier avec les droits du lecteur.
+ * Un pseudo depose a l'avance suffit : l'admin qui ouvre son export financier
+ * execute une commande DDE. Mitigation : prefixe apostrophe, le tableur lit
+ * la cellule comme du texte, la valeur recoit un caractere visible mais la
+ * lecture brute du CSV reste fidele. Les montants (nombres purs) ne sont
+ * JAMAIS alters.
+ *
  * Le BOM UTF-8 est prefixe : sans lui, Excel casse les accents, et un fichier
  * d'historique ouvert par un non-technique parait corrupt.
  */
 const csvCell = (value) => {
   if (value === null || value === undefined) return '';
   const s = String(value);
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  const nombrePur = /^[+-]?\d+(?:[.,]\d+)?$/.test(s);
+  const neutre = !nombrePur && /^[=+@-]/.test(s) ? `'${s}` : s;
+  return /[",\r\n]/.test(neutre) ? `"${neutre.replace(/"/g, '""')}"` : neutre;
 };
 
 const buildMatchesCsv = (matches) => {

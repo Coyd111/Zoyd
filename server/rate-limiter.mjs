@@ -19,9 +19,11 @@
  *   (NODE_ENV=test, ALLOW_DEBUG_CODES=true, ZOYD_DISABLE_SUPABASE=true) : un
  *   service connecte a une base reelle ne doit jamais pouvoir se mettre en
  *   mode detendu.
- * PIEGE : un groupe absent de `RATE_LIMIT_CONFIG` retombe SILENCIEUSEMENT sur
- *   `default` - c'est le cas du groupe 'match' utilise par
- *   `POST /api/br/lobbies`.
+ * PIEGE : un groupe absent de `RATE_LIMIT_CONFIG` retombe sur `default` avec
+ *   UN warn par nom de groupe inconnu (pas par appel : les handlers socket
+ *   appellent `checkRateLimit` en boucle, un warn/appel serait du spam). Le
+ *   groupe `match` utilise par `POST /api/br/lobbies` est un example connu :
+ *   il est assume. Une faute de frappe future doit, elle, laisser une trace.
  * PIEGE : le compteur est REINITIALISE, pas glisse : une rafale terminee la
  *   fenetre passe encore.
  * PIEGE : a saturation de MAX_RATE_LIMIT_BUCKETS, le plus ancien bucket est
@@ -43,6 +45,9 @@ const log = createLogger('rate-limiter');
 /** @type {Map<string, { windowStart: number, attempts: number, group: string }>} */
 const rateLimitBuckets = new Map();
 const MAX_RATE_LIMIT_BUCKETS = 50000;
+
+/** Groupes inconnus deja avertis : un seul log par nom, anti-spam. */
+const unknownGroupsWarned = new Set();
 
 /** @type {{ auth: { max: number, windowMs: number }, auth_logout: { max: number, windowMs: number }, social: { max: number, windowMs: number }, wallet: { max: number, windowMs: number }, chat: { max: number, windowMs: number }, admin: { max: number, windowMs: number }, default: { max: number, windowMs: number } }} */
 const RATE_LIMIT_CONFIG = {
@@ -108,7 +113,22 @@ if (TEST_ONLY_RELAXATION) {
  * @returns {{ allowed: boolean, remaining: number, retryAfter: number }}
  */
 const checkRateLimit = (ip, group = 'default') => {
-  const config = RATE_LIMIT_CONFIG[group] || RATE_LIMIT_CONFIG.default;
+  let config = RATE_LIMIT_CONFIG[group];
+  if (!config) {
+    // Retombee visible : un groupe inconnu signale probablement une faute de
+    // frappe qui affaiblit un quota anti-bruteforce sans crier. Un seul warn
+    // par nom (les handlers socket appelent en boucle), plafonne pour borner
+    // la memoire meme si un futur appelant passait une valeur controlee par
+    // le client.
+    config = RATE_LIMIT_CONFIG.default;
+    if (!unknownGroupsWarned.has(group) && unknownGroupsWarned.size < 50) {
+      unknownGroupsWarned.add(group);
+      log.warn(
+        `Groupe de rate limit inconnu "${group}" : quota "default" applique.`,
+        { group, known: Object.keys(RATE_LIMIT_CONFIG).join(',') },
+      );
+    }
+  }
   const key = `${ip}|${group}`;
   const now = Date.now();
   const record = rateLimitBuckets.get(key);
@@ -136,7 +156,7 @@ const cleanupRateLimits = () => {
   }
 };
 
-setInterval(cleanupRateLimits, 60 * 1000);
+setInterval(cleanupRateLimits, 60 * 1000).unref();
 
 /**
  * Validate that a string is a plausible IPv4/IPv6 address.

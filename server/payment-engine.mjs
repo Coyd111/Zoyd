@@ -89,7 +89,7 @@ setInterval(() => {
       processingTxTimestamps.delete(txId);
     }
   }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
 
 export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => {
   const FEDAPAY_SECRET_KEY = getFedaPayConfig();

@@ -228,10 +228,12 @@ const cleanupMetrics = () => {
   }
 };
 
-// Collect every 15 seconds
-setInterval(collectServerMetrics, 15_000);
-// Cleanup every 5 minutes
-setInterval(cleanupMetrics, 5 * 60 * 1000);
+// Collect every 15 seconds; cleanup every 5 minutes. `.unref()` : les deux
+// taches de maintenance ne doivent pas MAINTENIR le process en vie ni pendre
+// un worker de test apres un simple import du module (convention posee par
+// mutex.mjs / channel-presence.mjs).
+setInterval(collectServerMetrics, 15_000).unref();
+setInterval(cleanupMetrics, 5 * 60 * 1000).unref();
 collectServerMetrics();
 
 log.info('Metrics collector initialized');

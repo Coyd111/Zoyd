@@ -124,3 +124,63 @@ describe('buildMatchesCsv - export de l historique financier (A9)', () => {
     expect(csv).toContain('A1:');
   });
 });
+
+describe('neutralisation de l injection de formule CSV (audit-5)', () => {
+  /**
+   * Constat audit-5 : `csvCell` echappait virgule/guillemet/retour-ligne mais
+   * laissait passer une cellule qui COMMENCE par un operateur : `=HYPERLINK(…`
+   * ou un payload DDE `=cmd|…`. Excel/Sheets/LibreOffice evalue l'operateur a
+   * l'ouverture du fichier, avec les droits du lecteur admin. L'export sert
+   * de sauvegarde financiere : un pseudo depose a l'avance suffit a transformer
+   * l'ouverture du CSV par l'admin en execution.
+   *
+   * Mitigation OWASP : prefixer d'une apostrophe les operateurs (`=`, `+`, `@`
+   * et `-` hors nombres purs). Les tableurs interpretent alors la cellule
+   * comme du texte ; la valeur reelle reste lisible dans le CSV brut pour les
+   * outils, et les montants (nombres purs) ne sont jamais alters.
+   */
+  const ligneAvec = (pseudo, entryFee = 100) => buildMatchesCsv([{
+    id: 'M-Csx-inj',
+    format: '1VS1',
+    status: 'finished',
+    createdAt: '2026-01-01T00:00:00Z',
+    finishedAt: '2026-01-01T01:30:00Z',
+    entryFee,
+    prizePool: 200,
+    zoydFee: 4,
+    arbiterFee: 4,
+    creatorPseudo: pseudo,
+    players: [{ pseudo: 'A1' }, { pseudo: 'B1' }],
+    winner: 'A1',
+    payouts: [],
+  }]).split('\n')[1].split(',');
+
+  it('neutralise un operateur = en tete de cellule', () => {
+    expect(ligneAvec('=HYPERLINK(2|3)')[12]).toBe("'=HYPERLINK(2|3)");
+  });
+
+  it('neutralise un operateur + en tete de cellule', () => {
+    expect(ligneAvec('+cmd|powershell')[12]).toBe("'+cmd|powershell");
+  });
+
+  it('neutralise un operateur @ en tete de cellule', () => {
+    expect(ligneAvec('@SUM(1)')[12]).toBe("'@SUM(1)");
+  });
+
+  it('neutralise un operateur - non numerique en tete de cellule', () => {
+    expect(ligneAvec('-1+cmd')[12]).toBe("'-1+cmd");
+  });
+
+  it('laisse les nombres purs intacts, y compris negatifs et signes', () => {
+    // entryFee est la colonne 6 : un montant n'est pas une formule, le
+    // prefixe corromprait les outils qui relisent le CSV.
+    expect(ligneAvec('Chef')[6]).toBe('100');
+    expect(ligneAvec('Chef', '-15')[6]).toBe('-15');
+    expect(ligneAvec('Chef', '+9')[6]).toBe('+9');
+  });
+
+  it('n ajoute pas de prefixe a une valeur saine', () => {
+    expect(ligneAvec('Chef')[12]).toBe('Chef');
+  });
+});
+

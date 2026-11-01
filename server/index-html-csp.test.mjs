@@ -62,3 +62,27 @@ describe('index.html : aucune execution inline', () => {
     }
   });
 });
+
+describe('vercel.json : CSP alignee sur les fontes auto-hebergees', () => {
+  // Les fontes ne dependent plus de Google : garder fonts.googleapis.com dans
+  // style-src/connect-src et fonts.gstatic.com dans font-src declarait des
+  // origines tierces que plus rien ne consomme. Une autorisation inutile est
+  // une surface morte : si un jour un composant essayait de recharger ces
+  // domaines, la porte serait deja ouverte sans decision explicite.
+  const vercelConfig = JSON.parse(readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8'));
+  const enteteGlobal = vercelConfig.headers.find((h) => h.source === '/(.*)');
+  const csp = enteteGlobal.headers.find((h) => h.key === 'Content-Security-Policy').value;
+
+  it("n'autorise aucun host de fontes Google", () => {
+    expect(csp).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com/i);
+  });
+
+  it('garde font-src self : les woff2 sont servis depuis /fonts/', () => {
+    expect(csp).toMatch(/font-src [^;]*'self'/);
+  });
+
+  it('garde les origines FedaPay utiles au checkout', () => {
+    expect(csp).toContain('https://cdn.fedapay.com');
+    expect(csp).toContain('https://checkout.fedapay.com');
+  });
+});

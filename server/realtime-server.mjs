@@ -397,7 +397,7 @@ const cleanupSocketConnectionCounts = () => {
     }
   }
 };
-setInterval(cleanupSocketConnectionCounts, 5 * 60 * 1000);
+setInterval(cleanupSocketConnectionCounts, 5 * 60 * 1000).unref();
 
 io.use(async (socket, next) => {
   // Même résolution que le rate-limit HTTP : derrière le LB Render, le peer

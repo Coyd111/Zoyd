@@ -239,8 +239,15 @@ if (req.method === 'POST' && matchSchedule) {
     return true;
   }
 
+  // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+  let body;
+  try {
+    body = await parseRequestBody(req);
+  } catch (error) {
+    respondMappedError(res, error);
+    return true;
+  }
   try { await withMatchMutex(async () => {
-    const body = await parseRequestBody(req);
     const outcome = scheduleMatchOnServer(getStateCollection('matches'), session.user, matchSchedule[1], body.scheduledAt);
     await saveMatches(io, outcome.matches, outcome.match);
     respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
@@ -259,8 +266,15 @@ if (req.method === 'POST' && matchRoom) {
     return true;
   }
 
+  // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+  let body;
+  try {
+    body = await parseRequestBody(req);
+  } catch (error) {
+    respondMappedError(res, error);
+    return true;
+  }
   try { await withMatchMutex(async () => {
-    const body = await parseRequestBody(req);
     const outcome = setRoomDetailsOnServer(
       getStateCollection('matches'),
       session.user,
@@ -306,8 +320,17 @@ if (req.method === 'POST' && matchResult) {
   const session = require2faIfAdmin(req, res);
   if (!session) { return true; }
 
+  // Parsing hors lock : le mutex global ne doit couvrir que la mutation —
+  // c'est le pire cas : jusqu'1 Mo de JSON ou un client qui n'enverra
+  // jamais tout le corps retenaient le verrou GLOBAL des matchs.
+  let body;
+  try {
+    body = await parseRequestBody(req);
+  } catch (error) {
+    respondMappedError(res, error);
+    return true;
+  }
   try { await withMatchMutex(async () => {
-    const body = await parseRequestBody(req);
     // On PERSISTE le résultat mais on NE VERSE PAS : le match passe en
     // 'awaiting_confirmation'. Les deux équipes doivent confirmer (ou la
     // fenêtre de 30 min expire via cron) avant que la cagnotte parte.
@@ -385,8 +408,15 @@ if (req.method === 'POST' && matchDisputes) {
     return true;
   }
 
+  // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+  let body;
+  try {
+    body = await parseRequestBody(req);
+  } catch (error) {
+    respondMappedError(res, error);
+    return true;
+  }
   try { await withMatchMutex(async () => {
-    const body = await parseRequestBody(req);
     const outcome = openDisputeOnServer(getStateCollection('matches'), session.user, matchDisputes[1], body);
     await saveMatches(io, outcome.matches, outcome.match);
 
@@ -417,8 +447,15 @@ if (req.method === 'POST' && matchDisputeEvidence) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+  let body;
+  try {
+    body = await parseRequestBody(req);
+  } catch (error) {
+    respondMappedError(res, error);
+    return true;
+  }
   try { await withMatchMutex(async () => {
-    const body = await parseRequestBody(req);
     const outcome = addEvidenceToDisputeOnServer(
       getStateCollection('matches'),
       session.user,

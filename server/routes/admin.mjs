@@ -614,8 +614,15 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
 
+    // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+    let body;
+    try {
+      body = await parseRequestBody(req);
+    } catch (error) {
+      respondMappedError(res, error);
+      return true;
+    }
     try { await withMatchMutex(async () => {
-      const body = await parseRequestBody(req);
       if (body.winnerTeam !== 0 && body.winnerTeam !== 1) {
         respondJson(res, 400, { ok: false, error: 'winnerTeam doit être 0 ou 1.', code: 'INVALID_WINNER' });
         return;
@@ -669,8 +676,15 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
 
+    // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+    let body;
+    try {
+      body = await parseRequestBody(req);
+    } catch (error) {
+      respondMappedError(res, error);
+      return true;
+    }
     try { await withMatchMutex(async () => {
-      const body = await parseRequestBody(req);
       // `action` explicite : le règlement d'un litige BOUGGE de l'argent
       // (paiement du résultat ou remboursement des passes). Sans cela, un
       // litige clos laissait la cagnotte gelée pour toujours.
@@ -678,7 +692,9 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
         getStateCollection('matches'),
         session.user,
         adminMatchResolve[1],
-        body.resolution || 'Litige clos par moderation.',
+        // La note vit dans l'etat du match et revient au joueur :
+        // le texte lit comme le reste de la base (sanitizeText).
+        sanitizeText(body.resolution || '') || 'Litige clos par moderation.',
         { action: body.action }
       );
       await saveMatches(io, outcome.matches, outcome.match);
@@ -697,13 +713,22 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
 
+    // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
+    let body;
+    try {
+      body = await parseRequestBody(req);
+    } catch (error) {
+      respondMappedError(res, error);
+      return true;
+    }
     try { await withMatchMutex(async () => {
-      const body = await parseRequestBody(req);
       const outcome = await cancelMatchOnServer(
         getStateCollection('matches'),
         session.user,
         adminMatchCancel[1],
-        body.reason || 'Match annule par moderation.'
+        // Meme classe que la resolution de litige : la raison est stockee
+        // et re-exposee au joueur, elle passe par sanitizeText.
+        sanitizeText(body.reason || '') || 'Match annule par moderation.'
       );
       await saveMatches(io, outcome.matches, outcome.match);
       log.info('Admin action: cancel match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchCancel[1], reason: body.reason });

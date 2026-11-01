@@ -137,7 +137,10 @@ if (req.method === 'GET' && pathname === '/api/wallet/me') {
         // Publie pour que le front affiche la regle au lieu de decouvrir le refus.
         dailyLimit: MAX_WITHDRAWAL_DAILY_ZC,
         dailyWindowHours: 24,
-        remainingToday: getWindowedWithdrawalTotal(wallet),
+        // Ce qui RESTE du plafond : le cumul deja retires (getWindowed
+        // WithdrawalTotal), soustrait de la limite journaliere. Publier le
+        // cumul brut sous ce nom faisait lire 200 sur un plafond de 50 000.
+        remainingToday: Math.max(0, MAX_WITHDRAWAL_DAILY_ZC - getWindowedWithdrawalTotal(wallet)),
       },
     });
   } catch (error) {

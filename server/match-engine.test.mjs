@@ -396,35 +396,6 @@ describe('match-engine - Match Status', () => {
   });
 });
 
-describe('match-engine - Winner Payout', () => {
-  it('should calculate winner payout correctly', () => {
-    const match = {
-      prizePool: 100,
-      zoydFee: 5,
-      arbiterFee: 2,
-    };
-    expect(matchEngine.getWinnerPayout(match)).toBe(93);
-  });
-
-  it('should handle zero fees', () => {
-    const match = {
-      prizePool: 100,
-      zoydFee: 0,
-      arbiterFee: 0,
-    };
-    expect(matchEngine.getWinnerPayout(match)).toBe(100);
-  });
-
-  it('should handle negative payout (floor at 0)', () => {
-    const match = {
-      prizePool: 10,
-      zoydFee: 8,
-      arbiterFee: 5,
-    };
-    expect(matchEngine.getWinnerPayout(match)).toBe(0);
-  });
-});
-
 describe('match-engine - getProjectedPayouts (montants affiches)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

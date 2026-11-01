@@ -189,7 +189,6 @@ const flattenProofs = (proofs) =>
     : [];
 const buildProofHash = (matchId, winnerTeam, scores, refs) =>
   [String(matchId).toLowerCase(), winnerTeam, scores?.team0 ?? 0, scores?.team1 ?? 0, ...refs.map((ref) => ref.toLowerCase())].join('|');
-export const getWinnerPayout = (match) => Math.max(0, roundAmount(match.prizePool - match.zoydFee - match.arbiterFee));
 
 /** Commission d'arbitrage (part de l'arbitre sur la cagnotte). */
 const ARBITER_FEE_RATE = 0.02;

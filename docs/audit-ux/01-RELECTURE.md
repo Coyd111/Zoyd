@@ -152,6 +152,31 @@ vestige d'un ancien remplacement de fichier, l'URL `/logo.png` reste celle
 que sert `ZoydLogo` — et LandingPage `:530`) passent par le composant
 `ZoydLogo` ; visuellement rien ne change.*
 
+### 4.4 Addendum du 2026-11-01 — l'icone prend les headers (arbitrage utilisateur)
+
+Arbitrage utilisateur post-audit : dans les headers, c'est l'icone
+du logo qu'il faut utiliser. Motif constate : le wordmark comprime
+(h-8) rendait le contour des lettres OYD quasi invisible sur fond
+noir (Navbar, LandingNav) - il ne restait qu'un Z flottant, sans le
+nom. Livree :
+
+- `ZoydLogo` gagne une variante `icon` : la tuile Z carree via
+  `/logo-192.png` (5,9 ko, meme visuel que `logo-icon.png` sans les
+  63 ko du rendu 1024). Le wordmark reste le rendu par defaut (LoginPage,
+  RegisterPage, ModeSelectionPage, footer landing : inchanges).
+- `Navbar` : tuile Z, solde en pill mono-ligne (l'ancien bloc deux
+  lignes mangeait la hauteur utile de la barre de 56 px), reglages
+  push reserves >= sm - sur mobile, la cloche porte deja le bloc
+  d'activation de la permission et son pied conduit a /parametres
+  (onglet PARAMETRES de la BottomNav aussi) -, avatar en chip
+  bordee, aria-labels (marque, solde, profil).
+- `LandingNav` : lockup tuile + nom « ZOYD » en texte typographie -
+  le hero n'affiche pas le nom, une icone seule l'aurait efface de
+  la page publique visible.
+
+La separation des roles de la section 4.1 reste valable partout
+ailleurs (rendus heroiques, footer, favicon, PWA, og).
+
 ---
 
 *Relecture faite le 2026-10-26, après le rang 13 de l'audit-2 (plus aucun constat

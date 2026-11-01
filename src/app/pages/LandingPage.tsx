@@ -526,8 +526,16 @@ function LandingNav() {
   return (
       <nav className="fixed inset-x-0 top-0 z-50 bg-zoyd-black/72 backdrop-blur-xl safe-top">
       <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 flex items-center justify-between gap-6">
-        <Link to="/" className="shrink-0">
-          <ZoydLogo compact />
+        {/* Arbitrage 2026-11-01 : la nav porte la TUILE + le nom en texte
+            (lockup). Le wordmark comprime h-8 rendait le contour OYD
+            quasi invisible sur fond noir, et le hero n'affiche le nom
+            quelque part : sans le texte, « ZOYD » disparaissait de la
+            page visible. */}
+        <Link to="/" aria-label="ZOYD — Accueil" className="shrink-0 group flex items-center gap-2.5">
+          <ZoydLogo icon className="group-hover:opacity-90 transition-opacity" />
+          <span className="font-display font-black uppercase text-base tracking-[0.3em] leading-none text-white group-hover:text-zoyd-yellow transition-colors">
+            ZOYD
+          </span>
         </Link>
 
         <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">

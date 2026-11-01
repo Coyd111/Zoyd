@@ -47,6 +47,7 @@ const ActivatePage: React.FC = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showEmailChange, setShowEmailChange] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [changePassword, setChangePassword] = useState('');
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [devCode, setDevCode] = useState(initialDevCode);
 
@@ -91,12 +92,15 @@ const ActivatePage: React.FC = () => {
 
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmail.trim() || isChangingEmail) return;
+    // A-3 (audit-5) : le serveur exige la preuve de possession du compte
+    // (mot de passe actuel) pour reorienter l'email d'un compte inactif.
+    if (!newEmail.trim() || !changePassword || isChangingEmail) return;
     setIsChangingEmail(true);
     try {
-      const response = await changeActivationEmail(email, newEmail.trim());
+      const response = await changeActivationEmail(email, newEmail.trim(), changePassword);
       setEmail(newEmail.trim());
       setNewEmail('');
+      setChangePassword('');
       setShowEmailChange(false);
       if (response.activationCode) setDevCode(response.activationCode);
       toast.success(response.message);
@@ -230,6 +234,23 @@ const ActivatePage: React.FC = () => {
                   className="bg-black border border-white/10 text-white"
                   required
                 />
+                {/* A-3 (audit-5) : le changement d'email exige la preuve de
+                    possession du compte (mot de passe actuel), comme
+                    l'invariant du changement d'email du profil connecte. */
+                }
+                <label htmlFor="change-password" className="text-[10px] font-mono text-white/70 uppercase block">
+                  Mot de passe actuel
+                </label>
+                <Input
+                  id="change-password"
+                  type="password"
+                  placeholder="Mot de passe choisi a l'inscription"
+                  value={changePassword}
+                  onChange={(e) => setChangePassword(e.target.value)}
+                  className="bg-black border border-white/10 text-white"
+                  autoComplete="current-password"
+                  required
+                />
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -240,7 +261,7 @@ const ActivatePage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={isChangingEmail || !newEmail.trim()}
+                    disabled={isChangingEmail || !newEmail.trim() || !changePassword}
                     className="bg-white text-black px-4 py-3 text-xs font-display font-black uppercase tracking-widest italic hover:bg-zoyd-yellow transition-colors disabled:opacity-50 touch-target"
                   >
                     {isChangingEmail ? 'En cours...' : 'Valider'}

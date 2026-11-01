@@ -3,6 +3,7 @@ import {
   isAnySupportedPhone,
   parsePhoneForFedaPay,
   phoneFormatError,
+  phoneFormatErrorAll,
   PAYOUT_COUNTRY_CONFIG,
   normalizePayoutCountry,
 } from './payout-countries.mjs';
@@ -124,5 +125,32 @@ describe('normalisation de pays', () => {
   it('refuse un pays non supporte', () => {
     expect(normalizePayoutCountry('France')).toBeNull();
     expect(normalizePayoutCountry(undefined)).toBeNull();
+  });
+});
+
+describe('message complet tous les formats (A-4, audit-5)', () => {
+  // Les deux callsites d'inscription (register et modification de profil)
+  // appelaient `phoneFormatError()` SANS pays : le joueur ne recevait que
+  // « Numéro de téléphone invalide. », alors que le message designe exigeait
+  // de dire COMBIEN de chiffres sont attendus. Sans pays devine, le serveur
+  // liste les quatre.
+  it('cite les 4 indicateurs configures', () => {
+    const message = phoneFormatErrorAll();
+    expect(message).toContain('+229'); // Benin
+    expect(message).toContain('+225'); // Cote d'Ivoire
+    expect(message).toContain('+221'); // Senegal
+    expect(message).toContain('+228'); // Togo
+  });
+
+  it('cite la longueur attendue de chaque pays', () => {
+    const message = phoneFormatErrorAll();
+    expect(message).toContain('+229 (10 chiffres)');
+    expect(message).toContain('+225 (10 chiffres)');
+    expect(message).toContain('+221 (9 chiffres)');
+    expect(message).toContain('+228 (8 chiffres)');
+  });
+
+  it('ne reste jamais generique : le message n est pas celui de l inconnu', () => {
+    expect(phoneFormatErrorAll()).not.toBe('Numéro de téléphone invalide.');
   });
 });

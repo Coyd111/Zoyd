@@ -75,7 +75,7 @@ import { createLogger } from './logger.mjs';
 import { roundAmount, getNow, makeError } from './utils.mjs';
 // Module feuille : les regles pays/telephone doivent etre accessibles ici sans
 // cycle d'import (payment-engine importe persistence).
-import { isAnySupportedPhone, phoneFormatError } from './payout-countries.mjs';
+import { isAnySupportedPhone, phoneFormatErrorAll } from './payout-countries.mjs';
 import { withUserMutex, withChannelMutex } from './mutex.mjs';
 import { sumCommissionTransactions } from './commission-stats.mjs';
 import { computeExpiry, isSanctionActive, severityForReason } from './moderation.mjs';
@@ -1374,7 +1374,7 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
   // n'apparaittait qu'au moment du retrait. Le front ne protegeait rien :
   // l'API est la frontiere de confiance, pas le formulaire.
   if (!isAnySupportedPhone(input.phone)) {
-    throw makeError('INVALID_PHONE', phoneFormatError());
+    throw makeError('INVALID_PHONE', phoneFormatErrorAll());
   }
   assertStrongPassword(password);
   // Conformité : 18+ et CGU obligatoires (sauf compte admin système).
@@ -1396,10 +1396,14 @@ const insertUser = async ({ password, role = 'player', ...input }) => {
     const createdAt = input.dateJoined || getNow();
     const payload = buildUserPayload({ ...input, id, dateJoined: createdAt, isActive: true }, role);
     if (role !== 'admin') {
+      // A-5 (audit-5) : la date d'acceptation legale est posee par le SERVEUR.
+      // L'ancien code recopiait `input.acceptedAt` (whitelist register) : la
+      // trace 18+/CGU etait datee par le client, sans validation ni bornage.
+      // Le seul moment probant est celui de l'ecriture, ici.
       payload.legal = {
         version: '2026-09-21',
-        adultAt: input.acceptedAt || createdAt,
-        termsAt: input.acceptedAt || createdAt,
+        adultAt: createdAt,
+        termsAt: createdAt,
       };
     }
     const passwordHash = await hashPassword(password);
@@ -2541,9 +2545,10 @@ export const resendActivationCode = (email) => {
  * Move a not-yet-active account to a corrected email address and issue a fresh code.
  * @param {string} oldEmail - Currently registered email
  * @param {string} newEmail - Corrected email address
+ * @param {string} password - Current account password (proof of possession)
  * @returns {Promise<{ userId: string, code: string }>}
  */
-export const changeActivationEmail = async (oldEmail, newEmail) => {
+export const changeActivationEmail = async (oldEmail, newEmail, password) => {
   if (!newEmail || typeof newEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
     throw makeError('INVALID_EMAIL', 'Adresse email invalide.');
   }
@@ -2554,6 +2559,18 @@ export const changeActivationEmail = async (oldEmail, newEmail) => {
     throw makeError('ACCOUNT_ALREADY_ACTIVE', 'Ce compte est deja actif. Modifie ton email depuis les parametres.');
   }
   const newKey = normalizeEmailKey(newEmail);
+  // A-3 (audit-5) : preuve de possession. L'ancien email n'est pas un
+  // secret : seul le mot de passe prouve que c'est bien le proprietaire qui
+  // reoriente son compte. Sans ce garde, quiconque connaissait un ancien
+  // email de compte inactif pouvait capter le code d'activation sur un email
+  // a lui (activation sans mot de passe) puis finir par un reset via
+  // forgot-password : detournement de compte residuel.
+  // La forme est verifiee avant verifyUserPassword : un password hors type
+  // levait un TypeError de la lib de hachage (bruit 500) au lieu d'un refus
+  // metier.
+  if (typeof password !== 'string' || password === '' || !(await verifyUserPassword(userId, password))) {
+    throw makeError('WRONG_PASSWORD', 'Mot de passe actuel incorrect.');
+  }
   const takenBy = memoryPasswordHashes.get(newKey);
   if (takenBy && takenBy[0] !== userId) {
     throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');

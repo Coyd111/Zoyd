@@ -165,3 +165,17 @@ export const phoneFormatError = (countryIso) => {
   if (!cfg) return 'Numéro de téléphone invalide.';
   return `Numéro invalide. Format attendu : +${cfg.prefix} suivi de ${cfg.localLength} chiffres.`;
 };
+
+/**
+ * Version A-4 (audit-5) : quand on ne sait pas quel pays le client avait en
+ * tete (inscription, modification de profil — aucun pays n'est passe en
+ * argument aux callsites), on liste TOUS les formats acceptes. Silence sur
+ * le detail forme l'inverse de l'intention : le joueur reformate au hasard.
+ * @returns {string}
+ */
+export const phoneFormatErrorAll = () => {
+  const formats = Object.values(PAYOUT_COUNTRY_CONFIG)
+    .map((cfg) => `+${cfg.prefix} (${cfg.localLength} chiffres)`)
+    .join(', ');
+  return `Numéro de téléphone invalide. Formats acceptés : ${formats}.`;
+};

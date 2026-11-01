@@ -80,7 +80,6 @@ const registerFormBaseSchema = z.object({
   streamerMode: z.boolean().optional(),
   acceptAdult: z.boolean().optional(),
   acceptTerms: z.boolean().optional(),
-  acceptedAt: z.string().optional(),
 });
 
 const step1Schema = registerFormBaseSchema
@@ -269,7 +268,8 @@ cancelled = true;
     }
     setIsLoading(true);
     try {
-      const acceptedAt = new Date().toISOString();
+      // Les dates legales (adultAt/termsAt) sont posees par le serveur au
+      // moment de l'ecriture (audit-5 A-5) : la date client n'est pas probante.
       const auth = await registerWithBackend({
         pseudo,
         email,
@@ -286,7 +286,6 @@ cancelled = true;
         streamerPseudo: formData.streamerMode ? formData.streamerPseudo : '',
         acceptAdult,
         acceptTerms,
-        acceptedAt,
       });
 
       // V1 simplifiée : compte directement actif + session immédiate (pas d'étape code).

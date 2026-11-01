@@ -47,7 +47,7 @@
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
-import { isAnySupportedPhone, phoneFormatError } from '../payout-countries.mjs';
+import { isAnySupportedPhone, phoneFormatErrorAll } from '../payout-countries.mjs';
 import {
   ALLOW_DEBUG_CODES,
   getAuthenticatedAppSession,
@@ -114,7 +114,10 @@ if (req.method === 'POST' && pathname === '/api/auth/register') {
       'pseudo', 'email', 'phone', 'password', 'gameId',
       'controllerType', 'device', 'levelCODM', 'rankMJ', 'rankBR',
       'country', 'streamerMode', 'streamerPseudo',
-      'acceptAdult', 'acceptTerms', 'acceptedAt',
+      'acceptAdult', 'acceptTerms',
+      // A-5 (audit-5) : `acceptedAt` n'est plus accepte — la trace legale
+      // (adultAt/termsAt) est posee par le serveur (persistence.mjs), la date
+      // client n'est pas probante.
     ];
     const safeBody = {};
     for (const field of REGISTER_FIELDS) {
@@ -246,15 +249,29 @@ if (req.method === 'POST' && pathname === '/api/auth/resend-code') {
       respondJson(res, 400, { ok: false, error: 'Email requis.', code: 'MISSING_FIELDS' });
       return true;
     }
-    const { code } = resendActivationCode(email);
-    const delivery = await deliverAuthCode({ to: email, code, purpose: 'activation-resend' });
+    // A-1 (audit-5) : anti-enumeration. L'ancien code laissait remonter
+    // `USER_NOT_FOUND` et `ACCOUNT_ALREADY_ACTIVE` (404/409 distincts) :
+    // trois reponses possibles = un oracle gratuit sur l'existence d'un
+    // compte et son etat d'activation. Meme invariant que forgot-password
+    // (P13 C14) : la reponse est IDENTIQUE dans les trois cas. Le code est
+    // genere et envoye UNIQUEMENT quand un compte inactif existe vraiment.
+    let code = null;
+    try {
+      ({ code } = resendActivationCode(email));
+    } catch (erreurCompte) {
+      if (erreurCompte?.code !== 'USER_NOT_FOUND' && erreurCompte?.code !== 'ACCOUNT_ALREADY_ACTIVE') {
+        throw erreurCompte;
+      }
+    }
+    if (code) {
+      await deliverAuthCode({ to: email, code, purpose: 'activation-resend' });
+    }
     respondJson(res, 200, {
       ok: true,
-      message: delivery.delivered
-        ? 'Nouveau code envoye. Verifie ta boite de reception.'
-        : "Nouveau code genere. L'envoi automatique n'est pas encore configure : contacte le support si tu ne le recois pas.",
-      delivery: delivery.delivered ? 'sent' : 'pending-provider',
-      ...(ALLOW_DEBUG_CODES && { activationCode: code }),
+      // Conserve pour compatibilite, mais toujours a `true`.
+      found: true,
+      message: 'Si un compte inactif est rattache a cet email, un nouveau code vient d etre envoye. Verifie ta boite de reception.',
+      ...(ALLOW_DEBUG_CODES && code ? { activationCode: code } : {}),
     });
   } catch (error) {
     respondMappedError(res, error);
@@ -269,11 +286,35 @@ if (req.method === 'POST' && pathname === '/api/auth/activation-email') {
   try {
     const body = await parseRequestBody(req);
     const { oldEmail, newEmail } = body;
-    if (!oldEmail || !newEmail) {
-      respondJson(res, 400, { ok: false, error: 'Ancien et nouvel email requis.', code: 'MISSING_FIELDS' });
+    const password = body.password;
+    if (!oldEmail || !newEmail || !password || typeof password !== 'string') {
+      respondJson(res, 400, { ok: false, error: 'Ancien et nouvel email requis, avec le mot de passe actuel du compte.', code: 'MISSING_FIELDS' });
       return true;
     }
-    const { code } = await changeActivationEmail(oldEmail, newEmail);
+    // A-3 (audit-5) : preuve de possession. L'ancien email ne prouve rien (on
+    // peut le connaitre d'autrui) ; le mot de passe, lui, prouve qu'on parle
+    // bien du compte. Les erreurs « compte inconnu / deja actif / mauvais
+    // mot de passe » repondent IDENTIQUEMENT (Meme invariant que
+    // forgot-password, P13 C14) : une distinction serait un oracle sur la
+    // possession d'un email et sur l'etat d'activation des comptes.
+    let code;
+    try {
+      ({ code } = await changeActivationEmail(oldEmail, newEmail, password));
+    } catch (erreurCompte) {
+      if (
+        erreurCompte?.code === 'USER_NOT_FOUND'
+        || erreurCompte?.code === 'ACCOUNT_ALREADY_ACTIVE'
+        || erreurCompte?.code === 'WRONG_PASSWORD'
+      ) {
+        respondJson(res, 200, {
+          ok: true,
+          found: true,
+          message: 'Si un compte inactif correspond a cet ancien email et a ce mot de passe, la nouvelle adresse a ete enregistree. Verifie ta nouvelle boite de reception.',
+        });
+        return true;
+      }
+      throw erreurCompte;
+    }
     const delivery = await deliverAuthCode({ to: newEmail, code, purpose: 'activation-email' });
     respondJson(res, 200, {
       ok: true,
@@ -428,7 +469,7 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
         if (field === 'phone' && value !== '' && !isAnySupportedPhone(value)) {
           respondJson(res, 400, {
             ok: false,
-            error: phoneFormatError(),
+            error: phoneFormatErrorAll(),
             code: 'INVALID_PHONE',
           });
           return true;

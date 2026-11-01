@@ -190,7 +190,7 @@ describe('Rejeu — changement d email d activation', () => {
 
     sabotageApresLecture = { userId: joueur.id, mutate: (p) => ({ ...p, pseudo: `${p.pseudo}-concurrent` }) };
 
-    await changeActivationEmail(joueur.email, 'corrige@test.local');
+    await changeActivationEmail(joueur.email, 'corrige@test.local', MOT_DE_PASSE);
     await settle();
 
     expect(enBase(joueur.id).email_key).not.toBe(avant);
@@ -207,8 +207,30 @@ describe('Rejeu — changement d email d activation', () => {
     sabotageApresLecture = { userId: joueur.id, mutate: (p) => ({ ...p, isActive: true }) };
 
     await expect(
-      changeActivationEmail(joueur.email, 'trop-tard@test.local')
+      changeActivationEmail(joueur.email, 'trop-tard@test.local', MOT_DE_PASSE)
     ).rejects.toMatchObject({ code: 'ACCOUNT_ALREADY_ACTIVE' });
+  });
+});
+
+describe('Preuve de possession sur le changement d email (A-3, audit-5)', () => {
+  // Les appels ci-dessus passaient en appeler le changement d'email avec le
+  // SEUL ancien email. Consequence, hors rejeu qui gere des etats frais de
+  // MEME instance : n'importe qui connaissant l'ancien email d'un compte
+  // inactif pouvait soit capter le code (activitable par lui), soit plus
+  // banalement reorienter le compte. La possession est desormais prouvee par
+  // le mot de passe actuel du compte.
+  it('exige le mot de passe : absence preuve = rejette', async () => {
+    const joueur = await nouveauJoueur();
+    await expect(
+      changeActivationEmail(joueur.email, `sans-preuve-${Date.now()}@test.local`)
+    ).rejects.toMatchObject({ code: 'WRONG_PASSWORD' });
+  });
+
+  it('exige le mot de passe : mauvais mot de passe = rejette', async () => {
+    const joueur = await nouveauJoueur();
+    await expect(
+      changeActivationEmail(joueur.email, `sans-preuve-${Date.now()}@test.local`, 'CeNestPasLeMotDePasse!2026')
+    ).rejects.toMatchObject({ code: 'WRONG_PASSWORD' });
   });
 });
 
@@ -219,7 +241,7 @@ describe('Le patch d email d activation ne porte pas password_hash (P2 C1, audit
     // Email unique : la memoire interne (index email, memoryPasswordHashes)
     // survit a tables.clear(), et le test precedent a deja pris
     // 'corrige@test.local'.
-    await changeActivationEmail(joueur.email, `corrige-${Date.now()}@test.local`);
+    await changeActivationEmail(joueur.email, `corrige-${Date.now()}@test.local`, MOT_DE_PASSE);
     await settle();
     expect(patchesUsers.length).toBeGreaterThan(0);
     for (const patch of patchesUsers) {

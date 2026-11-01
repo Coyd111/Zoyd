@@ -345,13 +345,27 @@ describe('realtime sessions : meme regle de hachage', () => {
 
   it('reutilise une session valide au lieu d\'en creer une seconde', async () => {
     const created = await createRealtimeSession({ userId: USER_ID, pseudo: 'Reuse', role: 'player' });
-    const first = await getOrCreateRealtimeSessionForUser(USER_ID);
-    const second = await getOrCreateRealtimeSessionForUser(USER_ID);
-    // Une session par utilisateur : le handshake Socket.io s'appuie dessus.
-    expect(first.tokenHash).toBe(created.tokenHash);
-    expect(second.tokenHash).toBe(created.tokenHash);
-    // Et l'empreinte de la fille reste une donnee interne.
-    expect(JSON.stringify(second)).not.toContain(created.tokenHash);
+    // On avance l'horloge de 50 ms : si une NOUVELLE session etait creee, son
+    // `issuedAt` (et son `expiresAt`) refleteraient ce saut. La session
+    // existante, elle, doit garder SES horodateurs.
+    //
+    // L'ancienne version comparait `tokenHash` de part et d'autre, mais les
+    // deux objets exposes l'omettent par construction (createTokenRecord
+    // renvoie sans l'empreinte, la copie reutilise l'exclut) : les deux cotes
+    // valaient `undefined` et l'assertion passait meme en cas de double
+    // creation — un test non probant.
+    await withClock(50, async () => {
+      const first = await getOrCreateRealtimeSessionForUser(USER_ID);
+      const second = await getOrCreateRealtimeSessionForUser(USER_ID);
+      // Une session par utilisateur : le handshake Socket.io s'appuie dessus.
+      expect(first.issuedAt).toBe(created.issuedAt);
+      expect(second.issuedAt).toBe(created.issuedAt);
+      expect(first.expiresAt).toBe(created.expiresAt);
+      expect(second.expiresAt).toBe(created.expiresAt);
+      // La copie renvoyee part au client (bootstrap socket) : l'empreinte
+      // interne n'y voyage pas. Elle doit etre ABSENTE de l'objet expose.
+      expect(second).not.toHaveProperty('tokenHash');
+    });
     deleteRealtimeSession(created.token);
   });
 });

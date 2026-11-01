@@ -61,7 +61,6 @@ export interface RegisterPayload {
   streamerPseudo?: string;
   acceptAdult?: boolean;
   acceptTerms?: boolean;
-  acceptedAt?: string;
 }
 
 export const registerWithBackend = async (payload: RegisterPayload): Promise<AuthResponse> => {
@@ -125,8 +124,11 @@ const postAuthRecovery = async (path: string, body: Record<string, string>): Pro
 export const resendActivationCode = (email: string): Promise<RecoveryResponse> =>
   postAuthRecovery('/api/auth/resend-code', { email });
 
-export const changeActivationEmail = (oldEmail: string, newEmail: string): Promise<RecoveryResponse> =>
-  postAuthRecovery('/api/auth/activation-email', { oldEmail, newEmail });
+// A-3 (audit-5) : le serveur exige la preuve de possession (mot de passe actuel
+// du compte) pour reorienter l'email d'un compte inactif. La reponse est
+// generique (OK sans detail) que le compte existe ou non — P13 C14.
+export const changeActivationEmail = (oldEmail: string, newEmail: string, password: string): Promise<RecoveryResponse> =>
+  postAuthRecovery('/api/auth/activation-email', { oldEmail, newEmail, password });
 export const requestPasswordReset = (identifier: string): Promise<RecoveryResponse> =>
   postAuthRecovery('/api/auth/forgot-password', { identifier });
 

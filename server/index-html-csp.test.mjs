@@ -29,9 +29,20 @@ describe('index.html : aucune execution inline', () => {
     expect(html).not.toMatch(/onload=[^>]*rel=['"]?stylesheet/i);
   });
 
-  it('charge la police par une balise stylesheet reelle', () => {
-    // Sans cela, la police ne part jamais : c'etait le bug invisible.
-    expect(html).toMatch(/<link[^>]+rel="stylesheet"[^>]+fonts\.googleapis\.com/i);
+  it('auto-heberge les fontes : aucune feuille Google Fonts tierce', () => {
+    // La police etait chargee par fonts.googleapis.com : dependance reseau
+    // tres visible. Le durcissement CSP avait deja casse la police en
+    // silence (preload+onload), et l'audit UI 2026-11 a confirme le cout
+    // residuel : offline / 4G instable = police de substitution (plus large,
+    // libelles de nav tronques), sonde e2e responsive flammante sur les
+    // contextes sans cache. Les fontes sont auto-hebergees dans
+    // public/fonts/ (Outfit, Inter, JetBrains Mono) et chargees par
+    // src/styles/fonts.css en @font-face.
+    expect(html).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com/i);
+    const css = readFileSync(resolve(process.cwd(), 'src/styles/fonts.css'), 'utf8');
+    expect(css).toMatch(/@font-face/);
+    expect(css).toMatch(/\/fonts\/outfit-latin\.woff2/);
+    expect(css).toMatch(/\/fonts\/inter-latin\.woff2/);
   });
 
   it("ne conserve aucun rel=preload orphelin", () => {

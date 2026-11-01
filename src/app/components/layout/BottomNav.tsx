@@ -24,10 +24,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../../stores/authStore';
 
 const navItems = [
-  { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
-  { icon: Trophy, label: 'TOURNOIS', path: '/mj/tournois' },
-  { icon: MessageCircle, label: 'MESSAGES', path: '/chat' },
-  { icon: Wallet, label: 'WALLET', path: '/wallet' },
+  // shortLabel = version affichee dans la barre. A 360 px, cinq cellules de
+  // ~61 px chiaquent MUTIJOUEUR (11 chars a 11 px tracking-widest) en
+  // 'MULTIJ...' sous ellipsis CSS : 3 des 5 destinations etaient tronquees.
+  // L烟火aria-label garde le libelle complet pour l'accessibilite, et le
+  // test e2e responsive.spec.ts (U-2) refuse tout ellipsis CSS actif.
+  { icon: LayoutGrid, label: 'MULTIJOUEUR', shortLabel: 'MULTI', path: '/mj' },
+  { icon: Trophy, label: 'TOURNOIS', shortLabel: 'TOURNOI', path: '/mj/tournois' },
+  { icon: MessageCircle, label: 'MESSAGES', shortLabel: 'MSGS', path: '/chat' },
+  { icon: Wallet, label: 'WALLET', shortLabel: 'WALLET', path: '/wallet' },
 ];
 
 const moreNavItems = [
@@ -91,7 +96,7 @@ const BottomNav: React.FC = React.memo(() => {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="md:hidden fixed bottom-20 left-0 right-0 z-50 bg-zoyd-black border-t border-white/10 safe-bottom"
+            className="md:hidden fixed bottom-20 left-0 right-0 z-50 bg-zoyd-black border-t border-white/10 safe-bottom max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain scrollbar-hide"
             role="dialog"
             aria-modal="true"
             aria-label="Plus d'options"
@@ -188,7 +193,7 @@ const BottomNav: React.FC = React.memo(() => {
                   />
                 )}
                 <Icon className={cn("w-5 h-5 mb-1 transition-transform shrink-0", isActive ? "scale-110" : "")} />
-                <span className="text-[11px] font-display font-black uppercase tracking-widest italic truncate max-w-full px-0.5">{item.label}</span>
+                <span className="text-[11px] font-display font-black uppercase tracking-wider italic truncate max-w-full px-0.5">{item.shortLabel}</span>
               </Link>
             );
           })}

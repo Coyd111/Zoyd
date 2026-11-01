@@ -177,11 +177,15 @@ export const PriorityBadge = ({ kind }: { kind: 'litige' | 'signalement' | 'ops'
 };
 
 export const StatCard = ({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) => (
-  <div className="p-6 flex items-center gap-4">
-    <div className="w-12 h-12 flex items-center justify-center">{icon}</div>
-    <div>
-      <div className="text-[10px] font-mono text-white/60 uppercase tracking-widest mb-1">{label}</div>
-      <div className="text-2xl font-display font-black italic">{value}</div>
+  // min-w-0 sur le bloc texte : sans lui, un mot long ('indisponible' du
+  // fallback commissions, un montant formatZC ample) refuse de retrecir sous
+  // sa largeur minimale, pousse la cellule hors du grid et se fait rogner
+  // par le masque horizontal (defaut constate a 360-390 px).
+  <div className="p-6 flex items-center gap-4 min-w-0">
+    <div className="w-12 h-12 shrink-0 flex items-center justify-center">{icon}</div>
+    <div className="min-w-0">
+      <div className="text-[10px] font-mono text-white/60 uppercase tracking-widest mb-1 break-words">{label}</div>
+      <div className="text-2xl font-display font-black italic break-words">{value}</div>
       {/* Precision comptable : sans elle, un montant de sortie se lit comme un revenu. */}
       {hint && <div className="text-[9px] font-mono text-white/40 mt-1 leading-snug">{hint}</div>}
     </div>

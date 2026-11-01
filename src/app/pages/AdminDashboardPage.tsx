@@ -411,13 +411,13 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </header>
       <main className="max-w-[1500px] mx-auto px-4 sm:px-4 md:px-8 py-8 md:py-12 relative z-10">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-12">
           <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" aria-hidden="true" />} label="MATCHS OUVERTS" value={adminInsights.operationalMatches.length.toString()} />
           <StatCard icon={<AlertTriangle className="w-5 h-5 text-red-400" aria-hidden="true" />} label="LITIGES OUVERTS" value={adminInsights.openDisputes.length.toString()} />
           <StatCard icon={<DollarSign className="w-5 h-5 text-zoyd-yellow" aria-hidden="true" />} label="PRIZEPOOLS" value={formatZC(adminInsights.totalPrizePool)} />
-          // Revenu ZOYD = la commission de retrait (2 %). Les parts d'arbitre sont
-// une sortie de cagnotte, affichees a part pour ne pas les compter comme
-// des recettes.
+          {/* Revenu ZOYD = la commission de retrait (2 %). Les parts d'arbitre
+              sont une sortie de cagnotte, affichees a part pour ne pas les
+              compter comme des recettes. */}
           <StatCard
             icon={<TrendingUp className="w-5 h-5 text-green-400" aria-hidden="true" />}
             label="REVENUS ZOYD (2 % RETRAITS)"

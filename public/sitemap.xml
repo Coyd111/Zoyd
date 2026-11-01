@@ -1,82 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Audit prod 2026-11-01 (S-1/S-2) : ce sitemap ne liste QUE des pages
+       reellement publiques. Les routes derriere AppLayout (/mj, /classements,
+       /infos, /br, /br-league) redirigent vers /auth/login pour un visiteur
+       anonyme : elles figuraient ici avec des priorites elevees alors que la
+       promesse SEO n'etait pas tenue. Elles rejoignent ce fichier le jour ou
+       une version anonyme reelle de la page existe. Les pages legales
+       (publiques) etaient, elles, absentes. -->
   <!-- Landing / Marketing -->
   <url>
     <loc>https://zoyd.vercel.app/</loc>
-    <lastmod>2026-08-30</lastmod>
+    <lastmod>2026-11-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/mode</loc>
-    <lastmod>2026-08-30</lastmod>
+    <lastmod>2026-11-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://zoyd.vercel.app/infos</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
   </url>
 
   <!-- Auth -->
   <url>
     <loc>https://zoyd.vercel.app/auth/login</loc>
-    <lastmod>2026-08-30</lastmod>
+    <lastmod>2026-11-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://zoyd.vercel.app/auth/register</loc>
-    <lastmod>2026-08-30</lastmod>
+    <lastmod>2026-11-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
-  <!-- Multijoueur -->
+  <!-- Legales (publiques — absentes du sitemap precedent) -->
   <url>
-    <loc>https://zoyd.vercel.app/mj</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <loc>https://zoyd.vercel.app/conditions</loc>
+    <lastmod>2026-11-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://zoyd.vercel.app/mj/creer</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <loc>https://zoyd.vercel.app/reglement-litiges</loc>
+    <lastmod>2026-11-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://zoyd.vercel.app/mj/tournois</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <loc>https://zoyd.vercel.app/anti-fraude</loc>
+    <lastmod>2026-11-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://zoyd.vercel.app/mj/tournois/creer</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <!-- Classements (public, SEO-critical) -->
-  <url>
-    <loc>https://zoyd.vercel.app/classements</loc>
-    <lastmod>2026-08-30</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Battle Royale League -->
-  <url>
-    <loc>https://zoyd.vercel.app/br-league</loc>
-    <lastmod>2026-08-30</lastmod>
+    <loc>https://zoyd.vercel.app/confidentialite</loc>
+    <lastmod>2026-11-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://zoyd.vercel.app/br</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://zoyd.vercel.app/mentions</loc>
+    <lastmod>2026-11-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://zoyd.vercel.app/jeu-responsable</loc>
+    <lastmod>2026-11-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>

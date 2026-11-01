@@ -258,7 +258,7 @@ cancelled = true;
                 inputMode="text"
                 {...register('emailOrPseudo', { required: 'Identification requise' })}
                 error={errors.emailOrPseudo?.message}
-                placeholder="ShadowX, +22960000000 ou soldat@zoyd.com"
+                placeholder="ShadowX, +2296…, email"
               />
 
               <div className="relative">

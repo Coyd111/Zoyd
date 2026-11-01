@@ -57,8 +57,11 @@ services:
         sync: false
       - key: VAPID_PRIVATE_KEY
         sync: false
+      # Audit prod 2026-11-01 (S-3) : zoyd.africa et www.zoyd.africa etaient
+      # NXDOMAIN (non achetes ou non cables) — CORS n'expose que des origines
+      # vivantes. Re-ajouter les domaines ici le jour ou Vercel les sert.
       - key: ZOYD_ALLOWED_ORIGINS
-        value: "https://zoyd.vercel.app,https://zoyd.africa,https://www.zoyd.africa"
+        value: "https://zoyd.vercel.app"
       # Email via API HTTPS (port 443 — SMTP bloqué sur Render gratuit).
       # Resend (recommandé) : https://resend.com/api-keys
       - key: RESEND_API_KEY

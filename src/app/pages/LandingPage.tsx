@@ -115,6 +115,14 @@ const playerJourney = [
   },
 ];
 
+// Audit prod 2026-11-01 (S-7) : la video du hero (1,36 Mo) ne se charge plus
+// en dessous de 768px — elle n'etait qu'un fond decoratif a 24 % d'opacite,
+// parti a la trappe avec les 3G/4G de l'audience. Decision prise AU CHARGEMENT
+// DU MODULE (pas de remount au resize : rotation 720 -> 800 reste sans
+// video, sans gravite, le decor degrade/grid reste). Desktop inchange.
+const SHOW_HERO_VIDEO = typeof window !== 'undefined'
+  && window.matchMedia('(min-width: 768px)').matches;
+
 export default function LandingPage() {
   const reduceMotion = useReducedMotion();
   const { stats, failed } = usePublicStats();
@@ -139,16 +147,18 @@ export default function LandingPage() {
       <main className="relative">
         <section id="hero" className="relative min-h-dvh overflow-hidden border-b border-white/5">
           <div className="absolute inset-0">
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="none"
-              className="h-full w-full object-cover opacity-24"
-            >
-              <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
-            </video>
+            {SHOW_HERO_VIDEO && (
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="none"
+                className="h-full w-full object-cover opacity-24"
+              >
+                <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+              </video>
+            )}
           </div>
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,227,81,0.14),transparent_32%),radial-gradient(circle_at_82%_18%,rgba(0,122,255,0.12),transparent_28%),linear-gradient(180deg,rgba(10,10,10,0.24),rgba(10,10,10,0.86)_68%,#0A0A0A)]" />

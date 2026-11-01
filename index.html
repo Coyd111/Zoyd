@@ -65,8 +65,15 @@
     </script>
 
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="/logo-icon.png" />
-    <link rel="apple-touch-icon" href="/logo-icon.png" />
+    <!-- Canonique DEFAUT du shell pour les crawlers qui n'executent pas de
+         JS. L'attribut data-canonical-default permet a SEOHead de la retirer
+         a l'hydratation, quand la canonique par-route de Helmet arrive :
+         jamais deux rel=canonical simultanes. -->
+    <link rel="canonical" href="https://zoyd.vercel.app/" data-canonical-default />
+    <!-- Audit prod 2026-11-01 (S-5) : logo-icon.png mesure 1024px pour 63 ko
+         ; logo-192.png est le meme visuel pour 6 ko. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/logo-192.png" />
     <style>html, body { height: 100%; margin: 0; background:#000; } #root { height: 100%; }</style>
   </head>
 

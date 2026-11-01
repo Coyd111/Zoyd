@@ -5,5 +5,13 @@ Disallow: /wallet
 Disallow: /earnings
 Disallow: /parametres
 Disallow: /chat
+# Audit prod 2026-11-01 (S-1) : ces routes sont derriere AppLayout — un
+# visiteur anonyme y est redirige vers /auth/login. Indexables jusqu'ici,
+# elles gaspillaient du crawl budget en reponse permanente de connexion.
+Disallow: /mj
+Disallow: /br-league
+Disallow: /br
+Disallow: /infos
+Disallow: /classements
 
 Sitemap: https://zoyd.vercel.app/sitemap.xml

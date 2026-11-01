@@ -21,6 +21,7 @@
  *
  * Voir aussi : docs/08-frontend.md - section 9 (Le SEO)
  */
+import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 
 // URL publique du site.
@@ -53,6 +54,16 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   noindex = false,
   type = 'website',
 }) => {
+  // PIEGE (audit prod 2026-11-01) : index.html porte une canonique DEFAUT
+  // (attribut data-canonical-default) pour les crawlers qui n'executent pas
+  // de JS. A l'hydratation, la retirer, sinon le document finit avec DEUX
+  // rel=canonical (le statique + celui de Helmet) et Google choisit lui
+  // meme : divergence de canonique assuree entre les pages.
+  useEffect(() => {
+    document.querySelectorAll('link[data-canonical-default]').forEach((link) => {
+      link.remove();
+    });
+  }, []);
   const url = `${SITE}${path}`;
   const img = image.startsWith('http') ? image : `${SITE}${image}`;
 

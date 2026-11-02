@@ -44,7 +44,7 @@ const createMatchLoader = async () => { const { default: Component } = await imp
 const createTournamentLoader = async () => { const { default: Component } = await import('./pages/mj/CreateTournamentPage'); return { Component }; };
 const walletLoader = async () => { const { default: Component } = await import('./pages/WalletPage'); return { Component }; };
 const profilLoader = async () => { const { default: Component } = await import('./pages/ProfilPage'); return { Component }; };
-const classementsLoader = async () => { const { default: Component } = await import('./pages/ClassementsPage'); return { Component }; };
+const classementsLoader = async () => { const { default: Component } = await import('./pages/ClassementsGateway'); return { Component }; };
 const chatLoader = async () => { const { default: Component } = await import('./pages/ChatPage'); return { Component }; };
 const parametresLoader = async () => { const { default: Component } = await import('./pages/ParametresPage'); return { Component }; };
 const earningsLoader = async () => { const { default: Component } = await import('./pages/EarningsDashboard'); return { Component }; };
@@ -179,10 +179,11 @@ export const router = createBrowserRouter([
         children: [{ index: true, lazy: earningsLoader }],
       },
       {
+        // ClassementsGateway arbitre : anonyme -> PublicClassementsPage
+        // (endpoints publics sans AppLayout), authentifie -> ClassementsPage
+        // dans AppLayout. Un seul chemin URL, deux lecteurs.
         path: 'classements',
-        element: <AppLayout />,
-        errorElement: <RouteErrorBoundary />,
-        children: [{ index: true, lazy: classementsLoader }],
+        lazy: classementsLoader,
       },
       {
         path: 'chat',

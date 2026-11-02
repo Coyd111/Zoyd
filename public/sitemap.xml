@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Audit prod 2026-11-01 (S-1/S-2) : ce sitemap ne liste QUE des pages
-       reellement publiques. Les routes derriere AppLayout (/mj, /classements,
-       /infos, /br, /br-league) redirigent vers /auth/login pour un visiteur
-       anonyme : elles figuraient ici avec des priorites elevees alors que la
-       promesse SEO n'etait pas tenue. Elles rejoignent ce fichier le jour ou
-       une version anonyme reelle de la page existe. Les pages legales
-       (publiques) etaient, elles, absentes. -->
+       reellement publiques. Les routes derriere AppLayout (/mj, /infos,
+       /br, /br-league) redirigent vers /auth/login pour un visiteur
+       anonyme : elles ne l'ont jamais rejoint. Les pages legales
+       (publiques) etaient absentes avant S-1. /classements a rejoint le
+       sitemap le 2026-11-02 avec sa version anonyme reelle
+       (PublicClassementsPage -> endpoint public /api/leaderboard), comme
+       prevu par la promesse ci-dessous. -->
   <!-- Landing / Marketing -->
   <url>
     <loc>https://zoyd.vercel.app/</loc>
@@ -19,6 +20,12 @@
     <lastmod>2026-11-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://zoyd.vercel.app/classements</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
 
   <!-- Auth -->

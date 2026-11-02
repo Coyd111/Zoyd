@@ -5,10 +5,12 @@ info:
   description: |
     API for ZOYD competitive gaming platform — wagers, tournaments, leagues, and wallets.
 
-    > **CONTRAT PARTIEL — deprecated.** Ce fichier ne decrit que 10 chemins sur
-    > ~108 routes reelles reparties sur 11 modules (`docs/04-api.md` §12 fait
-    > reference, pas ce fichier). Il ne doit servir que d'apercu, jamais de
-    > contrat d'integration.
+    > **CONTRAT PARTIEL — deprecated.** Ce fichier ne decrit que 12 chemins sur
+    > ~108 routes reelles reparties sur 11 modules (`docs/04-api.md` §5 fait
+    > reference — catalogue 5.1 a 5.11 —, pas ce fichier). Modules absents du
+    > contrat : social, tournament, league, br (incluant `GET /api/br/config`),
+    > chat, realtime. Les reponses ne sont pas decrites par schemas. Il ne doit
+    > servir que d'apercu, jamais de contrat d'integration.
     >
     > Mode d'authentification REEL : cookie httpOnly `zoyd_auth` + garde
     > d'origine (CSRF). AUCUN token Bearer sur l'API REST — le bearer n'existe
@@ -98,7 +100,7 @@ paths:
       summary: Admin — credit a player wallet
       description: |
         Operation financiere reservee a l'admin avec 2FA verifiee
-        (`requireAdmin2fa`, server/routes/wallet.mjs:153) : 401 sans session,
+        (`requireAdmin2fa`, server/routes/wallet.mjs:156) : 401 sans session,
         403 ADMIN_REQUIRED hors role admin, 403 2FA_REQUIRED si la 2FA n'est
         pas activee ou pas fraichement verifiee. En production, les depots
         joueurs passent par /api/wallet/verify-fedapay (confirmation du

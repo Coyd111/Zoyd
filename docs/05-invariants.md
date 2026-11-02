@@ -11,7 +11,10 @@
 > infirmés (§7).
 
 Base : dépôt local `E:\web_app\projrt\Z.O.Y.D\Zoyd`, commit de travail `0328dc8`.
-Dernière vérification : lecture directe de `server/`, `src/`, `e2e/`, `supabase/`.
+Dépassé depuis : correctifs audit-5 (30-31/10/2026) et cycles CODM P1-P5
+(02/11/2026, code `a1f297a`). Vérification ciblée (audit-6) : 02/11/2026 à
+`a6634f5`. Les `fichier:ligne` restent ceux du moment cité — l'ancrage fiable
+est le nom du symbole.
 
 **Convention de lecture**
 
@@ -978,7 +981,7 @@ remplissent un duo en mode `duo`, un troisième de la même équipe est refusé.
 Le test vérifie que **`lockEntryFee` n'a pas été appelé** pour le joueur
 refusé, et que le salon (nombre de joueurs, pot) est inchangé.
 
-C'est précisément l'angle mort que le documente : `lockEntryFee` y est un
+C'est précisément l'angle mort documenté ici : `lockEntryFee` y est un
 `vi.fn()` sans effet, donc **aucun test ne pouvait voir un problème de solde**.
 L'assertion porte donc sur l'appel lui-même — ce que le mock permet, et ce
 que la lecture du solde ne permettait pas.
@@ -1207,7 +1210,7 @@ point par point** dans le code. Bilan :
 | « `perWinner` : l'UI affiche une part par joueur inférieure à la part réellement versée » | **Dépassé** (V5, V8 corrigés) : la part par gagnant divise par l'équipe gagnante et est désormais lue — `src/app/components/profile/ProfileView.tsx:358`, `src/lib/profileMetrics.ts:210`, `src/lib/communityInsights.ts:427`. |
 | « La commission d'arbitre en échec est une créance écrite mais jamais reprise, *contrairement* aux gains de tournoi et de ligue qui ont `pendingPayouts` + cron » | **Confirmé** à l'audit-1, y compris la comparaison avec les crons de tournoi (`server/cron.mjs:365-388`) et de ligue (`:396-419`). **Dépassé le 23/10/2026** : la reprise existe (`sweepPendingArbiterFees`, cron 30 min + boot, `retryPendingArbiterFees`) — rang 2 d'audit-2. |
 | Liste des balayages du rapport, §9 | **Incomplète à l'audit-1.** Le rapport s'interrompait sur cette section. La matrice complète est dans `docs/02-modele-metier.md` §9.1. **Dépassé le 25/10/2026** : le décompte « 12 branchés, 2 non branchés, 1 manuel » ne tient plus — les trois lignes restantes (commissions d'arbitre, règlements BR, salons BR jamais lancés) sont toutes branchées depuis ; la matrice compte désormais 16 balayages. |
-| Le rapport annonçait 7 moteurs | **Confirmé**, mais le neuvième et le dixième fichiers structurants (`server/persistence.mjs`, `server/mutex.mjs`) sont traite à part dans le rapport lui-même. |
+| Le rapport annonçait 7 moteurs | **Confirmé**, mais les deux autres fichiers structurants (`server/persistence.mjs`, `server/mutex.mjs`) sont traités à part dans le rapport lui-même. |
 
 ### Constats que le rapport n'avait pas vus
 
@@ -1267,7 +1270,7 @@ mêmes drapeaux `settled` et la même reprise que V10.
 ## 8. Ce qu'il faut faire, par ordre de risque
 
 Aucun constat ne reste ouvert : les douze constats cotés
-ELEVÉE/MOYENNE/FAIBLE (V1 à V12, plus le V14 des passes BR) sont corrigés,
+ÉLEVÉE/MOYENNE/FAIBLE (V1 à V12, plus le V14 des passes BR) sont corrigés,
 et les trois constats INFO ont été purgés le 25/10/2026 — le code mort
 `getMatchActivityForUser` (V13), le ternaire mort de `getStatusFromMatch`
 (V16) et la branche inatteignable `isInstantNoArbiter` (V15), suivis dans

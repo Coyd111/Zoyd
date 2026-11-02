@@ -844,24 +844,34 @@ démontrée**.
 
 ### 6.1 Le fait
 
-`pnpm build` produit **44 chunks `.js`** + 1 `.css` dans `dist/assets/`
-(45 fichiers). Le découpage est piloté par `manualChunks` dans
-`vite.config.ts:67-92` :
+`pnpm build` produit **56 chunks `.js`** + 1 `.css` dans `dist/assets/`
+(57 fichiers) au 02/11/2026 : **1** bundle d'entrée, **6** chunks `vendor-*`,
+**20** chunks de pages (les 20 `import()` paresseux de `src/app/routes.tsx`) et
+**29** chunks partagés. Le découpage est piloté par `codeSplitting.groups` — la
+découpe **native Rolldown** de Vite 8 (`vite.config.ts:89-128`) : `manualChunks`
+et `advancedChunks` y sont **dépréciés**, et l'expérience S-4 (audit prod du
+01/11/2026, commentaire `vite.config.ts:67-99`) a montré que la variante
+fonctionnelle était partiellement ignorée pour les modules partagés — le cœur
+de React, react-is et le shim `use-sync-external-store` restaient condensés
+dans `vendor-charts`, donc l'entrée embarquait statiquement ~380 modules de
+graphiques.
 
 | Chunk | Contenu | Ligne de `vite.config.ts` |
 |---|---|---|
-| `vendor-react` | react, react-dom, react-router | `:68-70` |
-| `vendor-state` | zustand | `:71-73` |
-| `vendor-motion` | motion / framer | `:74-77` |
-| `vendor-icons` | lucide-react | `:78-81` |
-| `vendor-utils` | clsx, tailwind-merge, react-is | `:86-88` |
-| `vendor-charts` | recharts | `:89-91` |
-| *(le reste)* | un chunk par page et par module partagé | — |
+| `vendor-utils` | clsx, tailwind-merge — **premier groupe** : clsx est une dépendance de recharts, il doit s'évaluer avant `vendor-charts` | `:97-99` |
+| `vendor-react` | react, react-dom, react-router + router/formulaire/helmet, scheduler | `:100-105` |
+| `vendor-state` | zustand + `use-sync-external-store` | `:106-111` |
+| `vendor-charts` | recharts et sa cour (d3-*, redux, immer, es-toolkit), sans react ni react-is | `:112-119` |
+| `vendor-motion` | motion / framer | `:120-123` |
+| `vendor-icons` | lucide-react | `:124-127` |
+| *(le reste)* | un chunk par page (20) et les modules partagés (29) | — |
 
-Le découpage est **délibéré**, et le commentaire de `vite.config.ts:80-85`
-l'explique : `clsx` est partagé entre l'entrée et recharts ; Rollup le rangeait
-dans `vendor-charts`, donc l'entrée importait statiquement 364 kB de graphiques
-pour disposer d'un utilitaire d'1 kB.
+Le découpage est **délibéré**, et les commentaires de `vite.config.ts:67-127`
+l'expliquent : les groupes sont traités **dans l'ordre**, et
+`includeDependenciesRecursively` (défaut vrai) fait absorber les dépendances
+des modules capturés — l'ordonnancement critique est `vendor-utils` avant
+`vendor-charts`, sinon clsx vole au groupe des graphiques et l'entrée redevient
+statiquement dépendante des graphiques (régression S-4 observée).
 
 ### 6.2 Le faux positif
 
@@ -927,8 +937,8 @@ périmé sans que la suite le remarque.
 | 1 — couverture | `pnpm test:coverage` | v8 → `text`/`json`/`html` |
 | 1 — un fichier | `npx vitest run server/admin-totp-guard.test.mjs` | ciblage |
 | 1 — par motif | `npx vitest run -t "arbitre"` | filtre sur le nom du test |
-| 2 — E2E API | `pnpm test:e2e --project=api` | 158 tests contre le serveur local |
-| 2 — E2E UI | `pnpm test:e2e --project=ui` | 48 tests Chromium contre Vite |
+| 2 — E2E API | `pnpm test:e2e --project=api` | le projet `api` (13 specs) contre le serveur local |
+| 2 — E2E UI | `pnpm test:e2e --project=ui` | le projet `ui` (10 specs, Chromium) contre Vite |
 | 2 — les deux | `pnpm test:e2e` | |
 | 2 — interface | `pnpm test:e2e:ui` | mode `--ui` de Playwright |
 | 3 — live API | `ZOYD_ALLOW_LIVE_TESTS=1 pnpm test:e2e:live` | **38 tests contre la production** |
@@ -938,6 +948,8 @@ périmé sans que la suite le remarque.
 | — typecheck | `pnpm typecheck` | `tsc --noEmit -p tsconfig.app.json` |
 | — lint | `pnpm lint` | ESLint `src server e2e`, `--max-warnings 0` |
 
+> Total constaté le 02/11/2026 : **232/232** (projets `api` + `ui`), sans projet live.
+>
 > Sous PowerShell, la variable d'environnement se pose **avant** la commande :
 > `$env:ZOYD_ALLOW_LIVE_TESTS='1'; pnpm test:e2e:live` puis
 > `Remove-Item Env:\ZOYD_ALLOW_LIVE_TESTS`.

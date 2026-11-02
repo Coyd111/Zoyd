@@ -14,8 +14,8 @@
  * Progression data (xp, level, trustScore) is reflected via updateUser() once
  * the server sends the updated user object.
  *
- * TODO: Once socket events are wired up in socketStore, add integration tests
- * that verify updateUser() is called when the server emits xp_update events.
+ * TODO: add integration tests covering the socketStore path — verify that a
+ * server-pushed user update ends up calling updateUser() here.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAuthStore, type User } from './authStore';

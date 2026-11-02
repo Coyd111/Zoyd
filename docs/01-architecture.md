@@ -11,7 +11,8 @@
 > détaillé champ par champ (→ `04-api.md`).
 
 **Source :** cartographie établie par lecture directe du code serveur.
-**Portée :** `server/` — 99 fichiers d'après `docs/00-INDEX.md:46`.
+**Portée :** `server/` — 130 fichiers au 02/11/2026 (base `a1f297a`; comptes tenus
+dans `docs/00-INDEX.md`, § 3).
 **Conventions de citation :** `fichier:ligne`. Les lignes sont celles du dépôt au
 moment de la rédaction.
 

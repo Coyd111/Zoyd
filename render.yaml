@@ -10,7 +10,7 @@ services:
         value: production
       # Un SEUL processus, explicitement.
       #
-      # `docs/02-argent.md` affirmait que `WEB_CONCURRENCY=1` garantissait ça
+      # `docs/audit/02-argent.md` affirmait que `WEB_CONCURRENCY=1` garantissait ça
       # « aujourd'hui » — alors que la variable n'était configurée NULLE PART.
       # La garantie ne tenait donc que par l'absence de `cluster` dans la
       # commande de démarrage : un concours de circonstances, pas une
@@ -45,7 +45,7 @@ services:
       # Identite du compte de moderation. Les valeurs par defaut du code
       # (admin@zoyd.com / ZOYD Control / admin-zoyd-control) sont publiques :
       # le depot est public, donc la cible du compte qui deplace de l'argent
-      # est devinable. A surcharger AVANT de deploiement, avec un mot de passe
+      # est devinable. A surcharger AVANT le deploiement, avec un mot de passe
       # fort et different de tout autre service.
       - key: ZOYD_ADMIN_EMAIL
         sync: false

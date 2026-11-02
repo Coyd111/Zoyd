@@ -1086,7 +1086,14 @@ les écritures par le même point d'entrée, soit assumer explicitement que
 l'état multi-instance est interdit et le garantir par un contrôle de
 déploiement.
 
-### 16.2 La colonne `revision` n'est pas dans le fichier de migration
+### 16.2 La colonne `revision` n'est pas dans le fichier de migration — **CORRIGÉ le 20/10/2026 (commit `b90264d`)**
+
+> `supabase/schema.sql:94-95` provisionne désormais
+> `ALTER TABLE app_users ADD COLUMN IF NOT EXISTS revision BIGINT NOT NULL
+> DEFAULT 0` et son index, verrouillés par `server/schema-coverage.test.mjs:121-126` ;
+> l'état réel de la base est exposé dans `/api/health` (`occRevisionColumn`,
+> § 7.4) — au 02/11/2026, la production annonce `true`. Le constat ci-dessous
+> documente l'état d'avant.
 
 `supabase/schema.sql:7-18` ne déclare pas `revision`, et le fichier ne contient
 **aucun** `ALTER TABLE app_users ADD COLUMN revision`
@@ -1097,21 +1104,25 @@ déploiement.
 serveur repasse en **écriture inconditionnelle** — la fenêtre multi-instance
 est ouverte, silencieusement.
 
-**À faire :** ajouter le `ALTER TABLE` à `schema.sql`. C'est trois lignes.
+*(Corrigé depuis : le `ALTER TABLE` est provisionné dans `schema.sql:94-95` ;
+verdict V9 de `docs/05-invariants.md` : le rapport antérieur était FAUX.)*
 
-### 16.3 La dégradation de l'OCC n'est pas visible dans `/api/health`
+### 16.3 La dégradation de l'OCC n'est pas visible dans `/api/health` — **CORRIGÉ le 20/10/2026 (commit `b90264d`)**
 
-`getHealthInfo` (`server/persistence.mjs:985-1038`) expose `stateTrusted`,
+> `getHealthInfo` expose désormais `occRevisionColumn` : `true` = colonne
+> présente, écritures conditionnelles ; `false` = absente, écritures
+> inconditionnelles ; `null` = pas encore sondé. Le constat ci-dessous documente
+> l'état d'avant ; la prod l'annonce `true` au 02/11/2026.
+
+`getHealthInfo` (`server/persistence.mjs:985-1038`) exposait `stateTrusted`,
 `integrity`, `loginLockoutPersisted`, `sanctionsPersisted`, mais **pas**
 l'état de la sonde `revisionSupporte`.
 
-→ **Conséquence :** le seul signal est un `log.warn` au premier usage
-(`server/persistence.mjs:444-449`). Un orchestrateur qui surveille `/api/health`
-ne voit pas la dégradation.
+→ **Conséquence (d'avant) :** le seul signal était un `log.warn` au premier
+usage (`server/persistence.mjs:444-449`). Un orchestrateur qui surveillait
+`/api/health` ne voyait pas la dégradation.
 
-**À faire :** exposer `occRevisionPersisted: boolean` dans `getHealthInfo`,
-comme `loginLockoutPersisted` — le précédent existe déjà
-(`server/persistence.mjs:1006-1013`).
+*(Corrigé : le champ exposé est `occRevisionColumn` — cf. § 7.4.)*
 
 ### 16.4 L'absence d'`Origin` et l'absence de `Content-Type` ne bloquent rien
 
@@ -1238,7 +1249,7 @@ elle n'aurait **aucune** CSP.
 |---|---|
 | Le canal d'envoi des codes actif en production (Resend / Brevo / SMTP / webhook) | **non vérifié** — l'ordre de précédence est dans `server/code-delivery.mjs`, mais aucune variable d'environnement de production n'est lisible depuis le dépôt |
 | La présence effective de la migration `login_attempts` en base | **non vérifiable localement** — l'état est exposé par `/api/health` (`loginLockoutPersisted`), pas par le code |
-| La présence effective de la colonne `app_users.revision` en base | **non vérifiable localement** — et pas exposée dans `/api/health` (§ 16.3) |
+| La présence effective de la colonne `app_users.revision` en base | **non vérifiable localement** — mais désormais exposée par `/api/health` (`occRevisionColumn`, § 16.3) ; au 02/11/2026 la production annonce `true` |
 | La chaîne de proxys devant Render | **non vérifié** (§ 16.5) |
 | L'existence d'un `Content-Security-Policy-Report-Only` ou d'un rapport de violation | **non vérifié** — aucun endpoint de reporting dans le dépôt |
 | La rotation du secret `service_role` Supabase | **hors périmètre du code** |
@@ -1255,7 +1266,8 @@ elle n'aurait **aucune** CSP.
    vérifier que le test échoue — c'est ce qui a fait le tri
    (`docs/00-INDEX.md:112-127`).
 4. **Une contre-mesure qui se dégrade doit être visible.** Le rate limiter
-   s'est vu confirmer par un test dédié ; l'OCC, lui, se dégrade sans
-   signal dans `/api/health` (§ 16.3).
+   s'est vu confirmer par un test dédié ; l'OCC, elle, s'est dégradée des
+   semaines sans signal dans `/api/health` (§ 16.3) — corrigée depuis :
+   la sonde est exposée (`occRevisionColumn`).
 5. **Une liste de menaces couvertes sans liste de menaces ouvertes est un
    rapport de complaisance.** Les deux sections sont ici.

@@ -5,15 +5,15 @@
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    FRONTEND (Vercel)                     │
-│  React 18 + TypeScript + Vite 6 + Tailwind v4           │
-│  Zustand (13 stores) + React Router v7                  │
+│  React 19 + TypeScript + Vite 8 + Tailwind v4            │
+│  Zustand (12 stores) + React Router v8                  │
 │  Socket.IO client + Service Worker (PWA)                │
 └──────────────────────┬──────────────────────────────────┘
                        │ REST API + WebSocket
 ┌──────────────────────▼──────────────────────────────────┐
 │                   BACKEND (Render)                       │
 │  Node.js ESM + native http + Socket.IO 4.8              │
-│  7 modules internes (http, rate-limit, push, etc.)      │
+│  Modules support + 6 engines + 11 modules routes        │
 │  Cron jobs + Match automation                           │
 └──────────────────────┬──────────────────────────────────┘
                        │
@@ -29,16 +29,16 @@
 
 | Couche | Technologie | Rôle |
 |--------|-------------|------|
-| Frontend | React 18 + TypeScript | UI SPA |
-| Build | Vite 6.3 | Dev server + build |
+| Frontend | React 19 + TypeScript | UI SPA |
+| Build | Vite 8.3.5 (Rolldown) | Dev server + build |
 | Style | Tailwind CSS v4 | Utility-first CSS |
-| State | Zustand 4 | Gestion d'état |
-| Routing | React Router v7 | Navigation SPA |
+| State | Zustand 5 | Gestion d'état |
+| Routing | React Router v8 | Navigation SPA |
 | API Client | fetch + custom apiClient | Communication REST |
 | Realtime | Socket.IO 4.8 | Événements temps réel |
 | Backend | Node.js ESM (http natif) | Serveur REST + WebSocket |
 | Database | Supabase (PostgreSQL) | Persistance |
-| Auth | Custom JWT (scrypt hash) | Authentification |
+| Auth | Cookies de session (`zoyd_auth`, httpOnly) | Authentification — seul le SHA-256 du jeton est stocké ; scrypt pour les mots de passe |
 | Paiement | FedaPay | Mobile Money |
 | Push | web-push + VAPID | Notifications navigateur |
 | Deploy FE | Vercel | Frontend statique |
@@ -66,7 +66,8 @@ Multiplayer Gaming Platform/
 │   ├── features/
 │   │   ├── match/               # MatchDetailPage, MatchChat
 │   │   ├── tournament/          # TournoisPage, TournamentBracketPage
-│   │   └── league/              # LeaguePage, LeagueSeasonPage
+│   │   ├── league/              # LeaguePage, LeagueSeasonPage
+│   │   └── br/                  # BrPage, BrLobbyDetailPage, panels lobby + arbitre
 │   ├── lib/                     # Utilities (competition, utils, etc.)
 │   └── styles/                  # CSS global
 ├── server/
@@ -84,6 +85,8 @@ Multiplayer Gaming Platform/
 │   ├── league-engine.mjs        # Ligues + saisons
 │   ├── wallet-engine.mjs        # Wallet + transactions
 │   ├── payment-engine.mjs       # FedaPay integration
+│   ├── br-engine.mjs            # Battle Royale (variantes, salons, arbitrage)
+│   ├── routes/                  # 11 modules de routing HTTP
 │   ├── cron.mjs                 # Tâches planifiées
 │   └── *.test.mjs               # Tests unitaires
 └── public/
@@ -113,7 +116,13 @@ Engines métier (logique pure)
 ├── tournament-engine.mjs   # Tournois, bracket, inscriptions
 ├── league-engine.mjs       # Saisons, qualifications, Score Z
 ├── wallet-engine.mjs       # Dépôts, retraits, lock/unlock
-└── payment-engine.mjs      # Vérification FedaPay
+├── payment-engine.mjs      # Vérification FedaPay
+└── br-engine.mjs           # Battle Royale (variantes Classic/Blitz/…)
+
+Routes HTTP
+└── routes/*.mjs            # 11 modules : public, auth, wallet, match,
+                             #   tournament, league, br, social, chat,
+                             #   admin, realtime
 
 Persistance
 └── persistence.mjs         # Lecture/écriture Supabase (scrypt auth)
@@ -136,58 +145,99 @@ Client → HTTP Request
 
 ```
 Client → Socket.IO connect
+  → cookie de session vérifié (SameSite=None : front Vercel → API Render)
   → channel-presence.mjs (trackSocketChannel)
-  → Événements: match:join, match:leave, chat:message, etc.
-  → broadcastStateSnapshot (via push-notifications.mjs)
+  → le client (socketConnectionStore) installe ses 13 handlers
+    et hydrate les stores métier
+
+Événements réellement émis par le serveur :
+  server:hello · state:matches · state:tournaments · wallet:update
+  chat:channel · chat:message · chat:read
+  presence:snapshot · typing:snapshot · notification:deliver
+  error · server:error
 ```
 
 ## Architecture Frontend
 
 ### State Management (Zustand)
 
-| Store | Persist | Rôle |
-|-------|---------|------|
-| authStore | localStorage | Session utilisateur |
-| walletStore | localStorage | Solde + transactions |
-| matchStore | - | Matchs en cours |
-| tournamentStore | - | Tournois |
-| leagueStore | - | Ligues |
-| socketStore | - | Connexion Socket.IO |
-| chatStore | - | Messages |
-| friendsStore | localStorage | Amis |
-| notificationStore | localStorage | Notifications |
-| trustScoreStore | - | Score de confiance |
-| toastStore | - | Toasts temporaires |
+13 fichiers de store (`src/app/stores/`), soit **12 petites stores logiques** +
+1 alias de compatibilité. **Aucun ne persiste** : les données vivent côté
+serveur, la session vit dans un cookie httpOnly (`authStore.ts:8`),
+`socketConnectionStore` hydrate les autres stores à la reconnexion.
+
+| Store | Rôle |
+|-------|------|
+| authStore | Session utilisateur (cookie-only, aucune donnée en localStorage) |
+| socketConnectionStore | Chef d'orchestre temps réel : connexion, 13 handlers, bootstrap, resynchronisation |
+| socketStore | **Alias de compatibilité** : ré-exporte `useSocketConnectionStore` |
+| matchStore | Matchs en cours |
+| tournamentStore | Tournois |
+| leagueStore | Ligues |
+| walletStore | Solde + transactions |
+| chatStore | Messages de chat |
+| friendsStore | Amis |
+| notificationStore | Notifications |
+| presenceStore | Présence par canal, saisie en cours, canaux vus |
+| trustScoreStore | Score de confiance |
+| toastStore | Toasts temporaires |
 
 ### Routing
 
+35 entrées déclarées dans `src/app/routes.tsx` (dont le layout `/auth` et
+2 redirections de compatibilité accentuées). Pages métier sous `AppLayout`,
+légales publiques hors layout :
+
 ```
-/                    → RootIndexPage (Landing si non-auth, Dashboard si auth)
-/auth/login          → LoginPage
-/auth/register       → RegisterPage
-/mode                → ModeSelectionPage (MJ vs BR)
-/mj                  → HubMJPage (AppLayout)
-/mj/creer            → CreateMatchPage
-/mj/tournois         → TournoisPage
-/wallet              → WalletPage
-/classements         → ClassementsPage
-/chat                → ChatPage
-/profil              → ProfilPage
-/br-league           → LeaguePage
-/admin               → AdminDashboardPage (admin only)
+/                      → RootIndexPage (landing non auth / dashboard auth)
+/auth/login            → LoginPage (layout AuthLayout)
+/auth/register         → RegisterPage
+/auth/activate         → ActivatePage
+/auth/forgot           → ForgotPasswordPage
+/mode                  → ModeSelectionPage (MJ vs BR)
+/conditions            → ConditionsPage
+/reglement-litiges     → LitigesPage
+/anti-fraude           → AntiFraudePage
+/confidentialite       → ConfidentialitePage
+/mentions              → MentionsPage
+/jeu-responsable       → JeuResponsablePage
+/mj                    → HubMJPage (layout AppLayout)
+/mj/creer              → CreateMatchPage
+/mj/match/:id          → MatchDetailPage (salon live)
+/mj/tournois           → TournoisPage
+/mj/tournois/creer     → CreateTournamentPage
+/mj/créer              → redirection /mj/creer (compat URL accentuée)
+/mj/tournois/créer     → redirection /mj/tournois/creer (compat)
+/mj/tournois/:id       → TournamentBracketPage
+/wallet                → WalletPage
+/earnings              → EarningsDashboard
+/classements           → ClassementsGateway : anonyme → PublicClassementsPage,
+                         authentifié → ClassementsPage dans AppLayout
+/chat                  → ChatPage
+/profil                → ProfilPage
+/profil/:id            → PublicProfilPage
+/parametres            → ParametresPage
+/br-league             → LeaguePage (ligues BR, 5 jours, top 40)
+/br-league/:seasonId   → LeagueSeasonPage
+/br                    → BrPage (Battle Royale : salon unique, 1 match)
+/br/:lobbyId           → BrLobbyDetailPage
+/infos                 → LeaksPage
+/admin                 → AdminDashboardPage (AppLayout requireAdmin)
+*                      → NotFoundPage (sans rewrite catch-all Vercel :
+                         la 404 servie est celle de Vercel)
 ```
 
 ## Sécurité
 
 | Mesure | Implémentation |
 |--------|---------------|
-| Auth | JWT custom (scrypt 16-byte salt, 64-byte digest) |
-| Token storage | localStorage (client) + HttpOnly cookie (serveur) |
+| Auth | Cookie de session `zoyd_auth` httpOnly — jeton aléatoire, seul le SHA-256 est stocké ; scrypt (16-byte salt, 64-byte digest) pour les mots de passe |
+| Token storage | Cookie httpOnly uniquement — le store d'auth ne garde rien en localStorage (`authStore.ts:8`) ; le jeton ne réapparaît dans un corps de réponse qu'avec `ALLOW_DEBUG_CODES=true` (jamais en prod) |
 | Rate limiting | IP-based, 60 req/min par défaut |
 | CSP | Headers HTTP (Vercel) + meta tag |
 | Admin auth | `requireAdmin` + `requireAdmin2fa` (TOTP) |
 | Input validation | Zod (client) + validation serveur dans engines |
-| CORS | `ALLOWED_ORIGINS` whitelist |
+| CORS | `ZOYD_ALLOWED_ORIGINS` (CSV) + 3 origines de prod codées en dur (`http-utils.mjs:99-104`) ; `ALLOWED_ORIGINS` n'est jamais lue |
 | XSS | Pas de `dangerouslySetInnerHTML`, texte échappé |
 | Passwords | scrypt (pas bcrypt), jamais en clair |
 

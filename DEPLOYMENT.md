@@ -190,16 +190,22 @@ Le fichier `render.yaml` définit automatiquement :
 ## Database (Supabase)
 
 1. Créer un projet Supabase
-2. Exécuter les migrations SQL (tables `app_users`, `app_state`, etc.)
+2. Exécuter les migrations SQL : les 18 tables de `supabase/schema.sql`
+   (`app_users`, `state_snapshots`, les `chat_*`, les `friend_*`,
+   `user_notifications`, `push_subscriptions`, …) — liste complète dans
+   `docs/07-exploitation.md`, § 4.1
 3. Configurer les variables d'environnement
-4. Les données sont stockées dans `app_state` (JSONB) via `sbUpsert`
+4. Les données sont stockées dans `app_users` (comptes, `payload` JSONB) et
+   `state_snapshots` (état des matchs / tournois / ligues / chat, `payload`
+   JSONB) via `sbUpsert` — se référer à `docs/07-exploitation.md`, § 4.2.
 
 ### Tables principales
 
 - `app_users` : Profils utilisateurs (UUID, pseudo, email, stats, wallet)
-- `app_state` : État applicatif (matches, tournaments, leagues, chat)
-- `app_notifications` : Notifications push
-- `app_push_subscriptions` : Abonnements web-push
+- `state_snapshots` : État applicatif (matches, tournaments, leagues, chat) —
+  `kind` + `entity_id` + `payload` JSONB
+- `user_notifications` : Notifications in-app
+- `push_subscriptions` : Abonnements web-push
 
 ### Migrations à exécuter en production
 
@@ -389,7 +395,8 @@ Le backend utilise un logger structuré :
 ### Endpoints de santé
 
 - `GET /api/health` : État du serveur
-- `GET /api/metrics` : Métriques Prometheus
+- `GET /metrics` : Métriques Prometheus — **hors du préfixe `/api`** et
+  protégées par `METRICS_TOKEN` (sans lui : `403 METRICS_DISABLED`)
 
 ### Côté frontend
 
@@ -419,7 +426,8 @@ Supabase supporte les backups automatiques. Restore via le dashboard Supabase.
 $env:CI="true"; node --experimental-vm-modules node_modules/vitest/vitest.mjs run --reporter=verbose --no-file-parallelism --exclude='e2e/**'
 ```
 
-Plus de 1 000 tests unitaires (vitest, 97 fichiers de test) couvrant :
+946 tests unitaires passés + 2 sautés au 02/11/2026 (vitest, portée `server/` :
+90 fichiers de test ; `src/` en ajoute 20, soit 110 fichiers) couvrant :
 - Persistance (hashing, normalisation)
 - Métriques
 - Match engine (XP, Elo, résultats)
@@ -442,6 +450,6 @@ npx playwright test
 | `pnpm install` échoue sur exFAT | `CI=true pnpm install --config.node-linker=hoisted` |
 | Build Vite timeout | Augmenter le timeout (300s) |
 | Backend Render dort | Premier appel = ~30s de warmup |
-| SW cache stale | Bump de la version dans `sw.js` (`CACHE_NAME` n'existe plus) |
+| SW cache stale | Bump de la version dans `sw.js` — la constante `CACHE_NAME = 'zoyd-v6'` existe toujours : changer sa valeur invalide l'ancien cache |
 | Token expiré | Le client redirige vers `/auth/login` automatiquement |
 | CORS error | Vérifier **`ZOYD_ALLOWED_ORIGINS`** (pas `ALLOWED_ORIGINS`, que le code ne lit pas) |

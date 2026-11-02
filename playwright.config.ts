@@ -43,7 +43,8 @@ export default defineConfig({
         // On remet explicitement les origines de dev et les domaines de prod.
         ZOYD_ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,https://zoyd.vercel.app,https://zoyd.africa,https://www.zoyd.africa',
         // requis au boot (seed du compte de contrôle) et doit passer la
-        // politique de mot de passe fort, sinon le serveur ne démarre pas
+        // politique de mot de passe fort ; absente ou faible, le serveur
+        // journalise [FATAL] et DÉMARRE QUAND MÊME — sans aucun admin
         ZOYD_ADMIN_PASSWORD: process.env.ZOYD_ADMIN_PASSWORD || 'ZoydE2E!Admin2026',
         // La creation d'un salon BR impose 24 a 48 h d'avance, donc aucun
         // salon cree par l'API n'est demarrable immediatement. Sans cette

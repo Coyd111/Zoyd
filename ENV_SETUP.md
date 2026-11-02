@@ -48,7 +48,7 @@ nouveau déploiement frontend.
 | `RESEND_API_KEY` | Canal mail recommandé | Priorité Resend → Brevo → SMTP (`code-delivery.mjs`) — Render gratuit bloque SMTP (ports 25/465/587) |
 | `BREVO_API_KEY` | Canal mail alternatif | |
 | `EMAIL_FROM` | Expéditeur affiché | Doit être vérifié chez le provider |
-| `METRICS_TOKEN` | Protège `/api/metrics` (Bearer) | **Obligatoire en prod** : sans lui, la route répond 403 `METRICS_DISABLED` (`routes/public.mjs`) |
+| `METRICS_TOKEN` | Protège `/metrics` (Bearer) | **Obligatoire en prod** : sans lui, la route répond 403 `METRICS_DISABLED` ; chemin **hors du préfixe `/api`** (`routes/public.mjs`) |
 
 ### À NE PAS définir
 

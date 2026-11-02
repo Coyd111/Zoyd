@@ -68,11 +68,11 @@ Zoyd/
 
 ### Documents maintenus (racine du dépôt)
 
-| Fichier | Dernier commit | Sujet |
+| Fichier | Dernière passe | Sujet |
 |---|---|---|
-| `PROJECT_README.md` | 2026-10-18 | Présentation et design system |
-| `DEPLOYMENT.md` | 2026-10-15 | Déploiement et exploitation |
-| `ARCHITECTURE.md` | 2026-08-27 | Schémas d'architecture |
+| `PROJECT_README.md` | 2026-11-02 (audit-6) | Présentation, stack, parcours, design system |
+| `DEPLOYMENT.md` | 2026-11-02 (audit-6) | Déploiement et exploitation (variables, migrations, runbook) |
+| `ARCHITECTURE.md` | 2026-11-02 (audit-6) | Vue d'ensemble en schémas |
 
 ### ✅ Doublons périmés — supprimés
 
@@ -130,7 +130,7 @@ L'étape 5 a déjà payé : `server/admin-totp-guard.test.mjs` a été gardé pa
 
 ## 7. La documentation
 
-Neuf documents, ~8 900 lignes, tous sourcés par `fichier:ligne`. Ce qui suit n'est
+Neuf documents, ~9 150 lignes, tous sourcés par `fichier:ligne`. Ce qui suit n'est
 pas une description de ce que le projet **devrait** faire : c'est ce qu'il **fait**,
 au moment de l'écriture.
 
@@ -146,8 +146,11 @@ au moment de l'écriture.
 | [`08-frontend.md`](08-frontend.md) | Routes, stores, client temps réel, design system, SEO, les 4 bugs corrigés |
 
 Le code porte aussi un **en-tête de commentaire** en tête de chaque fichier
-significatif : 38 fichiers `server/`, 152 fichiers `src/`. Chacun indique le rôle,
-les invariants et les pièges, avec renvoi vers le document détaillé.
+significatif : 38 des 40 fichiers `server/` (les deux modules les plus récents,
+`match-status.mjs` et `commission-stats.mjs`, en sont exemptés) et 141 des 164
+fichiers `src/` (exempts : primitives `app/components/ui/` et utilitaires
+courts). Chacun indique le rôle, les invariants et les pièges, avec renvoi vers
+le document détaillé.
 
 ---
 
@@ -205,7 +208,14 @@ match : l'auteur connaissait le motif, il l'avait oublié 20 lignes plus bas.
 
 ## 9. État au moment de l'écriture
 
-- Production Render : saine (`ok=true`, `integrity.ok=true`)
-- Front Vercel : branché sur `principale`, déploiement automatique **fonctionnel**
-- Validation : 1035 unitaires (94 fichiers) · 206 E2E (158 API + 48 UI) · TSC 0 · lint 0
-- FedaPay : **parqué**, en attente de la spécification de signature webhook
+- Production Render : saine au 02/11/2026 — `/api/health` répond `ok=true`,
+  `stateTrusted=true`, `integrity.ok=true`, `occRevisionColumn=true` (le DDL OCC
+  est appliqué en base), `deployedCommitShort=a6634f5` sur `main`
+- Front Vercel : déploiement automatique **fonctionnel** — la branche configurée
+  dans le tableau de bord Vercel n'est **pas vérifiable depuis le dépôt**
+  (l'API Render, elle, tourne bien sur `main`)
+- Validation 02/11/2026 : vitest 946 passés + 2 sautés (portée `server/`, 90
+  fichiers de test) · E2E 232/232 (projets `api` + `ui`, sans projet live) ·
+  TSC 0 · ESLint 0 · build Vite 8,37 s
+- FedaPay : aucun webhook de payout dans le code — les retraits vivent en
+  `pending_review` + réconciliation (`server/wallet-engine.mjs`), suivi manuel

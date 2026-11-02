@@ -17,6 +17,11 @@
  * paie. L'ecran doit montrer l'etat du paiement, pas supposer qu'il a eu
  * lieu.
  *
+ * INVARIANT (hierarchie, arbitrage 2026-11-02) : cette saison appartient a
+ * la BR League, EVENEMENT hebdomadaire differe — distinct des salons BR
+ * courants (/br, le mode ouvert). L'en-tete porte l'etiquette
+ * « evenement hebdomadaire ».
+ *
  * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -327,6 +332,12 @@ const LeagueSeasonPage = () => {
                 <div className="w-8 h-8 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
                   <Zap className="w-4 h-4" />
                 </div>
+                {/* Hierarchie 2026-11-02 : la ligue = EVENEMENT hebdomadaire;
+                    l'etiquette accompagne le badge de statut (masquee sur tres
+                    petit ecran, le badge seul suffit alors). */}
+                <span className="hidden md:inline text-[10px] font-mono font-black tracking-[0.3em] text-zoyd-yellow uppercase italic">
+                  Événement hebdomadaire
+                </span>
                 <span className={`text-[10px] font-mono font-bold tracking-wider uppercase px-2.5 py-1 border ${badge.color}`}>
                   {badge.label}
                 </span>

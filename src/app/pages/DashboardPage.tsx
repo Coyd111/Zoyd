@@ -53,7 +53,9 @@ import { ACTIVE_STATUSES } from '../lib/matchStatus';
 const quickActions = [
   { label: 'MJ Hub', desc: 'Matchs & wagers', icon: Swords, path: '/mj', color: 'text-zoyd-blue' },
   { label: 'Tournois', desc: 'Competitions', icon: Trophy, path: '/mj/tournois', color: 'text-zoyd-yellow' },
-  { label: 'BR League', desc: 'Battle Royale', icon: Zap, path: '/br-league', color: 'text-zoyd-yellow' },
+  // Arbitrage 2026-11-02 : la carte lance le mode OUVERT (salons, /br) ;
+  // la ligue, evenement differe, reste dans la navigation laterale.
+  { label: 'BR Salons', desc: 'Battle Royale', icon: Zap, path: '/br', color: 'text-zoyd-yellow' },
   { label: 'Classements', desc: 'Leaderboard', icon: BarChart3, path: '/classements', color: 'text-zoyd-blue' },
 ];
 

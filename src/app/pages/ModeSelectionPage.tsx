@@ -1,9 +1,16 @@
 /**
- * ModeSelectionPage - choix du mode de jeu (MJ, BR, BR League).
+ * ModeSelectionPage - choix du mode de jeu (MJ, BR salons, BR League).
  *
  * Ecran de transition apres connexion : le joueur choisit son mode de jeu
  * avant d'arriver sur son tableau de bord.
  *
+ * INVARIANT (hierarchie produit, arbitrage 2026-11-02) : le produit courant
+ * est MJ + BR salons. Les DEUX grandes cartes vendent donc des modes
+ * OUVERTS : Multijoueur et Battle Royale (salons). La BR League est un
+ * EVENEMENT hebdomadaire DIFFERE : elle vit sous la grille en bande
+ * secondaire, etiquetee comme evenement — jamais presentee comme un
+ * troisieme mode. Ne pas re-promouvoir la ligue en grande carte sans
+ * decision produit contraire.
  * INVARIANT : la destination finale se lit dans le store d'auth. Un choix
  * de mode ne doit pas etre memorise cote serveur par ce composant.
  * PIEGE : cette page vit hors AppLayout : pas de socket, pas de chrome. Un
@@ -29,15 +36,17 @@ const ModeSelectionPage: React.FC = () => {
     navigate('/mj');
   };
 
+  // La grosse carte BR vend le mode OUVERT : les salons (/br).
   const handleBRClick = () => {
-    navigate('/br-league');
+    navigate('/br');
   };
 
-  // P13 C1 (audit-3) : le salon BR etait absent de cet ecran — le seul bouton
-  // BR menait a /br-league. Deux modes BR distincts : les salons ouverts (/br)
-  // et la ligue hebdomadaire (/br-league).
-  const handleBrSalonClick = () => {
-    navigate('/br');
+  // Arbitrage 2026-11-02 : la Ligue est un EVENEMENT (hebdo, differe) — elle
+  // descend sous la grille. P13 C1 (audit-3) l'avait montee sur cet ecran en
+  // carte principale ; ce remaniement garde les deux chemins mais INVERSE la
+  // vitrine : salons en grande carte, ligue en bande secondaire.
+  const handleLeagueClick = () => {
+    navigate('/br-league');
   };
 
   return (
@@ -148,7 +157,7 @@ const ModeSelectionPage: React.FC = () => {
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-10">
                   <Badge variant="yellow">DISPONIBLE</Badge>
                   <div className="border border-white/10 bg-black/35 px-3 py-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zoyd-yellow text-center">
-                    BR League
+                    Salons ouverts
                   </div>
                 </div>
 
@@ -161,17 +170,18 @@ const ModeSelectionPage: React.FC = () => {
                     Battle Royale
                   </h2>
                   <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
-                    500 joueurs, 5 jours de qualification, 1 finale. Le meilleur joueur de la semaine remporte le pot.
+                    Salons ouverts, inscriptions directes : crée ton salon — tu en seras l&apos;arbitre — ou rejoins un
+                    salon en préparation. Ton pass est remboursable si tu te désinscris avant le lancement.
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
-                    <InfoChip label="Format" value="500 joueurs" />
-                    <InfoChip label="Entree" value="50 ZC" />
-                    <InfoChip label="Cycle" value="Hebdomadaire" className="col-span-2 sm:col-span-1" />
+                    <InfoChip label="Salon" value="À la demande" />
+                    <InfoChip label="Pass" value="Remboursable" />
+                    <InfoChip label="Création" value="Ouverte à tous" className="col-span-2 sm:col-span-1" />
                   </div>
 
                   <div className="inline-flex items-center justify-center w-full gap-3 bg-zoyd-yellow text-black px-6 py-4 touch-target font-display font-black uppercase tracking-[0.22em] text-xs italic group-hover:bg-white transition-colors">
-                    Entrer en BR League
+                    Entrer en Battle Royale
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
@@ -180,16 +190,19 @@ const ModeSelectionPage: React.FC = () => {
           </motion.button>
         </div>
 
-        {/* P13 C1 (audit-3) : le salon BR n'etait atteignable depuis aucun
-            chemin standard (seule la Sidebar desktop l'exposait, et les
-            retours internes BR). Carte compacte, DISTINCTE de la carte
-            BR League ci-dessus : /br = salons ouverts, /br-league = ligue
-            hebdomadaire. A7 : le volontariat couvre les salons BR. */}
+        {/* Hierarchie produit (arbitrage 2026-11-02) : les deux grandes cartes
+            vendent les modes OUVERTS (MJ, salons BR). La BR League est un
+            EVENEMENT hebdomadaire differe — elle vit ici en bande secondaire,
+            etiquetee comme telle. P13 C1 (audit-3) l'avait montee sur cet
+            ecran en carte principale ; la decision inverse la vitrine sans
+            retirer le chemin : /br-league reste rejouable depuis la bande.
+            La regle pass remboursable avant lancement reste affichee sur les
+            salons (carte BR ci-dessus), pas dupliquee ici. */}
         <motion.button
           initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
           animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
           transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.16 }}
-          onClick={handleBrSalonClick}
+          onClick={handleLeagueClick}
           className="group w-full mt-6 md:mt-8 text-left"
         >
           <div className="border border-white/8 bg-zoyd-surface/20 hover:border-zoyd-yellow transition-all duration-300 px-5 md:px-6 py-4 md:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -197,16 +210,18 @@ const ModeSelectionPage: React.FC = () => {
               <Zap className="w-5 h-5 text-zoyd-yellow shrink-0 mt-1" />
               <div>
                 <div className="flex items-center gap-3 mb-1 flex-wrap">
-                  <span className="text-base sm:text-lg font-display font-black uppercase italic text-white">Battle Royale</span>
-                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">Salons</span>
+                  <span className="text-base sm:text-lg font-display font-black uppercase italic text-white">BR League</span>
+                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">Événement hebdomadaire</span>
+                  <span className="border border-white/10 bg-white/5 text-white/70 px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">Ouverture différée</span>
                 </div>
                 <div className="text-sm text-white/60">
-                  Inscription directe dans les salons ouverts. Le pass est remboursable avant le lancement.
+                  500 joueurs, 5 jours de qualification, 1 finale. Les saisons démarrent après l&apos;ouverture
+                  publique — les salons Battle Royale ci-dessus, eux, sont ouverts dès maintenant.
                 </div>
               </div>
             </div>
-            <div className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-zoyd-yellow shrink-0">
-              Entrer dans les salons
+            <div className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-white/70 shrink-0">
+              Voir la ligue
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>

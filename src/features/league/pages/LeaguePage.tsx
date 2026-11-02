@@ -13,6 +13,11 @@
  * PIEGE : la creation et le lancement d'une qualifite sont des actions
  * admin. Le bouton peut etre masque, mais la barriere reste serveur.
  *
+ * INVARIANT (hierarchie, arbitrage 2026-11-02) : BR League est un EVENEMENT
+ * hebdomadaire DIFFERE (saisons lancees apres l'ouverture publique), PAS le
+ * mode BR courant — celui-ci, ce sont les salons (/br). L'UI de cet ecran
+ * porte donc l'etiquette « evenement hebdomadaire » partout.
+ *
  * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React, { useEffect, useMemo, useState } from 'react';
@@ -306,7 +311,7 @@ const LeaguePage: React.FC = () => {
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
       <SEOHead
         title="Battle Royale League — ZOYD"
-        description="Classement et saisons de la ligue BR ZOYD."
+        description="Événement hebdomadaire Battle Royale : saisons de la ligue BR ZOYD."
         path="/br-league"
       />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
@@ -319,7 +324,7 @@ const LeaguePage: React.FC = () => {
                 <Zap className="w-4 h-4 md:w-5 md:h-5" aria-hidden="true" />
               </div>
               <span className="text-[10px] md:text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
-                Battle Royale League
+                Événement hebdomadaire
               </span>
             </div>
             <h1 className="text-xl sm:text-3xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight leading-[0.9] mb-3 md:mb-5">
@@ -328,6 +333,9 @@ const LeaguePage: React.FC = () => {
             </h1>
             <p className="text-xs md:text-sm text-white/75 max-w-lg leading-relaxed">
               500 joueurs. 5 jours de qualification. 1 finale. Le meilleur joueur de la semaine remporte le pot.
+            </p>
+            <p className="text-xs md:text-sm text-white/55 max-w-lg leading-relaxed mt-2">
+              Un cycle par semaine — les saisons démarrent après l&apos;ouverture publique de la plateforme.
             </p>
           </div>
 

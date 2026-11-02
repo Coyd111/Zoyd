@@ -85,10 +85,12 @@ export const BR_MAPS = {
   isolated: { id: 'isolated', label: 'Isolated', maxPlayers: 100, vehicles: true },
   blackout: { id: 'blackout', label: 'Blackout', maxPlayers: 100, vehicles: true },
   // Krai = 40 joueurs (Resurgence, format Alcatraz) - corrige le 02/11/2026.
-  krai: { id: 'krai', label: 'Krai', maxPlayers: 40, vehicles: true },
+  // hint : info utile affichee au createur (formulaire) et a l'arbitre
+  // (detail du salon) - uniquement des faits sources, rien d'invente.
+  krai: { id: 'krai', label: 'Krai', maxPlayers: 40, vehicles: true, hint: 'Resurgence format Alcatraz : redeploy limite, cap 40 joueurs' },
   // Cap 40 plausible (heritage Alcatraz) mais encore NON CONFIRME dans les
   // sources : aucune liste officielle ne fige encore le nombre de joueurs.
-  rebirth_island: { id: 'rebirth_island', label: 'Rebirth Island', maxPlayers: 40, vehicles: false },
+  rebirth_island: { id: 'rebirth_island', label: 'Rebirth Island', maxPlayers: 40, vehicles: false, hint: 'Resurgence S4 2026 : redeploy illimite tant que la squad vit - cap 40 NON CONFIRME' },
 };
 export const BR_MAP_IDS = Object.keys(BR_MAPS);
 
@@ -115,6 +117,29 @@ export const BR_RANKING_MODES = {
   kills: { id: 'kills', label: 'Kills uniquement' },
 };
 export const BR_RANKING_MODE_IDS = Object.keys(BR_RANKING_MODES);
+
+/**
+ * Variantes de regles IN-GAME du salon : l'arbitre regle ce menu DANS la
+ * salle privee CODM au lancement (recherche CODM du 02/11/2026 - fandom,
+ * liste "BR practice" : Classic, Blitz, Sniper Challenge, Resurgence,
+ * Warfare, Tank Battle, Solid Gold...). Perimetre arbitre du 02/11/2026 :
+ * ZOYD ne retient que les quatre jouables en wager (Classic, Blitz, Sniper
+ * Challenge, Resurgence).
+ * PIEGE : le variant est un CONTRAT AFFICHE, pas un comportement du moteur :
+ * le plafond de joueurs reste propre a la carte (Krai 40) et le reglement
+ * n'en depend pas. C'est l'info a regler dans la salle CODM, capture
+ * d'ecran a l'appui.
+ * `detail` : uniquement les faits sources (snipers+pistoles 10 min ;
+ * redeploy illimite tant que la squad vit). Rien a sourcer au-dela du
+ * libelle pour Classic et Blitz : pas de detail invente.
+ */
+export const BR_VARIANTS = {
+  classic: { id: 'classic', label: 'Classic' },
+  blitz: { id: 'blitz', label: 'Blitz' },
+  sniper: { id: 'sniper', label: 'Sniper Challenge', detail: 'Snipers + pistoles, partie de 10 min' },
+  resurgence: { id: 'resurgence', label: 'Resurgence', detail: 'Redeploy illimite tant que la squad vit (Rebirth Island + Krai, S4 2026)' },
+};
+export const BR_VARIANT_IDS = Object.keys(BR_VARIANTS);
 
 /**
  * Repartition par defaut d'un salon. SOMME EXACTEMENT 100 %
@@ -197,6 +222,10 @@ export const normalizeBrLobby = (lobby) => {
     maxPlayers,
     entryFee: roundAmount(Number(lobby?.entryFee) || 0),
     rankingMode: BR_RANKING_MODES[lobby?.rankingMode] ? lobby.rankingMode : 'survie_kills',
+    // Variant connu seulement : un champ decharge est NEUTRALISE, PAS
+    // remplace - un vieux salon (avant le champ) n'a PAS choisi de variante,
+    // en fabriquer un afficherait une regle a laquelle personne n'a consenti.
+    variant: BR_VARIANTS[lobby?.variant] ? lobby.variant : undefined,
     payout: {
       first: Number(lobby?.payout?.first ?? BR_DEFAULT_PAYOUT.first),
       second: Number(lobby?.payout?.second ?? BR_DEFAULT_PAYOUT.second),
@@ -327,6 +356,18 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
     );
   }
 
+  // Le variant est enregistre a la creation : il est ensuite AFFICHE au
+  // createur et a l'arbitre, qui le regle dans la salle CODM. Absent =
+  // Classic. Un variant inconnu est refuse a la source : un salon porte
+  // une regle qui existe reellement dans le menu du jeu.
+  const variant = String(input.variant || 'classic');
+  if (!BR_VARIANTS[variant]) {
+    throw makeError(
+      'INVALID_VARIANT',
+      `Variant invalide (attendu : ${BR_VARIANT_IDS.join(', ')}).`,
+    );
+  }
+
   const payout = validateBrPayout(input.payout || {});
 
   // L'arbitre est designe A LA CREATION, pas apres : sinon un joueur inscrit
@@ -360,6 +401,7 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
     maxPlayers: resolveMaxPlayers(mode, map),
     entryFee,
     rankingMode,
+    variant,
     payout,
     status: 'scheduled',
     scheduledAt: new Date(scheduledAtMs).toISOString(),

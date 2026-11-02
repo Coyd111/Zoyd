@@ -45,6 +45,8 @@ test.describe('Battle Royale API', () => {
     expect(res.body.mapIds).not.toContain('alcatraz');
     expect(res.body.modeIds).toEqual(['solo', 'duo', 'squad']);
     expect(res.body.rankingModeIds).toEqual(['survie', 'survie_kills', 'kills']);
+    // P2 02/11/2026 : le referentiel porte aussi le menu in-game arbitre.
+    expect(res.body.variantIds).toEqual(['classic', 'blitz', 'sniper', 'resurgence']);
     expect(res.body.prizedPlaces).toBe(5);
     expect(res.body.arbiterMaxRate).toBe(0.05);
   });

@@ -84,6 +84,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
   const [mode, setMode] = useState('solo');
   const [map, setMap] = useState('isolated');
   const [entryFee, setEntryFee] = useState(50);
+  const [variant, setVariant] = useState('classic');
   const [scheduledAt, setScheduledAt] = useState(() => toLocalInput(new Date(Date.now() + 30 * 3600_000)));
   const [rankingMode, setRankingMode] = useState('survie_kills');
   const [payout, setPayout] = useState<BrPayout>({ ...DEFAULT_PAYOUT });
@@ -160,6 +161,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         mode,
         map,
         entryFee,
+        variant,
         scheduledAt: new Date(scheduledAt).toISOString(),
         rankingMode,
         payout,
@@ -237,6 +239,9 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
                 </option>
               ))}
             </select>
+            {config?.maps[map]?.hint && (
+              <p className="text-[10px] font-mono text-zoyd-yellow/80 mt-1">{config.maps[map].hint}</p>
+            )}
           </div>
           <div>
             <label htmlFor="br-mode" className="block text-[10px] font-mono text-white/70 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -260,6 +265,31 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         <p className="text-[10px] font-mono text-zoyd-yellow">
           Plafond effectif de ce salon : {maxPlayers} joueurs (minimum du mode et de la map).
         </p>
+
+        {/* Variante in-game : contrat regle par l'arbitre DANS la salle CODM
+            au lancement - ZOYD l'affiche aux joueurs, le moteur n'en depend
+            pas. Les listes viennent du serveur (meme discipline que maps et
+            modes). */}
+        <div>
+          <label htmlFor="br-variant" className="block text-[10px] font-mono text-white/70 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <Swords className="w-3 h-3" aria-hidden="true" /> Variant in-game
+          </label>
+          <select
+            id="br-variant"
+            value={variant}
+            onChange={(e) => setVariant(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 px-3 py-2.5 text-sm text-white focus:border-zoyd-yellow/50 touch-target"
+          >
+            {config?.variantIds.map((id) => (
+              <option key={id} value={id} className="bg-zoyd-black">
+                {config.variants[id].label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] font-mono text-white/50 mt-1">
+            {config?.variants[variant]?.detail || 'Regle par l arbitre dans la salle CODM au lancement.'}
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

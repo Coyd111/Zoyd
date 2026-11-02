@@ -65,6 +65,8 @@ import {
   BR_MODE_IDS,
   BR_RANKING_MODES,
   BR_RANKING_MODE_IDS,
+  BR_VARIANTS,
+  BR_VARIANT_IDS,
   BR_PRIZED_PLACES,
   BR_ARBITER_MAX_RATE,
   createBrLobbyOnServer,
@@ -107,6 +109,8 @@ if (req.method === 'GET' && pathname === '/api/br/config') {
     modeIds: BR_MODE_IDS,
     rankingModes: BR_RANKING_MODES,
     rankingModeIds: BR_RANKING_MODE_IDS,
+    variants: BR_VARIANTS,
+    variantIds: BR_VARIANT_IDS,
     prizedPlaces: BR_PRIZED_PLACES,
     arbiterMaxRate: BR_ARBITER_MAX_RATE,
   }, req);

@@ -30,6 +30,8 @@ export interface BrMap {
   label: string;
   maxPlayers: number;
   vehicles: boolean;
+  /** Fait source affiche au createur / a l'arbitre : Krai, Rebirth Island. */
+  hint?: string;
 }
 
 export interface BrMode {
@@ -42,6 +44,17 @@ export interface BrMode {
 export interface BrRankingMode {
   id: string;
   label: string;
+}
+
+/**
+ * Variante in-game du salon (Classic, Blitz, Sniper Challenge, Resurgence) :
+ * le contrat regle par l'arbitre DANS la salle CODM, affiche sur le salon.
+ */
+export interface BrVariant {
+  id: string;
+  label: string;
+  /** Fait source (snipers+pistoles 10 min, redeploy squad...) : optionnel. */
+  detail?: string;
 }
 
 /** Joueur dans le roster public : AUCUN userId n'est exposé. */
@@ -93,6 +106,8 @@ export interface BrLobby {
   maxPlayers: number;
   entryFee: number;
   rankingMode: string;
+  /** P2 02/11/2026 : absent sur les vieux salons (avant le champ). */
+  variant?: string;
   payout: BrPayout;
   status: BrLobbyStatus;
   scheduledAt: string | null;
@@ -142,6 +157,8 @@ export interface BrConfig {
   modeIds: string[];
   rankingModes: Record<string, BrRankingMode>;
   rankingModeIds: string[];
+  variants: Record<string, BrVariant>;
+  variantIds: string[];
   prizedPlaces: number;
   arbiterMaxRate: number;
 }
@@ -225,6 +242,8 @@ export interface CreateBrLobbyPayload {
   entryFee: number;
   scheduledAt: string;
   rankingMode: string;
+  /** Variant in-game regle par l'arbitre dans la salle CODM (defaut classic). */
+  variant?: string;
   payout: BrPayout;
   notes?: string;
 }

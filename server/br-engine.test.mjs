@@ -54,6 +54,21 @@ describe('br-engine - catalogue', () => {
     expect(brEngine.BR_MAP_IDS).not.toContain('alcatraz');
   });
 
+  it('expose les 4 variants BR arbitres (Classic, Blitz, Sniper, Resurgence)', () => {
+    // Perimetre du 02/11/2026 : les quatre jouables en wager, pas la liste
+    // complete pratice ("Warfare", "Tank Battle", "Solid Gold" restent hors
+    // referentiel). Les details sources sont affichables tels quels.
+    expect(brEngine.BR_VARIANT_IDS).toEqual(['classic', 'blitz', 'sniper', 'resurgence']);
+    expect(brEngine.BR_VARIANTS.sniper.detail).toMatch(/10 min/);
+    expect(brEngine.BR_VARIANTS.resurgence.detail).toMatch(/squad/);
+  });
+
+  it('porte les faits sources sur Krai et Rebirth Island (hints)', () => {
+    expect(brEngine.BR_MAPS.krai.hint).toMatch(/Resurgence/);
+    expect(brEngine.BR_MAPS.rebirth_island.hint).toMatch(/NON CONFIRME/);
+    expect(brEngine.BR_MAPS.isolated.hint).toBeUndefined();
+  });
+
   it('plafonne Rebirth Island a 40 joueurs (format compact)', () => {
     expect(brEngine.BR_MAPS.rebirth_island.maxPlayers).toBe(40);
     expect(brEngine.BR_MAPS.rebirth_island.vehicles).toBe(false);
@@ -149,6 +164,36 @@ describe('br-engine - createBrLobbyOnServer', () => {
 
   it('refuse un mode inconnu', () => {
     expect(() => createLobby({ mode: 'pluriel' })).toThrow(/Mode invalide/);
+  });
+
+  it('stocke le variant in-game demande (Sniper Challenge)', () => {
+    const lobby = createLobby({ variant: 'sniper' });
+    expect(lobby.variant).toBe('sniper');
+  });
+
+  it('enregistre Classic quand aucun variant n est precise', () => {
+    expect(createLobby().variant).toBe('classic');
+  });
+
+  it('refuse un variant hors menu du salon CODM', () => {
+    // "Warfare" existe dans la liste practice du jeu mais reste hors
+    // referentiel ZOYD : refuse a la source, pas un salon de plus sur
+    // une regle que le moteur ne connait pas.
+    expect(() => createLobby({ variant: 'warfare' })).toThrow(/Variant invalide/);
+  });
+
+  it('neutralise un variant inconnu au chargement, sans en inventer', () => {
+    // Un vieux salon (avant le champ) NE RECOIT PAS de variant fabrique :
+    // l'UI n'affiche rien, sinon une regle consentie par personne.
+    const bruit = brEngine.normalizeBrLobby({
+      id: 'BR-X', mode: 'solo', map: 'isolated', entryFee: 50, payout: defaultPayout,
+      players: [], variant: 'tanks',
+    });
+    const absent = brEngine.normalizeBrLobby({
+      id: 'BR-Y', mode: 'solo', map: 'isolated', entryFee: 50, payout: defaultPayout, players: [],
+    });
+    expect(bruit.variant).toBeUndefined();
+    expect(absent.variant).toBeUndefined();
   });
 
   it('refuse une programmation a moins de 24h', () => {

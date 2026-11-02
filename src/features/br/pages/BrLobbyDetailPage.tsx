@@ -173,6 +173,7 @@ const BrLobbyDetailPage: React.FC = () => {
   const map = config?.maps[lobby.map];
   const mode = config?.modes[lobby.mode];
   const rankingMode = config?.rankingModes[lobby.rankingMode];
+  const variant = config?.variants[lobby.variant || ''];
   const split = splitBrPayout(lobby);
   // Source de verite des montants : la projection SERVEUR du GET du salon
   // (des qu'un classement existe). Avant le premier classement, la table
@@ -211,6 +212,14 @@ const BrLobbyDetailPage: React.FC = () => {
               <Swords className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
               {mode?.label || lobby.mode} · {mode?.teamSize ?? 1} joueur(s)/equipe
             </span>
+            {/* Variante in-game : affichee seulement si choisie a la creation,
+                sinon ce serait une regle inventee pour un vieux salon. */}
+            {variant && (
+              <span className="border border-white/10 bg-white/5 px-2.5 py-1.5 text-white/70 flex items-center gap-1.5">
+                <Swords className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
+                {variant.label}
+              </span>
+            )}
             <span className="border border-white/10 bg-white/5 px-2.5 py-1.5 text-white/70 flex items-center gap-1.5">
               <Users className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
               {lobby.players.length} / {lobby.maxPlayers}
@@ -220,6 +229,9 @@ const BrLobbyDetailPage: React.FC = () => {
               {countDown(lobby.scheduledAt)}
             </span>
           </div>
+          {map?.hint && (
+            <p className="text-[10px] font-mono text-white/60 mt-2">{map.hint}</p>
+          )}
         </header>
 
         {/*

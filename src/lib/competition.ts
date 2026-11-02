@@ -190,9 +190,11 @@ export const MJ_MAPS_FOR_MODE = (mode: string): readonly string[] =>
  * avant le lancement (DuelX : "AR only / SMG only..."). Remplace les
  * 4 vieilles chaines des matchs. PIEGE : un match precedent garde sa
  * propre chaine stockee : l'affichage reste brut dans MatchRules.
- * NOTE : le tournoi (CreateTournamentPage) garde encore SA liste locale,
- * dont le defaut serveur "Toutes armes selon reglement" - a harmoniser
- * dans un commit dedie avec tournament-engine.
+ * Harmonisation du 02/11/2026 : le tournoi (CreateTournamentPage + defaut
+ * de creation de tournament-engine) propose le MEME referentiel. Les
+ * vieilles valeurs tournoi ("Toutes armes selon reglement", "Assaut /
+ * SMG", "No scorestreak agressif") restent affichees telles quelles sur
+ * les tournois deja comptes : pas de regle inventee sur la data.
  */
 export const MJ_WEAPON_OPTIONS = [
   'Toutes permises',

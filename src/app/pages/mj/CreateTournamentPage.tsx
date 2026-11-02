@@ -27,6 +27,7 @@ import {
   MJ_FORMATS,
   MJ_MAP_POOL,
   MJ_MODE_OPTIONS,
+  MJ_WEAPON_OPTIONS,
 } from '../../../lib/competition';
 import { formatZC } from '../../../lib/utils';
 import {
@@ -42,12 +43,12 @@ import { SEOHead } from '../../components/SEOHead';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const MAX_ENTRY_OPTIONS = [4, 8, 16, 32];
-const WEAPON_OPTIONS = [
-  'Toutes armes selon règlement',
-  'Snipers uniquement',
-  'Assaut / SMG',
-  'No scorestreak agressif',
-];
+// Harmonisation du 02/11/2026 (P1 : competition.ts) : le tournoi utilise le
+// MEME referentiel de classes d'armes que les matchs. Une valeur stockee
+// avant l'harmonisation ("Assaut / SMG", "No scorestreak agressif"...)
+// reste affichee telle quelle : pas de regle inventee pour un vieux
+// tournoi. Note : "No scorestreak agressif" etait un doublon du champ
+// "Series de points" (pointstreaks), deja present comme select dedie.
 
 type FormValues = {
   name: string;
@@ -106,7 +107,7 @@ const CreateTournamentPage: React.FC = () => {
       maxEntries: 8,
       scoreTarget: 7,
       bestOf: 1,
-      weaponRestrictions: WEAPON_OPTIONS[0],
+      weaponRestrictions: MJ_WEAPON_OPTIONS[0],
       pointstreaks: 'restricted',
       meleeAllowed: false,
       notes: 'Pas de matchs entre 00h00 et 07h00. Vérification room 10 min avant le round.',
@@ -410,7 +411,7 @@ const CreateTournamentPage: React.FC = () => {
                       {...register('weaponRestrictions')}
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     >
-                      {WEAPON_OPTIONS.map((weapon) => (
+                      {MJ_WEAPON_OPTIONS.map((weapon) => (
                         <option key={weapon} value={weapon}>
                           {weapon}
                         </option>

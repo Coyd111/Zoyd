@@ -111,6 +111,44 @@ describe('tournament-engine - createTournamentOnServer', () => {
     expect(result.tournament.rules.mapPool).toEqual(['Raid', 'Standoff', 'Crash']);
   });
 
+  // Harmonisation du 02/11/2026 (P1 : MJ_WEAPON_OPTIONS) : le defaut de
+  // creation est la premiere classe du referentiel partage avec les
+  // matchs, PLUS l'ancienne chaine "Toutes armes selon reglement".
+  it('defaut armes = premiere classe du referentiel partage (Toutes permises)', () => {
+    const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      entryFee: 100,
+    });
+    expect(result.tournament.rules.weaponRestrictions).toBe('Toutes permises');
+  });
+
+  it('conserve une classe d armes explicite du createur', () => {
+    const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      entryFee: 100,
+      rules: { weaponRestrictions: 'Snipers uniquement' },
+    });
+    expect(result.tournament.rules.weaponRestrictions).toBe('Snipers uniquement');
+  });
+
+  // Les valeurs faites avant l'harmonisation restent affichees telles
+  // quelles : la normalisation (chargement depot) ne fabrique rien, un
+  // champ absent garde le defaut historique.
+  it('normalisation : un vieux tournoi sans champ garde le defaut legacy', () => {
+    const [legacy] = tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-LEGACY',
+      name: 'Ancienne coupe',
+      format: '1VS1',
+      maxEntries: 8,
+      entryFee: 50,
+      status: 'recruiting',
+      entries: [],
+      arbiters: [],
+      matches: [],
+    }]);
+    expect(legacy.rules.weaponRestrictions).toBe('Toutes armes selon reglement');
+  });
+
   // audit-5 (B-4) : un tournoi cree avec entryFee 0 ou absent (defaut :909)
   // restait CREATABLE mais impossible a INSCRIRE : lockEntryFee rejette un
   // montant nul (INVALID_AMOUNT, wallet-engine.mjs:368-370). Arbitrage

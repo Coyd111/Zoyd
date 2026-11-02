@@ -141,6 +141,10 @@ const normalizeTournamentSnapshot = (tournament) => {
       mapPool: Array.isArray(tournament?.rules?.mapPool) ? tournament.rules.mapPool : ['Raid', 'Standoff', 'Crash'],
       scoreTarget: Number(tournament?.rules?.scoreTarget || 7),
       bestOf: Number(tournament?.rules?.bestOf || 1),
+      // Defaut LEGACY conserve (harmonisation 02/11/2026) : les vieux
+      // tournois du depot continuent d'afficher la valeur historique quand
+      // le champ est absent - changer ce fallback inventerait une regle
+      // jamais enregistree dans leur rules.
       weaponRestrictions: tournament?.rules?.weaponRestrictions || 'Toutes armes selon reglement',
       pointstreaks: tournament?.rules?.pointstreaks === 'allowed' ? 'allowed' : 'restricted',
       meleeAllowed: Boolean(tournament?.rules?.meleeAllowed),
@@ -310,7 +314,13 @@ const createTournamentBase = (options) => {
         : ['Raid', 'Standoff', 'Crash'],
       scoreTarget: Number(options.rules?.scoreTarget || 7),
       bestOf: Number(options.rules?.bestOf || 1),
-      weaponRestrictions: options.rules?.weaponRestrictions || 'Toutes armes selon reglement',
+      // Harmonisation du 02/11/2026 (P1 : competition.ts MJ_WEAPON_OPTIONS) :
+      // defaut de creation = la premiere classe du referentiel partage. Les
+      // valeurs hors referentiel continuent de passer (regle libre du
+      // createur) ; un champ ABSENT au chargement d'un vieux tournoi garde
+      // le defaut historique (voir normalizeTournamentSnapshot) - pas de
+      // regle inventee sur de la data existante.
+      weaponRestrictions: options.rules?.weaponRestrictions || 'Toutes permises',
       pointstreaks: options.rules?.pointstreaks === 'allowed' ? 'allowed' : 'restricted',
       meleeAllowed: Boolean(options.rules?.meleeAllowed),
       // P5 C2 (audit-3) : les notes vivantes entrent par une libre saisie

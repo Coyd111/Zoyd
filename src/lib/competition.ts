@@ -86,6 +86,21 @@ export const MJ_MODE_OPTIONS = [
   { id: 'fl', name: 'FRONTLINE', desc: 'Respawn competitif' },
 ] as const;
 
+/**
+ * Pool de cartes MJ, verifie le 02/11/2026 contre la liste officielle des
+ * cartes multiplayer CODM (Call of Duty Wiki, 69 cartes - rapport de
+ * recherche CODM en cache Temp/zoyd-codm-recherche.md).
+ * CORRECTION P0 : 9 noms INEXISTANTS en jeu ont ete retires (Pawnshop,
+ * Dashboard, Reactor, Aerial, Boulevard, Canopy, Townhouse, Sandbox,
+ * Grazna - celle-ci etait une confusion avec la map Ground War "Grazna
+ * Raid" du MW2019 console). Un match programme sur une carte fantome est
+ * impossible a regler dans un salon prive CODM : litige arbitre garanti.
+ * AJOUTS : cartes reelles manquantes (pools esports 2026 : Hacienda,
+ * Combine, Arsenal, Crossroads Strike - nom du variant Control ; scene et
+ * rotation 2026 : Apocalypse, Seaside, Winter Raid, Vacant, Hovec Sawmill).
+ * NOTE P1 (pas corrige ici) : Oasis ne tourne qu'en Frontline (comme
+ * Monastery) - a etiqueter au moment du filtrage par mode.
+ */
 export const MJ_MAP_POOL = [
   'Crash',
   'Crossfire',
@@ -99,7 +114,6 @@ export const MJ_MAP_POOL = [
   'Killhouse',
   'Cage',
   'King',
-  'Pawnshop',
   'Satellite',
   'Coastal',
   'Oasis',
@@ -111,14 +125,15 @@ export const MJ_MAP_POOL = [
   'Scrapyard',
   'Highrise',
   'Dome',
-  'Dashboard',
-  'Reactor',
-  'Aerial',
-  'Boulevard',
-  'Canopy',
-  'Townhouse',
-  'Sandbox',
-  'Grazna',
+  'Apocalypse',
+  'Hacienda',
+  'Combine',
+  'Arsenal',
+  'Crossroads Strike',
+  'Seaside',
+  'Winter Raid',
+  'Vacant',
+  'Hovec Sawmill',
 ] as const;
 
 export const getMapImage = (_mapName: string): string => {

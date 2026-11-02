@@ -65,20 +65,29 @@ const log = createLogger('br-engine');
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Maps BR COD Mobile en vigueur (verifie le 04/10/2026).
+ * Maps BR COD Mobile en vigueur (verifie le 04/10/2026 ; cap Krai corrige
+ * le 02/11/2026 apres recherche CODM - 40 joueurs et non 100).
  *
  * Alcatraz a RETIRE : remplace par Rebirth Island le 22/04/2026 (Season 4).
  * Ne pas le remettre dans la liste, il n'existe plus en jeu.
  *
  * - Rebirth Island : compacte, rapide, SANS vehicule (heritage Alcatraz).
- * - Isolated / Blackout / Krai : grandes cartes avec vehicules.
- * Le nombre de joueurs est propre a la map : les grandes tournent a 100, la
- * compacte a 40 (format historique d'Alcatraz).
+ * - Isolated / Blackout : grandes cartes, 100 joueurs, avec vehicules.
+ * - Krai : carte moyenne AVEC vehicules mais 40 joueurs seulement (mode
+ *   Resurgence, format Alcatraz - keengamer + r/CallOfDutyMobile). Un salon
+ *   de 100 sur Krai est infaisable in-game, d'ou le cap ci-dessous.
+ * Le nombre de joueurs est propre a la map : 100 pour les grandes cartes,
+ * 40 pour les moyennes (Krai) et compactes (Rebirth Island).
+ * resolveMaxPlayers prend le min de mode et de map : un salon solo sur
+ * Krai plafonne donc a 40, pas 100.
  */
 export const BR_MAPS = {
   isolated: { id: 'isolated', label: 'Isolated', maxPlayers: 100, vehicles: true },
   blackout: { id: 'blackout', label: 'Blackout', maxPlayers: 100, vehicles: true },
-  krai: { id: 'krai', label: 'Krai', maxPlayers: 100, vehicles: true },
+  // Krai = 40 joueurs (Resurgence, format Alcatraz) - corrige le 02/11/2026.
+  krai: { id: 'krai', label: 'Krai', maxPlayers: 40, vehicles: true },
+  // Cap 40 plausible (heritage Alcatraz) mais encore NON CONFIRME dans les
+  // sources : aucune liste officielle ne fige encore le nombre de joueurs.
   rebirth_island: { id: 'rebirth_island', label: 'Rebirth Island', maxPlayers: 40, vehicles: false },
 };
 export const BR_MAP_IDS = Object.keys(BR_MAPS);

@@ -59,6 +59,14 @@ describe('br-engine - catalogue', () => {
     expect(brEngine.BR_MAPS.rebirth_island.vehicles).toBe(false);
   });
 
+  it('plafonne Krai a 40 joueurs (Resurgence, format Alcatraz)', () => {
+    // Recherche CODM du 02/11/2026 : Krai tourne a 40 joueurs comme Alcatraz
+    // en son temps (keengamer + r/CallOfDutyMobile). L'ancien cap de 100
+    // proposait des salons infaisables in-game.
+    expect(brEngine.BR_MAPS.krai.maxPlayers).toBe(40);
+    expect(brEngine.BR_MAPS.krai.vehicles).toBe(true);
+  });
+
   it('plafonne solo/duo/squad a 100/50/25', () => {
     expect(brEngine.BR_MODES.solo.maxPlayers).toBe(100);
     expect(brEngine.BR_MODES.duo.maxPlayers).toBe(50);

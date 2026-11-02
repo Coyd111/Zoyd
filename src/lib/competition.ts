@@ -84,6 +84,7 @@ export const MJ_MODE_OPTIONS = [
   { id: 'hp', name: 'HARDPOINT', desc: "Rotation d'objectif" },
   { id: 'dom', name: 'DOMINATION', desc: 'Contrôle de zones' },
   { id: 'fl', name: 'FRONTLINE', desc: 'Respawn competitif' },
+  { id: 'control', name: 'CONTROL', desc: 'Contrôle des zones, 3 manches gagnantes' },
 ] as const;
 
 /**
@@ -138,6 +139,82 @@ export const MJ_MAP_POOL = [
 
 export const getMapImage = (_mapName: string): string => {
   return '';
+};
+
+/**
+ * Presets de regles issus de la recherche CODM du 02/11/2026 : SEULEMENT
+ * des valeurs verifiables, cles sur le libelle stocke dans rules.mode
+ * (ex. "S&D") et pas sur l'id du referentiel : c'est le libelle qui circule
+ * dans les matchs.
+ * - S&D : premier a 9 manches gagnees, manche de 120 s (esports 2026, FT9
+ *   apres le vote des pros ; DuelX joue 13 manches en scene wager).
+ * - HARDPOINT : premier a 250 points, partie de 600 s (10 min).
+ * - CONTROL : premier a 3 manches, manche de 90 s.
+ * DOMINATION et FRONTLINE n'ont AUCUN preset : pas de valeur esports
+ * verifiee dans les sources - la saisie reste libre.
+ * PIEGE : un preset est une PROPOSITION pre-remplie, pas une regle
+ * serveur : la decision finale reste celle du createur et de l'arbitre.
+ */
+export interface MjModePreset {
+  scoreTarget: number;
+  timeLimitSeconds: number;
+  timeLimitScope: 'match' | 'round';
+  source: string;
+}
+
+export const MJ_MODE_PRESETS: Partial<Record<string, MjModePreset>> = {
+  'S&D': { scoreTarget: 9, timeLimitSeconds: 120, timeLimitScope: 'round', source: 'Esports CODM 2026 : FT9, manche 120 s' },
+  'HARDPOINT': { scoreTarget: 250, timeLimitSeconds: 600, timeLimitScope: 'match', source: 'Esports CODM 2026 : FT 250, 10 min' },
+  'CONTROL': { scoreTarget: 3, timeLimitSeconds: 90, timeLimitScope: 'round', source: 'Esports CODM 2026 : FT3, manche 90 s' },
+};
+
+/**
+ * Compatibilite carte x mode VERIFIEE : une carte absente tourne dans tous
+ * les modes ; on ne declare ici que les exclusions prouvees (recherche CODM
+ * du 02/11/2026 - namu.wiki). Oasis ne se joue qu'en Frontline ; Monastery
+ * est dans le meme cas mais hors referentiel. Cle = libelle de MJ_MAP_POOL.
+ */
+export const MJ_MAP_MODE_RESTRICTIONS: Record<string, { modes: readonly string[]; reason: string }> = {
+  Oasis: { modes: ['FRONTLINE'], reason: 'Frontline uniquement en jeu' },
+};
+
+/** Cartes jouables pour un mode (libelle), exclusions appliquees. */
+export const MJ_MAPS_FOR_MODE = (mode: string): readonly string[] =>
+  MJ_MAP_POOL.filter((map) => {
+    const restriction = MJ_MAP_MODE_RESTRICTIONS[map];
+    return !restriction || restriction.modes.includes(mode);
+  });
+
+/**
+ * Classes de restriction d'armes : la scene wager s'accorde sur UNE CLASSE
+ * avant le lancement (DuelX : "AR only / SMG only..."). Remplace les
+ * 4 vieilles chaines des matchs. PIEGE : un match precedent garde sa
+ * propre chaine stockee : l'affichage reste brut dans MatchRules.
+ * NOTE : le tournoi (CreateTournamentPage) garde encore SA liste locale,
+ * dont le defaut serveur "Toutes armes selon reglement" - a harmoniser
+ * dans un commit dedie avec tournament-engine.
+ */
+export const MJ_WEAPON_OPTIONS = [
+  'Toutes permises',
+  'AR uniquement',
+  'SMG uniquement',
+  'Snipers uniquement',
+  'Corps a corps uniquement',
+] as const;
+
+/**
+ * Limite de temps CODM reformatee pour l'UI : "10 min" ou "2 min / manche".
+ * Renvoie "" si absent ou invalide : l'affichage laisse le champ decore a
+ * "Libre" (aucune limite saisie).
+ */
+export const formatTimeLimit = (
+  timeLimitSeconds?: number,
+  timeLimitScope?: 'match' | 'round',
+): string => {
+  if (!timeLimitSeconds || timeLimitSeconds <= 0) return '';
+  const minutes = timeLimitSeconds / 60;
+  const label = Number.isInteger(minutes) ? `${minutes} min` : `${minutes.toLocaleString('fr-FR')} min`;
+  return timeLimitScope === 'round' ? `${label} / manche` : label;
 };
 
 export const LANDING_TICKER_ITEMS = [

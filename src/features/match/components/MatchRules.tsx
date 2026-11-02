@@ -17,6 +17,7 @@
  */
 import React from 'react';
 import type { Match } from '../../../app/stores/matchStore';
+import { formatTimeLimit } from '../../../lib/competition';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
@@ -47,7 +48,13 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
         <RuleRow label="Score cible" value={`${match.rules.scoreTarget}`} />
         <RuleRow label="Armes" value={match.rules.weaponRestrictions || 'Toutes'} />
         <RuleRow label="Séries de points" value={match.rules.pointstreaks === 'allowed' ? 'Permises' : 'Interdites'} />
+        {/* Meme vocabulaire que les series de points : absent (vieux match) = Interdites. */}
+        <RuleRow label="Compét. opérateur" value={match.rules.operatorSkills === 'allowed' ? 'Permises' : 'Interdites'} />
         <RuleRow label="Corps a corps" value={match.rules.meleeAllowed ? 'Autorise' : 'Interdit'} />
+        {/* Limite de temps : affichee seulement si publiee a la creation, sinon c'est une regle inventee. */}
+        {match.rules.timeLimitSeconds ? (
+          <RuleRow label="Limite de temps" value={formatTimeLimit(match.rules.timeLimitSeconds, match.rules.timeLimitScope)} />
+        ) : null}
       </div>
     </div>
 

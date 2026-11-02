@@ -63,7 +63,11 @@ export interface CreateMatchPayload {
     scoreTarget?: number;
     bestOf?: number;
     pointstreaks?: 'allowed' | 'restricted';
+    operatorSkills?: 'allowed' | 'restricted';
     meleeAllowed?: boolean;
+    /** P1 02/11/2026 : limites de temps CODM (UI en min, rules en secondes). */
+    timeLimitSeconds?: number;
+    timeLimitScope?: 'match' | 'round';
   };
 }
 

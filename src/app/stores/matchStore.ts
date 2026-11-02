@@ -148,6 +148,10 @@ export interface MatchRules {
   weaponRestrictions?: string;
   pointstreaks?: 'allowed' | 'restricted';
   meleeAllowed?: boolean;
+  /** Limites de temps CODM (P1 02/11/2026) : absentes sur les vieux matchs. */
+  timeLimitSeconds?: number;
+  timeLimitScope?: 'match' | 'round';
+  operatorSkills?: 'allowed' | 'restricted';
   notes?: string;
 }
 

@@ -25,7 +25,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, ChevronLeft, Check, ShieldCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from '../../lib/toast';
-import { MJ_FORMATS, MJ_MAP_POOL, MJ_MODE_OPTIONS, getMapImage } from '../../../lib/competition';
+import {
+  MJ_FORMATS,
+  MJ_MAPS_FOR_MODE,
+  MJ_MODE_OPTIONS,
+  MJ_MODE_PRESETS,
+  MJ_WEAPON_OPTIONS,
+  formatTimeLimit,
+  getMapImage,
+} from '../../../lib/competition';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
 import { createServerMatch } from '../../lib/matchApi';
 import { applyServerAccountState } from '../../lib/serverSync';
@@ -36,7 +44,6 @@ import { SEOHead } from '../../components/SEOHead';
 import { Modal } from '../../components/ui/Modal';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
-const WEAPON_OPTIONS = ['Toutes permises', 'Sniper uniquement', 'Assaut / SMG', 'Corps a corps uniquement'];
 const ARBITER_FEE_RATE = 0.02;
 const TEAM_OPTIONS = [
   { label: 'Squad Alpha', value: 0 },
@@ -51,6 +58,10 @@ interface MatchFormData {
   score: number;
   bestOf: number;
   pointstreaks: 'allowed' | 'restricted';
+  /** Compétences d'opérateur (P1 02/11/2026) : vocabulaire identique a pointstreaks. */
+  operatorSkills: 'allowed' | 'restricted';
+  /** Limite de temps saisie en MINUTES dans l'UI, stockee en SECONDES dans rules. */
+  timeLimitMinutes?: number;
   meleeAllowed: boolean;
   isPrivate: boolean;
   creatorTeam: number;
@@ -77,6 +88,8 @@ const CreateMatchPage: React.FC = () => {
       isPrivate: false,
       creatorTeam: 0,
       pointstreaks: 'restricted',
+      operatorSkills: 'restricted',
+      timeLimitMinutes: undefined,
       meleeAllowed: true,
     },
   });
@@ -84,6 +97,19 @@ const CreateMatchPage: React.FC = () => {
   const selectedPass = Number(watch('passAmount') || 0);
   const selectedCreatorTeam = Number(watch('creatorTeam') || 0);
   const availableSpend = getAvailableToSpend();
+
+  /**
+   * Preset esports du mode choisi (S&D/HARDPOINT/CONTROL) : sinon `undefined`
+   * et le formulaire laisse le reglage libre (pas de valeur sourcee).
+   */
+  const rulePreset = selectedGameMode ? MJ_MODE_PRESETS[selectedGameMode] : undefined;
+  /**
+   * Cartes jouables pour le mode selectionne (compatibilite verifiee :
+   * Oasis ne se joue qu'en FRONTLINE). PIEGE : le formulaire ne rend JAMAIS
+   * MJ_MAP_POOL en direct - toujours passer par ce filtre, sinon une carte
+   * incompatible avec le mode peut etre publiee.
+   */
+  const availableMaps = MJ_MAPS_FOR_MODE(selectedGameMode);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -115,6 +141,27 @@ const CreateMatchPage: React.FC = () => {
     }
 
     setCurrentStep(2);
+  };
+
+  /**
+   * Choisir un mode peut INVALIDER la carte deja cliquee (compat verifiee :
+   * Oasis ne se joue qu'en FRONTLINE). On vide la selection plutot que
+   * garder une carte hors reglement dans CODM.
+   */
+  const handleModeSelect = (name: string) => {
+    setSelectedGameMode(name);
+    if (selectedMap && !MJ_MAPS_FOR_MODE(name).includes(selectedMap)) {
+      setSelectedMap('');
+      toast.info(`${selectedMap} n'est pas jouable en ${name}. Choisis une autre carte.`);
+    }
+  };
+
+  /** Preset esports : pre-remplit score et limite de temps (saisie libre ensuite). */
+  const applyRulePreset = () => {
+    if (!rulePreset) return;
+    setValue('score', rulePreset.scoreTarget);
+    setValue('timeLimitMinutes', rulePreset.timeLimitSeconds / 60);
+    toast.info(`Preset appliqué (${rulePreset.source}). Ajustable librement.`);
   };
 
   const onStep2Submit = (_data: Partial<MatchFormData>) => {
@@ -167,6 +214,17 @@ const CreateMatchPage: React.FC = () => {
     setShowPublishConfirm(false);
     setIsSubmitting(true);
     try {
+      /**
+       * UI en minutes, rules en secondes : une minute moisi (0.5) devient
+       * 30 s arrondies. Vide/0/negatif = pas de limite publiee du tout :
+       * n'envoie pas `timeLimitSeconds: 0`, le lecteur l'afficherait comme
+       * une vraie limite.
+       */
+      const timeLimitMinutes = Number(getValues('timeLimitMinutes') || 0);
+      const timeLimitSeconds =
+        Number.isFinite(timeLimitMinutes) && timeLimitMinutes > 0
+          ? Math.round(timeLimitMinutes * 60)
+          : undefined;
       const response = await createServerMatch({
         creatorTeam: Number(getValues('creatorTeam') || 0) === 1 ? 1 : 0,
         format: selectedFormat,
@@ -181,7 +239,11 @@ const CreateMatchPage: React.FC = () => {
           scoreTarget: Number(getValues('score') || 15),
           bestOf: Number(getValues('bestOf') || 3),
           pointstreaks: getValues('pointstreaks') === 'allowed' ? 'allowed' : 'restricted',
+          operatorSkills: getValues('operatorSkills') === 'allowed' ? 'allowed' : 'restricted',
           meleeAllowed: !!getValues('meleeAllowed'),
+          ...(timeLimitSeconds
+            ? { timeLimitSeconds, timeLimitScope: rulePreset?.timeLimitScope ?? 'match' }
+            : {}),
         },
       });
 
@@ -297,7 +359,7 @@ const CreateMatchPage: React.FC = () => {
                             role="radio"
                             aria-checked={selectedGameMode === mode.name}
                             aria-label={`Mode ${mode.name}: ${mode.desc}`}
-                            onClick={() => setSelectedGameMode(mode.name)}
+                            onClick={() => handleModeSelect(mode.name)}
                             className={`p-4 border text-left transition-all ${selectedGameMode === mode.name ? 'border-white bg-white/5' : 'border-white/5 hover:border-white/20'}`}
                           >
                             <div className="font-display font-black text-lg italic text-white">{mode.name}</div>
@@ -312,7 +374,7 @@ const CreateMatchPage: React.FC = () => {
                         02 / Carte choisie
                       </label>
                       <div id="map-pool" role="group" aria-label="Sélection de la carte" className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {MJ_MAP_POOL.map((map) => (
+                        {availableMaps.map((map) => (
                           <button
                             type="button"
                             key={map}
@@ -338,13 +400,41 @@ const CreateMatchPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {selectedGameMode && rulePreset && (
+                      <div className="flex items-center justify-between gap-4 border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-4 py-3">
+                        <div>
+                          <div className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest">
+                            Preset esports — {selectedGameMode}
+                          </div>
+                          <div className="text-[10px] font-mono text-white/60 uppercase tracking-widest mt-1">
+                            Score {rulePreset.scoreTarget} · {formatTimeLimit(rulePreset.timeLimitSeconds, rulePreset.timeLimitScope)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={applyRulePreset}
+                          aria-label={`Appliquer le preset ${selectedGameMode}`}
+                          className="shrink-0 border border-zoyd-yellow/40 px-4 py-2 text-[10px] font-display font-black uppercase tracking-widest text-zoyd-yellow hover:bg-zoyd-yellow hover:text-black transition-all"
+                        >
+                          Appliquer
+                        </button>
+                      </div>
+                    )}
+                    {selectedGameMode && !rulePreset && (
+                      <div className="border border-white/5 px-4 py-3 bg-black/30">
+                        <div className="text-[10px] font-mono text-white/60 uppercase tracking-widest">
+                          Réglage libre — pas de preset vérifié pour {selectedGameMode}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
                         <label htmlFor="weapons" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Restriction d'armes
                         </label>
                         <select id="weapons" {...register('weapons')} aria-label="Restriction d'armes" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue">
-                          {WEAPON_OPTIONS.map((weapon) => (
+                          {MJ_WEAPON_OPTIONS.map((weapon) => (
                             <option key={weapon} value={weapon}>
                               {weapon}
                             </option>
@@ -361,10 +451,35 @@ const CreateMatchPage: React.FC = () => {
                         </select>
                       </div>
                       <div>
+                        <label htmlFor="operatorSkills" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
+                          Compétences d'opérateur
+                        </label>
+                        <select id="operatorSkills" {...register('operatorSkills')} aria-label="Compétences d'opérateur" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue">
+                          <option value="restricted">Interdites</option>
+                          <option value="allowed">Permises</option>
+                        </select>
+                      </div>
+                      <div>
                         <label htmlFor="score" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
                           Score cible
                         </label>
                         <input id="score" type="number" {...register('score')} placeholder="15" aria-label="Score cible" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue" />
+                      </div>
+                      <div>
+                        <label htmlFor="timeLimitMinutes" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
+                          Limite de temps (min)
+                        </label>
+                        <input
+                          id="timeLimitMinutes"
+                          type="number"
+                          {...register('timeLimitMinutes', { valueAsNumber: true })}
+                          placeholder="Libre"
+                          aria-label="Limite de temps en minutes"
+                          className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
+                        />
+                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                          Vide = libre. Un preset remplit ce champ.
+                        </p>
                       </div>
                       <div>
                         <label htmlFor="bestOf" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
@@ -526,6 +641,12 @@ const CreateMatchPage: React.FC = () => {
                   <SummaryBox label="Pass" value={`${selectedPass.toFixed(1)} ZC`} highlight />
                   <SummaryBox label="Solde dispo" value={`${availableSpend.toFixed(1)} ZC`} />
                   <SummaryBox label="Armes" value={getValues('weapons') || 'Toutes'} />
+                  <SummaryBox
+                    label="Limite de temps"
+                    value={
+                      formatTimeLimit(Number(getValues('timeLimitMinutes') || 0) * 60, rulePreset?.timeLimitScope) || 'Libre'
+                    }
+                  />
                   <SummaryBox label="Ton équipe" value={selectedCreatorTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} />
                   <SummaryBox label="Visibilité" value={getValues('isPrivate') ? 'Privé' : 'Public'} />
                 </div>

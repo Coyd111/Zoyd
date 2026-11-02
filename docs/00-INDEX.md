@@ -4,7 +4,8 @@
 > Il t'oriente vers tout le reste et te dit ce qui est vérifié, ce qui ne l'est pas,
 > et ce qui est périmé.
 
-Dernière mise à jour : projet à `5f4b796` (27/10/2026).
+Dernière mise à jour : projet à `a1f297a`, audit-4 (02/11/2026). Rapport :
+`docs/audit-4/00-SYNTHESE.md`.
 
 ---
 
@@ -40,9 +41,9 @@ tests E2E. Voir `docs/05-invariants.md`.
 
 ```
 Zoyd/
-├── src/          Front React (Vite)      ~36 900 lignes, 180 fichiers
-├── server/       Back Node (http natif)  ~39 100 lignes, 117 fichiers
-├── e2e/          Tests Playwright         ~4 500 lignes,  21 fichiers
+├── src/          Front React (Vite)       39 022 lignes, 184 fichiers
+├── server/       Back Node (http natif)   42 532 lignes, 130 fichiers
+├── e2e/          Tests Playwright          5 913 lignes,  27 fichiers
 ├── public/       Fichiers statiques servis par Vercel
 ├── docs/         Documentation (ce dossier)
 └── *.md          Documents racine — voir §4
@@ -52,11 +53,11 @@ Zoyd/
 
 | Fichier | Taille | Rôle |
 |---|---|---|
-| `server/persistence.mjs` | 189 Ko | Source de vérité : lecture/écriture, Supabase, OCC |
-| `server/match-engine.mjs` | 64 Ko | Matchs 1v1 — le moteur le plus utilisé |
-| `server/tournament-engine.mjs` | 57 Ko | Tournois et brackets |
-| `server/league-engine.mjs` | 47 Ko | BR League |
-| `server/br-engine.mjs` | 37 Ko | Matches Battle Royale |
+| `server/persistence.mjs` | 195,6 Ko | Source de vérité : lecture/écriture, Supabase, OCC |
+| `server/match-engine.mjs` | 84,2 Ko | Matchs 1v1 — le moteur le plus utilisé |
+| `server/tournament-engine.mjs` | 69,1 Ko | Tournois et brackets |
+| `server/league-engine.mjs` | 53,3 Ko | BR League |
+| `server/br-engine.mjs` | 53,0 Ko | Matches Battle Royale |
 
 > **À savoir avant d'ouvrir `persistence.mjs` :** c'est le fichier le plus gros et le
 > plus critique du dépôt. Toute modification y touche potentiellement l'argent.

@@ -10,7 +10,8 @@
 > Le déploiement et l'exploitation sont dans `07-exploitation.md`.
 >
 > **Source :** lecture directe de `server/`. Base : commit `5f4b796`
-> (27/10/2026), citations repassées le 28/10/2026 (audit-3 P16).
+> (27/10/2026), citations repassées le 28/10/2026 (audit-3 P16) ; § 5.5 et
+> § 5.7 complétés au commit `a1f297a` (02/11/2026, audit-4).
 >
 > **Convention de citation :** les renvois `fichier:ligne` datent de leur
 > vérification : toute modification du fichier les décale. L'ancrage fiable
@@ -759,6 +760,20 @@ Toutes les mutations passent par `withTournamentMutex` puis `saveTournaments(io,
 est une somme d'arrondis ; au-delà de 2 décimales, le règlement crée ou détruit
 de la monnaie.
 
+**Règles affichées (audit-4, 02/11/2026).** Le `rules` de création suit le
+référentiel du front sans liste blanche : défaut de création
+« Toutes permises » (`server/tournament-engine.mjs:329`), et toute valeur hors
+référentiel passe tel quel (règlement libre). Depuis C8 (`034f17f`), `bestOf`
+reste un entier brut — les chips BO1/BO3/BO5 ne remplissent que le champ du
+formulaire, côté serveur rien n'a bougé. Depuis P5 (`a1f297a`), `rules` porte
+en plus `picksAlternate` (alternance des picks par manche, convention BO3+),
+évalué en création (`:340`) comme en snapshot (`:156`) ; le formulaire
+n'envoie la clé que si la checkbox est cochée et que le best-of vaut au
+moins 3. La normalisation conserve les données existantes hors conventions :
+« Toutes armes selon reglement » quand le champ est absent
+(`normalizeTournamentSnapshot`, `:148`) — un champ absent ne reçoit jamais
+une convention rétroactive.
+
 ### 5.6 Ligues — `server/routes/league.mjs` (15 routes)
 
 | # | Méthode | Chemin | Rôle | Rate limit | Erreurs pertinentes |
@@ -805,6 +820,18 @@ de la monnaie.
 | 4 | POST | `/api/br/lobbies/:id/{join\|leave\|checkin\|start\|eliminate\|finish}` | session | `admin` pour `finish`, `default` sinon | `400 INVALID_JSON` (`:216`) si `eliminate` sans `userId` ; `403 ADMIN_REQUIRED`/`2FA_REQUIRED` sur `finish` (`:228-230`) |
 | 5 | GET | `/api/br/lobbies/:id` | public | `default` | `404 LOBBY_NOT_FOUND` (`:287`) |
 | 6 | GET | `/api/br/lobbies/:id/arbiter` | **arbiter** | `default` | `404 LOBBY_NOT_FOUND` (`:324`), **`403 ARBITER_REQUIRED`** (`:335`) |
+
+`GET /api/br/config` est le **référentiel affiché** de la variante BR
+(audit-4, 02/11/2026, C5) : il expose `variants` (Classic, Blitz, Sniper
+Challenge, Resurgence), l'index `variantIds` consommé par le select de
+création et par les e2e, et des `hints` de cartes (plafond Krai « cap 40 »,
+Rebirth Island « non confirmé », rien sur Isolated/Blackout). Rien n'est en
+dur au front : la source (`BR_VARIANTS`, `server/br-engine.mjs:136`) sert le
+JSON ; à l'inverse, la validation de création refuse un variant hors menu
+(`400 INVALID_VARIANT`, défaut `classic`) et la normalisation neutralise un
+variant inconnu d'un ancien salon sans en inventer (`normalizeBrLobby`,
+`:211`). La règle CODM reste l'arbitre : le variant est réglé dans la salle
+privée au lancement (capture d'écran requise à l'appui), zéro effet moteur.
 
 **Le créateur d'un salon en devient l'**arbitre**, pas un joueur** : il ne paie
 aucun pass et ne figure pas dans le roster (`server/routes/br.mjs:137-142`).

@@ -16,7 +16,8 @@
 
 Base de lecture : `server/` (Node, http natif) + `src/` (React/Vite).
 Dernière vérification : dépôt local, commit `5f4b796` (27/10/2026), repassé le
-28/10/2026 (audit-3 P16).
+28/10/2026 (audit-3 P16) ; § 3.4 et § 3.5 ajoutés et vérifiés au commit
+`a1f297a` (02/11/2026, audit-4).
 
 ---
 
@@ -190,6 +191,34 @@ directe : l'arbitre suit la partie depuis l'emplacement « Spectators » de
 la salle privée **ou hors-jeu** (replay, partage d'écran) — ZOYD ne
 contraint pas ce choix ; il garantit seulement : arbitre = exclusion de
 tout flux d'argent et de tout slot.
+
+### 3.5 Les conventions affichées à l'utilisateur (CODM, audit-4 — 02/11/2026)
+
+La recherche CODM du jour puis les cycles C3-C8 ont rempli un référentiel
+partagé, `src/lib/competition.ts`, que les formulaires et les pages de
+lecture affichent tous. La discipline de la journée est « afficher suppose
+présent » : l'UI n'affiche qu'une convention déjà exprimée dans la donnée ;
+le serveur stocke ce qu'il reçoit tel quel et n'invente aucune règle.
+
+| Convention affichée | Clé du référentiel | Effet produit |
+|---|---|---|
+| Presets par mode (S&D 9 · 120 s, Hardpoint 250 · 600 s, Control 3 · 90 s) ; 5 modes dont CONTROL ; 5 classes d'armes ; champ opérateur ; Oasis réservé au FRONTLINE | `MJ_MODE_PRESETS` (:165), `MJ_MAP_MODE_RESTRICTIONS` (:177), `MJ_WEAPON_OPTIONS` (:199) | cartes filtrées par mode (mode incompatible = liste vide + toast), preset appliqué d'un bouton |
+| Limite de temps saisie en MINUTES, stockée en SECONDES (jamais 0) | `formatTimeLimit` (:248), `timeLimitSeconds?` | « Limite de temps » affiché au recap seulement si publiée |
+| Variant BR arbitré DANS la salle privée CODM (Classic / Blitz / Sniper Challenge / Resurgence) — zéro effet moteur | `BR_VARIANTS` (`server/br-engine.mjs:136`), servi par `GET /api/br/config` | chip variant au détail seulement si le salon en porte un ; le référentiel est servi, rien en dur au front |
+| Picks en alternance par manche, BO3+ (convention wager DuelX) | `MJ_PICKS_ALTERNANCE` (:215), `MJ_PICKS_ALTERNANCE_BRACKET` (:240) | checkbox match ET tournoi, payload conditionnel, ligne « Picks par manche » au bracket |
+| Best-of préselé par chips BO1 / BO3 / BO5 — le preset REMPLIT le champ libre, il ne le remplace pas | `MJ_BEST_OF_PRESETS` (:224), `MJ_BEST_OF_SCENE` (:227) | chips sous le champ « Best of » des deux formulaires, texte source affiché sous l'input |
+
+Deux garde-fous à retenir :
+
+- Un champ de règles absent ne reçoit JAMAIS une convention rétroactive : le
+  défaut legacy des données existantes reste « Toutes armes selon reglement »
+  (`normalizeTournamentSnapshot`, `server/tournament-engine.mjs:148`), et un
+  salon BR ancien neutralise un variant inconnu sans en inventer
+  (`normalizeBrLobby`, `server/br-engine.mjs:211`).
+- Aucune liste blanche côté serveur : `rules` est stocké tel quel
+  (`createMatchOnServer`, `server/match-engine.mjs`) ; le défaut de création
+  tournoi est « Toutes permises » (`:329`), les valeurs hors référentiel
+  passent comme règlement libre.
 
 ---
 

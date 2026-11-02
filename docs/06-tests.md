@@ -1028,6 +1028,30 @@ Les deux tests sautés : `server/withdrawal-double-payout.test.mjs:150` et `:160
 > il a été mesuré. C'est exactement la règle du §4.8 appliquée à la suite
 > elle-même.
 
+### 8.1 Instantané suivant — 2026-11-02 (audit-4)
+
+Mêmes disciplines, exécution directe (`node node_modules/...`, sans `npx`) :
+
+| Mesure | Commande | Résultat |
+|---|---|---|
+| Tests unitaires | `node node_modules/vitest/vitest.mjs run server/` | **946 passés**, 2 sautés |
+| TypeScript | `node node_modules/typescript7/bin/tsc --noEmit -p tsconfig.app.json` | **0 erreur** |
+| ESLint | `node node_modules/eslint/bin/eslint.js src server e2e --max-warnings 0` | **0 erreur** |
+| Build production | `node node_modules/vite/bin/vite.js build` | succès, 8,37 s au dernier cycle |
+| Tests E2E | `node node_modules/@playwright/test/cli.js test` | **232/232 verts** |
+
+Attention : la portée du run vitest change — l'instantané du 2026-10-28
+ci-dessus compte toute la suite (`npx vitest run`), celui-ci ne compte que
+`run server/` : ce ne sont pas les mêmes cercles, l'écart de total n'est pas
+une régression. Nouveautés de la journée verrouillées par
+`e2e/ui/mode-hierarchie.spec.ts` (3 tests : vitrine `/mode`, landing,
+hub MJ authentifié), `e2e/ui/best-of-presets.spec.ts` (2 tests : chips MJ,
+champ tournoi), et des tests moteur ajoutés sur
+`server/tournament-engine.test.mjs` (C6 : défaut partagé « Toutes permises »,
+conservation d'une classe explicite, normalisation legacy — C9 :
+`picksAlternate`, +5 tests). Détail et couverture cycle par cycle :
+`docs/audit-4/00-SYNTHESE.md`.
+
 ---
 
 ## 9. Recette de validation avant commit

@@ -7,15 +7,16 @@
 > surface de sécurité (→ `docs/03-securite.md`), ni les invariants d'argent
 > (→ `docs/05-invariants.md`), ni les tests (→ `docs/06-tests.md`).
 >
-> **Portée :** `src/` — 180 fichiers (re-mesuré le 2026-10-28 ; purge
+> **Portée :** `src/` — 184 fichiers (re-mesuré le 2026-11-02, audit-4 ; purge
 > M31/M32 le 2026-10-26 : 26 fichiers supprimés).
 
 **Source :** lecture directe du code. Base : dépôt local
-`E:\web_app\projrt\Z.O.Y.D\Zoyd`, commit de travail `5f4b796` (27/10/2026).
+`E:\web_app\projrt\Z.O.Y.D\Zoyd`, commit de travail `a1f297a` (02/11/2026).
 
 **Conventions de citation :** `fichier:ligne`. Les lignes renvoient à l'**état
 du working tree au moment de leur vérification** (rédaction initiale le
-2026-10-20 ; re-passé le 2026-10-28, audit-3 P16) : toute modification du
+2026-10-20 ; re-passé le 2026-10-28, audit-3 P16 ; hiérarchie et tailles
+re-mesurées le 2026-11-02, audit-4) : toute modification du
 fichier les décale. L'ancrage fiable est le **nom du symbole** (fonction,
 constante, classe CSS) ; la ligne est un indice, pas une garantie.
 
@@ -68,7 +69,10 @@ le **comportement constaté**, pas la configuration déclarée.
 
 Mesuré le 2026-10-20 (197 fichiers) ; purge des composants morts le 2026-10-26
 (audit-2 M31, M32 : 26 fichiers supprimés) ; re-mesuré le 2026-10-28 :
-**180 fichiers** (`git ls-files src`).
+**180 fichiers** (`git ls-files src`, 4 CSS compris). Audit-4 (02/11/2026) :
+**188 fichiers trackés**, dont **184 de code** (mjs/ts/tsx/js/cjs — 39 022
+lignes ; les 4 CSS de toujours restent hors décompte de code). Le décompte
+par dossier ci-dessous garde sa date du 2026-10-28.
 
 ```
 src/                                    2   main.tsx, vite-env.d.ts
@@ -649,8 +653,8 @@ L'API **n'est pas** couverte par cette CSP (elle est sur une autre origine) :
 | Fichier | Rôle | Route |
 |---|---|---|
 | `RootIndexPage.tsx` | aiguillage `/` → landing | `/` |
-| `LandingPage.tsx` (29 Ko) | page d'accueil, hero vidéo, `SEOHead` | `/` |
-| `ModeSelectionPage.tsx` | choix du mode (MJ / BR / Ligue) | `/mode` |
+| `LandingPage.tsx` (31,5 Ko) | page d'accueil, hero vidéo, `SEOHead` ; 4e pilier « Battle Royale » (D6) | `/` |
+| `ModeSelectionPage.tsx` (14,7 Ko) | vitrine BR-d'abord (D1-D2) : salons BR carte principale « Salons ouverts », ligue en bande secondaire « Événement hebdomadaire / Ouverture différée » | `/mode` |
 | `DashboardPage.tsx` (34 Ko) | hub MJ / tableau de bord joueur | `/mj` |
 | `ClassementsPage.tsx` | classements | `/classements` |
 | `WalletPage.tsx` (42 Ko) | portefeuille, dépôts, retraits | `/wallet` |
@@ -661,6 +665,17 @@ L'API **n'est pas** couverte par cette CSP (elle est sur une autre origine) :
 | `AdminDashboardPage.tsx` (27 Ko) | administration | `/admin` |
 | `LeaksPage.tsx` (38 Ko) | « infos » — l'état réel de la plateforme | `/infos` |
 | `NotFoundPage.tsx` | 404 | `*` |
+
+**Hiérarchie BR-d'abord (audit-4, 02/11/2026 — D1-D3, D5, D6).** La promesse
+utilisateur est : salons BR devant la ligue BR. `ModeSelectionPage` l'applique
+(badge « Salons ouverts », chips « Salon à la demande / Pass remboursable /
+Création ouverte à tous », CTA « Entrer en Battle Royale »), le dashboard
+porte la quickAction « BR Salons » (D3), `HubMJPage` une bande secondaire
+(D5) et la landing un 4e pilier (D6) ; la ligue est étiquetée
+« Événement hebdomadaire » / « Ouverture différée ». C'est une promesse
+produit, pas un détail CSS : sa re-promotion exige une décision contraire
+explicite (docstring de la page), et `e2e/ui/mode-hierarchie.spec.ts`
+verrouille la vitrine, la landing et le hub.
 
 ### 10.2 Pages de `src/app/pages/auth/` (4)
 
@@ -676,15 +691,16 @@ de session requise (`routes.tsx:79-104`).
 
 ### 10.4 Pages `src/app/pages/mj/` (3)
 
-`HubMJPage.tsx` (14 Ko), `CreateMatchPage.tsx` (35 Ko),
-`CreateTournamentPage.tsx` (33 Ko).
+`HubMJPage.tsx` (18 Ko) — bande secondaire « Battle Royale / Salons ouverts »
+sous la liste (D5) —, `CreateMatchPage.tsx` (45,2 Ko),
+`CreateTournamentPage.tsx` (37,1 Ko).
 
 ### 10.5 Pages de `src/features/` (10)
 
 | Domaine | Page | Composants |
 |---|---|---|
 | **match** | `MatchDetailPage.tsx` (41 Ko) | `MatchHeader`, `MatchActions` (32 Ko), `MatchChat`, `MatchPlayers`, `MatchResults`, `MatchRules`, `MatchTimeline` |
-| **tournament** | `TournoisPage.tsx`, `TournamentBracketPage.tsx` (24 Ko) | `TournamentCard`, `BracketHeader`, `BracketMatchCard`, `BracketGrid`, `BracketActions`, `BracketSidebar` |
+| **tournament** | `TournoisPage.tsx`, `TournamentBracketPage.tsx` (24,8 Ko) | `TournamentCard`, `BracketHeader`, `BracketMatchCard`, `BracketGrid`, `BracketActions`, `BracketSidebar` |
 | **league** | `LeaguePage.tsx`, `LeagueSeasonPage.tsx` (24 Ko) | `StandingsTable`, `QualificationPanel`, `AdminPanel`, `FinalResultsForm`, `leagueSeasonConstants.ts` |
 | **br** | `BrPage.tsx`, `BrLobbyDetailPage.tsx` | `BrLobbyCreatePanel`, `BrArbiterPanel` (22 Ko) |
 
@@ -699,6 +715,16 @@ de session requise (`routes.tsx:79-104`).
 Le découpage n'est pas strict : `AdminDashboardPage` est dans `app/pages/` alors
 que ses onglets sont dans `app/components/admin/`. C'est historique, pas
 normatif.
+
+**Référentiel partagé `src/lib/competition.ts` (9,6 Ko, audit-4).** Toutes les
+conventions affichées de la journée y vivent, et aucune n'est doublée par page :
+presets par mode avec bouton « Appliquer » (C4), classes d'armes partagées MJ +
+tournoi (C6), chips « Best of » BO1/BO3/BO5 qui REMPLISSENT le champ libre (C8),
+alternance des picks BO3+ (C7/P3 pour le match, C9/P5 pour la variante bracket,
+`MJ_PICKS_ALTERNANCE_BRACKET`, ligne « Picks par manche » dans `BracketSidebar`).
+Les formulaires de création et les pages de lecture (`MatchRules`, bracket)
+affichent le même référentiel : une convention modifiée se change à un seul
+endroit.
 
 ---
 

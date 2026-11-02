@@ -30,6 +30,7 @@ import {
   MJ_MAPS_FOR_MODE,
   MJ_MODE_OPTIONS,
   MJ_MODE_PRESETS,
+  MJ_PICKS_ALTERNANCE,
   MJ_WEAPON_OPTIONS,
   formatTimeLimit,
   getMapImage,
@@ -62,6 +63,8 @@ interface MatchFormData {
   operatorSkills: 'allowed' | 'restricted';
   /** Limite de temps saisie en MINUTES dans l'UI, stockee en SECONDES dans rules. */
   timeLimitMinutes?: number;
+  /** P3 : contrat affiche "picks en alternance" (BO3+), arbitre dans la salle CODM. */
+  picksAlternate?: boolean;
   meleeAllowed: boolean;
   isPrivate: boolean;
   creatorTeam: number;
@@ -91,11 +94,14 @@ const CreateMatchPage: React.FC = () => {
       operatorSkills: 'restricted',
       timeLimitMinutes: undefined,
       meleeAllowed: true,
+      picksAlternate: false,
     },
   });
 
   const selectedPass = Number(watch('passAmount') || 0);
   const selectedCreatorTeam = Number(watch('creatorTeam') || 0);
+  // P3 : la convention "picks en alternance" ne concerne que les BO3+.
+  const bestOfValue = Number(watch('bestOf') || 1);
   const availableSpend = getAvailableToSpend();
 
   /**
@@ -241,6 +247,12 @@ const CreateMatchPage: React.FC = () => {
           pointstreaks: getValues('pointstreaks') === 'allowed' ? 'allowed' : 'restricted',
           operatorSkills: getValues('operatorSkills') === 'allowed' ? 'allowed' : 'restricted',
           meleeAllowed: !!getValues('meleeAllowed'),
+          // P3 : le contrat "picks en alternance" n'a de sens qu'en BO3+ ;
+          // non coche ou BO<=2, le champ n'est PAS envoye (pas de valeur
+          // inventee dans rules).
+          ...(Number(getValues('bestOf') || 1) >= 3 && getValues('picksAlternate')
+            ? { picksAlternate: true }
+            : {}),
           ...(timeLimitSeconds
             ? { timeLimitSeconds, timeLimitScope: rulePreset?.timeLimitScope ?? 'match' }
             : {}),
@@ -489,6 +501,27 @@ const CreateMatchPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* P3 (02/11/2026) : convention duelx des BO3. Contrat
+                        AFFICHE arbitre par les joueurs dans la salle CODM
+                        (carte de la manche 1 au createur, manche 2 a
+                        l'adversaire) - le champ n'existe pas en BO1/BO2. */}
+                    {bestOfValue >= 3 && (
+                      <div className="mt-6">
+                        <label htmlFor="picksAlternate" className="flex items-center gap-4 cursor-pointer group">
+                          <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
+                            <input id="picksAlternate" type="checkbox" {...register('picksAlternate')} aria-label="Picks en alternance par manche" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
+                            <div className="w-2 h-2 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
+                          </div>
+                          <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
+                            Picks en alternance par manche
+                          </span>
+                        </label>
+                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                          Manche 1 : createur / Manche 2 : adversaire / Departage : accord (convention wager)
+                        </p>
+                      </div>
+                    )}
+
                     <label htmlFor="meleeAllowed" className="flex items-center gap-4 cursor-pointer group">
                       <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
                         <input id="meleeAllowed" type="checkbox" {...register('meleeAllowed')} aria-label="Autoriser le corps à corps" className="opacity-0 absolute w-5 h-5 cursor-pointer peer" />
@@ -641,6 +674,12 @@ const CreateMatchPage: React.FC = () => {
                   <SummaryBox label="Pass" value={`${selectedPass.toFixed(1)} ZC`} highlight />
                   <SummaryBox label="Solde dispo" value={`${availableSpend.toFixed(1)} ZC`} />
                   <SummaryBox label="Armes" value={getValues('weapons') || 'Toutes'} />
+                  {Number(getValues('bestOf') || 1) >= 3 && getValues('picksAlternate') ? (
+                    <SummaryBox
+                      label="Manches"
+                      value={MJ_PICKS_ALTERNANCE}
+                    />
+                  ) : null}
                   <SummaryBox
                     label="Limite de temps"
                     value={

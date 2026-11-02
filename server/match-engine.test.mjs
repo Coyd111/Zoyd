@@ -127,6 +127,36 @@ describe('match-engine - createMatchOnServer : creatorTeam borne a {0,1}', () =>
   });
 });
 
+// P1 (timeLimit/operatorSkills) et P3 (picksAlternate) comptent sur le
+// meme invariant : rules est un OBJET BRUT stocke sans liste blanche
+// (createMatchOnServer). Ce test le cale : un champ de regles inconnu
+// du moteur survit au stockage, l'UI decide de l'afficher ou non.
+describe('match-engine - rules : stockage brut sans liste blanche', () => {
+  const creator = { id: 'creator-rules', pseudo: 'CreatorRules', stats: {} };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(creator);
+  });
+
+  it('garde un champ de regles supplementaire (P3 picksAlternate)', async () => {
+    const { match } = await matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1',
+      entryFee: 10,
+      rules: { mode: 'S&D', map: 'Crossfire', scoreTarget: 7, bestOf: 3, picksAlternate: true },
+    });
+    expect(match.rules.bestOf).toBe(3);
+    expect(match.rules.picksAlternate).toBe(true);
+  });
+
+  it('rules est un objet vide quand la cle est absente', async () => {
+    const { match } = await matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1', entryFee: 10,
+    });
+    expect(match.rules).toEqual({});
+  });
+});
+
 describe('match-engine - Elo Ranking', () => {
   it('should return Bronze for Elo < 1200', () => {
     expect(matchEngine.getRankFromElo(1100)).toBe('Bronze');

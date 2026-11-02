@@ -65,6 +65,11 @@ export interface CreateMatchPayload {
     pointstreaks?: 'allowed' | 'restricted';
     operatorSkills?: 'allowed' | 'restricted';
     meleeAllowed?: boolean;
+    /**
+     * P3 02/11/2026 : contrat affiche "picks en alternance" pour les BO3+
+     * (DuelX) - stocke tel quel par le serveur, aucun effet moteur.
+     */
+    picksAlternate?: boolean;
     /** P1 02/11/2026 : limites de temps CODM (UI en min, rules en secondes). */
     timeLimitSeconds?: number;
     timeLimitScope?: 'match' | 'round';

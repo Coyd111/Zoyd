@@ -205,6 +205,17 @@ export const MJ_WEAPON_OPTIONS = [
 ] as const;
 
 /**
+ * P3 02/11/2026 : la convention anti-friction de la scene wager (DuelX :
+ * "alternance picks") sur un BO3 - l'organisateur choisit la carte de la
+ * manche 1, son adversaire celle de la manche 2, la manche de departage
+ * fait l'objet d'un accord. CONTRAT AFFICHE (meme discipline que le
+ * variant BR) : regle dans la salle CODM, aucun effet moteur - le texte
+ * est affiche tel quel dans MatchRules et le recapitulatif de creation.
+ */
+export const MJ_PICKS_ALTERNANCE =
+  'Manche 1 : createur / Manche 2 : adversaire / Departage : accord';
+
+/**
  * Limite de temps CODM reformatee pour l'UI : "10 min" ou "2 min / manche".
  * Renvoie "" si absent ou invalide : l'affichage laisse le champ decore a
  * "Libre" (aucune limite saisie).

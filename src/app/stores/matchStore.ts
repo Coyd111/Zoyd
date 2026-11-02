@@ -148,6 +148,12 @@ export interface MatchRules {
   weaponRestrictions?: string;
   pointstreaks?: 'allowed' | 'restricted';
   meleeAllowed?: boolean;
+  /**
+   * P3 02/11/2026 : convention "picks en alternance" choisie a la creation
+   * (BO3+) : absente sur les vieux matchs, aucun effet moteur - le serveur
+   * stocke rules tel quel.
+   */
+  picksAlternate?: boolean;
   /** Limites de temps CODM (P1 02/11/2026) : absentes sur les vieux matchs. */
   timeLimitSeconds?: number;
   timeLimitScope?: 'match' | 'round';

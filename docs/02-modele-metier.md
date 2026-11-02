@@ -158,6 +158,39 @@ appelée par cinq chemins distincts (`server/match-engine.mjs:963`, `:994`,
 | Ligue | 0 % | — | aucun code de commission dans `server/league-engine.mjs` |
 | BR | ≤ 5 % | pot | `server/br-engine.mjs:86`, `:199-204`, `:942` |
 
+### 3.4 Le spectateur (et la transposition CODM « Number of Spectators »)
+
+Issu de la recherche CODM du 02/11/2026 : dans CODM, une salle privée
+possède un réglage **« Number of Spectators Allowed »** — un emplacement
+gratuit distinct des slots joueurs (10 joueurs max, même avec
+spectateurs). ZOYD transpose ce rôle existant, il ne l'invente pas.
+
+**Qui est spectateur.** Un utilisateur authentifié qui n'est ni joueur
+ni arbitre (ou un visiteur sur une page publique) :
+- match : le rôle chat est calculé côté front — `arbiter` / `player` /
+  `spectator` selon l'inscription et `arbiter.isMe`
+  (`src/features/match/pages/MatchDetailPage.tsx:178-186`) ;
+- tournoi et BR : les pages publiques de lecture (bracket, salons) sont
+  visibles sans inscription ; en BR le roster public masque même les
+  `userId` (`server/state-helpers.mjs`, `toPublicBrLobby`).
+
+**Ce qu'un spectateur ne peut pas faire** :
+
+| Action | Pourquoi |
+|---|---|
+| Voir la salle privée d'un match | `canSeeRoom` réservé aux joueurs et à l'arbitre (`src/features/match/pages/MatchDetailPage.tsx:213-214`) |
+| Mettre de l'argent | aucune primitive wallet n'est branchee sur un spectateur : le pass n'existe que via l'inscription (`join*` des moteurs), jamais depuis la seule lecture (§7) |
+| Saisir ou confirmer un resultat | toutes les mutations passent par les gardes joueur/arbitre des moteurs (§3.2, e2e `403`) |
+
+**Le point clé : l'arbitre ZOYD est HORS SLOT.** Il ne paie aucun pass,
+ne figure dans aucun roster, et ne consomme aucun slot joueur — c'est le
+même invariant dans les trois moteurs qui ont un arbitre (match, tournoi,
+BR, §3.1 ; la ligue n'en a pas du tout). La transposition CODM est donc
+directe : l'arbitre suit la partie depuis l'emplacement « Spectators » de
+la salle privée **ou hors-jeu** (replay, partage d'écran) — ZOYD ne
+contraint pas ce choix ; il garantit seulement : arbitre = exclusion de
+tout flux d'argent et de tout slot.
+
 ---
 
 ## 4. Cycle de vie d'un match

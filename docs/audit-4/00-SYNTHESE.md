@@ -6,7 +6,8 @@
 > dossier Temp de la machine de travail — ils sont cités en fin de document.
 
 **Ouverture :** 2026-11-02 (lecture cartographie, base `3bf10cf`) —
-**Clôture :** 2026-11-02, dépôt à `1726a84`, poussé et vérifié en production.
+**Clôture :** 2026-11-02, dépôt à `034f17f` (rapport mis à jour) et vérifié
+en production.
 **Objet :** cartographie produit complète en lecture, recherche CODM du jour,
 puis livraison des chantiers qu'elles ont produits : hiérarchie produit
 (D1–D6), P0 référentiel cartes, P1 presets MJ, P2 variant BR, harmonisation
@@ -21,7 +22,7 @@ complète de gates, puis est vérifié en production par sonde lecture-seule
 
 ---
 
-## 1. La journée en un tableau — 7 commits, de `11504de` à `1726a84`
+## 1. La journée en un tableau — 8 commits, de `11504de` à `034f17f`
 
 | # | Cycle | Commit | Clé | Gates à la clôture |
 |---|---|---|---|---|
@@ -32,10 +33,12 @@ complète de gates, puis est vérifié en production par sonde lecture-seule
 | C5 | P2 variant BR in-game | `2b75e61` | 4 variants arbitrés (Classic, Blitz, Sniper Challenge, Resurgence), validation création + normalisation sans invention, contrat servi par `GET /api/br/config`, UI création + détail | vitest 936/2 · build 6,94 s · e2e 230/230 (5,7 m) |
 | C6 | Harmonisation tournoi | `45e219c` | liste locale du tournoi remplacée par `MJ_WEAPON_OPTIONS`, défaut de création « Toutes permises », défaut legacy conservé sur la data existante | vitest 939/2 · build 8,25 s · e2e 230/230 (6,9 m) |
 | C7 | P3 anti-friction wager | `1726a84` | picks en alternance BO3+ (contrat affiché, zéro moteur), doc rôle spectateur (§3.4 du modèle métier) | vitest 941/2 · build 6,12 s · e2e 230/230 (6,4 m) |
+| C8 | Presets BO1/BO3/BO5 (roadmap) | `034f17f` | chips best-of des deux formulaires MJ, presets REMPLISSENT le champ (champ libre conservé), helper source partagé ; +1 spec e2e tournoi | vitest 941/2 · build 6,40 s · e2e 231/231 (6,8 m) |
 
 Sur la journée : tsc 0 et eslint 0 à chaque commit ; les 230 specs e2e
 existants tiennent sans adaptation (du C3 au C7, aucune spec modifiée —
-les seuls ajouts tests e2e sont dans C1/C2 : `e2e/ui/mode-hierarchie.spec.ts`).
+les seuls ajouts de specs e2e sont dans C1/C2 :
+`e2e/ui/mode-hierarchie.spec.ts` et C8 : `e2e/ui/best-of-presets.spec.ts`).
 
 ## 2. Détail par cycle
 
@@ -170,6 +173,27 @@ les seuls ajouts tests e2e sont dans C1/C2 : `e2e/ui/mode-hierarchie.spec.ts`).
   :213-214), miser ni valider un résultat ; le suivi en salle ou hors-jeu
   reste un choix de l'arbitre.
 
+### C8 — Presets BO1/BO3/BO5, item roadmap (commit `034f17f`)
+
+- Recherche exacte : culture wager DuelX « BO1/BO3/BO5 alterné », constat
+  « champ libre OK, presets utiles » → la discipline P1 est appliquée aux
+  presets : le champ libre CONSERVÉ, un preset REMPLIT le champ, il ne le
+  remplace pas (règlement libre, aucune liste blanche côté serveur).
+- `competition.ts` : `MJ_BEST_OF_PRESETS = [1, 3, 5]` + `MJ_BEST_OF_SCENE`
+  (texte source affiché sous l'input « Best of » des deux formulaires).
+- `CreateMatchPage` : chips sous le champ bestOf (étape 2), état actif sur
+  la valeur courante, `setValue` au clic ; la checkbox « Picks en
+  alternance » du P3 continue de réagir à la valeur du champ (BO3+).
+- `CreateTournamentPage` : mêmes chips (défaut moteur BO1), watcher
+  `selectedBestOf` pour l'état actif.
+- Serveur zéro-touch : aucune modification (le test vitest du P3 couvre le
+  stockage brut de `rules`, `bestOf` inclus) ; e2e verrouille le champ
+  tournoi (chips visibles, preset remplit le champ 1 → 3 → 5).
+- Sonde prod : `index-DVEumqNF.js` porte le texte source (inline) ; le
+  template « Preset best of » est dans les deux chunks de formulaires
+  (`CreateMatchPage-C_gmxGld.js`, `CreateTournamentPage-DVm6VAcF.js`) ;
+  Render zero-touch = rien à sonder côté API.
+
 ## 3. Invariants transversaux intacts
 
 1. **Afficher suppose présent** — aucune règle inventée sur la data
@@ -191,10 +215,11 @@ les seuls ajouts tests e2e sont dans C1/C2 : `e2e/ui/mode-hierarchie.spec.ts`).
 
 ## 4. Production à la clôture
 
-- Dépôt : `origin/main` = `1726a84a9b8217b61a6c21945193b21ef587d65c`, arbre
+- Dépôt : `origin/main` = `034f17fe59cebcb500ffa2325473798e0640acfb`, arbre
   de travail propre.
-- Front Vercel : index déployé `index-CDubWl-I.js`, crawl BFS 56/59 chunks
-  en GET ; les marqueurs C7 y sont (constante + checkbox + helper).
+- Front Vercel : index déployé `index-DVEumqNF.js`, crawl BFS 56/59 chunks
+  en GET ; les marqueurs C7/C8 y sont (constante + checkbox + helper C7 ;
+  texte preset + chips C8).
 - API Render : alignée (le seul retard observé de la journée, ~5 min sur
   C5 pendant un auto-deploy en file).
 - Non sondables en lecture-seule : pages auth-gated (/mj…) et défauts du
@@ -212,13 +237,13 @@ les seuls ajouts tests e2e sont dans C1/C2 : `e2e/ui/mode-hierarchie.spec.ts`).
   liste, création, détail, check-in, répartition) : l'option A n'a changé
   QUE la vitrine, jamais le moteur.
 
-## 6. Roadmap portée, NON entamée (issus de la recherche du jour)
+## 6. Roadmap (initialisée par la recherche du jour)
 
-- Presets BO1/BO3/BO5 côté création (champ libre déjà OK, presets utiles).
+- **Presets BO1/BO3/BO5 côté création — LIVRÉ (C8, commit `034f17f`)** :
+  presets remplissant le champ, champ libre conservé, zéro moteur.
 - Stockage de l'ordre des manches vers le bracket (BO3 alterné : séquence
-  de cartes par manche).
-- Ces deux chantiers dépendent d'une décision produit (arbitrage
-  utilisateur) avant tout code.
+  de cartes par manche) — NON entamé, reste à arbitrer avant tout code : 
+  c'est le dernier item de la recherche CODM encore ouvert.
 
 ## 7. Leçons de la journée
 
@@ -244,4 +269,4 @@ les seuls ajouts tests e2e sont dans C1/C2 : `e2e/ui/mode-hierarchie.spec.ts`).
   sondes, leçons).
 - `zoyd-codm-recherche.md` — rapport de recherche CODM daté (sources).
 - Probes GET-only : `zoyd-probe-p2-api-poll.mjs`, `zoyd-probe-tournoi-scan.mjs`,
-  `zoyd-probe-p3-scan.mjs`, scanner `zoyd-byscan.cjs`.
+  `zoyd-probe-p3-scan.mjs`, `zoyd-probe-p4-scan.mjs`, scanner `zoyd-byscan.cjs`.

@@ -29,6 +29,7 @@ import {
   MJ_BEST_OF_SCENE,
   MJ_MAP_POOL,
   MJ_MODE_OPTIONS,
+  MJ_PICKS_ALTERNANCE_BRACKET,
   MJ_WEAPON_OPTIONS,
 } from '../../../lib/competition';
 import { formatZC } from '../../../lib/utils';
@@ -63,6 +64,7 @@ type FormValues = {
   weaponRestrictions: string;
   pointstreaks: 'allowed' | 'restricted';
   meleeAllowed: boolean;
+  picksAlternate: boolean;
   notes: string;
   startsAt: string;
   deviceRestriction: TournamentDeviceRestriction;
@@ -112,6 +114,7 @@ const CreateTournamentPage: React.FC = () => {
       weaponRestrictions: MJ_WEAPON_OPTIONS[0],
       pointstreaks: 'restricted',
       meleeAllowed: false,
+      picksAlternate: false,
       notes: 'Pas de matchs entre 00h00 et 07h00. Vérification room 10 min avant le round.',
       startsAt: getDefaultStartAt(),
       deviceRestriction: 'open',
@@ -126,6 +129,9 @@ const CreateTournamentPage: React.FC = () => {
   const selectedMaxEntries = Number(watch('maxEntries') || 4);
   // P4 2026-11-02 : presets BO1/BO3/BO5 de la scene wager (etat actif).
   const selectedBestOf = Number(watch('bestOf') || 1);
+  // P5 2026-11-02 : la case alternance n'existe qu'en BO3+ (garde P3 de la
+  // scene wager : l'alternance implique au moins deux manches a choisir).
+  const showPicksAlternance = selectedBestOf >= 3;
   const reserveCreatorAsArbiter = watch('reserveCreatorAsArbiter');
   const selectedDeviceRestriction = watch('deviceRestriction');
   const selectedControllerRestriction = watch('controllerRestriction');
@@ -202,6 +208,12 @@ const CreateTournamentPage: React.FC = () => {
           weaponRestrictions: data.weaponRestrictions,
           pointstreaks: data.pointstreaks,
           meleeAllowed: !!data.meleeAllowed,
+          // P5 2026-11-02 : l'alternance n'est emise que si cochee ET BO3+
+          // (garde P3 reutilisee) - un BO1, coche ou non, n'emet pas le
+          // champ : le moteur stocke alors false (aucune reinterpretation).
+          ...(showPicksAlternance && data.picksAlternate
+            ? { picksAlternate: true }
+            : {}),
           notes: data.notes.trim(),
         },
       });
@@ -486,6 +498,33 @@ const CreateTournamentPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* P5 2026-11-02 : alternance des picks en BO3+ (case rendue
+                    seulement en BO3+, garde P3) - contrat affiche porte par
+                    les rules du tournoi, en variante bracket : la place A
+                    d'un match est le meilleur seed (buildBracket associe
+                    les entries par seed croissant). */}
+                {showPicksAlternance ? (
+                  <div>
+                    <label htmlFor="picks-alternance" className="flex items-center gap-4 cursor-pointer group mt-8">
+                      <div className="min-w-[44px] min-h-[44px] w-11 h-11 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
+                        <input
+                          id="picks-alternance"
+                          type="checkbox"
+                          {...register('picksAlternate')}
+                          className="opacity-0 absolute w-11 h-11 cursor-pointer peer"
+                        />
+                        <div className="w-3 h-3 bg-zoyd-blue opacity-0 peer-checked:opacity-100 transition-opacity" />
+                      </div>
+                      <span className="text-[11px] font-display font-black text-white/70 uppercase group-hover:text-white italic">
+                        Picks en alternance par manche
+                      </span>
+                    </label>
+                    <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2 ml-15">
+                      {MJ_PICKS_ALTERNANCE_BRACKET}
+                    </p>
+                  </div>
+                ) : null}
 
                 <label htmlFor="melee-allowed" className="flex items-center gap-4 cursor-pointer group">
                   <div className="min-w-[44px] min-h-[44px] w-11 h-11 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">

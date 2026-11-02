@@ -14,6 +14,10 @@
  * sonde bundle (marqueurs "Preset best of" dans les chunks) et la sonde
  * geometrique responsive.spec sur /mj/creer.
  *
+ * P5 02/11/2026 : alternance des picks BO3+ - la checkbox
+ * (#picks-alternance) n'est rendue qu'en BO3+ (garde P3 reutilisee) ;
+ * le champ bestOf reste libre, aucun couplage cache.
+ *
  * PIEGE : les chips ont un aria-label ("Preset best of N") et un texte
  * visible "BO3" engendré par template - ne jamais cibler par le texte
  * visible, toujours par l aria-label.
@@ -73,5 +77,31 @@ test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
 
     // Helper source unique sous le champ (marqueur du referentiel partage).
     await expect(page.getByText('Scene wager (DuelX) : BO1, BO3 ou BO5', { exact: false })).toBeVisible();
+  });
+
+  test('P5 : la checkbox alternance n existe qu en BO3+ (garde P3)', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openApp(page, pseudo, password);
+    await page.goto('/mj/tournois/creer');
+
+    const picks = page.locator('#picks-alternance');
+    // Defaut tournoi = BO1 : la case est absente du DOM (alternance = au
+    // moins deux manches a choisir, garde P3 reutilisee).
+    await expect(picks).toHaveCount(0);
+
+    const bo3 = page.getByRole('button', { name: 'Preset best of 3' });
+    await bo3.click();
+    await expect(picks).toBeVisible();
+
+    // Le contrat affiche sous la case vient du referentiel partage
+    // (competition.ts MJ_PICKS_ALTERNANCE_BRACKET).
+    await expect(
+      page.getByText('Manche 1 : meilleur seed / Manche 2 : adversaire', { exact: false })
+    ).toBeVisible();
+
+    // toujours presente en BO5 : la garde est "BO3+", pas "BO3".
+    const bo5 = page.getByRole('button', { name: 'Preset best of 5' });
+    await bo5.click();
+    await expect(picks).toBeVisible();
   });
 });

@@ -228,6 +228,19 @@ export const MJ_BEST_OF_SCENE =
   'Scene wager (DuelX) : BO1, BO3 ou BO5. Un preset remplit le champ, une autre valeur reste libre.';
 
 /**
+ * P5 02/11/2026 (audit-4) : meme convention d'alternance promue aux
+ * tournois BO3+. VARIANTE BRACKET distincte de MJ_PICKS_ALTERNANCE : dans
+ * un bracket, la "place A" de chaque match EST le meilleur seed
+ * (buildBracket associe les entries par seed croissant), donc le texte
+ * home/createur devient "meilleur seed" - STRUCTUREL, pas une regle
+ * inventee. CONTRAT AFFICHE zero moteur : le texte est porte par les rules
+ * du tournoi et affiche tel quel dans le bracket, aucune donnee par manche
+ * n'est stockee.
+ */
+export const MJ_PICKS_ALTERNANCE_BRACKET =
+  'Manche 1 : meilleur seed / Manche 2 : adversaire / Departage : accord';
+
+/**
  * Limite de temps CODM reformatee pour l'UI : "10 min" ou "2 min / manche".
  * Renvoie "" si absent ou invalide : l'affichage laisse le champ decore a
  * "Libre" (aucune limite saisie).

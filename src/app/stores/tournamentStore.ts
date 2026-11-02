@@ -38,6 +38,8 @@ export interface TournamentRules {
   weaponRestrictions?: string;
   pointstreaks: 'allowed' | 'restricted';
   meleeAllowed: boolean;
+  /** P5 02/11/2026 (audit-4) : alternance picks BO3+ - contrat affiche, stocke au niveau tournoi. */
+  picksAlternate?: boolean;
   notes?: string;
 }
 

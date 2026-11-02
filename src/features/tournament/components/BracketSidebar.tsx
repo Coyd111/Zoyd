@@ -16,6 +16,10 @@
 import React from 'react';
 import { CheckCircle2, Gamepad2, Radio } from 'lucide-react';
 import type { Tournament, TournamentMatch } from '../../../app/stores/tournamentStore';
+// P5 02/11/2026 (audit-4) : variante bracket du contrat P3 (matchs).
+// Aucune donnee par manche n'existe : le bracket n'affiche que ce texte,
+// decrit par les rules du tournoi (source unique des regles).
+import { MJ_PICKS_ALTERNANCE_BRACKET } from '../../../lib/competition';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
@@ -40,6 +44,10 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
 }) => {
   const participantLabel = tournament.teamSize > 1 ? 'Équipes inscrites' : 'Joueurs inscrits';
   const participantSlotLabel = tournament.teamSize > 1 ? 'équipes' : 'joueurs';
+  // P5 02/11/2026 (audit-4) : garde d'affichage - un champ absent d'un vieux
+  // tournoi est falsy, un BO1 n'affiche jamais l'alternance ("afficher
+  // suppose present").
+  const showPicksAlternance = tournament.rules.picksAlternate && (tournament.rules.bestOf || 1) >= 3;
 
   return (
     <div className="space-y-8">
@@ -51,6 +59,9 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
         <div className="grid md:grid-cols-2 gap-4 text-sm text-white/70">
           <RuleRow label="Mode" value={tournament.rules.mode} />
           <RuleRow label="Best of" value={`BO${tournament.rules.bestOf}`} />
+          {showPicksAlternance ? (
+            <RuleRow label="Picks par manche" value={MJ_PICKS_ALTERNANCE_BRACKET} />
+          ) : null}
           <RuleRow label="Score cible" value={`${tournament.rules.scoreTarget}`} />
           <RuleRow
             label="Séries de points"
@@ -143,6 +154,9 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
                 destinataire (`match.room`) - 'A partager' tant qu'elle est
                 absente du payload. */}
             <RuleRow label="Salle" value={participantMatch.room?.name || 'À partager'} />
+            {showPicksAlternance ? (
+              <RuleRow label="Picks par manche" value={MJ_PICKS_ALTERNANCE_BRACKET} />
+            ) : null}
           </div>
           {participantMatch.room?.password ? (
             <div className="mt-4 border border-white/10 bg-black/40 px-4 py-3 text-sm text-white/70">

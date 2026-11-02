@@ -148,6 +148,12 @@ const normalizeTournamentSnapshot = (tournament) => {
       weaponRestrictions: tournament?.rules?.weaponRestrictions || 'Toutes armes selon reglement',
       pointstreaks: tournament?.rules?.pointstreaks === 'allowed' ? 'allowed' : 'restricted',
       meleeAllowed: Boolean(tournament?.rules?.meleeAllowed),
+      // P5 02/11/2026 (audit-4) : alternance des picks BO3+, contrat
+      // affiche porte par les rules du tournoi (voir competition.ts
+      // MJ_PICKS_ALTERNANCE_BRACKET). Champ absent d'un vieux tournoi ->
+      // false : defaut LEGACY conserve, l'affichage s'efface au lieu de
+      // presenter une regle qu'ils n'ont jamais enregistree.
+      picksAlternate: Boolean(tournament?.rules?.picksAlternate),
       notes: tournament?.rules?.notes || 'Pas de matchs entre 00h00 et 07h00.',
     },
     startsAt: tournament?.startsAt || createdAt,
@@ -323,6 +329,15 @@ const createTournamentBase = (options) => {
       weaponRestrictions: options.rules?.weaponRestrictions || 'Toutes permises',
       pointstreaks: options.rules?.pointstreaks === 'allowed' ? 'allowed' : 'restricted',
       meleeAllowed: Boolean(options.rules?.meleeAllowed),
+      // P5 02/11/2026 (audit-4) : alternance des picks BO3+, meme contrat
+      // affiche que MJ_PICKS_ALTERNANCE (matches) en variante bracket
+      // (competition.ts MJ_PICKS_ALTERNANCE_BRACKET : la place A d'un
+      // match EST le meilleur seed, structurellement issu de buildBracket).
+      // Aucune donnee par manche n'est stockee : les rules restent la
+      // source unique. Boolean(...) stocke tel quel - un BO1 + true passe
+      // sans reinterpretation moteur, la garde BO3+ est une affaire
+      // d'UI (checkbox masquee) et d'affichage (BracketSidebar).
+      picksAlternate: Boolean(options.rules?.picksAlternate),
       // P5 C2 (audit-3) : les notes vivantes entrent par une libre saisie
       // (route et socket, via createTournamentOnServer) : sanitize + borne
       // AU MOTEUR, comme les champs de salle (:1463). Sans garde, le texte

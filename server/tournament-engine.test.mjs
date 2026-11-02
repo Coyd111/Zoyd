@@ -149,6 +149,66 @@ describe('tournament-engine - createTournamentOnServer', () => {
     expect(legacy.rules.weaponRestrictions).toBe('Toutes armes selon reglement');
   });
 
+  // P5 02/11/2026 (audit-4) : alternance des picks BO3+ (voir
+  // competition.ts MJ_PICKS_ALTERNANCE_BRACKET). Contrat affiche porte
+  // par les rules du tournoi : le moteur stocke tel quel - la garde BO3+
+  // est une affaire d'UI (checkbox masquee) et d'affichage (BracketSidebar).
+  it('P5 : BO3 + picksAlternate stocke true dans les rules', () => {
+    const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      entryFee: 100,
+      rules: { bestOf: 3, picksAlternate: true },
+    });
+    expect(result.tournament.rules.bestOf).toBe(3);
+    expect(result.tournament.rules.picksAlternate).toBe(true);
+  });
+
+  it('P5 : BO3 sans champ picksAlternate stocke false', () => {
+    const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      entryFee: 100,
+      rules: { bestOf: 3 },
+    });
+    expect(result.tournament.rules.picksAlternate).toBe(false);
+  });
+
+  it('P5 : un vieux tournoi sans champ garde le defaut legacy (false)', () => {
+    const [legacy] = tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-P5-LEGACY',
+      name: 'Ancienne coupe',
+      format: '1VS1',
+      maxEntries: 8,
+      entryFee: 50,
+      status: 'recruiting',
+      entries: [],
+      arbiters: [],
+      matches: [],
+    }]);
+    expect(legacy.rules.picksAlternate).toBe(false);
+  });
+
+  it('P5 : valeur explicite false reste false', () => {
+    const result = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      entryFee: 100,
+      rules: { bestOf: 5, picksAlternate: false },
+    });
+    expect(result.tournament.rules.picksAlternate).toBe(false);
+  });
+
+  it('P5 : un BO1 + picksAlternate true passe sans reinterpretation moteur', () => {
+    const created = tournamentEngine.createTournamentOnServer([], mockAdmin, {
+      name: 'Test Cup',
+      entryFee: 100,
+      rules: { bestOf: 1, picksAlternate: true },
+    });
+    expect(created.tournament.rules.bestOf).toBe(1);
+    expect(created.tournament.rules.picksAlternate).toBe(true);
+    // La garde BO3+ n'existe PAS au moteur : ce tournoi ne montrera pas
+    // le contrat (affichage BracketSidebar), mais l'enregistrement porte
+    // la valeur saisie (aucune regle inventee par le moteur).
+  });
+
   // audit-5 (B-4) : un tournoi cree avec entryFee 0 ou absent (defaut :909)
   // restait CREATABLE mais impossible a INSCRIRE : lockEntryFee rejette un
   // montant nul (INVALID_AMOUNT, wallet-engine.mjs:368-370). Arbitrage

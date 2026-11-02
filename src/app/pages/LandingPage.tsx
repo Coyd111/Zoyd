@@ -32,6 +32,7 @@ import {
   Users,
   Wallet,
   X,
+  Zap,
 } from 'lucide-react';
 import { LANDING_TICKER_ITEMS } from '../../lib/competition';
 import { getApiUrl } from '../lib/apiClient';
@@ -97,6 +98,15 @@ const platformCards = [
     description:
       'Gère tes dépôts et retire tes gains par Mobile Money (MTN, Moov, Celtiis selon ton pays) directement depuis ton téléphone.',
     icon: Wallet,
+  },
+  // Hierarchie produit (D6, arbitrage 2026-11-02) : 4e pilier = le second
+  // mode ouvert (BR salons). La ligue n'y est annoncee QUE comme evenement
+  // differe — jamais comme un troisieme mode disponible.
+  {
+    title: 'Battle Royale',
+    description:
+      'Salons ouverts, inscriptions directes : crée ton salon ou rejoins un salon en préparation. La BR League, événement hebdomadaire, suivra après l\'ouverture publique.',
+    icon: Zap,
   },
 ];
 
@@ -185,7 +195,7 @@ export default function LandingPage() {
                 </h1>
 
                 <p className="text-base md:text-xl text-white/70 leading-relaxed max-w-2xl mb-10">
-                  Wagers sécurisés, arbitrage rémunéré, gains Mobile Money. La première plateforme compétitive CODM conçue pour l'Afrique.
+                  Wagers sécurisés, arbitrage rémunéré, gains Mobile Money, salons Battle Royale. La première plateforme compétitive CODM conçue pour l'Afrique.
                 </p>
 
                 <div className="flex flex-wrap gap-4 mb-8">
@@ -209,6 +219,8 @@ export default function LandingPage() {
                   <SignalStrip label="Sécurité" value="Arbitre en direct" />
                   <SignalStrip label="Classement" value="Elo strict" />
                   <SignalStrip label="Formats" value="1VS1 à 5VS5" />
+                  <SignalStrip label="Battle Royale" value="Salons ouverts" />
+                  <SignalStrip label="Événement" value="BR League différé" />
                 </div>
               </motion.div>
 
@@ -316,7 +328,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {platformCards.map((card, index) => (
                 <motion.div
                   key={card.title}

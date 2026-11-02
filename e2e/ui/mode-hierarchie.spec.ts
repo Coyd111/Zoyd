@@ -1,25 +1,46 @@
 /**
- * Spec e2e - /mode : hierarchie produit (arbitrage utilisateur 2026-11-02).
+ * Spec e2e - hierarchie produit sur les trois surfaces d'entree (arbitrage
+ * utilisateur 2026-11-02).
  *
- * Le produit courant = MJ + BR salons ; la BR League = EVENEMENT
- * hebdomadaire differe. Verifie que le launcher ne l'inverse plus :
- * - les DEUX grandes cartes vendent des modes ouverts (Multijoueur,
- *   Battle Royale = salons) : la carte BR n'annonce plus « 500 joueurs,
- *   5 jours de qualification » (pitch de l'evenement, maintenant uniquement
- *   dans la bande secondaire — 1 occurrence sur la page) ;
- * - la bande secondaire est la ligue, etiquetee « EVENEMENT hebdomadaire »
- *   + « OUVERTURE DIFFEREE » (badges), avec un chemin discret vers
- *   /br-league (« Voir la ligue »).
+ * INVARIANT : le produit courant = MJ + BR salons ; la BR League = EVENEMENT
+ * hebdomadaire differe (saisons apres l'ouverture publique). Aucun ecran ne
+ * doit annoncer la ligue comme un mode ouvert.
  *
- * NE couvre PAS les destinations des clics : /br et /br-league sont derriere
- * AppLayout et finissent toutes deux sur /auth/login pour un anonyme — la
- * redirection ne prouve rien. Route + lazy dest couverts par
- * responsive.spec / layout.spec.
+ * - /mode (launcher) : les DEUX grandes cartes vendent des modes ouverts
+ *   (Multijoueur, Battle Royale = salons) ; la ligue vit en bande
+ *   secondaire etiquetee.
+ * - / (landing, D6) : le sous-titre et les signal strips du hero nomment
+ *   les salons BR ouvert ; 4e pilier « Battle Royale » dans la section
+ *   Plateforme ; le footer libelle /mode « MJ + BR ».
+ * - /mj (hub MJ, D5) : bande secondaire STATIQUE vers /br + chemin discret
+ *   vers /br-league. Authentifie : /mj est derriere AppLayout.
  *
- * PIEGE : l'accessibilite d'un bouton = TOUT son texte : cibler avec un
- * regex de sous-chaine (la grande carte est un unique <button> englobant).
+ * NE couvre PAS les destinations par redirection : /br et /br-league sont
+ * derriere AppLayout et toutes deux finissent sur /auth/login pour un
+ * anonyme — on teste le DOM (liens visibles + href), pas une navigation
+ * cliquee.
+ *
+ * PIEGES strict-mode :
+ * - « Salons ouverts » matche le badge/strip ET le paragraphe qui commence
+ *   par ces mots (sur /mode ET sur /) : cibler exact:true.
+ * - une grande carte est un unique <button> englobant tout son contenu :
+ *   cibler par sous-chaines, pas par le nom complet.
+ * - la sidebar lie par aria-label « BR LEAGUE » (MAJUSCULES) : le regex
+ *   /BR League/ du bandeau est case-sensitive et ne la touche pas.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { registerPlayer, disposeActors, openAdminSession, creditWallet, type Actor } from '../api/support/harness';
+
+// Pattern de connexion identique a layout.spec (harness : session admin 2FA
+// pour financer le joueur de test, cookie jar isole par acteur).
+const openApp = async (page: Page, pseudo: string, password: string) => {
+  await page.goto('/auth/login');
+  await page.getByPlaceholder(/ShadowX/).fill(pseudo);
+  await page.getByPlaceholder(/^\.*$/).fill(password);
+  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
+  await page.getByPlaceholder(/^\.*$/).press('Enter');
+  expect((await loginResponse).status()).toBe(200);
+};
 
 test.describe('/mode - hierarchie produit (arbitrage 2026-11-02)', () => {
   test('la grande carte BR vend les SALONS ; la ligue vit en bande evenement', async ({ page }) => {
@@ -46,5 +67,64 @@ test.describe('/mode - hierarchie produit (arbitrage 2026-11-02)', () => {
     await expect(page.getByText('Événement hebdomadaire')).toBeVisible();
     await expect(page.getByText('Ouverture différée')).toBeVisible();
     await expect(page.getByText('Voir la ligue')).toBeVisible();
+  });
+});
+
+test.describe('/ - landing : vitrine D6 (arbitrage 2026-11-02)', () => {
+  test('la landing annonce les salons BR au-dessus du fold, ligue = evenement', async ({ page }) => {
+    await page.goto('/');
+
+    // Sous-titre hero : la liste des surfaces du produit inclut le BR.
+    await expect(page.getByText(/salons Battle Royale/)).toBeVisible();
+
+    // Signal strips du hero : salons ouverts, ligue = evenement differe.
+    // (La description du 4e pilier commence aussi par « Salons ouverts, » :
+    // exact:true cible le strip seul.)
+    await expect(page.getByText('Salons ouverts', { exact: true })).toBeVisible();
+    await expect(page.getByText('BR League différé', { exact: true })).toBeVisible();
+
+    // Section Plateforme : le 4e pilier vend le second mode ouvert.
+    await expect(page.getByRole('heading', { name: 'Battle Royale', exact: true })).toBeVisible();
+    await expect(page.getByText(/Salons ouverts, inscriptions directes/)).toBeVisible();
+
+    // Footer : le chemin /mode est libelle « MJ + BR » — les deux modes
+    // ouverts, sans la ligue.
+    await expect(page.getByRole('link', { name: 'MJ + BR' })).toBeVisible();
+  });
+});
+
+test.describe('/mj - hub : bande secondaire BR salons (D5)', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  let admin: Actor;
+  let pseudo = '';
+  const password = 'ZoydE2E!Player2026';
+
+  test.beforeAll(async () => {
+    admin = await openAdminSession();
+    const player: Actor = await registerPlayer('E2EHIER');
+    pseudo = player.pseudo;
+    await creditWallet(admin, player.id, 500);
+  });
+
+  test.afterAll(async () => {
+    await disposeActors();
+  });
+
+  test('le hub MJ expose le chemin BR salons en bande secondaire', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openApp(page, pseudo, password);
+    await page.goto('/mj');
+
+    // Bande STATIQUE : visible des le montage — ni le squelette, ni la liste
+    // socket/polling, ni un eventuel echec de bootstrap n'agissent dessus.
+    const salonsCta = page.getByRole('link', { name: 'Entrer en salons' });
+    await expect(salonsCta).toBeVisible();
+    await expect(salonsCta).toHaveAttribute('href', '/br');
+
+    // Chemin ligue : lien discret (texte mono 9px), jamais un CTA majeur.
+    const leagueLink = page.getByRole('link', { name: /BR League/ });
+    await expect(leagueLink).toBeVisible();
+    await expect(leagueLink).toHaveAttribute('href', '/br-league');
   });
 });

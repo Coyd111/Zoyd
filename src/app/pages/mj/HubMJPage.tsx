@@ -19,7 +19,7 @@
  * Voir aussi : docs/08-frontend.md - section 6.2 (Le cycle de synchronisation)
  */
 import React, { useMemo, useState } from 'react';
-import { Crosshair, Search, Activity, Swords, ShieldCheck, Radio } from 'lucide-react';
+import { Crosshair, Search, Activity, Swords, ShieldCheck, Radio, Zap, ChevronRight } from 'lucide-react';
 import { MatchCard } from '../../components/MatchCard';
 import { Link } from 'react-router';
 import FriendsWidget from '../../components/social/FriendsWidget';
@@ -277,6 +277,46 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               </div>
             </div>
           )}
+
+          {/* D5 (hierarchie produit, arbitrage 2026-11-02) : le hub MJ reste
+              le sujet de l'ecran, mais le second mode ouvert (BR salons)
+              doit etre reachable d'ici. Bande SECOND statique : aucun store,
+              aucune requete — ne peut pas interferer avec la liste
+              socket/polling ci-dessus. La ligue n'y figure que comme chemin
+              discret (EVENEMENT differe, invariant ModeSelectionPage). */}
+          <div className="mt-10 md:mt-12 border border-white/8 bg-zoyd-surface/20 px-5 md:px-6 py-4 md:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3 md:gap-4">
+              <Zap className="w-5 h-5 text-zoyd-yellow shrink-0 mt-0.5" />
+              <div>
+                <div className="flex items-center gap-3 mb-1 flex-wrap">
+                  <span className="text-base sm:text-lg font-display font-black uppercase italic text-white">
+                    Battle Royale
+                  </span>
+                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">
+                    Salons ouverts
+                  </span>
+                </div>
+                <div className="text-sm text-white/60">
+                  Inscription directe dans les salons ouverts. Le pass est remboursable avant le lancement.
+                </div>
+              </div>
+            </div>
+            <div className="flex sm:flex-col items-start sm:items-end gap-2 shrink-0">
+              <Link
+                to="/br"
+                className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-4 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.24em] italic hover:bg-white transition-colors touch-target whitespace-nowrap"
+              >
+                Entrer en salons
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/br-league"
+                className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1"
+              >
+                BR League — événement hebdo
+              </Link>
+            </div>
+          </div>
         </div>
 
         <aside className="hidden lg:block">

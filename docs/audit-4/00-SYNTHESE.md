@@ -263,7 +263,7 @@ les seuls ajouts de specs e2e sont dans C1/C2 :
 ## 8. Registres détaillés (hors dépôt, Temp de la machine de travail)
 
 - `zoyd-cartographie.md` — cartographie produit complète (lecture
-  2026-11-02, base `3bf10cf`) + sections 10 bis → 10 octies (cycles de la
+  2026-11-02, base `3bf10cf`) + sections 10 bis → 10 decies (cycles de la
   journée) + §10 rappels.
 - `zoyd-audit4-notes.md` — notes enrichies par cycle (décisions, gates,
   sondes, leçons).

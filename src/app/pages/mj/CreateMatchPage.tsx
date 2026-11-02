@@ -26,6 +26,8 @@ import { ChevronRight, ChevronLeft, Check, ShieldCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from '../../lib/toast';
 import {
+  MJ_BEST_OF_PRESETS,
+  MJ_BEST_OF_SCENE,
   MJ_FORMATS,
   MJ_MAPS_FOR_MODE,
   MJ_MODE_OPTIONS,
@@ -498,6 +500,29 @@ const CreateMatchPage: React.FC = () => {
                           Best of
                         </label>
                         <input id="bestOf" type="number" {...register('bestOf')} placeholder="3" aria-label="Best of" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue" />
+                        {/* P4 2026-11-02 : presets de la scene wager (DuelX :
+                            BO1/BO3/BO5). Un preset REMPLIT le champ, la
+                            saisie libre reste possible (reglement libre). */}
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {MJ_BEST_OF_PRESETS.map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setValue('bestOf', preset)}
+                              aria-label={`Preset best of ${preset}`}
+                              className={`px-3 py-2 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
+                                bestOfValue === preset
+                                  ? 'border-white bg-white/10 text-white'
+                                  : 'border-white/10 text-white/40 hover:border-white/30 hover:text-white/70'
+                              }`}
+                            >
+                              BO{preset}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                          {MJ_BEST_OF_SCENE}
+                        </p>
                       </div>
                     </div>
 

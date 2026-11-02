@@ -25,6 +25,8 @@ import {
   CONTROLLER_OPTIONS,
   DEVICE_OPTIONS,
   MJ_FORMATS,
+  MJ_BEST_OF_PRESETS,
+  MJ_BEST_OF_SCENE,
   MJ_MAP_POOL,
   MJ_MODE_OPTIONS,
   MJ_WEAPON_OPTIONS,
@@ -122,6 +124,8 @@ const CreateTournamentPage: React.FC = () => {
   const selectedMode = watch('mode');
   const selectedEntryFee = Number(watch('entryFee') || 0);
   const selectedMaxEntries = Number(watch('maxEntries') || 4);
+  // P4 2026-11-02 : presets BO1/BO3/BO5 de la scene wager (etat actif).
+  const selectedBestOf = Number(watch('bestOf') || 1);
   const reserveCreatorAsArbiter = watch('reserveCreatorAsArbiter');
   const selectedDeviceRestriction = watch('deviceRestriction');
   const selectedControllerRestriction = watch('controllerRestriction');
@@ -457,6 +461,29 @@ const CreateTournamentPage: React.FC = () => {
                       {...register('bestOf', { valueAsNumber: true, min: 1 })}
                       className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                     />
+                    {/* P4 2026-11-02 : presets de la scene wager (DuelX :
+                        BO1/BO3/BO5). Un preset REMPLIT le champ, la saisie
+                        libre reste possible (reglement libre). */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {MJ_BEST_OF_PRESETS.map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setValue('bestOf', preset)}
+                          aria-label={`Preset best of ${preset}`}
+                          className={`px-3 py-2 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
+                            selectedBestOf === preset
+                              ? 'border-white bg-white/10 text-white'
+                              : 'border-white/10 text-white/40 hover:border-white/30 hover:text-white/70'
+                          }`}
+                        >
+                          BO{preset}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                      {MJ_BEST_OF_SCENE}
+                    </p>
                   </div>
                 </div>
 

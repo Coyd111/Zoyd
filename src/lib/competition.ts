@@ -216,6 +216,18 @@ export const MJ_PICKS_ALTERNANCE =
   'Manche 1 : createur / Manche 2 : adversaire / Departage : accord';
 
 /**
+ * Presets best-of de la scene wager (recherche CODM du 02/11/2026 : culture
+ * DuelX "BO1/BO3/BO5, alternance des maps"). CHAMP LIBRE CONSERVE : un
+ * preset REMPLIT le champ bestOf, il ne le remplace pas ; une autre valeur
+ * explicite passe tel quel (reglement libre, aucune liste blanche).
+ */
+export const MJ_BEST_OF_PRESETS = [1, 3, 5] as const;
+
+/** Texte affiche sous l'input "Best of" des deux formulaires MJ. */
+export const MJ_BEST_OF_SCENE =
+  'Scene wager (DuelX) : BO1, BO3 ou BO5. Un preset remplit le champ, une autre valeur reste libre.';
+
+/**
  * Limite de temps CODM reformatee pour l'UI : "10 min" ou "2 min / manche".
  * Renvoie "" si absent ou invalide : l'affichage laisse le champ decore a
  * "Libre" (aucune limite saisie).

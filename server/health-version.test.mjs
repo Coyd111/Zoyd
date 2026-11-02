@@ -20,9 +20,12 @@ const readPersistence = () => readFileSync(resolve('server/persistence.mjs'), 'u
 describe('health — identification du deploiement', () => {
   it('expose le commit deploye', () => {
     const source = readPersistence();
+    // 4000 et non 2000 : les commentaires exposent des champs entre les deux ;
+    // un span fige au caractere ferait rater RENDER_GIT_COMMIT a la premiere
+    // insertion honnete dans getHealthInfo.
     const sante = source.slice(
       source.indexOf('export const getHealthInfo'),
-      source.indexOf('export const getHealthInfo') + 2000,
+      source.indexOf('export const getHealthInfo') + 4000,
     );
     // Render injecte ces variables automatiquement.
     expect(sante).toContain('RENDER_GIT_COMMIT');
@@ -33,7 +36,7 @@ describe('health — identification du deploiement', () => {
     const source = readPersistence();
     const sante = source.slice(
       source.indexOf('export const getHealthInfo'),
-      source.indexOf('export const getHealthInfo') + 2000,
+      source.indexOf('export const getHealthInfo') + 4000,
     );
     // /api/health est public : il ne doit rien renvoyer qui permette de
     // monter une requete authentifiee.
@@ -41,6 +44,20 @@ describe('health — identification du deploiement', () => {
     expect(sante).not.toContain('ADMIN_PASSWORD');
     expect(sante).not.toContain('SUPABASE_SERVICE');
     expect(sante).not.toContain('RESEND_API_KEY');
+  });
+});
+
+describe('health — sonde secret 2FA admin', () => {
+  it('expose adminTotpPersisted et sa cause d\'echec', () => {
+    const source = readPersistence();
+    // Le span des tests existants (2000 car.) s'arrete avant l'ajout ; on
+    // elargit pour que le test continue de tenir si l'ordre des champs bouge.
+    const sante = source.slice(
+      source.indexOf('export const getHealthInfo'),
+      source.indexOf('export const getHealthInfo') + 4000,
+    );
+    expect(sante).toContain('adminTotpPersisted');
+    expect(sante).toContain('adminTotpError');
   });
 });
 

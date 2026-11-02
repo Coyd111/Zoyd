@@ -952,6 +952,12 @@ export const loadFromSupabase = async () => {
     // l'etat consultable dans `/api/health`.
     await occSupporte();
 
+    // Idem pour la table du secret 2FA admin : toleratee aussi a l'absence
+    // (une base d'avant la 2FA n'a pas la table), mais l'etat doit etre
+    // visible dans `/api/health` — une ecriture de secret echouee en silence
+    // ne se verrait qu'au redemarrage suivant. Cf. 03-securite.md 16.9.
+    await probeAdminTotpTable();
+
     // Idem pour l'historique de sanctions : tolerant a l'absence de table.
     // Un joueur banni ne doit PAS redevenir jouable parce que le serveur a
     // demarre sans la table — mais mieux vaut demarrer et le signaler dans
@@ -1104,7 +1110,16 @@ export const getHealthInfo = () => ({
   // false = elle est absente : les ecritures deviennent inconditionnelles et
   // la fenetre multi-instance s'ouvre. null = pas encore sonde.
   occRevisionColumn: revisionSupporte,
-    sanctionsPersisted,
+  // false = les secrets 2FA des admins ne survivent PAS a un redemarrage tant
+  // que la table `admin_2fa_secrets` manque. null = pas encore sonde. Miroir
+  // de `loginLockoutPersisted` : cf. 03-securite.md 16.9 — l'ecriture du
+  // secret peut echouer en silence et le Map recharge vide verrouille
+  // l'admin hors des routes sensibles au redemarrage.
+  adminTotpPersisted,
+  adminTotpError,
+  // true = la table `user_sanctions` est lisible : les bannissements
+  // survivent au redemarrage. false = absente ; null = pas encore sonde.
+  sanctionsPersisted,
   loginAttemptRows: loginAttemptsRows,
   loginAttemptError: loginAttemptsError,
 
@@ -4072,6 +4087,38 @@ export const loadAdminTotpSecrets = async () => {
     }
   } catch { /* table may not exist yet */ }
   return result;
+};
+
+// Miroir de `probeLoginAttemptsTable` : la lecture des secrets 2FA tolerate
+// l'absence de table (premier deploiement), mais aucune erreur remonte alors —
+// et l'ecriture du secret peut echouer en silence (03-securite.md 16.9). Sans
+// sonde, une table manquante ne produitait AUCUN signal jusqu'au redemarrage
+// qui vide le Map memoire et verrouille l'admin hors des routes sensibles.
+// L'etat est expose via `getHealthInfo`, verifiable SANS connexion SQL.
+let adminTotpPersisted = null; // null = pas encore sonde
+let adminTotpError = null;
+
+const probeAdminTotpTable = async () => {
+  if (!supabase) { adminTotpPersisted = false; return; }
+  try {
+    const { count, error } = await supabase
+      .from('admin_2fa_secrets')
+      .select('user_id', { count: 'exact' })
+      .limit(1);
+    adminTotpPersisted = !error;
+    adminTotpError = error?.message || null;
+    if (error) {
+      log.warn('Table admin_2fa_secrets absente : secret 2FA NON persiste (migration en attente).', { message: error.message });
+    } else {
+      // Le nombre de lignes distingue « table creee et vide » de « table en
+      // service » : sans lui, un booleen ne prouve que la presence.
+      log.info('Table admin_2fa_secrets presente : secret 2FA persiste.', { rows: Number.isFinite(count) ? count : null });
+    }
+  } catch (err) {
+    adminTotpPersisted = false;
+    adminTotpError = err?.message || null;
+    log.warn('Sonde admin_2fa_secrets impossible', { message: err?.message });
+  }
 };
 
 // ─── Sanctions (moderation) ─────────────────────────────────────────────────

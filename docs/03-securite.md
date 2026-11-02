@@ -552,11 +552,12 @@ L'OCC ne couvre **que** `app_users`. Voici où le protection s'arrête :
   app_users` ne la contenait pas et le DDL n'existait que dans un message de
   log. Verdict V9 du doc 05 : le rapport antérieur était FAUX.
 - **La dégradation est désormais visible dans `/api/health`.**
-  `getHealthInfo` expose `occRevisionColumn` (`server/persistence.mjs:1099`) :
+  `getHealthInfo` expose `occRevisionColumn` (`server/persistence.mjs:1112`) :
   `true` = la colonne existe, les écritures sont conditionnelles ; `false` =
   elle est absente, les écritures deviennent inconditionnelles et la fenêtre
-  multi-instance s'ouvre ; `null` = pas encore sondé. État d'avant : le seul
-  signal était un `log.warn`.
+  multi-instance s'ouvre ; `null` = pas encore sondé. Y figurent aussi
+  `adminTotpPersisted` (§ 16.9). État d'avant : le seul signal était un
+  `log.warn`.
 - **Si la colonne est absente**, le serveur retombe sur l'écriture
   **inconditionnelle** d'avant (`server/persistence.mjs:526-534`) : refuser les
   mutations serait pire que la fenêtre laissée ouverte, mais la fenêtre est
@@ -1070,7 +1071,20 @@ Cette section n'est pas moins importante que la précédente. Une liste de
 menaces « couvertes » qui n'est pas accompagnée d'une liste de menaces
 « ouvertes » donne une image fausse du système.
 
-### 16.1 Le code des collections d'état n'est PAS protégé par l'OCC
+### 16.1 Le code des collections d'état n'est PAS protégé par l'OCC — **ASSUMÉ le 02/11/2026**
+
+> **Décision assumée (mono-instance) :** la fenêtre multi-instance est fermée
+> par l'exploitation, pas par une garantie en base. Le `single-process-guard`
+> **refuse de démarrer** si plusieurs processus sont certains
+> (`server/single-process-guard.mjs:136-142`) et le déploiement Render
+> verrouille explicitement `WEB_CONCURRENCY=1` (`render.yaml:11-20`). Le
+> chemin OCC (colonne `revision` sur `state_snapshots` + écritures
+> conditionnelles) n'est **pas** retenu : le coût (migration DDL + refonte
+> du point d'entrée d'écriture, le DDL n'étant pas jouable depuis l'API
+> Supabase) est sans rapport avec un scénario qui ne peut pas se produire
+> tant que le garde d'unicité tient. C'est **le premier point à rouvrir**
+> si une contrainte de scaling impose plusieurs instances. Le constat
+> ci-dessous documente l'état du code.
 
 `state_snapshots` (matchs, tournois, ligues) n'a **pas** de colonne `revision`
 (`supabase/schema.sql:170-176`) et s'écrit par `sbUpsert` direct
@@ -1081,10 +1095,10 @@ match s'écrasent toujours. Le `single-process-guard` est aujourd'hui la seule
 barrière réelle sur ce chemin — et c'est une barrière **opérationnelle**
 (refus de démarrer), pas une garantie en base.
 
-**À faire :** soit ajouter une colonne `revision` à `state_snapshots` et passer
-les écritures par le même point d'entrée, soit assumer explicitement que
-l'état multi-instance est interdit et le garantir par un contrôle de
-déploiement.
+**Décision :** l'option « assumer explicitement » est retenue. Il n'y a
+**rien à faire** tant que le garde d'unicité tient ; la colonne `revision`
+sur `state_snapshots` reste une direction possible uniquement si une
+contrainte de scaling rend la question à nouveau réelle.
 
 ### 16.2 La colonne `revision` n'est pas dans le fichier de migration — **CORRIGÉ le 20/10/2026 (commit `b90264d`)**
 
@@ -1132,7 +1146,16 @@ CF. § 5.3. Les deux niveaux du CSRF ne bloquent que combinés.
 mutations sans `Content-Type`, ou l'élargissement de la liste blanche
 `ALLOWED_ORIGINS` à un sous-domaine non maîtrisé.
 
-### 16.5 `TRUST_PROXY=true` est positionné en production
+### 16.5 `TRUST_PROXY=true` est positionné en production — **DOCUMENTÉ le 02/11/2026**
+
+> **Chaîne réelle documentée :** au 02/11/2026, le domaine `zoyd.africa` ne
+> résout pas (NXDOMAIN constaté via trois résolveurs publics indépendants,
+> avec contrôle positif : NS de `google.com` résolus par la même sonde) et
+> aucun CDN ni proxy de tête n'est en place. Le **seul** appui en amont est
+> le Load Balancer Render — c'est le verdict de l'audit S-3, confirmé. La
+> conséquence ci-dessous redevient immédiate le jour où un frontal
+> (Cloudflare ou autre) s'intercale : son positionnement devra alors être
+> **re-vérifié à cette occasion**.
 
 `render.yaml:30-31`. Le danger symétrique est documenté
 (`server/rate-limiter.mjs:147-150`) : *« si le service est exposé directement,
@@ -1141,12 +1164,14 @@ n'importe qui forge son XFF. »*
 → **Conséquence :** la garantie « le dernier saut est posé par le proxy »
 ne tient que si **tous** les sauts en amont sont honnêtes. Une chaîne
 Cloudflare → Render, par exemple, verrait le dernier saut posé par Cloudflare
-(bon) mais un intermediate falsifiable. **Non vérifié** : la chaîne de proxys
-réellement en place devant Render n'est pas documentée dans le dépôt.
+(bon) mais un intermédiaire falsifiable. Aujourd'hui ce scénario n'est pas
+réel : le dernier saut est posé par le LB Render, seul frontal en place
+(voir badge).
 
-**À faire :** documenter la chaîne de proxys, ou passer à un en-tête de
-contexte proprietary (`CF-Connecting-IP`, `True-Client-IP`) si l'hébergeur
-frontal le garantit.
+**Statut :** chaîne documentée. Rien à faire tant qu'aucun CDN ne
+s'intercale ; si un frontal s'ajoute, basculer sur un en-tête de contexte
+propriétaire (`CF-Connecting-IP`, `True-Client-IP`) uniquement si l'hébergeur
+frontal garantit sa pose.
 
 ### 16.6 Le rate limiter est en mémoire, par IP
 
@@ -1179,7 +1204,17 @@ protégée par RLS « service role only »
 → **Conséquence :** un dump de la base donne les secrets TOTP de tous les
 admins. La base est donc la cible n° 1, pas le serveur.
 
-### 16.9 L'écriture du secret 2FA peut échouer en silence
+### 16.9 L'écriture du secret 2FA peut échouer en silence — **CORRIGÉ le 02/11/2026**
+
+> `getHealthInfo` expose désormais `adminTotpPersisted` et `adminTotpError` :
+> `true` = table `admin_2fa_secrets` lisible, le secret survit au
+> redémarrage ; `false` = absente/indisponible ; `null` = pas encore sondé.
+> La table est sondée au démarrage par `probeAdminTotpTable` — miroir de
+> `probeLoginAttemptsTable` (`server/persistence.mjs:4092-4122`), greffé
+> dans `loadFromSupabase` à côté des autres sondes. Le constat ci-dessous
+> documente l'état d'avant ; la seule part qui demeure vraie est la route
+> d'écriture (`server/routes/admin.mjs`), dont l'échec reste
+> non-interrompu — il est désormais **visible** dans `/api/health`.
 
 `server/routes/admin.mjs:462-466` et `501-505` : l'échec de
 `saveAdminTotpSecret` est **journalisé** mais n'interrompt pas la route, qui
@@ -1192,11 +1227,13 @@ des routes financières et de modération** (fail-closed, donc pas de faille,
 mais un blocage sans issue visible).
 
 Note : `loadAdminTotpSecrets` avale ses erreurs
-(`server/persistence.mjs:3920` : `catch { /* table may not exist yet */ }`),
-donc une table manquante ne produit **aucun** signal.
+(`catch { /* table may not exist yet */ }`), donc une table manquante ne
+produit **aucun** signal en soi — elle produit désormais un état lisible via
+la sonde (voir badge).
 
-**À faire :** exposer l'état de la table `admin_2fa_secrets` dans
-`/api/health`, comme `login_attempts`.
+*(Corrigé : champ exposé `adminTotpPersisted`, cf. § 7.4. Vérifié par les
+tests « table admin_2fa_secrets absente » de `server/data-integrity.test.mjs`
+et le span source de `server/health-version.test.mjs`.)*
 
 ### 16.10 Les codes d'activation et de réinitialisation vivent en mémoire
 
@@ -1205,7 +1242,17 @@ donc une table manquante ne produit **aucun** signal.
 RAM. Un redémarrage les invalide. Ce n'est pas une faille (un code perdu oblige
 à en demander un nouveau), mais c'est une source de support.
 
-### 16.11 `/api/auth/resend-code` et `/api/auth/activation-email` sont des oracles d'énumération
+### 16.11 `/api/auth/resend-code` et `/api/auth/activation-email` sont des oracles d'énumération — **CORRIGÉ le 02/11/2026 (passe A d'audit-5, commit `04ce094`)**
+
+> Les deux routes répondent désormais **indistinguablement**, le code n'étant
+> généré que pour un vrai compte inactif : `resend-code` masque
+> `USER_NOT_FOUND` / `ACCOUNT_ALREADY_ACTIVE` derrière une réponse identique
+> `found:true` (`server/routes/auth.mjs:241-280`, `activationCode` uniquement
+> sous `ALLOW_DEBUG_CODES`) ; `activation-email` exige la preuve de
+> possession (ancien email + mot de passe) et masque `USER_NOT_FOUND` /
+> `ACCOUNT_ALREADY_ACTIVE` / `WRONG_PASSWORD`
+> (`server/routes/auth.mjs:282-331`). Même invariant que `forgot-password`
+> (§ 11.1). Le constat ci-dessous documente l'état d'avant.
 
 `resendActivationCode` (`server/persistence.mjs:2431-2439`) lève
 `USER_NOT_FOUND` si l'email est inconnu, et `ACCOUNT_ALREADY_ACTIVE` si le
@@ -1218,8 +1265,8 @@ quelles (`server/routes/auth.mjs:201-210`, `228-237`).
 deux routes **révèlent** si un email est inscrit. Le seul frein est le rate
 limiter `auth` (50 / 15 min par IP).
 
-**À faire :** appliquer la même réponse indistinguable que sur
-`forgot-password`.
+*(Corrigé : voir le badge — les réponses sont désormais indistinguables, le
+rate limiter restant le frein anti-massue.)*
 
 ### 16.12 Le mot de passe n'est pas revérifié avant chaque opération sensible
 
@@ -1250,7 +1297,8 @@ elle n'aurait **aucune** CSP.
 | Le canal d'envoi des codes actif en production (Resend / Brevo / SMTP / webhook) | **non vérifié** — l'ordre de précédence est dans `server/code-delivery.mjs`, mais aucune variable d'environnement de production n'est lisible depuis le dépôt |
 | La présence effective de la migration `login_attempts` en base | **non vérifiable localement** — l'état est exposé par `/api/health` (`loginLockoutPersisted`), pas par le code |
 | La présence effective de la colonne `app_users.revision` en base | **non vérifiable localement** — mais désormais exposée par `/api/health` (`occRevisionColumn`, § 16.3) ; au 02/11/2026 la production annonce `true` |
-| La chaîne de proxys devant Render | **non vérifié** (§ 16.5) |
+| La présence effective de la table `admin_2fa_secrets` en base | **désormais exposée** par `/api/health` (`adminTotpPersisted`, § 16.9) ; son verdict de production se lira au prochain déploiement |
+| La chaîne de proxys devant Render | **documentée au 02/11/2026** : `zoyd.africa` ne résout pas (NXDOMAIN), seul frontal = Load Balancer Render, sans CDN intermédiaire (§ 16.5) ; à re-vérifier si un frontal s'ajoute |
 | L'existence d'un `Content-Security-Policy-Report-Only` ou d'un rapport de violation | **non vérifié** — aucun endpoint de reporting dans le dépôt |
 | La rotation du secret `service_role` Supabase | **hors périmètre du code** |
 

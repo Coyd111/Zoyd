@@ -1064,6 +1064,31 @@ conservation d'une classe explicite, normalisation legacy — C9 :
 `picksAlternate`, +5 tests). Détail et couverture cycle par cycle :
 `docs/audit-4/00-SYNTHESE.md`.
 
+### 8.2 Instantané suivant — 2026-11-02 (catch-all + sonde 2FA)
+
+Mêmes commandes, après quatre nouveaux tests (`data-integrity` : table
+`admin_2fa_secrets` absente, miroir du describe `login_attempts`, ×3 ;
+`health-version` : exposition de `adminTotpPersisted`/`adminTotpError`) et le
+span des tests « identification du déploiement » élargi 2000→4000 caractères
+(une insertion honnête dans `getHealthInfo` faisait sortir
+`RENDER_GIT_COMMIT` du slice de source) :
+
+| Mesure | Commande | Résultat |
+|---|---|---|
+| Tests unitaires | `node node_modules/vitest/vitest.mjs run server/` | **950 passés**, 2 sautés, 90 fichiers |
+| TypeScript | `node node_modules/typescript7/bin/tsc --noEmit -p tsconfig.app.json` | **0 erreur** |
+| ESLint | `node node_modules/eslint/bin/eslint.js src server e2e --max-warnings 0` | **0 erreur** |
+| Build production | `node node_modules/vite/bin/vite.js build` | succès, exit 0 |
+| Tests E2E (--list) | `node node_modules/@playwright/test/cli.js test --list` | **232 tests / 23 fichiers**, parse OK |
+
+Cet instantané suit un premier run signalant **3 échecs** : deux timeouts
+purs (20 s) sur `encoding-integrity` — la suite durait alors 673 s, environ
+quatre fois son temps normal, avec 90 workers à ~4 s d'initialisation
+(surcharge de la machine) — et un échec réel : le span 2000 caractères de
+`health-version.test.mjs`, corrigé ci-dessus. Le re-run propre donne le
+tableau ci-dessus ; `encoding-integrity` relancé seul : 3/3 en quelques
+secondes.
+
 ---
 
 ## 9. Recette de validation avant commit

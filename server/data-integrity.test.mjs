@@ -288,6 +288,32 @@ describe('table login_attempts absente : degrade sans casser le serveur', () => 
   });
 });
 
+// Miroir du describe `login_attempts` : `admin_2fa_secrets` est dans le meme
+// cas — table optionnelle, lecture toleree a l'absence (03-securite.md 16.9).
+// Sans sonde, une base sans la table ne produirait AUCUN signal et l'admin
+// serait verrouille hors des routes sensibles au prochain redemarrage.
+describe('table admin_2fa_secrets absente : degrade sans casser le serveur', () => {
+  it('ne met PAS stateTrusted a false', async () => {
+    missingTables.add('admin_2fa_secrets');
+    await persistence.loadFromSupabase();
+
+    const health = persistence.getHealthInfo();
+    expect(health.stateTrusted).toBe(true);
+    expect(health.stateLoadError).toBeNull();
+  });
+
+  it('signale que le secret 2FA n\'est pas persiste', async () => {
+    missingTables.add('admin_2fa_secrets');
+    await persistence.loadFromSupabase();
+    expect(persistence.getHealthInfo().adminTotpPersisted).toBe(false);
+  });
+
+  it('signale le secret 2FA comme persiste quand la table existe', async () => {
+    await persistence.loadFromSupabase();
+    expect(persistence.getHealthInfo().adminTotpPersisted).toBe(true);
+  });
+});
+
 describe('getHealthInfo publie le dernier controle', () => {
   it('expose un controle valide', async () => {
     await createUser();

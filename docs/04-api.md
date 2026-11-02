@@ -503,8 +503,9 @@ exhaustivement documentées ici.
 
 - `GET /api/health` → `{ ok, service:'zoyd-api', persistence:{ …health, reloadInProgress }, timestamp }`.
   Le bloc `persistence` contient notamment `stateTrusted`, `integrity.ok`,
-  `loginLockoutPersisted`, `sanctionsPersisted`, `deployedCommitShort`,
-  `deployedBranch`, `pendingSettlementDebts` (`server/persistence.mjs:1070-1127`).
+  `loginLockoutPersisted`, `sanctionsPersisted`, `adminTotpPersisted`,
+  `deployedCommitShort`, `deployedBranch`, `pendingSettlementDebts`
+  (`server/persistence.mjs:1083-1142`).
   → voir `07-exploitation.md` §5 (runbook).
 - `GET /api/leaderboard` → `{ ok, players, total, hasMore }`.
 - `GET /api/matches` → `{ ok, matches, total, hasMore }`, chaque match passé par

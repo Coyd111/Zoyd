@@ -319,12 +319,9 @@ invariants, pièges) : 38/40 fichiers `server/`, la majorité de `src/`.
 La feuille de route vivante est tenue dans `docs/00-INDEX.md` et
 `docs/audit-4/00-SYNTHESE.md`. Axes connus au 02/11/2026 :
 
-1. **Rewrite catch-all Vercel** — un F5 sur une URL inconnue affiche encore
-   la 404 brute de Vercel (route `*` sans rewrite générique,
-   `docs/07-exploitation.md` §3.4).
-2. **Webhook FedaPay** — les retraits vivent en `pending_review` avec
+1. **Webhook FedaPay** — les retraits vivent en `pending_review` avec
    réconciliation manuelle ; aucun webhook de payout dans le code.
-3. **Multi-instance** — le single-process-guard est la seule barrière ;
+2. **Multi-instance** — le single-process-guard est la seule barrière ;
    l'OCC `revision` protège `app_users` (prod : colonne présente).
 
 ---

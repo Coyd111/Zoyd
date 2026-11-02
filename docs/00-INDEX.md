@@ -214,8 +214,8 @@ match : l'auteur connaissait le motif, il l'avait oublié 20 lignes plus bas.
 - Front Vercel : déploiement automatique **fonctionnel** — la branche configurée
   dans le tableau de bord Vercel n'est **pas vérifiable depuis le dépôt**
   (l'API Render, elle, tourne bien sur `main`)
-- Validation 02/11/2026 : vitest 946 passés + 2 sautés (portée `server/`, 90
+- Validation 02/11/2026 : vitest 950 passés + 2 sautés (portée `server/`, 90
   fichiers de test) · E2E 232/232 (projets `api` + `ui`, sans projet live) ·
-  TSC 0 · ESLint 0 · build Vite 8,37 s
+  TSC 0 · ESLint 0 · build Vite succès
 - FedaPay : aucun webhook de payout dans le code — les retraits vivent en
   `pending_review` + réconciliation (`server/wallet-engine.mjs`), suivi manuel

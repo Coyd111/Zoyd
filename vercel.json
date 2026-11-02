@@ -54,6 +54,7 @@
     { "source": "/br-league(.*)", "destination": "/index.html" },
     { "source": "/br(.*)", "destination": "/index.html" },
     { "source": "/infos", "destination": "/index.html" },
-    { "source": "/admin", "destination": "/index.html" }
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

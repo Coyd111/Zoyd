@@ -23,8 +23,8 @@ export default defineConfig({
       // Les specs lisent body.token après login/register. Depuis le passage en
       // cookie-only, le token n'est renvoyé que si ALLOW_DEBUG_CODES=true
       // (jamais en prod). Sans ça, TOUTES les assertions de token échouent en
-      // 401 et l'E2E ne testait plus rien — en silence, car la CI ne lance
-      // pas Playwright.
+      // 401 et l'E2E ne testait plus rien — en silence, du temps ou la CI ne
+      // lancait pas Playwright (depuis, les jobs `e2e` et `e2e-ui` existent).
       //
       // ZOYD_DISABLE_SUPABASE force le mode mémoire : les tests deviennent
       // hermétiques (pas de réseau, pas de données réelles) et l'écriture

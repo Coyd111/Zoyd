@@ -6,12 +6,13 @@
 > dossier Temp de la machine de travail — ils sont cités en fin de document.
 
 **Ouverture :** 2026-11-02 (lecture cartographie, base `3bf10cf`) —
-**Clôture :** 2026-11-02, dépôt à `034f17f` (rapport mis à jour) et vérifié
+**Clôture :** 2026-11-02, dépôt à `a1f297a` (rapport mis à jour) et vérifié
 en production.
 **Objet :** cartographie produit complète en lecture, recherche CODM du jour,
 puis livraison des chantiers qu'elles ont produits : hiérarchie produit
 (D1–D6), P0 référentiel cartes, P1 presets MJ, P2 variant BR, harmonisation
-tournoi, P3 anti-friction wager.
+tournoi, P3 anti-friction wager, P4 presets best-of, P5 alternance au
+bracket (recherche CODM délivrée intégralement).
 **Méthode :** le code d'abord (pages et moteurs lus docstrings comprises),
 ensuite une recherche web en GET uniquement (sources datées citées), puis des
 commits unitaires avec la discipline « afficher suppose présent » : aucune
@@ -22,7 +23,7 @@ complète de gates, puis est vérifié en production par sonde lecture-seule
 
 ---
 
-## 1. La journée en un tableau — 8 commits, de `11504de` à `034f17f`
+## 1. La journée en un tableau — 9 commits, de `11504de` à `a1f297a`
 
 | # | Cycle | Commit | Clé | Gates à la clôture |
 |---|---|---|---|---|
@@ -34,11 +35,13 @@ complète de gates, puis est vérifié en production par sonde lecture-seule
 | C6 | Harmonisation tournoi | `45e219c` | liste locale du tournoi remplacée par `MJ_WEAPON_OPTIONS`, défaut de création « Toutes permises », défaut legacy conservé sur la data existante | vitest 939/2 · build 8,25 s · e2e 230/230 (6,9 m) |
 | C7 | P3 anti-friction wager | `1726a84` | picks en alternance BO3+ (contrat affiché, zéro moteur), doc rôle spectateur (§3.4 du modèle métier) | vitest 941/2 · build 6,12 s · e2e 230/230 (6,4 m) |
 | C8 | Presets BO1/BO3/BO5 (roadmap) | `034f17f` | chips best-of des deux formulaires MJ, presets REMPLISSENT le champ (champ libre conservé), helper source partagé ; +1 spec e2e tournoi | vitest 941/2 · build 6,40 s · e2e 231/231 (6,8 m) |
+| C9 | P5 ordre des manches au bracket (roadmap) | `a1f297a` | contrat d'alternance promu aux tournois BO3+ en variante bracket (place A = meilleur seed, rien d'inventé), checkbox BO3+ à la création tournoi, ligne « Picks par manche » dans le bracket ; +5 tests moteur, +1 spec e2e | vitest 946/2 · build 8,37 s · e2e 232/232 (9,5 m) |
 
 Sur la journée : tsc 0 et eslint 0 à chaque commit ; les 230 specs e2e
 existants tiennent sans adaptation (du C3 au C7, aucune spec modifiée —
-les seuls ajouts de specs e2e sont dans C1/C2 :
-`e2e/ui/mode-hierarchie.spec.ts` et C8 : `e2e/ui/best-of-presets.spec.ts`).
+les ajouts de specs e2e sont dans C1/C2 :
+`e2e/ui/mode-hierarchie.spec.ts`, puis C8 : `e2e/ui/best-of-presets.spec.ts`
+que le C9 enrichit d'un second test ; total 232).
 
 ## 2. Détail par cycle
 
@@ -194,6 +197,44 @@ les seuls ajouts de specs e2e sont dans C1/C2 :
   (`CreateMatchPage-C_gmxGld.js`, `CreateTournamentPage-DVm6VAcF.js`) ;
   Render zero-touch = rien à sonder côté API.
 
+### C9 — P5 ordre des manches au bracket, dernier item roadmap (commit `a1f297a`)
+
+- Arbitrage d'honnêteté : aucune source ne fournit de séquence de cartes
+  par manche à stocker — inventer ce stockage violerait « pas de règle
+  inventée ». Le kit livre donc la PROMOTION du contrat d'alternance (P3,
+  matchs) au niveau des tournois, en VARIANTE BRACKET : `buildBracket`
+  associe les entries par seed croissant, la place A d'un match EST le
+  meilleur seed — le texte « createur / adversaire » devient
+  « Manche 1 : meilleur seed / Manche 2 : adversaire / Départage : accord »
+  (`MJ_PICKS_ALTERNANCE_BRACKET`). Les matchs du bracket restent des
+  squelettes : aucune donnée par manche n'est stockée, les `rules` de
+  tournoi restent la source unique, le bracket n'affiche que du texte
+  dérivé.
+- Moteur (contraire au zéro-touch de P4, assumé) : `rules` de tournoi sont
+  énumérées champ par champ (`normalizeTournamentSnapshot` et
+  `createTournamentBase`) — un flag non déclaré serait écrasé au
+  chargement ; `picksAlternate` est ajouté aux deux blocs avec
+  `Boolean(...)`, champ absent d'un vieux tournoi = false (défaut legacy,
+  l'affichage s'efface), un BO1 + true passe sans réinterprétation (la
+  garde BO3+ est une affaire d'UI et d'affichage).
+- Front : checkbox « Picks en alternance par manche » (id
+  `picks-alternance`) à la création tournoi, rendue SEULEMENT en BO3+
+  (watcher P4 `selectedBestOf`, même garde P3), le payload n'émet le champ
+  que si coché ET BO3+ ; `TournamentRules.picksAlternate?: boolean` ;
+  `BracketSidebar` affiche la ligne « Picks par manche » dans Règles
+  officielles (après Best of) et dans Ton prochain duel (après Salle), par
+  la garde `picksAlternate && BO3+` (invariant « afficher suppose
+  présent »).
+- Tests : +5 vitest moteur (`true` en BO3, absent → false, legacy →
+  false, explicite false, BO1 + true sans réinterprétation) ; second test
+  e2e (checkbox ABSENTE en BO1, visible après la chip BO3, identique en
+  BO5, contrat affiché sous la case).
+- Sonde prod : `index-BW6PVoW7.js` porte le contrat (inline) ; la case est
+  dans `CreateTournamentPage-lL3_Bn-D.js` (avec l'aria du P3 intact dans
+  `CreateMatchPage-D06ouRBx.js`), helper P1 et presets C4 intacts.
+  `/api/tournaments` = 200 mais clé non observable : aucun tournoi public
+  en prod, rien à inventer en lecture-seule.
+
 ## 3. Invariants transversaux intacts
 
 1. **Afficher suppose présent** — aucune règle inventée sur la data
@@ -215,13 +256,15 @@ les seuls ajouts de specs e2e sont dans C1/C2 :
 
 ## 4. Production à la clôture
 
-- Dépôt : `origin/main` = `034f17fe59cebcb500ffa2325473798e0640acfb`, arbre
+- Dépôt : `origin/main` = `a1f297ac3e19caa1e63674126a8dc4c771b71e2f`, arbre
   de travail propre.
-- Front Vercel : index déployé `index-DVEumqNF.js`, crawl BFS 56/59 chunks
-  en GET ; les marqueurs C7/C8 y sont (constante + checkbox + helper C7 ;
-  texte preset + chips C8).
-- API Render : alignée (le seul retard observé de la journée, ~5 min sur
-  C5 pendant un auto-deploy en file).
+- Front Vercel : index déployé `index-BW6PVoW7.js`, crawl BFS 56/59 chunks
+  en GET ; les marqueurs C7/C8/C9 y sont (constante + checkbox + helper
+  C7 ; texte preset + chips C8 ; contrat bracket + case tournoi C9).
+- API Render : `/api/tournaments` = 200, l'état moteur reste non observable
+  (aucun tournoi public ; les `rules` y vivent au niveau tournoi, la clé
+  n'apparaît que sur des tournois créés — aucun POST en prod) ; alignée
+  par auto-deploy, aucun retard observé depuis C5.
 - Non sondables en lecture-seule : pages auth-gated (/mj…) et défauts du
   moteur (POST = écriture) → couverture par e2e local et vitest,
   déviations documentées.
@@ -241,9 +284,11 @@ les seuls ajouts de specs e2e sont dans C1/C2 :
 
 - **Presets BO1/BO3/BO5 côté création — LIVRÉ (C8, commit `034f17f`)** :
   presets remplissant le champ, champ libre conservé, zéro moteur.
-- Stockage de l'ordre des manches vers le bracket (BO3 alterné : séquence
-  de cartes par manche) — NON entamé, reste à arbitrer avant tout code : 
-  c'est le dernier item de la recherche CODM encore ouvert.
+- **Ordre des manches au bracket — LIVRÉ (C9, commit `a1f297a`)** :
+  contrat d'alternance promu aux tournois BO3+ en variante bracket (place
+  A = meilleur seed) ; PAS de stockage carte-par-manche (aucune source,
+  rien inventé). **La recherche CODM du 02/11/2026 est entièrement
+  délivrée à ce jour** ; toute suite relève d'une nouvelle décision.
 
 ## 7. Leçons de la journée
 
@@ -263,8 +308,8 @@ les seuls ajouts de specs e2e sont dans C1/C2 :
 ## 8. Registres détaillés (hors dépôt, Temp de la machine de travail)
 
 - `zoyd-cartographie.md` — cartographie produit complète (lecture
-  2026-11-02, base `3bf10cf`) + sections 10 bis → 10 decies (cycles de la
-  journée) + §10 rappels.
+  2026-11-02, base `3bf10cf`) + sections 10 bis → 10 undecies (cycles de
+  la journée) + §10 rappels.
 - `zoyd-audit4-notes.md` — notes enrichies par cycle (décisions, gates,
   sondes, leçons).
 - `zoyd-codm-recherche.md` — rapport de recherche CODM daté (sources).

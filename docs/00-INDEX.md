@@ -208,9 +208,12 @@ match : l'auteur connaissait le motif, il l'avait oublié 20 lignes plus bas.
 
 ## 9. État au moment de l'écriture
 
-- Production Render : saine au 02/11/2026 — `/api/health` répond `ok=true`,
+- Production Render : saine au 02/11/2026 (GET `/api/health` réel) — `ok=true`,
   `stateTrusted=true`, `integrity.ok=true`, `occRevisionColumn=true` (le DDL OCC
-  est appliqué en base), `deployedCommitShort=a6634f5` sur `main`
+  est appliqué en base), `loginLockoutPersisted=true`, `sanctionsPersisted=true`,
+  `deployedCommitShort=0e0f537` sur `main` ; le déploiement de `7b7d390`
+  (cette passe) ajoutera les champs `adminTotpPersisted` / `adminTotpError`,
+  dont le verdict de production se lira au boot suivant
 - Front Vercel : déploiement automatique **fonctionnel** — la branche configurée
   dans le tableau de bord Vercel n'est **pas vérifiable depuis le dépôt**
   (l'API Render, elle, tourne bien sur `main`)

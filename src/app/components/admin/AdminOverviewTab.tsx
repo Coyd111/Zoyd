@@ -67,7 +67,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
           </div>
 
           {priorityQueue.length === 0 ? (
-            <p className="text-white/60 text-sm font-mono">Aucune urgence locale remontee.</p>
+            <p className="text-white/60 text-sm font-mono">Aucune urgence locale remontée.</p>
           ) : (
             <div className="space-y-3">
               {priorityQueue.map((item) => (
@@ -119,7 +119,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                 label="Matchs en direct"
                 count={liveMatchesCount}
                 maxCount={operationsMax}
-                body="Salons actuellement en cours et a surveiller."
+                body="Salons actuellement en cours et à surveiller."
                 accent="bg-green-500"
               />
               <StatusLane
@@ -138,7 +138,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-2">
                   ÉVÉNEMENTS RÉCENTS
                 </div>
-                <h2 className="text-lg font-display font-black uppercase italic">Journal moderation</h2>
+                <h2 className="text-lg font-display font-black uppercase italic">Journal modération</h2>
               </div>
               <button
                 onClick={() => onNavigateToTab('users')}
@@ -149,7 +149,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
             </div>
 
             {recentEvents.length === 0 ? (
-              <p className="text-white/60 text-sm font-mono">Aucun evenement recent.</p>
+              <p className="text-white/60 text-sm font-mono">Aucun événement récent.</p>
             ) : (
               <div className="space-y-3">
                 {recentEvents.slice(0, 5).map((event) => (

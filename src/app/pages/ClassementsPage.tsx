@@ -66,7 +66,7 @@ const tabs: { id: RankingTab; label: string; icon: React.ComponentType<{ classNa
   { id: 'earnings', label: 'TOP GAINS', icon: Trophy },
   { id: 'winrate', label: 'VICTOIRES', icon: Target },
   { id: 'activity', label: 'ACTIVITÉ', icon: TrendingUp },
-  { id: 'teams', label: 'EQUIPES', icon: Users },
+  { id: 'teams', label: 'ÉQUIPES', icon: Users },
   { id: 'country', label: 'PAR PAYS', icon: Flag },
   { id: 'controller', label: 'PAR CONTRÔLE', icon: Gamepad2 },
 ];
@@ -310,7 +310,7 @@ const ClassementsPage: React.FC = () => {
             </span>
           </h1>
           <p className="mt-5 max-w-3xl text-sm text-white/70">
-            Ces classements bougent avec les matchs et tournois déjà joues sur ZOYD. Rien n&apos;est affiche tant
+            Ces classements bougent avec les matchs et tournois déjà joués sur ZOYD. Rien n&apos;est affiché tant
             que l&apos;activité n&apos;existe pas encore.
           </p>
           {user && myRank ? (

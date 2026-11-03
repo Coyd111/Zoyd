@@ -28,6 +28,14 @@ import { Badge } from '../components/ui/Badge';
 import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
 
+// C-3 (audit UI) : regle S-7 unifiee avec LandingPage — la video decoratif de
+// fond (hero-bg.mp4) ne se charge plus EN DESSOUS de 768px : decor a opacite
+// faible, parti a la trappe avec les 3G/4G de l'audience. Decision prise AU
+// CHARGEMENT DU MODULE (pas de remount au resize : rotation 720 -> 800 reste
+// sans video, sans gravite, l'image JPG reste). Desktop inchange.
+const SHOW_CARD_VIDEO = typeof window !== 'undefined'
+  && window.matchMedia('(min-width: 768px)').matches;
+
 const ModeSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
@@ -99,9 +107,11 @@ const ModeSelectionPage: React.FC = () => {
           >
             <div className="relative h-full min-h-[350px] sm:min-h-[420px] md:min-h-[520px] overflow-hidden border border-zoyd-blue/20 bg-black hover:border-zoyd-yellow transition-all duration-300 group/card">
               <img src="/assets/images/codm-1.jpg" alt="Multijoueur" className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity grayscale group-hover/card:scale-105 group-hover/card:grayscale-0 transition-all duration-700" />
-              <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:opacity-40 transition-opacity duration-700 pointer-events-none">
-                <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
-              </video>
+              {SHOW_CARD_VIDEO && (
+                <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:opacity-40 transition-opacity duration-700 pointer-events-none">
+                  <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+                </video>
+              )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.24),rgba(10,10,10,0.75)_52%,rgba(10,10,10,0.96))]" />
 
               <div className="relative z-10 h-full p-6 sm:p-8 md:p-10 flex flex-col justify-between">
@@ -121,7 +131,7 @@ const ModeSelectionPage: React.FC = () => {
                     Multijoueur
                   </h2>
                   <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
-                    Matchs publics, tournois, salons competitifs et progression joueur déjà liés à ton compte.
+                    Matchs publics, tournois et progression joueur déjà liés à ton compte.
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
@@ -148,9 +158,11 @@ const ModeSelectionPage: React.FC = () => {
           >
             <div className="relative h-full min-h-[350px] sm:min-h-[420px] md:min-h-[520px] overflow-hidden border border-zoyd-yellow/20 bg-black/80 hover:border-zoyd-yellow/40 transition-all duration-300 group/br">
               <img src="/assets/images/codm-2.jpg" alt="Battle Royale" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale group-hover/br:scale-105 group-hover/br:grayscale-0 transition-all duration-700" />
-              <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/br:opacity-24 transition-opacity duration-700 pointer-events-none">
-                <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
-              </video>
+              {SHOW_CARD_VIDEO && (
+                <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/br:opacity-24 transition-opacity duration-700 pointer-events-none">
+                  <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+                </video>
+              )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.28),rgba(10,10,10,0.78)_52%,rgba(10,10,10,0.97))]" />
 
               <div className="relative z-10 h-full p-6 sm:p-8 md:p-10 flex flex-col justify-between">

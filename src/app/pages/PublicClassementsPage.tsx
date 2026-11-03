@@ -40,7 +40,7 @@ import { formatZC } from '../../lib/utils';
 interface PublicPlayer {
   // id est deja expose par /api/leaderboard (sanitizeUserPayload) — deja
   // public depuis l'invention de la route. Utilise ici pour les CLE de
-  // lignes uniquement (PAS de lien /profil/:id —see INVARIANT).
+  // lignes uniquement (PAS de lien /profil/:id — cf. INVARIANT).
   id: string | number;
   pseudo: string;
   country: string;
@@ -194,13 +194,13 @@ const PublicClassementsPage: React.FC = () => {
                 <span className="text-white font-black">{state.stats.players}</span> joueurs actifs
               </span>
               <span>
-                <span className="text-white font-black">{state.stats.matchesPlayed}</span> matchs joues
+                <span className="text-white font-black">{state.stats.matchesPlayed}</span> matchs joués
               </span>
               <span>
-                <span className="text-white font-black">{formatZC(state.stats.zcDistributed)}</span> distribues
+                <span className="text-white font-black">{formatZC(state.stats.zcDistributed)}</span> distribués
               </span>
               <span>
-                <span className="text-white font-black">{state.stats.payoutRate}%</span> paiements honores
+                <span className="text-white font-black">{state.stats.payoutRate}%</span> paiements honorés
               </span>
             </div>
           ) : null}
@@ -236,7 +236,7 @@ const PublicClassementsPage: React.FC = () => {
         </div>
         {/* P2-5 (audit UI) : la note qui rend honnetes les libelles ci-dessus. */}
         <p className="-mt-8 mb-12 text-[10px] font-mono text-white/50">
-          Note : les trois onglets repartent du top 50 ELO servi par le serveur — chaque
+          Note : les trois onglets partent du top 50 ELO servi par le serveur — chaque
           vue re-trie ces 50 joueurs sur sa métrique, et ne consulte pas la communauté entière.
         </p>
 
@@ -255,14 +255,14 @@ const PublicClassementsPage: React.FC = () => {
               Classement indisponible
             </h2>
             <p className="text-sm text-white/70 max-w-xl mx-auto mb-6">
-              Le serveur n&apos;a pas repondu. Aucun rang invente n&apos;est affiche : reessaie
+              Le serveur n&apos;a pas répondu. Aucun rang inventé n&apos;est affiché : réessaie
               dans un instant.
             </p>
             <button
               onClick={() => setAttempt((value) => value + 1)}
               className="border border-zoyd-yellow px-6 py-3 font-display font-black text-[10px] tracking-[0.2em] uppercase italic text-zoyd-yellow hover:bg-zoyd-yellow hover:text-black transition-colors touch-target"
             >
-              Reessayer
+              Réessayer
             </button>
           </div>
         ) : entries.length === 0 ? (
@@ -274,7 +274,7 @@ const PublicClassementsPage: React.FC = () => {
               Aucun classement pour le moment
             </h2>
             <p className="text-sm text-white/70 max-w-xl mx-auto">
-              Cette vue se remplira des que des matchs auront ete joues et arbitres sur ZOYD.
+              Cette vue se remplira dès que des matchs auront été joués et arbitrés sur ZOYD.
             </p>
           </div>
         ) : (
@@ -364,9 +364,14 @@ const PublicClassementsPage: React.FC = () => {
               </motion.div>
             ))}
 
+            {/* C-2 (audit UI) : « le top 50 est affiche » etait FAUX des que
+                l'onglet actif n'etait pas ELO : le plateau affiche est le top 50
+                ELO servi par le serveur, RE-TRIE selon l'onglet (cf. note P2-5
+                sous la tablist) — les 50 premiers GAINS reels n'existent pas
+                cote client. La phrase dit desormais exactement ca. */}
             {state.total > entries.length ? (
               <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-white/50">
-                {state.total} joueurs classes — le top {entries.length} est affiche.
+                {state.total} joueurs référencés — le plateau affiché est le top 50 ELO servi par le serveur, re-trié selon l'onglet actif.
               </div>
             ) : null}
           </div>
@@ -379,8 +384,8 @@ const PublicClassementsPage: React.FC = () => {
               Vois TON rang aussi
             </div>
             <div className="text-sm text-white/70 max-w-xl">
-              Cree un compte, joue un match arbitre, et entre dans les classements — ELO strict,
-              gains Mobile Money, reputation verifiee.
+              Crée un compte, joue un match arbitré, et entre dans les classements — ELO strict,
+              gains Mobile Money, réputation vérifiée.
             </div>
           </div>
           <div className="flex flex-wrap gap-3 shrink-0">

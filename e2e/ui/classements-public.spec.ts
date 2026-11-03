@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Spec e2e - /classements pour un visiteur ANONYME (PublicClassementsPage).
  *
  * Verifie le contrat produit pose le 2026-11-02 : un visiteur sans session

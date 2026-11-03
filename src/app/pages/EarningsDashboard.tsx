@@ -225,7 +225,7 @@ const EarningsDashboard: React.FC = () => {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-xl font-display font-black italic uppercase text-white tracking-tighter">
-                    Ton evolution sur 30 jours
+                    Ton évolution sur 30 jours
                   </CardTitle>
                   <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-1">
                     Gains, remboursements et mises déjà passées par ton compte
@@ -237,7 +237,7 @@ const EarningsDashboard: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-                <div className="h-[350px] w-full mt-4" role="img" aria-label="Graphique d'evolution des gains sur 30 jours">
+                <div className="h-[350px] w-full mt-4" role="img" aria-label="Graphique d'évolution des gains sur 30 jours">
                   <ChartErrorBoundary>
                     <Suspense fallback={<ChartFallback />}>
                       <LazyEarningsAreaChart data={walletInsights.trend} />
@@ -261,7 +261,7 @@ const EarningsDashboard: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="h-[200px] w-full" role="img" aria-label="Graphique de repartition des matchs joues et arbitres">
+                    <div className="h-[200px] w-full" role="img" aria-label="Graphique de répartition des matchs joués et arbitrés">
                       <ChartErrorBoundary>
                         <Suspense fallback={<ChartFallback />}>
                           <LazyMatchResultsBarChart data={matchResultsData} />

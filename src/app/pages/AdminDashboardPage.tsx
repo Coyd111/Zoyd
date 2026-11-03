@@ -110,17 +110,16 @@ const AdminDashboardPage: React.FC = () => {
 
   // Effet de MONTAGE uniquement.
   //
-  // La dependance \matches.length\ est retiree. Chaque match recu par socket
-  // declenchait deux appels API et une rehydratation complete — alors qu un
-  // signalement n a AUCUN rapport avec le nombre de matchs. La dependance
-  // n exprirnait aucune intention : elle ne faisait que du bruit.
+  // La dependance `matches.length` est retiree. Chaque match recu par socket
+  // declenchait deux appels API et une rehydratation complete — alors qu'un
+  // signalement n'a AUCUN rapport avec le nombre de matchs. La dependance
+  // n'exprimait aucune intention : elle ne faisait que du bruit.
   //
-  // Pire qu etre couteux : le tableau de bord paraissait vivant. Un admin
-  // croyait sa file de moderation a jour parce qu elle bougeait, alors
-  // qu elle bougeait pour une raison sans rapport. Une file visiblement
-  // statique vaut mieux qu une file faussement dynamique.
+  // Pire qu'etre couteux : le tableau de bord paraissait vivant. Un admin
+  // croyait sa file de moderation a jour parce qu'elle bougeait, alors
+  // qu'elle bougeait pour une raison sans rapport. Une file visiblement
+  // statique vaut mieux qu'une file faussement dynamique.
   //
-  // Le rafraichissement suit desormais les VRAIES causes : ce montage, et
   // Le rafraichissement suit desormais les VRAIES causes : ce montage, et
   // reloadReports() deja appele apres chaque action de l admin (resoudre un
   // signalement, lever une sanction). Un jour de vrai temps reel, ce sera un
@@ -198,7 +197,7 @@ const AdminDashboardPage: React.FC = () => {
     } catch (err) {
       // `apiClient` rejette avec une `Error` enrichie d'un `code` serveur.
       // On lit le code sans_typer le tout en `any` : le message exact
-      // determine ce qu'on affiche a l admin.
+      // determine ce qu'on affiche a l'admin.
       const code =
         typeof err === 'object' && err !== null && 'code' in err
           ? String((err as { code?: unknown }).code ?? '')
@@ -404,11 +403,11 @@ const AdminDashboardPage: React.FC = () => {
                 <span className="text-[10px] font-mono font-black text-zoyd-yellow uppercase tracking-widest italic">Administration</span>
               </div>
               <h1 className="text-3xl md:text-6xl font-display font-black uppercase tracking-tighter italic">Centre de <span className="text-white/70">commandement</span></h1>
-              <p className="text-white/70 max-w-2xl mt-2">Vue opérationnelle pour prioriser les litiges, garder un oeil sur les passes bloqués et agir vite sur les comptes qui degringolent en trust.</p>
+              <p className="text-white/70 max-w-2xl mt-2">Vue opérationnelle pour prioriser les litiges, garder un œil sur les files bloquées et agir vite sur les comptes qui dégringolent en score de confiance.</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 2xl:min-w-[650px] 2xl:max-w-[720px]">
               <FocusCard icon={<AlertTriangle className="w-4 h-4 text-red-300" aria-hidden="true" />} label="Litiges" value={adminInsights.openDisputes.length.toString()} detail="A trancher" tone="danger" />
-              <FocusCard icon={<Users className="w-4 h-4 text-zoyd-yellow" aria-hidden="true" />} label="Reports" value={pendingReports.length.toString()} detail="En attente" tone="warning" />
+              <FocusCard icon={<Users className="w-4 h-4 text-zoyd-yellow" aria-hidden="true" />} label="Signalements" value={pendingReports.length.toString()} detail="En attente" tone="warning" />
               <FocusCard icon={<Swords className="w-4 h-4 text-green-400" aria-hidden="true" />} label="Salon live" value={matchQueues.live.length.toString()} detail="En cours" tone="success" />
               <FocusCard icon={<Lock className="w-4 h-4 text-zoyd-blue" aria-hidden="true" />} label="Pools gelés" value={frozenPools.toString()} detail="Sous hold" tone="neutral" />
             </div>
@@ -438,8 +437,8 @@ const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/*
-          Sauvegarde periodique. L historique reste dans la base, mais une
-          base n est pas une sauvegarde tant que personne n a produit de copie
+          Sauvegarde periodique. L'historique reste dans la base, mais une
+          base n'est pas une sauvegarde tant que personne n'a produit de copie
           a conserver ailleurs — et le fichier doit pouvoir etre genere
           SANS connexion SQL ni intervention du developpeur.
         */}
@@ -451,7 +450,7 @@ const AdminDashboardPage: React.FC = () => {
             className="flex items-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest hover:bg-white/10 disabled:opacity-40"
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
-            {exporting ? 'EXPORT...' : 'EXPORTER L HISTORIQUE (CSV)'}
+            {exporting ? 'EXPORT...' : "EXPORTER L'HISTORIQUE (CSV)"}
           </button>
           <button
             type="button"
@@ -462,7 +461,7 @@ const AdminDashboardPage: React.FC = () => {
             JSON
           </button>
           <span className="text-[10px] text-white/50">
-            Sauvegarde a faire tous les 3 mois. 2FA requise.
+            Sauvegarde à faire tous les 3 mois. 2FA requise.
           </span>
         </div>
 
@@ -482,16 +481,16 @@ const AdminDashboardPage: React.FC = () => {
         </div>
         {/*
           Une liste de signalements vide et une table injoignable sont
-          identiques a l'ecran. Sans cet avertissement, l admin verrait
+          identiques a l'ecran. Sans cet avertissement, l'admin verrait
           « 0 signalement » et en conclurait que personne ne signale rien —
-          alors que la lecture a peut-etre echoue. C'est la meme raison qui
+          alors que la lecture a peut-être échoué. C'est la meme raison qui
           fait repondre 503 a la route plutot que `[]`.
         */}
         {reportsUnavailable && (
           <div className="mb-4 border border-orange-500/30 bg-orange-500/10 p-3 text-xs text-orange-200 flex items-start gap-2" role="status">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
             <span>
-              Signalements indisponibles : la table n'a pas pu etre lue. Les compteurs ci-dessous ne reflètent pas la file reelle — ne conclu pas que personne ne signale.
+              Signalements indisponibles : la table n'a pas pu être lue. Les compteurs ci-dessous ne reflètent pas la file réelle — ne conclus pas que personne ne signale.
             </span>
           </div>
         )}

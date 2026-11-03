@@ -25,9 +25,9 @@ import { useAuthStore } from '../../stores/authStore';
 
 const navItems = [
   // shortLabel = version affichee dans la barre. A 360 px, cinq cellules de
-  // ~61 px chiaquent MUTIJOUEUR (11 chars a 11 px tracking-widest) en
+  // ~61 px ecrasaient MULTIJOUEUR (11 chars a 11 px tracking-widest) en
   // 'MULTIJ...' sous ellipsis CSS : 3 des 5 destinations etaient tronquees.
-  // L烟火aria-label garde le libelle complet pour l'accessibilite, et le
+  // L'aria-label garde le libelle complet pour l'accessibilite, et le
   // test e2e responsive.spec.ts (U-2) refuse tout ellipsis CSS actif.
   { icon: LayoutGrid, label: 'MULTIJOUEUR', shortLabel: 'MULTI', path: '/mj' },
   { icon: Trophy, label: 'TOURNOIS', shortLabel: 'TOURNOI', path: '/mj/tournois' },

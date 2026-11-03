@@ -169,14 +169,14 @@ export const readJson = async <T>(response: Response): Promise<T> => {
     // Avant, un mauvais mot de passe affichait "Session expiree" (trompeur).
     if (response.status === 401) {
       throw new ApiError(
-        code === 'UNKNOWN_ERROR' ? 'Session expiree. Veuillez te reconnecter.' : friendlyMessage,
+        code === 'UNKNOWN_ERROR' ? 'Session expirée. Reconnecte-toi.' : friendlyMessage,
         code === 'UNKNOWN_ERROR' ? 'SESSION_EXPIRED' : code,
         401
       );
     }
     if (response.status === 403) {
       throw new ApiError(
-        code === 'UNKNOWN_ERROR' ? 'Accès refuse. Tu n\'as pas les permissions necessaires.' : friendlyMessage,
+        code === 'UNKNOWN_ERROR' ? "Accès refusé. Il te manque les permissions nécessaires." : friendlyMessage,
         code === 'UNKNOWN_ERROR' ? 'FORBIDDEN' : code,
         403
       );

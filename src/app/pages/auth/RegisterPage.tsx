@@ -91,6 +91,12 @@ const registerFormBaseSchema = z.object({
 // formulaire vit desormais ICI : le plafond de la jauge et la checklist sous
 // le champ lisent cette table — plus aucun critere divergent entre affichage
 // et validation.
+// C-3 (audit UI) : regle S-7 unifiee (LandingPage, ModeSelectionPage) — la
+// video decoratif ne se charge plus EN DESSOUS de 768px. Decision prise AU
+// CHARGEMENT DU MODULE (pas de remount au resize).
+const SHOW_CARD_VIDEO = typeof window !== 'undefined'
+  && window.matchMedia('(min-width: 768px)').matches;
+
 const PASSWORD_RULES = [
   { label: '8 caractères minimum', test: (value: string) => value.length >= 8 },
   { label: 'Au moins une majuscule', test: (value: string) => /[A-Z]/.test(value) },
@@ -727,15 +733,21 @@ cancelled = true;
                 className="space-y-8 text-center relative"
               >
                 <div className="absolute inset-0 -mx-8 -my-4 overflow-hidden pointer-events-none">
-                  <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
-                  >
-                    <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
-                  </video>
+                  {/* C-3 (audit UI) : cette video l'etait SANS GARDE S-7 —
+                      decouverte en re-preuve : l'etape 3 du wizard chargeait
+                      hero-bg.mp4 MEME mobile (decor a 10 % d'opacite). Meme
+                      const que ModeSelectionPage / LandingPage. */}
+                  {SHOW_CARD_VIDEO && (
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
+                    >
+                      <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+                    </video>
+                  )}
                 </div>
 
                 <div className="relative z-10">

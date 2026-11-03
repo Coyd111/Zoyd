@@ -59,15 +59,15 @@ export interface QueueReport {
 const SEVERITY_META: Record<ReportSeverity, { label: string; tone: string }> = {
   grave: { label: 'GRAVE', tone: 'text-red-400 border-red-500/40 bg-red-500/10' },
   moyenne: { label: 'MOYENNE', tone: 'text-orange-400 border-orange-500/40 bg-orange-500/10' },
-  legere: { label: 'LEGERE', tone: 'text-white/60 border-white/15 bg-white/5' },
-  a_qualifier: { label: 'A QUALIFIER', tone: 'text-zoyd-yellow border-zoyd-yellow/40 bg-zoyd-yellow/10' },
+  legere: { label: 'LÉGÈRE', tone: 'text-white/60 border-white/15 bg-white/5' },
+  a_qualifier: { label: 'À QUALIFIER', tone: 'text-zoyd-yellow border-zoyd-yellow/40 bg-zoyd-yellow/10' },
 };
 
 const REASON_LABEL: Record<string, string> = {
-  harassment: 'Harcelement',
+  harassment: 'Harcèlement',
   cheating: 'Triche',
   toxic_behavior: 'Comportement toxique',
-  no_show: 'Absent / forfe',
+  no_show: 'Absent / forfait',
   other: 'Autre',
 };
 
@@ -76,7 +76,7 @@ const RECOMMENDED: Record<ReportSeverity, { resolution: Resolution; label: strin
   grave: { resolution: 'temporary_ban', label: 'Bannissement temporaire' },
   moyenne: { resolution: 'warning', label: 'Avertissement' },
   legere: { resolution: 'dismissed', label: 'Classement seul' },
-  a_qualifier: { resolution: 'dismissed', label: 'A qualifier' },
+  a_qualifier: { resolution: 'dismissed', label: 'À qualifier' },
 };
 
 const TEMP_BAN_DAYS = [1, 3, 7, 14, 30];
@@ -130,8 +130,8 @@ const AdminReportsTab: React.FC<Props> = ({
     return (
       <div className="border border-orange-500/30 bg-orange-500/10 p-6 text-sm text-orange-200" role="status">
         <AlertTriangle className="w-5 h-5 mb-2" aria-hidden="true" />
-        <p className="font-bold mb-1">File de moderation indisponible.</p>
-        <p>La table des signalements n&apos;a pas pu etre lue. Aucun signalement n&apos;est traite ci-dessous — pas « aucun signalement a traiter ».</p>
+        <p className="font-bold mb-1">File de modération indisponible.</p>
+        <p>La table des signalements n&apos;a pas pu être lue. Aucun signalement n&apos;est traité ci-dessous — pas « aucun signalement à traiter ».</p>
       </div>
     );
   }
@@ -139,8 +139,8 @@ const AdminReportsTab: React.FC<Props> = ({
   return (
     <div className="space-y-6">
       <p className="text-xs text-white/60 max-w-3xl">
-        Un signalement est une accusation, pas une preuve : la sanction appliquee reste votre decision.
-        La gravite propose une sanction, elle ne l&apos;impose pas.
+        Un signalement est une accusation, pas une preuve : la sanction appliquée reste votre décision.
+        La gravité propose une sanction, elle ne l&apos;impose pas.
       </p>
 
       {tries.length === 0 ? (
@@ -167,7 +167,7 @@ const AdminReportsTab: React.FC<Props> = ({
                     {report.targetPseudo || report.targetId || 'Joueur inconnu'}
                   </span>
                   <span className="text-xs text-white/50">
-                    signale par {report.reporterPseudo || 'joueur inconnu'} · {formatWhen(report.createdAt)}
+                    signalé par {report.reporterPseudo || 'joueur inconnu'} · {formatWhen(report.createdAt)}
                   </span>
                 </div>
 
@@ -184,18 +184,18 @@ const AdminReportsTab: React.FC<Props> = ({
 
                 <p className="text-xs text-zoyd-yellow mb-3 flex items-center gap-1.5">
                   <Gavel className="w-3.5 h-3.5" aria-hidden="true" />
-                  Sanction recommandee : <strong>{reco.label}</strong>
+                  Sanction recommandée : <strong>{reco.label}</strong>
                 </p>
 
                 <label className="block text-[10px] font-mono font-black uppercase tracking-widest text-white/60 mb-1">
-                  Note de moderation (visible dans la trace)
+                  Note de modération (visible dans la trace)
                 </label>
                 <input
                   type="text"
                   value={note[report.id] || ''}
                   onChange={(e) => setNote((n) => ({ ...n, [report.id]: e.target.value }))}
-                  placeholder="Contexte, preuves, decision…"
-                  aria-label={`Note de moderation pour le signalement du ${formatWhen(report.createdAt)}`}
+                  placeholder="Contexte, preuves, décision…"
+                  aria-label={`Note de modération pour le signalement du ${formatWhen(report.createdAt)}`}
                   className="w-full bg-black border border-white/10 px-3 py-2 text-sm text-white mb-3"
                 />
 
@@ -220,11 +220,11 @@ const AdminReportsTab: React.FC<Props> = ({
 
                     <label className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase text-white/60">
                       <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span className="sr-only">Duree du bannissement temporaire</span>
+                      <span className="sr-only">Durée du bannissement temporaire</span>
                       <select
                         value={duree}
                         onChange={(e) => setDays((d) => ({ ...d, [report.id]: Number(e.target.value) }))}
-                        aria-label={`Duree du bannissement temporaire, signalement du ${formatWhen(report.createdAt)}`}
+                        aria-label={`Durée du bannissement temporaire, signalement du ${formatWhen(report.createdAt)}`}
                         className="bg-black border border-white/20 px-2 py-2 text-white"
                       >
                         {TEMP_BAN_DAYS.map((d) => (
@@ -246,7 +246,7 @@ const AdminReportsTab: React.FC<Props> = ({
                       onClick={() => setConfirmPermanent(report.id)}
                       className="flex items-center gap-1.5 border border-red-500/50 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 disabled:opacity-40"
                     >
-                      <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" /> Banni definitivement
+                      <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" /> Banni définitivement
                     </button>
                   </div>
                 ) : (
@@ -254,11 +254,11 @@ const AdminReportsTab: React.FC<Props> = ({
                     className="border border-red-500/50 bg-red-500/10 p-3"
                     role="alertdialog"
                     aria-modal="false"
-                    aria-label="Confirmer le bannissement definitif"
+                    aria-label="Confirmer le bannissement définitif"
                   >
                     <p className="text-xs text-red-200 mb-2">
-                      Bannissement <strong>definitif</strong> de {report.targetPseudo || report.targetId} ?
-                      Sa session sera fermee immediatement et il ne pourra plus se connecter. Seul un administrateur peut lever cette sanction.
+                      Bannissement <strong>définitif</strong> de {report.targetPseudo || report.targetId} ?
+                      Sa session sera fermée immédiatement et il ne pourra plus se connecter. Seul un administrateur peut lever cette sanction.
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -270,7 +270,7 @@ const AdminReportsTab: React.FC<Props> = ({
                         }}
                         className="border border-red-500 bg-red-500/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-white hover:bg-red-500/30 disabled:opacity-40"
                       >
-                        {busy ? 'Application…' : 'Oui, bannir definitivement'}
+                        {busy ? 'Application…' : 'Oui, bannir définitivement'}
                       </button>
                       <button
                         type="button"
@@ -295,7 +295,7 @@ const AdminReportsTab: React.FC<Props> = ({
             Sanctions en cours ({sanctions.length})
           </h2>
           <p className="text-xs text-white/50 mb-3">
-            Bannir sans pouvoir lever enfermerait un joueur sans recours. Une erreur de moderation se corrige ici.
+            Bannir sans pouvoir lever enfermerait un joueur sans recours. Une erreur de modération se corrige ici.
           </p>
           <ul className="space-y-2">
             {sanctions.map((sanction) => (
@@ -322,7 +322,7 @@ const AdminReportsTab: React.FC<Props> = ({
                   onClick={() => onRevoke(sanction.id)}
                   className="ml-auto border border-green-500/40 px-3 py-1.5 text-[10px] font-display font-black uppercase tracking-widest text-green-400 hover:bg-green-500/10 disabled:opacity-40"
                 >
-                  {revokingId === sanction.id ? 'Levee…' : 'Lever'}
+                  {revokingId === sanction.id ? 'Levée…' : 'Lever'}
                 </button>
               </li>
             ))}
@@ -333,7 +333,7 @@ const AdminReportsTab: React.FC<Props> = ({
       {traites.length > 0 && (
         <details className="border border-white/10 p-4">
           <summary className="text-xs font-mono font-black uppercase tracking-widest text-white/60 cursor-pointer">
-            Traites recemment ({traites.length})
+            Traités récemment ({traites.length})
           </summary>
           <ul className="mt-3 space-y-2">
             {traites.slice(0, 20).map((report) => (
@@ -341,7 +341,7 @@ const AdminReportsTab: React.FC<Props> = ({
                 <span className="text-white/80">{report.targetPseudo || report.targetId}</span>
                 <span className="uppercase tracking-widest text-white/50">{report.resolution || report.status}</span>
                 <span>{formatWhen(report.createdAt)}</span>
-                {report.reviewedAt && <span className="text-white/40">traite le {formatWhen(report.reviewedAt)}</span>}
+                {report.reviewedAt && <span className="text-white/40">traité le {formatWhen(report.reviewedAt)}</span>}
               </li>
             ))}
           </ul>

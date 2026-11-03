@@ -47,10 +47,10 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
   <div className="space-y-5">
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
       <div>
-        <h2 className="text-xl font-display font-black uppercase italic">Watchlist Joueurs</h2>
+        <h2 className="text-xl font-display font-black uppercase italic">Joueurs surveillés</h2>
         <p className="text-white/70 text-sm">
-          Les profils sont tries pour mettre devant les signaux qui melangent reports, litiges et perte de
-          trust.
+          Les profils sont triés pour mettre devant les signaux qui mélangent signalements, litiges et perte de
+          score de confiance.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -75,7 +75,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
     </div>
 
     {filteredUsers.length === 0 ? (
-      <p className="text-white/60 text-sm font-mono">Aucun compte remonte dans cette vue.</p>
+      <p className="text-white/60 text-sm font-mono">Aucun compte remonté dans cette vue.</p>
     ) : (
       <>
         <div className="grid gap-3">
@@ -131,7 +131,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
               ) : (
                 <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/60">
                   <Users className="w-3 h-3" />
-                  Profil non indexe
+                  Profil non indexé
                 </div>
               )}
             </div>

@@ -43,6 +43,9 @@ const PublicProfilPage = () => {
   const reportUser = useFriendsStore((s) => s.reportUser);
   const isBlocked = useFriendsStore((s) => s.isBlocked);
   const isFriend = useFriendsStore((s) => s.isFriend);
+  // P2-4 (audit UI) : garde double-clic de la demande d'ami. Le hook vit avec
+  // les autres (AUCUN hook apres les early returns de la page).
+  const [sending, setSending] = useState(false);
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
@@ -148,12 +151,16 @@ const PublicProfilPage = () => {
       navigate('/auth/login');
       return;
     }
+    if (sending) return;
+    setSending(true);
     try {
       await sendServerFriendRequest(id, 'Salut, jouons ensemble !');
       sendRequest(id, publicProfile.pseudo);
-      toast.success(`Demande envoyée a ${publicProfile.pseudo}.`);
+      toast.success(`Demande envoyée à ${publicProfile.pseudo}.`);
     } catch {
       toast.error("Impossible d'envoyer la demande.");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -241,7 +248,7 @@ const PublicProfilPage = () => {
       headerActions={
         !ownProfile ? (
           <div className="flex flex-col gap-2 min-w-[220px]">
-            <Button variant="primary" size="sm" onClick={handleAddFriend} disabled={alreadyFriend || blocked} className="touch-target" aria-label={alreadyFriend ? 'Déjà ami' : blocked ? 'Joueur bloqué' : `Ajouter ${publicProfile.pseudo} en ami`}>
+            <Button variant="primary" size="sm" onClick={handleAddFriend} disabled={alreadyFriend || blocked || sending} className="touch-target" aria-label={alreadyFriend ? 'Déjà ami' : blocked ? 'Joueur bloqué' : `Ajouter ${publicProfile.pseudo} en ami`}>
               <UserPlus className="w-4 h-4 mr-2" aria-hidden="true" />
               {alreadyFriend ? 'Déjà ami' : blocked ? 'Bloqué' : 'Ajouter en ami'}
             </Button>

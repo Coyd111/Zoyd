@@ -19,7 +19,13 @@ const PAGES: Array<{ name: string; path: string; heading?: string }> = [
   { name: 'Accueil', path: '/' },
   { name: 'Connexion', path: '/auth/login' },
   { name: 'Inscription', path: '/auth/register' },
-  { name: 'Mot de passe oublie', path: '/auth/forgot-password' },
+  // P2-2 (audit UI, 2026-11-03) : l'entree pointait /auth/forgot-password —
+  // un chemin qui N'EXISTE PAS (la vraie route est 'forgot', routes.tsx:89 ;
+  // le lien reel de LoginPage est /auth/forgot). La page rendue etait la 404
+  // de la SPA (h2 « ZONE NON TROUVÉE ») : ForgotPasswordPage n'a JAMAIS ete
+  // evaluee par axe. Corrige + `heading` active la garde ci-dessous (le h1
+  // reel est « Mot de passe oublié », ForgotPasswordPage).
+  { name: 'Mot de passe oublie', path: '/auth/forgot', heading: 'Mot de passe oublié' },
   // P15 C2 (audit-3) : le chemin historique '/selection-mode' n'existe pas
   // dans le routeur (la vraie route est '/mode', src/app/routes.tsx:94-97).
   // Le fallback SPA servait index.html, React Router rendait la 404

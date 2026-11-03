@@ -63,6 +63,13 @@ const FriendsWidget: React.FC = () => {
   const [tab, setTab] = useState<'friends' | 'requests' | 'blocked'>('friends');
   const [invitePseudo, setInvitePseudo] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // P2-3 (audit UI) : la suppression d'ami est le seul geste destructif du
+  // cluster social sans garde. Le premier clic arme la confirmation en ligne
+  // (« Supprimer ? »), seul un second tap sur OUI retire vraiment l'ami —
+  // même pattern que la confirmation de blocage/signalement du profil public
+  // (PublicProfilPage). Un derapée de cible arme au pire l'invite, ne supprime
+  // plus rien.
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   const onlineFriends = getOnlineFriends();
   const filteredFriends = useMemo(
@@ -198,24 +205,51 @@ const FriendsWidget: React.FC = () => {
                                 : 'Hors ligne'}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => navigate(`/chat?dm=${encodeURIComponent(friend.id)}`)}
-                          className="p-1.5 text-white/70 hover:text-zoyd-blue transition-colors"
-                          title="Message"
-                          aria-label={`Envoyer un message à ${friend.pseudo}`}
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => removeFriend(friend.id)}
-                          className="p-1.5 text-white/70 hover:text-red-400 transition-colors"
-                          title="Supprimer"
-                          aria-label={`Supprimer ${friend.pseudo} des amis`}
-                        >
-                          <UserX className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      {/* P2-3 (audit UI) : le bloc d'actions etait invisible sans
+                          survol (opacity-0 group-hover) — sur mobile, ON NE LE
+                          TROUVAIT QU'EN TAPANT AVEUGLE la ligne. group-focus-within
+                          le revele aussi au clavier. Cibles passees de 14 px a
+                          ~36 px (p-2 sur icone 20 px). */}
+                      {confirmRemoveId === friend.id ? (
+                        <div className="flex items-center gap-1" role="group" aria-label={`Confirmer la suppression de ${friend.pseudo}`}>
+                          <span className="text-[10px] font-mono text-red-300 uppercase tracking-wider whitespace-nowrap">
+                            Supprimer ?
+                          </span>
+                          <button
+                            onClick={() => { removeFriend(friend.id); setConfirmRemoveId(null); }}
+                            aria-label={`Confirmer la suppression de ${friend.pseudo} des amis`}
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[10px] font-mono font-black uppercase tracking-wider text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-full transition-colors"
+                          >
+                            Oui
+                          </button>
+                          <button
+                            onClick={() => setConfirmRemoveId(null)}
+                            aria-label={`Garder ${friend.pseudo} en ami`}
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[10px] font-mono font-black uppercase tracking-wider text-white/60 hover:text-white transition-colors rounded-full"
+                          >
+                            Non
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => navigate(`/chat?dm=${encodeURIComponent(friend.id)}`)}
+                            className="p-2 -m-1.5 text-white/70 hover:text-zoyd-blue transition-colors"
+                            title="Message"
+                            aria-label={`Envoyer un message à ${friend.pseudo}`}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmRemoveId(friend.id)}
+                            className="p-2 -m-1.5 text-white/70 hover:text-red-400 transition-colors"
+                            title="Supprimer"
+                            aria-label={`Supprimer ${friend.pseudo} des amis`}
+                          >
+                            <UserX className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

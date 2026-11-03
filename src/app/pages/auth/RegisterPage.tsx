@@ -26,6 +26,7 @@ import { toast } from '../../lib/toast';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import {
+  Check,
   Eye,
   EyeOff,
   Smartphone,
@@ -35,6 +36,7 @@ import {
   ChevronRight,
   ChevronLeft,
   ShieldCheck,
+  X,
   Zap,
   Globe,
 } from 'lucide-react';
@@ -81,6 +83,20 @@ const registerFormBaseSchema = z.object({
   acceptAdult: z.boolean().optional(),
   acceptTerms: z.boolean().optional(),
 });
+
+// P2-1 (audit UI) : la promesse etait en haut, la realite en bas — la jauge
+// montait a « Elite » pour un mot de passe que le schema rejette (le zod
+// ci-dessous exige le caractere special, la jauge ne le testait jamais :
+// « Azerty1234567 » etait affiche Elite PUIS refuse au submit). La regle du
+// formulaire vit desormais ICI : le plafond de la jauge et la checklist sous
+// le champ lisent cette table — plus aucun critere divergent entre affichage
+// et validation.
+const PASSWORD_RULES = [
+  { label: '8 caractères minimum', test: (value: string) => value.length >= 8 },
+  { label: 'Au moins une majuscule', test: (value: string) => /[A-Z]/.test(value) },
+  { label: 'Au moins un chiffre', test: (value: string) => /[0-9]/.test(value) },
+  { label: 'Un caractère spécial', test: (value: string) => /[^A-Za-z0-9]/.test(value) },
+];
 
 const step1Schema = registerFormBaseSchema
   .extend({
@@ -200,6 +216,11 @@ cancelled = true;
     if (pwd.length >= 12) strength++;
     if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength++;
     if (/\d/.test(pwd)) strength++;
+    // P2-1 (audit UI) : sans le caractere special, zod REJETTE le mot de passe
+    // au submit — la jauge ne peut pas annoncer la reussite maximale. Plafonne
+    // a 3/4 (« Fort ») tant que la regle n'est pas satisfaite ; la checklist
+    // affichee sous le champ dit CE QUI manque.
+    if (!/[^A-Za-z0-9]/.test(pwd)) strength = Math.min(strength, 3);
     return strength;
   };
 
@@ -489,15 +510,35 @@ cancelled = true;
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                   {password && (
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex gap-1 flex-1 max-w-[120px]">
-                        {[1, 2, 3, 4].map((index) => (
-                          <div key={index} className={`h-1 flex-1 rounded-full ${index <= passwordStrength ? 'bg-zoyd-blue' : 'bg-white/5'}`} />
-                        ))}
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-1 flex-1 max-w-[120px]">
+                          {[1, 2, 3, 4].map((index) => (
+                            <div key={index} className={`h-1 flex-1 rounded-full ${index <= passwordStrength ? 'bg-zoyd-blue' : 'bg-white/5'}`} />
+                          ))}
+                        </div>
+                        <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
+                          {strengthLabels[passwordStrength]}
+                        </span>
                       </div>
-                      <span className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
-                        {strengthLabels[passwordStrength]}
-                      </span>
+                      {/* P2-1 (audit UI) : une jauge colorée ne dit pas CE QUI
+                          manque. La checklist reprend les 4 regles du schema
+                          (zod, meme source que PASSWORD_RULES) : coche si la
+                          regle est satisfaite, croix sinon. */}
+                      <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1" aria-label="Critères du mot de passe">
+                        {PASSWORD_RULES.map((rule) => {
+                          const ok = rule.test(password);
+                          return (
+                            <li
+                              key={rule.label}
+                              className={`flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest ${ok ? 'text-green-400' : 'text-white/50'}`}
+                            >
+                              {ok ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />}
+                              {rule.label}
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
                   )}
                 </div>

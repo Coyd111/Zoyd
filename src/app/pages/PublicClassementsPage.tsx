@@ -64,10 +64,16 @@ type PublicTab = 'elo' | 'earnings' | 'wins';
 
 const visibleCount = 50; // = la requete : la vitrine d'un premier ecran, pas l'export admin.
 
+// P2-5 (audit UI) : /api/leaderboard ne livre qu'UN tri — le top 50 par ELO.
+// Les deux autres onglets re-trient CE MEME plateau de 50 joueurs (sorters
+// ci-dessous) : le « vrai » #1 gains hors top 50 ELO n'apparait nulle part.
+// Les libelles disent desormais ce que la vue fait vraiment, et une note sous
+// la tablist l'ecrit. La solution juste (endpoint ?metric=) est cote serveur,
+// hors front : re-baptiser est l'arbitrage front retenu ici.
 const tabs: { id: PublicTab; label: string; icon: React.ComponentType<{ className?: string }>; metric: string }[] = [
   { id: 'elo', label: 'TOP ELO', icon: Trophy, metric: 'ELO' },
-  { id: 'earnings', label: 'TOP GAINS', icon: TrendingUp, metric: 'GAINS' },
-  { id: 'wins', label: 'VICTOIRES', icon: Target, metric: 'V' },
+  { id: 'earnings', label: 'GAINS — TOP 50 ELO', icon: TrendingUp, metric: 'GAINS' },
+  { id: 'wins', label: 'VICTOIRES — TOP 50 ELO', icon: Target, metric: 'V' },
 ];
 
 const rankIcon = (rank: number) => {
@@ -150,7 +156,7 @@ const PublicClassementsPage: React.FC = () => {
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline">
       <SEOHead
         title="Classements publics — ZOYD"
-        description="Le classement reel des joueurs ZOYD par Elo, gains et victoires. Aucune session requise."
+        description="Le top 50 ELO des joueurs ZOYD, trié par gains et victoires. Aucune session requise."
         path="/classements"
       />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
@@ -178,8 +184,9 @@ const PublicClassementsPage: React.FC = () => {
             </span>
           </h1>
           <p className="mt-5 max-w-3xl text-sm text-white/70">
-            Le classement reel de la communaute ZOYD, servi par le serveur et rafraichi a
-            chaque visite. Connecte-toi pour voir TON rang, tes amis et tes gains detailles.
+            Le top 50 joueurs par ELO, servi par le serveur et rafraîchi à
+            chaque visite : chaque onglet re-trie ces 50 joueurs sur sa métrique.
+            Connecte-toi pour voir TON rang, tes amis et tes gains détaillés.
           </p>
           {state.status === 'ready' && state.stats ? (
             <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-[10px] font-mono uppercase tracking-widest text-white/70">
@@ -227,6 +234,11 @@ const PublicClassementsPage: React.FC = () => {
             );
           })}
         </div>
+        {/* P2-5 (audit UI) : la note qui rend honnetes les libelles ci-dessus. */}
+        <p className="-mt-8 mb-12 text-[10px] font-mono text-white/50">
+          Note : les trois onglets repartent du top 50 ELO servi par le serveur — chaque
+          vue re-trie ces 50 joueurs sur sa métrique, et ne consulte pas la communauté entière.
+        </p>
 
         {state.status === 'loading' ? (
           <div className="space-y-2">

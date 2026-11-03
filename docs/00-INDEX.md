@@ -130,7 +130,7 @@ L'étape 5 a déjà payé : `server/admin-totp-guard.test.mjs` a été gardé pa
 
 ## 7. La documentation
 
-Neuf documents, ~9 150 lignes, tous sourcés par `fichier:ligne`. Ce qui suit n'est
+Dix documents, ~10 800 lignes, tous sourcés par `fichier:ligne`. Ce qui suit n'est
 pas une description de ce que le projet **devrait** faire : c'est ce qu'il **fait**,
 au moment de l'écriture.
 
@@ -144,6 +144,7 @@ au moment de l'écriture.
 | [`06-tests.md`](06-tests.md) | Les 3 niveaux, **ce que les tests ne prouvent pas**, recette de mutation |
 | [`07-exploitation.md`](07-exploitation.md) | Déploiement Vercel + Render, variables d'environnement, schéma Supabase, runbook |
 | [`08-frontend.md`](08-frontend.md) | Routes, stores, client temps réel, design system, SEO, les 4 bugs corrigés |
+| [`09-presentation.md`](09-presentation.md) | La présentation pour tous : le produit expliqué sans jargon, l'argent de bout en bout, la sécurité et les tests en langage courant, l'état au 02/11/2026 |
 
 Le code porte aussi un **en-tête de commentaire** en tête de chaque fichier
 significatif : 38 des 40 fichiers `server/` (les deux modules les plus récents,

@@ -26,7 +26,18 @@ import {
   Cell,
 } from 'recharts';
 import { formatZC } from '../../lib/utils';
-import { CHART_YELLOW } from '../../lib/chartColors';
+// P3-6 (audit UI) : la charte des surfaces (tooltip, grille, axes, curseur)
+// vit desormais dans chartColors.ts — plus aucun literal hex de charte dans
+// le composant (le DOCSTRING l'exigeait deja ; seule la couleur de la ligne
+// etait importee).
+import {
+  CHART_YELLOW,
+  CHART_SURFACE,
+  CHART_TOOLTIP_BORDER,
+  CHART_GRID_LINE,
+  CHART_AXIS_LINE,
+  CHART_CURSOR_FILL,
+} from '../../lib/chartColors';
 
 interface TrendPoint {
   day: string;
@@ -41,8 +52,8 @@ interface MatchResult {
 }
 
 const tooltipStyle = {
-  backgroundColor: '#0A0A0A',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: CHART_SURFACE,
+  border: `1px solid ${CHART_TOOLTIP_BORDER}`,
   fontSize: '12px',
   fontFamily: 'monospace',
 };
@@ -56,9 +67,9 @@ export const EarningsAreaChart: React.FC<{ data: TrendPoint[] }> = ({ data }) =>
           <stop offset="95%" stopColor={CHART_YELLOW} stopOpacity={0} />
         </linearGradient>
       </defs>
-      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-      <XAxis dataKey="day" stroke="#ffffff20" fontSize={10} fontFamily="monospace" tickLine={false} axisLine={false} />
-      <YAxis stroke="#ffffff20" fontSize={10} fontFamily="monospace" tickLine={false} axisLine={false} tickFormatter={(value) => `${value}ZC`} />
+      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_LINE} vertical={false} />
+      <XAxis dataKey="day" stroke={CHART_AXIS_LINE} fontSize={10} fontFamily="monospace" tickLine={false} axisLine={false} />
+      <YAxis stroke={CHART_AXIS_LINE} fontSize={10} fontFamily="monospace" tickLine={false} axisLine={false} tickFormatter={(value) => `${value}ZC`} />
       <Tooltip
         contentStyle={tooltipStyle}
         // recharts 3 : formatter recoit ValueType (number | string | string[]).
@@ -74,10 +85,10 @@ export const EarningsAreaChart: React.FC<{ data: TrendPoint[] }> = ({ data }) =>
 export const MatchResultsBarChart: React.FC<{ data: MatchResult[] }> = ({ data }) => (
   <ResponsiveContainer width="100%" height="100%">
     <BarChart data={data}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-      <XAxis dataKey="name" stroke="#ffffff20" fontSize={10} fontFamily="monospace" axisLine={false} tickLine={false} />
+      <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_LINE} vertical={false} />
+      <XAxis dataKey="name" stroke={CHART_AXIS_LINE} fontSize={10} fontFamily="monospace" axisLine={false} tickLine={false} />
       <YAxis hide />
-      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={tooltipStyle} />
+      <Tooltip cursor={{ fill: CHART_CURSOR_FILL }} contentStyle={tooltipStyle} />
       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
         {data.map((entry, index) => (
           <Cell key={`cell-${index}`} fill={entry.color} />

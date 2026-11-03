@@ -27,9 +27,12 @@
  * Voir aussi : docs/08-frontend.md - section 7.4 (Le push Web)
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Bell, CheckCircle, Monitor } from 'lucide-react';
+import { CheckCircle, Monitor } from 'lucide-react';
 import { Button } from '../ui/Button';
+// P3-3 (audit UI) : l'overlay etait un div brutal anime a la main — fermeture
+// Echap et piege de focus ABSENTS (clavier perdu sous l'overlay). Montage sur
+// ui/Modal : Echap (l.66), piege Tab (l.73-85), retour du focus, header X.
+import { Modal } from '../ui/Modal';
 
 interface NotificationSettingsModalProps {
   open: boolean;
@@ -64,77 +67,44 @@ const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ o
   }, []);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-          onClick={onClose}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Paramètres de notifications"
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="bg-zoyd-black border border-white/10 w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* HEADER */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-zoyd-surface/20 sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-zoyd-yellow" />
-                <h2 className="text-sm font-display font-black uppercase tracking-tighter italic text-white">Notifications ZOYD</h2>
+    <Modal isOpen={open} onClose={onClose} title="Notifications ZOYD">
+      <div className="space-y-8">
+        {/* SECTION PUSH NAVIGATEUR — seule section cablee : la permission
+            navigateur est l'etat reel lu par notificationStore au moment
+            d'afficher une alerte hors onglet. */}
+        <section>
+          <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
+            <Monitor className="w-3.5 h-3.5" /> Push Navigateur
+          </h3>
+          <div className="hud-panel p-4 bg-zoyd-surface/20 border border-white/5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-ui text-white/70 mb-1">Alertes en temps réel</p>
+                <p className="text-[10px] font-mono text-white/60">Matchs, check-in, résultats et litiges directement sur ton bureau.</p>
               </div>
-              <button onClick={onClose} className="text-white/70 hover:text-white transition-colors" aria-label="Fermer">
-                <X className="w-5 h-5" />
-              </button>
+              {notifyPerm === 'unsupported' ? (
+                <span className="text-[10px] font-mono text-white/70 uppercase">Non supporté</span>
+              ) : pushEnabled ? (
+                <span className="flex items-center gap-1.5 text-[10px] font-mono text-green-400 uppercase">
+                  <CheckCircle className="w-3.5 h-3.5" /> Activé
+                </span>
+              ) : (
+                <Button variant="primary" size="sm" onClick={requestNotify}>
+                  Autoriser
+                </Button>
+              )}
             </div>
+          </div>
+        </section>
+      </div>
 
-            <div className="p-6 space-y-8">
-              {/* SECTION PUSH NAVIGATEUR — seule section cablee : la permission
-                  navigateur est l'etat reel lu par notificationStore au moment
-                  d'afficher une alerte hors onglet. */}
-              <section>
-                <h3 className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 mb-3 italic flex items-center gap-2">
-                  <Monitor className="w-3.5 h-3.5" /> Push Navigateur
-                </h3>
-                <div className="hud-panel p-4 bg-zoyd-surface/20 border border-white/5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-ui text-white/70 mb-1">Alertes en temps réel</p>
-                      <p className="text-[10px] font-mono text-white/60">Matchs, check-in, résultats et litiges directement sur ton bureau.</p>
-                    </div>
-                    {notifyPerm === 'unsupported' ? (
-                      <span className="text-[10px] font-mono text-white/70 uppercase">Non supporté</span>
-                    ) : pushEnabled ? (
-                      <span className="flex items-center gap-1.5 text-[10px] font-mono text-green-400 uppercase">
-                        <CheckCircle className="w-3.5 h-3.5" /> Activé
-                      </span>
-                    ) : (
-                      <Button variant="primary" size="sm" onClick={requestNotify}>
-                        Autoriser
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            {/* FOOTER — "Fermer" : il n'y a RIEN a sauvegarder ici (P13 C5) :
-                l'ancien bouton "Sauvegarder" ne faisait que fermer la modale
-                en laissant croire a un enregistrement. */}
-            <div className="px-6 py-4 border-t border-white/5 bg-zoyd-surface/20 flex justify-end gap-3">
-              <Button variant="ghost" size="sm" onClick={onClose}>Fermer</Button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      {/* FOOTER — "Fermer" : il n'y a RIEN a sauvegarder ici (P13 C5) :
+          l'ancien bouton "Sauvegarder" ne faisait que fermer la modale
+          en laissant croire a un enregistrement. */}
+      <div className="-mx-6 -mb-6 px-6 py-4 border-t border-white/5 bg-zoyd-surface/20 flex justify-end gap-3">
+        <Button variant="ghost" size="sm" onClick={onClose}>Fermer</Button>
+      </div>
+    </Modal>
   );
 };
 

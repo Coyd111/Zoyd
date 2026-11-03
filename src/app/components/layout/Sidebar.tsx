@@ -4,7 +4,7 @@
  * Liste les entrees de navigation, met en avant l'onglet courant, et
  * propose la deconnexion via useLogout.
  *
- * INVARIANT : l'entree ' CONTROLE ' (/admin) est conditionnee au role
+ * INVARIANT : l'entree ' ADMIN ' (/admin) est conditionnee au role
  * `admin` du store. C'est une commodite d'UX, PAS une autorisation : la
  * route elle-meme n'est pas protegee cote client, et la barriere reelle est
  * serveur (requireAdmin / requireAdmin2fa sur /api/admin/*).
@@ -18,7 +18,7 @@
  */
 import React from 'react';
 import { Link, useLocation } from 'react-router';
-import { BarChart3, LayoutGrid, LogOut, MessageCircle, Newspaper, Plus, Settings, ShieldCheck, Trophy, Users, Zap, TrendingUp } from 'lucide-react';
+import { BarChart3, LayoutGrid, LogOut, MessageCircle, Newspaper, Plus, Settings, ShieldCheck, Trophy, Zap, TrendingUp, Wallet } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useChatStore } from '../../stores/chatStore';
 import { cn } from '../../../lib/utils';
@@ -31,14 +31,23 @@ const navItems = [
   { icon: ShieldCheck, label: 'BR LEAGUE', path: '/br-league' },
   { icon: BarChart3, label: 'CLASSEMENTS', path: '/classements' },
   { icon: TrendingUp, label: 'GAINS', path: '/earnings' },
+  // P3-4 (audit UI) : le wallet n'avait AUCUNE entree laterale — seul un
+  // lien existait dans la Navbar (pill solde), invisible des que le hub
+  // scrolle. Entree ajoutee pour retrouver le meme socle que BottomNav.
+  { icon: Wallet, label: 'WALLET', path: '/wallet' },
   { icon: Newspaper, label: 'INFOS', path: '/infos' },
 ];
 
-const adminNavItem = { icon: ShieldCheck, label: 'CONTROLE', path: '/admin' };
+// P3-4 (audit UI) : libelle unifie — la Sidebar disait « CONTROLE »,
+// la Navbar « Control », BottomNav « ADMIN » : trois noms pour UNE page.
+const adminNavItem = { icon: ShieldCheck, label: 'ADMIN', path: '/admin' };
 
+// P3-4 (audit UI) : les deux entrees pointaient LA MEME route (/chat) —
+// un AMIS fantome, d'autant que ChatPage ne lit que ?dm= (pas de ?tab=amis) :
+// les deux libelles menaient au meme ecran sans etre distinguables. Fusion
+// en une seule entree MESSAGES (la liste d'amis vit dans ChatPage).
 const socialItems = [
   { icon: MessageCircle, label: 'MESSAGES', path: '/chat' },
-  { icon: Users, label: 'AMIS', path: '/chat' },
 ];
 
 const Sidebar: React.FC = React.memo(() => {

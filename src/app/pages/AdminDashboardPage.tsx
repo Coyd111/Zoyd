@@ -48,6 +48,7 @@ import AdminReportsTab, { type Resolution, type QueueReport } from '../component
 import AdminUrgencyTab from '../components/admin/AdminUrgencyTab';
 import AdminUsersTab from '../components/admin/AdminUsersTab';
 import type { MatchFilter, UserFilter, DisputeFilter } from '../components/admin/AdminTabShared';
+import { Modal } from '../components/ui/Modal';
 import { SEOHead } from '../components/SEOHead';
 import { CLOSED_STATUSES, PRIORITY_STATUSES } from '../lib/matchStatus';
 
@@ -372,6 +373,12 @@ const AdminDashboardPage: React.FC = () => {
       const response = await adminCancelServerMatch(matchId, 'Match annulé par modération locale.');
       applyAdminMatchResponse(response);
       toast.success('Match annulé et remboursé côté serveur.');
+      // P3-9 (audit UI) : le rechargement ne tourne plus APRES le try/catch —
+      // il tournait aussi apres le toast d'erreur, un appel API inutile apres
+      // un echec. Succes uniquement ; la lecture serveur reste fait foi
+      // (invariant l.16-18), et sa panne ne doit pas s'afficher comme un echec
+      // d'annulation.
+      await reloadReports().catch(() => undefined);
     } catch (error) {
       if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
         openTwofaPrompt(() => handleCancelMatch(matchId));
@@ -381,8 +388,6 @@ const AdminDashboardPage: React.FC = () => {
     } finally {
       setLoadingAction(false);
     }
-    // Annulation admin : la liste des matchs et les compteurs changent.
-    await reloadReports();
   };
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui pb-24 lg:pb-0 scanline pt-safe-top">
@@ -511,40 +516,39 @@ const AdminDashboardPage: React.FC = () => {
         verifyLabel="Vérifier et exécuter"
       />
 
-      {confirmAction && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Confirmer l'annulation du match">
-          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-6 h-6 text-orange-400" />
-              </div>
-              <div>
-                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
-                  Confirmer l&apos;annulation ?
-                </h3>
-                <p className="text-white/60 text-sm">
-                  Ce match sera annulé et les joueurs seront remboursés. Cette action est irréversible.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmAction(null)}
-                className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => { const matchId = confirmAction; setConfirmAction(null); if (matchId) void handleCancelMatch(matchId); }}
-                disabled={loadingAction}
-                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
-              >
-                {loadingAction ? 'En cours...' : 'Confirmer'}
-              </button>
-            </div>
+      {/* P3-3 (audit UI) : l'overlay etait un div brutal (role/aria proclames,
+          mais AUCUNE fermeture Echap et AUCUN piege de focus). Branchement sur
+          ui/Modal (Echap l.66, piege Tab l.73-85, retour du focus). */}
+      <Modal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        title="Confirmer l'annulation ?"
+        size="sm"
+      >
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-6 h-6 text-orange-400" />
           </div>
+          <p className="text-white/60 text-sm">
+            Ce match sera annulé et les joueurs seront remboursés. Cette action est irréversible.
+          </p>
         </div>
-      )}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setConfirmAction(null)}
+            className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => { const matchId = confirmAction; setConfirmAction(null); if (matchId) void handleCancelMatch(matchId); }}
+            disabled={loadingAction}
+            className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+          >
+            {loadingAction ? 'En cours...' : 'Confirmer'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };

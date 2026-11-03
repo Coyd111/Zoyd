@@ -62,16 +62,19 @@ const Navbar: React.FC = React.memo(() => {
             Serveurs Afrique : {serverConnected ? 'En ligne' : isConnected ? 'Sync local' : 'Hors ligne'}
           </div>
           <div className="flex items-center gap-2">Z-Bridge : {liveMatches.length} salon(s) live</div>
-          <div className="flex items-center gap-2">{serverConnected ? 'Serveur connecte' : 'Hors ligne'}</div>
+          <div className="flex items-center gap-2">{serverConnected ? 'Serveur connecté' : 'Hors ligne'}</div>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          {/* P3-4 (audit UI) : « Control » -> « ADMIN » — le troisieme nom
+              d'une meme page (Sidebar « ADMIN » depuis ce fix, BottomNav
+              « ADMIN » deja). */}
           {user?.role === 'admin' ? (
             <Link
               to="/admin"
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 border border-zoyd-blue/20 bg-zoyd-blue/10 text-zoyd-blue hover:border-zoyd-blue/40 transition-all text-[10px] font-mono font-black uppercase tracking-[0.2em]"
             >
-              Control
+              ADMIN
             </Link>
           ) : null}
 

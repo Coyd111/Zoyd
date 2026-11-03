@@ -215,16 +215,24 @@ export const FocusCard = ({
   </div>
 );
 
+// P3-7 (audit UI) : la jauge etait `count * 18` — un multiplicateur FANTOME
+// qui mentait deux fois : trois lanes d'une meme section etaient tracees sur
+// des echelles DIFFERENTES (6 dans une lane = 100 %, 12 dans une autre = ~3
+// barres), et 12 > 6 se lisait visuellement comme plus court. La comparaison
+// est desormais proportionnelle : le parent partage un maxCount, chaque lane
+// trace count/max du MEME plafond.
 export const StatusLane = ({
   label,
   count,
   body,
   accent,
+  maxCount,
 }: {
   label: string;
   count: number;
   body: string;
   accent: string;
+  maxCount: number;
 }) => (
   <div className="p-4">
     <div className="flex items-center justify-between gap-3 mb-3">
@@ -232,7 +240,7 @@ export const StatusLane = ({
       <div className="text-xl font-display font-black italic text-white">{count}</div>
     </div>
     <div className="h-1 bg-white/5 mb-3 overflow-hidden">
-      <div className={`${accent} h-full`} style={{ width: `${Math.min(100, count * 18)}%` }} />
+      <div className={`${accent} h-full`} style={{ width: `${maxCount > 0 ? Math.round((count / maxCount) * 100) : 0}%` }} />
     </div>
     <p className="text-[11px] text-white/70">{body}</p>
   </div>

@@ -18,3 +18,14 @@
  */
 export const CHART_YELLOW = '#FFFF00';
 export const CHART_BLUE = '#0070FF';
+
+// P3-6 (audit UI) : les surfaces de charte (tooltip, grille, axes, curseur)
+// etaient des literals hex eparpilles dans les composants Recharts — la
+// charte vivait en dehors du token-file. Meme regle que CHART_YELLOW/BLUE :
+// presentation attribute SVG ne resout pas var(), la valeur DOIT rester
+// alignee sur theme.css (surface #0A0A0A = --zoyd-surface).
+export const CHART_SURFACE = '#0A0A0A';
+export const CHART_TOOLTIP_BORDER = 'rgba(255,255,255,0.1)';
+export const CHART_GRID_LINE = '#ffffff05';
+export const CHART_AXIS_LINE = '#ffffff20';
+export const CHART_CURSOR_FILL = 'rgba(255,255,255,0.05)';

@@ -10,7 +10,8 @@
  * INVARIANT : toutes les valeurs sont bornees a 0-100 et arrondies (clamp).
  * Un score hors bornes vient d'un serveur, pas d'une faute de saisie.
  * PIEGE : getTrustColor / getTrustBg / getTrustLabel sont des fonctions
- * PURES de correspondance. Les seuils (80 / 50 / 30 / 90) sont des regles
+ * PURES de correspondance (factorees dans lib/trustPalette.ts, P3-8) : les
+ * seuils (80 / 50 / 30 / 90) sont des regles
  * de design : les modifier change le libelle affiche partout en un coup.
  * PIEGE : le store se purge a la deconnexion et se rehydrate sur chaque
  * login/hydrateSession.
@@ -18,6 +19,11 @@
  * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
+// P3-8 (audit UI) : la palette de confiance (fonctions PURES de
+// presentation) vit desormais dans lib/trustPalette.ts — un store n'avait
+// pas a porter trois helpers sans etat (et une page non branchee au score
+// finissait par importer le STORE pour une couleur). Re-export ci-dessous :
+// l'API publique est INCHANGEE pour les consommateurs existants.
 
 export interface TrustBreakdown {
   overall: number;      // 0-100
@@ -69,28 +75,9 @@ export const useTrustScoreStore = create<TrustScoreState>((set) => ({
   },
 }));
 
-// Helpers
-export function getTrustColor(score: number): string {
-  if (score >= 80) return 'text-green-400';
-  if (score >= 50) return 'text-zoyd-yellow';
-  if (score >= 30) return 'text-orange-400';
-  return 'text-red-400';
-}
-
-export function getTrustBg(score: number): string {
-  if (score >= 80) return 'bg-green-400';
-  if (score >= 50) return 'bg-zoyd-yellow';
-  if (score >= 30) return 'bg-orange-400';
-  return 'bg-red-400';
-}
-
-export function getTrustLabel(score: number): string {
-  if (score >= 90) return 'VÉRIFIÉ ZOYD';
-  if (score >= 80) return 'EXEMPLAIRE';
-  if (score >= 50) return 'FIABLE';
-  if (score >= 30) return 'À SURVEILLER';
-  return 'RISQUÉ';
-}
+// Helpers : pure correspondance seuil -> presentation, vit dans
+// lib/trustPalette.ts (P3-8) et re-exporte ici sans changement d'API.
+export { getTrustColor, getTrustBg, getTrustLabel } from '../lib/trustPalette';
 
 export const categoryLabels: Record<keyof Omit<TrustBreakdown, 'overall'>, string> = {
   punctuality: 'Ponctualité',

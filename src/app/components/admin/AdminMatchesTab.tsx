@@ -106,12 +106,11 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
                   Traiter
                 </button>
               ) : null}
-              <button
-                onClick={() => onNavigateToTab('matches')}
-                className="bg-white/5 border border-white/10 text-white px-4 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:border-white/25 transition-colors"
-              >
-                Garder en vue
-              </button>
+              {/* P3-1 (audit UI) : le bouton « Garder en vue » est supprime — il
+                  appelait onNavigateToTab('matches') DEPUIS l'onglet matches :
+                  le clic re-ecrivait le tab deja courant, effet observe NUL.
+                  Un vrai « suivre ce match » supposerait un mecanisme de suivi
+                  qui n'existe pas cote app : pas d'UI fantome. */}
             </div>
           </div>
         </div>

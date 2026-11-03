@@ -41,6 +41,10 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
   onNavigateToTab,
 }) => {
   const prefersReducedMotion = useReducedMotion();
+  // P3-7 (audit UI) : plafond PARTAGE des trois lanes « Sante des operations »
+  // — chaque jauge trace count/max du meme plafond ; le max est calcule ICI
+  // (0 si tout est vide) une seule fois, au rendu.
+  const operationsMax = Math.max(readyMatchesCount, liveMatchesCount, pendingReportsCount);
 
   return (
     <motion.div
@@ -107,18 +111,21 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
               <StatusLane
                 label="Présence / Prêt"
                 count={readyMatchesCount}
+                maxCount={operationsMax}
                 body="Slots complets mais encore bloqués dans le tunnel avant match."
                 accent="bg-zoyd-blue"
               />
               <StatusLane
                 label="Matchs en direct"
                 count={liveMatchesCount}
+                maxCount={operationsMax}
                 body="Salons actuellement en cours et a surveiller."
                 accent="bg-green-500"
               />
               <StatusLane
                 label="Signalements en attente"
                 count={pendingReportsCount}
+                maxCount={operationsMax}
                 body="Signalements utilisateurs qui attendent un triage."
                 accent="bg-zoyd-yellow"
               />

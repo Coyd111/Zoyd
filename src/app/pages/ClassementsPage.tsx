@@ -424,8 +424,12 @@ const ClassementsPage: React.FC = () => {
                 </>
               );
 
-              const mobileContent = (
-                <div className="md:hidden flex items-center gap-3 px-4 py-3">
+              // P3-2 (audit UI) : la ligne mobile etait un div statique — AUCUNE
+              // navigation possible au doigt. Elle est desormais enrobee du
+              // MEME Link conditionnel que la ligne desktop quand le joueur a
+              // un profil public (entry.href).
+              const mobileRow = (
+                <>
                   <div className="shrink-0">{rankIcon(entry.rank)}</div>
                   <div className="w-8 h-8 border border-white/10 flex items-center justify-center font-display font-black text-white text-xs bg-black shrink-0">
                     {entry.label.slice(0, 2).toUpperCase()}
@@ -451,8 +455,8 @@ const ClassementsPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </div>
-              );
+                </>
+              )
 
               return (
                 <motion.div
@@ -466,16 +470,27 @@ const ClassementsPage: React.FC = () => {
                       : 'border-white/5 bg-zoyd-surface/10 hover:bg-zoyd-surface/20'
                   }`}
                 >
-                  {mobileContent}
                   {entry.href ? (
-                    <Link
-                      to={entry.href}
-                      className="hidden md:grid grid-cols-12 gap-4 px-4 py-4 items-center"
-                    >
-                      {content}
-                    </Link>
+                    <>
+                      <Link
+                        to={entry.href}
+                        className="md:hidden flex items-center gap-3 px-4 py-3"
+                        aria-label={`Voir le profil de ${entry.label}`}
+                      >
+                        {mobileRow}
+                      </Link>
+                      <Link
+                        to={entry.href}
+                        className="hidden md:grid grid-cols-12 gap-4 px-4 py-4 items-center"
+                      >
+                        {content}
+                      </Link>
+                    </>
                   ) : (
-                    <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-4 items-center">{content}</div>
+                    <>
+                      <div className="md:hidden flex items-center gap-3 px-4 py-3">{mobileRow}</div>
+                      <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-4 items-center">{content}</div>
+                    </>
                   )}
                 </motion.div>
               );

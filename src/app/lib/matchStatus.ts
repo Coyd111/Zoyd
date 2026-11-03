@@ -70,3 +70,40 @@ export const PRIORITY_STATUSES: MatchStatus[] = [
   'ready',
   'in_progress',
 ];
+
+/**
+ * Le couple (libelle joueur, accent visuel) de CHAQUE statut, en table
+ * exportee : un seul endroit ecrit, plusieurs ecrans lus.
+ *
+ * Audit UI 2026-11-03 : trois ecrans divergeaient sur le meme objet.
+ * - le hub MJ projetait `awaiting_arbiter`, `disputed` et `archived` sur
+ *   « Partie terminée » (cascade de l.237 a HubMJPage) : un match dont la
+ *   cagnotte est gelee (litige) se lisait comme un match clos ;
+ * - MatchCard declarait un statut SANS `disputed` ni `archived` : une carte
+ *   ne pouvait JAMAIS presenter un litige ;
+ * - la page detail faillait sur `awaiting_arbiter`/`archived` et affichait
+ *   l'enum brut (« awaiting_arbiter ») a la place d'un libelle joueur.
+ *
+ * Cf. AdminTabShared (statusToneMap / statusLabelFR) de son cote admin :
+ * l'admin a sa table (vocabulaire telegraphique en MAJUSCULES), le joueur a
+ * celle-ci (phrases). Les deux partagent la meme source de domain
+ * (`MatchStatus`) : ajouter un statut sans l'inscrire ici ou dans
+ * AdminTabShared fait echouer TypeScript (Record sur l'union complete),
+ * exactement comme pour les listes ACTIVE/CLOSED ci-dessus.
+ */
+export const MATCH_STATUS_COPY: Record<MatchStatus, { label: string; accent: string }> = {
+  recruiting: { label: 'Inscriptions ouvertes', accent: 'text-zoyd-yellow' },
+  full: { label: 'Joueurs complets', accent: 'text-white' },
+  awaiting_arbiter: { label: "En attente d'un arbitre", accent: 'text-zoyd-yellow' },
+  check_in: { label: 'Présence à confirmer', accent: 'text-zoyd-blue' },
+  ready: { label: 'Prêt à jouer', accent: 'text-green-400' },
+  in_progress: { label: 'Partie en cours', accent: 'text-zoyd-blue' },
+  awaiting_confirmation: { label: 'Confirmation en attente', accent: 'text-zoyd-yellow' },
+  finished: { label: 'Partie terminée', accent: 'text-white/70' },
+  /** Litige : rouge, comme le ton admin (AdminTabShared.statusToneMap). */
+  disputed: { label: 'Litige ouvert', accent: 'text-red-400' },
+  cancelled: { label: 'Match annulé', accent: 'text-red-300' },
+  forfeited: { label: 'Victoire par forfait', accent: 'text-zoyd-yellow' },
+  /** Terminal (cron d'archivage) : neutre et au-dessous de finished (fini). */
+  archived: { label: 'Archivé', accent: 'text-white/60' },
+};

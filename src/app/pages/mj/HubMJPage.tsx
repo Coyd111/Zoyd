@@ -12,7 +12,8 @@
  * visible.
  * PIEGE : le nombre d'arbitres manquants se compte sur les matchs non
  * termines et sans arbitre : le compter sur toute la liste affichait un
- * chiffre faux.
+ * chiffre faux. Un litige (`disputed`) attend un ADMIN, pas un arbitre :
+ * il est exclu aussi (P3-10, audit UI).
  * PIEGE : la recherche est debouncee (useDebounce) : ne pas relancer une
  * requete a chaque frappe.
  *
@@ -59,7 +60,7 @@ const HubMJPage: React.FC = () => {
   const filteredMatches = useMemo(() => {
     let baseMatches = getFilteredMatches();
     if (needsArbiter) {
-      baseMatches = baseMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited' && match.status !== 'awaiting_confirmation');
+      baseMatches = baseMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited' && match.status !== 'awaiting_confirmation' && match.status !== 'disputed');
     }
     return baseMatches.filter((match) => {
       const query = debouncedQuery.trim().toLowerCase();
@@ -75,7 +76,10 @@ const HubMJPage: React.FC = () => {
 
   const metrics = useMemo(() => {
     const livePool = filteredMatches.reduce((sum, match) => sum + match.prizePool, 0);
-    const arbitersNeeded = filteredMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited' && match.status !== 'awaiting_confirmation').length;
+    // P3-10 (audit UI) : un litige (`disputed`) attend un ADMIN (matchStatus.ts :
+    // « l'admin tranche »), pas un arbitre : l'exclure ici, comme finished /
+    // cancelled / forfeited / awaiting_confirmation, sinon le compteur surcompte.
+    const arbitersNeeded = filteredMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited' && match.status !== 'awaiting_confirmation' && match.status !== 'disputed').length;
     return {
       active: filteredMatches.length,
       livePool,
@@ -213,6 +217,11 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {filteredMatches.map((match) => {
                 const rules = match.rules;
+                // P1 (audit UI) : la cascade qui projetait `awaiting_arbiter`,
+                // `disputed` et `archived` sur 'finished' est supprimee — la
+                // carte recoit le statut brut du domaine et MatchCard lit sa
+                // table (MATCH_STATUS_COPY, matchStatus.ts). Un litige ne se
+                // lit plus comme « Partie terminée ».
                 return (
                 <MatchCard
                   key={match.id}
@@ -234,25 +243,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                     team2: { slots: match.teamSize, filled: match.players.filter((player) => player.team === 1).length },
                   }}
                   arbitre={!!match.arbiter}
-                  status={
-                    match.status === 'recruiting'
-                      ? 'open'
-                      : match.status === 'full'
-                        ? 'full'
-                        : match.status === 'check_in'
-                          ? 'check_in'
-                          : match.status === 'ready'
-                            ? 'ready'
-                            : match.status === 'in_progress'
-                              ? 'in_progress'
-                              : match.status === 'awaiting_confirmation'
-                                ? 'awaiting_confirmation'
-                                : match.status === 'forfeited'
-                                  ? 'forfeited'
-                                  : match.status === 'cancelled'
-                                    ? 'cancelled'
-                                    : 'finished'
-                  }
+                  status={match.status}
                   trustScoreMin={match.trustScoreMin}
                 />
                 );

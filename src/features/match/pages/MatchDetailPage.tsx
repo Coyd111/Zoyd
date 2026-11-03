@@ -67,20 +67,12 @@ import { MatchActions } from '../components/MatchActions';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { getArbiterFee, getWinnerPayout } from '../../../lib/matchPayout';
-import { CLOSED_STATUSES } from '../../../app/lib/matchStatus';
-
-const statusLabels: Record<string, string> = {
-  recruiting: 'Recrutement ouvert',
-  full: 'Joueurs complets',
-  check_in: 'Confirmation de présence',
-  ready: 'Prêt à jouer',
-  in_progress: 'Partie en cours',
-  awaiting_confirmation: 'En attente de confirmation',
-  finished: 'Partie terminée',
-  disputed: 'Litige ouvert',
-  cancelled: 'Annulé',
-  forfeited: 'Forfait',
-};
+// P1-2 (audit UI) : le detail faillait sur `awaiting_arbiter`/`archived` et
+// affichait l'enum brut (« awaiting_arbiter ») dans l'en-tete, contraignant
+// l'INVARIANT de MatchHeader (« un match en attente d'arbitre est VIVANT »).
+// La table UNIQUE MATCH_STATUS_COPY (matchStatus.ts) couvre tout le domaine :
+// ajouter un statut sans libelle joueur fait echouer TypeScript.
+import { CLOSED_STATUSES, MATCH_STATUS_COPY } from '../../../app/lib/matchStatus';
 
 const parseRefs = (value: string) =>
   value
@@ -226,7 +218,7 @@ const MatchDetailPage: React.FC = () => {
 
   const teamAlpha = (match?.players ?? []).filter((player) => player.team === 0);
   const teamBravo = (match?.players ?? []).filter((player) => player.team === 1);
-  const statusLabel = match ? statusLabels[match.status] || match.status : '';
+  const statusLabel = match ? MATCH_STATUS_COPY[match.status].label : '';
   const canJoinAsPlayer = !!match && !!user && !currentPlayer && !isArbiter && !CLOSED_STATUSES.includes(match.status);
   const canJoinArbiterSlot = !!match && !!user && canJoinAsArbiter(match.id);
   const canCheckIn = !!match && !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);

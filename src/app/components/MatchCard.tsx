@@ -6,8 +6,10 @@
  *
  * INVARIANT : la carte est une PURE FONCTION des props. Toute action passe
  * par la page parente : sinon le hub MJ cumule les responsabilites.
- * PIEGE : la liste des libelles de statut DOIT rester alignee sur le type
- * MatchStatus du store, `awaiting_arbiter` compris. Un match en attente
+ * PIEGE : le libelle de statut VIENT DE matchStatus.ts (MATCH_STATUS_COPY) :
+ * ne recree jamais une table locale (l'ancienne copie faisait echouer
+ * `disputed`/`archived` dans l'union du prop, et un litige etait affiche
+ * « Partie terminée » via la cascade du hub). Un match en attente
  * d'arbitre est vivant : il ne doit pas etre affiche comme termine.
  * PIEGE : le pot affiche vient des props, pas d'un recalcul local : le
  * serveur calcule la partition sur la cagnotte reellement bloquee.
@@ -20,6 +22,7 @@ import { formatZC, getRelativeTime } from '../../lib/utils';
 import { getMapImage } from '../../lib/competition';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
+import { type MatchStatus, MATCH_STATUS_COPY } from '../lib/matchStatus';
 
 interface MatchCardProps {
   id: string;
@@ -40,25 +43,16 @@ interface MatchCardProps {
     team2: { slots: number; filled: number };
   };
   arbitre: boolean;
-  status: 'open' | 'full' | 'awaiting_arbiter' | 'check_in' | 'ready' | 'in_progress' | 'awaiting_confirmation' | 'finished' | 'forfeited' | 'cancelled';
+  // Audit UI 2026-11-03 (P1) : l'union locale `status: 'open' | 'full' | ...`
+  // n'avait ni `disputed` ni `archived` — une carte ne pouvait JAMAIS
+  // presenter un litige, et le hub projetait ces statuts sur 'finished'.
+  // La carte consomme desormais le type du domaine ET sa table de rendu
+  // (MATCH_STATUS_COPY, matchStatus.ts) : tout statut est affichable, et une
+  // cle manquante fait echouer TypeScript au moment de la compilation.
+  status: MatchStatus;
   trustScoreMin?: number;
 }
 
-const statusCopy: Record<MatchCardProps['status'], { label: string; accent: string }> = {
-  open: { label: 'Inscriptions ouvertes', accent: 'text-zoyd-yellow' },
-  full: { label: 'Joueurs complets', accent: 'text-white' },
-    // Sans cet arbitrage, le match ne peut pas demarrer : l arbiter fait tenir
-    // l heure convenue et tranche le resultat. « Joueurs complets » aurait
-    // laisse croire que le match etait pret alors qu il ne pouvait pas avancer.
-    awaiting_arbiter: { label: 'En attente d\'un arbitre', accent: 'text-zoyd-yellow' },
-  check_in: { label: 'Présence à confirmer', accent: 'text-zoyd-blue' },
-  ready: { label: 'Prêt à jouer', accent: 'text-green-400' },
-  in_progress: { label: 'Partie en cours', accent: 'text-zoyd-blue' },
-  awaiting_confirmation: { label: 'Confirmation en attente', accent: 'text-zoyd-yellow' },
-  finished: { label: 'Partie terminée', accent: 'text-white/70' },
-  forfeited: { label: 'Victoire par forfait', accent: 'text-zoyd-yellow' },
-  cancelled: { label: 'Match annulé', accent: 'text-red-300' },
-};
 
 const MatchCard: React.FC<MatchCardProps> = React.memo(({
   id,
@@ -86,7 +80,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
     </div>
   );
 
-  const statusMeta = statusCopy[status];
+  const statusMeta = MATCH_STATUS_COPY[status];
   const totalPlayers = teams.team1.filled + teams.team2.filled;
   const maxPlayers = teams.team1.slots + teams.team2.slots;
 

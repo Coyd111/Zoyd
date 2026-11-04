@@ -61,10 +61,12 @@ import {
 } from '../http-utils.mjs';
 import {
   activateUserAccount,
+  applyCovenantAccepted,
   assertStrongPassword,
   authenticateUserAccount,
   changeActivationEmail,
   checkProfileUniqueness,
+  COVENANT_VERSION,
   createAuthSession,
   createUserAccount,
   deleteAuthSession,
@@ -83,6 +85,7 @@ import {
   revokeAuthSessionsForUser,
   sanitizeText,
   sanitizeUserPayload,
+  sbUpsert,
   updatePasswordHash,
   updateUserAccount,
   verifyActivationCode,
@@ -92,6 +95,9 @@ import {
 } from '../persistence.mjs';
 import { deliverAuthCode } from '../code-delivery.mjs';
 import { createLogger } from '../logger.mjs';
+import { randomUUID } from 'node:crypto';
+import { getNow } from '../utils.mjs';
+import { severityForReason } from '../moderation.mjs';
 
 const log = createLogger('auth-routes');
 import { refreshLiveMatchIdentities } from '../state-helpers.mjs';
@@ -401,7 +407,7 @@ if (req.method === 'POST' && pathname === '/api/auth/reset-password') {
   return true;
 }
 
-if (req.method === 'GET' && pathname === '/api/auth/me') {
+  if (req.method === 'GET' && pathname === '/api/auth/me') {
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -413,6 +419,112 @@ if (req.method === 'GET' && pathname === '/api/auth/me') {
     user: session.user,
     expiresAt: session.expiresAt,
   });
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COVENANT — serment d'intégrité anti-triche (F1..F10 présenté après login).
+//
+// INVARIANT : `applyCovenantAccepted` est idempotent et date par le SERVEUR —
+//   rejouer ne repousse pas la date (un compte, une fois, une date).
+// INVARIANT : les réponses oui/non des fenêtres ne sont PAS envoyées : le
+//   client n'envoie que `version` + le signalement optionnel F7. Aucun aveu
+//   nominatif en base — c'est un engagement affiché, pas un interrogatoire.
+// INVARIANT : le signalement F7 est ANONYME par construction : `reporter_id`
+//   reste NULL (`reporterPseudo` jamais rempli). La promesse rendue à
+//   l'écran (« ton pseudo n'apparaît nulle part ») est tenue au schéma.
+// ORDRE D'ÉCRITURE : le signalement part d'abord. Si son écriture est
+//   réellement refusée (base indisponible), la route répond 503 SANS avoir
+//   scellé le serment : le client répète, rien n'est perdu. Écrire le
+//   serment d'abord puis avaler la perte du signal ferait disparaître un
+//   signalement de triche dans le silence.
+// OBJET DU SIGNALEMENT : pseudo LIBRE (le suspect peut ne pas avoir de
+//   compte, ou en changer) — `target_id` reste NULL. `reason` = `cheating`
+//   (gravité `grave` par `severityForReason`), la description porte le
+//   contexte du serment. L'admin tranche : la recommandation ne s'applique
+//   pas seule (moderation.mjs).
+// ─────────────────────────────────────────────────────────────────────────────
+if (req.method === 'POST' && pathname === '/api/auth/covenant') {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+  if (!rateLimitGuard(res, getClientIp(req), 'auth')) { return true; }
+
+  try {
+    const body = await parseRequestBody(req);
+
+    // Déjà scellé (rejeu, double-clic, onglet en retard) : rien à réécrire,
+    // et UN REJEU NE POSE JAMAIS DE SIGNAL : le serment est clos, sa fenêtre
+    // F7 aussi — réaccepter un signal à ce stade fermerait les yeux d'un
+    // administrateur sur une accusation fantôme.
+    const existant = getUserById(session.user.id);
+    if (existant?.covenant?.acceptedAt) {
+      respondJson(res, 200, { ok: true, user: existant, already: true, signalRegistered: false });
+      return true;
+    }
+
+    // F7 optionnel : pseudo (30 = la limite d'un pseudo réel) + note libre.
+    const suspectPseudo = sanitizeText(String(body.report?.pseudo || '')).slice(0, 30);
+    const suspectNote = sanitizeText(String(body.report?.note || '')).slice(0, 300);
+
+    // ORDRE D'ECRITURE RÉEL (test server/covenant.test.mjs) : le signalement
+    // part AVANT applyCovenantAccepted. Si son écriture est réellement
+    // refusée (base indisponible), la route répond 503 SANS avoir scellé le
+    // serment : le client répète, rien n'est perdu. Sceller d'abord puis
+    // avaler la perte du signal reviendrait à répondre « serment scellé » à
+    // un joueur dont le signalement viendrait de disparaître — et tout
+    // rejeu ultérieur tomberait sur `already` ci-dessus : le signal serait
+    // perdu pour toujours.
+    let signalRegistered = false;
+    if (suspectPseudo) {
+      const description = `Serment d'intégrité — pseudo suspect « ${suspectPseudo} ». ${suspectNote}`.slice(0, 1000);
+      const report = {
+        id: `RP-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8)}`,
+        // Anonyme : reportage anti-triche du serment, pas une accusation
+        // nominale. La table autorise NULL (schema.sql l.361).
+        reporterId: null,
+        reporterPseudo: '',
+        targetId: null,
+        targetPseudo: suspectPseudo,
+        reason: 'cheating',
+        description,
+        status: 'pending',
+        createdAt: getNow(),
+      };
+      const written = await sbUpsert('user_reports', {
+        id: report.id,
+        reporter_id: null,
+        target_id: null,
+        reason: report.reason,
+        status: report.status,
+        severity: severityForReason(report.reason),
+        payload: report,
+        created_at: report.createdAt,
+      });
+      // `undefined` = mode mémoire (pas de Supabase configuré) : les autres
+      // routes le traitent comme un succès, même convention ici. `false` seul
+      // signale un refus réel d'écriture.
+      if (written === false) {
+        respondJson(res, 503, {
+          ok: false,
+          error: "Serment non scellé : le signalement n'a pas pu être enregistré, réessaie.",
+          code: 'SERVER_BUSY',
+        });
+        return true;
+      }
+      signalRegistered = true;
+    }
+
+    // Le sceau, DERNIER : idempotent (au cas où une requête concurrente
+    // l'aurait posé — la réponse déjà scellée l'admet honnêtement) et daté
+    // par le serveur, jamais par le client.
+    const { user, already } = await applyCovenantAccepted(session.user.id, COVENANT_VERSION);
+    respondJson(res, 200, { ok: true, user, already, signalRegistered });
+  } catch (error) {
+    respondMappedError(res, error);
+  }
   return true;
 }
 

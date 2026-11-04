@@ -34,6 +34,12 @@ const openApp = async (page: Page, pseudo: string, password: string) => {
   const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
   await page.getByPlaceholder(/^\.*$/).press('Enter');
   expect((await loginResponse).status()).toBe(200);
+  // Serment d'intégrité : tant que `covenant` est absente du compte,
+  // AppLayout rend le gate plein écran au lieu du chrome. On scelle par
+  // l'API (le cookie zoyd_auth du formulaire vit dans le jar partagé du
+  // contexte) ; le serveur ignore le corps et date lui-même. La navigation
+  // suivante hydrate alors un user scellé : pas de gate.
+  await page.request.post('/api/auth/covenant', { data: {} });
 };
 
 test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {

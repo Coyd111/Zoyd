@@ -23,6 +23,7 @@ import { Sidebar } from '../components/layout/Sidebar';
 import { BottomNav } from '../components/layout/BottomNav';
 import { useRealtimeHeartbeat } from '../hooks/useRealtimeHeartbeat';
 import { useAuthStore } from '../stores/authStore';
+import { IntegrityCovenantModal } from '../components/integrity/IntegrityCovenantModal';
 
 interface AppLayoutProps {
   requireAdmin?: boolean;
@@ -52,6 +53,17 @@ const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
 
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/mj" replace />;
+  }
+
+  // Gate du serment d'intégrité : tant que le compte n'a pas de
+  // `covenant.acceptedAt` (scellé une fois par compte, date posée par le
+  // serveur), AUCUN chrome ne se rend — plein écran F1..F10. Ce n'est pas une
+  // sécurité mais un rite d'entrée : tout ce qui est derrière reste
+  // techniquement appelable sans navigateur (mêmes invariants qu'en haut).
+  // Les comptes EXISTANTS verront le serment une fois, à leur prochaine
+  // connexion, puis plus jamais (idempotence serveur).
+  if (user && !user.covenant?.acceptedAt) {
+    return <IntegrityCovenantModal />;
   }
 
   return (

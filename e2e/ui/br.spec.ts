@@ -30,6 +30,12 @@ const login = async (page: Page, pseudo: string, password: string) => {
   const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
   await page.getByPlaceholder(/^\.*$/).press('Enter');
   expect((await loginResponse).status()).toBe(200);
+  // Serment d'intégrité : tant que `covenant` est absente du compte,
+  // AppLayout rend le gate plein écran au lieu du chrome. On scelle par
+  // l'API (le cookie zoyd_auth du formulaire vit dans le jar partagé du
+  // contexte) ; le serveur ignore le corps et date lui-même. La navigation
+  // suivante hydrate alors un user scellé : pas de gate.
+  await page.request.post('/api/auth/covenant', { data: {} });
 };
 
 /** Date locale au format `datetime-local`, a J+32 h (dans la fenetre 24-48 h). */
@@ -53,6 +59,9 @@ const loginAdminWithCookie = async (page: Page) => {
   const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
   await page.getByPlaceholder(/^\.*$/).press('Enter');
   expect((await loginResponse).status(), 'connexion admin').toBe(200);
+  // Serment d'intégrité : l'admin n'est pas exonéré du gate (un compte,
+  // une fois). On scelle par l'API comme pour les joueurs.
+  await page.request.post('/api/auth/covenant', { data: {} });
 };
 
 /**

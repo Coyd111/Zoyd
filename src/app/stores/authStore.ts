@@ -72,6 +72,16 @@ export interface User {
   avatar?: string;
   isOnline: boolean;
   lastSeen?: string;
+  /**
+   * Serment d'intégrité anti-triche (scellé une fois par compte, date par le
+   * serveur). Absent = serment NON scellé : le gate d'intégrité s'affichera
+   * à la première session authentifiée. `covenant.acceptedAt` est aussi le
+   * sceau affiché sur le profil (promesse de la fenêtre F10).
+   */
+  covenant?: {
+    acceptedAt: string;
+    version: string;
+  };
   notifications?: {
     matchStart: boolean;
     results: boolean;
@@ -130,6 +140,10 @@ export const useAuthStore = create<AuthState>()((set) => ({
       'isOnline', 'lastSeen', 'stats', 'progression', 'arbiterProgression', 'gameId',
       'country', 'controllerType', 'device', 'levelCODM', 'rankMJ',
       'rankBR', 'bio', 'streamerMode', 'streamerPseudo', 'notifications',
+      // Serment d'intégrité : la réponse de POST /api/auth/covenant porte le
+      // code serveur, sans lui le gate ne verrait jamais l'acceptation et
+      // réapparaîtrait après chaque navigation (refresh du store).
+      'covenant',
     ]);
     const safeUpdates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(updates)) {

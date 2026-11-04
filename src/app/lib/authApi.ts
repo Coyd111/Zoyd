@@ -85,6 +85,46 @@ export const updateServerAccount = async (
   return authorizedPatch<{ ok: boolean; user: User }>('/api/auth/me', updates);
 };
 
+/**
+ * Serment d'intégrité — version du texte scellé.
+ *
+ * Le même littéral vit côté serveur (`server/persistence.mjs` COVENANT_VERSION,
+ * avec le commentaire croisé). Changer d'abord la version SERVEUR, ensuite
+ * celle-ci, dans le même commit : un client qui posterait une version inconnue
+ * du serveur ne serait scellé qu'à la version du serveur.
+ *
+ * INVARIANT : la requête ne transporte JAMAIS les réponses OUI/NON des
+ * fenêtres — uniquement `{ version }` + le signalement optionnel. Côté base,
+ * seule la date d'acceptation est consignée (`user.covenant.acceptedAt`) :
+ * aucun aveu, aucune trace nominative d'aveu.
+ */
+export const COVENANT_VERSION = '2026-11-04';
+
+export interface CovenantReport {
+  pseudo: string;
+  note?: string;
+}
+
+export interface CovenantResponse {
+  ok: boolean;
+  user: User;
+  already: boolean;
+  /** Le signalement F7 a été écrit côté serveur (anonyme). */
+  signalRegistered: boolean;
+}
+
+/**
+ * Scelle le serment d'intégrité (fin des fenêtres F1..F10, IntegrityCovenantModal).
+ * Le serveur date l'acceptation, répond le user fraîchement écrit, et rejoue
+ * `already: true` sur un rejeu — le client ne détermine RIEN de ce qui est
+ * stocké.
+ */
+export const submitCovenant = async (
+  version: string,
+  report?: CovenantReport
+): Promise<CovenantResponse> =>
+  authorizedPost<CovenantResponse>('/api/auth/covenant', report ? { version, report } : { version });
+
 export const deleteOwnAccount = async (): Promise<{ ok: boolean; message: string }> => {
   return authorizedDelete<{ ok: boolean; message: string }>('/api/auth/me', { confirmForfeit: true });
 };

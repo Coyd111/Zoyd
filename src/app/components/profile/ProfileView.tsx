@@ -147,6 +147,14 @@ export default function ProfileView({
 }: ProfileViewProps) {
   const lvl = progression ? (levelConfig[progression.level] || levelConfig.BEGINNER) : null;
   const currentUserId = useAuthStore((s) => s.user?.id);
+  // SCEAU D'INTÉGRITÉ (F10) : promesse faite au dernier écran du serment. Il
+  // ne se lit QUE sur le profil de la session courante — le payload PUBLIC
+  // d'un autre joueur ne transporte pas `covenant`
+  // (sanitizePublicUserPayload le stripppe), donc le sceau d'autrui est
+  // inaffichable par construction.
+  const ownCovenant = useAuthStore(
+    (s) => (s.user?.id === userId ? s.user?.covenant : undefined)
+  );
   const progressPercent =
     progression && progression.nextLevelXp > 0
       ? Math.min(100, Math.round((progression.xp / progression.nextLevelXp) * 100))
@@ -191,6 +199,11 @@ export default function ProfileView({
                 <Badge variant={trustScore >= 80 ? 'success' : trustScore >= 50 ? 'default' : 'disabled'}>
                   FIABILITÉ {trustScore}
                 </Badge>
+                {ownCovenant?.acceptedAt ? (
+                  <Badge variant="yellow">
+                    SCEAU D'INTÉGRITÉ — SCELLÉ LE {new Date(ownCovenant.acceptedAt).toLocaleDateString('fr-FR')}
+                  </Badge>
+                ) : null}
               </div>
 
               <div className="flex flex-wrap items-center gap-6 text-sm text-white/70 font-mono uppercase tracking-widest">

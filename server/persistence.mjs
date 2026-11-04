@@ -304,7 +304,10 @@ export const sanitizeUserPayload = (payload) => {
 
 export const sanitizePublicUserPayload = (payload) => {
   if (!payload) return null;
-  const { wallet, walletBalance, email, phone, legal, ...publicFields } = payload;
+  // `covenant` rejoint `legal` dans les champs internes : la date et la
+  // version du serment concernent le COMPTE (route authentifiee), pas une
+  // vitrine publique. Aucun ecran public n'en a besoin aujourd'hui.
+  const { wallet, walletBalance, email, phone, legal, covenant, ...publicFields } = payload;
   return {
     ...publicFields,
     trustScore: numberOr(payload.trustScore, DEFAULT_TRUST_SCORE),
@@ -1794,6 +1797,45 @@ export const updateUserAccount = async (userId, updater) => {
 
     return next;
   });
+};
+
+/**
+ * SERMENT D'INTEGRITE (covenant) — version du texte scelle.
+ *
+ * La meme chaine vit cote client (`src/app/lib/authApi.ts`). Changer ce
+ * texte et veut dire versionner : on met cette chaine a jour aux DEUX
+ * endroits en meme temps, sinon un client fraichement inscrit croirait
+ * avoir signe une version differente du serment que celle en base.
+ *
+ * La date d'acceptation est posee par le SERVEUR (getNow) — meme regle
+ * que `legal.adultAt/termsAt` : la trace n'est probante que si le client
+ * ne peut pas la datver lui-meme.
+ */
+export const COVENANT_VERSION = '2026-11-04';
+
+/**
+ * Scelle le serment d'integrite d'un compte : `user.covenant = { acceptedAt,
+ * version }`, date par le serveur, une FOIS par compte (idempotent).
+ *
+ * Les reponses oui/non des fenetres du serment ne sont PAS stockees : c'est
+ * un engagement affiche, pas un interrogatoire — aucune trace nominative
+ * d'aveu. Seul le signalement F7 (pseudo suspect, optionnel) cree une
+ * entree, ecrite par la route (auth.mjs), pas ici.
+ *
+ * Deja scelle → `{ already: true }` sans re-ecrire : rejouer le POST ne
+ * repousse pas la date, sinon « un compte, une fois » est faux.
+ */
+export const applyCovenantAccepted = async (userId, version = COVENANT_VERSION) => {
+  const existant = getUserById(userId);
+  if (!existant) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
+  if (existant.covenant?.acceptedAt) {
+    return { user: existant, already: true };
+  }
+  const user = await updateUserAccount(userId, (courant) => ({
+    ...courant,
+    covenant: { acceptedAt: getNow(), version: String(version || COVENANT_VERSION) },
+  }));
+  return { user, already: false };
 };
 
 /**

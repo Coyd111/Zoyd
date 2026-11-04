@@ -126,6 +126,13 @@ Correction suggérée : remplacer la cascade par une table d'export depuis
 dès qu'un futur statut du domaine manquera, comme le fait déjà
 AdminTabShared.
 
+Statut : CORRIGE (commit 92ea50b, pushed) — correction suggérée appliquée :
+table unique `MATCH_STATUS_COPY` exportée de `matchStatus.ts`
+(Record<MatchStatus, {label, accent}>, exhaustivité forcée par TypeScript) ;
+le hub (`HubMJPage.tsx:223`), MatchCard (`MatchCard.tsx:83`) et
+MatchDetailPage consomment la même source ; la cascade « autres statuts ->
+finished » n'existe plus — un litige ne se lit plus comme un match clos.
+
 ### P1-2. Détail de match : « awaiting_arbiter » affiché en enum brut dans l'en-tête ; `disputed` et `archived` absents de MatchCard (contradiction avec ses propres invariants)
 
 Preuves :
@@ -179,6 +186,11 @@ correction de fond que P1-1).
 Note cumulée (GAIN de la passe) : les deux P1 partagent une correction
 unique — table source unique exportée depuis `matchStatus.ts`, consommée
 par le hub, MatchCard et MatchDetailPage. Un seul chantier réglera les deux.
+
+Statut : CORRIGE (commit 92ea50b, pushed) — MatchCard est typée
+`MatchStatus` et lit `MATCH_STATUS_COPY` (`MatchCard.tsx:25/83`) : l'enum
+brut n'a plus de chemin d'affichage ; le détail ne réinvente plus ses
+libellés de statut — plus de divergence hub/détail sur le même objet.
 ---
 
 ## 2. P2 — frictions reelles (5 constats)
@@ -231,6 +243,12 @@ une checklist explicite (regles cochées/non cochées sous le champ). La
 checklist est preferable : elle dit a l'utilisateur CE QUI MANQUE au lieu
 de re-couler la couleur.
 
+Statut : CORRIGE (commit 107e5b1, pushed) — option checklist appliquée :
+les 4 règles zod sont affichées cochées/non cochées sous le champ
+(PASSWORD_RULES) ; la jauge reste plafonnée à 3/4 tant qu'il manque le
+caractère spécial — « Azerty1234567 » n'atteint plus « Elite », l'affichage
+ne promet plus ce que le submit rejetterait.
+
 ### P2-2. Le test axe « Mot de passe oublie » balaye la page 404 : la garde heading n'est pas active pour cette entree, et le chemin cible n'existe pas
 
 Preuves :
@@ -280,6 +298,11 @@ Consequence : `ForgotPasswordPage` n'a AUCUNE vraie evaluation axe
 le chemin en l.22 vers `/auth/forgot` ET ajouter un `heading` (le titre
 reel de la page) pour activer la garde.
 
+Statut : CORRIGE (commit 107e5b1, pushed) — l'entrée axe pointe
+`/auth/forgot` (le vrai chemin) et déclare `heading` « Mot de passe
+oublié » : la garde anti-page-fantôme (l.255-261 verbatim) est active et
+ForgotPasswordPage reçoit enfin son évaluation axe réelle.
+
 ### P2-3. Suppression d'ami en un clic, sans confirmation, cible tactile exiguë masquee au survol
 
 Preuve — `src/app/components/social/FriendsWidget.tsx:201-212`
@@ -328,6 +351,10 @@ le même bouton, pattern existant dans le code) et cibles plus larges
 (p-2 minimum, ou aire d'appel étendue), en conservant la deco group-hover
 au desktop mais en révélant aussi au focus clavier.
 
+Statut : CORRIGE (commit 107e5b1, pushed) — confirmation inline
+(« Supprimer ? », second tap Oui/Non), cibles élargies à ≥44px
+(p-2 / -m-1.5) et révélation aussi au focus clavier (group-focus-within).
+
 ### P2-4. Demande d'ami depuis le profil public sans garde double-clic
 
 Preuve — `src/app/pages/PublicProfilPage.tsx:146-158` verbatim
@@ -359,6 +386,10 @@ branche ici.
 Correction suggérée : `const [sending, setSending] = useState(false)` +
 `disabled={sending}` sur le bouton (pattern déjà établi dans le projet —
 voir ParametresPage l.935 : `disabled={busy || ...}`).
+
+Statut : CORRIGE (commit 107e5b1, pushed) — garde `sending` posée :
+plus de 2e POST 409 après un 1er succès ; au passage les hooks réordonnés
+après l'early return (rules-of-hooks).
 
 ### P2-5. Classement public : « TOP GAINS » / « VICTOIRES » re-trient le top 50 ELO du serveur, pas le classement reel de ces métriques
 
@@ -420,6 +451,13 @@ autres onglets. Deux remedes — (a) FRONT SEUL : rebaptiser les onglets
 (ex. « ELO — SELECTION GAINS ») et ajouter une note d'une ligne ; (b)
 SERVEUR : un endpoint (ou un parametre ?metric=) livre le top GAINS reel
 de la communaute — LA solution juste, mais hors cadre front.
+
+Statut : CORRIGE (commit 107e5b1, pushed) — arbitrage (a) front-only
+acté : onglets renommés « GAINS — TOP 50 ELO » / « VICTOIRES — TOP 50
+ELO », note d'honnêteté sous la tablist (« re-trie ces 50 joueurs sur sa
+métrique »), SEO réécrit, e2e classements-public mis au diapason (labels,
+note, clic). L'option (b) serveur reste inscrite au backlog, hors cadre
+front.
 ---
 
 ## 3. P3 — cohérence, cosmétique, tests, code mort (10 constats)
@@ -448,6 +486,8 @@ côté ne sert jamais.
 Correction suggérée : supprimer le bouton. Un vrai « suivre ce match »
 supposerait un mécanisme (traceillage) qui n'existe pas côté app —
 ne pas en simuler un (règle maison : pas d'UI fantôme).
+
+Statut : CORRIGE (commit 6d6e1ac, pushed) — bouton supprimé.
 
 ### P3-2. Ligne de classement (version connectée) : aucune navigation possible sur mobile
 
@@ -481,6 +521,9 @@ mobile ne peut PAS rejoindre un profil depuis le classement.
 
 Correction suggérée : envelopper `mobileContent` dans le même `Link`
 conditionnel (ou rendre la ligne cliquable au tap).
+
+Statut : CORRIGE (commit 6d6e1ac, pushed) — la ligne mobile est enrobée
+du même `Link` conditionnel (miroir du desktop).
 
 ### P3-3. Modales brutes sans Escape ni piège de focus, alors que le design system offre `ui/Modal`
 
@@ -523,6 +566,11 @@ Exemples contrastes du même audit : `CreateMatchPage.tsx:124-133`
 Correction suggérée : brancher les trois overlays sur `ui/Modal`.
 Impact utilisateur réel faible (souris ok), mais c'est de
 l'accessibilité clavier anormale pour des écrans qui proclament ARIA.
+
+Statut : CORRIGE (commit 6d6e1ac, pushed) — les trois overlays sont
+branchés sur `ui/Modal` (Escape + piège de focus gérés par le composant) ;
+le focus manuel de TwoFactorPrompt est retiré (la modale focalise déjà le
+premier focusable).
 
 ### P3-4. Divergences des navigations (Sidebar desktop / Navbar / BottomNav mobile)
 
@@ -573,6 +621,11 @@ Deux entrées, même destination : l'utilisateur ne peut pas distinguer
 Correction suggérée : ajouter WALLET à la Sidebar, fusionner AMIS et
 MESSAGES (ou distinguer les destinations), unifier le libellé admin.
 
+Statut : CORRIGE (commit 6d6e1ac, pushed) — WALLET ajouté à la Sidebar ;
+AMIS/MESSAGES fusionnés en une seule entrée MESSAGES ; libellé admin
+unifié ADMIN sur les trois surfaces ; coquille « Serveur connecté » au
+passage.
+
 ### P3-5. Code mort : `ui/Sidebar.tsx` (port shadcn) n'est importé nulle part
 
 Preuves :
@@ -590,6 +643,10 @@ prévus) ; (b) supprimer.
 
 Correction suggérée : décision de produit à prendre. S'il survit sans
 consommateur, le retirer du bond (et ses imports Radix associés).
+
+Statut : CORRIGE (commit 6d6e1ac, pushed) — option (b) actée :
+`ui/Sidebar.tsx` SUPPRIMÉ, avec `ui/use-mobile.ts` (son unique
+consommateur) ; Radix Slot conservé (ui/Form.tsx l'utilise).
 
 ### P3-6. Couleurs des graphiques de gains en dur, en contradiction avec le PIEGE du même fichier
 
@@ -626,6 +683,10 @@ suivront pas — exactement ce que le PIEGE promet d'eviter.
 Correction suggérée : déplacer les 4-5 valeurs hexadécimales dans
 `chartColors` (ou tokens CSS) et consommer de là.
 
+Statut : CORRIGE (commit 6d6e1ac, pushed) — `chartColors.ts` gagne les
+constantes surface/tooltip/bord de tooltip/grille/axes/cursor, consommées
+par EarningsCharts ; plus d'hexadécimal brut dans les graphiques.
+
 ### P3-7. La barre `StatusLane` du dashboard admin n'est pas proportionnelle
 
 Preuve — `src/app/components/admin/AdminTabShared.tsx:235` verbatim :
@@ -644,6 +705,10 @@ n'a pas).
 Correction suggérée : largeur réellement proportionnelle
 (`count / maxCount * 100`) ou suppression de la décoration. Pas
 d'urgence.
+
+Statut : CORRIGE (commit 6d6e1ac, pushed) — largeur proportionnelle
+imposée : `StatusLane` exige désormais la prop `maxCount`
+(count / max * 100) ; AdminOverviewTab fournit le max des trois files.
 
 ### P3-8. La classe `bg-orange-400` du score de confiance est construite dans un store — dépend du scanner Tailwind
 
@@ -667,6 +732,10 @@ couleurs de série exportent déjà par `src/lib/chartColors`.
 
 Correction suggérée : à moyen terme, regrouper les couleurs de confiance
 dans un module partagé et les référencer de là. Aucun bug actuel.
+
+Statut : CORRIGE (commit 6d6e1ac, pushed) — palette de confiance extraite
+dans `lib/trustPalette.ts` (getTrustColor/getTrustBg/getTrustLabel) ; le
+store ré-exporte (API publique inchangée, zéro consommateur cassé).
 
 ### P3-9. `handleCancelMatch` recharge la liste même après un échec
 
@@ -692,6 +761,9 @@ parcimonie.
 Correction suggérée : déplacer `await reloadReports()` dans le try
 (après le succès uniquement).
 
+Statut : CORRIGE (commit 6d6e1ac, pushed) — `reloadReports()` est dans le
+try, plus d'appel après le toast d'erreur.
+
 ### P3-10. Le compteur « arbitresNeeded » du hub MJ ne distingue pas les litiges
 
 Preuve — `src/app/pages/mj/HubMJPage.tsx:78` verbatim :
@@ -710,6 +782,10 @@ est surcompté.
 Impact : mineur (fréquence faible — un match a rarement survécu à sa
 phase sans arbitre). À corriger dans le MEME chantier que le P1-1
 (table de statuts unique).
+
+Statut : CORRIGE (commit 92ea50b, pushed) — `disputed` est exclu du
+compteur ET du filtre needsArbiter du hub (`HubMJPage.tsx:63/82`) : un
+litige n'appelle plus « un arbitre attendu ».
 ---
 
 ## 4. Inventaire des coquilles (typographie, accents, libellés)
@@ -728,6 +804,14 @@ coquille isolée mais une règle de réduction). On ne liste donc pas les
 mots isolés tolérables (ex. « Elite ») : seuls les départs
 d'orthographe, les mots sans signification et les débris sont
 consignés.
+
+Statut : CORRIGE (commit bdf2424 pour l'essentiel ; « Serveur connecté »
+via 6d6e1ac ; repasse encodage a2d47a1) — chaque ancre ci-dessous a été
+re-preuvée puis réparée dans le code : les verbatim ne matchent plus le
+courant (contrôles : « ÉQUIPES », « LÉGÈRE / À QUALIFIER », « Joueurs
+surveillés », « EXPORTER L'HISTORIQUE », apiClient tutoyé, BottomNav sans
+débris). 4.5 : divergences fermées par les mêmes correctifs (P3-4 : ADMIN
+unifié ; nommage admin en français).
 
 ### 4.1 Texte affiché aux joueurs (joueur connecté et visiteur)
 
@@ -1045,6 +1129,9 @@ instance de capture séparée (fichiers listés en G).
    pas : l'affirmation de coexistence n'est plus vérifiable depuis la
    gestation (et l'entrée suivante). Peut-être deja constaté ailleurs
    (docs/03 l.1151) — inscrit ici comme écart doc/réalité du parcours UI.
+   Statut : NON CORRIGE — hors périmètre chantier UI : l'écart
+   docs/09-presentation.md:1203-1204 vs DNS reste à trancher dans une
+   passe docs séparée.
 3. Le site `zoyd.vercel.app` servait la build d'un précédent deploy
    (recon du 02/11) : la tournée du 03/11 n'a rien trouvé de
    DEGRADÉ ; la tournée est une CONFIRMATION D'ÉTAT, pas une
@@ -1171,6 +1258,10 @@ instance de capture séparée (fichiers listés en G).
    `u8-mode-800-fullpage.png`, carte Multijoueur). Attendu :
    « compétitifs ». Le reste du libellé de la carte est correct
    (« déjà liés à ton compte »).
+   Statut : CORRIGE (commit bdf2424) — la carte Multijoueur ne promet plus
+   de « salons compétitifs » (les salons vivent dans la carte BR) : le
+   paragraphe dit désormais « Matchs publics, tournois et progression
+   joueur déjà liés à ton compte. »
 2. **Coquilles du bloc CTA auth « VOIS TON RANG AUSSI » de /classements**
    (`src/app/pages/PublicClassementsPage.tsx:370-371` verbatim) :
    « Cree un compte, joue un match arbitre, et entre dans les
@@ -1181,6 +1272,9 @@ instance de capture séparée (fichiers listés en G).
    Affiché live (screenshot `u8-classements-800-fullpage.png`) ; le
    bloc est sous l'empty-state — il remplace la note bas
    `{state.total} joueurs classes` quand le board est vide.
+   Statut : CORRIGE (commit bdf2424) — « Crée / arbitré / réputation /
+   vérifiée » : accents posés (`PublicClassementsPage.tsx:387-388`
+   actuel, re-preuvé par grep).
 3. **Les vidéos de fond de /mode échappent au garde S-7** :les deux
    cartes de `/mode` embarquent le MÊME `hero-bg.mp4`
    (`assets/codm/videos/hero-bg.mp4`, autoplay, muted, loop,
@@ -1194,6 +1288,12 @@ instance de capture séparée (fichiers listés en G).
    `content-visibility`/`hidden md:block` + media-queries. NOUVEAU
    constat (non relevé en statique — reside a la regle « video >=
    768 » n'avait été écrite QUE pour la landing).
+   Statut : CORRIGE (commit bdf2424) — garde S-7 unifiée :
+   `SHOW_CARD_VIDEO` (matchMedia min-width 768px, évalué AU CHARGEMENT
+   DU MODULE comme `SHOW_HERO_VIDEO` de la landing, pas de remount au
+   resize) autour des deux vidéos de /mode ; découverte en re-preuve :
+   l'étape 3 du wizard d'inscription chargeait la même vidéo SANS garde
+   — fixée au même passage.
 
 #### D. Compléments aux constats statiques (attestation live)
 
@@ -1290,6 +1390,15 @@ l'installation docs.
   (4.4) + incohérences de nommage (4.5).
 - Suivi précédent : famille P13/P15 sous contrôle (section 5).
 - Phase live : checklist section 7 (uniquement GET anonyme).
+
+Mise à jour 2026-11-04 (bascule des statuts) : P1 + P3-10 (92ea50b),
+P2 ×5 (107e5b1), P3 ×9 (6d6e1ac), coquilles chap. 4 + C-1/C-2/C-3
+(bdf2424), réparation encodage des sources endommagées (a2d47a1) — tous
+posés ET poussés sur origin/main. Les constats des chap. 1-4 et de la
+section 7-C portent désormais leur statut en fin de section. Un constat
+reste NON CORRIGE : l'écart docs zoyd.africa (section 7-A.2, hors
+périmètre UI). Gates aux poses : vitest 1152 passed + 2 skipped (110
+files), tsc 0, eslint 0, build exit 0, e2e ui locaux 11 passed.
 
 Proposition d'étape : l'utilisateur valide (ou amende) ce registre,
 puis decide (a) l'installation d'un fichier docs NEUF (par ex.

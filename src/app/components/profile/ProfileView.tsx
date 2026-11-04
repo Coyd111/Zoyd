@@ -189,7 +189,7 @@ export default function ProfileView({
                   <Badge variant="yellow">Streamer mode</Badge>
                 ) : null}
                 <Badge variant={trustScore >= 80 ? 'success' : trustScore >= 50 ? 'default' : 'disabled'}>
-                  FIABILITÃ‰ {trustScore}
+                  FIABILITÉ {trustScore}
                 </Badge>
               </div>
 
@@ -226,9 +226,9 @@ export default function ProfileView({
                 </div>
                 <div className="text-3xl font-display font-black text-white italic">{progression!.xp}</div>
                 {/* P1 C6 (audit-3) : pour un joueur PRO, `nextLevelXp` vaut
-                    Infinity cote serveur (LEVEL_THRESHOLDS.PRO) â€” serialise
+                    Infinity cote serveur (LEVEL_THRESHOLDS.PRO) — serialise
                     null en JSON. React rend alors un vide : on affiche
-                    Â« MAX Â» dans ce cas. */}
+                    « MAX » dans ce cas. */}
                 <div className="text-[10px] font-mono text-white/70 mt-1 mb-3">
                   {Number.isFinite(progression!.nextLevelXp)
                     ? `/ ${progression!.nextLevelXp} XP`
@@ -264,20 +264,20 @@ export default function ProfileView({
         <div className="space-y-6">
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-blue mb-3">CarriÃ¨re Joueur</h3>
+              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-blue mb-3">Carrière Joueur</h3>
               <div className="grid sm:grid-cols-2 gap-4">
-                <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Cagnotte gagnÃ©e" value={formatZC(summary.stats.totalEarnings)} />
-                <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" />} label="Matchs jouÃ©s" value={summary.stats.totalMatches.toString()} />
+                <StatCard icon={<Trophy className="w-5 h-5 text-zoyd-yellow" />} label="Cagnotte gagnée" value={formatZC(summary.stats.totalEarnings)} />
+                <StatCard icon={<Swords className="w-5 h-5 text-zoyd-blue" />} label="Matchs joués" value={summary.stats.totalMatches.toString()} />
                 <StatCard icon={<Target className="w-5 h-5 text-green-400" />} label="Taux de victoire" value={`${summary.stats.winRate}%`} />
                 <StatCard icon={<Award className="w-5 h-5 text-purple-400" />} label="Tournois" value={`${summary.stats.tournamentsWon} / ${summary.stats.tournamentsPlayed}`} />
               </div>
             </div>
 
             <div className="pt-4 mt-2 border-t border-white/5">
-              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-yellow mb-3">CarriÃ¨re Arbitre</h3>
+              <h3 className="text-sm font-mono uppercase tracking-widest text-zoyd-yellow mb-3">Carrière Arbitre</h3>
               <div className="grid sm:grid-cols-2 gap-4">
-                <StatCard icon={<ShieldCheck className="w-5 h-5 text-zoyd-yellow" />} label="Matchs arbitrÃ©s" value={summary.arbiterStats?.arbitratedMatches?.toString() || '0'} />
-                <StatCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Commissions gÃ©nÃ©rÃ©es" value={formatZC(summary.arbiterStats?.totalCommissions || 0)} />
+                <StatCard icon={<ShieldCheck className="w-5 h-5 text-zoyd-yellow" />} label="Matchs arbitrés" value={summary.arbiterStats?.arbitratedMatches?.toString() || '0'} />
+                <StatCard icon={<Trophy className="w-5 h-5 text-green-400" />} label="Commissions générées" value={formatZC(summary.arbiterStats?.totalCommissions || 0)} />
               </div>
             </div>
           </div>
@@ -285,11 +285,11 @@ export default function ProfileView({
           <div className="hud-panel p-6 bg-zoyd-surface/20">
             <div className="flex items-center gap-3 mb-5">
               <ShieldCheck className="w-5 h-5 text-zoyd-yellow" />
-              <h2 className="text-lg font-display font-black uppercase italic">Score de FiabilitÃ© (Trust Score)</h2>
+              <h2 className="text-lg font-display font-black uppercase italic">Score de Fiabilité (Trust Score)</h2>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <TrustCell label="Score global" value={`${summary.trust.overall}/100`} accent="text-zoyd-yellow" />
-              <TrustCell label="Matchs terminÃ©s" value={summary.trust.completedMatches.toString()} accent="text-white" />
+              <TrustCell label="Matchs terminés" value={summary.trust.completedMatches.toString()} accent="text-white" />
               <TrustCell label="Litiges" value={summary.trust.disputedMatches.toString()} accent="text-zoyd-blue" />
               <TrustCell label="Forfaits connus" value={summary.trust.forfeits.toString()} accent={summary.trust.forfeits > 0 ? 'text-red-300' : 'text-green-400'} />
             </div>
@@ -327,8 +327,8 @@ export default function ProfileView({
               <EmptyPanel
                 icon={<Swords className="w-8 h-8 text-white/10" />}
                 image={emptyMatchesImage || '/assets/images/codm-8.jpg'}
-                title="Aucun match rÃ©cent"
-                body="Les matchs terminÃ©s apparaÃ®tront ici, avec leur rÃ©sultat et ce qu'ils ont rapportÃ©."
+                title="Aucun match récent"
+                body="Les matchs terminés apparaîtront ici, avec leur résultat et ce qu'ils ont rapporté."
               />
             ) : (
               <div className="space-y-3">
@@ -341,8 +341,8 @@ export default function ProfileView({
                     isOwnProfile: !!currentUserId && currentUserId === userId,
                     pseudo,
                   });
-                  // Versement pas encore effectuÃ© : afficher Â« +X ZC Â» sur un
-                  // match qui n'a pas encore payÃ© serait un gain fictif.
+                  // Versement pas encore effectué : afficher « +X ZC » sur un
+                  // match qui n'a pas encore payé serait un gain fictif.
                   const payoutSettled = isMatchPayoutSettled(match);
                   const isWin = payoutSettled && !!player && player.team === match.result?.winnerTeam;
                   return (
@@ -363,7 +363,7 @@ export default function ProfileView({
                       </div>
                       <div className="text-right">
                         <div className={`font-display font-black italic text-sm ${isWin ? 'text-zoyd-yellow' : 'text-white/75'}`}>
-                          {isWin ? `+${formatZC(getWinnerPayoutPerPlayer(match))}` : payoutSettled ? formatZC(match.entryFee) : 'â€”'}
+                          {isWin ? `+${formatZC(getWinnerPayoutPerPlayer(match))}` : payoutSettled ? formatZC(match.entryFee) : '—'}
                         </div>
                         <div className="text-[10px] font-mono text-white/70 uppercase">
                           {match.status === 'disputed'
@@ -394,8 +394,8 @@ export default function ProfileView({
               <EmptyPanel
                 icon={<Trophy className="w-8 h-8 text-white/10" />}
                 image={emptyTournamentsImage || '/assets/images/codm-1.jpg'}
-                title="Aucun tournoi rÃ©cent"
-                body="Les participations et podiums apparaÃ®tront ici dÃ¨s que les tournois seront terminÃ©s."
+                title="Aucun tournoi récent"
+                body="Les participations et podiums apparaîtront ici dès que les tournois seront terminés."
               />
             ) : (
               <div className="space-y-3">
@@ -409,7 +409,7 @@ export default function ProfileView({
                         {placement.name}
                       </div>
                       <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider">
-                        {placement.format} / {placement.finishedAt ? new Date(placement.finishedAt).toLocaleDateString('fr-FR') : 'RÃ©sultat validÃ©'}
+                        {placement.format} / {placement.finishedAt ? new Date(placement.finishedAt).toLocaleDateString('fr-FR') : 'Résultat validé'}
                       </div>
                     </div>
                     <div className="text-right">

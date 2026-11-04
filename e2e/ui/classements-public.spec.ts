@@ -2,7 +2,7 @@
  * Spec e2e - /classements pour un visiteur ANONYME (PublicClassementsPage).
  *
  * Verifie le contrat produit pose le 2026-11-02 : un visiteur sans session
- * RESTE sur /classements (aucune redirection /auth/login â€” l'ancien
+ * RESTE sur /classements (aucune redirection /auth/login — l'ancien
  * comportement AppLayout), recoit le VRAI classement servi par
  * /api/leaderboard (moque ici pour un jeu de donnees deterministe), peut
  * changer d'onglet, et en cas d'echec serveur voit un panneau explicite
@@ -10,16 +10,16 @@
  *
  * NE couvre PAS la version authentifiee : PAGES_PLAYER de
  * responsive.spec.ts sondes deja /classements connecte (agregation
- * stores, AppLayout) â€” aucune brique de cette voie n'a ete bougee.
+ * stores, AppLayout) — aucune brique de cette voie n'a ete bougee.
  *
  * PIEGE : /api/stats est volontairement PAS moquee : elle est accessoire
  * par design (sa panne n'arrete pas le classement, PublicClassementsPage).
  * Seul /api/leaderboard est intercepte.
  * PIEGE : les onglets de la version authentifiee (TOP ACTIVITE,
  * EQUIPES, PAR PAYS, PAR CONTROLE) n'existent PAS sur la page anonyme :
- * les TABS publics sont TOP ELO / GAINS â€” TOP 50 ELO / VICTOIRES â€” TOP 50
+ * les TABS publics sont TOP ELO / GAINS — TOP 50 ELO / VICTOIRES — TOP 50
  * ELO seulement. (P2-5 audit UI : les onglets GAINS/VICTOIRES re-trient le
- * top 50 ELO du serveur â€” libelles renommes pour le dire, plus note sous la
+ * top 50 ELO du serveur — libelles renommes pour le dire, plus note sous la
  * tablist.)
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -94,13 +94,13 @@ test.describe('/classements - version anonyme', () => {
     await expect(page).toHaveURL(/\/classements$/);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'TOP ELO' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'GAINS â€” TOP 50 ELO' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'VICTOIRES â€” TOP 50 ELO' })).toBeVisible();
-    // P2-5 : la note d'honnetete sous la tablist est rendue.
+    await expect(page.getByRole('tab', { name: 'GAINS — TOP 50 ELO' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'VICTOIRES — TOP 50 ELO' })).toBeVisible();
+    // P2-5 : la note d honnetete sous la tablist est rendue.
     await expect(page.getByText(/top 50 ELO servi par le serveur/)).toBeVisible();
     // Les onglets qui exigent la version authentifiee n'existent pas ici.
-    await expect(page.getByRole('tab', { name: 'ACTIVITÃ‰' })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'CrÃ©er un compte' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'ACTIVITÉ' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Créer un compte' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Se connecter' })).toBeVisible();
   });
 
@@ -114,16 +114,16 @@ test.describe('/classements - version anonyme', () => {
     await expect(firstPseudo).toContainText('GHOST_229');
     await expect(page.getByRole('tab', { name: 'TOP ELO' })).toHaveAttribute('aria-selected', 'true');
 
-    // GAINS â€” TOP 50 ELO : le tri passe par totalEarnings â€” SNIPER_DK (9800)
+    // GAINS — TOP 50 ELO : le tri passe par totalEarnings — SNIPER_DK (9800)
     // passe 1er (re-trie du plateau top-50 ELO, cf. note P2-5).
-    await page.getByRole('tab', { name: 'GAINS â€” TOP 50 ELO' }).click();
-    await expect(page.getByRole('tab', { name: 'GAINS â€” TOP 50 ELO' })).toHaveAttribute('aria-selected', 'true');
+    await page.getByRole('tab', { name: 'GAINS — TOP 50 ELO' }).click();
+    await expect(page.getByRole('tab', { name: 'GAINS — TOP 50 ELO' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('classements-public-pseudo').first()).toContainText('SNIPER_DK');
 
-    // VICTOIRES â€” TOP 50 ELO : MOD_ALPHA (22 victoires) passe 1er apres
+    // VICTOIRES — TOP 50 ELO : MOD_ALPHA (22 victoires) passe 1er apres
     // SNIPER_DK (12) et GHOST_229 (21)... ce qui place MOD_ALPHA 1er uniquement
     // s'il a plus de victoires que les autres : 22 > 21 > 12.
-    await page.getByRole('tab', { name: 'VICTOIRES â€” TOP 50 ELO' }).click();
+    await page.getByRole('tab', { name: 'VICTOIRES — TOP 50 ELO' }).click();
     await expect(page.getByTestId('classements-public-pseudo').first()).toContainText('MOD_ALPHA');
   });
 
@@ -143,7 +143,7 @@ test.describe('/classements - version anonyme', () => {
 
     // Retour du serveur -> le bouton retabli la liste (deuxieme interception).
     // getByTestId et NON getByText : le pseudo existe aussi dans la cellule
-    // mobile (DOM hidden) â€” getByText violerait le mode strict (2 matches).
+    // mobile (DOM hidden) — getByText violerait le mode strict (2 matches).
     await mockLeaderboard(page, SAMPLE_PLAYERS);
     await page.getByRole('button', { name: /Réessayer/i }).click();
     await expect(page.getByTestId('classements-public-pseudo').first()).toContainText('GHOST_229');

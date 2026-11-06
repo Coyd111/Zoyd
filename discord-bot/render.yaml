@@ -1,0 +1,14 @@
+services:
+  - type: worker
+    name: zoyd-discord-bot
+    env: node
+    plan: free
+    buildCommand: npm install --no-audit --no-fund
+    startCommand: node src/index.mjs
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: GUILD_ID
+        value: 1551506556795883602
+      - key: AUDIT_CHANNEL_ID
+        value: 1551613860430225509

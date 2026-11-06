@@ -270,6 +270,11 @@ CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user ON wallet_transactions(u
 -- ============================================================
 CREATE TABLE IF NOT EXISTS admin_2fa_secrets (
   user_id TEXT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  -- Format auto-descriptible :
+  --   absent de prefixe → SECRET EN CLAIR (legacy, migre automatiquement)
+  --   v1:<iv b64>:<tag b64>:<ciphertext b64> → AES-256-GCM (server/secret-crypto.mjs)
+  -- Aucune colonne supplementaire requise. Cle de chiffrement : ZOYD_2FA_ENC_KEY
+  -- (env serveur, 32 octets base64). Rotation : ZOYD_2FA_ENC_KEY_NEXT.
   secret TEXT NOT NULL,
   enabled BOOLEAN NOT NULL DEFAULT false,
   verified_at TIMESTAMPTZ,

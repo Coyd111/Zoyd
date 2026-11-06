@@ -80,6 +80,7 @@ import { withUserMutex, withChannelMutex } from './mutex.mjs';
 import { sumCommissionTransactions } from './commission-stats.mjs';
 import { computeExpiry, isSanctionActive, severityForReason } from './moderation.mjs';
 import { Mutex } from 'async-mutex';
+import { encryptSecret, decryptSecret, isSecretCryptoConfigured } from './secret-crypto.mjs';
 
 const log = createLogger('persistence');
 
@@ -4112,7 +4113,10 @@ export const releaseTransaction = async (transactionId) => {
 export const saveAdminTotpSecret = async (userId, secret, enabled = false) => {
   // CRITIQUE : un secret 2FA perdu au redémarrage verrouille l'admin hors de
   // toutes les routes d'administration, sans aucun moyen de le récupérer.
-  const saved = await sbUpsert('admin_2fa_secrets', { user_id: userId, secret, enabled });
+  // Le secret est ecrit CHIFFRE (AES-256-GCM, format auto-descriptible v1:) ;
+  // en production sans ZOYD_2FA_ENC_KEY, encryptSecret REFUSE (jamais en clair).
+  const { value } = encryptSecret(secret);
+  const saved = await sbUpsert('admin_2fa_secrets', { user_id: userId, secret: value, enabled });
   if (supabase && !saved) {
     throw makeError('SERVER_BUSY', 'Sauvegarde 2FA impossible, reessaie dans un instant.');
   }
@@ -4120,14 +4124,32 @@ export const saveAdminTotpSecret = async (userId, secret, enabled = false) => {
 
 export const loadAdminTotpSecrets = async () => {
   const result = new Map();
+  let migrates = 0;
   try {
     const rows = await sbSelect('admin_2fa_secrets');
     if (rows) {
       for (const row of rows) {
-        result.set(row.user_id, { secret: row.secret, enabled: row.enabled, verifiedAt: null });
+        const { plaintext, wasEncrypted, error } = decryptSecret(row?.secret);
+        if (error) {
+          // Ligne indigeste (cle absente/alteree) : on saute, on ne fabrique
+          // JAMAIS de secret. L'admin devra se re-enroler. Log explicite.
+          log.error('Secret 2FA ignore (indechiffrable), re-enrolez ce compte admin.', { userId: row?.user_id });
+          continue;
+        }
+        result.set(row.user_id, { secret: plaintext, enabled: row.enabled, verifiedAt: null });
+        if (!wasEncrypted && isSecretCryptoConfigured()) {
+          // Auto-migration silencieuse : la ligne legacy en clair est re-ecrite
+          // chiffree au premier demarrage, sans downtime ni action manuelle.
+          const { value } = encryptSecret(plaintext);
+          const rewritten = await sbUpsert('admin_2fa_secrets', { user_id: row.user_id, secret: value, enabled: row.enabled });
+          if (rewritten) migrates += 1;
+        }
       }
     }
   } catch { /* table may not exist yet */ }
+  if (migrates > 0) {
+    log.info(`Secrets 2FA migrés vers le chiffrement au repos : ${migrates}`);
+  }
   return result;
 };
 

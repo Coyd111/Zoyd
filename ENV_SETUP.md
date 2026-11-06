@@ -49,6 +49,8 @@ nouveau déploiement frontend.
 | `BREVO_API_KEY` | Canal mail alternatif | |
 | `EMAIL_FROM` | Expéditeur affiché | Doit être vérifié chez le provider |
 | `METRICS_TOKEN` | Protège `/metrics` (Bearer) | **Obligatoire en prod** : sans lui, la route répond 403 `METRICS_DISABLED` ; chemin **hors du préfixe `/api`** (`routes/public.mjs`) |
+| `ZOYD_2FA_ENC_KEY` | Chiffrement au repos des secrets TOTP admin | **Obligatoire en prod** : sans lui, le serveur **refuse d'écrire** un secret 2FA (jamais en clair). Générer : `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+| `ZOYD_2FA_ENC_KEY_NEXT` | Clé de rotation | Définir uniquement pendant une rotation : les nouvelles écritures passent sur NEXT, la lecture essaie les deux ; puis retirer KEY et renommer NEXT → KEY |
 
 ### À NE PAS définir
 
@@ -93,6 +95,7 @@ VAPID_PRIVATE_KEY=cle_privee_vapid
 RESEND_API_KEY=re_votre_cle
 EMAIL_FROM=ZOYD <onboarding@resend.dev>
 METRICS_TOKEN=token_long_aleatoire
+ZOYD_2FA_ENC_KEY=cle_de_32_octets_base64
 ```
 
 ## 🔑 Obtention des clés

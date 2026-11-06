@@ -36,11 +36,13 @@ import {
 import {
   addServerDisputeEvidence,
   assignServerArbiter,
+  cancelOwnMatch,
   checkInServerMatch,
   confirmServerMatchResult,
   escalateServerDispute,
   joinServerMatch,
   launchServerMatch,
+  leaveServerMatch,
   openServerMatchDispute,
   scheduleServerMatch,
   setServerRoomDetails,
@@ -133,6 +135,11 @@ const MatchDetailPage: React.FC = () => {
   const [isSavingRoom, setIsSavingRoom] = useState(false);
   const [isDisputing, setIsDisputing] = useState(false);
   const [isConfirmingResult, setIsConfirmingResult] = useState(false);
+  // Sortie volontaire + annulation createur : deux etats distincts, un
+  // double-clic ne doit pas poster deux fois (le serveur refuse deja le
+  // second remboursement, la garde ici evite le POST inutile).
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [isCancellingSelf, setIsCancellingSelf] = useState(false);
   const [showResultConfirm, setShowResultConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
@@ -235,6 +242,26 @@ const MatchDetailPage: React.FC = () => {
     || match.result?.payoutDistributed === true
   );
   const canOpenDispute = !!match && !matchIsClosed && (!!currentPlayer || isArbiter);
+  // Identite livree PAR DESTINATAIRE : `creatorId` ne sort jamais du
+  // payload (S4) — le serveur pose `isCreator` sur le seul createur.
+  const creatorIsMe = match?.isCreator === true;
+  // Sortie volontaire : joueur inscrit (et NON createur — lui a la route
+  // d annulation), match pas lance et pas de resultat : miroir exact de la
+  // garde moteur (`startedAt` / `result`).
+  const canLeaveMatch = !!match && !!currentPlayer
+    && !creatorIsMe
+    && !matchIsClosed
+    && !match.startedAt
+    && !match.result;
+  // Annulation createur : tant qu un autre joueur n a pas pose son pass,
+  // le roster ne porte que le createur. Le serveur tranche au juste
+  // (OPPONENTS_PRESENT) : un joueur peut s inscrire entre le rendu et le
+  // clic, le bouton ne garantit rien de plus que sa garde serveur.
+  const canCancelSelfMatch = !!match && creatorIsMe
+    && !matchIsClosed
+    && !match.startedAt
+    && !match.result
+    && match.players.length <= 1;
   // On ne pretend pas qu'un litige est possible : on dit ce qui est possible.
   const closedRecourseMessage = matchIsClosed
     ? (match?.result
@@ -329,6 +356,47 @@ const MatchDetailPage: React.FC = () => {
       setIsJoining(false);
     }
   }, [user, navigate, availableSpend, match?.entryFee, match?.id, match?.trustScoreMin, isJoining, applyMatchResponse]);
+
+  // Sortie volontaire : le serveur rembourse le pass entier puis rouvre la
+  // place. L erreur du moteur est deja parlante (MATCH_LAUNCHED, etc.) :
+  // on l affiche telle quelle, sinon message generique.
+  const handleLeaveMatch = useCallback(async () => {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+    if (!match || isLeaving) return;
+    setIsLeaving(true);
+    try {
+      const response = await leaveServerMatch(match.id);
+      applyMatchResponse(response);
+      toast.success('Tu es sorti du match. Ton pass a été remboursé intégralement.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'La sortie volontaire n\'est plus possible pour ce match.');
+    } finally {
+      setIsLeaving(false);
+    }
+  }, [user, navigate, match?.id, isLeaving, applyMatchResponse]);
+
+  // Annulation par le createur : la mise revient integralement et le match
+  // quitte la liste publique (statut `cancelled`).
+  const handleCancelSelfMatch = useCallback(async () => {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+    if (!match || isCancellingSelf) return;
+    setIsCancellingSelf(true);
+    try {
+      const response = await cancelOwnMatch(match.id);
+      applyMatchResponse(response);
+      toast.success('Match annulé. Ta mise a été remboursée intégralement.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'L\'annulation de ce match n\'est plus possible.');
+    } finally {
+      setIsCancellingSelf(false);
+    }
+  }, [user, navigate, match?.id, isCancellingSelf, applyMatchResponse]);
 
   const handleJoinAsArbiter = useCallback(async () => {
     if (!user) {
@@ -676,6 +744,10 @@ const MatchDetailPage: React.FC = () => {
               canCheckIn={canCheckIn}
               canToggleReady={canToggleReady}
               canLaunch={canLaunch}
+              canLeaveMatch={canLeaveMatch}
+              canCancelSelfMatch={canCancelSelfMatch}
+              isLeaving={isLeaving}
+              isCancellingSelf={isCancellingSelf}
               availableSpend={availableSpend}
               requiredTopUp={requiredTopUp}
               fundingPath={fundingPath}
@@ -734,6 +806,8 @@ const MatchDetailPage: React.FC = () => {
               handlers={{
                 join: handleJoin,
                 joinAsArbiter: handleJoinAsArbiter,
+                leave: handleLeaveMatch,
+                cancelSelf: () => setConfirmAction('cancelSelf'),
                 schedule: handleSchedule,
                 roomSave: handleRoomSave,
                 resultSubmit: openResultConfirm,
@@ -937,6 +1011,41 @@ const MatchDetailPage: React.FC = () => {
                 className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
               >
                 Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction === 'cancelSelf' && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-label="Annuler ce match">
+          <div className="bg-zoyd-surface border border-white/10 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-display font-black uppercase tracking-widest text-sm mb-2">
+                  Annuler ce match ?
+                </h3>
+                <p className="text-white/60 text-sm">
+                  Personne n&apos;a encore posé de pass à part toi : ta mise te revient intégralement, et le match quitte la liste publique. Cette action est définitive.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
+              >
+                Garder le match
+              </button>
+              <button
+                disabled={isCancellingSelf}
+                onClick={() => { setConfirmAction(null); void handleCancelSelfMatch(); }}
+                className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+              >
+                {isCancellingSelf ? 'En cours...' : 'Annuler le match'}
               </button>
             </div>
           </div>

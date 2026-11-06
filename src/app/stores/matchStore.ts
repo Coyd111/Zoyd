@@ -195,6 +195,12 @@ export interface Match {
   id: string;
   creatorId: string;
   creatorPseudo: string;
+  /**
+   * Livre PAR DESTINATAIRE (meme modele que le `isMe` du roster) : le
+   * `creatorId` brut ne sort jamais du payload (S4 — pas d UUID de compte
+   * en public). Vrai pour le createur lui-meme, absent pour les autres.
+   */
+  isCreator?: boolean;
   format: MatchFormat;
   teamSize: number;
   maxPlayers: number;

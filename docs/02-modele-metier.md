@@ -335,8 +335,11 @@ Les trois divergences historiques sont résolues :
 | 16 | Automation 14 j | `processMatchAutomationOnServer:1355` | — | `cancelled` | remboursement (`:1320-1325`) |
 | 17 | Automation « pas d'arbitre à l'heure » | `processMatchAutomationOnServer:1381` | — | `cancelled` | remboursement |
 | 18 | Automation « une seule équipe prête » | `processMatchAutomationOnServer:1408` | — | `forfeited` | forfait |
-| 19 | Admin | `cancelMatchOnServer:1260` | — | `cancelled` | remboursement (`:1277`) |
-| 20 | Sweep arbitrage 2 h | `sweepMatchesWithoutArbiter:81` | — | `cancelled` | remboursement — **branché ✅** (tick 30 s, §9.1) |
+| 19 | Admin | `cancelMatchOnServer:1693` | — | `cancelled` | remboursement via `refundMatchPlayers:1543` — un échec de remboursement laisse le match ouvert et lève `REFUND_FAILED` |
+| 20 | Sweep arbitrage 2 h | `sweepMatchesWithoutArbiter:86` | — | `cancelled` | remboursement — **branché ✅** (tick 30 s, §9.1) |
+| 21 | Sortie volontaire d'un inscrit | `leaveMatchOnServer:1602` | actif sans `startedAt` ni résultat, hors litige ouvert | snapshot (redescend en `recruiting`) | remboursement intégral du partant (`:1626`) ; capitanat repris par le 1er restant du camp (`:1564`) |
+| 22 | Annulation volontaire du créateur | `cancelMatchSelfOnServer:1650` | créateur seul (`recruiting`, aucun second pass — `OPPONENTS_PRESENT` sinon) | `cancelled` (`CANCELLED_BY_CREATOR`) | remboursement intégral créateur (`:1673`) |
+| 23 | Nettoyage 14 j (cron 6 h) | `runMatchCleanupOnServer` (`server/cron.mjs:404`) | `recruiting` / `full` / `check_in` sans activité depuis 14 j | `archived` | remboursement de chaque verrou **AVANT** l'archivage : un échec laisse le match vivant, repris au tick suivant |
 
 ### 4.5 Le litige
 
@@ -752,7 +755,7 @@ dehors de `ecrireUserRow` — `server/occ-revision-invariant.test.mjs:29`.
 | Automation match (14 j, no-show, pas d'arbitre à l'heure) | `server/realtime-server.mjs:640-657` | **30 s** | `MATCH_AUTOMATION_INTERVAL_MS` (`server/match-engine.mjs:98`) | ✅ |
 | Reprise des règlements de match interrompus | `server/cron.mjs:247-278` | 60 s + boot | — | ✅ |
 | Expiration des fenêtres de confirmation | `server/cron.mjs:285-313` | 60 s + boot | — | ✅ |
-| Archivage des matchs inactifs | `server/cron.mjs:36-82` | 6 h | — | ✅ |
+| Archivage des matchs inactifs (passes remboursés AVANT l'archivage, `runMatchCleanupOnServer`) | `server/cron.mjs:404` | 6 h | — | ✅ |
 | Tournois jamais démarrés | `server/cron.mjs:200-237` | 6 h + boot | — | ✅ |
 | Reprise des remboursements de tournoi | `server/cron.mjs:320-355` | 6 h + boot | — | ✅ |
 | Reprise des gains de tournoi | `server/cron.mjs:365-388` | 6 h + boot | — | ✅ |

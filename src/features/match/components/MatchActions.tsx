@@ -106,6 +106,20 @@ interface MatchActionsProps {
   canCheckIn: boolean;
   canToggleReady: boolean;
   canLaunch: boolean;
+  /**
+   * Sortie volontaire : le joueur inscrit (NON createur — le createur passe
+   * par la route `cancel`), avant le lancement du match. Garde moteur :
+   * `startedAt` ou un resultat ferme la sortie.
+   */
+  canLeaveMatch: boolean;
+  /**
+   * Annulation par le createur tant que personne d autre n a pose un pass
+   * (serveur : OPPONENTS_PRESENT). Le clic passe par la confirmation
+   * `cancelSelf` de la page.
+   */
+  canCancelSelfMatch: boolean;
+  isLeaving: boolean;
+  isCancellingSelf: boolean;
   availableSpend: number;
   requiredTopUp: number;
   fundingPath: string;
@@ -178,6 +192,8 @@ interface MatchActionsProps {
   handlers: {
     join: (team?: 0 | 1) => void;
     joinAsArbiter: () => void;
+    leave: () => void;
+    cancelSelf: () => void;
     schedule: () => void;
     roomSave: () => void;
     resultSubmit: () => void;
@@ -201,6 +217,10 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
   canCheckIn,
   canToggleReady,
   canLaunch,
+  canLeaveMatch,
+  canCancelSelfMatch,
+  isLeaving,
+  isCancellingSelf,
   availableSpend,
   requiredTopUp,
   fundingPath,
@@ -295,13 +315,37 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </button>
           </div>
           <p className="text-xs text-white/70">
-            Une fois ton pass engagé, ta place reste réservée jusqu'au score final.
+            Ton pass reste verrouillé jusqu&apos;au lancement : tu peux te retirer (remboursement intégral) avant le coup d&apos;envoi. Une fois le match lancé, la place engage les mises.
           </p>
           {match.scheduledAt ? (
             <p className="text-xs text-white/70">
               Présence attendue avant l'heure confirmee. Toute équipe incomplète a l'heure du match passe automatiquement en forfait.
             </p>
           ) : null}
+          {canLeaveMatch && (
+            <button
+              onClick={handlers.leave}
+              disabled={isLeaving}
+              className="w-full border border-white/10 py-3 font-display font-black uppercase tracking-widest text-xs italic text-white/60 hover:text-white hover:border-white transition-colors disabled:opacity-40"
+            >
+              {isLeaving ? 'En cours...' : 'ME RETIRER DU MATCH (REMBOURSÉ)'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {canCancelSelfMatch && (
+        <div className="border-t border-white/5 pt-5">
+          <button
+            onClick={handlers.cancelSelf}
+            disabled={isCancellingSelf}
+            className="w-full border border-red-500/30 bg-red-500/10 py-3 font-display font-black uppercase tracking-widest text-xs italic text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+          >
+            {isCancellingSelf ? 'En cours...' : 'ANNULER CE MATCH (REMBOURSEMENT INTÉGRAL)'}
+          </button>
+          <p className="mt-2 text-xs text-white/50">
+            Personne n&apos;a encore rejoint ton match : tu peux retirer ton offre et reprendre ta mise tant que le match n&apos;est pas lancé.
+          </p>
         </div>
       )}
 

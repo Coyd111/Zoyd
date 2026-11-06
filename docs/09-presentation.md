@@ -477,11 +477,25 @@ couvre pas) et se range dans la case **verrouillé**, à son nom, étiquetée
 du numéro du match.
 
 Le match apparaît dans la liste publique. D'autres joueurs arrivent… ou pas.
-Il n'y a **aucun délai** pour cette phase, mais un compte ne peut pas
-poser la mise deux fois dans le même match (le serveur refuse un second
-verrou : erreur `ALREADY_LOCKED`) ; et il refuse le verrou si le solde ne
-suffit pas (`INSUFFICIENT_FUNDS`). *(source : `docs/02-modele-metier.md`,
-§ 7.2.)*
+La phase de recrutement n'a pas d'horloge propre — mais le monde autour, oui :
+dès que le tableau est complet sans arbitre, le balayage automatique laisse
+**2 h au poste**, sinon il annule le match et rembourse tout le monde (et
+ensuite, dans l'ordre : 2 h pour lancer, 2 h pour saisir le résultat). Un
+compte ne peut pas poser la mise deux fois dans le même match (le serveur
+refuse un second verrou : erreur `ALREADY_LOCKED`) ; et il refuse le verrou si
+le solde ne suffit pas (`INSUFFICIENT_FUNDS`).
+
+**La porte reste ouverte avant le lancement.** Un inscrit qui change d'avis se
+retire (« Me retirer ») : son pass lui revient **intégralement**, la place se
+rouvre et le statut redescend. Le créateur, lui, ne quitte pas son propre
+match : tant que personne d'autre n'a posé de pass, il peut **annuler le
+match** (remboursement intégral, le dossier quitte la liste publique) ; dès
+qu'un adversaire est engagé, seule la modération peut le solder. Une fois le
+match lancé, les mises jouent : plus personne ne sort par cette porte. Et si
+un match reste figé **14 jours** (`recruiting`, `full` ou `check_in`), le
+nettoyage automatique rembourse chaque verrou restant **avant** d'archiver le
+dossier — jamais l'inverse. *(source : `docs/02-modele-metier.md`,
+§ 7.2 et § 4.4.)*
 
 ### 6.2 Acte 2 — l'arbitre prend son poste (`awaiting_arbiter`)
 
@@ -1118,7 +1132,7 @@ vérifiés par les tests (source : `docs/02-modele-metier.md`, § 9.1) :
 | 30 min | Annulation des salons BR jamais lancés ou abandonnés (remboursement) |
 | 30 min | Réconciliation des retraits incertains |
 | 1 h | Contrôle d'intégrité des données |
-| 6 h | Archivage des matchs inactifs |
+| 6 h | Archivage des matchs inactifs : chaque pass restant est remboursé AVANT l'archivage — un échec de remboursement garde le match vivant pour le passage suivant |
 | 6 h | Tournois jamais démarrés (grâce de 24 h dépassée) |
 | 6 h | Reprise des remboursements de tournoi |
 | 6 h | Reprise des gains de tournoi |
@@ -1385,6 +1399,14 @@ podium, paie la commission des arbitres, et absorbe les mises des perdants.
 R. Avant le lancement : oui, remboursé. Après le lancement : non — votre
 absence triche les participants valides, votre pass alimente la
 cagnotte.
+
+**Q. Puis-je quitter un match MJ (1v1 à 5v5) après avoir payé le pass ?**
+R. Avant le lancement : oui, remboursé intégralement — « Me retirer » rend
+votre pass et rouvre une place. Après le lancement : non, les mises jouent.
+Si vous êtes le créateur, vous ne quittez pas vous-même : tant que personne
+d'autre n'a posé de pass, vous pouvez annuler le match (remboursement
+intégral) ; dès qu'un adversaire s'est joint, la modération seule peut le
+solder.
 
 **Q. Tout est codé pour Call of Duty Mobile. Pourquoi parler
 d'« infrastructure » ?**

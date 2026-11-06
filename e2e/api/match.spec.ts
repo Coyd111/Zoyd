@@ -31,6 +31,15 @@ import {
 //                                  declenche le reglement. Un tiers est 403.
 //   .../disputes                   200, participant/arbitre/admin uniquement,
 //                                  raison + ≥ 1 preuve obligatoires.
+//   .../leave                      200 : remboursement integral du pass du
+//                                  joueur pre-lancement ; MATCH_LAUNCHED 409
+//                                  des que `startedAt`/resultat existe,
+//                                  CREATOR_CANNOT_LEAVE 409 pour le createur,
+//                                  NOT_IN_MATCH 409 sinon.
+//   .../cancel                     200 : annulation du CREATEUR tant que
+//                                  personne d autre n a pose un pass
+//                                  (OPPONENTS_PRESENT 409 sinon), statut
+//                                  `cancelled` + remboursement integral.
 const BASE = '/api';
 const MATCH_FORMAT = '1VS1';
 const ENTRY_FEE = 100;
@@ -569,5 +578,180 @@ test.describe('Match lifecycle', () => {
     const wallet = await call(creator, 'GET', `${BASE}/wallet/me`);
     expect(wallet.body.wallet.cashBalance).toBe(START_BALANCE - ENTRY_FEE + WINNER_PAYOUT - 50);
     expect(wallet.body.wallet.lockedBalance).toBe(50);
+  });
+});
+
+/**
+ * Sortie volontaire (-- /leave /) et annulation volontaire du createur (-- /cancel /).
+ *
+ * Le contrat financier : TANT QUE le match n est pas lance, chaque verrou de
+ * mise se rouvre SUR DEMANDE — le joueur seul (/leave) ou le createur tant
+ * que personne d autre s est joint (/cancel). Une fois lance, les mises
+ * jouent : la route se ferme.
+ */
+test.describe('Sortie volontaire et annulation du createur', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  let owner: Actor;      // createur des matches de sacrifice
+  let guest: Actor;      // le second joueur de M2
+  let stranger: Actor;   // un exterieur inscrit sans aucun lien aux matchs
+  let launchedOwner: Actor;
+  let launchedGuest: Actor;
+  let launchedArbiter: Actor;
+  let mSolo = '';
+  let mWithOpponent = '';
+  let mIntact = '';
+  let mLaunched = '';
+  const SOLO_FEE = 50;
+  const LAUNCH_FEE = 60;
+
+  test.beforeAll(async () => {
+    owner = await registerPlayer('E2EASO');
+    guest = await registerPlayer('E2EASO2');
+    stranger = await registerPlayer('E2EASO3');
+    launchedOwner = await registerPlayer('E2EALO');
+    launchedGuest = await registerPlayer('E2EALO2');
+    launchedArbiter = await registerPlayer('E2EALO3');
+    const admin = await openAdminSession();
+    for (const player of [owner, guest, launchedOwner, launchedGuest]) {
+      await creditWallet(admin, player.id, START_BALANCE);
+    }
+  });
+
+  test.afterAll(async () => {
+    await disposeActors();
+  });
+
+  test('POST /api/matches/:id/leave et .../cancel — 401 sans session', async () => {
+    const leave = await callAnonymous('POST', `${BASE}/matches/M-FAKE/leave`);
+    expect(leave.status).toBe(401);
+    expect(leave.body.code).toBe('AUTH_REQUIRED');
+
+    const cancel = await callAnonymous('POST', `${BASE}/matches/M-FAKE/cancel`);
+    expect(cancel.status).toBe(401);
+    expect(cancel.body.code).toBe('AUTH_REQUIRED');
+  });
+
+  test('cancel du createur sur son match personne — remboursement integral, match clos', async () => {
+    const created = await call(owner, 'POST', `${BASE}/matches`, {
+      format: MATCH_FORMAT,
+      entryFee: SOLO_FEE,
+      rules: MATCH_RULES,
+      visibility: 'public',
+    });
+    expect(created.status).toBe(201);
+    mSolo = created.body.match.id;
+    // Le createur se reconnait SANS que l UUID interne ne sorte (S4).
+    expect(created.body.match.isCreator).toBe(true);
+    expect(created.body.match.creatorId).toBeUndefined();
+    expect(created.body.wallet.lockedBalance).toBe(SOLO_FEE);
+
+    const res = await call(owner, 'POST', `${BASE}/matches/${mSolo}/cancel`);
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.match.status).toBe('cancelled');
+    expect(res.body.match.cancellationReason).toBe('CANCELLED_BY_CREATOR');
+    // La mise est redevenue de l argent liquide disponible.
+    expect(res.body.wallet.lockedBalance).toBe(0);
+    expect(res.body.wallet.cashBalance).toBe(START_BALANCE);
+  });
+
+  test('cancel refuse des qu un adversaire pose un pass; leave recupere sa place; createur finit par annuler', async () => {
+    const created = await call(owner, 'POST', `${BASE}/matches`, { format: MATCH_FORMAT, entryFee: ENTRY_FEE, rules: MATCH_RULES, visibility: 'public' });
+    expect(created.status).toBe(201);
+    mWithOpponent = created.body.match.id;
+
+    const joined = await call(guest, 'POST', `${BASE}/matches/${mWithOpponent}/join`, { team: 1 });
+    expect(joined.status).toBe(200);
+    expect(joined.body.wallet.lockedBalance).toBe(ENTRY_FEE);
+
+    // Des qu un autre joueur a pose son pass, l annulation se ferme —
+    // et le match reste vivant, personne n est paye.
+    const refused = await call(owner, 'POST', `${BASE}/matches/${mWithOpponent}/cancel`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('OPPONENTS_PRESENT');
+    expect(refused.body.match).toBeUndefined();
+    const walletAfterRefusal = await call(owner, 'GET', `${BASE}/wallet/me`);
+    expect(walletAfterRefusal.body.wallet.lockedBalance).toBe(ENTRY_FEE);
+
+    // L'invite peut INVERSEMENT partir : son pass revient entier, la place
+    // se rouvre, le statut redescend.
+    const left = await call(guest, 'POST', `${BASE}/matches/${mWithOpponent}/leave`);
+    expect(left.status).toBe(200);
+    expect(left.body.match.status).toBe('recruiting');
+    expect(left.body.match.players).toHaveLength(1);
+    // Le roster ne contient plus que le createur : pour le partant qui
+    // lit la reponse, `isMe` est faux (son userId a disparu du roster).
+    expect(left.body.match.players[0].isMe).toBe(false);
+    expect(left.body.match.creatorPseudo).toBe(owner.pseudo);
+    expect(left.body.wallet.lockedBalance).toBe(0);
+    expect(left.body.wallet.cashBalance).toBe(START_BALANCE);
+
+    // Le createur, lui, ne quitte PAS son propre match : l annulation est
+    // sa porte de sortie.
+    const ownerLeave = await call(owner, 'POST', `${BASE}/matches/${mWithOpponent}/leave`);
+    expect(ownerLeave.status).toBe(409);
+    expect(ownerLeave.body.code).toBe('CREATOR_CANNOT_LEAVE');
+
+    const ownerCancel = await call(owner, 'POST', `${BASE}/matches/${mWithOpponent}/cancel`);
+    expect(ownerCancel.status).toBe(200);
+    expect(ownerCancel.body.match.status).toBe('cancelled');
+    expect(ownerCancel.body.match.cancellationReason).toBe('CANCELLED_BY_CREATOR');
+  });
+
+  test('un tiers inscrit ne peut ni sortir (NOT_IN_MATCH) ni annuler (FORBIDDEN)', async () => {
+    const created = await call(owner, 'POST', `${BASE}/matches`, { format: MATCH_FORMAT, entryFee: ENTRY_FEE, rules: MATCH_RULES, visibility: 'public' });
+    expect(created.status).toBe(201);
+    mIntact = created.body.match.id;
+
+    const leave = await call(stranger, 'POST', `${BASE}/matches/${mIntact}/leave`);
+    expect(leave.status).toBe(409);
+    expect(leave.body.code).toBe('NOT_IN_MATCH');
+
+    const cancel = await call(stranger, 'POST', `${BASE}/matches/${mIntact}/cancel`);
+    expect(cancel.status).toBe(403);
+    expect(cancel.body.code).toBe('FORBIDDEN');
+  });
+
+  test('MATCH_LAUNCHED : une fois lance, la sortie reste fermee — les mises jouent', async () => {
+    const created = await call(launchedOwner, 'POST', `${BASE}/matches`, { format: MATCH_FORMAT, entryFee: LAUNCH_FEE, rules: MATCH_RULES, visibility: 'public' });
+    expect(created.status).toBe(201);
+    mLaunched = created.body.match.id;
+
+    const joined = await call(launchedGuest, 'POST', `${BASE}/matches/${mLaunched}/join`, { team: 1 });
+    expect(joined.status).toBe(200);
+    const assigned = await call(launchedArbiter, 'POST', `${BASE}/matches/${mLaunched}/arbiter`);
+    expect(assigned.status).toBe(200);
+    const checkOwner = await call(launchedOwner, 'POST', `${BASE}/matches/${mLaunched}/check-in`, {});
+    expect(checkOwner.status).toBe(200);
+    const checkGuest = await call(launchedGuest, 'POST', `${BASE}/matches/${mLaunched}/check-in`, {});
+    expect(checkGuest.status).toBe(200);
+    const readyOwner = await call(launchedOwner, 'POST', `${BASE}/matches/${mLaunched}/ready`, {});
+    expect(readyOwner.status).toBe(200);
+    const readyGuest = await call(launchedGuest, 'POST', `${BASE}/matches/${mLaunched}/ready`, {});
+    expect(readyGuest.status).toBe(200);
+    const scheduled = await call(launchedArbiter, 'POST', `${BASE}/matches/${mLaunched}/schedule`, { scheduledAt: new Date(Date.now() + 3 * 60 * 1000).toISOString() });
+    expect(scheduled.status).toBe(200);
+    const room = await call(launchedArbiter, 'POST', `${BASE}/matches/${mLaunched}/room`, { roomName: 'SALLE E2E SORTIE', roomPassword: 'zz' });
+    expect(room.status).toBe(200);
+    const launched = await call(launchedArbiter, 'POST', `${BASE}/matches/${mLaunched}/launch`, {});
+    expect(launched.status).toBe(200);
+    expect(launched.body.match.status).toBe('in_progress');
+
+    const refusedGuest = await call(launchedGuest, 'POST', `${BASE}/matches/${mLaunched}/leave`);
+    expect(refusedGuest.status).toBe(409);
+    expect(refusedGuest.body.code).toBe('MATCH_LAUNCHED');
+
+    // Meme ferme pour /cancel : un adversaire est engage sur ce match
+    // (OPPONENTS_PRESENT).
+    const refusedOwner = await call(launchedOwner, 'POST', `${BASE}/matches/${mLaunched}/cancel`);
+    expect(refusedOwner.status).toBe(409);
+    expect(refusedOwner.body.code).toBe('OPPONENTS_PRESENT');
+
+    // Les deux passes restent verrouilles.
+    const walletOwner = await call(launchedOwner, 'GET', `${BASE}/wallet/me`);
+    expect(walletOwner.body.wallet.lockedBalance).toBe(LAUNCH_FEE);
+    const walletGuest = await call(launchedGuest, 'GET', `${BASE}/wallet/me`);
+    expect(walletGuest.body.wallet.lockedBalance).toBe(LAUNCH_FEE);
   });
 });

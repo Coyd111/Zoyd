@@ -27,8 +27,12 @@
  *   doublerait chaque intervalle.
  * PIEGE : les intervalles sont ecrits en dur dans le code : ils ne sont pas
  *   configurables par variable d'environnement.
- * PIEGE : l'archivage change le statut en `archived` (etat terminal) : ce job
- *   ne rembourse pas les passes.
+ * PIEGE : l'archivage change le statut en `archived` (etat terminal) : ce
+ *   job rembourse d'abord les passes verrouilles restants du match
+ *   concerne — archiver avec de l'argent dedans fabriquerait une dette
+ *   invisible dans un statut que personne ne relit plus. Un echec de
+ *   remboursement bloque l'archivage DU MATCH CONCERNE, repris au tick
+ *   suivant.
  * PIEGE : le balayage des reglements ne reprend QUE les matchs dont
  *   `payoutDistributed` vaut `'pending'` : un `false` est un refus
  *   VOLONTAIRE de verser. Un `'pending'` avec `confirmationDeadline` est
@@ -59,12 +63,12 @@ import {
   forgetWithdrawalKey,
 } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
-import { withMatchMutex, withLeagueMutex, withTournamentMutex, withBrLobbyMutex } from './mutex.mjs';
+import { withMatchMutex, withLeagueMutex, withTournamentMutex, withBrLobbyMutex, withWalletMutex } from './mutex.mjs';
 import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOnServer, retryPendingLeagueRefunds, countPendingLeagueRefunds, countUncollectableLeagueRefunds, retryPendingLeaguePayouts, countPendingLeaguePayouts } from './league-engine.mjs';
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbiterFees, retryPendingArbiterFees } from './match-engine.mjs';
 import { retryPendingBrSettlements, countStaleBrLobbies, getStaleBrLobbyIds, cancelStaleBrLobbyOnServer } from './br-engine.mjs';
-import { reconcilePendingWithdrawals, refundRejectedWithdrawal } from './wallet-engine.mjs';
+import { reconcilePendingWithdrawals, refundRejectedWithdrawal, refundLockedEntry } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 import { saveBrLobbies } from './state-helpers.mjs';
 import { getNow } from './utils.mjs';
@@ -380,6 +384,79 @@ export const sweepStaleBrLobbies = async () => {
   }
 };
 
+/**
+ * Noyau du nettoyage 14 jours (exporte pour les tests — meme convention que
+ * les balayages ci-dessus) : rembourse PUIS archive.
+ *
+ * Passer d un `map` a une boucle : l archive conditionne maintenant un
+ * remboursement ASYNC par joueur. Deux invariants (l argent d abord) :
+ *   - un match stale se fait rembourser AVANT tout archivage : si son
+ *     argent tombait ici entre deux balayages englobants, archiver
+ *     verrouillerait un sequestre dans un statut que personne ne relit ;
+ *   - un seul echec de remboursement abrite TOUT le match : il ressort
+ *     tel quel de la collection et sera repris au tick suivant
+ *     (remboursement idempotent, jamais double-credit).
+ *
+ * @param {Array} matches - Etat courant des matchs.
+ * @param {string} fourteenDaysAgo - ISO : frontiere de staleness en date.
+ * @returns {Promise<{nextMatches: Array, archivedCount: number, refundFailures: number}>}
+ */
+export const runMatchCleanupOnServer = async (matches, fourteenDaysAgo) => {
+  const nextMatches = [];
+  let archivedCount = 0;
+  let refundFailures = 0;
+
+  for (const match of matches) {
+    const dateToCheck = match.updatedAt || match.createdAt;
+    if (!dateToCheck) {
+      nextMatches.push(match);
+      continue;
+    }
+
+    const isStale = ['recruiting', 'full', 'check_in'].includes(match.status)
+      && dateToCheck < fourteenDaysAgo;
+
+    if (!isStale) {
+      nextMatches.push(match);
+      continue;
+    }
+
+    let refundFailed = false;
+    // Les passes verrouilles restants ne concernent que les joueurs
+    // inscrits ; l appel est idempotent : no-op sur un portefeuille deja
+    // libre. Chaque credit prend son verrou par entite ; chaque echec est
+    // absorbe : un portefeuille inaccessible ne doit pas geler le
+    // nettoyage des autres matchs.
+    for (const player of match.players || []) {
+      try {
+        await withWalletMutex(player.userId, async () => {
+          await refundLockedEntry(player.userId, match.id, `Remboursement archive 14 jours ${match.id}`);
+        });
+      } catch (error) {
+        refundFailed = true;
+        log.warn('Remboursement en echec avant archivage, match repris au prochain tick', {
+          matchId: match.id, userId: player.userId, error: error.message,
+        });
+      }
+    }
+    if (refundFailed) {
+      refundFailures++;
+      nextMatches.push(match);
+      continue;
+    }
+
+    archivedCount++;
+    nextMatches.push({
+      ...match,
+      status: 'archived',
+      updatedAt: getNow(),
+      notes: 'Archivé automatiquement pour inactivité (plus de 14 jours).',
+    });
+  }
+
+  return { nextMatches, archivedCount, refundFailures };
+};
+
 export const initCronJobs = () => {
   log.info('Service de tâches planifiées initialisé.');
 
@@ -408,31 +485,16 @@ export const initCronJobs = () => {
         fourteenDaysAgoDate.setDate(fourteenDaysAgoDate.getDate() - 14);
         const fourteenDaysAgo = fourteenDaysAgoDate.toISOString();
 
-        let archivedCount = 0;
-        const updatedMatches = matches.map((match) => {
-          const dateToCheck = match.updatedAt || match.createdAt;
-          if (!dateToCheck) return match;
+        const outcome = await runMatchCleanupOnServer(matches, fourteenDaysAgo);
 
-          const isStale = ['recruiting', 'full', 'check_in'].includes(match.status)
-            && dateToCheck < fourteenDaysAgo;
-
-          if (isStale) {
-            archivedCount++;
-            return {
-              ...match,
-              status: 'archived',
-              updatedAt: getNow(),
-              notes: 'Archivé automatiquement pour inactivité (plus de 14 jours).',
-            };
-          }
-          return match;
-        });
-
-        if (archivedCount > 0) {
-          await replaceStateCollection('matches', updatedMatches);
+        if (outcome.archivedCount > 0) {
+          await replaceStateCollection('matches', outcome.nextMatches);
         }
 
-        log.info(`Nettoyage terminé. ${archivedCount} matchs archivés.`);
+        log.info(`Nettoyage terminé. ${outcome.archivedCount} matchs archivés.`
+          + (outcome.refundFailures > 0
+            ? ` ${outcome.refundFailures} match(s) en attente de remboursement ignoré(s).`
+            : ''));
       });
     } catch (error) {
       log.error('Erreur lors du nettoyage des matchs', error);

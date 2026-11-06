@@ -200,6 +200,12 @@ const sanitizeMatchForBroadcast = (match, viewerId = null, roomHolders = null) =
   if (isRoomHolder) {
     safe.room = { name: roomName || null, password: roomPassword || null };
   }
+  // Le createur reconnait SON role par destinataire (meme modele que le
+  // `isMe` du roster) : `creatorId` ne sort pas du payload (S4, ci-dessus),
+  // mais la page du match doit pouvoir lui offrir la route d annulation
+  // volontaire sans lui montrer l UUID. Aucune fuite : booleen pour le seul
+  // destinataire concerne, rien pour les autres.
+  safe.isCreator = Boolean(viewerId && match.creatorId && match.creatorId === viewerId);
 
   if (safe.arbiter) {
     const { roomPassword: _ap, roomName: _an, userId: arbiterUserId, ...safeArbiter } = safe.arbiter;

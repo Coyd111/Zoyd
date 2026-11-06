@@ -123,6 +123,16 @@ export const joinServerMatch = async (matchId: string, team?: 0 | 1) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/join`, { team });
 };
 
+/** Sortie volontaire d un joueur inscrit, avant le lancement (remboursement integral). */
+export const leaveServerMatch = async (matchId: string) => {
+  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/leave`, {});
+};
+
+/** Annulation volontaire par le createur tant que personne d autre n a pose un pass. */
+export const cancelOwnMatch = async (matchId: string) => {
+  return authorizedPost<MatchResponse>(`/api/matches/${matchId}/cancel`, {});
+};
+
 export const assignServerArbiter = async (matchId: string) => {
   return authorizedPost<MatchResponse>(`/api/matches/${matchId}/arbiter`);
 };

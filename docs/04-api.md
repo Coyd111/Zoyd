@@ -11,7 +11,9 @@
 >
 > **Source :** lecture directe de `server/`. Base : commit `5f4b796`
 > (27/10/2026), citations repassées le 28/10/2026 (audit-3 P16) ; § 5.5 et
-> § 5.7 complétés au commit `a1f297a` (02/11/2026, audit-4).
+> § 5.7 complétés au commit `a1f297a` (02/11/2026, audit-4) ; § 2.5, § 2.7 et
+> § 5.8 complétés le 06/11/2026 (sortie volontaire `leave` et annulation du
+> créateur `cancel`).
 >
 > **Convention de citation :** les renvois `fichier:ligne` datent de leur
 > vérification : toute modification du fichier les décale. L'ancrage fiable
@@ -192,7 +194,7 @@ correction de la requête.**
 | `USER_NOT_FOUND` | `:446` |
 | `LOBBY_NOT_FOUND` | `:447` |
 
-### 2.5 409 — Conflict (38 codes)
+### 2.5 409 — Conflict (43 codes)
 
 **C'est le statut « l'état du monde n'est pas celui qu'on attend ».** Salons
 pleins ou lancés, joueur déjà inscrit ou éliminé, clé d'idempotence déjà
@@ -220,6 +222,14 @@ consommée, transaction déjà traitée. Le commentaire du code le dit :
 | 17 | `TRANSACTION_ALREADY_PROCESSED` | `:415` | | 36 | `PLAYER_ABSENT` | `:462` |
 | 18 | `2FA_ALREADY_ENABLED` | `:425` | | 37 | `TOO_EARLY` | `:463` |
 | 19 | `RESULT_NOT_FOUND` | `:429` | | 38 | `ARBITER_REQUIRED` / `NO_PRESENT` | `:467` / `:468` |
+| 39 | `MATCH_LAUNCHED` | `:432` | | 42 | `NOT_IN_MATCH` | `:434` |
+| 40 | `CREATOR_CANNOT_LEAVE` | `:433` | | 43 | `MATCH_DISPUTED` | `:436` |
+| 41 | `OPPONENTS_PRESENT` | `:435` | | | | |
+
+Les cinq codes 39–43 (06/11/2026) portent la sortie volontaire des matchs MJ
+(`leave`) et l'annulation du créateur (`cancel`) : match lancé, créateur qui
+tente une sortie, joueur absent du roster, adversaire déjà engagé, litige
+en cours.
 
 ### 2.6 423 — Locked
 
@@ -232,6 +242,7 @@ consommée, transaction déjà traitée. Le commentaire du code le dit :
 | Code | Ligne | Signification |
 |---|---|---|
 | `PAYOUT_FAILED` | `:421` | FedaPay a refusé le virement. **Remboursement automatique si l'échec est certain** (`server/routes/wallet.mjs:360-377`) |
+| `REFUND_FAILED` | `:452` | écriture portefeuille en échec pendant une annulation admin de match (`refundMatchPlayers`, `server/match-engine.mjs:1712`) : **rien n'est clos**, le statut reste intact, la modération retente (remboursement idempotent) |
 
 ### 2.8 503 — Service Unavailable
 
@@ -861,7 +872,7 @@ Un client qui traite `ARBITER_REQUIRED` comme « à réessayer plus tard » (409
 prendra une mauvaise décision sur le 403. **Tester le statut HTTP, pas seulement
 le code.**
 
-### 5.8 Matchs 1v1–5v5 — `server/routes/match.mjs` (13 routes)
+### 5.8 Matchs 1v1–5v5 — `server/routes/match.mjs` (15 routes)
 
 **Toutes exigent une session** (401 `AUTH_REQUIRED`).
 
@@ -880,6 +891,8 @@ le code.**
 | 11 | POST | `/api/matches/:id/disputes` | **—** | corps libre | `400 DISPUTE_INCOMPLETE`, `409 DISPUTE_ALREADY_OPEN` |
 | 12 | POST | `/api/matches/:id/dispute/evidence` | **—** | `{ evidence }` | `400 PROOFS_REQUIRED` |
 | 13 | POST | `/api/matches/:id/dispute/escalate` | **—** | — | `409 DISPUTE_ALREADY_ESCALATED` |
+| 14 | POST | `/api/matches/:id/leave` | `social` | — | `409 MATCH_LAUNCHED`, `409 CREATOR_CANNOT_LEAVE`, `409 NOT_IN_MATCH`, `409 MATCH_DISPUTED`, `409 MATCH_CLOSED` |
+| 15 | POST | `/api/matches/:id/cancel` | `social` | — | `403 FORBIDDEN` (non-créateur), `409 OPPONENTS_PRESENT`, `409 MATCH_DISPUTED`, `409 MATCH_CLOSED` |
 
 `POST /api/matches/:id/result` **persiste le résultat mais ne verse pas** : le
 match passe en `awaiting_confirmation`, les deux équipes doivent confirmer (ou
@@ -890,6 +903,23 @@ mass-assignment sur `match.result` (`server/routes/match.mjs:266-276`).
 
 Le parsing du corps est **hors** du verrou global (`server/routes/match.mjs:42`) :
 « le mutex global ne doit couvrir que la mutation ».
+
+`leave` et `cancel` (14-15, `server/routes/match.mjs:171-221`, 06/11/2026)
+suivent le gabarit `join` : quota `social`, `withMatchMutex` + `withWalletMutex`
+autour du moteur (qui appelle `refundLockedEntry` en direct : le verrou wallet
+n'est pas ré-entrant), puis `saveMatches` et le payload d'action standard.
+`leave` (`server/match-engine.mjs:1602`) rembourse intégralement le pass du
+partant et le retire du roster — capitanat repris par le premier restant du
+camp (`reassignCaptainsAfterRemoval:1564`), statut redescendu par
+`updateMatchSnapshot` — tant que le match n'a ni `startedAt` ni résultat ni
+litige ouvert ; le créateur est renvoyé vers `cancel` (`CREATOR_CANNOT_LEAVE`).
+`cancel` (`server/match-engine.mjs:1650`), réservé au créateur, rembourse sa
+mise et ferme le match en `cancelled` (`cancellationReason:
+CANCELLED_BY_CREATOR`) tant que personne d'autre n'a posé de pass
+(`OPPONENTS_PRESENT` sinon) ; un arbitre en poste ne bloque pas. L'identité
+part chez le client **par destinataire** : `match.isCreator` (booléen posé par
+`sanitizeMatchForBroadcast`, `server/state-helpers.mjs`) — le `creatorId` brut
+ne sort jamais du payload (S4).
 
 ### 5.9 Administration — `server/routes/admin.mjs` (14 routes)
 
@@ -912,7 +942,7 @@ Le parsing du corps est **hors** du verrou global (`server/routes/match.mjs:42`)
 | 11 | POST | `/api/admin/2fa/verify` | **admin** | `400 MFA_REQUIRED` (`:521`), `400 MFA_NOT_ACTIVE` (`:526`), `400 MFA_INVALID` (`:531`) |
 | 12 | POST | `/api/admin/matches/:id/award` | admin2fa | `400 INVALID_WINNER` (`:550`) |
 | 13 | POST | `/api/admin/matches/:id/resolve-dispute` | admin2fa | `400` si `action` invalide |
-| 14 | POST | `/api/admin/matches/:id/cancel` | admin2fa | — |
+| 14 | POST | `/api/admin/matches/:id/cancel` | admin2fa | `409 MATCH_CLOSED` (déjà soldé), `502 REFUND_FAILED` (un remboursement a échoué : rien n'est clos, statut intact) |
 
 `GET /api/admin/matches/export` renvoie du **CSV par défaut** (avec BOM UTF-8) ou
 du JSON si `?format=json` (`server/routes/admin.mjs:345-397`). Ce sont les deux

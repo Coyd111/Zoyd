@@ -425,7 +425,17 @@ case 'INSUFFICIENT_FUNDS':
     case 'ARBITER_TAKEN':
     case 'SELF_BLOCK':
     case 'TRANSACTION_ALREADY_PROCESSED':
+    case 'MATCH_LAUNCHED':
+    case 'CREATOR_CANNOT_LEAVE':
+    case 'NOT_IN_MATCH':
+    case 'OPPONENTS_PRESENT':
+    case 'MATCH_DISPUTED':
       return { status: 409, message, code };
+    // Sortie volontaire + annulation du createur (match-engine, 2026-11-06) :
+    // conflits d etat — match deja lance, createur qui tente une sortie,
+    // joueur absent du roster, adversaire deja engage, litige en cours.
+    // 409 partout : le demandeur peut changer d avis tout de suite, la
+    // ressource subsiste.
     // Squads libres (2026-11-05) : la squad existe mais est deja complete.
     // 409 : conflit d'etat transitoire, le client peut choisir une autre
     // squad et reessayer tout de suite.
@@ -436,6 +446,11 @@ case 'INSUFFICIENT_FUNDS':
     case 'FEDAPAY_API_ERROR':
       return { status: 400, message, code };
     case 'PAYOUT_FAILED':
+      return { status: 502, message, code };
+    // Annulation admin interrompue par un echec d ecriture portefeuille
+    // (refundMatchPlayers) : rien n est clos, le service wallet est en
+    // amont indisponible — meme traitement que l echec de versement.
+    case 'REFUND_FAILED':
       return { status: 502, message, code };
     case 'SERVER_BUSY':
       return { status: 503, message, code };

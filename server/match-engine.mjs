@@ -1519,6 +1519,167 @@ export const resolveDisputeOnServer = async (matches, actor, matchId, resolution
 };
 
 /**
+ * Rembourse TOUT le monde, mais ne clos RIEN si un seul remboursement echoue.
+ *
+ * Un seul appelant aujourd'hui : l annulation admin. La loi est imposee aux
+ * futurs appelants (cron, balayages) : RIEN ne se clos tant qu un verrou de
+ * mise reste en place sur un portefeuille — sinon l argent dort hors de tous
+ * les radars (la dette invisible tracee depuis le debut).
+ *
+ * Chaque paiement prend SON verrou par entite (`withWalletMutex`) : l appelant
+ * tient des verrous GLOBAUX (matchs) mais JAMAIS le verrou wallet d un joueur.
+ * Ne pas appeler cette fonction sous `withWalletMutex(userId)` : verrou non
+ * re-entrant, blocage immediat.
+ *
+ * @param {object} match - Le match A MODIFIER SUR PLACE (le clone de l appelant).
+ * @param {string} description - Libelle racine du remboursement (l id du match
+ *   est ajoute).
+ * @returns {Promise<Array<{userId: string, error: string}>>} La liste des
+ *   echecs (vide si tout est parti). L appelant decide : ici, propager —
+ *   l annulation leve REFUND_FAILED et le match reste ouvert.
+ */
+const refundMatchPlayers = async (match, description) => {
+  const echecs = [];
+  for (const player of match.players) {
+    try {
+      await withWalletMutex(player.userId, async () => {
+        await refundLockedEntry(player.userId, match.id, `${description} ${match.id}`);
+      });
+    } catch (error) {
+      echecs.push({ userId: player.userId, error: error.message });
+    }
+  }
+  return echecs;
+};
+
+/**
+ * Recalcule les `isCaptain` apres un retrait : premier joueur restant de
+ * chaque camp (meme loi que `joinMatchOnServer`, l.isCaptain = teamCount === 0).
+ * Pose en helper pur pour rester en place si un autre retrait en masse arrive.
+ *
+ * @param {object} match - Le match modifie SUR PLACE (le clone de l appelant).
+ */
+const reassignCaptainsAfterRemoval = (match) => {
+  let team0Assigned = false;
+  let team1Assigned = false;
+  for (const player of match.players) {
+    if (player.team === 0) {
+      player.isCaptain = !team0Assigned;
+      team0Assigned = true;
+    } else {
+      player.isCaptain = !team1Assigned;
+      team1Assigned = true;
+    }
+  }
+};
+
+/**
+ * Sortie VOLONTAIRE d un joueur inscrit, avant le lancement — remboursement
+ * integral, aucun frais consomme.
+ *
+ * La frontiere est quantitative : tant que le match n est PAS lance, la
+ * place d un joueur n engage personne d autre — sa sortie coute une place
+ * redevenue vacante, pas l argent de quiconque. Des que le match est lance
+ * (`startedAt`) ou qu un resultat existe, la garde se ferme : les mises
+ * jouent. Un litige ouvert appartient a l admin (`MATCH_DISPUTED`).
+ *
+ * Le CREATEUR ne passe pas par ici : lui qui publie le match se retire par
+ * une annulation du match (route `cancel`, rembourse + match ferme) — pas
+ * par une sortie qui laissait derriere elle un match orphelin, sans
+ * createur, mais toujours affiche en recrutement.
+ *
+ * Verrou : l appelant (la route) tient deja `withWalletMutex(actor.id)` —
+ * le moteur n acquiert PAS le sien (verrou non re-entrant), gabarit
+ * `joinMatchOnServer`.
+ *
+ * @param {Array} matches - Etat courant des matchs.
+ * @param {Object} actor - Le joueur qui se retire.
+ * @param {string} matchId - ID du match quitte.
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object}>}
+ */
+export const leaveMatchOnServer = async (matches, actor, matchId) => {
+  const actorUser = requireActorUser(actor);
+  const nextMatches = cloneMatches(matches);
+  const match = findMatch(nextMatches, matchId);
+
+  if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+  if (CLOSED_STATUSES.includes(match.status)) throw makeError('MATCH_CLOSED', 'Ce match est deja clos.');
+  // Verrou de sortie : un resultat pose ou un lancement engage les mises,
+  // aucun joueur ne peut se retirer apres coup. `in_progress` porte toujours
+  // un `startedAt` : couvert par la meme garde.
+  if (match.result || match.startedAt) {
+    throw makeError('MATCH_LAUNCHED', 'Le match est lance : la sortie volontaire n est plus possible.');
+  }
+  // Un litige ouvert appartient a l admin : pas de sortie en pietinant son
+  // traitement.
+  if ((match.disputes || []).some((dispute) => dispute.status === 'open' || dispute.status === 'under_review')) {
+    throw makeError('MATCH_DISPUTED', 'Un litige est ouvert : la sortie volontaire passe par son arbitrage.');
+  }
+  const playerIndex = match.players.findIndex((player) => player.userId === actorUser.id);
+  if (playerIndex === -1) throw makeError('NOT_IN_MATCH', 'Tu n es pas inscrit dans ce match.');
+  if (match.creatorId === actorUser.id) {
+    throw makeError('CREATOR_CANNOT_LEAVE', 'Tu es le createur : annule le match plutot que de le quitter.');
+  }
+
+  await refundLockedEntry(actorUser.id, match.id, `Sortie volontaire du match ${match.id}`);
+  match.players.splice(playerIndex, 1);
+  reassignCaptainsAfterRemoval(match);
+  Object.assign(match, updateMatchSnapshot(match, {}));
+
+  return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
+};
+
+/**
+ * Annulation VOLONTAIRE du match PAR SON CREATEUR — remboursement integral,
+ * aucun frais consomme.
+ *
+ * La ligne produit : tant que personne d autre n a pose un pass, le
+ * createur peut retirer son offre — personne d autre que lui ne perd rien.
+ * Des qu un autre joueur s est inscrit, l annulation volontaire se ferme :
+ * l argent d autrui est engage et seule la moderation (ou le balayage 2 h
+ * sans arbitre) peut solder le match. L arbitre en poste ne bloque PAS :
+ * il n a pose aucun pass, il n a rien a rendre.
+ *
+ * @param {Array} matches - Etat courant des matchs.
+ * @param {Object} actor - Le createur du match.
+ * @param {string} matchId - ID du match annule.
+ * @returns {Promise<{matches: Array, match: Object, actorUser: Object}>}
+ */
+export const cancelMatchSelfOnServer = async (matches, actor, matchId) => {
+  const actorUser = requireActorUser(actor);
+  const nextMatches = cloneMatches(matches);
+  const match = findMatch(nextMatches, matchId);
+
+  if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
+  if (match.creatorId !== actorUser.id) {
+    throw makeError('FORBIDDEN', 'Seul le createur du match peut l annuler de cette facon.');
+  }
+  // Anti-double-remboursement : un match deja solde ne se recancel pas.
+  if (match.result?.payoutDistributed || CLOSED_STATUSES.includes(match.status)) {
+    throw makeError('MATCH_CLOSED', 'Match deja clos : plus rien a annuler.');
+  }
+  if ((match.disputes || []).some((dispute) => dispute.status === 'open' || dispute.status === 'under_review')) {
+    throw makeError('MATCH_DISPUTED', 'Un litige est ouvert : seule l administration peut trancher.');
+  }
+  // Garde centrale : des qu un autre joueur a pose un pass, l annulation
+  // volontaire se ferme. L appelant recoit OPPONENTS_PRESENT et le match
+  // reste vivant — aucun remboursement n a encore eu lieu.
+  if (match.players.some((player) => player.userId !== actorUser.id)) {
+    throw makeError('OPPONENTS_PRESENT', 'Des joueurs ont rejoint ton match : leur pass est engage, demande a la moderation pour solder.');
+  }
+
+  await refundLockedEntry(actorUser.id, match.id, `Annulation volontaire du match ${match.id}`);
+
+  match.status = 'cancelled';
+  match.finishedAt = getNow();
+  match.updatedAt = getNow();
+  match.cancellationReason = 'CANCELLED_BY_CREATOR';
+  match.confirmationDeadline = null;
+
+  return { matches: nextMatches, match, actorUser: getUserById(actorUser.id) };
+};
+
+/**
  * Cancel a match and refund all players' locked entry fees (admin only).
  * Resolves any open disputes and marks the match as cancelled.
  * @param {Array} matches - Current array of all matches.
@@ -1542,10 +1703,13 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
     throw makeError('MATCH_CLOSED', 'Match déjà clôturé : annulation impossible, gains déjà distribués.');
   }
 
-  for (const player of match.players) {
-    await withWalletMutex(player.userId, async () => {
-      await refundLockedEntry(player.userId, match.id, `Remboursement moderation ${match.id}`);
-    });
+  // Aucun remboursement partiel ne se tait : si un seul ecrivain echoue
+  // (base indisponible), l operation entiere echoue — le statut du match
+  // n est pas modifie, la moderation retentera, et les remboursements
+  // passes sont idempotents (rejoues sans double-credit).
+  const echecs = await refundMatchPlayers(match, 'Remboursement moderation');
+  if (echecs.length > 0) {
+    throw makeError('REFUND_FAILED', `Remboursement incomplet (${echecs.length} joueur(s) en echec) : le match reste ouvert.`);
   }
 
   match.disputes = resolveOpenDisputes(match, reason);

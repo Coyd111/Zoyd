@@ -55,6 +55,8 @@ import { withMatchMutex, withWalletMutex } from '../mutex.mjs';
 import {
   createMatchOnServer,
   joinMatchOnServer,
+  leaveMatchOnServer,
+  cancelMatchSelfOnServer,
   assignArbiterOnServer,
   checkInMatchOnServer,
   toggleReadyOnServer,
@@ -150,6 +152,60 @@ if (req.method === 'POST' && matchJoin) {
   try { await withMatchMutex(async () => {
     const outcome = await withWalletMutex(session.user.id, async () =>
       joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team)
+    );
+    await saveMatches(io, outcome.matches, outcome.match);
+    respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+  });
+  } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+// Sortie volontaire d un joueur AVANT le lancement : gabarit join en tout
+// point — session, quota `social` (si le join, qui deverrouille des ZC,
+// passe par la, la sortie les rend au meme rythme), chainage match + wallet,
+// puis `saveMatches` avant reponse. Le verrou wallet doit ENVELOPPER l
+// appel moteur : le moteur appelle `refundLockedEntry` en direct (verrou
+// non re-entrant).
+const matchLeave = pathname.match(/^\/api\/matches\/([^/]+)\/leave$/);
+if (req.method === 'POST' && matchLeave) {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+
+  try { await withMatchMutex(async () => {
+    const outcome = await withWalletMutex(session.user.id, async () =>
+      leaveMatchOnServer(getStateCollection('matches'), session.user, matchLeave[1])
+    );
+    await saveMatches(io, outcome.matches, outcome.match);
+    respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
+  });
+  } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+// Annulation volontaire PAR LE CREATEUR tant que personne d autre n a pose
+// de pass (`OPPONENTS_PRESENT` sinon). Meme gabarit : le remboursement
+// integral du createur passe SOUS son verrou wallet — le verrou doit
+// ENVELOPPER l appel moteur.
+const matchCancelSelf = pathname.match(/^\/api\/matches\/([^/]+)\/cancel$/);
+if (req.method === 'POST' && matchCancelSelf) {
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+
+  try { await withMatchMutex(async () => {
+    const outcome = await withWalletMutex(session.user.id, async () =>
+      cancelMatchSelfOnServer(getStateCollection('matches'), session.user, matchCancelSelf[1])
     );
     await saveMatches(io, outcome.matches, outcome.match);
     respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));

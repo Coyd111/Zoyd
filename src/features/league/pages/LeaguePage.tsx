@@ -84,7 +84,7 @@ const SeasonCard: React.FC<{
   onLeave: (seasonId: string) => void;
   isActionLoading: boolean;
 }> = React.memo(({ season, currentUserId, onJoin, onLeave, isActionLoading }) => {
-  const isRegistered = season.registeredPlayers.some((p) => p.userId === currentUserId);
+  const isRegistered = season.registeredPlayers.some((p) => p.isMe || (currentUserId && p.userId === currentUserId));
   const slotsLeft = season.maxPlayers - season.registeredPlayers.length;
   // Repli explicite : un statut serveur inconnu du front ne doit plus
   // valoir `undefined` sur une table de libelles (M2).
@@ -178,11 +178,11 @@ const SeasonCard: React.FC<{
         </div>
       )}
 
-      {season.status === 'completed' && season.podium.first && (
+      {season.status === 'completed' && (season.podium.first || season.podium.firstPseudo) && (
         <div className="border-t border-white/5 pt-3 flex items-center gap-2">
           <Crown className="w-4 h-4 text-zoyd-yellow" aria-hidden="true" />
           <span className="text-xs text-white/60">
-            Vainqueur : <span className="text-white font-bold">{season.registeredPlayers.find((p) => p.userId === season.podium.first)?.pseudo || '—'}</span>
+            Vainqueur : <span className="text-white font-bold">{season.podium.firstPseudo || season.registeredPlayers.find((p) => p.userId === season.podium.first)?.pseudo || '—'}</span>
           </span>
         </div>
       )}

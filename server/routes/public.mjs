@@ -21,6 +21,10 @@
  *   reprise — file dediee + historique de tx, dedoublonne par payoutId.
  *   La sante ne re-invente pas la regle, elle compte par le module qui
  *   recouvre, et n'expose qu'un TOTAL anonyme (ni identifiant, ni montant).
+ * INVARIANT (audit-3 C7) : `persistence.pendingSettlements` applique la
+ *   meme regle aux dettes de reglement (matchs, tournois, ligues, salons
+ *   BR, commissions d'arbitre) : compteurs existants uniquement, totaux
+ *   anonymes, aucune ecriture — l'etat reste lisible meme casse.
  * INVARIANT : `/metrics` n'est PAS une route JSON : elle ecrit du
  *   `text/plain` en `res.writeHead`, donc elle echappe aux en-tetes et aux
  *   metriques de `respondJson`.
@@ -76,6 +80,14 @@ import {
 // reconciliation, compte par le meme module qui les reluira (miroir fidele
 // de `reconcilePendingWithdrawals`) — la sante ne re-invente pas la regle.
 import { countPendingWithdrawals } from '../wallet-engine.mjs';
+// Audit-3 C7 : la sante doit AUSSI voir les dettes de reglement (matchs en
+// attente de confirmation/versement, remboursements et gains de tournoi,
+// podium de ligue, salons BR en cours de reglement, commissions d'arbitre).
+// Compteurs existants uniquement, totaux anonymes — jamais d'identifiants.
+import { countPendingArbiterFees, getPublicMatchesForUser } from '../match-engine.mjs';
+import { countPendingTournamentPayouts, countPendingTournamentRefunds } from '../tournament-engine.mjs';
+import { countPendingLeaguePayouts, countPendingLeagueRefunds } from '../league-engine.mjs';
+import { countPendingBrSettlements } from '../br-engine.mjs';
 import { metricsToPrometheus, setGauge } from '../metrics.mjs';
 import { channels } from '../channel-presence.mjs';
 import {
@@ -83,7 +95,6 @@ import {
   sanitizeMatchForBroadcast,
   sanitizeTournamentForBroadcast,
 } from '../state-helpers.mjs';
-import { getPublicMatchesForUser } from '../match-engine.mjs';
 import { getNow } from '../utils.mjs';
 import { createLogger } from '../logger.mjs';
 
@@ -123,6 +134,19 @@ if (req.method === 'GET' && pathname === '/api/health') {
   // reste sans effet de bord.
   // ok=false quand l'état mémoire n'est pas fiable : les écritures sont
   // refusées, un orchestrateur doit le savoir plutôt que de croire au vert.
+  const matches = getStateCollection('matches');
+  const tournaments = getStateCollection('tournaments');
+  const leagues = getStateCollection('leagues');
+  const brLobbies = getStateCollection('brLobbies');
+  const pendingSettlements = {
+    matchesPayoutPending: matches.filter((m) => m?.result?.payoutDistributed === 'pending').length,
+    arbiterFeesPending: countPendingArbiterFees(matches),
+    tournamentPayouts: countPendingTournamentPayouts(tournaments),
+    tournamentRefunds: countPendingTournamentRefunds(tournaments),
+    leaguePayouts: countPendingLeaguePayouts(leagues),
+    leagueRefunds: countPendingLeagueRefunds(leagues),
+    brSettlements: countPendingBrSettlements(brLobbies),
+  };
   respondJson(res, health.stateTrusted ? 200 : 503, {
     ok: health.stateTrusted,
     service: 'zoyd-api',
@@ -133,6 +157,7 @@ if (req.method === 'GET' && pathname === '/api/health') {
         listUserIds,
         (userId) => getUserById(userId)?.wallet,
       ),
+      pendingSettlements,
     },
     timestamp: getNow(),
   });

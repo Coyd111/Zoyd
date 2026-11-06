@@ -33,9 +33,17 @@ vi.mock('./supabase.mjs', () => ({
 }));
 
 const initiateFedaPayPayout = vi.fn(async () => ({ status: 'success', payoutId: 1 }));
-vi.mock('../payment-engine.mjs', () => ({
-  initiateFedaPayPayout: (...args) => initiateFedaPayPayout(...args),
-}));
+// Chemin relatif DEPUIS server/ : './payment-engine.mjs'. L'ancienne
+// ecriture '../payment-engine.mjs' designait la racine du depot — le mock
+// ne s'appliquait JAMAIS et la route aurait pu executer le VRAI module de
+// payout en test.
+vi.mock('./payment-engine.mjs', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    initiateFedaPayPayout: (...args) => initiateFedaPayPayout(...args),
+  };
+});
 
 vi.mock('./mutex.mjs', () => ({
   withWalletMutex: vi.fn(async (_id, fn) => fn()),
@@ -147,7 +155,7 @@ describe('Retrait : la branche 409 ne doit pas lancer un second transfert', () =
     ).not.toHaveBeenCalled();
   });
 
-  it.skip('temoin : un retrait normal declenche UN payout (exige FedaPay configure)', async () => {
+  it('temoin : un retrait normal declenche UN payout', async () => {
     // Sans ce temoin, le test ci-dessus pourrait passer pour une raison
     // orthographique (route qui ne ferait jamais de payout).
     const { token } = await nouveauJoueur();
@@ -157,7 +165,7 @@ describe('Retrait : la branche 409 ne doit pas lancer un second transfert', () =
     expect(initiateFedaPayPayout).toHaveBeenCalledTimes(1);
   });
 
-  it.skip('doublon strict (exige FedaPay configure)', async () => {
+  it('doublon strict (le troisieme appel avec la meme cle ne repasse pas)', async () => {
     // Meme piege possible sur la branche `isDuplicate`, qui sort elle aussi par
     // un `return` interne. Elle est traitee par un drapeau dedie, mais le
     // test verrouille le comportement.

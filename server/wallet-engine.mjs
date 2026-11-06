@@ -80,11 +80,15 @@ export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE, MAX_WITHDRAWAL_DAILY_ZC };
  *
  * @param {unknown} existant - registre actuel (tolere undefined)
  * @param {{ txId: string, timestamp: string, amount: number }} entree
- * @param {number} [nowMs]
+ * @param {number} [nowMs] - millisecondes epoch ; toute autre valeur
+ *   (ex. une chaine ISO) est ignoree au profit de Date.now(), sinon la
+ *   comparaison `quand > debut` renvoie false pour TOUTES les entrees et
+ *   le registre est purge a chaque retrait.
  * @returns {Array<{ txId: string, timestamp: string, amount: number }>} registre mis a jour
  */
 const pushRetraitCumul = (existant, entree, nowMs = Date.now()) => {
-  const debut = nowMs - DAILY_WINDOW_MS;
+  const nowNum = typeof nowMs === 'number' && Number.isFinite(nowMs) ? nowMs : Date.now();
+  const debut = nowNum - DAILY_WINDOW_MS;
   const restants = (Array.isArray(existant) ? existant : []).filter(
     (e) => e?.txId
       && e.txId !== entree.txId
@@ -349,7 +353,7 @@ export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money'
       retraitCumul: pushRetraitCumul(
         wallet.retraitCumul,
         { txId: retrait.id, timestamp: retrait.timestamp, amount: safeAmount },
-        getNow(),
+        Date.now(),
       ),
       transactions: [retrait, ...(Array.isArray(wallet.transactions) ? wallet.transactions : [])].slice(0, 200),
     };
@@ -552,6 +556,10 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
   // frais, et reutilisee telle quelle si l OCC rejoue l updater.
   let dejaVerse = null;
   try {
+    // Tous les autres chemins du portefeuille renvoient le portefeuille
+    // (`.wallet`). Celui-ci renvoyait l'OBJET UTILISATEUR COMPLET (email,
+    // telephone, stats incluses) : aucun appelant ne l'exploitait, mais tout
+    // futur appelant aurait pu propager des donnees personnelles.
     return (await updateWalletSnapshot(userId, (wallet) => {
       if (dejaVerse === null) {
         dejaVerse = hasSettledWinningsKey(userId, idempotencyKey, wallet);
@@ -601,7 +609,7 @@ export const releaseWalletWinnings = async (userId, amount, matchId, type = 'pri
           metadata: { cashCredit, bonusRestore, winningsKey: idempotencyKey },
         }
       );
-    }));
+    })).wallet;
   } catch (error) {
     // L ecriture a echoue : la cle inscrite en memoire designe un versement
     // qui n a pas eu lieu. On la retire, sinon la reprise croirait avoir verse,

@@ -432,14 +432,17 @@ describe('league-engine - C4 : phase de qualification abandonnee', () => {
 });
 
 describe('league-engine - getLeagueLeaderboard', () => {
-  it('should return standings for season', () => {
+  it('should return standings for season WITHOUT internal identifiers', () => {
     const standings = [
       { userId: 'p1', pseudo: 'A', totalPoints: 100, bestPlacement: 1, matchesPlayed: 5, placements: [1, 2, 3] },
     ];
     const season = makeSeason({ standings });
     const result = leagueEngine.getLeagueLeaderboard([season], 'LS-TEST');
     expect(result).toHaveLength(1);
-    expect(result[0].userId).toBe('p1');
+    // Le endpoint est PUBLIC (sans session) : jamais d'identifiant interne.
+    expect(result[0].userId, 'userId ne doit JAMAIS fuiter sur le leaderboard public').toBeUndefined();
+    expect(result[0].pseudo).toBe('A');
+    expect(result[0].totalPoints).toBe(100);
   });
 
   it('should throw if season not found', () => {

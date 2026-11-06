@@ -51,7 +51,10 @@ export const QualificationPanel = ({
         const slot = season.qualificationGroups[day];
         const status = slot?.status || 'pending';
         const Icon = DAY_STATUS_ICONS[status] || Clock;
-        const myGroup = slot?.players.includes(currentUserId || '');
+        // Vue sanitisee (non-admin) : le serveur livre isMine + playerCount.
+        // Vue admin : on retombe sur la comparaison explicite aux ids.
+        const myGroup = slot ? (slot.isMine ?? (currentUserId ? (slot.players || []).includes(currentUserId) : false)) : false;
+        const groupCount = slot?.playerCount ?? slot?.players?.length ?? 0;
 
         return (
           <div
@@ -73,7 +76,7 @@ export const QualificationPanel = ({
                 </div>
                 <div>
                   <div className="text-sm font-bold text-white">{DAY_LABELS[day]}</div>
-                  <div className="text-[10px] text-white/70">{slot?.players.length || 0} joueurs</div>
+                  <div className="text-[10px] text-white/70">{groupCount} joueurs</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -109,7 +112,7 @@ export const QualificationPanel = ({
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5">
                   {slot.results.slice(0, 10).map((result, i) => (
                     <div
-                      key={result.userId}
+                      key={result.userId || `${result.placement}-${i}`}
                       className={`text-[10px] px-2 py-1 border ${
                         i === 0
                           ? 'border-zoyd-yellow/30 text-zoyd-yellow bg-zoyd-yellow/5'

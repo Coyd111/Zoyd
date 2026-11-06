@@ -1089,7 +1089,12 @@ export const countUncollectableLeagueRefunds = (seasons) => (Array.isArray(seaso
 export const getLeagueLeaderboard = (seasons, seasonId) => {
   const season = seasons.find((s) => s.id === seasonId);
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  return season.standings;
+  // Le classement est expose SANS session : il ne doit JAMAIS porter
+  // l'identifiant interne d'un compte. Le front n'affiche que pseudo +
+  // points — on ne livre que ca.
+  return (Array.isArray(season.standings) ? season.standings : []).map(
+    ({ userId, ...publicStanding }) => publicStanding,
+  );
 };
 
 export const updateLeagueSettingsOnServer = (seasons, actor, seasonId, settings) => {

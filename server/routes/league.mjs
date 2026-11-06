@@ -61,7 +61,7 @@ import {
   refundLeaguePlayerOnServer,
   getLeaguePayments,
 } from '../league-engine.mjs';
-import { saveLeagues, getStoredLeagues, buildLeagueActionPayload } from '../state-helpers.mjs';
+import { saveLeagues, getStoredLeagues, buildLeagueActionPayload, sanitizeLeagueForBroadcast } from '../state-helpers.mjs';
 import { deliverNotification } from '../push-notifications.mjs';
 import { requireAdmin2fa } from '../admin-totp.mjs';
 import { createLogger } from '../logger.mjs';
@@ -78,9 +78,11 @@ if (req.method === 'GET' && pathname === '/api/leagues') {
   // joueur inscrit. L'anonymat ne servait donc a rien sinon a livrer a
   // tout internet la liste des-inscriptions d'une ligue (une carte sociale
   // de tes adversaires, pseudo -> identifiant de compte).
-  // Le modele `isMe` complet est prevu plus tard ; exiger une session
-  // ferme desormais l'exposition anonyme sans toucher au client.
-  if (!getAuthenticatedAppSession(req)) {
+  // Depuis le modele `isMe` ligue, la saison est sanitisee PAR SESSION :
+  // chaque destinataire ne recoit que sa propre position (isMe), jamais
+  // les etats de paiement des autres.
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
     return true;
   }
@@ -89,13 +91,7 @@ if (req.method === 'GET' && pathname === '/api/leagues') {
     const { limit, offset } = parseQueryParams(req.url);
     const all = getStoredLeagues();
     const { items, hasMore } = paginate(all, { limit, offset });
-    const seasons = items.map((s) => {
-      const { members, ...safe } = s;
-      if (Array.isArray(members)) {
-        safe.members = members.map(({ playerId, ...rest }) => rest);
-      }
-      return safe;
-    });
+    const seasons = items.map((s) => sanitizeLeagueForBroadcast(s, session.user.id));
     respondJson(res, 200, { ok: true, seasons, total: all.length, hasMore }, req);
   } catch (error) {
     respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement des ligues.', code: 'LOAD_ERROR' });
@@ -107,7 +103,8 @@ const leagueGetOne = pathname.match(/^\/api\/leagues\/([^/]+)$/);
 if (req.method === 'GET' && leagueGetOne) {
   // Meme garde que la liste : une saison isolee ne doit pas devenir un
   // raccourci pour sortir les userId quand la liste est fermee.
-  if (!getAuthenticatedAppSession(req)) {
+  const detailSession = getAuthenticatedAppSession(req);
+  if (!detailSession) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
     return true;
   }
@@ -119,7 +116,7 @@ if (req.method === 'GET' && leagueGetOne) {
       respondJson(res, 404, { ok: false, error: 'Ligue introuvable.', code: 'LEAGUE_NOT_FOUND' });
       return true;
     }
-    respondJson(res, 200, { ok: true, season });
+    respondJson(res, 200, { ok: true, season: sanitizeLeagueForBroadcast(season, detailSession.user.id) });
   } catch (error) {
     respondJson(res, 500, { ok: false, error: 'Erreur lors du chargement de la ligue.', code: 'LOAD_ERROR' });
   }

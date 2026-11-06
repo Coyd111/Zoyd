@@ -27,39 +27,50 @@ export type LeagueDayKey = 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'sa
 export type LeagueDayStatus = 'pending' | 'scheduled' | 'live' | 'finished';
 
 export interface LeaguePlayer {
-  userId: string;
+  /** Absent dans la vue sanitisee (non-admin) : seul l'admin recoit les ids internes. */
+  userId?: string;
   pseudo: string;
   joinedAt: string;
+  /** true uniquement pour le destinataire de la reponse/diffusion. */
+  isMe?: boolean;
 }
 
 export interface LeagueDayResult {
-  userId: string;
+  userId?: string;
   placement: number;
   kills: number;
   points: number;
+  isMe?: boolean;
 }
 
 export interface LeagueDaySlot {
-  players: string[];
+  /** Reserve a l'admin ; absent ailleurs. */
+  players?: string[];
+  /** Nombre de joueurs du groupe (public). */
+  playerCount?: number;
+  /** true si le destinataire est dans ce groupe (calcule serveur). */
+  isMine?: boolean;
   matchId: string | null;
   results: LeagueDayResult[];
   status: LeagueDayStatus;
 }
 
 export interface LeagueStanding {
-  userId: string;
+  userId?: string;
   pseudo: string;
   totalPoints: number;
   bestPlacement: number;
   matchesPlayed: number;
   placements: number[];
+  isMe?: boolean;
 }
 
 export interface LeagueFinalist {
-  userId: string;
+  userId?: string;
   pseudo: string;
   totalPoints: number;
   bestPlacement: number;
+  isMe?: boolean;
 }
 
 export interface LeaguePayout {
@@ -70,9 +81,14 @@ export interface LeaguePayout {
 }
 
 export interface LeaguePodium {
-  first: string | null;
-  second: string | null;
-  third: string | null;
+  /** ids internes : uniquement dans la vue admin. */
+  first?: string | null;
+  second?: string | null;
+  third?: string | null;
+  /** Toujours fournis par le serveur : resolution pseudo du podium. */
+  firstPseudo?: string | null;
+  secondPseudo?: string | null;
+  thirdPseudo?: string | null;
 }
 
 export interface LeagueSchedule {
@@ -85,7 +101,7 @@ export interface LeagueSchedule {
 
 export interface LeagueFinalMatch {
   matchId: string | null;
-  results: Array<{ userId: string; placement: number; kills: number }>;
+  results: Array<{ userId?: string; placement: number; kills: number; pseudo?: string | null; isMe?: boolean }>;
   status: 'pending' | 'live' | 'finished';
 }
 

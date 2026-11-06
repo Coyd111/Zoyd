@@ -17,7 +17,7 @@ vi.mock('./persistence.mjs', async (importOriginal) => {
   return { ...actual, getUserById: (id) => accounts.get(id) || null };
 });
 
-const { sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, toPublicBrLobby } = await import('./state-helpers.mjs');
+const { sanitizeMatchForBroadcast, sanitizeTournamentForBroadcast, toPublicBrLobby, sanitizeLeagueForBroadcast } = await import('./state-helpers.mjs');
 
 /**
  * Ces tests verrouillent l'absence d'identifiant joueur dans ce qui part
@@ -432,5 +432,76 @@ describe('sanitizeMatchForBroadcast — litiges et preuves (S4)', () => {
   it('lecteur hors partie : preuve masquee', () => {
     const raw = JSON.stringify(sanitizeMatchForBroadcast(disputeMatch(), OTHER_PLAYER_ID));
     expect(raw).not.toContain(CAPTURE_URL);
+  });
+});
+
+describe('sanitizeLeagueForBroadcast — aucune fuite de userId', () => {
+  // La page /br-league est derriere AppLayout (session requise), mais une
+  // simple session joueur ne doit pas apprendre l'identifiant INTERNE des
+  // autres comptes : la liste des inscrits rattachait pseudo <-> compte.
+  // Les admins gardent la vue brute (ciblage refund/reassign/finale).
+  const makeSeason = () => ({
+    id: 'LS-1',
+    cycleNumber: 7,
+    name: 'Saison 7',
+    format: 'BR',
+    teamSize: 1,
+    status: 'qualifying',
+    entryFee: 50,
+    maxPlayers: 100,
+    registeredPlayers: [
+      { userId: PLAYER_ID, pseudo: 'P1', joinedAt: '2026-10-01T00:00:00.000Z', paid: true, paidAt: '2026-10-01T00:00:00.000Z' },
+      { userId: OTHER_ID, pseudo: 'P2', joinedAt: '2026-10-02T00:00:00.000Z', paid: true, paidAt: '2026-10-02T00:00:00.000Z' },
+    ],
+    qualificationGroups: {
+      tuesday: { players: [PLAYER_ID], matchId: null, results: [{ userId: PLAYER_ID, placement: 1, kills: 7, points: 10 }], status: 'finished' },
+      wednesday: { players: [OTHER_ID], matchId: 'M-9', results: [], status: 'scheduled' },
+    },
+    standings: [{ userId: PLAYER_ID, pseudo: 'P1', totalPoints: 10, bestPlacement: 1, matchesPlayed: 1, placements: [1] }],
+    finalists: [{ userId: PLAYER_ID, pseudo: 'P1', totalPoints: 10, bestPlacement: 1 }],
+    finalMatch: { matchId: 'M-F', results: [{ userId: PLAYER_ID, placement: 1, kills: 9 }], status: 'finished' },
+    podium: { first: PLAYER_ID, second: OTHER_ID, third: null },
+    payout: { gross: 1000, first: 500, second: 300, third: 200 },
+    schedule: {},
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-10-01T00:00:00.000Z',
+    finishedAt: null,
+  });
+
+  it('anonyme : aucun identifiant interne, le podium est resolu en pseudo', () => {
+    const raw = JSON.stringify(sanitizeLeagueForBroadcast(makeSeason(), null));
+    expect(raw).not.toContain(PLAYER_ID);
+    expect(raw).not.toContain(OTHER_ID);
+    expect(raw).not.toContain('userId');
+    const safe = sanitizeLeagueForBroadcast(makeSeason(), null);
+    expect(safe.podium).toEqual({ firstPseudo: 'P1', secondPseudo: 'P2', thirdPseudo: null });
+    expect(safe.registeredPlayers.map((p) => p.pseudo)).toEqual(['P1', 'P2']);
+    // Regles du jeu conservees.
+    expect(safe.payout.first).toBe(500);
+    expect(safe.status).toBe('qualifying');
+  });
+
+  it('joueur non-admin : isMe calcule, jamais l id des autres ni les paiements', () => {
+    accounts.set(PLAYER_ID, { id: PLAYER_ID, role: 'player' });
+    const safe = sanitizeLeagueForBroadcast(makeSeason(), PLAYER_ID);
+    expect(safe.registeredPlayers.map((p) => p.isMe)).toEqual([true, false]);
+    expect(safe.qualificationGroups.tuesday.isMine).toBe(true);
+    expect(safe.qualificationGroups.tuesday.playerCount).toBe(1);
+    expect(safe.qualificationGroups.wednesday.isMine).toBe(false);
+    expect(safe.standings[0].isMe).toBe(true);
+    expect(safe.finalMatch.results[0].pseudo).toBe('P1');
+    const raw = JSON.stringify(safe);
+    expect(raw).not.toContain(OTHER_ID);
+    expect(raw).not.toContain('paidAt');
+    expect(raw).not.toContain('"paid"');
+  });
+
+  it('admin : vue brute conservee (ciblage refund/reassign/finale)', () => {
+    const ADMIN_ID = '66666666-6666-4666-8666-666666666666';
+    accounts.set(ADMIN_ID, { id: ADMIN_ID, pseudo: 'ADMIN', role: 'admin' });
+    const safe = sanitizeLeagueForBroadcast(makeSeason(), ADMIN_ID);
+    expect(safe.registeredPlayers[0].userId).toBe(PLAYER_ID);
+    expect(safe.qualificationGroups.tuesday.players).toEqual([PLAYER_ID]);
+    expect(safe.podium.first).toBe(PLAYER_ID);
   });
 });

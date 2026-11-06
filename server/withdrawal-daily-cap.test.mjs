@@ -172,6 +172,43 @@ describe('Cumul des retraits sur 24 h', () => {
     expect(getUserById(user.id).wallet.retraitCumul.some((e) => e?.amount === 30_000)).toBe(true);
   });
 
+  it('le registre survit a un retrait intermediaire (regression nowMs ISO)', async () => {
+    // Bug corrige : l'appel passait getNow() (chaine ISO) en guise de
+    // millisecondes a pushRetraitCumul. `debut` valait NaN, TOUTES les
+    // entrees etaient rejetees par le filtre, et le registre repartait a
+    // zero a CHAQUE retrait. Les tests existants ne le voyaient pas : la
+    // somme du registre est relue avant ecriture ET l historique heritage
+    // venait en secours — tant qu un petit retrait intermediaire ne purgeait
+    // pas le registre puis que l historique n etait pas bourre de 200+
+    // entrees. La combinaison « petit retrait + bourrage » effacait alors
+    // le premier retrait des deux sources : le plafond 24 h tombait.
+    const user = await nouveauCompte();
+    await depositToWallet(user.id, 100_000, 'test');
+    await settle();
+
+    await withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'r1' });
+    // Retrait intermediaire sous le plafond : il purgeait le registre.
+    await withdrawFromWallet(user.id, 1_000, 'Moov Money', '+22997000000', { idempotencyKey: 'r2' });
+
+    // Le registre conserve les DEUX entrees apres le retrait intermediaire.
+    const consignes = getUserById(user.id).wallet.retraitCumul.map((e) => e?.amount);
+    expect(consignes, 'les deux retraits doivent rester consignes').toEqual(
+      expect.arrayContaining([30_000, 1_000]),
+    );
+
+    // Bourrage : 200 ecritures generales, l historique perd TX du 1er retrait.
+    for (let i = 0; i < 200; i += 1) {
+      await depositToWallet(user.id, 1, 'test');
+    }
+    await settle();
+
+    // Sans le registre, le premier retrait n est plus dans aucune source :
+    // le joueur repartirait a zero et depasserait le plafond de 50 000 ZC.
+    await expect(
+      withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'r3' })
+    ).rejects.toMatchObject({ code: 'DAILY_WITHDRAWAL_LIMIT' });
+  });
+
   it('un retrait refuse ne compte plus apres le tag d echec (registre purge, P4 C2)', async () => {
     // La remise FedaPay est refusee : le retrait est re-tagge failed ET
     // rembourse. L'entree correspondante sort du registre, sinon le cumul

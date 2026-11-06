@@ -129,12 +129,12 @@ const LeagueSeasonPage = () => {
 
   const isRegistered = useMemo(() => {
     if (!season || !user) return false;
-    return season.registeredPlayers.some((p) => p.userId === user.id);
+    return season.registeredPlayers.some((p) => p.isMe || p.userId === user.id);
   }, [season, user]);
 
   const myStanding = useMemo(() => {
     if (!season || !user) return null;
-    return season.standings.find((s) => s.userId === user.id) || null;
+    return season.standings.find((s) => s.isMe || s.userId === user.id) || null;
   }, [season, user]);
 
   const handleJoin = async () => {
@@ -429,13 +429,13 @@ const LeagueSeasonPage = () => {
           </div>
         )}
 
-        {season.status === 'completed' && season.podium.first && (
+        {season.status === 'completed' && (season.podium.first || season.podium.firstPseudo) && (
           <div className="grid grid-cols-3 gap-3 mb-8">
             <div className="border border-zoyd-yellow/30 bg-zoyd-yellow/5 px-4 py-4 text-center">
               <Crown className="w-6 h-6 text-zoyd-yellow mx-auto mb-2" />
               <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow mb-1">Champion</div>
               <div className="text-sm font-bold text-white">
-                {season.registeredPlayers.find((p) => p.userId === season.podium.first)?.pseudo || '—'}
+                {season.podium.firstPseudo || season.registeredPlayers.find((p) => p.userId === season.podium.first)?.pseudo || '—'}
               </div>
               <div className="text-[10px] text-green-400 mt-1">{formatZC(season.payout.first)}</div>
             </div>
@@ -443,7 +443,7 @@ const LeagueSeasonPage = () => {
               <Medal className="w-6 h-6 text-white/70 mx-auto mb-2" />
               <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-white/70 mb-1">Vice-Champion</div>
               <div className="text-sm font-bold text-white">
-                {season.registeredPlayers.find((p) => p.userId === season.podium.second)?.pseudo || '—'}
+                {season.podium.secondPseudo || season.registeredPlayers.find((p) => p.userId === season.podium.second)?.pseudo || '—'}
               </div>
               <div className="text-[10px] text-white/70 mt-1">{formatZC(season.payout.second)}</div>
             </div>
@@ -451,7 +451,7 @@ const LeagueSeasonPage = () => {
               <Medal className="w-6 h-6 text-orange-400/80 mx-auto mb-2" />
               <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-orange-400/80 mb-1">3eme</div>
               <div className="text-sm font-bold text-white">
-                {season.registeredPlayers.find((p) => p.userId === season.podium.third)?.pseudo || '—'}
+                {season.podium.thirdPseudo || season.registeredPlayers.find((p) => p.userId === season.podium.third)?.pseudo || '—'}
               </div>
               <div className="text-[10px] text-orange-400/80 mt-1">{formatZC(season.payout.third)}</div>
             </div>
@@ -495,10 +495,9 @@ const LeagueSeasonPage = () => {
                       </thead>
                       <tbody>
                         {season.finalMatch.results.map((result, index) => {
-                          const player = season.registeredPlayers.find((p) => p.userId === result.userId);
                           return (
                             <tr
-                              key={result.userId}
+                              key={result.userId || result.pseudo || index}
                               className={`border-b border-white/5 ${
                                 index === 0 ? 'bg-zoyd-yellow/5' : index < 3 ? 'bg-white/[0.02]' : ''
                               }`}
@@ -511,7 +510,7 @@ const LeagueSeasonPage = () => {
                                 </span>
                               </td>
                               <td className="px-4 py-3">
-                                <span className="text-sm text-white">{player?.pseudo || '—'}</span>
+                                <span className="text-sm text-white">{result.pseudo || season.registeredPlayers.find((p) => p.userId && p.userId === result.userId)?.pseudo || '—'}</span>
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <span className="text-sm text-white/60">{result.kills}</span>
@@ -524,8 +523,11 @@ const LeagueSeasonPage = () => {
                   </div>
                 </div>
               ) : season.status === 'final' && user?.role === 'admin' ? (
+                // Vue admin : le serveur livre les userIds des finalistes.
+                // Si ce n'est pas le cas (snapshot sanitise), on affiche
+                // « Aucun finaliste » plutot qu'une finale invalide.
                 <FinalResultsForm
-                  finalists={season.finalists}
+                  finalists={season.finalists.filter((f): f is typeof f & { userId: string } => Boolean(f.userId))}
                   onsubmit={(results) => handleAdminAction('submit-final-results', { results })}
                   isLoading={actionLoading}
                 />

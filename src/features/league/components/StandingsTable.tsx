@@ -6,9 +6,9 @@
  *
  * INVARIANT : le classement vient du serveur (standings). Ne pas le
  * recalculer cote client : le bareme de points est une regle serveur.
- * INVARIANT : la ligne du joueur courant est identifiee par userId, qui
- * reste lisible dans les donnees de ligue. C'est une exception au usage
- * general de `isMe` (propre aux matchs et tournois diffuses).
+ * INVARIANT : la ligne du joueur courant est identifiee par le drapeau
+ *   `isMe` calcule pour CHAQUE destinataire par le serveur. Pour une vue
+ *   admin (userId encore present), on retombe sur la comparaison explicite.
  * PIEGE : une saison sans classement doit afficher un etat vide explicite,
  * pas un tableau a zero ligne qui se lirait comme ' personne n'a joue '.
  *
@@ -40,11 +40,11 @@ export const StandingsTable = ({ standings, currentUserId }: { standings: League
           </thead>
           <tbody>
             {standings.map((standing, index) => {
-              const isMe = standing.userId === currentUserId;
+              const isMe = standing.isMe ?? (currentUserId ? standing.userId === currentUserId : false);
               const isTop3 = index < 3;
               return (
                 <tr
-                  key={standing.userId}
+                  key={standing.userId || `${standing.pseudo}-${index}`}
                   className={`border-b border-white/5 ${
                     isMe ? 'bg-zoyd-yellow/5' : isTop3 ? 'bg-white/[0.02]' : ''
                   }`}

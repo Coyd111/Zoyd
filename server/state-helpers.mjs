@@ -11,8 +11,9 @@
  * INVARIANT : les identifiants internes (userId des joueurs, de l'arbitre,
  *   `captainId`) ne sont JAMAIS diffuses : ils sont remplaces par le
  *   booleen `isMe`.
- * INVARIANT : `isMe` est calcule PAR DESTINATAIRE : matchs et tournois sont
- *   emis socket par socket, jamais par un `io.emit` global.
+ * INVARIANT : `isMe` est calcule PAR DESTINATAIRE : matchs, tournois ET ligues
+ *   sont emis socket par socket, jamais par un `io.emit` global. Les admins
+ *   recoivent la vue brute des ligues (ciblage reassign/refund/finale).
  * INVARIANT : `roomPassword`, `roomName`, `screenshots` et
  *   `result.confirmedByTeams` sont retires de la diffusion ; le second est
  *   remplace par le booleen `hasConfirmed`.
@@ -477,7 +478,108 @@ const saveBrLobbies = async (io, lobbies) => {
 };
 
 /**
+ * Sanitise une saison de ligue pour UN destinataire donne.
+ *
+ * Modele aligne sur `sanitizeMatchForBroadcast` : livraison par socket ou
+ * par session HTTP, `isMe` calcule par destinataire. La page `/br-league`
+ * est derrriere AppLayout (session obligatoire), mais une session joueur
+ * quelconque ne doit pas apprendre l'identifiant INTERNE des comptes
+ * (userId) ni les etats de paiement des autres : la liste des inscrits
+ * rattachait pseudo <-> identifiant de compte (une carte sociale), et le
+ * versement du podium n'a rien a faire fuiter au-dela de l'admin.
+ *
+ * Les admins gardent la vue brute : le panneau d'administration cible les
+ * remboursements/reassignations/finale par userId (reassign/refund/final).
+ *
+ * @param {object} season - Saison brute (telle que normalisee)
+ * @param {string|null} viewerId - userId du destinataire (null = anonyme)
+ * @returns {object} Copie sure pour ce destinataire
+ */
+const sanitizeLeagueForBroadcast = (season, viewerId = null) => {
+  if (!season) return season;
+  if (Boolean(viewerId) && getUserById(viewerId)?.role === 'admin') return season;
+
+  const pseudoById = new Map(
+    (Array.isArray(season.registeredPlayers) ? season.registeredPlayers : [])
+      .map((p) => [p?.userId, p?.pseudo || null]),
+  );
+  const pseudoOf = (id) => (id ? pseudoById.get(id) || null : null);
+  const isMeOf = (id) => Boolean(viewerId && id === viewerId);
+
+  const registeredPlayers = (Array.isArray(season.registeredPlayers) ? season.registeredPlayers : [])
+    .map((player) => {
+      const { userId, paid, paidAt, locked, amount, cashAmount, bonusAmount, entryFee, ...rest } = player || {};
+      return { ...rest, isMe: isMeOf(userId) };
+    });
+
+  const qualificationGroups = Object.fromEntries(
+    Object.entries(season.qualificationGroups || {}).map(([day, slot]) => {
+      const players = Array.isArray(slot?.players) ? slot.players : [];
+      const { players: _players, ...restSlot } = slot || {};
+      return [day, {
+        ...restSlot,
+        playerCount: players.length,
+        isMine: Boolean(viewerId && players.includes(viewerId)),
+        results: (Array.isArray(slot?.results) ? slot.results : []).map((result) => {
+          const { userId, ...restResult } = result || {};
+          return { ...restResult, isMe: isMeOf(userId) };
+        }),
+      }];
+    }),
+  );
+
+  const standings = (Array.isArray(season.standings) ? season.standings : [])
+    .map((standing) => {
+      const { userId, ...rest } = standing || {};
+      return { ...rest, isMe: isMeOf(userId) };
+    });
+
+  const finalists = (Array.isArray(season.finalists) ? season.finalists : [])
+    .map((finalist) => {
+      const { userId, ...rest } = finalist || {};
+      return { ...rest, isMe: isMeOf(userId) };
+    });
+
+  const finalMatch = season.finalMatch
+    ? {
+      ...season.finalMatch,
+      results: (Array.isArray(season.finalMatch.results) ? season.finalMatch.results : [])
+        .map((result) => {
+          const { userId, ...rest } = result || {};
+          return { ...rest, pseudo: pseudoOf(userId), isMe: isMeOf(userId) };
+        }),
+    }
+    : season.finalMatch;
+
+  const podium = season.podium
+    ? {
+      firstPseudo: pseudoOf(season.podium.first),
+      secondPseudo: pseudoOf(season.podium.second),
+      thirdPseudo: pseudoOf(season.podium.third),
+    }
+    : season.podium;
+
+  const clean = {
+    ...season,
+    registeredPlayers,
+    qualificationGroups,
+    standings,
+    finalists,
+    finalMatch,
+    podium,
+  };
+  if (Array.isArray(clean.members)) {
+    clean.members = clean.members.map(({ playerId, ...rest }) => rest);
+  }
+  return clean;
+};
+
+/**
  * Persist leagues (seasons) to state storage and push snapshot to clients.
+ *
+ * DIFFUSION PAR SOCKET (comme les matchs et les tournois) : `isMe` est
+ * calcule pour chaque destinataire ; un `broadcastStateSnapshot` global
+ * livrait a tout le monde l'identifiant interne de chaque inscrit.
  * @param {object} io - Socket.IO server instance
  * @param {Array} seasons - The league seasons to persist
  * @returns {Promise<Array>} The stored leagues
@@ -485,8 +587,21 @@ const saveBrLobbies = async (io, lobbies) => {
 const saveLeagues = async (io, seasons) => {
   await replaceStateCollection('leagues', seasons);
   const storedLeagues = getStoredLeagues();
-  broadcastStateSnapshot(io, 'leagues', storedLeagues);
+  broadcastLeaguesToSessions(io, storedLeagues);
   return storedLeagues;
+};
+
+/**
+ * Diffuse les ligues en calculant `isMe` POUR CHAQUE socket.
+ */
+const broadcastLeaguesToSessions = (io, seasons) => {
+  const items = Array.isArray(seasons) ? seasons : [];
+  for (const socket of io?.sockets?.sockets?.values?.() || []) {
+    const viewerId = socket.data?.session?.userId || null;
+    socket.emit('state:leagues', {
+      items: items.map((season) => sanitizeLeagueForBroadcast(season, viewerId)),
+    });
+  }
 };
 
 /**
@@ -499,7 +614,7 @@ const buildLeagueActionPayload = (season, userId) => {
   const user = getUserById(userId);
   return {
     ok: true,
-    season,
+    season: sanitizeLeagueForBroadcast(season, userId),
     user,
     wallet: user?.wallet || getServerWallet(userId),
   };
@@ -518,6 +633,8 @@ export {
   getStoredLeagues,
   saveLeagues,
   buildLeagueActionPayload,
+  sanitizeLeagueForBroadcast,
+  broadcastLeaguesToSessions,
   getStoredBrLobbies,
   saveBrLobbies,
   toPublicBrLobby,

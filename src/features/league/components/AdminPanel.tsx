@@ -207,10 +207,10 @@ export const AdminPanel = ({
                   <option value="">Sélectionner un joueur</option>
                   {season.registeredPlayers.map((p) => {
                     const currentDay = Object.entries(season.qualificationGroups).find(
-                      ([, slot]) => slot?.players.includes(p.userId)
+                      ([, slot]) => (slot?.players || []).includes(p.userId || '')
                     )?.[0];
                     return (
-                      <option key={p.userId} value={p.userId}>
+                      <option key={p.userId ?? p.pseudo} value={p.userId ?? ''}>
                         {p.pseudo} ({currentDay ? DAY_LABELS[currentDay as LeagueDayKey] : 'non assigne'})
                       </option>
                     );

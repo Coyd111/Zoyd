@@ -203,12 +203,19 @@ Deux points importants :
 - si sa commission échoue au versement, elle est reprise automatiquement
   toutes les 30 minutes (chapitre 11).
 
-### 3.4 Le spectateur
+### 3.4 Le visiteur de la page (il n'y a pas de « spectateur »)
 
-Un match a des spectateurs : d'autres joueurs regardent la page du match en
-direct (le chat d'un match est un canal automatique de la plateforme). CODM
-limite le nombre de spectateurs par salle ; la transposition de cette
-limite côté ZOYD est documentée dans `docs/02-modele-metier.md`, § 3.4.
+Le mot « spectateur » suppose un œil admis à regarder la partie. ZOYD
+refuse ce terrain : un salon CODM ne reçoit que les joueurs et
+l'arbitre — en tournoi à plusieurs arbitres, ils se partagent les
+salons, pour qu'aucune équipe qui ne joue pas observe une autre. Une
+personne extérieure voit donc les **faits officiels** de la page : deux
+pseudos en duel, l'heure de lancement, l'arbitre désigné, l'état des
+fenêtres — pas le match. Pour cause : l'arbitre saisit le résultat
+**à la fin**, jamais pendant, et ZOYD ne publie aucun flux de partie.
+Le canal de discussion du match reste ouvert aux inscrits ; streamer un
+match ou un tournoi est interdit en l'état, car le stream-sniping ne
+peut être exclu. *(source : `docs/02-modele-metier.md`, § 3.4.)*
 
 ### 3.5 L'arbitre du salon Battle Royale (et le cas particulier du volontariat « A7 »)
 

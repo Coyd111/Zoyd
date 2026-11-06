@@ -159,38 +159,63 @@ appelée par cinq chemins distincts (`server/match-engine.mjs:963`, `:994`,
 | Ligue | 0 % | — | aucun code de commission dans `server/league-engine.mjs` |
 | BR | ≤ 5 % | pot | `server/br-engine.mjs:86`, `:199-204`, `:942` |
 
-### 3.4 Le spectateur (et la transposition CODM « Number of Spectators »)
+### 3.4 Le visiteur de lecture (et la règle des spectateurs CODM — aucun œil extérieur)
 
-Issu de la recherche CODM du 02/11/2026 : dans CODM, une salle privée
-possède un réglage **« Number of Spectators Allowed »** — un emplacement
-gratuit distinct des slots joueurs (10 joueurs max, même avec
-spectateurs). ZOYD transpose ce rôle existant, il ne l'invente pas.
+ZOYD n'a pas de « spectateur ». Ce mot suppose un œil admis à regarder
+la partie — exactement ce que ZOYD refuse. Dans une salle privée CODM,
+les seuls yeux admis sont ceux des joueurs et de l'arbitre. Toute
+personne extérieure est un **visiteur de lecture** : elle consulte la
+page publique du match, jamais la partie — et une lecture
+**officielle**, vaste ou petite : les deux pseudos en duel, l'heure de
+lancement, l'arbitre désigné, le statut des fenêtres. Rien du match
+lui-même, pour une raison structurelle : l'arbitre renseigne le
+résultat **à la fin** (§ 4), jamais pendant, et ZOYD ne publie aucun
+flux de partie — « suivre en direct » n'a pas de source, donc
+n'existe pas.
 
-**Qui est spectateur.** Un utilisateur authentifié qui n'est ni joueur
-ni arbitre (ou un visiteur sur une page publique) :
-- match : le rôle chat est calculé côté front — `arbiter` / `player` /
-  `spectator` selon l'inscription et `arbiter.isMe`
-  (`src/features/match/pages/MatchDetailPage.tsx:178-186`) ;
-- tournoi et BR : les pages publiques de lecture (bracket, salons) sont
-  visibles sans inscription ; en BR le roster public masque même les
-  `userId` (`server/state-helpers.mjs`, `toPublicBrLobby`).
+Issu de la recherche CODM du 02/11/2026 : une salle privée CODM
+possède le réglage **« Number of Spectators Allowed »** — des
+emplacements gratuits distincts des slots joueurs (10 joueurs max,
+même avec spectateurs). La règle ZOYD fixe qui les occupe :
+**l'arbitre, et personne d'autre** — dans le jeu, ou hors-jeu
+(replay, partage d'écran). En tout état de match : **un seul salon —
+les joueurs + l'arbitre** ; en tournoi à plusieurs arbitres, les
+arbitres **se partagent les salons**, pour qu'aucune équipe qui ne
+joue pas observe une autre ; en BR, les joueurs + l'arbitre (deux
+arbitres : même partage). Streamer un match ou un tournoi est
+**interdit en l'état** : le stream-sniping ne peut être exclu, et
+aucun match ou tournoi ZOYD n'est streamé aujourd'hui.
 
-**Ce qu'un spectateur ne peut pas faire** :
+**Qui est visiteur.** Un utilisateur authentifié qui n'est ni joueur
+ni arbitre (ou un visiteur de la page publique) :
+- match : le rôle du canal est calculé côté front — `arbiter` /
+  `player` / `spectator` selon l'inscription et `arbiter.isMe`
+  (`src/features/match/pages/MatchDetailPage.tsx:170-178`). Ce rôle ne
+  désigne qu'une lecture **sur la plateforme** : présence et accès au
+  canal de discussion du match (`chat-helpers.mjs:58`, canal public ;
+  accès gouverné par `canAccessChatChannel`, `:82` — un inscrit
+  extérieur peut y lire et y écrire) ;
+- tournoi et BR : les pages publiques de lecture (bracket, salons)
+  sont visibles sans inscription ; en BR le roster public masque même
+  les `userId` (`server/state-helpers.mjs`, `toPublicBrLobby` :426).
+
+**Ce qu'un visiteur ne peut pas faire** :
 
 | Action | Pourquoi |
 |---|---|
-| Voir la salle privée d'un match | `canSeeRoom` réservé aux joueurs et à l'arbitre (`src/features/match/pages/MatchDetailPage.tsx:213-214`) |
-| Mettre de l'argent | aucune primitive wallet n'est branchee sur un spectateur : le pass n'existe que via l'inscription (`join*` des moteurs), jamais depuis la seule lecture (§7) |
-| Saisir ou confirmer un resultat | toutes les mutations passent par les gardes joueur/arbitre des moteurs (§3.2, e2e `403`) |
+| Voir la salle privée d'un match | `canSeeRoom` réservé aux joueurs et à l'arbitre (`src/features/match/pages/MatchDetailPage.tsx:205-206`) ; la salle est livrée par destinataire côté serveur |
+| Suivre le match « en direct » | impossible par construction : l'arbitre renseigne le résultat à la fin (§ 4), aucun flux de partie n'existe |
+| Mettre de l'argent | aucune primitive wallet branchée sur un visiteur : le pass n'existe que via l'inscription (`join*` des moteurs), jamais depuis la seule lecture (§7) |
+| Saisir ou confirmer un résultat | toutes les mutations passent par les gardes joueur/arbitre des moteurs (§3.2, e2e `403`) |
+| Streamer un match ou un tournoi | interdit en l'état : le stream-sniping ne peut être exclu (aucun match/tournoi ZOYD n'est streamé) |
 
-**Le point clé : l'arbitre ZOYD est HORS SLOT.** Il ne paie aucun pass,
-ne figure dans aucun roster, et ne consomme aucun slot joueur — c'est le
-même invariant dans les trois moteurs qui ont un arbitre (match, tournoi,
-BR, §3.1 ; la ligue n'en a pas du tout). La transposition CODM est donc
-directe : l'arbitre suit la partie depuis l'emplacement « Spectators » de
-la salle privée **ou hors-jeu** (replay, partage d'écran) — ZOYD ne
-contraint pas ce choix ; il garantit seulement : arbitre = exclusion de
-tout flux d'argent et de tout slot.
+**Le point clé : l'arbitre ZOYD est HORS SLOT.** Il ne paie aucun
+pass, ne figure dans aucun roster, et ne consomme aucun slot
+joueur — c'est le même invariant dans les trois moteurs qui ont un
+arbitre (match, tournoi, BR, §3.1 ; la ligue n'en a pas du tout). Les
+emplacements « Spectators » de la salle CODM n'ont qu'un titulaire
+possible : l'arbitre. ZOYD garantit seulement l'inverse du risque :
+arbitre = exclusion de tout flux d'argent et de tout slot.
 
 ### 3.5 Les conventions affichées à l'utilisateur (CODM, audit-4 — 02/11/2026)
 

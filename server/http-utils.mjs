@@ -426,6 +426,11 @@ case 'INSUFFICIENT_FUNDS':
     case 'SELF_BLOCK':
     case 'TRANSACTION_ALREADY_PROCESSED':
       return { status: 409, message, code };
+    // Squads libres (2026-11-05) : la squad existe mais est deja complete.
+    // 409 : conflit d'etat transitoire, le client peut choisir une autre
+    // squad et reessayer tout de suite.
+    case 'SQUAD_FULL':
+      return { status: 409, message, code };
     case 'PAYMENT_NOT_CONFIGURED':
     case 'TRANSACTION_NOT_APPROVED':
     case 'FEDAPAY_API_ERROR':
@@ -455,6 +460,12 @@ case 'INSUFFICIENT_FUNDS':
     case 'LEAGUE_NOT_FOUND':
     case 'CHANNEL_NOT_FOUND':
     case 'PLAYER_NOT_FOUND':
+      return { status: 404, message, code };
+    // Squads libres (2026-11-05) : la squad que l'on veut rejoindre n'existe
+    // pas (ou a ete videe/reseede au lancement). 404 : la ressource a
+    // disparu, et non une erreur serveur (le `default` renvoie 5xx).
+    case 'SQUAD_NOT_FOUND':
+      return { status: 404, message, code };
     case 'USER_NOT_FOUND':
     case 'LOBBY_NOT_FOUND':
       return { status: 404, message, code };

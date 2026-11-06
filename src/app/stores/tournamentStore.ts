@@ -43,6 +43,14 @@ export interface TournamentRules {
   notes?: string;
 }
 
+/**
+ * Squads libres (2026-11-05) : une squad est ouverte a tous (quiconque est
+ * compatible rejoint et verrouille SON propre pass) ou privee (sur invitation,
+ * seuls les pseudos listes peuvent rejoindre). Rejoindre est toujours le
+ * geste du joueur lui-meme ; le capitaine ne gere l'argent de personne.
+ */
+export type TournamentSquadAccess = 'open' | 'private';
+
 export interface TournamentEntryMember {
 /**
  * `userId` n'est PLUS envoyé : `sanitizeTournamentForBroadcast` le retire.
@@ -65,6 +73,10 @@ export interface TournamentEntry {
   captainPseudo: string;
   teamSize: number;
   members: TournamentEntryMember[];
+  /** Ouverte (tout joueur compatible rejoint avec son propre pass) ou privee. */
+  access?: TournamentSquadAccess;
+  /** Pseudos invites d'une squad privee (pseudos publics, aucune donnee interne). */
+  invitedPseudos?: string[];
   checkedIn: boolean;
   joinedAt: string;
   wins: number;
@@ -165,19 +177,16 @@ export interface CreateTournamentInput {
   rules: TournamentRules;
 }
 
-export interface TournamentRegistrationMemberInput {
-  pseudo: string;
-  rankMJ?: string;
-  userId?: string;
-}
-
 export interface TournamentRegistrationInput {
   tournamentId: string;
   userId: string;
   pseudo: string;
   rankMJ?: string;
   squadName?: string;
-  teammates?: TournamentRegistrationMemberInput[];
+  /** Ouverte par defaut ; `private` restreint l'entree aux pseudos invites. */
+  access?: TournamentSquadAccess;
+  /** Pseudos invites d'une squad privee. Chacun confirme de son propre compte. */
+  invitedPseudos?: string[];
 }
 
 export interface TournamentState {
@@ -243,6 +252,10 @@ const normalizePersistedTournament = (tournament: Tournament): Tournament => {
         ...entry,
         seed: entry?.seed || index + 1,
         teamSize: entry?.teamSize || teamSize,
+        // Squads libres (2026-11-05) : defauts defendus sur de la data legacy
+        // sans champ (ouverte, aucune invite) - meme contrat que le moteur.
+        access: entry?.access === 'private' ? 'private' : 'open',
+        invitedPseudos: Array.isArray(entry?.invitedPseudos) ? entry.invitedPseudos.filter(Boolean) : [],
         members: Array.isArray(entry?.members) ? entry.members : [],
       }))
     : [];

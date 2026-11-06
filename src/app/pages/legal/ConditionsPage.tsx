@@ -83,8 +83,9 @@ const ConditionsPage: React.FC = () => (
         places ou moins, et de <strong className="text-white">10 %</strong> au-delà (deux arbitres). Le reste est
         réparti entre le podium selon les places affichées au moment de l'inscription.
       </p>
-      <p>Les capitaines verrouillent leur pass (pass × taille d'équipe) à l'inscription ; il est remboursé si le tournoi
-        n'est pas lancé. Une équipe doit être composée de joueurs réellement inscrits sur ZOYD.</p>
+      <p>Chaque joueur d'une équipe (capitaine comme coéquipier) verrouille son propre pass à l'inscription ;
+        il est remboursé si le tournoi n'est pas lancé. Les gains sont divisés en parts égales et versés
+        directement à chaque membre. Tous les joueurs doivent être réellement inscrits sur ZOYD.</p>
     </LegalSection>
 
     <LegalSection n="5" title="Retraits" >

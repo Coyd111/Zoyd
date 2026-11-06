@@ -343,27 +343,37 @@ Pendant qu'un litige est actif, **deux** chemins de versement sont gelés :
 **Cycle** :
 
 ```
-createTournamentOnServer:725        status = 'recruiting'
-   │  le créateur réserve le slot 1 d'arbitre (`:736-746`)
+createTournamentOnServer:1028        status = 'recruiting'
+   │  le créateur réserve le slot 1 d'arbitre
    ▼
-registerForTournamentOnServer:777    lock du pass capitaine × teamSize (`:879`)
+registerForTournamentOnServer:1098   lock du pass DU CAPITAINE (entryFee seul,
+   │  jamais × teamSize) ; squad née incomplete, ouverte ou privée sur liste
    ▼
-assignTournamentArbiterOnServer:1187 remplissage des slots (`:1200-1201`)
+joinTournamentOnServer:1214          chaque coéquipier rejoint LUI-MÊME la squad
+   │  et pose SON pass depuis SON portefeuille (404/409/403 gardes)
    ▼
-startTournamentOnServer:1226         status = 'live' + génération du bracket
-   │  garde : TOUS les slots doivent être couverts (`:1240-1242`)
+assignTournamentArbiterOnServer:1618 remplissage des slots
    ▼
-pour chaque duel : room (`:1286`) → live (`:1325`) → résultat (`:1362`)
-   │  chaque duel est rattaché à un slot : arbiterSlot = (index % arbitersNeeded) + 1 (`:307`)
+startTournamentOnServer:1667         status = 'live' + génération du bracket
+   │  garde : TOUS les slots couverts ; les squads incomplètes sont balayées
+   │  avec remboursement individuel, MAIS le balayage porte seulement si les
+   │  squads complètes couvrent minEntries (refus sans mutation sinon)
    ▼
-applyTournamentSettlement:605        au passage à 'completed' (`:1409-1411`)
+pour chaque duel : room → live → résultat
+   │  chaque duel est rattaché à un slot : arbiterSlot = (index % arbitersNeeded) + 1
+   ▼
+applyTournamentSettlement:836        au passage à 'completed' : la part du
+   podium est divisée en parts ÉGALES et versée DIRECTEMENT à chaque membre
 ```
 
-Le règlement est **réentrant** : `applyTournamentSettlement` est exporté
-(`:605`) et un cron le rejoue (voir §9). Les sommes en échec sont inscrites
-dans `tournament.pendingPayouts` **au moment du règlement**
-(`server/tournament-engine.mjs:708-714`), jamais après — le déclencheur
-`!wasCompleted` est à usage unique (`:1409`).
+Les retraits avant lancement sont individuels
+(`leaveTournamentOnServer:1290`) : chaque membre récupère son propre pass, un
+capitaine partant transfère le relais au premier membre restant. Le règlement
+est **réentrant** : `applyTournamentSettlement` est exporté et un cron le
+rejoue (voir §9). Les sommes en échec sont inscrites dans
+`tournament.pendingPayouts` **au moment du règlement** (clé par `userId`,
+héritant de la forme legacy `captainId`), jamais après — le déclencheur
+`!wasCompleted` est à usage unique.
 
 ### 5.2 Ligue (`server/league-engine.mjs`)
 
@@ -492,12 +502,12 @@ wallet réelles au lancement (`server/br-engine.mjs:525-533`), et la
 répartition part de `lobby.pot` (`computeBrPayouts:903-907`).
 
 **Côté tournoi et ligue**, le pot est un **produit** (`entryFee × inscriptions ×
-taille d'équipe`, `server/tournament-engine.mjs:28` ; `inscrits × tarif`,
+taille d'équipe`, `server/tournament-engine.mjs:97` ; `inscrits × tarif`,
 `server/league-engine.mjs:43-48`), pas une somme de réservations. C'est
 exact tant que le tarif a **au plus 2 décimales** : au-delà, produit et somme
 d'arrondis divergent de quelques centimes (`server/roundings-and-realtime-sanctions.test.mjs:39-54`).
 La normalisation est faite à l'entrée des routes
-(`server/routes/match.mjs:74`, `server/routes/tournament.mjs:90`) et dans le
+(`server/routes/match.mjs:74`, `server/routes/tournament.mjs:134`) et dans le
 moteur ligue (`server/league-engine.mjs:1003`).
 
 ---

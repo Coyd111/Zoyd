@@ -144,14 +144,16 @@ d'autres jeux du même type. *(source : `docs/00-INDEX.md`, § 1.)*
 Tout ZOYD se décrit avec six rôles. Chacun a ses droits, ses devoirs et
 ses avantages.
 
-### 3.1 Le joueur (parfois « capitaine »)
+### 3.1 Le joueur
 
 C'est vous. Vous créez un compte (pseudo, email, mot de passe, identifiant
 CODM, consentement légal 18+/CGU), vous alimentez votre portefeuille en
-ZOYD Coins, et vous rejoignez un match. Dans les formats d'équipe (2v2 à
-5v5), celui qui inscrit son équipe est appelé **capitaine** : c'est lui qui pose la mise de toute l'équipe (la mise est
-multipliée par le nombre de joueurs), et c'est à lui qu'est versé le gain
-quand l'équipe gagne. *(source :
+ZOYD Coins, et vous rejoignez un match ou un tournoi. Dans les formats
+d'équipe (2v2 à 5v5), **chacun paie son propre pass** : le premier joueur
+crée l'équipe (« capitaine » de nom seulement), les coéquipiers rejoignent
+depuis leur compte et verrouillent la mise chacun pour soi. Le capitaine
+n'encaisse jamais l'argent des autres, et les gains sont divisés en parts
+égales versées **directement à chaque membre**. *(source :
 `docs/02-modele-metier.md`, § 5.1 et § 7.5.)*
 
 Il existe aussi une page de profil publique (statistiques, date
@@ -277,9 +279,10 @@ seul solde, mais **trois cases** (chapitre 8) : le *cash* (retirable), le
 *bonus* (jouable mais pas retirable), et le *verrouillé* (la mise posée dans
 une compétition en cours).
 
-**Mise (« entry fee », le pass).** La somme que chaque joueur (ou chaque
-équipe, via son capitaine) place au début d'une compétition. Elle sort du
-cash d'abord, du bonus ensuite, et se range dans la case verrouillée.
+**Mise (« entry fee », le pass).** La somme que chaque joueur place au début
+d'une compétition — en solo comme en équipe, chacun engage son propre
+pass. Elle sort du cash d'abord, du bonus ensuite, et se range dans la
+case verrouillée.
 
 **Le pot, la cagnotte.** L'ensemble des mises d'une compétition. Attention à
 une subtilité qui a coûté des mois d'audit : il y a le **pot théorique**
@@ -396,7 +399,8 @@ de match live, avec statut, joueurs, mises, arbitre, fenêtres et litiges. Le to
 
 `/mj/tournois` liste, `/mj/tournois/creer` ouvre, `/mj/tournois/:id` montre
 le bracket (l'arbre du championnat) en direct. Le tournoi est une coupe à
-élimination : des équipes inscrites par leurs capitaines, des arbitres
+élimination : des squads constituées joueur par joueur (le premier pose son
+pass, chaque coéquipier verrouille le sien), des arbitres
 répartis poste par poste, un tableau d'élimination directe. Les deux URLs « accentuées »
 (`/mj/créer`, `/mj/tournois/créer`) existent en compatibilité pour les liens
 partagés avant le renommage des adresses. *(source :
@@ -574,15 +578,17 @@ Trois autres moteurs, trois autres horloges.
 ### 7.1 Le tournoi : la coupe à élimination
 
 Le créateur ouvre un tournoi et **réserve tout de suite le poste d'arbitre
-n° 1**. Les capitaines inscrivent leur équipe : la mise est multipliée par la
-taille d'équipe et verrouillée d'un coup. Les arbitres supplémentaires
+n° 1**. Le premier joueur d'une squad pose son pass, puis chaque coéquipier
+rejoint la squad depuis son compte et verrouille le sien — squad ouverte à
+tous, ou privée sur invitation. Les arbitres supplémentaires
 complètent les postes. Le lancement est **impossible tant qu'un poste
 d'arbitre manque** — le serveur refuse (toutes les cases doivent être
 couvertes). Un bracket est tiré ; chaque duel est rattaché à un poste
 d'arbitre (calcul : numéro du duel modulo le nombre d'arbitres). À la
 fin, dès que le tournoi passe en `completed`, l'argent est versé : le
-gain au capitaine vainqueur, la commission de l'arbitre, la perte au
-capitaine perdant. Horloge propre : un tournoi jamais démarré après son
+gain divisé en parts égales entre les membres de chaque squad du podium,
+la commission de l'arbitre, les mises de perdants absorbées. Horloge
+propre : un tournoi jamais démarré après son
 heure de lancement prévue a **24 h de grâce**, puis il est annulé et
 remboursé par un balayage lent (6 heures).
 
@@ -1362,9 +1368,9 @@ d'échecs de connexion, réponse identique aux tentatives de devinettes
 (adresse email), retrait à double porte (minimum et plafond).
 
 **Q. D'où vient l'argent du pot d'un tournoi qui paie des arbitres ?**
-R. Des mises des capitaines (mise × taille d'équipe, verrouillée à
-l'inscription). La fin du tournoi paie le capitaine vainqueur, la
-commission des arbitres, et absorbe la mise des perdants.
+R. Des mises individuelles : chaque joueur pose son propre pass. La fin du
+tournoi répartit les gains en parts égales entre les membres des squads du
+podium, paie la commission des arbitres, et absorbe les mises des perdants.
 
 **Q. Puis-je quitter un salon Battle Royale après avoir payé le pass ?**
 R. Avant le lancement : oui, remboursé. Après le lancement : non — votre
@@ -1389,7 +1395,7 @@ repenser le socle — c'est l'ambition documentée du projet.
 | Pot | L'ensemble des mises d'une compétition |
 | Pot fantôme | Le pot total « si toutes les places sont prises » — jamais versé |
 | Séquestre / verrou | La mise posée dans une compétition, intouchable |
-| Mise (entry fee, pass) | L'argent engagé par un joueur (ou une équipe) pour entrer |
+| Mise (entry fee, pass) | L'argent que chaque joueur engage pour entrer — son propre pass, même en équipe |
 | Bonus | Un solde jouable mais jamais retirable |
 | Cash | Le solde retirable |
 | Arbitre | Un joueur volontaire qui encadre une compétition et est rémunéré |

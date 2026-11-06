@@ -72,6 +72,17 @@ export const registerForServerTournament = async (
   return authorizedPost<TournamentResponse>(`/api/tournaments/${tournamentId}/register`, payload);
 };
 
+/**
+ * Rejoindre la squad d'un autre joueur (squads libres, 2026-11-05) : le pass
+ * est verrouille sur le PORTEFEUILLE DE L'APPELANT, pas sur celui du capitaine.
+ */
+export const joinServerTournamentSquad = async (
+  tournamentId: string,
+  entryId: string
+): Promise<TournamentResponse> => {
+  return authorizedPost<TournamentResponse>(`/api/tournaments/${tournamentId}/join/${entryId}`);
+};
+
 export const leaveServerTournament = async (tournamentId: string): Promise<TournamentResponse> => {
   return authorizedPost<TournamentResponse>(`/api/tournaments/${tournamentId}/leave`);
 };

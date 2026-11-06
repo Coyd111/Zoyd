@@ -32,4 +32,11 @@ describe('mapPersistenceError - codes du corps de requete (audit-3 P1 C1)', () =
     expect(mapped.status).toBe(500);
     expect(mapped.code).toBe('TOTALLY_UNKNOWN');
   });
+
+  it('SQUAD_NOT_FOUND est un 404 (squad disparue), SQUAD_FULL un 409 (conflit transitoire)', () => {
+    // Squads libres (2026-11-05) : sans mapping, ces deux codes tombaient
+    // dans le default -> faux 500 logge, pour un simple etat de join.
+    expect(mapPersistenceError(err('SQUAD_NOT_FOUND')).status).toBe(404);
+    expect(mapPersistenceError(err('SQUAD_FULL')).status).toBe(409);
+  });
 });

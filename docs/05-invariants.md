@@ -153,7 +153,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 | | |
 |---|---|
 | **Énoncé** | Au-delà de 2 décimales, le produit (pot annoncé) et la somme des arrondis (argent bloqué) divergent : le règlement crée ou détruit de la monnaie. |
-| **Code** | `server/routes/match.mjs:74` et `server/routes/tournament.mjs:90` (`entryFee: roundAmount(body.entryFee)`) · `server/league-engine.mjs:1003` · `server/tournament-engine.mjs:25` (`getSquadLockAmount`) |
+| **Code** | `server/routes/match.mjs:74` et `server/routes/tournament.mjs:134` (`entryFee: roundAmount(body.entryFee)`) · `server/league-engine.mjs:1003` · `server/tournament-engine.mjs:1043` (`entryFeeCandidate`) |
 | **Tests** | `server/roundings-and-realtime-sanctions.test.mjs:39` « un tarif a plus de 2 decimales fait diverger pot et argent bloque » · `:56` · `:74` |
 
 ### I15 — Un seul verrou de pass par compétition
@@ -212,7 +212,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 
 | | |
 |---|---|
-| **Code** | match : `server/match-engine.mjs:654` (désignation) et `:601` (inscription) · tournoi : `server/tournament-engine.mjs:1193-1195` et `:788-790` · BR : `server/br-engine.mjs:308-311` (l'arbitre n'est pas dans `players`), `:728` (exclu du classement) |
+| **Code** | match : `server/match-engine.mjs:654` (désignation) et `:601` (inscription) · tournoi : `server/tournament-engine.mjs:1109-1111` (register) et `:1224-1226` (join) · BR : `server/br-engine.mjs:308-311` (l'arbitre n'est pas dans `players`), `:728` (exclu du classement) |
 | **Erreur** | `ROLE_CONFLICT` |
 | **Tests** | `e2e/api/match.spec.ts:208` « 409 : un joueur ne peut pas arbitrer » · `server/tournament-engine.test.mjs:215` « should reject if player is arbiter » · `:386` |
 
@@ -241,19 +241,19 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 > `payoutDistributed: 'pending'` et une `confirmationDeadline`. Conséquence
 > mesurable : voir **V6** dans `docs/05-invariants.md`.
 
-### R4 — Le lancement d'un tournoi exige que tous les slots d'arbitre soient couverts
+### R4 — Le lancement d'un tournoi exige que tous les slots d'arbitre soient couverts et des squads complètes en nombre suffisant
 
 | | |
 |---|---|
-| **Code** | `server/tournament-engine.mjs:1240-1242` · nombre de slots : `:21` (`getArbitersNeeded`) |
+| **Code** | `server/tournament-engine.mjs:1677-1699` (`MATCH_NOT_READY`) · les squads incomplètes sont balayées **après** ce garde, avec remboursement individuel (`:1701-1734`) : un refus ne rembourse jamais · nombre de slots : `:75` (`getArbitersNeeded`) |
 | **Erreur** | `MATCH_NOT_READY` |
-| **Tests** | `server/tournament-engine.test.mjs:348` « should reject if arbiters not assigned » |
+| **Tests** | `server/tournament-engine.test.mjs:348` « should reject if arbiters not assigned » · suite « depart, squad incomplete balayee » (2026-11-05) |
 
 ### R5 — Un arbitre de tournoi n'agit que sur les duels de son slot
 
 | | |
 |---|---|
-| **Code** | `server/tournament-engine.mjs:1268-1271` · affectation : `:306-307` (`arbiterSlot = (index % arbitersNeeded) + 1`) |
+| **Code** | `server/tournament-engine.mjs:1751-1768` (`requireTournamentMatchAction`) · affectation : `:429` (`arbiterSlot = (index % arbitersNeeded) + 1`) |
 | **Erreur** | `FORBIDDEN` |
 | **Tests** | **AUCUN TEST** identifiable sur le périmètre de slot |
 
@@ -301,16 +301,16 @@ d'une session admin ; le joueur arbitre passe sans code).
 
 | | |
 |---|---|
-| **Code** | `server/tournament-engine.mjs:802-804` |
+| **Code** | `server/tournament-engine.mjs:1121-1125` (`registerForTournamentOnServer`, le pseudo client doit égaler le pseudo de session) |
 | **Erreur** | `INVALID_REGISTRATION` |
 
-### R11 — Un coéquipier doit exister en base (par `userId` ou pseudo exact)
+### R11 — Un coéquipier n'existe que par SON compte ; aucun id ne vient du client
 
 | | |
 |---|---|
-| **Énoncé** | Une identité injectée dans le bracket enverrait les gains vers un compte fantôme. |
-| **Code** | `server/tournament-engine.mjs:815-824` |
-| **Erreur** | `INVALID_REGISTRATION` |
+| **Énoncé** | Une identité injectée dans le bracket enverrait les gains vers un compte fantôme : le membre posé par `join` porte le `userId` de la SESSION (`requireActorUser`), jamais un champ du corps. Au règlement, la part de tout membre sans compte réel remonte au capitaine (data legacy), et si aucun membre n'est résolvable la place complète retente sur le compte du capitaine — jamais d'abandon silencieux. |
+| **Code** | `server/tournament-engine.mjs:1214-1215` (`requireActorUser`) · `:1252-1265` (verrou + membre depuis la session) · `:852-868` (résolution + parts égales) · `:869-878` et `:880-961` (fantômes → capitaine, recours legacy) |
+| **Erreur** | `ALREADY_JOINED` · `FORBIDDEN` · `INVALID_REGISTRATION` |
 
 ### R12 — Le classement final de ligue ne peut pas sur-distribuer le podium
 
@@ -406,7 +406,7 @@ d'une session admin ; le joueur arbitre passe sans code).
 
 | | |
 |---|---|
-| **Code** | `server/match-engine.mjs:515-519` · `server/tournament-engine.mjs:730-734` |
+| **Code** | `server/match-engine.mjs:515-519` · `server/tournament-engine.mjs:1033-1037` (createTournamentOnServer) |
 | **Erreur** | `INVALID_MATCH`, `INVALID_FORMAT` |
 | **Tests** | `e2e/api/match.spec.ts:75`, `:87` |
 
@@ -645,7 +645,7 @@ Aucune lecture. Le champ n'est lu nulle part.
 
 | Écosystème | Dette | Reprise |
 |---|---|---|
-| Gains de tournoi | `tournament.pendingPayouts` (`server/tournament-engine.mjs:708-714`) | cron `server/cron.mjs:365-388` (6 h) |
+| Gains de tournoi | `tournament.pendingPayouts` (`server/tournament-engine.mjs:1014-1017`, écrit **au règlement**, clé par membre `userId` + forme legacy `captainId`) | cron `server/cron.mjs:365-388` (6 h) |
 | Gains de ligue | `season.pendingPayouts` (`server/league-engine.mjs:757-760`) | cron `server/cron.mjs:396-419` (6 h) |
 | **Commission d'arbitre (match)** | `match.pendingArbiterFee` | **aucune** |
 

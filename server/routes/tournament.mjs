@@ -50,6 +50,7 @@ import { withTournamentMutex } from '../mutex.mjs';
 import {
   createTournamentOnServer,
   registerForTournamentOnServer,
+  joinTournamentOnServer,
   leaveTournamentOnServer,
   assignTournamentArbiterOnServer,
   startTournamentOnServer,
@@ -152,7 +153,35 @@ if (req.method === 'POST' && tournamentRegister) {
 
   try { await withTournamentMutex(async () => {
     const body = await parseRequestBody(req);
+    // Squads libres (2026-11-05) : l'inscription pose SEUL LE PASS DU CAPITAINE
+    // (squad ouverte ou privee sur invitation). Les coequipiers rejoignent
+    // ensuite eux-memes par POST /api/tournaments/:id/join, en payant chacun
+    // leur propre pass depuis leur propre portefeuille.
     const outcome = await registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
+    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
+  }); } catch (error) {
+    respondMappedError(res, error);
+  }
+  return true;
+}
+
+const tournamentJoin = pathname.match(/^\/api\/tournaments\/([^/]+)\/join\/([^/]+)$/);
+if (req.method === 'POST' && tournamentJoin) {
+  // Rejoindre une squad = verrouiller SON PROPRE pass. Mesure au meme garde
+  // que l'inscription (quasi equivalent financier : un lock de fee ici aussi).
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  const session = getAuthenticatedAppSession(req);
+  if (!session) {
+    respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
+    return true;
+  }
+
+  try { await withTournamentMutex(async () => {
+    // Squads libres (2026-11-05) : le coequipier s'ajoute LUI-MEME a une squad
+    // existeante (ouverte a tous, ou privee sur invitation si son pseudo est
+    // dans la liste). Ses fonds sont verrouilles sur SON portefeuille.
+    const outcome = await joinTournamentOnServer(getStoredTournaments(), session.user, tournamentJoin[1], tournamentJoin[2]);
     await saveTournaments(io, outcome.tournaments, outcome.tournament);
     respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
   }); } catch (error) {
@@ -213,7 +242,11 @@ if (req.method === 'POST' && tournamentStart) {
   }
 
   try { await withTournamentMutex(async () => {
-    const outcome = startTournamentOnServer(getStoredTournaments(), session.user, tournamentStart[1]);
+    // startTournamentOnServer est async (squads libres, 2026-11-05) : il
+    // peut balayer les squads incompletes (refunds individuels) avant de
+    // batir le bracket. Le await est obligatoire, sinon un rejet interne
+    // passerait comme un tournoi lance.
+    const outcome = await startTournamentOnServer(getStoredTournaments(), session.user, tournamentStart[1]);
     await saveTournaments(io, outcome.tournaments, outcome.tournament);
 
     const tournament = outcome.tournament;

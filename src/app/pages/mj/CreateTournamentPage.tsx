@@ -144,9 +144,11 @@ const CreateTournamentPage: React.FC = () => {
     const arbiterRate = arbitersNeeded === 2 ? 0.1 : 0.05;
     const arbiterPool = grossPool * arbiterRate;
     const playerPool = grossPool - arbiterPool;
+    // Pass individuel (2026-11-05) : chaque joueur verrouille SON pass
+    // (entryFee), le capitaine n'encaisse jamais entryFee x teamSize.
     return {
       totalPlayers,
-      squadCost: selectedEntryFee * teamSize,
+      passCost: selectedEntryFee,
       arbitersNeeded,
       grossPool,
       playerPool,
@@ -692,7 +694,7 @@ const CreateTournamentPage: React.FC = () => {
                 <ProjectionRow label="Places ouvertes" value={`${selectedMaxEntries} ${teamSize > 1 ? 'équipes' : 'joueurs'}`} />
                 <ProjectionRow label="Joueurs au complet" value={`${projections.totalPlayers}`} />
                 <ProjectionRow label="Arbitres necessaires" value={`${projections.arbitersNeeded}`} />
-                <ProjectionRow label={teamSize > 1 ? 'Coût pour une équipe' : 'Coût pour un joueur'} value={formatZC(projections.squadCost)} />
+                <ProjectionRow label={teamSize > 1 ? 'Pass par joueur' : 'Coût pour un joueur'} value={formatZC(projections.passCost)} />
                 <ProjectionRow label="Cagnotte totale" value={formatZC(projections.grossPool)} accent="text-zoyd-yellow" />
                 <ProjectionRow label="A gagner" value={formatZC(projections.playerPool)} />
                 <ProjectionRow label="Part arbitres" value={formatZC(projections.arbiterPool)} />
@@ -712,7 +714,8 @@ const CreateTournamentPage: React.FC = () => {
               </p>
               {teamSize > 1 ? (
                 <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 p-4 text-sm text-white/60 mb-6">
-                  Pour les formats en équipe, le capitaine inscrit tout son groupe d&apos;un coup.
+                  Pour les formats en équipe, chaque joueur verrouille son propre pass depuis son compte :
+                  tu n&apos;encaisses que le tien.
                 </div>
               ) : null}
               {reserveCreatorAsArbiter ? (

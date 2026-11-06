@@ -29,6 +29,7 @@ import { AlertTriangle } from 'lucide-react';
 import {
   assignServerTournamentArbiter,
   fetchServerTournament,
+  joinServerTournamentSquad,
   leaveServerTournament,
   registerForServerTournament,
   setServerTournamentMatchLive,
@@ -72,7 +73,12 @@ const TournamentBracketPage: React.FC = () => {
   const [scoreB, setScoreB] = useState('0');
   const [notes, setNotes] = useState('');
   const [squadName, setSquadName] = useState('');
-  const [teammateInputs, setTeammateInputs] = useState<string[]>([]);
+  // Squads libres (2026-11-05) : plus de roster saisi par le capitaine. La
+  // squad nait avec lui seul; ouverte a tous ou restreinte aux pseudos
+  // invites — chaque coequipier confirme depuis SON compte et verrouille SON
+  // propre pass.
+  const [squadAccess, setSquadAccess] = useState<'open' | 'private'>('open');
+  const [invitedInputs, setInvitedInputs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
@@ -131,12 +137,12 @@ const TournamentBracketPage: React.FC = () => {
 
   useEffect(() => {
     if (!tournament || tournament.teamSize <= 1) {
-      setTeammateInputs([]);
+      setInvitedInputs([]);
       return;
     }
 
     setSquadName((current) => current || `${user?.pseudo || 'Squad'} Squad`);
-    setTeammateInputs((current) =>
+    setInvitedInputs((current) =>
       Array.from({ length: Math.max(0, tournament.teamSize - 1) }, (_, index) => current[index] || '')
     );
   }, [tournament?.id, tournament?.teamSize, user?.pseudo]);
@@ -150,6 +156,34 @@ const TournamentBracketPage: React.FC = () => {
         ['ready', 'live'].includes(match.status)
     );
   }, [myEntry, tournament]);
+
+  // Squads libres (2026-11-05) : les squads qui recrutent. Une squad est
+  // rejoignable si elle n'est ni la mienne, ni complete, et si pour une squad
+  // privée mon pseudo figure dans ses invitations. Le capitaine ne m'inscrit
+  // pas : JE verrouille mon propre pass en rejoignant.
+  const joinableSquads = useMemo(() => {
+    if (!tournament || tournament.status !== 'recruiting') return [];
+    if (myArbiterSlot) return []; // un arbitre ne peut pas rejoindre une squad (role conflict)
+    const pseudoKey = user?.pseudo?.toLowerCase();
+    return tournament.entries
+      .filter((entry) => {
+        if (myEntry && entry.id === myEntry.id) return false;
+        if (entry.members.some((member) => member.isMe)) return false;
+        if (entry.members.length >= entry.teamSize) return false;
+        if (entry.access === 'private') {
+          return !!pseudoKey && (entry.invitedPseudos || []).some((pseudo) => pseudo.toLowerCase() === pseudoKey);
+        }
+        return true;
+      })
+      .map((entry) => ({
+        id: entry.id,
+        squadName: entry.squadName,
+        captainPseudo: entry.captainPseudo,
+        memberCount: entry.members.length,
+        teamSize: entry.teamSize,
+        access: (entry.access === 'private' ? 'private' : 'open') as 'open' | 'private',
+      }));
+  }, [tournament, myEntry, myArbiterSlot, user?.pseudo]);
 
   if (!id) return null;
 
@@ -190,7 +224,9 @@ const TournamentBracketPage: React.FC = () => {
     typeof openArbiterSlotsCount === 'number'
       ? openArbiterSlotsCount > 0
       : tournament.arbiters.some((arbiter) => !arbiter.userId);
-  const registrationCost = tournament.entryFee * tournament.teamSize;
+  // Chaque joueur verrouille SON SEUL pass (squads libres, 2026-11-05) :
+  // jamais entryFee x teamSize sur le compte du capitaine.
+  const registrationCost = tournament.entryFee;
   const requiredTopUp = getRequiredTopUp(registrationCost, availableSpend);
   const fundingPath = buildFundingPath({
     context: 'tournament-entry',
@@ -200,16 +236,21 @@ const TournamentBracketPage: React.FC = () => {
   });
   const canRegister = !!user && !myEntry && !myArbiterSlot && tournament.status === 'recruiting';
   const canJoinArbiter = !!user && !myEntry && !myArbiterSlot && hasOpenArbiterSlot;
+  // Le lancement balaye les squads incompletes (remboursement individuel) :
+  // la porte d'entree reelle est le nombre de squads COMPLETES (2026-11-05).
+  const completeSquadCount = tournament.entries.filter(
+    (entry) => entry.members.length >= (entry.teamSize || tournament.teamSize)
+  ).length;
   const canStartTournament =
     !!myArbiterSlot &&
     tournament.status === 'recruiting' &&
-    tournament.entries.length >= tournament.minEntries &&
+    completeSquadCount >= tournament.minEntries &&
     tournament.arbiters.every((arbiter) => !!arbiter.userId);
   const champion = tournament.entries.find((entry) => entry.finalPlacement === 1);
   const bronzeMatch = tournament.matches.find((match) => match.bracketType === 'third_place');
 
-  const updateTeammateInput = (index: number, value: string) => {
-    setTeammateInputs((current) => current.map((entry, entryIndex) => (entryIndex === index ? value : entry)));
+  const updateInvitedInput = (index: number, value: string) => {
+    setInvitedInputs((current) => current.map((entry, entryIndex) => (entryIndex === index ? value : entry)));
   };
 
   const applyTournamentResponse = (payload: {
@@ -237,27 +278,34 @@ const TournamentBracketPage: React.FC = () => {
       return;
     }
 
+    // Squads libres (2026-11-05) : le capitaine n'inscrit personne — la squad
+    // nait avec lui seul. Les coequipiers confirment chacun de leur compte et
+    // verrouillent leur propre pass. `invitedPseudos` ne sert que de liste
+    // d'invitations pour une squad PRIVEE.
     const cleanedSquadName = squadName.trim();
-    const cleanedTeammates = teammateInputs.map((entry) => entry.trim());
+    const cleanedAccess = squadAccess === 'private' ? 'private' : 'open';
+    const cleanedInvites = invitedInputs
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      // Dedup insensible a la casse (les pseudo du serveur comparent en lowercase).
+      .filter((pseudo, index, all) => all.findIndex((other) => other.toLowerCase() === pseudo.toLowerCase()) === index);
 
-    if (tournament.teamSize > 1) {
-      if (cleanedSquadName.length < 3) {
-        toast.error('Donne un nom clair à ton équipe avant de valider.');
+    if (tournament.teamSize > 1 && cleanedSquadName.length < 3) {
+      toast.error('Donne un nom clair à ta squad avant de valider.');
+      return;
+    }
+    if (cleanedAccess === 'private') {
+      if (cleanedInvites.length === 0) {
+        toast.error('Une squad privée doit au moins inviter un pseudo.');
         return;
       }
-      if (cleanedTeammates.some((entry) => entry.length < 2)) {
-        toast.error(`Ajoute les ${tournament.teamSize - 1} coéquipiers avant de confirmer ton équipe.`);
+      if (cleanedInvites.some((entry) => entry.length < 2)) {
+        toast.error('Chaque pseudo invité doit avoir au moins 2 caractères.');
         return;
       }
-
-      const rosterKeys = new Set<string>();
-      for (const pseudo of [user.pseudo, ...cleanedTeammates]) {
-        const key = pseudo.toLowerCase();
-        if (rosterKeys.has(key)) {
-          toast.error('Chaque pseudo de ton équipe doit etre unique.');
-          return;
-        }
-        rosterKeys.add(key);
+      if (cleanedInvites.some((entry) => entry.toLowerCase() === user.pseudo.toLowerCase())) {
+        toast.error("Impossible de t'inviter toi-même : tu rejoins déjà ta squad.");
+        return;
       }
     }
 
@@ -272,21 +320,20 @@ const TournamentBracketPage: React.FC = () => {
         pseudo: user.pseudo,
         rankMJ: user.rankMJ,
         squadName: tournament.teamSize > 1 ? cleanedSquadName : undefined,
-        teammates: tournament.teamSize > 1 ? cleanedTeammates.map((pseudo) => ({ pseudo })) : undefined,
+        access: tournament.teamSize > 1 ? cleanedAccess : undefined,
+        invitedPseudos: tournament.teamSize > 1 && cleanedAccess === 'private' ? cleanedInvites : undefined,
       });
       applyTournamentResponse(response);
       toast.success(
         tournament.teamSize === 1
           ? `Ta place est réservée pour ${tournament.name}.`
-          : `${cleanedSquadName} est maintenant inscrite à ${tournament.name}.`
+          : `${cleanedSquadName} est créée. Chacun rejoint avec son propre pass : le tien est déjà verrouillé.`
       );
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : tournament.teamSize === 1
-            ? "Impossible de confirmer ton inscription avec ton profil actuel."
-            : "Impossible de confirmer cette équipe pour le moment."
+          : "Impossible de confirmer ton inscription avec ton profil actuel."
       );
     }
   };
@@ -296,9 +343,32 @@ const TournamentBracketPage: React.FC = () => {
     try {
       const response = await leaveServerTournament(tournament.id);
       applyTournamentResponse(response);
-      toast.success('Inscription retirée et pass remboursé.');
+      // Pass individuel (2026-11-05) : le remboursement porte sur TON pass,
+      // verrouille sur TON portefeuille — jamais sur celui d'un coequipier.
+      toast.success('Ton retrait est confirmé et ton pass est remboursé sur ton compte.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Impossible de retirer cette inscription.");
+    }
+  };
+
+  const handleJoinSquad = async (entryId: string) => {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+
+    if (availableSpend < registrationCost) {
+      toast.error("Solde insuffisant. Ajoute des ZC avant de rejoindre la squad.");
+      navigate(fundingPath);
+      return;
+    }
+
+    try {
+      const response = await joinServerTournamentSquad(tournament.id, entryId);
+      applyTournamentResponse(response);
+      toast.success('Tu es dans la squad : ton pass est verrouillé sur ton compte.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Impossible de rejoindre cette squad.');
     }
   };
 
@@ -417,9 +487,13 @@ const TournamentBracketPage: React.FC = () => {
               myArbiterSlot={myArbiterSlot}
               tournamentName={tournament.name}
               squadName={squadName}
-              teammateInputs={teammateInputs}
+              squadAccess={squadAccess}
+              invitedInputs={invitedInputs}
+              joinableSquads={joinableSquads}
               onSquadNameChange={setSquadName}
-              onTeammateInputChange={updateTeammateInput}
+              onSquadAccessChange={setSquadAccess}
+              onInvitedInputChange={updateInvitedInput}
+              onJoinSquad={handleJoinSquad}
               onRegister={handleRegister}
               onLeave={() => setConfirmAction('leave')}
               onJoinArbiter={handleJoinArbiter}

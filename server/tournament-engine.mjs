@@ -20,8 +20,10 @@
  * INVARIANT : la commission de l'arbitre fait partie du reglement : une
  *   exception non rattrapee empechait la persistence du tournoi, et les
  *   capitaines deja payes etaient payes une seconde fois.
- * INVARIANT : le pass est bloque par equipe (`entryFee` x `teamSize`) et
- *   debite sur le capitaine.
+ * INVARIANT (squads libres, 2026-11-05) : le pass est bloque PAR JOUEUR
+ *   (`entryFee`) sur le portefeuille du joueur lui-meme - l'inscription d'un
+ *   membre est son propre acte. Le capitaine ne paie jamais pour ses
+ *   coequipiers : il ne gere l'argent de personne.
  * INVARIANT : le tableau est reconstruit par `normalizeMatches` : le statut
  *   d'un match est derive de la presence de ses deux entrants (`ready`) ou
  *   de leur absence (`pending`). Les placements (vainqueur vers le tour
@@ -41,14 +43,16 @@
  *   nombre d'entrees ET du nombre d'arbitres (5 % ou 10 %).
  * PIEGE : les horaires sont normalises - aucun match entre 00h00 et 07h00
  *   (`normalizePlayableDate` / `addPlayableMinutes`).
- * PIEGE : le gain en cash part au CAPITAINE ; les membres recoivent les
- *   statistiques et l'XP, pas l'argent.
+ * PIEGE : le gain en cash est divise en parts EGALES entre les membres de la
+ *   squad du podium et verse DIRECTEMENT a chacun. Le capitaine ne touche
+ *   l'argent de personne ; les parts des membres fantomes legacy remontent au
+ *   capitaine, seul a avoir jamais engage l'argent dans l'ancien modele.
  *
  * Invariants detailles : docs/05-invariants.md
  * Architecture et routage : docs/01-architecture.md
  */
 
-import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce, getUserByExactPseudo } from './persistence.mjs';
+import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce } from './persistence.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 import { createLogger } from './logger.mjs';
@@ -72,7 +76,23 @@ const getArbitersNeeded = (maxEntries) => (Number(maxEntries || 0) > 8 ? 2 : 1);
 const normalizeLabel = (value) => `${value || ''}`.trim().replace(/\s+/g, ' ');
 const toEntityKey = (value) =>
   normalizeLabel(value).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'ENTRY';
-const getSquadLockAmount = (entryFee, teamSize) => roundAmount(Number(entryFee || 0) * Number(teamSize || 1));
+/**
+ * Divise un montant de podium en parts egales, arrondies a 2 decimales, le
+ * reliquat d'arrondi completant la part du premier beneficiaire : la somme
+ * des parts est EXACTEMENT le montant recu (aucun ZC cree ni perdu).
+ *
+ * @param {number} total - Montant total du podium pour la squad.
+ * @param {number} slots - Nombre de beneficiaires (membres de la squad).
+ * @returns {number[]} Parts dans l'ordre des membres.
+ */
+const splitEqualShares = (total, slots) => {
+  const count = Math.max(1, Math.floor(Number(slots) || 1));
+  const safeTotal = roundAmount(Number(total || 0));
+  const base = roundAmount(Math.floor(safeTotal * 100 / count) / 100);
+  return Array.from({ length: count }, (_, index) =>
+    index === 0 ? roundAmount(safeTotal - base * (count - 1)) : base
+  );
+};
 
 const buildPayout = (entryFee, entriesCount, arbitersNeeded, teamSize = 1) => {
   const grossPool = roundAmount(Number(entryFee || 0) * Number(entriesCount || 0) * Number(teamSize || 1));
@@ -116,6 +136,11 @@ const normalizeEntry = (entry, index, teamSize) => ({
   seed: Number(entry?.seed || index + 1),
   teamSize: Number(entry?.teamSize || teamSize),
   members: Array.isArray(entry?.members) ? entry.members : [],
+  // Squads libres (2026-11-05) : une squad est ouverte a tous ou sur
+  // invitation. Un vieux tournoi sans champ reste ouvert (comportement
+  // anterieur suppose) - pas de regle inventee sur de la data existante.
+  access: entry?.access === 'private' ? 'private' : 'open',
+  invitedPseudos: Array.isArray(entry?.invitedPseudos) ? entry.invitedPseudos.filter(Boolean) : [],
 });
 
 const normalizeTournamentSnapshot = (tournament) => {
@@ -187,6 +212,11 @@ const normalizeTournamentSnapshot = (tournament) => {
     pendingPayouts: Array.isArray(tournament?.pendingPayouts)
       ? tournament.pendingPayouts.map((item) => ({
           kind: item?.kind,
+          // Squads libres (2026-11-05) : dette PAR MEMBRE (`userId`). Les
+          // dettes legacy d'avant la bascule (capitaine recevant pour toute
+          // la squad) restent cles sur `captainId` - les deux formes
+          // cohabitent ici sans hypothese, comme dans les retries.
+          userId: item?.userId,
           captainId: item?.captainId,
           arbiterUserId: item?.arbiterUserId,
           entryId: item?.entryId,
@@ -194,28 +224,37 @@ const normalizeTournamentSnapshot = (tournament) => {
           amount: item?.amount,
           placement: item?.placement,
           lastError: item?.lastError,
-        })).filter((item) => item.kind && (item.captainId || item.arbiterUserId))
+          at: item?.at,
+        })).filter((item) => item.kind && (item.userId || item.captainId || item.arbiterUserId))
       : [],
     // dette de REMBOURSEMENT (P5 C5 audit-3) : preservée au chargement, sinon
     // un redémarrage entre l'échec et le retry perdrait définitivement des ZC
     // bloqués.
     pendingRefunds: Array.isArray(tournament?.pendingRefunds)
       ? tournament.pendingRefunds.map((item) => ({
+          // Squads libres (2026-11-05) : dette PAR MEMBRE (`userId`), avec
+          // les dettes legacy `captainId` (pre-bascule) conservees telles
+          // quelles - les retries acceptent les deux formes.
+          userId: item?.userId,
           captainId: item?.captainId,
           entryId: item?.entryId,
           lastError: item?.lastError,
-        })).filter((item) => item.captainId)
+          at: item?.at,
+        })).filter((item) => item.userId || item.captainId)
       : [],
     // Dettes closes sans remboursement possible (compte supprime). Préservées
     // pour la même raison : la trace de ce qui n'a pas été honoré doit
     // survivre au rechargement.
     uncollectableRefunds: Array.isArray(tournament?.uncollectableRefunds)
       ? tournament.uncollectableRefunds.map((item) => ({
+          // Meme dualite que pendingRefunds : par membre (`userId`), legacy
+          // `captainId` preserve pour ne pas perdre les traces anterieures.
+          userId: item?.userId,
           captainId: item?.captainId,
           entryId: item?.entryId,
           reason: item?.reason || 'ACCOUNT_DELETED',
           at: item?.at,
-        })).filter((item) => item.captainId)
+        })).filter((item) => item.userId || item.captainId)
       : [],
     createdAt,
     updatedAt,
@@ -274,19 +313,20 @@ const createRegisteredEntry = (options) => {
       isCaptain: true,
       rankMJ: options.captainRankMJ,
     },
-    ...(options.teammates || []).map((member, index) => ({
-      userId: member.userId || `${entryId}-M${index + 2}`,
-      pseudo: normalizeLabel(member.pseudo),
-      joinedAt: options.joinedAt,
-      isCaptain: false,
-      rankMJ: member.rankMJ,
-    })),
   ];
 
   return {
     id: entryId,
     seed: options.seed,
     squadName,
+    // Squads libres (2026-11-05) : la squad NAIT OUVERTE par defaut (n'importe
+    // quel joueur compatible peut rejoindre et payer son propre pass) ou
+    // privee (n'entrent que les pseudos de `invitedPseudos`). Le capitaine
+    // pose SEUL SON pass ; les coequipiers viennent s'ajouter eux-memes.
+    access: options.access === 'private' ? 'private' : 'open',
+    invitedPseudos: (options.invitedPseudos || [])
+      .map((pseudo) => normalizeLabel(pseudo))
+      .filter(Boolean),
     captainId: options.captainId,
     captainPseudo,
     teamSize,
@@ -777,6 +817,16 @@ const getPlacementXp = (placement) => {
 /**
  * Reglement des gains d'un tournoi termine.
  *
+ * Squads libres (2026-11-05) : la part du podium est divisee en parts EGALES
+ * entre les membres de la squad et verse DIRECTEMENT a chacun (partage dans
+ * l'ordre `entry.members`, le reliquat d'arrondi completant le premier) ;
+ * le capitaine ne touche l'argent de personne. Deux subtilites legitees :
+ *   - un membre du podium legacy n'existant pas comme compte (fantome de
+ *     l'ancien modele ou le capitaine payait pour toute l'equipe) voit sa
+ *     part remonter au capitaine de la squad ;
+ *   - un versement qui echoue devient une dette PER-MEMBRE (`userId` a la
+ *     place du `captainId` historique), rejouable par le cron.
+ *
  * Exporte pour etre teste directement : c'est le SEUL endroit ou la dette
  * "pendingPayouts" est ecrite, donc le seul lien critique a couvrir. Tant
  * qu'elle etait interne, un test aurait du monter un tournoi complet pour y
@@ -800,47 +850,118 @@ export const applyTournamentSettlement = async (tournament) => {
     const pendingPayouts = [];
 
     for (const entry of tournament.entries) {
-      const payout = roundAmount(getPlacementPayout(tournament, entry.finalPlacement));
+      const placePayout = roundAmount(getPlacementPayout(tournament, entry.finalPlacement));
+      const rawMembers = (entry.members || []).filter((member) => member && member.userId);
+      const shares = splitEqualShares(placePayout, rawMembers.length);
 
-      try {
-        await withWalletMutex(entry.captainId, async () => {
-          if (payout > 0) {
-            await releaseWalletWinnings(entry.captainId, payout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
-          } else {
-            await settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
-          }
+      // Parts des membres fantomes (aucun compte reel derriere l'identite,
+      // data legacy) remontees au capitaine : dans l'ancien modele, seul le
+      // capitaine avait engage l'argent de la squad entiere.
+      const members = rawMembers.map((member, index) => ({
+        ...member,
+        share: shares[index],
+      }));
+      const resolved = members.filter((member) => (member.userId && getUserById(member.userId)) || false);
+      const ghostShare = roundAmount(
+        shares.reduce((sum, value) => sum + value, 0)
+        - resolved.reduce((sum, member) => sum + member.share, 0)
+      );
+      if (ghostShare > 0 && resolved.some((member) => member.userId === entry.captainId)) {
+        for (const member of resolved) {
+          if (member.userId === entry.captainId) member.share = roundAmount(member.share + ghostShare);
+        }
+      } else if (ghostShare > 0) {
+        // Capitaine lui-meme fantome : part rendue au PREMIER membre reel
+        // (toute la squad avait paye individuellement - personne n'est
+        // proprietaire naturel du reliquat, receveur arbitraire assume).
+        if (resolved.length > 0) resolved[0].share = roundAmount(resolved[0].share + ghostShare);
+      }
 
-          const memberUserIds = [...new Set((entry.members || []).map((member) => member.userId).filter(Boolean))];
-          for (const userId of memberUserIds) {
-            await applyUserSettlementOnce(userId, `tournament:${tournament.id}:entry`, (user) => {
-              const isCaptain = userId === entry.captainId;
+      if (resolved.length === 0) {
+        // Recours LEGACY : plus aucun membre resolvable (comptes supprimes,
+        // data d'avant la bascule). A l'ancien modele, le capitaine portait la
+        // squad entiere - son pass etait le seul engage. On retente donc le
+        // versement de la place complete sur son compte : sans ce recours, la
+        // part serait abandonee SANS dette (aucun membre n'ayant pu etre
+        // servi), ce que le contrat "aucune trace perdue" interdit.
+        try {
+          await withWalletMutex(entry.captainId, async () => {
+            if (placePayout > 0) {
+              await releaseWalletWinnings(entry.captainId, placePayout, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
+            } else {
+              await settleMatchLossWallet(entry.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
+            }
+
+            await applyUserSettlementOnce(entry.captainId, `tournament:${tournament.id}:${entry.id}:${entry.captainId}`, (user) => {
               const nextStats = {
                 ...user.stats,
                 tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
                 tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
-                totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (isCaptain ? payout : 0)),
+                totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (placePayout > 0 ? placePayout : 0)),
               };
               user.stats = nextStats;
               user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
               return user;
             });
-          }
-        });
-      } catch (err) {
-        log.error('Tournament settlement failed for entry', { tournamentId: tournament.id, captainId: entry.captainId, placement: entry.finalPlacement, error: err.message });
-        pendingPayouts.push({
-          kind: payout > 0 ? 'prize' : 'forfeit',
-          captainId: entry.captainId,
-          entryId: entry.id,
-          amount: payout,
-          placement: entry.finalPlacement,
-          lastError: err.message,
-          at: getNow(),
-        });
+          });
+        } catch (err) {
+          log.error('Tournament settlement failed (recours legacy capitaine)', {
+            tournamentId: tournament.id, captainId: entry.captainId, entryId: entry.id, placement: entry.finalPlacement, error: err.message,
+          });
+          // Dette en forme historique (captainId) : les retries la rejouent
+          // telle quelle (fallback `userId || captainId`).
+          pendingPayouts.push({
+            kind: placePayout > 0 ? 'prize' : 'forfeit',
+            captainId: entry.captainId,
+            entryId: entry.id,
+            amount: placePayout,
+            placement: entry.finalPlacement,
+            lastError: err.message,
+            at: getNow(),
+          });
+        }
+        continue;
+      }
+
+      // resolved contient exactement la somme `placePayout`, distribuee a de
+      // vrais portefeuilles ; chaque versement raté redevient une dette.
+
+      for (const member of resolved) {
+        try {
+          await withWalletMutex(member.userId, async () => {
+            if (placePayout > 0) {
+              await releaseWalletWinnings(member.userId, member.share, tournament.id, 'prize_win', `Gain tournoi ${tournament.name}`);
+            } else {
+              await settleMatchLossWallet(member.userId, tournament.id, `Pass consomme apres ${tournament.name}`);
+            }
+
+            await applyUserSettlementOnce(member.userId, `tournament:${tournament.id}:${entry.id}:${member.userId}`, (user) => {
+              const nextStats = {
+                ...user.stats,
+                tournamentsPlayed: Number(user.stats?.tournamentsPlayed || 0) + 1,
+                tournamentsWon: Number(user.stats?.tournamentsWon || 0) + (entry.finalPlacement === 1 ? 1 : 0),
+                totalEarnings: roundAmount(Number(user.stats?.totalEarnings || 0) + (placePayout > 0 ? member.share : 0)),
+              };
+              user.stats = nextStats;
+              user.progression = addXpToProgression(user.progression, getPlacementXp(entry.finalPlacement));
+              return user;
+            });
+          });
+        } catch (err) {
+          log.error('Tournament settlement failed for member', { tournamentId: tournament.id, userId: member.userId, entryId: entry.id, placement: entry.finalPlacement, error: err.message });
+          pendingPayouts.push({
+            kind: placePayout > 0 ? 'prize' : 'forfeit',
+            userId: member.userId,
+            entryId: entry.id,
+            amount: placePayout > 0 ? member.share : 0,
+            placement: entry.finalPlacement,
+            lastError: err.message,
+            at: getNow(),
+          });
+        }
       }
     }
-
-const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbitersNeeded);
+    const arbiterShare = roundAmount(tournament.payout.arbiterPool / tournament.arbitersNeeded);
     if (arbiterShare > 0) {
       for (const arbiter of tournament.arbiters) {
         if (!arbiter.userId) continue;
@@ -956,12 +1077,21 @@ export const createTournamentOnServer = (tournaments, actor, input) => {
 };
 
 /**
- * Register a player (and teammates for team formats) for a tournament.
- * Validates roster, device/controller restrictions, and locks the entry fee.
+ * Le capitaine inscrit sa squad a un tournoi (formation libre).
+ *
+ * Squads libres (2026-11-05) : l'inscription NE LISTE PLUS des coequipiers
+ * d'un coup. Le capitaine pose SEUL SON pass (`entryFee`, jamais x teamSize)
+ * sur son portefeuille ; la squad nait incomplete avec lui seul comme membre,
+ * OUVERTE (tout joueur compatible peut rejoindre puis payer son propre pass)
+ * ou PRIVEE (n'entrent que les pseudos invites). Les coequipiers s'ajoutent
+ * eux-memes par `joinTournamentOnServer` : le capitaine ne gere l'argent de
+ * personne. 1VS1 : meme acte, squad complete d'office (teamSize 1).
+ *
+ * Validates restrictions and locks the entry fee.
  * @param {Array} tournaments - Current array of all tournaments.
  * @param {Object} actor - The user registering.
  * @param {string} tournamentId - ID of the tournament.
- * @param {Object} [input] - Registration data (pseudo, teammates, squadName, rankMJ).
+ * @param {Object} [input] - Registration data (squadName, access, invitedPseudos, rankMJ).
  * @returns {Promise<{tournaments: Array, tournament: Object, actorUser: Object}>}
  */
 export const registerForTournamentOnServer = async (tournaments, actor, tournamentId, input = {}) => {
@@ -990,68 +1120,46 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   // Le capitaine ne peut pas usurper le pseudo d'un autre : on force son
   // propre pseudo (l'inscription à un tournoi engage du vrai argent).
   if (normalizeLabel(input.pseudo || '').toLowerCase() !== actorUser.pseudo.toLowerCase()) {
-    throw makeError('INVALID_REGISTRATION', 'Utilise ton propre pseudo de compte comme capitaine.');
+    throw makeError('INVALID_REGISTRATION', 'Utilise ton propre pseudo de compte pour inscrire la squad.');
   }
   const normalizedCaptainPseudo = normalizeLabel(actorUser.pseudo);
-  const normalizedTeammates =
-    tournament.teamSize === 1
-      ? []
-      : (input.teammates || []).map((member) => {
-          // Résolution par userId en priorité. Le front n'envoie historiquement
-          // que le pseudo saisi (pas de recherche joueur implémentée), donc on
-          // retombe sur le pseudo — qui est unique (unicité vérifiée à
-          // l'inscription). Sans ce fallback, TOUTE inscription en équipe
-          // (2VS2→5VS5) était rejetée.
-          const teammate = getUserById(member.userId)
-            || (member.pseudo ? getUserByExactPseudo(member.pseudo) : null);
-          // userId ET pseudo introuvables = identité injectée dans le bracket
-          // (et les gains partiraient vers un compte fantôme ou usurpé).
-          if (!teammate) {
-            throw makeError(
-              'INVALID_REGISTRATION',
-              'Un coequipier est introuvable. Verifie son pseudo exact.',
-            );
-          }
-          return { userId: teammate.id, pseudo: normalizeLabel(teammate.pseudo) };
-        });
-
-  // Un coequipier ne peut pas être le capitaine, et chaque joueur une seule fois.
-  const memberIds = new Set();
-  for (const member of normalizedTeammates) {
-    if (member.userId === actorUser.id) {
-      throw makeError('INVALID_REGISTRATION', 'Tu ne peux pas etre a la fois capitaine et coequipier.');
-    }
-    if (memberIds.has(member.userId)) {
-      throw makeError('INVALID_REGISTRATION', 'Un joueur ne peut pas etre deux fois dans la meme squad.');
-    }
-    memberIds.add(member.userId);
-  }
-
-  if (normalizedCaptainPseudo.length < 2) {
-    throw makeError('INVALID_REGISTRATION', 'Pseudo capitaine invalide.');
-  }
-  if (normalizedTeammates.length !== Math.max(0, tournament.teamSize - 1)) {
-    throw makeError('INVALID_REGISTRATION', 'Le roster doit etre complet pour valider la squad.');
-  }
-  if (normalizedTeammates.some((member) => member.pseudo.length < 2)) {
-    throw makeError('INVALID_REGISTRATION', 'Chaque coequipier doit avoir un pseudo valide.');
-  }
-
-  const rosterPseudos = [normalizedCaptainPseudo, ...normalizedTeammates.map((member) => member.pseudo)];
-  const rosterKeys = new Set();
-  for (const pseudo of rosterPseudos) {
-    const key = pseudo.toLowerCase();
-    if (rosterKeys.has(key)) {
-      throw makeError('INVALID_REGISTRATION', 'Chaque pseudo de la squad doit etre unique.');
-    }
-    rosterKeys.add(key);
+  // Squad privee = sur invitation : n'entrent que les pseudos listes. La
+  // liste doit etre valide (pseudos uniques, pas le capitaine lui-meme, pas
+  // deja reserve sur ce tournoi) mais ne compte PAS dans le roster : rejoindre
+  // est toujours le geste du joueur lui-meme. Une squad ouverte ne porte pas
+  // de liste d invites.
+  const requestedAccess = input.access === 'private' ? 'private' : 'open';
+  const invitedPseudos = (Array.isArray(input.invitedPseudos) ? input.invitedPseudos : [])
+    .map((pseudo) => normalizeLabel(pseudo))
+    .filter(Boolean);
+  if (requestedAccess === 'open' && invitedPseudos.length > 0) {
+    throw makeError('INVALID_REGISTRATION', 'Une squad ouverte ne porte pas de liste d invites.');
   }
 
   const existingPseudoKeys = new Set(
     tournament.entries.flatMap((entry) => entry.members.map((member) => `${member.pseudo || ''}`.toLowerCase()))
   );
-  if (rosterPseudos.some((pseudo) => existingPseudoKeys.has(pseudo.toLowerCase()))) {
-    throw makeError('INVALID_REGISTRATION', 'Un de ces pseudos est deja reserve sur ce tournoi.');
+
+  const invitedKeys = new Set();
+  for (const pseudo of invitedPseudos) {
+    if (pseudo.length < 2) {
+      throw makeError('INVALID_REGISTRATION', 'Chaque pseudo invite doit avoir un nom valide.');
+    }
+    const key = pseudo.toLowerCase();
+    if (key === normalizedCaptainPseudo.toLowerCase() || existingPseudoKeys.has(key)) {
+      throw makeError('INVALID_REGISTRATION', 'Un pseudo invite est deja pris sur ce tournoi.');
+    }
+    if (invitedKeys.has(key)) {
+      throw makeError('INVALID_REGISTRATION', 'Chaque pseudo invite doit etre unique.');
+    }
+    invitedKeys.add(key);
+  }
+  // Squads libres (2026-11-05) : une squad privee sans AUCUN pseudo invite
+  // resterait fermee a tout joueur jusqu'au lancement (balayage + refunds).
+  // Elle immobiliserait une place du tableau pour personne : le front
+  // l'interdit deja, le moteur le refuse aussi pour ne pas dependre de l'UI.
+  if (requestedAccess === 'private' && invitedPseudos.length === 0) {
+    throw makeError('INVALID_REGISTRATION', 'Une squad privee doit inviter au moins un pseudo.');
   }
 
   const squadName =
@@ -1066,7 +1174,7 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   }
 
   await withWalletMutex(actorUser.id, async () => {
-    await lockEntryFee(actorUser.id, getSquadLockAmount(tournament.entryFee, tournament.teamSize), tournament.id);
+    await lockEntryFee(actorUser.id, tournament.entryFee, tournament.id);
   });
 
   const nextEntry = createRegisteredEntry({
@@ -1076,7 +1184,8 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
     captainPseudo: normalizedCaptainPseudo,
     captainRankMJ: input.rankMJ || actorUser.rankMJ,
     squadName,
-    teammates: normalizedTeammates,
+    access: requestedAccess,
+    invitedPseudos,
     joinedAt: getNow(),
   });
 
@@ -1092,10 +1201,95 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
 };
 
 /**
- * Leave a tournament and refund the locked entry fee (captain only, before start).
+ * Rejoindre la squad d'un tournoi (squads libres, 2026-11-05).
+ *
+ * Le coequipier verrouille LUI-MEME son pass (`entryFee`) depuis SON compte,
+ * en son propre nom : personne ne debite jamais le portefeuille d'un autre.
+ * Une squad ouverte accueille tout joueur compatible (appareil/controleur,
+ * non arbitre, ni deja inscrit) ; une squad privee n'accueille que les
+ * pseudos de sa liste d invites. La squad est complete quand ses membres
+ * atteignent `teamSize` - mais tant que le tournoi ne demarre pas, chacun
+ * peut partir et recuperer son propre pass.
+ *
+ * @param {Array} tournaments - Current array of all tournaments.
+ * @param {Object} actor - The player joining an existing squad.
+ * @param {string} tournamentId - ID of the tournament.
+ * @param {string} entryId - ID of the squad to join.
+ * @returns {Promise<{tournaments: Array, tournament: Object, actorUser: Object}>}
+ */
+export const joinTournamentOnServer = async (tournaments, actor, tournamentId, entryId) => {
+  const actorUser = requireActorUser(actor);
+  const nextTournaments = cloneTournaments(tournaments);
+  const tournament = findTournament(nextTournaments, tournamentId);
+
+  if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
+  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Les inscriptions sont deja fermees.');
+  if (tournament.entries.some((entry) => entry.members.some((member) => member.userId === actorUser.id))) {
+    throw makeError('ALREADY_JOINED', 'Tu es deja inscrit a ce tournoi.');
+  }
+  if (tournament.arbiters.some((arbiter) => arbiter.userId === actorUser.id)) {
+    throw makeError('ROLE_CONFLICT', 'Un arbitre ne peut pas participer a son propre tournoi.');
+  }
+
+  const deviceMismatch =
+    tournament.deviceRestriction !== 'open' && actorUser.device !== tournament.deviceRestriction;
+  const controllerMismatch =
+    tournament.controllerRestriction !== 'open' && actorUser.controllerType !== tournament.controllerRestriction;
+  if (deviceMismatch || controllerMismatch) {
+    throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton controle ne correspond pas a ce tournoi.');
+  }
+
+  const entry = (tournament.entries || []).find((item) => item.id === entryId);
+  if (!entry) throw makeError('SQUAD_NOT_FOUND', 'Cette squad n existe pas (ou plus) sur ce tournoi.');
+  if ((entry.members || []).length >= entry.teamSize) {
+    throw makeError('SQUAD_FULL', `La squad ${entry.squadName} est deja complete (${entry.teamSize} joueur(s)).`);
+  }
+
+  const memberPseudo = normalizeLabel(actorUser.pseudo);
+  const memberKey = memberPseudo.toLowerCase();
+  if (entry.access === 'private'
+    && !(entry.invitedPseudos || []).some((pseudo) => pseudo.toLowerCase() === memberKey)) {
+    throw makeError('FORBIDDEN', 'Cette squad est sur invitation. Demande au capitaine de t inviter.');
+  }
+  if ((entry.members || []).some((member) => `${member.pseudo || ''}`.toLowerCase() === memberKey)) {
+    throw makeError('INVALID_REGISTRATION', 'Un joueur ne peut pas etre deux fois dans la meme squad.');
+  }
+
+  await withWalletMutex(actorUser.id, async () => {
+    await lockEntryFee(actorUser.id, tournament.entryFee, tournament.id);
+  });
+
+  entry.members = [
+    ...(entry.members || []),
+    {
+      userId: actorUser.id,
+      pseudo: memberPseudo,
+      joinedAt: getNow(),
+      isCaptain: false,
+      rankMJ: actorUser.rankMJ,
+    },
+  ];
+  tournament.updatedAt = getNow();
+
+  return {
+    tournaments: nextTournaments,
+    tournament,
+    actorUser: getUserById(actorUser.id),
+  };
+};
+
+
+
+/**
+ * Leave a tournament and refund the entry fee the actor locked HIMSELF
+ * (before start). Squads libres (2026-11-05) : le retrait est INDIVIDUEL et
+ * chaque membre recupere son propre pass de son propre portefeuille ; le
+ * capitaine de squad ne gere l'argent de personne. Si le capitaine part, le
+ * premier membre restant prend le relais (la squad survit) ; une squad videe
+ * est retiree du tournoi.
  * Recalculates payout pool and re-seeds remaining entries.
  * @param {Array} tournaments - Current array of all tournaments.
- * @param {Object} actor - The captain leaving the tournament.
+ * @param {Object} actor - The player leaving the tournament.
  * @param {string} tournamentId - ID of the tournament.
  * @returns {Promise<{tournaments: Array, tournament: Object, actorUser: Object}>}
  */
@@ -1107,21 +1301,36 @@ export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) 
   if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
   if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Le tournoi a deja demarre.');
 
-  const removedEntry = tournament.entries.find((entry) =>
-    entry.members.some((member) => member.userId === actorUser.id)
+  const entry = tournament.entries.find((item) =>
+    (item.members || []).some((member) => member.userId === actorUser.id)
   );
-  if (!removedEntry) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas a ce tournoi.');
-  if (removedEntry.captainId !== actorUser.id) {
-    throw makeError('FORBIDDEN', 'Seul le capitaine peut retirer cette squad.');
-  }
+  if (!entry) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas a ce tournoi.');
 
+  // Remboursement du SEUL pass du partant, depuis SON portefeuille : jamais
+  // le pass d'un autre membre (chacun a verrouille le sien a son adhesion).
   await withWalletMutex(actorUser.id, async () => {
     await refundLockedEntry(actorUser.id, tournament.id, `Remboursement du pass ${tournament.name}`);
   });
 
-  tournament.entries = tournament.entries
-    .filter((entry) => entry.id !== removedEntry.id)
-    .map((entry, index) => ({ ...entry, seed: index + 1 }));
+  const remaining = (entry.members || []).filter((member) => member.userId !== actorUser.id);
+  if (remaining.length === 0) {
+    // Squad videe : la place est liberee, reseed + recalcul de la cagnotte.
+    tournament.entries = tournament.entries
+      .filter((item) => item.id !== entry.id)
+      .map((item, index) => ({ ...item, seed: index + 1 }));
+  } else {
+    // Capitaine partant : le premier membre restant devient capitaine - la
+    // squad survit. Le drapeau isCaptain suit le nouveau capitaineId.
+    entry.members = remaining.map((member) => ({ ...member, isCaptain: member.userId === remaining[0].userId }));
+    if (remaining[0].userId !== entry.captainId) {
+      entry.captainId = remaining[0].userId;
+      entry.captainPseudo = remaining[0].pseudo;
+    }
+    entry.invitedPseudos = (entry.invitedPseudos || []).filter(
+      (pseudo) => pseudo.toLowerCase() !== actorUser.pseudo.toLowerCase()
+    );
+  }
+
   tournament.payout = buildPayout(tournament.entryFee, tournament.entries.length, tournament.arbitersNeeded, tournament.teamSize);
   tournament.updatedAt = getNow();
 
@@ -1131,6 +1340,8 @@ export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) 
     actorUser: getUserById(actorUser.id),
   };
 };
+
+
 
 /**
  * Annule un tournoi en sequestre sans issue et rembourse tous les capitaines.
@@ -1156,29 +1367,40 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
     throw makeError('MATCH_CLOSED', 'Seul un tournoi non termine peut etre annule ainsi.');
   }
 
+  // Squads libres (2026-11-05) : chaque membre a verrouille SON pass depuis
+  // SON portefeuille. L'annulation rembourse donc chaque PARTICIPANT (les
+  // membres, pas seulement le capitaine) - un utilisateur a au plus une
+  // reservation par tournoi, deduplique par (userId, entry).
   let refunded = 0;
-  const failedCaptains = [];
+  const failedRefunds = [];
   const uncollectable = [];
+  const refundTargets = [];
   for (const entry of tournament.entries) {
-    if (!entry.captainId) continue;
+    for (const member of entry.members || []) {
+      if (!member.userId) continue;
+      if (refundTargets.some((item) => item.userId === member.userId)) continue;
+      refundTargets.push({ userId: member.userId, entryId: entry.id });
+    }
+  }
+  for (const target of refundTargets) {
     try {
-      await withWalletMutex(entry.captainId, async () => {
-        await refundLockedEntry(entry.captainId, tournament.id, `Remboursement du pass ${tournament.name}`);
+      await withWalletMutex(target.userId, async () => {
+        await refundLockedEntry(target.userId, tournament.id, `Remboursement du pass ${tournament.name}`);
       });
       refunded += 1;
     } catch (error) {
       // Compte supprime : dette impossible a honorer, close separement.
       if (isUnrecoverableRefundError(error)) {
-        log.error('Tournament refund impossible: compte supprime, dette close', { tournamentId, captainId: entry.captainId });
-        uncollectable.push({ captainId: entry.captainId, entryId: entry.id, reason: 'ACCOUNT_DELETED', at: getNow() });
+        log.error('Tournament refund impossible: compte supprime, dette close', { tournamentId, userId: target.userId });
+        uncollectable.push({ userId: target.userId, entryId: target.entryId, reason: 'ACCOUNT_DELETED', at: getNow() });
         continue;
       }
       // NE PAS perdre la trace : l'entrée reste dans pendingRefunds et le
       // cron de reprise la réessaie. Avant, l'erreur était loguée puis
       // `entries = []` détruisait la preuve de la dette : les ZC restaient
       // bloqués dans lockedEntries sans aucun chemin pour les libérer.
-      log.error('Tournament refund failed', { tournamentId, captainId: entry.captainId, error: error.message });
-      failedCaptains.push({ captainId: entry.captainId, entryId: entry.id, lastError: error.message });
+      log.error('Tournament refund failed', { tournamentId, userId: target.userId, error: error.message });
+      failedRefunds.push({ userId: target.userId, entryId: target.entryId, lastError: error.message, at: getNow() });
     }
   }
 
@@ -1187,18 +1409,19 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
   tournament.cancelledAt = getNow();
   tournament.updatedAt = getNow();
   // Dette conservée : le retry la reprend, et /health peut l'alerter.
-  tournament.pendingRefunds = failedCaptains;
+  tournament.pendingRefunds = failedRefunds;
   tournament.uncollectableRefunds = [...(tournament.uncollectableRefunds || []), ...uncollectable];
-  // On ne retire que les entrées réellement remboursées.
-  tournament.entries = failedCaptains.length > 0
-    ? tournament.entries.filter((e) => failedCaptains.some((f) => f.entryId === e.id))
+  // On ne retire que les entrées dont TOUTE la squad est honoree (ou vide) ;
+  // une squad avec un refund en echec reste visible, trace vivante de la dette.
+  tournament.entries = failedRefunds.length > 0
+    ? tournament.entries.filter((e) => failedRefunds.some((f) => f.entryId === e.id))
     : [];
 
   return {
     tournaments: nextTournaments,
     tournament,
     refunded,
-    pendingRefunds: failedCaptains.length,
+    pendingRefunds: failedRefunds.length,
     uncollectableRefunds: uncollectable.length,
   };
 };
@@ -1222,22 +1445,26 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
     const stillFailing = [];
     const uncollectable = [];
     for (const item of pending) {
+      // Squads libres (2026-11-05) : les dettes sont desormais PAR MEMBRE
+      // (`userId`). Les dettes legacy d'avant la bascule restent cles sur
+      // `captainId` - les deux formes cohabitent ici sans hypothese.
+      const targetUserId = item.userId || item.captainId;
       try {
-        await withWalletMutex(item.captainId, async () => {
-          await refundLockedEntry(item.captainId, tournament.id, `Remboursement du pass ${tournament.name}`);
+        await withWalletMutex(targetUserId, async () => {
+          await refundLockedEntry(targetUserId, tournament.id, `Remboursement du pass ${tournament.name}`);
         });
         retried += 1;
       } catch (error) {
-        // Capitaine supprime : dette impossible a honorer. La remettre dans
+        // Compte supprime : dette impossible a honorer. La remettre dans
         // `pendingRefunds` la rejouerait a chaque cycle, pour toujours.
         if (isUnrecoverableRefundError(error)) {
-          log.error('Tournament refund abandon: compte supprime, dette close', { tournamentId: tournament.id, captainId: item.captainId });
-          uncollectable.push({ captainId: item.captainId, entryId: item.entryId, reason: 'ACCOUNT_DELETED', at: getNow() });
+          log.error('Tournament refund abandon: compte supprime, dette close', { tournamentId: tournament.id, userId: targetUserId });
+          uncollectable.push({ userId: targetUserId, entryId: item.entryId, reason: 'ACCOUNT_DELETED', at: getNow() });
           abandoned += 1;
           continue;
         }
         log.warn('Tournament refund retry failed', {
-          tournamentId: tournament.id, captainId: item.captainId, error: error.message,
+          tournamentId: tournament.id, userId: targetUserId, error: error.message,
         });
         stillFailing.push({ ...item, lastError: error.message });
       }
@@ -1292,13 +1519,13 @@ export const retryPendingTournamentPayouts = async (tournaments) => {
             );
           });
         } else if (item.kind === 'forfeit') {
-          await withWalletMutex(item.captainId, async () => {
-            await settleMatchLossWallet(item.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
+          await withWalletMutex(item.userId || item.captainId, async () => {
+            await settleMatchLossWallet(item.userId || item.captainId, tournament.id, `Pass consomme apres ${tournament.name}`);
           });
         } else {
-          await withWalletMutex(item.captainId, async () => {
+          await withWalletMutex(item.userId || item.captainId, async () => {
             await releaseWalletWinnings(
-              item.captainId,
+              item.userId || item.captainId,
               roundAmount(item.amount),
               tournament.id,
               'prize_win',
@@ -1310,7 +1537,7 @@ export const retryPendingTournamentPayouts = async (tournaments) => {
       } catch (error) {
         log.warn('Tournament payout retry failed', {
           tournamentId: tournament.id,
-          userId: item.captainId || item.arbiterUserId,
+          userId: item.userId || item.captainId || item.arbiterUserId,
           error: error.message,
         });
         stillFailing.push({ ...item, lastError: error.message });
@@ -1433,15 +1660,17 @@ export const assignTournamentArbiterOnServer = (tournaments, actor, tournamentId
   };
 };
 
+
+
 /**
  * Start a tournament by generating the bracket (arbiter or admin only).
  * Validates minimum entries, arbiter slots, and transitions status to live.
  * @param {Array} tournaments - Current array of all tournaments.
  * @param {Object} actor - The arbiter starting the tournament.
  * @param {string} tournamentId - ID of the tournament.
- * @returns {{tournaments: Array, tournament: Object, actorUser: Object}}
+ * @returns {Promise<{tournaments: Array, tournament: Object, actorUser: Object}>}
  */
-export const startTournamentOnServer = (tournaments, actor, tournamentId) => {
+export const startTournamentOnServer = async (tournaments, actor, tournamentId) => {
   const actorUser = requireActorUser(actor);
   const nextTournaments = cloneTournaments(tournaments);
   const tournament = findTournament(nextTournaments, tournamentId);
@@ -1452,11 +1681,62 @@ export const startTournamentOnServer = (tournaments, actor, tournamentId) => {
     throw makeError('FORBIDDEN', 'Seul un arbitre assigne peut lancer ce tournoi.');
   }
   if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Le tournoi est deja en cours ou termine.');
-  if (tournament.entries.length < tournament.minEntries) {
-    throw makeError('MATCH_NOT_READY', 'Le nombre minimum de participants n est pas atteint.');
-  }
   if (tournament.arbiters.some((arbiter) => !arbiter.userId)) {
     throw makeError('MATCH_NOT_READY', 'Tous les slots arbitres doivent etre couverts avant le lancement.');
+  }
+
+  // Squads libres (2026-11-05) : une squad incomplète au lancement est
+  // retiree automatiquement, chaque membre récupérant SON pass depuis SON
+  // portefeuille - personne ne bloque le tournoi des autres. Les échecs de
+  // remboursement deviennent des dettes rejouables, comme pour une annulation.
+  //
+  // GARDE AVAL : le balayage ne tient que si le tournoi reste viable SANS les
+  // squads incompletes. Les refund verrouillent d'abord les validations, donc
+  // un refus ici ne rembourse rien : l'etat des portefeuilles et l'etat du
+  // tournoi ne divergent jamais (la route ne persiste qu'apres le retour).
+  const completeEntries = tournament.entries.filter(
+    (entry) => (entry.members || []).length >= entry.teamSize
+  );
+  const incompleteEntries = tournament.entries.filter(
+    (entry) => (entry.members || []).length < entry.teamSize
+  );
+  if (completeEntries.length < tournament.minEntries) {
+    throw makeError('MATCH_NOT_READY', 'Le nombre minimum de participants n est pas atteint.');
+  }
+
+  if (incompleteEntries.length > 0) {
+    const pendingRefunds = [...(Array.isArray(tournament.pendingRefunds) ? tournament.pendingRefunds : [])];
+    const uncollectable = [];
+    for (const entry of incompleteEntries) {
+      const seen = new Set();
+      for (const member of entry.members || []) {
+        if (!member.userId || seen.has(member.userId)) continue;
+        seen.add(member.userId);
+        try {
+          await withWalletMutex(member.userId, async () => {
+            await refundLockedEntry(member.userId, tournament.id, `Remboursement du pass ${tournament.name}`);
+          });
+        } catch (error) {
+          if (isUnrecoverableRefundError(error)) {
+            log.error('Tournament sweep refund impossible: compte supprime, dette close', {
+              tournamentId: tournament.id, userId: member.userId,
+            });
+            uncollectable.push({ userId: member.userId, entryId: entry.id, reason: 'ACCOUNT_DELETED', at: getNow() });
+            continue;
+          }
+          log.error('Tournament sweep refund failed', {
+            tournamentId: tournament.id, userId: member.userId, entryId: entry.id, error: error.message,
+          });
+          pendingRefunds.push({ userId: member.userId, entryId: entry.id, lastError: error.message, at: getNow() });
+        }
+      }
+    }
+    tournament.pendingRefunds = pendingRefunds;
+    if (uncollectable.length > 0) {
+      tournament.uncollectableRefunds = [...(tournament.uncollectableRefunds || []), ...uncollectable];
+    }
+    tournament.entries = completeEntries.map((entry, index) => ({ ...entry, seed: index + 1 }));
+    tournament.payout = buildPayout(tournament.entryFee, tournament.entries.length, tournament.arbitersNeeded, tournament.teamSize);
   }
 
   const bracket = buildBracket(tournament);
@@ -1471,6 +1751,8 @@ export const startTournamentOnServer = (tournaments, actor, tournamentId) => {
     actorUser: getUserById(actorUser.id),
   };
 };
+
+
 
 const requireTournamentMatchAction = (tournaments, actor, tournamentId, matchId) => {
   const actorUser = requireActorUser(actor);

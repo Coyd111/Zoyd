@@ -388,7 +388,7 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
     ).rejects.toThrow();
   });
 
-  it('should reject if not captain', async () => {
+  it('retrait individuel : un coequipier part et recupere SON propre pass (squad survivante)', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       maxEntries: 8,
@@ -397,6 +397,7 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
       entries: [{
         id: 'ENTRY-1',
         captainId: 'other-player',
+        captainPseudo: 'Boss',
         members: [
           { userId: 'other-player', pseudo: 'Boss', isCaptain: true },
           { userId: 'player-1', pseudo: 'ShadowX', isCaptain: false },
@@ -406,9 +407,60 @@ describe('tournament-engine - leaveTournamentOnServer', () => {
       arbiters: [],
     }])[0];
 
-    await expect(
-      tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST')
-    ).rejects.toThrow();
+    const result = await tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST');
+    // Seul le pass du partant est rembourse - jamais celui du capitaine.
+    expect(refundLockedEntry).toHaveBeenCalledWith('player-1', 'T-TEST', expect.any(String));
+    expect(refundLockedEntry).toHaveBeenCalledTimes(1);
+    const entry = result.tournament.entries[0];
+    // La squad survit (1 membre sur 2) : elle sera balayee au lancement si
+    // personne ne complete le roster.
+    expect(entry.captainId).toBe('other-player');
+    expect(entry.members).toHaveLength(1);
+    expect(entry.members[0].userId).toBe('other-player');
+    expect(entry.members[0].isCaptain).toBe(true);
+  });
+
+  it('capitaine departant : le premier membre restant prend le relais (transfer auto)', async () => {
+    const tournament = tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-TEST',
+      maxEntries: 8,
+      status: 'recruiting',
+      format: '2VS2',
+      entries: [{
+        id: 'ENTRY-1',
+        captainId: 'player-1',
+        captainPseudo: 'ShadowX',
+        members: [
+          { userId: 'player-1', pseudo: 'ShadowX', isCaptain: true },
+          { userId: 'player-3', pseudo: 'Blaze', isCaptain: false },
+        ],
+        seed: 1,
+      }],
+      arbiters: [],
+    }])[0];
+
+    const result = await tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST');
+    expect(refundLockedEntry).toHaveBeenCalledWith('player-1', 'T-TEST', expect.any(String));
+    const entry = result.tournament.entries[0];
+    expect(entry.captainId).toBe('player-3');
+    expect(entry.captainPseudo).toBe('Blaze');
+    expect(entry.members.map((member) => member.isCaptain)).toEqual([true]);
+  });
+
+  it('squad videe : la place est liberee et le tournoi reseede', async () => {
+    const tournament = tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-TEST',
+      maxEntries: 8,
+      status: 'recruiting',
+      format: '1VS1',
+      entries: [makeEntry('player-1', 'ShadowX', 1), makeEntry('player-3', 'Blaze', 2)],
+      arbiters: [],
+    }])[0];
+
+    const result = await tournamentEngine.leaveTournamentOnServer([tournament], mockPlayer, 'T-TEST');
+    expect(result.tournament.entries).toHaveLength(1);
+    expect(result.tournament.entries[0].seed).toBe(1);
+    expect(result.tournament.entries[0].captainId).toBe('player-3');
   });
 
   it('should reject if tournament already started', async () => {
@@ -431,7 +483,7 @@ describe('tournament-engine - startTournamentOnServer', () => {
     getUserById.mockReturnValue(mockPlayer);
   });
 
-  it('should start tournament and build bracket', () => {
+  it('should start tournament and build bracket', async () => {
     const entries = [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
@@ -449,12 +501,12 @@ describe('tournament-engine - startTournamentOnServer', () => {
       arbiters: [{ userId: 'arbiter-1', pseudo: 'Ref', slot: 1, assignedAt: new Date().toISOString() }],
     }])[0];
 
-    const result = tournamentEngine.startTournamentOnServer([tournament], arbiterUser, 'T-TEST');
+    const result = await tournamentEngine.startTournamentOnServer([tournament], arbiterUser, 'T-TEST');
     expect(result.tournament.status).toBe('live');
     expect(result.tournament.matches.length).toBeGreaterThan(0);
   });
 
-  it('should reject if not enough entries', () => {
+  it('should reject if not enough entries', async () => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
       maxEntries: 8,
@@ -464,12 +516,12 @@ describe('tournament-engine - startTournamentOnServer', () => {
       arbiters: [{ userId: 'arbiter-1', pseudo: 'Ref', slot: 1, assignedAt: new Date().toISOString() }],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.startTournamentOnServer([tournament], mockPlayer, 'T-TEST')
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
-  it('should reject if arbiters not assigned', () => {
+  it('should reject if arbiters not assigned', async () => {
     const entries = [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
@@ -483,9 +535,9 @@ describe('tournament-engine - startTournamentOnServer', () => {
       arbiters: [{ userId: null, slot: 1 }],
     }])[0];
 
-    expect(() =>
+    await expect(
       tournamentEngine.startTournamentOnServer([tournament], mockPlayer, 'T-TEST')
-    ).toThrow();
+    ).rejects.toThrow();
   });
 });
 
@@ -569,7 +621,7 @@ describe('tournament-engine - submitTournamentMatchResultOnServer', () => {
 });
 
 describe('tournament-engine - pure helpers', () => {
-  it('should build correct bracket for 4 entries (2 rounds)', () => {
+  it('should build correct bracket for 4 entries (2 rounds)', async () => {
     const entries = [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
@@ -586,12 +638,12 @@ describe('tournament-engine - pure helpers', () => {
       arbiters: [{ userId: 'admin-1', pseudo: 'Admin', slot: 1, assignedAt: new Date().toISOString() }],
     }])[0];
 
-    const result = tournamentEngine.startTournamentOnServer([tournament], mockAdmin, 'T-TEST');
+    const result = await tournamentEngine.startTournamentOnServer([tournament], mockAdmin, 'T-TEST');
     expect(result.tournament.mainRounds).toBe(2);
     expect(result.tournament.matches.filter((m) => m.bracketType === 'main')).toHaveLength(3);
   });
 
-  it('should build correct bracket for 8 entries (3 rounds)', () => {
+  it('should build correct bracket for 8 entries (3 rounds)', async () => {
     const entries = Array.from({ length: 8 }, (_, i) => makeEntry(`p${i}`, `P${i}`, i + 1));
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: 'T-TEST',
@@ -603,7 +655,7 @@ describe('tournament-engine - pure helpers', () => {
       arbiters: [{ userId: 'admin-1', pseudo: 'Admin', slot: 1, assignedAt: new Date().toISOString() }],
     }])[0];
 
-    const result = tournamentEngine.startTournamentOnServer([tournament], mockAdmin, 'T-TEST');
+    const result = await tournamentEngine.startTournamentOnServer([tournament], mockAdmin, 'T-TEST');
     expect(result.tournament.mainRounds).toBe(3);
     expect(result.tournament.matches.filter((m) => m.bracketType === 'main')).toHaveLength(7);
   });
@@ -625,7 +677,7 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     updatedAt: new Date().toISOString(),
   });
 
-  it('rembourse tous les captains quand tout reussit', async () => {
+  it('rembourse tous les participants quand tout reussit', async () => {
     refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
     const result = await tournamentEngine.cancelStaleTournamentOnServer([makeTournament()], 'T-STALE');
     expect(refundLockedEntry).toHaveBeenCalledTimes(2);
@@ -647,7 +699,7 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     expect(cancelled.refunded).toBe(1);
     expect(cancelled.pendingRefunds).toBe(1);
     expect(cancelled.tournament.entries.map((e) => e.captainId)).toEqual(['player-2']);
-    expect(cancelled.tournament.pendingRefunds[0].captainId).toBe('player-2');
+    expect(cancelled.tournament.pendingRefunds[0].userId).toBe('player-2');
 
     // Le retry rejoue le refund rate.
     refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
@@ -672,8 +724,8 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     expect(cancelled.refunded).toBe(1);
     expect(cancelled.pendingRefunds).toBe(0);
     expect(cancelled.uncollectableRefunds).toBe(1);
-    // Trace conservee : la dette est close, pas oubliee.
-    expect(cancelled.tournament.uncollectableRefunds[0].captainId).toBe('player-2');
+    // Trace conservee : la dette est close, pas oubliee (cle PAR MEMBRE).
+    expect(cancelled.tournament.uncollectableRefunds[0].userId).toBe('player-2');
     expect(cancelled.tournament.uncollectableRefunds[0].reason).toBe('ACCOUNT_DELETED');
 
     // Un second passage ne doit plus rien rejouer : c'est tout l'objet.
@@ -718,7 +770,7 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     expect(retried.remaining).toBe(0);
     expect(retried.abandoned).toBe(1);
     expect(retried.tournaments[0].uncollectableRefunds).toHaveLength(1);
-    expect(retried.tournaments[0].uncollectableRefunds[0].captainId).toBe('player-2');
+    expect(retried.tournaments[0].uncollectableRefunds[0].userId).toBe('player-2');
     expect(tournamentEngine.countUncollectableTournamentRefunds(retried.tournaments)).toBe(1);
 
     // Un troisieme passage ne refait rien : c'est tout l'objet de la correction.
@@ -749,6 +801,410 @@ describe('tournament-engine - annulation et remboursement des passes', () => {
     }]);
     expect(normalized[0].pendingRefunds).toHaveLength(1);
     expect(normalized[0].pendingRefunds[0].captainId).toBe('player-2');
+  });
+});
+
+describe('tournament-engine - squads libres : creation OUVERTE ou PRIVEE (2026-11-05)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockPlayer);
+  });
+
+  const makeTeamTournament = (entries = [], format = '2VS2') =>
+    tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-SQUAD',
+      maxEntries: 8,
+      entryFee: 100,
+      status: 'recruiting',
+      format,
+      entries,
+      arbiters: [],
+    }])[0];
+
+  it('le capitaine pose SEUL SON pass : reglement individuel, jamais x teamSize', async () => {
+    lockEntryFee.mockResolvedValue({});
+    const tournament = makeTeamTournament();
+    const result = await tournamentEngine.registerForTournamentOnServer(
+      [tournament], mockPlayer, 'T-SQUAD', { pseudo: 'ShadowX', squadName: 'Alpha' }
+    );
+    // LE contrat : entryFee, PAS entryFee x teamSize.
+    expect(lockEntryFee).toHaveBeenCalledWith('player-1', 100, 'T-SQUAD');
+    expect(result.tournament.entries).toHaveLength(1);
+    const entry = result.tournament.entries[0];
+    // La squad nait incomplete : 1 membre sur 2, ouverte par defaut.
+    expect(entry.members).toHaveLength(1);
+    expect(entry.members[0].isCaptain).toBe(true);
+    expect(entry.access).toBe('open');
+    expect(entry.invitedPseudos).toEqual([]);
+  });
+
+  it('squad PRIVEE : une liste d invites est acceptee et stockee', async () => {
+    lockEntryFee.mockResolvedValue({});
+    const tournament = makeTeamTournament();
+    const result = await tournamentEngine.registerForTournamentOnServer(
+      [tournament], mockPlayer, 'T-SQUAD', { pseudo: 'ShadowX', squadName: 'Alpha', access: 'private', invitedPseudos: ['Ghost'] }
+    );
+    expect(result.tournament.entries[0].access).toBe('private');
+    expect(result.tournament.entries[0].invitedPseudos).toEqual(['Ghost']);
+  });
+
+  it('squad ouverte avec une liste d invites : refuse (nonsens)', async () => {
+    const tournament = makeTeamTournament();
+    await expect(
+      tournamentEngine.registerForTournamentOnServer(
+        [tournament], mockPlayer, 'T-SQUAD',
+        { pseudo: 'ShadowX', squadName: 'Alpha', invitedPseudos: ['Ghost'] }
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_REGISTRATION' });
+  });
+
+  it('invite de la squad privee = le capitaine lui-meme : refuse', async () => {
+    const tournament = makeTeamTournament();
+    await expect(
+      tournamentEngine.registerForTournamentOnServer(
+        [tournament], mockPlayer, 'T-SQUAD',
+        { pseudo: 'ShadowX', squadName: 'Alpha', access: 'private', invitedPseudos: ['ShadowX'] }
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_REGISTRATION' });
+  });
+
+  it('squad PRIVEE sans AUCUN pseudo invite : refuse (place verrouillee pour personne)', async () => {
+    const tournament = makeTeamTournament();
+    await expect(
+      tournamentEngine.registerForTournamentOnServer(
+        [tournament], mockPlayer, 'T-SQUAD',
+        { pseudo: 'ShadowX', squadName: 'Alpha', access: 'private' }
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_REGISTRATION' });
+  });
+
+  it('pseudo invite duplique dans la liste : refuse', async () => {
+    const tournament = makeTeamTournament();
+    await expect(
+      tournamentEngine.registerForTournamentOnServer(
+        [tournament], mockPlayer, 'T-SQUAD',
+        { pseudo: 'ShadowX', squadName: 'Alpha', access: 'private', invitedPseudos: ['Ghost', 'Ghost'] }
+      )
+    ).rejects.toMatchObject({ code: 'INVALID_REGISTRATION' });
+  });
+});
+
+describe('tournament-engine - squads libres : joinTournamentOnServer (2026-11-05)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Resolution PAR ID : requireActorUser repart de getUserById(actor.id),
+    // un mockReturnValue unique ferait de TOUT appelant le joueur player-1
+    // (donc ALREADY_JOINED sur chaque join).
+    getUserById.mockImplementation((id) => ({
+      'player-1': mockPlayer,
+      'player-2': mockPlayer2,
+      'player-3': mockPlayer3,
+    }[id] || null));
+  });
+
+  const makeTeamTournament = (entries = []) =>
+    tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-SQUAD',
+      maxEntries: 8,
+      entryFee: 100,
+      status: 'recruiting',
+      format: '2VS2',
+      entries,
+      arbiters: [],
+    }])[0];
+
+  const makeSquadEntry = (captainId, captainPseudo, seed = 1, extra = {}) => ({
+    id: `ENTRY-${seed}`,
+    seed,
+    squadName: `Squad-${seed}`,
+    captainId,
+    captainPseudo,
+    teamSize: 2,
+    members: [{ userId: captainId, pseudo: captainPseudo, isCaptain: true }],
+    checkedIn: false,
+    joinedAt: new Date().toISOString(),
+    wins: 0,
+    losses: 0,
+    ...extra,
+  });
+
+  it('rejoindre une squad OUVERTE verrouille SON PROPRE pass (fee, pas x teamSize)', async () => {
+    lockEntryFee.mockResolvedValue({});
+    const tournament = makeTeamTournament([makeSquadEntry('player-1', 'ShadowX')]);
+    const result = await tournamentEngine.joinTournamentOnServer([tournament], mockPlayer2, 'T-SQUAD', 'ENTRY-1');
+    expect(lockEntryFee).toHaveBeenCalledWith('player-2', 100, 'T-SQUAD');
+    const entry = result.tournament.entries[0];
+    expect(entry.members).toHaveLength(2);
+    expect(entry.members[1]).toMatchObject({ userId: 'player-2', pseudo: 'Ghost', isCaptain: false });
+  });
+
+  it('squad deja complete : refuse (SQUAD_FULL)', async () => {
+    const tournament = makeTeamTournament([{
+      ...makeSquadEntry('player-1', 'ShadowX'),
+      members: [
+        { userId: 'player-1', pseudo: 'ShadowX', isCaptain: true },
+        { userId: 'player-3', pseudo: 'Blaze', isCaptain: false },
+      ],
+    }]);
+    await expect(
+      tournamentEngine.joinTournamentOnServer([tournament], mockPlayer2, 'T-SQUAD', 'ENTRY-1')
+    ).rejects.toMatchObject({ code: 'SQUAD_FULL' });
+  });
+
+  it('squad PRIVEE sans invitation : refuse (FORBIDDEN)', async () => {
+    const tournament = makeTeamTournament([
+      makeSquadEntry('player-1', 'ShadowX', 1, { access: 'private', invitedPseudos: ['Blaze'] }),
+    ]);
+    await expect(
+      tournamentEngine.joinTournamentOnServer([tournament], mockPlayer2, 'T-SQUAD', 'ENTRY-1')
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('squad PRIVEE, pseudo invite : accepte', async () => {
+    lockEntryFee.mockResolvedValue({});
+    const tournament = makeTeamTournament([
+      makeSquadEntry('player-1', 'ShadowX', 1, { access: 'private', invitedPseudos: ['Ghost'] }),
+    ]);
+    const result = await tournamentEngine.joinTournamentOnServer([tournament], mockPlayer2, 'T-SQUAD', 'ENTRY-1');
+    expect(result.tournament.entries[0].members).toHaveLength(2);
+  });
+
+  it('deja inscrit dans une autre squad : refuse (ALREADY_JOINED)', async () => {
+    lockEntryFee.mockResolvedValue({});
+    const tournament = makeTeamTournament([
+      makeSquadEntry('player-3', 'Blaze', 1),
+      makeSquadEntry('player-1', 'ShadowX', 2),
+    ]);
+    await expect(
+      tournamentEngine.joinTournamentOnServer([tournament], mockPlayer3, 'T-SQUAD', 'ENTRY-2')
+    ).rejects.toMatchObject({ code: 'ALREADY_JOINED' });
+    // Aucun debit prive : le garde value AVANT tout verrouillage.
+    expect(lockEntryFee).not.toHaveBeenCalled();
+  });
+
+  it('arbitre du tournoi : refuse (ROLE_CONFLICT)', async () => {
+    const tournament = tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-SQUAD',
+      maxEntries: 8,
+      entryFee: 100,
+      status: 'recruiting',
+      format: '2VS2',
+      entries: [makeSquadEntry('player-1', 'ShadowX', 1)],
+      arbiters: [{ userId: 'player-2', pseudo: 'Ghost', slot: 1 }],
+    }])[0];
+    await expect(
+      tournamentEngine.joinTournamentOnServer([tournament], mockPlayer2, 'T-SQUAD', 'ENTRY-1')
+    ).rejects.toMatchObject({ code: 'ROLE_CONFLICT' });
+  });
+
+  it('squad inconnue : refuse (SQUAD_NOT_FOUND)', async () => {
+    const tournament = makeTeamTournament([makeSquadEntry('player-1', 'ShadowX')]);
+    await expect(
+      tournamentEngine.joinTournamentOnServer([tournament], mockPlayer2, 'T-SQUAD', 'ENTRY-999')
+    ).rejects.toMatchObject({ code: 'SQUAD_NOT_FOUND' });
+  });
+});
+
+describe('tournament-engine - reglement : parts EGALES par membre (2026-11-05)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Two real accounts + un fantome legacy ; la resolution est explosee par id.
+    getUserById.mockImplementation((id) => ({
+      'player-1': mockPlayer,
+      'player-2': mockPlayer2,
+      'player-3': mockPlayer3,
+    }[id] || null));
+  });
+
+  const makeCompleted = (entries) => ({
+    id: 'T-WIN',
+    name: 'Cup',
+    format: '2VS2',
+    teamSize: 2,
+    entryFee: 100,
+    status: 'completed',
+    entries,
+    // Pas d'arbitre dans ce fixture : ces tests ne regardent que l'argent des
+    // MEMBRES (parts egales, pass consomme, dettes par membre). La commission
+    // arbitre du reglement est couverte par la suite de reglement historique.
+    arbiters: [],
+    arbitersNeeded: 1,
+    // 2 entrees x 100 x teamSize 2 = 400 ; arbitre 5% = 20 ; playerPool 380
+    payout: { grossPool: 400, playerPool: 380, arbiterPool: 20, first: 190, second: 114, third: 76 },
+    matches: [],
+  });
+
+  const member = (userId, pseudo, index) => ({ userId, pseudo, isCaptain: index === 0 });
+
+  it('podium 1 : 2 membres partagent en parts egales (95 / 95)', async () => {
+    releaseWalletWinnings.mockResolvedValue({});
+    settleMatchLossWallet.mockResolvedValue({});
+    const tournament = makeCompleted([{
+      id: 'ENTRY-1', seed: 1, squadName: 'Alpha', captainId: 'player-1', teamSize: 2,
+      members: [member('player-1', 'ShadowX', 0), member('player-2', 'Ghost', 1)],
+      finalPlacement: 1,
+    }]);
+    await tournamentEngine.applyTournamentSettlement(tournament);
+    // LE contrat : chaque membre recoit SA part directement.
+    expect(releaseWalletWinnings).toHaveBeenCalledWith('player-1', 95, 'T-WIN', 'prize_win', expect.any(String));
+    expect(releaseWalletWinnings).toHaveBeenCalledWith('player-2', 95, 'T-WIN', 'prize_win', expect.any(String));
+    // Le pass de CHACUN est consomme, pas seulement celui du capitaine.
+    expect(settleMatchLossWallet).not.toHaveBeenCalled();
+    expect(tournament.pendingPayouts).toEqual([]);
+  });
+
+  it('membre fantome legacy : sa part remonte au capitaine (190 pour lui seul)', async () => {
+    releaseWalletWinnings.mockResolvedValue({});
+    settleMatchLossWallet.mockResolvedValue({});
+    const tournament = makeCompleted([{
+      id: 'ENTRY-1', seed: 1, squadName: 'Alpha', captainId: 'player-1', teamSize: 2,
+      members: [member('player-1', 'ShadowX', 0), member('ENTRY-1-M2', 'Fantome', 1)],
+      finalPlacement: 1,
+    }]);
+    await tournamentEngine.applyTournamentSettlement(tournament);
+    expect(releaseWalletWinnings).toHaveBeenCalledWith('player-1', 190, 'T-WIN', 'prize_win', expect.any(String));
+    expect(releaseWalletWinnings).toHaveBeenCalledTimes(1);
+    // Aucun debit fantome.
+    expect(releaseWalletWinnings.mock.calls.every((call) => call[0] === 'player-1')).toBe(true);
+  });
+
+  it('versement en echec : dette PAR MEMBRE (userId) et pas au capitaine', async () => {
+    releaseWalletWinnings.mockRejectedValue(Object.assign(new Error('Base down'), { code: 'SUPABASE_DOWN' }));
+    settleMatchLossWallet.mockResolvedValue({});
+    const tournament = makeCompleted([{
+      id: 'ENTRY-1', seed: 1, squadName: 'Alpha', captainId: 'player-1', teamSize: 2,
+      members: [member('player-1', 'ShadowX', 0), member('player-2', 'Ghost', 1)],
+      finalPlacement: 1,
+    }]);
+    await tournamentEngine.applyTournamentSettlement(tournament);
+    expect(tournament.pendingPayouts).toHaveLength(2);
+    expect(tournament.pendingPayouts.map((item) => item.userId).sort()).toEqual(['player-1', 'player-2']);
+    expect(tournament.pendingPayouts.every((item) => item.amount === 95)).toBe(true);
+  });
+
+  it('hors podium : le pass de CHAQUE membre est consomme (forfait par membre)', async () => {
+    releaseWalletWinnings.mockResolvedValue({});
+    settleMatchLossWallet.mockResolvedValue({});
+    const tournament = makeCompleted([{
+      id: 'ENTRY-2', seed: 2, squadName: 'Beta', captainId: 'player-3', teamSize: 2,
+      members: [member('player-3', 'Blaze', 0), member('player-2', 'Ghost', 1)],
+      finalPlacement: undefined,
+    }]);
+    await tournamentEngine.applyTournamentSettlement(tournament);
+    expect(settleMatchLossWallet).toHaveBeenCalledWith('player-3', 'T-WIN', expect.any(String));
+    expect(settleMatchLossWallet).toHaveBeenCalledWith('player-2', 'T-WIN', expect.any(String));
+    expect(settleMatchLossWallet).toHaveBeenCalledTimes(2);
+    expect(releaseWalletWinnings).not.toHaveBeenCalled();
+    expect(tournament.pendingPayouts).toEqual([]);
+  });
+
+  it('annulation d un tournoi en equipe : CHAQUE participant recupere son pass', async () => {
+    refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
+    const makeSquadCancelled = () => ({
+      id: 'T-SQUADS',
+      name: 'Cup',
+      format: '2VS2',
+      teamSize: 2,
+      entryFee: 100,
+      status: 'recruiting',
+      entries: [
+        {
+          id: 'ENTRY-1', seed: 1, squadName: 'Alpha', captainId: 'player-1', teamSize: 2,
+          members: [member('player-1', 'ShadowX', 0), member('player-2', 'Ghost', 1)],
+        },
+        {
+          id: 'ENTRY-2', seed: 2, squadName: 'Beta', captainId: 'player-3', teamSize: 2,
+          members: [member('player-3', 'Blaze', 0), member('player-6', 'Storm', 1)],
+        },
+      ],
+      arbiters: [],
+      arbitersNeeded: 1,
+      matches: [],
+    });
+    const result = await tournamentEngine.cancelStaleTournamentOnServer([makeSquadCancelled()], 'T-SQUADS');
+    // 4 participants, 4 portefeuilles rembourses.
+    expect(refundLockedEntry).toHaveBeenCalledTimes(4);
+    expect(refundLockedEntry.mock.calls.map((call) => call[0])).toEqual(['player-1', 'player-2', 'player-3', 'player-6']);
+    expect(result.refunded).toBe(4);
+    expect(result.tournament.entries).toHaveLength(0);
+  });
+});
+
+describe('tournament-engine - squads libres : depart, squad incomplete balayee (2026-11-05)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Resolution PAR ID (voir la suite join) : l'arbitre qui lance doit se
+    // resoudre a lui-meme, pas au joueur player-1.
+    getUserById.mockImplementation((id) => ({
+      'player-1': mockPlayer,
+      'player-2': mockPlayer2,
+      'player-3': mockPlayer3,
+      'player-4': mockPlayer4,
+      'arb-1': { id: 'arb-1', pseudo: 'Ref', role: 'player', wallet: {}, device: 'open', controllerType: 'open' },
+    }[id] || null));
+  });
+
+  const makeTeamTournament = (entries) =>
+    tournamentEngine.normalizeTournamentCollection([{
+      id: 'T-LIVE',
+      maxEntries: 8,
+      minEntries: 2,
+      entryFee: 100,
+      status: 'recruiting',
+      format: '2VS2',
+      entries,
+      arbiters: [{ userId: 'arb-1', slot: 1, assignedAt: new Date().toISOString() }],
+    }])[0];
+
+  const arbiter = { id: 'arb-1', pseudo: 'Ref', role: 'player', wallet: {}, device: 'open', controllerType: 'open' };
+  const squadMember = (userId, pseudo, index) => ({ userId, pseudo, isCaptain: index === 0 });
+
+  it('squad incomplette au lancement : chaque membre recupere son pass, bracket sans elle', async () => {
+    refundLockedEntry.mockResolvedValue({ cashBalance: 100 });
+    const tournament = makeTeamTournament([
+      {
+        id: 'ENTRY-1', seed: 1, squadName: 'Alpha', captainId: 'player-1', teamSize: 2,
+        members: [squadMember('player-1', 'ShadowX', 0), squadMember('player-2', 'Ghost', 1)],
+      },
+      // Beta incomplette : 1 seul membre sur 2.
+      {
+        id: 'ENTRY-2', seed: 2, squadName: 'Beta', captainId: 'player-3', teamSize: 2,
+        members: [squadMember('player-3', 'Blaze', 0)],
+      },
+      {
+        id: 'ENTRY-3', seed: 3, squadName: 'Gamma', captainId: 'player-4', teamSize: 2,
+        members: [squadMember('player-4', 'Storm', 0), squadMember('player-6', 'Rex', 1)],
+      },
+    ]);
+
+    const result = await tournamentEngine.startTournamentOnServer([tournament], arbiter, 'T-LIVE');
+    // Uniquement le membre de Beta recupere son pass.
+    expect(refundLockedEntry).toHaveBeenCalledTimes(1);
+    expect(refundLockedEntry).toHaveBeenCalledWith('player-3', 'T-LIVE', expect.any(String));
+    // Le bracket se joue avec les squads completes uniquement, reseeds propres.
+    expect(result.tournament.entries).toHaveLength(2);
+    expect(result.tournament.entries.map((entry) => entry.seed)).toEqual([1, 2]);
+    expect(result.tournament.status).toBe('live');
+    expect(result.tournament.pendingRefunds).toEqual([]);
+  });
+
+  it('pas assez de squads completees : refus AVANT tout refund (rien ne bouge)', async () => {
+    const tournament = makeTeamTournament([
+      {
+        id: 'ENTRY-1', seed: 1, squadName: 'Alpha', captainId: 'player-1', teamSize: 2,
+        members: [squadMember('player-1', 'ShadowX', 0)],
+      },
+      {
+        id: 'ENTRY-2', seed: 2, squadName: 'Beta', captainId: 'player-3', teamSize: 2,
+        members: [squadMember('player-3', 'Blaze', 0)],
+      },
+    ]);
+    await expect(
+      tournamentEngine.startTournamentOnServer([tournament], arbiter, 'T-LIVE')
+    ).rejects.toMatchObject({ code: 'MATCH_NOT_READY' });
+    // GARDE AVAL : aucune dette, aucun refund, aucune mutation.
+    expect(refundLockedEntry).not.toHaveBeenCalled();
+    expect(tournament.entries).toHaveLength(2);
   });
 });
 
@@ -827,7 +1283,7 @@ describe('tournament-engine - propagation des byes (audit-3 P5 C1)', () => {
     return result.tournament;
   };
 
-  const startBracket = (tournamentId, entries, maxEntries, extra = {}) => {
+  const startBracket = async (tournamentId, entries, maxEntries, extra = {}) => {
     const tournament = tournamentEngine.normalizeTournamentCollection([{
       id: tournamentId,
       maxEntries,
@@ -838,14 +1294,14 @@ describe('tournament-engine - propagation des byes (audit-3 P5 C1)', () => {
       arbiters: [{ userId: 'admin-1', pseudo: 'Admin', slot: 1, assignedAt: new Date().toISOString() }],
       ...extra,
     }])[0];
-    return tournamentEngine.startTournamentOnServer([tournament], mockAdmin, tournamentId).tournament;
+    return (await tournamentEngine.startTournamentOnServer([tournament], mockAdmin, tournamentId)).tournament;
   };
 
   // Les appels de gains : (captainId, montant, tournoi, 'prize_win', libelle).
   const prizeWinCalls = () => releaseWalletWinnings.mock.calls.filter((call) => call[3] === 'prize_win');
 
   it('controle 4/4 : le bracket sans bye reste intact (4 soumissions, podium complet)', async () => {
-    let tournament = startBracket('T-CTL4', [
+    let tournament = await startBracket('T-CTL4', [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
       makeEntry('p3', 'P3', 3),
@@ -876,7 +1332,7 @@ describe('tournament-engine - propagation des byes (audit-3 P5 C1)', () => {
   });
 
   it('5/8 : le bye traverse tout le bracket - ENTRY-5 attend en finale, le bronze s auto-avance apres une seule vraie demi-finale', async () => {
-    let tournament = startBracket('T-BYE5', [
+    let tournament = await startBracket('T-BYE5', [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
       makeEntry('p3', 'P3', 3),
@@ -924,7 +1380,7 @@ describe('tournament-engine - propagation des byes (audit-3 P5 C1)', () => {
   });
 
   it('7/8 : le bye du round 1 est place des le start - la demi-finale se joue (gel gueri)', async () => {
-    let tournament = startBracket('T-BYE7', [
+    let tournament = await startBracket('T-BYE7', [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
       makeEntry('p3', 'P3', 3),
@@ -960,7 +1416,7 @@ describe('tournament-engine - propagation des byes (audit-3 P5 C1)', () => {
   });
 
   it('3/4 : le bye envoie ENTRY-3 en finale (qui attend) et le bronze s auto-avance - podium complet, aucun pass consomme', async () => {
-    let tournament = startBracket('T-BYE3', [
+    let tournament = await startBracket('T-BYE3', [
       makeEntry('p1', 'P1', 1),
       makeEntry('p2', 'P2', 2),
       makeEntry('p3', 'P3', 3),

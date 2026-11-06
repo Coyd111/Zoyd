@@ -100,6 +100,7 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
                   </div>
                   <div className="text-[10px] font-mono uppercase tracking-widest text-white/70">
                     {entry.captainPseudo}
+                    {entry.teamSize > 1 ? ` - ${entry.members.length}/${entry.teamSize} joueurs` : ''}
                     {entry.finalPlacement ? ` - Top ${entry.finalPlacement}` : ''}
                   </div>
                 </div>

@@ -16,7 +16,10 @@
 > document de référence suit presque chaque bloc.
 >
 > Rédigé le 02/11/2026, à partir de l'état du dépôt `Zoyd/` au commit
-> `fbeb797` (branche `main`). Les chiffres du produit (mise, commissions,
+> `fbeb797` (branche `main`) ; relecture complète et mise à jour le
+> 06/11/2026 au commit `e716637` : modèle d'équipe « squad libre »
+> intégré (pass individuel, gains en parts égales) et comptes de tests
+> actualisés. Les chiffres du produit (mise, commissions,
 > fenêtres, plafonds) sont ceux **implémentés** — pas des promesses : ce
 > document décrit ce qui tourne, pas ce qui est souhaité. Ce qui n'est pas fini
 > est listé au chapitre 15.
@@ -35,12 +38,12 @@
 8. [L'argent, de bout en bout](#8-largent-de-bout-en-bout)
 9. [La technologie, expliquée comme à un débutant](#9-la-technologie-expliquée-comme-à-un-débutant)
 10. [La sécurité, expliquée comme à un débutant](#10-la-sécurité-expliquée-comme-à-un-débutant)
-11. [Les garde-fous automatiques : la machine qui ne dort jamais](#11-les-garde-fous-automatiques)
-12. [Les tests : le projet se vérifie lui-même](#12-les-tests)
-13. [Faire tourner la boutique : exploitation](#13-exploitation)
+11. [Les garde-fous automatiques (la machine qui ne dort jamais)](#11-les-garde-fous-automatiques-la-machine-qui-ne-dort-jamais)
+12. [Les tests : le projet se vérifie lui-même](#12-les-tests-le-projet-se-vérifie-lui-même)
+13. [Faire tourner la boutique : exploitation](#13-faire-tourner-la-boutique-exploitation)
 14. [Où on en est aujourd'hui](#14-où-on-en-est-aujourdhui)
-15. [Ce qui n'est pas fini (et c'est assumé)](#15-ce-qui-nest-pas-fini)
-16. [FAQ : les questions que tout débutant se pose](#16-faq)
+15. [Ce qui n'est pas fini (et c'est assumé)](#15-ce-qui-nest-pas-fini-et-cest-assumé)
+16. [FAQ : les questions que tout débutant se pose](#16-faq-les-questions-que-tout-débutant-se-pose)
 17. [Glossaire final](#17-glossaire-final)
 18. [Annexe : les chiffres du projet](#18-annexe-les-chiffres-du-projet)
 
@@ -53,9 +56,9 @@ pensée pour l'Afrique francophone, où deux joueurs (ou deux équipes de deux �
 cinq) mettent chacun une somme d'argent en jeu, s'affrontent dans le jeu, et
 un **arbitre** — un joueur comme les autres, rémunéré pour ce rôle — valide le
 résultat. Les mises et les gains circulent en **ZOYD Coins (ZC)**, des jetons
-de la plateforme convertible en **FCFA** via le Mobile Money.
+de la plateforme convertibles en **FCFA** via le Mobile Money.
 
-**L'image à retenir.** Imaginez un grand tournois de baby-foot dans un quartier
+**L'image à retenir.** Imaginez un grand tournoi de baby-foot dans un quartier
 populaire :
 
 - les joueurs posent 500 F chacun dans une cagnotte en verre, au centre de la
@@ -100,7 +103,7 @@ trois questions empoisonnent tout :
    les mises, personne ne contrôle leur caisse.
 
 ZOYD répond aux trois : **l'argent est mis de côté dès l'inscription au
-match** (techniquement, il est « verrouillé » — voir le chapitre 8 : il sort
+match** (techniquement, il est « verrouillé » — voir le chapitre 8 : il
 quitte le portefeuille et n'appartient plus à personne, ni au joueur, ni à
 l'adversaire, ni à la plateforme), **le résultat est validé par un arbitre
 extérieur aux deux camps**, et **la cagnotte n'est libérée qu'après sa
@@ -111,7 +114,7 @@ décision**.
 Le Mobile Money (envoyer de l'argent via son téléphone, sans banque) est la
 manière normale de payer en Afrique francophone. Un site de compétition qui
 ne parlerait que carte bancaire serait inutilisable pour la majorité des
-joueurs. ZOYD est donc branché dès le jour un sur **FedaPay**, une
+joueurs. ZOYD est donc branché dès le premier jour sur **FedaPay**, une
 plateforme de paiement qui agrège les opérateurs de Mobile Money, et toute
 l'économie intérieure du site tourne en unités locales : **1 ZOYD Coin
 (ZC) = 10 FCFA**. *(source : `docs/02-modele-metier.md`, § 1.2.)*
@@ -164,7 +167,7 @@ signalements.
 
 Le premier joueur à ouvrir un match en choisit les règles : format (1v1 à
 5v5), montant de la mise, nombre maximum de joueurs, mode de jeu et
-paramètres CODM pertinents. Son créateur n'a aucun privilège : dès que les autres peuvent rejoindre,
+paramètres CODM pertinents. Ce créateur n'a aucun privilège : dès que les autres peuvent rejoindre,
 le match se déroule sans lui, et il pose sa mise comme tout le monde.
 
 ### 3.3 L'arbitre
@@ -321,9 +324,9 @@ versé tant que le litige n'est pas tranché. *(source :
 `docs/02-modele-metier.md`, § 4.5.)*
 
 **Fenêtre.** Un délai maximum attaché à une étape — les horloges du
-chapitre 6. Exemples : 2 h pour que l'arbitre soit au poste, 2 h pour
-saisir le résultat, 30 min pour contester, 14 j de durée de vie maximale
-d'un match sans résultat.
+chapitre 6. Exemples : 2 h à l'arbitre, depuis sa prise de poste, pour
+lancer, 2 h pour saisir le résultat, 30 min pour contester, 14 j de durée
+de vie maximale d'un match sans résultat.
 
 **Balayage (« sweep »).** Un tour automatique de l'oubli : un travail
 périodique qui cherche « qu'est-ce qui est resté coincé et doit être
@@ -343,7 +346,7 @@ sortie (le ZC redevient du Mobile Money, moins 2 %).
 **Bonus.** Une part du solde qui peut servir à jouer mais pas à être
 retirée. Règle d'or implémentée : à la mise, le **cash est consommé avant
 le bonus** ; et la part d'un gain qui correspond à une mise jouée avec du
-bonus **retourné en bonus**, jamais en cash retirable. *(source :
+bonus **repart en bonus**, jamais en cash retirable. *(source :
 `docs/02-modele-metier.md`, § 7.2.)*
 
 **Session.** La preuve, du côté du serveur, que « cette personne est
@@ -452,7 +455,7 @@ de cette ville cachée, car c'est là que la confiance est gagnée ou perdue.
 ## 6. La vie d'un match MJ, du début à la fin
 
 Suivons un vrai match, du premier clic au dernier virement interne. Récit :
-Aya crée un match 1v1 et mise 50 ZC ; Bassam la rejoint et pose ses 50 ZC ;
+Aya crée un match 1v1 et mise 50 ZC ; Bassam le rejoint et pose ses 50 ZC ;
 ils jouent, Bassam gagne. Le compte est simple : 100 ZC de mises, dont
 2 ZC pour l'arbitre (2 %) et 98 ZC pour le gagnant — **l'argent se déplace,
 rien n'est créé, rien n'est perdu**.
@@ -587,7 +590,7 @@ couvertes). Un bracket est tiré ; chaque duel est rattaché à un poste
 d'arbitre (calcul : numéro du duel modulo le nombre d'arbitres). À la
 fin, dès que le tournoi passe en `completed`, l'argent est versé : le
 gain divisé en parts égales entre les membres de chaque squad du podium,
-la commission de l'arbitre, les mises de perdants absorbées. Horloge
+la commission de l'arbitre déduite, les mises des perdants absorbées. Horloge
 propre : un tournoi jamais démarré après son
 heure de lancement prévue a **24 h de grâce**, puis il est annulé et
 remboursé par un balayage lent (6 heures).
@@ -665,9 +668,9 @@ se règle, la case verrouillée se vide : soit le montant repart vers le
 gagnant, soit la mise est absorbée par la perte, soit elle revient à son
 propriétaire en cas d'annulation.
 
-**Règle d'or :** à tout instant, chaque ZC du site est l'argent exactement
-de quelqu'un. La plateforme ne crée pas d'argent et ne fait disparaître
-rien.
+**Règle d'or :** à tout instant, chaque ZC du site est l'argent de
+quelqu'un, et d'une seule personne. La plateforme ne crée pas d'argent
+et ne fait disparaître rien.
 
 ### 8.2 Entrer : le dépôt
 
@@ -820,7 +823,7 @@ modulaire** à **processus unique**. Décomposons :
   décision de sécurité, pas un accident : tout l'état vivant (les matchs en
   cours, les réservations, les positions de chacun) repose sous **un seul
   verrou**. Un deuxième cuisinier, sur une deuxième machine, verrait un
-  verrou diffèrent et l'argent pourrait être dépensé deux fois. Le serveur
+  verrou différent et l'argent pourrait être dépensé deux fois. Le serveur
   **refuse obstinément de démarrer** s'il détecte qu'on lui impose plusieurs
   processus. La documentation technique raconte le scénario catastrophe :
   deux instances, l'une retire 800, l'autre crédite 500, et une moitié
@@ -882,17 +885,16 @@ c'est précisément ce processus unique de § 9.2. *(source :
 
 ### 9.6 La taille du chantier
 
-Pour donner l'échelle, mesuré au 02/11/2026 (source :
-`docs/00-INDEX.md`, § 3) :
+Pour donner l'échelle, décompté sur le dépôt au 06/11/2026 :
 
 | Ensemble | Fichiers | Lignes |
 |---|---|---|
-| Front (`src/`) | 184 | 39 022 |
-| Serveur (`server/`) | 130 | 42 532 |
-| Tests E2E (`e2e/`) | 27 | 5 913 |
-| Documentation (`docs/`, dix documents) | 10 | ~10 800 |
+| Front (`src/`) | 188 | 39 223 |
+| Serveur (`server/`) | 131 | 43 763 |
+| Tests E2E (`e2e/`) | 29 | 6 428 |
+| Documentation (`docs/`, onze documents) | 11 | 12 182 |
 
-Plus de 87 000 lignes de code, plus de 1 200 tests automatisés
+Plus de 89 000 lignes de code, plus de 1 400 tests automatisés
 (chapitre 12). Et pourtant, le projet tient dans peu de serveurs : un site
 front sur Vercel, un unique processus backend sur Render, une base chez
 Supabase — trois « tiers » auxquels viennent s'ajouter FedaPay et le service
@@ -905,7 +907,7 @@ les voir :
 
 - **React / TypeScript / Vite** : l'atelier des écrans ;
 - **Tailwind** : l'atelier look (couleurs, espacements) ;
-- **Zustand** : les petits cahiers d'état du front (une quinzaine de
+- **Zustand** : les petits cahiers d'état du front (une douzaine de
   « stores » : authentification, portefeuille, matchs, tournois, chat,
   présence...) ;
 - **React Router** : le livre des 35 adresses de la ville ;
@@ -1147,7 +1149,7 @@ tourne donc derrière une batterie de tests automatiques. *(source :
 
 ### 12.1 Les trois niveaux
 
-**Niveau 1 — les tests unitaires (les briques).** 950 tests côté serveur
+**Niveau 1 — les tests unitaires (les briques).** 1 182 tests unitaires
 (2 sautés volontairement) tournent après chaque modification. Ils rejouent
 chaque moteur dans une miniature : un portefeuille artificiel, un match
 construit de toutes pièces, une horloge simulée. Leur force : aller vite et viser
@@ -1158,11 +1160,13 @@ célèbre : le test du garde admin, dont les 4 portes ont été neutralisées
 une par une pour confirmer que chacune bloquait bien (la « recette de
 mutation » documentée dans `docs/06-tests.md`).
 
-**Niveau 2 — les tests E2E (le navigateur fantôme).** 232 tests, tous
-verts, qui pilotent un vrai navigateur de bout en bout — de la page
-d'accueil jusqu'au clic final : s'inscrire, créer un match, miser,
-contester, vérifier le solde. Ils prouvent que l'ensemble marche, pas
-seulement les pièces.
+**Niveau 2 — les tests E2E (le visite fantôme).** 254 tests, tous verts,
+en deux familles : 13 fichiers de tests **API directe**, qui interrogent
+le serveur HTTP comme un vrai client de bout en bout, et 12 fichiers de
+tests **navigateur** (Playwright), qui pilotent un vrai navigateur — de
+la page d'accueil jusqu'au clic final : s'inscrire, créer un match,
+miser, contester, vérifier le solde. Ils prouvent que l'ensemble
+marche, pas seulement les pièces.
 
 **Niveau 3 — les tests live (contre la vraie production).** 38 tests dans
 2 fichiers, **désactivés par défaut** : ils ne tournent que sur demande
@@ -1186,7 +1190,7 @@ automatique ne peut pas toujours dire.
 
 Chaque modification passe par une file de gardes : la compilation
 TypeScript, la qualité du front (ESLint, zéro avertissement toléré), la
-construction du site, puis les 950 tests unitaires et les 232 tests E2E
+construction du site, puis les 1 182 tests unitaires et les 254 tests E2E
 lorsque le code est touché. C'est la même
 recette, à chaque fois, sans exception.
 
@@ -1262,8 +1266,8 @@ commit `b90264d`, avec un test de couverture du schéma et une sonde dans
 
 ## 14. Où on en est aujourd'hui
 
-Au 02/11/2026 (d'après `docs/00-INDEX.md`, la documentation des audits et
-les sondes de production de ce jour) :
+Au 06/11/2026 (d'après `docs/00-INDEX.md`, la documentation des audits et
+les sondes de production vérifiées le 02/11/2026) :
 
 - **Le code est complet pour l'ouverture publique** des matchs MJ, des
   tournois, des salons Battle Royale et du portefeuille. La BR League (le quartier
@@ -1271,7 +1275,7 @@ les sondes de production de ce jour) :
   deux semaines après l'ouverture du site.
 - **Le classement public est volontairement vide** (`players: []`) :
   la communauté ne joue pas encore, l'ouverture est l'étape suivante —
-  le podium apprenant des statuts originates de l'lancement.
+  le podium se remplira au lancement.
 - **La production est en santé** : la sonde `/api/health` expose toutes
   les sondes internes vérifiées le 02/11/2026 (état chargé et fiable,
   colonne de révision présente, verrouillage des connexions persistant,
@@ -1281,7 +1285,7 @@ les sondes de production de ce jour) :
   `docs/00-INDEX.md`, § 8) — de la branche de paiement oubliée aux
   cagnottes fantômes, chacune portée par des tests précis.
 - **Les audits du code sont documentés dans le dépôt** (`docs/audit-3/`,
-  `docs/audit-4/`) : 54 invariants d'argent numérotés, la liste des
+  `docs/audit-4/`) : les 47 invariants d'argent numérotés (document 05), la liste des
   menaces couvertes et non couvertes, la recette de mutation des tests.
 - Les raccordements aux trois tiers extérieurs (Supabase, FedaPay,
   notifications push) sont opérationnels.
@@ -1308,9 +1312,7 @@ connus, chacun déjà identifié et documenté :
    compte) — aligner les deux est un chantier de plus grande portée.
 5. **Pas de moteur de litige séparé** : la gestion du litige vit dans le
    moteur de match (assumé : `docs/02-modele-metier.md`, § 10).
-6. **Le rééquilibrage d'interface** : une carte d'options (D1-D6) a été
-   dessinée pour rééquilibrer l'écran ; non implémentée.
-7. **BR League** : ouverture planifiée (au moins 2 semaines après
+6. **BR League** : ouverture planifiée (au moins 2 semaines après
    l'ouverture publique), pas avant.
 
 Voilà, en toute honnêteté, où en est le projet.
@@ -1349,7 +1351,7 @@ vous ne pourrez pas retirer des gains dont la part vient du bonus.
 **Q. Que se passe-t-il pendant une panne du serveur ?**
 R. Le mode lecture seule : l'état présenté n'est pas fiable, le site
 répond mais refuse les écritures. Si une panne coupe un règlement en
-cours, un test programmé le reprend dès que le serveur revient, sans
+cours, un balayage programmé le reprend dès que le serveur revient, sans
 payer deux fois qui que ce soit (idempotence).
 
 **Q. Que se passe-t-il si FedaPay ne confirme pas mon paiement ?**
@@ -1382,7 +1384,6 @@ d'« infrastructure » ?**
 R. Parce que le moteur (matchs avec mises, arbitre rémunéré, horloges) ne dépend pas
 du jeu lui-même : ajouter un autre jeu ne demande pas de
 repenser le socle — c'est l'ambition documentée du projet.
-</content>
 
 ---
 
@@ -1402,7 +1403,7 @@ repenser le socle — c'est l'ambition documentée du projet.
 | Check-in | La confirmation de présence avant le lancement |
 | Forfait | La déqualification de l'absent ; l'autre camp est payé |
 | Litige | Le désaccord sur le résultat ; cagnotte gelée tant qu'il dure |
-| Statut | L'étape du récit de la compétition (recruiting, check_in, live…) |
+| Statut | L'étape du récit de la compétition (recruiting, `check_in`, awaiting_confirmation…) |
 | Fenêtre | Un délai maximum attaché à une étape |
 | Balayage (sweep) | Un tour automatique de nettoyage : rembourser, reprendre, expirer |
 | Cron | Un travail de fond programmé (30 s, 60 s, 30 min, 5 min, 1 h, 6 h) |
@@ -1411,30 +1412,30 @@ repenser le socle — c'est l'ambition documentée du projet.
 | Webhook | L'appel automatique d'un tiers (FedaPay) vers ZOYD pour confirmer un paiement |
 | Session | La preuve serveur que vous êtes connecté (cookie invisible) |
 | Cookie | Le petit badge électronique que le site pose dans votre navigateur |
-| CSRF | L'attaque usant d'un autre site pour jouer avec votre session |
+| CSRF | L'attaque où un site tiers force votre navigateur à agir sous votre session |
 | Rate limiter | Le compteur de requêtes qui limite les débits abusifs |
 | 2FA (TOTP) | Le second code à 30 s requis des administrateurs |
 | E2E | Les tests qui pilotent un vrai navigateur de bout en bout |
 | Webhook de retrait | La trace d'un versement Mobile Money en attente de confirmation |
-| Cold start | Le ~55 s que met le serveur à se réveiller après prolongede silence |
+| Cold start | Le ~55 s que met le serveur à se réveiller après un long silence |
 | PWA | L'app du navigateur, installable sans store |
-| Sprint, moteur | Les ensembles de code qui font une fonction de règle (match, tournoi, ligue, BR, portefeuille) |
+| Moteur | Le bloc de code qui porte une fonction de règle (match, tournoi, ligue, salon BR, portefeuille) |
 
 ## 18. Annexe : les chiffres du projet
 
-Mesurés et sourcés dans `docs/00-INDEX.md` et `docs/06-tests.md`
-(décomptes au 02/11/2026) :
+Mesurés au 06/11/2026 et sourcés dans `docs/00-INDEX.md`,
+`docs/01-architecture.md`, `docs/08-frontend.md` et `docs/06-tests.md` :
 
 | Chiffre | Valeur | Source |
 |---|---|---|
-| Lignes de code front | 39 022 (184 fichiers) | `docs/08-frontend.md` |
-| Lignes de code serveur | 42 532 (130 fichiers) | `docs/01-architecture.md` |
-| Lignes de tests E2E | 5 913 (27 fichiers) | `docs/06-tests.md` |
-| Tests unitaires serveur | 950 passés, 2 sautés | `docs/06-tests.md` |
-| Tests E2E | 232 / 232 verts (23 fichiers) | `docs/06-tests.md` |
-| Tests live | 38, sur demande explicite | `docs/06-tests.md` |
-| Documents du projet | 10 (celui-ci compris) | `docs/00-INDEX.md` § 7 |
-| Invariants d'argent numérotés | 54 | `docs/05-invariants.md` |
+| Lignes de code front | 39 223 (188 fichiers) | `docs/08-frontend.md` |
+| Lignes de code serveur | 43 763 (131 fichiers) | `docs/01-architecture.md` |
+| Lignes de tests E2E | 6 428 (29 fichiers) | `docs/06-tests.md` |
+| Tests unitaires | 1 182 passés, 2 sautés (111 fichiers) | `docs/06-tests.md` |
+| Tests E2E | 254 / 254 verts (25 fichiers : 12 UI, 13 API) | `docs/06-tests.md` |
+| Tests live | 38, sur demande explicite (2 fichiers) | `docs/06-tests.md` |
+| Documents du projet | 11 (celui-ci compris) | `docs/00-INDEX.md` § 7 |
+| Invariants d'argent numérotés | 47 | `docs/05-invariants.md` |
 | Anomalies d'audit corrigées | 16 (V1 à V16) | `docs/00-INDEX.md` § 8 |
 | Balayages automatiques | 16, tous branchés | `docs/02-modele-metier.md` § 9.1 |
 | URLs du front | 35 | `docs/08-frontend.md` § 3 |

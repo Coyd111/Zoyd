@@ -21,10 +21,10 @@
 > intégré (pass individuel, gains en parts égales) et comptes de tests
 > actualisés ; reprise le soir même au commit `b780b44` : la sortie de
 > match volontaire (annulation par le créateur) et le nettoyage 14 jours
-> qui rembourse avant d'archiver. Les chiffres du produit (mise, commissions,
-> fenêtres, plafonds) sont ceux **implémentés** — pas des promesses : ce
-> document décrit ce qui tourne, pas ce qui est souhaité. Ce qui n'est pas fini
-> est listé au chapitre 15.
+> qui rembourse avant d'archiver. Relecture chiffrée complète le 07/11/2026
+> au commit `8d85ab3` (tableaux § 9.6 et annexe). Les chiffres du produit
+> (mise, commissions, fenêtres, plafonds) sont ceux **implémentés**, pas des
+> promesses : ce qui n'est pas fini est listé au chapitre 15.
 
 ---
 
@@ -210,7 +210,7 @@ Deux points importants :
 Le mot « spectateur » suppose un œil admis à regarder la partie. ZOYD
 refuse ce terrain : un salon CODM ne reçoit que les joueurs et
 l'arbitre — en tournoi à plusieurs arbitres, ils se partagent les
-salons, pour qu'aucune équipe qui ne joue pas observe une autre. Une
+salons, pour qu'aucune équipe qui ne joue pas n'observe une autre. Une
 personne extérieure voit donc les **faits officiels** de la page : deux
 pseudos en duel, l'heure de lancement, l'arbitre désigné, l'état des
 fenêtres — pas le match. Pour cause : l'arbitre saisit le résultat
@@ -569,7 +569,7 @@ Un match ne se finit pas toujours par une victoire. Les autres issues —
 toutes réglées automatiquement (payées ou remboursées) :
 
 - **Forfait (`forfeited`)** : un joueur ne vient pas, abandonne en route, ou
-  échoue au check-in. Son adversaire est automatiquement **payé**. 
+  échoue au check-in. Son adversaire est automatiquement **payé**.
 - **Annulation (`cancelled`)** : pas assez de monde, arbitre absent, match
   jamais lancé. **Tout le monde est remboursé**, mise pour mise.
 - **Litige (`disputed`)** : l'un des camps conteste le résultat dans la
@@ -683,7 +683,7 @@ Un portefeuille ZOYD n'a pas un solde unique, mais trois cases :
 
 | Case | Ce que c'est | Ce qu'il est possible d'en faire |
 |---|---|---|
-| Cash | De l'argent réel, entré par le portail Mobile Money | Jouer, ou être retiré (moins 2 %) |
+| Cash | De l'argent réel, la porte Mobile Money | Jouer, ou être retiré (moins 2 %) |
 | Bonus | De l'argent de promotion | Jouer seulement. Jamais retirable |
 | Verrouillé | Une mise posée dans une compétition vivante | Rien. Il attend le règlement |
 
@@ -937,7 +937,7 @@ les voir :
   présence...) ;
 - **React Router** : le livre des 35 adresses de la ville ;
 - **Node.js** : le langage du serveur — du JavaScript côté serveur, sans
-  framework Express : le service HTTP est écrit natif ;
+  framework Express : le service HTTP est écrit en natif ;
 - **PostgreSQL (via Supabase)** : la base de données ;
 - **Vitest** et **Playwright** : les testeurs automatiques ;
 - les **métriques Prometheus** : le compteur d'activité du site, exposé à
@@ -1046,7 +1046,7 @@ retrait suspect) passent par un garde à **quatre portes**, dans cet ordre
 (source : `docs/03-securite.md`, § 2.1) : 1) une session valable ;
 2) un rôle admin ; 3) une 2FA **activée** pour le compte ; 4) une 2FA
 **vérifiée** dans la fenêtre récente. La vérification 2FA n'est pas
-inconditionnelle : la vérification 2FA vaut **5 minutes**, puis le serveur
+inconditionnelle : elle vaut **5 minutes**, puis le serveur
 la redemande. Le code (technologie TOTP, comme les applications
 Authenticator) se renouvelle toutes les **30 secondes**. Une session admin
 sans 2FA fraîche obtient un refus, pas un paiement. Et pour les routes de
@@ -1083,7 +1083,7 @@ une limite documentée, assumée et affichée au chapitre 15. *(source :
 
 ### 10.9 Les en-têtes HTTP, la tenue du garde
 
-Chaque réponse du serveur dispose un petit lot d'en-têtes de sécurité
+Chaque réponse du serveur dispose d'un petit lot d'en-têtes de sécurité
 (source : `docs/01-architecture.md`, § 5.1) : l'obligation d'être en https pendant un an (`Strict-Transport-Security`,
 `max-age=31536000; includeSubDomains`), l'interdiction de deviner le type
 du document (`X-Content-Type-Options: nosniff`), l'interdiction d'être
@@ -1252,9 +1252,9 @@ leur comportement si elles manquent.
 Le serveur Render dort quand personne ne l'appelle (offre gratuite). Le
 premier visiteur attend alors son réveil : **environ 55 secondes**,
 mesurées en production le 02/11/2026 (55,6 s sur `GET /api/leaderboard`).
-Le front connaît ce cas : au réveil du serveur, la première requête passe
-un message dédié, la deuxième requête passe. Une fois réveillé, le serveur
-répond en millisecondes.
+Le front connaît ce cas : au réveil du serveur, la première requête
+déclenche un message dédié, la deuxième passe. Une fois réveillé, le
+serveur répond en millisecondes.
 
 ### 13.4 Savoir que tout va bien
 
@@ -1310,7 +1310,7 @@ les sondes de production vérifiées le 02/11/2026) :
   `docs/00-INDEX.md`, § 8) — de la branche de paiement oubliée aux
   cagnottes fantômes, chacune portée par des tests précis.
 - **Les audits du code sont documentés dans le dépôt** (`docs/audit-3/`,
-  `docs/audit-4/`) : les 47 invariants d'argent numérotés (document 05), la liste des
+  `docs/audit-4/`) : les 54 invariants numérotés (document 05), la liste des
   menaces couvertes et non couvertes, la recette de mutation des tests.
 - Les raccordements aux trois tiers extérieurs (Supabase, le prestataire
   de paiement, notifications push) sont opérationnels.
@@ -1356,7 +1356,7 @@ passe en « litige » dans les 30 minutes qui suivent : la cagnotte est gelée
 tant que le litige n'est pas réglé.
 
 **Q. Et si l'adversaire ne vient pas ?**
-R. Forfait : l'adversaire est payé automatiquement. Et si l'arbitre
+R. Forfait : le joueur présent est payé automatiquement. Et si l'arbitre
 n'arrive pas à l'heure (2 h) ou ne publie pas de résultat (2 h), un
 balayage automatique annule le match et rembourse tout.
 
@@ -1436,7 +1436,7 @@ repenser le socle — c'est l'ambition documentée du projet.
 | Check-in | La confirmation de présence avant le lancement |
 | Forfait | La déqualification de l'absent ; l'autre camp est payé |
 | Litige | Le désaccord sur le résultat ; cagnotte gelée tant qu'il dure |
-| Statut | L'étape du récit de la compétition (recruiting, `check_in`, awaiting_confirmation…) |
+| Statut | L'étape du récit de la compétition (`recruiting`, `check_in`, `awaiting_confirmation`…) |
 | Fenêtre | Un délai maximum attaché à une étape |
 | Balayage (sweep) | Un tour automatique de nettoyage : rembourser, reprendre, expirer |
 | Cron | Un travail de fond programmé (30 s, 60 s, 30 min, 5 min, 1 h, 6 h) |
@@ -1469,7 +1469,7 @@ Relevés le 07/11/2026 sur la base du commit `b780b44`, et sourcés dans
 | Tests E2E | 259 / 259 verts (25 fichiers : 11 UI, 14 API) | `docs/06-tests.md` |
 | Tests live | 39, sur demande explicite (2 fichiers) | `docs/06-tests.md` |
 | Documents du projet | 11 (celui-ci compris) | `docs/00-INDEX.md` § 7 |
-| Invariants d'argent numérotés | 47 | `docs/05-invariants.md` |
+| Invariants numérotés | 54 | `docs/05-invariants.md` |
 | Anomalies d'audit corrigées | 16 (V1 à V16) | `docs/00-INDEX.md` § 8 |
 | Balayages automatiques | 16, tous branchés | `docs/02-modele-metier.md` § 9.1 |
 | URLs du front | 35 | `docs/08-frontend.md` § 3 |

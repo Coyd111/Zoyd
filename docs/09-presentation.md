@@ -19,7 +19,9 @@
 > `fbeb797` (branche `main`) ; relecture complète et mise à jour le
 > 06/11/2026 au commit `e716637` : modèle d'équipe « squad libre »
 > intégré (pass individuel, gains en parts égales) et comptes de tests
-> actualisés. Les chiffres du produit (mise, commissions,
+> actualisés ; reprise le soir même au commit `b780b44` : la sortie de
+> match volontaire (annulation par le créateur) et le nettoyage 14 jours
+> qui rembourse avant d'archiver. Les chiffres du produit (mise, commissions,
 > fenêtres, plafonds) sont ceux **implémentés** — pas des promesses : ce
 > document décrit ce qui tourne, pas ce qui est souhaité. Ce qui n'est pas fini
 > est listé au chapitre 15.
@@ -336,8 +338,8 @@ lancer, 2 h pour saisir le résultat, 30 min pour contester, 14 j de durée
 de vie maximale d'un match sans résultat.
 
 **Balayage (« sweep »).** Un tour automatique de l'oubli : un travail
-périodique qui cherche « qu'est-ce qui est resté coincé et doit être
-débouché ? » et répare (rembourse, reprend, expire, archive). Chapitre 11.
+périodique qui cherche « qu'est-ce qui est resté coincé trop longtemps ? »
+et répare (rembourse, reprend, expire, archive). Chapitre 11.
 
 **Commission de retrait.** La seule recette de ZOYD : **2 %** de ce qu'un
 joueur déplace hors du site — sur 1 000 ZC retirés, 20 ZC restent à ZOYD. **Il n'y a pas de commission sur les mises, pas de part dans les
@@ -573,8 +575,9 @@ toutes réglées automatiquement (payées ou remboursées) :
 - **Litige (`disputed`)** : l'un des camps conteste le résultat dans la
   fenêtre de 30 minutes. La cagnotte est gelée, plus rien n'est versé
   jusqu'à résolution.
-- **Expiration (14 jours)** : un match dont aucun résultat n'arrive
-  s'éteint au bout de 14 jours ; les mises repartent.
+- **Expiration (14 jours)** : un match jamais lancé qui traîne plus de
+  14 jours est purgé : chaque verrou restant est remboursé **avant**
+  l'archivage du dossier, les mises repartent.
 - **Archivage (`archived`)** : un match fini qui traîne dans le passé est
   archivé par un balayage lent (6 heures) pour que les pages restent
   légères.
@@ -906,16 +909,17 @@ c'est précisément ce processus unique de § 9.2. *(source :
 
 ### 9.6 La taille du chantier
 
-Pour donner l'échelle, décompté sur le dépôt au 06/11/2026 :
+Pour donner l'échelle, décompté sur le dépôt au commit `b780b44`
+(06/11/2026) :
 
 | Ensemble | Fichiers | Lignes |
 |---|---|---|
-| Front (`src/`) | 188 | 39 223 |
-| Serveur (`server/`) | 131 | 43 763 |
-| Tests E2E (`e2e/`) | 29 | 6 428 |
-| Documentation (`docs/`, onze documents) | 11 | 12 182 |
+| Front (`src/`) | 188 | 39 426 |
+| Serveur (`server/`) | 135 | 45 085 |
+| Tests E2E (`e2e/`) | 29 | 6 618 |
+| Documentation (`docs/`, onze documents) | 11 | 12 275 |
 
-Plus de 89 000 lignes de code, plus de 1 400 tests automatisés
+Plus de 91 000 lignes de code, plus de 1 500 tests automatisés
 (chapitre 12). Et pourtant, le projet tient dans peu de serveurs : un site
 front sur Vercel, un unique processus backend sur Render, une base chez
 Supabase — trois « tiers » auxquels viennent s'ajouter FedaPay et le service
@@ -1170,8 +1174,8 @@ tourne donc derrière une batterie de tests automatiques. *(source :
 
 ### 12.1 Les trois niveaux
 
-**Niveau 1 — les tests unitaires (les briques).** 1 182 tests unitaires
-(2 sautés volontairement) tournent après chaque modification. Ils rejouent
+**Niveau 1 — les tests unitaires (les briques).** 1 222 tests unitaires
+tournent après chaque modification. Ils rejouent
 chaque moteur dans une miniature : un portefeuille artificiel, un match
 construit de toutes pièces, une horloge simulée. Leur force : aller vite et viser
 juste. Exemple canonique : le test qui prouve l'anti-mint — 200 ZC
@@ -1181,15 +1185,15 @@ célèbre : le test du garde admin, dont les 4 portes ont été neutralisées
 une par une pour confirmer que chacune bloquait bien (la « recette de
 mutation » documentée dans `docs/06-tests.md`).
 
-**Niveau 2 — les tests E2E (le visite fantôme).** 254 tests, tous verts,
-en deux familles : 13 fichiers de tests **API directe**, qui interrogent
-le serveur HTTP comme un vrai client de bout en bout, et 12 fichiers de
+**Niveau 2 — les tests E2E (le visite fantôme).** 259 tests, tous verts,
+en deux familles : 14 fichiers de tests **API directe**, qui interrogent
+le serveur HTTP comme un vrai client de bout en bout, et 11 fichiers de
 tests **navigateur** (Playwright), qui pilotent un vrai navigateur — de
 la page d'accueil jusqu'au clic final : s'inscrire, créer un match,
 miser, contester, vérifier le solde. Ils prouvent que l'ensemble
 marche, pas seulement les pièces.
 
-**Niveau 3 — les tests live (contre la vraie production).** 38 tests dans
+**Niveau 3 — les tests live (contre la vraie production).** 39 tests dans
 2 fichiers, **désactivés par défaut** : ils ne tournent que sur demande
 explicite, avec une clef dédiée, car ils touchent la production réelle.
 Ils existent pour les grandes occasions : vérifier un déploiement en
@@ -1211,7 +1215,7 @@ automatique ne peut pas toujours dire.
 
 Chaque modification passe par une file de gardes : la compilation
 TypeScript, la qualité du front (ESLint, zéro avertissement toléré), la
-construction du site, puis les 1 182 tests unitaires et les 254 tests E2E
+construction du site, puis les 1 222 tests unitaires et les 259 tests E2E
 lorsque le code est touché. C'est la même
 recette, à chaque fois, sans exception.
 
@@ -1452,17 +1456,18 @@ repenser le socle — c'est l'ambition documentée du projet.
 
 ## 18. Annexe : les chiffres du projet
 
-Mesurés au 06/11/2026 et sourcés dans `docs/00-INDEX.md`,
-`docs/01-architecture.md`, `docs/08-frontend.md` et `docs/06-tests.md` :
+Relevés le 07/11/2026 sur la base du commit `b780b44`, et sourcés dans
+`docs/00-INDEX.md`, `docs/01-architecture.md`, `docs/08-frontend.md` et
+`docs/06-tests.md` :
 
 | Chiffre | Valeur | Source |
 |---|---|---|
-| Lignes de code front | 39 223 (188 fichiers) | `docs/08-frontend.md` |
-| Lignes de code serveur | 43 763 (131 fichiers) | `docs/01-architecture.md` |
-| Lignes de tests E2E | 6 428 (29 fichiers) | `docs/06-tests.md` |
-| Tests unitaires | 1 182 passés, 2 sautés (111 fichiers) | `docs/06-tests.md` |
-| Tests E2E | 254 / 254 verts (25 fichiers : 12 UI, 13 API) | `docs/06-tests.md` |
-| Tests live | 38, sur demande explicite (2 fichiers) | `docs/06-tests.md` |
+| Lignes de code front | 39 426 (188 fichiers) | `docs/08-frontend.md` |
+| Lignes de code serveur | 45 085 (135 fichiers) | `docs/01-architecture.md` |
+| Lignes de tests E2E | 6 618 (29 fichiers) | `docs/06-tests.md` |
+| Tests unitaires | 1 222 passés (114 fichiers) | `docs/06-tests.md` |
+| Tests E2E | 259 / 259 verts (25 fichiers : 11 UI, 14 API) | `docs/06-tests.md` |
+| Tests live | 39, sur demande explicite (2 fichiers) | `docs/06-tests.md` |
 | Documents du projet | 11 (celui-ci compris) | `docs/00-INDEX.md` § 7 |
 | Invariants d'argent numérotés | 47 | `docs/05-invariants.md` |
 | Anomalies d'audit corrigées | 16 (V1 à V16) | `docs/00-INDEX.md` § 8 |

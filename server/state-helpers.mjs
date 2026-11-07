@@ -19,12 +19,11 @@
  *   remplace par le booleen `hasConfirmed`.
  * INVARIANT : les gains projetes sont calcules par le serveur
  *   (`getProjectedPayouts`) : le client ne recalcule jamais le pot.
- * INVARIANT : la collection est remplacee EN BLOC (`replaceStateCollection`) :
- *   une liste partielle supprimerait en base les entites absentes.
- *   EXCEPTION : `brLobbies` est ecrit PAR ENTITE (`upsertStateEntity` dans
- *   `saveBrLobbies`) : le remplacement en bloc ecrasait les actions
- *   concurrentes d'autres salons, et supprimait un salon cree depuis
- *   l'instantane — passes bloques sans issue (C1/C2).
+ * INVARIANT : l'écriture est PAR ENTITÉ (`upsertStateEntity` conditionnel
+ *   `revision` quand la colonne existe) : le remplacement en bloc
+ *   (`replaceStateCollection`) écrasait les actions concurrentes d'autres
+ *   entités et supprimait les entités absentes de l'instantané (C1/C2).
+ *   Une entité absente de la liste n'est JAMAIS supprimée ici.
  * PIEGE : `Array.map` passe (element, index, tableau) : ecrire
  *   `map(sanitizeMatchForBroadcast)` passerait l'INDEX comme `viewerId` et
  *   `isMe` serait toujours faux, sans lever la moindre erreur.
@@ -43,7 +42,7 @@
 
 import { syncMatchChatChannels, buildMatchChatChannel, broadcastChatChannel } from './chat-helpers.mjs';
 import { broadcastStateSnapshot } from './push-notifications.mjs';
-import { replaceStateCollection, upsertStateEntity, getStateCollection, getStateEntity, getUserById } from './persistence.mjs';
+import { upsertStateEntity, getStateCollection, getStateEntity, getUserById } from './persistence.mjs';
 import { normalizeTournamentCollection } from './tournament-engine.mjs';
 import { getPublicMatchesForUser, getProjectedPayouts } from './match-engine.mjs';
 import { normalizeLeagueCollection } from './league-engine.mjs';
@@ -60,7 +59,17 @@ import { getServerWallet } from './wallet-engine.mjs';
  */
 const saveMatches = async (io, matches, changedMatch = null) => {
   syncMatchChatChannels(matches);
-  await replaceStateCollection('matches', matches);
+  // Écriture PAR ENTITÉ (delta) : une liste partielle ne supprime jamais
+  // les entités absentes — cf. `saveBrLobbies` (C1/C2). Les entités
+  // inchangées ne sont pas réécrites.
+  const entrees = Array.isArray(matches) ? matches : [];
+  for (const match of entrees) {
+    if (!match || !match.id) continue;
+    const courant = getStateEntity('matches', match.id);
+    if (courant && JSON.stringify(courant) === JSON.stringify(match)) continue;
+     
+    await upsertStateEntity('matches', match);
+  }
   // Broadcast only the changed match delta instead of full collection
   if (changedMatch) {
     broadcastMatchesToSessions(io, [changedMatch]);
@@ -84,7 +93,14 @@ const getStoredTournaments = () => normalizeTournamentCollection(getStateCollect
  * @returns {Promise<Array>} The stored tournaments
  */
 const saveTournaments = async (io, tournaments, changedTournament = null) => {
-  await replaceStateCollection('tournaments', tournaments);
+  const entrees = Array.isArray(tournaments) ? tournaments : [];
+  for (const tournament of entrees) {
+    if (!tournament || !tournament.id) continue;
+    const courant = getStateEntity('tournaments', tournament.id);
+    if (courant && JSON.stringify(courant) === JSON.stringify(tournament)) continue;
+     
+    await upsertStateEntity('tournaments', tournament);
+  }
   const targets = changedTournament ? [changedTournament] : getStateCollection('tournaments');
   // Par socket, comme pour les matchs : `isMe` est different par destinataire.
   for (const socket of io.sockets.sockets.values()) {
@@ -591,7 +607,14 @@ const sanitizeLeagueForBroadcast = (season, viewerId = null) => {
  * @returns {Promise<Array>} The stored leagues
  */
 const saveLeagues = async (io, seasons) => {
-  await replaceStateCollection('leagues', seasons);
+  const entrees = Array.isArray(seasons) ? seasons : [];
+  for (const season of entrees) {
+    if (!season || !season.id) continue;
+    const courant = getStateEntity('leagues', season.id);
+    if (courant && JSON.stringify(courant) === JSON.stringify(season)) continue;
+     
+    await upsertStateEntity('leagues', season);
+  }
   const storedLeagues = getStoredLeagues();
   broadcastLeaguesToSessions(io, storedLeagues);
   return storedLeagues;

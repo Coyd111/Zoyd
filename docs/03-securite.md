@@ -308,11 +308,12 @@ if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
 | 1 | `Origin` sur liste blanche | Un navigateur tiers (page d'attaque) | **Absence d'`Origin` ⇒ pas bloqué** |
 | 2 | `Content-Type` doit contenir `application/json` | La *simple request* `text/plain` | **Absence de `Content-Type` ⇒ pas bloqué** |
 
-La liste blanche est `ALLOWED_ORIGINS` (`server/http-utils.mjs:60-67`) :
-les trois origines de production sont **écrites en dur**
-(`zoyd.vercel.app`, `zoyd.africa`, `www.zoyd.africa`), plus
+La liste blanche est `ALLOWED_ORIGINS` (`server/http-utils.mjs:98-105`) :
+`https://zoyd.vercel.app` est **écrit en dur** (les domaines morts
+`zoyd.africa` / `www.zoyd.africa` ont été retirés — DNS mort, risque
+d'usurpation d'origine), plus
 `ZOYD_ALLOWED_ORIGINS` si défini, plus les origines de dev **uniquement hors
-production** (`server/http-utils.mjs:59`).
+production** (`server/http-utils.mjs:97`).
 
 ### 5.3 Les limites, énoncées franchement
 

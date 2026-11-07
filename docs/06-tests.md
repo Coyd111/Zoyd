@@ -74,7 +74,7 @@ c'est le niveau 2/3 (Playwright `ui`) et le build.
 `src/test/setup.ts` installe malgré tout des mocks navigateur — `window.matchMedia`
 (`:11-23`), `IntersectionObserver` (`:26-30`), `ResizeObserver` (`:32-37`) — et
 un `cleanup()` RTL après chaque test (`:6-8`). Ce fichier se charge sans
-erreur en environnement `node` (vérifié : 846 tests verts), mais **aucun de
+erreur en environnement `node` (vérifié : 1 201 tests verts au 06/11/2026), mais **aucun de
 ces mocks n'est réellement nécessaire** : aucun test du dépôt n'exerce de
 composant React monté. C'est un vestige d'une configuration `jsdom` abandonnée.
 

@@ -27,8 +27,8 @@ sert à la fois l'API REST et le WebSocket Socket.IO.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│   FRONT (Vercel) — React 18 + TS + Vite 6 + Zustand     │
-│   routes.tsx (React Router v7) + realtimeClient.ts       │
+│   FRONT (Vercel) — React 19.3 + TS + Vite 8 + Zustand    │
+│   routes.tsx (React Router v8) + realtimeClient.ts       │
 └───────────────┬───────────────────────────┬──────────────┘
                 │ REST (fetch + apiClient)   │ WebSocket (Socket.IO 4.8)
 ┌───────────────▼───────────────────────────▼──────────────┐
@@ -351,7 +351,7 @@ Un socket coupé par le client en cours de lecture remonte `code:'CLIENT_ABORTED
 | Élément | Ligne | Valeur |
 |---|---|---|
 | `serializeAuthCookie` | `server/http-utils.mjs:47-56` | **prod** : `HttpOnly; Secure; SameSite=None; Path=/` — **dev** : `HttpOnly; SameSite=Lax` |
-| `ALLOWED_ORIGINS` | `server/http-utils.mjs:60-67` | `ZOYD_ALLOWED_ORIGINS` (CSV) ; en dev seulement, `localhost:5173` + `127.0.0.1:5173` ; toujours ajoutés `https://zoyd.vercel.app`, `https://zoyd.africa`, `https://www.zoyd.africa` |
+| `ALLOWED_ORIGINS` | `server/http-utils.mjs:98-105` | `ZOYD_ALLOWED_ORIGINS` (CSV) ; en dev seulement, `localhost:5173` + `127.0.0.1:5173` ; toujours ajouté `https://zoyd.vercel.app` (les origines mortes `zoyd.africa` / `www.zoyd.africa` ont été retirées — DNS mort, risque d'usurpation d'origine) |
 | `ALLOW_DEBUG_CODES` | `server/http-utils.mjs:73` | `true` seulement si `ALLOW_DEBUG_CODES === 'true'`. **Fail-closed** : `NODE_ENV` absent = production |
 | `parseQueryParams` | `server/http-utils.mjs:148-154` | `limit` borné **[1, 500]** (défaut 100), `offset` ≥ 0 |
 | `paginate` | `server/http-utils.mjs:161-164` | `{ items, hasMore }` |

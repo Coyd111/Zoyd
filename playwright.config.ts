@@ -40,8 +40,8 @@ export default defineConfig({
         // construites par http-utils.mjs. Les specs `ui` échouaient donc en
         // CORS : le navigateur appelle l'API en cross-origin et le preflight
         // est rejeté (« Access-Control-Allow-Origin contient la valeur vide »).
-        // On remet explicitement les origines de dev et les domaines de prod.
-        ZOYD_ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,https://zoyd.vercel.app,https://zoyd.africa,https://www.zoyd.africa',
+        // On remet explicitement les origines de dev et le domaine de prod.
+        ZOYD_ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,https://zoyd.vercel.app',
         // requis au boot (seed du compte de contrôle) et doit passer la
         // politique de mot de passe fort ; absente ou faible, le serveur
         // journalise [FATAL] et DÉMARRE QUAND MÊME — sans aucun admin

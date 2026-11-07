@@ -40,6 +40,8 @@ services:
         sync: false
       - key: FEDAPAY_SECRET_KEY
         sync: false
+      - key: FEDAPAY_WEBHOOK_SECRET
+        sync: false
       - key: ZOYD_ADMIN_PASSWORD
         sync: false
       # Identite du compte de moderation. Les valeurs par defaut du code
@@ -76,4 +78,12 @@ services:
       # repond 403 : tout le systeme de metriques etait donc inexploite en
       # production, alors qu'il existe et tourne.
       - key: METRICS_TOKEN
+        sync: false
+      # Chiffrement au repos des secrets TOTP admin (AES-256-GCM). SANS cette
+      # variable, le serveur REFUSE d'ecrire un secret 2FA (jamais en clair).
+      # Generer : node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+      # Rotation : definir ZOYD_2FA_ENC_KEY_NEXT a cote, deployer, re-enroler
+      # ou redemarrer (le chargement reecrit les lignes legacy chiffrees),
+      # puis supprimer KEY et promouvoir NEXT -> KEY.
+      - key: ZOYD_2FA_ENC_KEY
         sync: false

@@ -74,7 +74,9 @@ import {
   markAdmin2faVerified,
   getStateCollection,
   listUserReports,
+  listUserIds,
 } from '../persistence.mjs';
+import { collectFinanceDebts, FINANCE_STALE_MS, FINANCE_CRITICAL_MS } from '../finance-observability.mjs';
 import {
   submitMatchResultOnServer,
   settlePendingMatchResult,
@@ -208,6 +210,48 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     } catch (err) {
       log.error('Admin commissions failed', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du calcul des commissions.', code: 'COMMISSIONS_ERROR' }, req);
+    }
+    return true;
+  }
+
+  // P0 observabilite argent : dettes ACTIONNABLES (ids + montants + age).
+  // Donnee financiere sensible -> 2FA obligatoire. Trie par anciennete
+  // decroissante : la plus vieille dette premier. `type` filtre en query.
+  if (req.method === 'GET' && pathname === '/api/admin/finance/debts') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return true;
+    try {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const typeFilter = (url.searchParams.get('type') || '').trim();
+      const { limit, offset } = parseQueryParams(req.url);
+      const cap = Math.min(Math.max(limit || 200, 1), 500);
+      const { summary, debts } = collectFinanceDebts({
+        matches: getStateCollection('matches'),
+        tournaments: getStateCollection('tournaments'),
+        leagues: getStateCollection('leagues'),
+        brLobbies: getStateCollection('brLobbies'),
+        listUserIds,
+        getWallet: (userId) => getUserById(userId)?.wallet,
+        nowMs: Date.now(),
+      });
+      const filtered = typeFilter
+        ? debts.filter((d) => d.type === typeFilter)
+        : debts;
+      const items = filtered.slice(offset, offset + cap);
+      respondJson(res, 200, {
+        ok: true,
+        summary,
+        debts: items,
+        total: filtered.length,
+        limit: cap,
+        offset,
+        thresholds: { staleMs: FINANCE_STALE_MS, criticalMs: FINANCE_CRITICAL_MS },
+        generatedAt: getNow(),
+      }, req);
+    } catch (err) {
+      log.error('Admin finance debts failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du calcul des dettes.', code: 'FINANCE_DEBTS_ERROR' }, req);
     }
     return true;
   }

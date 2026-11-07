@@ -26,15 +26,15 @@ constante, classe CSS) ; la ligne est un indice, pas une garantie.
 
 | Élément | Valeur | Source |
 |---|---|---|
-| Framework | React 18.3 + TypeScript 5.6 | `package.json:61`, `:90` |
-| Build | Vite 6.3.5 | `package.json:91` |
-| Routeur | React Router 7 (`react-router`, pas `react-router-dom`) | `package.json:65` |
+| Framework | React 19.3 + TypeScript (aliases npm `typescript@^6.0.3` / `typescript7@^7.0.2`) | `package.json` |
+| Build | Vite 8.3.5 | `package.json` |
+| Routeur | React Router 8 (`react-router`, pas `react-router-dom`) | `package.json` |
 | État | Zustand 5 | `package.json:73` |
 | Temps réel | socket.io-client 4.8 | `package.json:68` |
 | Styles | Tailwind CSS 4 + `@tailwindcss/vite` | `package.json:89`, `:78` |
 | Composants UI | Radix UI (primitives) + `class-variance-authority` + `tailwind-merge` | `package.json:27-51`, `:54`, `:69` |
-| Animation | `motion` 12 (ex-Framer Motion) | `package.json:59` |
-| Graphiques | Recharts 2 | `package.json:66` |
+| Animation | `motion` 14 (ex-Framer Motion) | `package.json` |
+| Graphiques | Recharts 3 | `package.json` |
 | SEO | `react-helmet-async` | `package.json:63` |
 | Formulaires | `react-hook-form` 7 + Zod 4 | `package.json:64`, `:72` |
 | Tests unitaires front | Vitest (environnement `node`) + Testing Library | `package.json:92`, `:80` |

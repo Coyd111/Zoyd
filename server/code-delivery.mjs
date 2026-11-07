@@ -105,7 +105,7 @@ const buildBodies = (code, purpose) => {
 /**
  * Try sending the code through Resend HTTP API (port 443 — marche sur Render gratuit).
  * Docs : https://resend.com/docs/api-reference/emails/send-email
- * Env : RESEND_API_KEY (re_...), EMAIL_FROM (ex. "ZOYD <noreply@zoyd.africa>").
+ * Env : RESEND_API_KEY (re_...), EMAIL_FROM (ex. "ZOYD <noreply@example.com>").
  * Sans domaine vérifié, EMAIL_FROM = "ZOYD <onboarding@resend.dev>" (test uniquement).
  * @returns {Promise<boolean>} true si envoyé
  */

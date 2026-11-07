@@ -280,7 +280,8 @@ if (req.method === 'POST' && leagueDayResults) {
       session.user,
       leagueDayResults[1],
       leagueDayResults[2],
-      body.results
+      body.results,
+      body.proofs,
     );
     await saveLeagues(io, outcome.seasons);
     respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));
@@ -321,7 +322,8 @@ if (req.method === 'POST' && leagueFinalResults) {
       getStoredLeagues(),
       session.user,
       leagueFinalResults[1],
-      body.results
+      body.results,
+      body.proofs,
     );
     await saveLeagues(io, outcome.seasons);
     respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));

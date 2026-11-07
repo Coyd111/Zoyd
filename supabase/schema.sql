@@ -179,6 +179,10 @@ CREATE TABLE IF NOT EXISTS state_snapshots (
   entity_id TEXT NOT NULL,
   payload JSONB NOT NULL DEFAULT '{}',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Concurrence multi-instance (cf. migrate-state-revision.sql) :
+  -- compteur incrémenté par toute écriture d'une entité, miroir de
+  -- `app_users.revision` pour les collections d'état.
+  revision BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (kind, entity_id)
 );
 

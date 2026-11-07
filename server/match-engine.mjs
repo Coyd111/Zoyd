@@ -148,6 +148,17 @@ import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
 export { addXpToProgression };
 import { CLOSED_STATUSES } from './match-status.mjs';
+import {
+  MAX_PROOF_REF_LENGTH,
+  isSafeProofRef,
+  normalizeProofRefs,
+  buildProofHash,
+  hasDistinctProofs,
+} from './proof-helpers.mjs';
+// Re-exports de compat : `isSafeProofRef` / `normalizeProofRefs` restaient
+// importables depuis ce module (tests E5). La source unique vit dans
+// `proof-helpers.mjs` (feuille, partagée avec le moteur ligue).
+export { MAX_PROOF_REF_LENGTH, isSafeProofRef, normalizeProofRefs, buildProofHash, hasDistinctProofs };
 
 const log = createLogger('match-engine');
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
@@ -165,30 +176,12 @@ const getScheduledTimestamp = (match) => (match.scheduledAt ? new Date(match.sch
 const getTeamCheckInCount = (match, team) =>
   match.players.filter((player) => player.team === team && player.isCheckedIn).length;
 const isTeamReadyForLaunch = (match, team) => getTeamCheckInCount(match, team) >= match.teamSize;
-// Preuves : le front accepte "liens ou refs" en texte libre, donc on ne peut
-// pas exiger https: partout. On coupe court au XSS stocké en rejetant les
-// schémas dangereux et le HTML : javascript:, data: non-image, vbscript:,
-// chevrons et gestionnaires d'événements. 2000 caractères et 10 refs max.
-const MAX_PROOF_REF_LENGTH = 2000;
-const isSafeProofRef = (ref) => {
-  if (typeof ref !== 'string') return false;
-  const trimmed = ref.trim();
-  if (!trimmed || trimmed.length > MAX_PROOF_REF_LENGTH) return false;
-  if (/^\s*javascript:/i.test(trimmed)) return false;
-  if (/^\s*vbscript:/i.test(trimmed)) return false;
-  if (/^\s*data:(?!image\/(png|jpeg|jpg|webp);base64,)/i.test(trimmed)) return false;
-  if (/[<>]/.test(trimmed)) return false;
-  if (/\bon\w+\s*=/i.test(trimmed)) return false;
-  return true;
-};
-const normalizeProofRefs = (refs = []) =>
-  (Array.isArray(refs) ? refs : [refs]).map((ref) => `${ref}`.trim()).filter(isSafeProofRef).slice(0, 10);
+// Preuves : voir `proof-helpers.mjs` (source unique, importé ci-dessus
+// et re-exporté pour compat). 2000 caractères, 10 refs, dédup, https-only.
 const flattenProofs = (proofs) =>
   proofs
     ? [...(proofs.scoreboard || []), ...(proofs.finalResult || []), ...(proofs.roomCapture || []), ...(proofs.extraEvidence || [])]
     : [];
-const buildProofHash = (matchId, winnerTeam, scores, refs) =>
-  [String(matchId).toLowerCase(), winnerTeam, scores?.team0 ?? 0, scores?.team1 ?? 0, ...refs.map((ref) => ref.toLowerCase())].join('|');
 
 /** Commission d'arbitrage (part de l'arbitre sur la cagnotte). */
 const ARBITER_FEE_RATE = 0.02;
@@ -1130,6 +1123,12 @@ if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
     (!normalizedProofs || normalizedProofs.scoreboard.length === 0 || normalizedProofs.finalResult.length === 0)
   ) {
     throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un ecran final avant de valider le score.');
+  }
+  // Une seule image ne peut pas servir de scoreboard ET d ecran final :
+  // sans distinctness, une capture unique (ou ses doublons, deja
+  // dedupliques) validait les deux preuves.
+  if (requiresMandatoryProofs && !hasDistinctProofs(normalizedProofs)) {
+    throw makeError('PROOFS_REQUIRED', 'Le scoreboard et l ecran final doivent etre deux preuves distinctes.');
   }
 
   const fullResult = {

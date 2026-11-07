@@ -41,13 +41,13 @@ annoncé actif, et l'argent cesserait d'être persisté sans la moindre alerte.
 | `ZOYD_REALTIME_PORT` | `4001` | Port de repli quand `PORT` est absent |
 | `LOG_LEVEL` | `info` | `error` \| `warn` \| `info` \| `debug`. En production Render est sur `warn` |
 | `TRUST_PROXY` | `false` | À mettre à `true` **derrière un load balancer**, sinon tous les utilisateurs partagent un seul bucket de rate limit |
-| `ZOYD_ALLOWED_ORIGINS` | les 3 domaines de production, codés en dur | Origines CORS supplémentaires, séparées par des virgules |
+| `ZOYD_ALLOWED_ORIGINS` | `zoyd.vercel.app` ajouté en dur | Origines CORS supplémentaires, séparées par des virgules |
 
 > **Attention, erreur corrigée dans cette version.** L'ancien document
 > indiquait `ALLOWED_ORIGINS`, que le code ne lit pas. Le nom réel est
-> `ZOYD_ALLOWED_ORIGINS`. Les trois domaines de production (`zoyd.vercel.app`,
-> `zoyd.africa`, `www.zoyd.africa`) sont de toute façon autorisés en repli, donc
-> l'erreur n'était pas bloquante — mais ajouter un nouveau domaine en suivant
+> `ZOYD_ALLOWED_ORIGINS`. `zoyd.vercel.app` est de toute façon autorisé en
+> repli (les domaines morts `zoyd.africa` / `www.zoyd.africa` ont été
+> retirés de la liste) — mais ajouter un nouveau domaine en suivant
 > l'ancienne doc produirait un blocage CORS muet.
 
 ### Backend — identité de l'admin
@@ -426,8 +426,9 @@ Supabase supporte les backups automatiques. Restore via le dashboard Supabase.
 $env:CI="true"; node --experimental-vm-modules node_modules/vitest/vitest.mjs run --reporter=verbose --no-file-parallelism --exclude='e2e/**'
 ```
 
-946 tests unitaires passés + 2 sautés au 02/11/2026 (vitest, portée `server/` :
-90 fichiers de test ; `src/` en ajoute 20, soit 110 fichiers) couvrant :
+1 201 tests unitaires passés au 06/11/2026 (112 fichiers, plus aucun test sauté —
+les deux témoins du chemin de retrait sont actifs depuis le correctif du mock
+`payment-engine`) couvrant :
 - Persistance (hashing, normalisation)
 - Métriques
 - Match engine (XP, Elo, résultats)

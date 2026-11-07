@@ -351,7 +351,9 @@ const ChatPage: React.FC = () => {
                   <div>
                     <h2 className="font-display font-black text-white text-sm uppercase italic">{activeChannel.name}</h2>
                     <span className="text-[10px] font-mono text-white/70 uppercase tracking-wider">
-                      {activeChannel.participants.length} participant{activeChannel.participants.length !== 1 ? 's' : ''}
+                      {activeChannel.type === 'global'
+                        ? `${onlineFriends.length + 1} en ligne`
+                        : `${activeChannel.participants.length} participant${activeChannel.participants.length !== 1 ? 's' : ''}`}
                     </span>
                   </div>
                 </div>

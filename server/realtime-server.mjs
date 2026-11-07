@@ -64,6 +64,7 @@ import { handleRealtimeRoutes } from './routes/realtime.mjs';
 import { handleWalletRoutes } from './routes/wallet.mjs';
 import { handleAuthRoutes } from './routes/auth.mjs';
 import { handlePublicRoutes } from './routes/public.mjs';
+import { handleWebhookRoutes } from './routes/webhook.mjs';
 
 // Ordre de consultation. Sans portee semantique — voir le commentaire sur la
 // table de routes dans `handleRequest`.
@@ -79,6 +80,7 @@ const ROUTE_MODULES = [
   handleAdminRoutes,
   handleChatRoutes,
   handleRealtimeRoutes,
+  handleWebhookRoutes,
 ];
 import { verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa } from './admin-totp.mjs';
 
@@ -242,7 +244,7 @@ let matchAutomationIntervalId = null;
 let matchAutomationRunning = false;
 
 if (vapidKeys) {
-  webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
+  webpush.setVapidDetails('mailto:coyd2976@gmail.com', vapidKeys.publicKey, vapidKeys.privateKey);
 }
 
 const handleRequest = async (req, res) => {

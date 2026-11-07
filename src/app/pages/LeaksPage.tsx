@@ -221,6 +221,7 @@ const LeaksPage: React.FC = () => {
   const [activeLiveTab, setActiveLiveTab] = useState<LiveTab>('bundles');
   const [bundles, setBundles] = useState<CodashopBundle[]>([]);
   const [bundlesLoading, setBundlesLoading] = useState(true);
+  const [bundlesError, setBundlesError] = useState(false);
   // Devise reelle du catalogue Codashop (INR aujourd'hui) et faux si le prix
   // n'est pas dans la devise du joueur : l'UI le dit plutot que d'afficher
   // un montant en INR comme s'il etait en XOF.
@@ -241,10 +242,13 @@ const LeaksPage: React.FC = () => {
   // pas celle de l'Inde en dur.
   const user = useAuthStore((state) => state.user);
 
+  const [bundleRetry, setBundleRetry] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setBundlesLoading(true);
+      setBundlesError(false);
       try {
         const data = await fetchCODMStore(toCountryIso(user?.country));
         if (!cancelled) {
@@ -255,12 +259,15 @@ const LeaksPage: React.FC = () => {
         }
       } catch {
         if (!cancelled) {
+          // Garde les bundles déjà chargés (pas d'effacement sur erreur
+          // transitoire) et signale l'échec pour le bouton réessayer.
+          setBundlesError(true);
           setBundlesLoading(false);
         }
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [bundleRetry]);
 
   const filteredArticles = activeCategory === 'all'
     ? articles
@@ -370,7 +377,21 @@ const LeaksPage: React.FC = () => {
                 )}
               </div>
               {!bundlesLoading && bundles.length === 0 && (
-                <div className="text-center py-8 text-white/60 text-sm">Donnees du store temporairement indisponibles.</div>
+                <div className="text-center py-8 text-white/60 text-sm space-y-3">
+                  <p>Donnees du store temporairement indisponibles.</p>
+                  <button
+                    type="button"
+                    onClick={() => setBundleRetry((n) => n + 1)}
+                    className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-xs font-display font-black uppercase tracking-widest text-white hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors touch-target"
+                  >
+                    Réessayer
+                  </button>
+                </div>
+              )}
+              {bundlesError && bundles.length > 0 && (
+                <p className="text-[10px] font-mono text-zoyd-yellow pb-3">
+                  Actualisation en échec — affichage du dernier catalogue chargé.
+                </p>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {bundlesLoading && Array.from({ length: 6 }).map((_, i) => (

@@ -43,7 +43,7 @@ import {
 const log = createLogger('push');
 
 if (vapidKeys) {
-  webpush.setVapidDetails('mailto:ops@zoyd.africa', vapidKeys.publicKey, vapidKeys.privateKey);
+  webpush.setVapidDetails('mailto:coyd2976@gmail.com', vapidKeys.publicKey, vapidKeys.privateKey);
 }
 
 /**

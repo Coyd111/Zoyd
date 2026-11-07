@@ -102,6 +102,11 @@ const memoryChatReads = new Map();    // `${channelId}:${userId}` -> readAt
 const MAX_CHAT_READS = 50000;
 const memoryStateSnapshots = new Map(); // `${kind}:${entityId}` -> payload (kept for compat)
 const memoryStateByKind = new Map();   // kind -> Map<entityId, payload> (O(1) lookups)
+// Révisions OCC des snapshots (`state_snapshots.revision`), miroir de
+// `app_users.revision` pour les collections d'état. Chargées au boot,
+// incrémentées par `upsertStateEntity` en écriture conditionnelle.
+const memoryStateRevisions = new Map(); // `${kind}:${entityId}` -> revision BIGINT
+let stateRevisionSupported = null;
 const MAX_STATE_PER_KIND = 10000;
 const memoryAdminIds = new Set();     // fast admin lookup (avoids a full user scan)
 const memoryFriendRequests = new Map();
@@ -539,6 +544,51 @@ const occSupporte = async () => {
 export const setOccSupportePourTest = (valeur) => { revisionSupporte = valeur; };
 
 /**
+ * La colonne `state_snapshots.revision` existe-t-elle en base ?
+ * Même discipline que `occSupporte()` : absente -> écritures
+ * inconditionnelles + avertissement + flag santé, jamais d'échec
+ * systématique des mutations.
+ */
+const occStateSupporte = async () => {
+  if (stateRevisionSupported !== null) return stateRevisionSupported;
+  if (!supabase) { stateRevisionSupported = false; return false; }
+  try {
+    const { error } = await supabase.from('state_snapshots').select('kind,entity_id,revision').limit(1);
+    stateRevisionSupported = !error;
+  } catch {
+    stateRevisionSupported = false;
+  }
+  if (!stateRevisionSupported) {
+    log.warn(
+      'Colonne state_snapshots.revision absente : écritures inconditionnelles (fenetre multi-instance ouverte sur les collections)',
+      { attendu: 'voir supabase/migrate-state-revision.sql' },
+    );
+  }
+  return stateRevisionSupported;
+};
+
+/** Test hook : force l'état de la sonde collections (`null` pour re-sonder). */
+export const setStateRevisionSupportedPourTest = (valeur) => { stateRevisionSupported = valeur; };
+
+/**
+ * Écriture conditionnelle d'un snapshot : ne touche la ligne que si sa
+ * révision est toujours celle observée. 0 ligne = conflit (une autre
+ * instance a écrit), 1 ligne = succès.
+ */
+const ecrireStateEntitySiRevision = async (kind, entityId, revisionObservee, payload) => {
+  const { data, error } = await supabase
+    .from('state_snapshots')
+    .update({ payload, revision: revisionObservee + 1, updated_at: getNow() })
+    .eq('kind', kind)
+    .eq('entity_id', entityId)
+    .eq('revision', revisionObservee)
+    .select('entity_id');
+  if (error) return OCC_ECHEC;
+  const touched = Array.isArray(data) ? data.length : 0;
+  return touched === 1 ? OCC_OK : OCC_CONFLIT;
+};
+
+/**
  * Test hook : place un payload arbitraire dans le cache memoire.
  *
  * Sert a reproduire la situation multi-instance ou une instance n'a pas encore
@@ -884,6 +934,8 @@ export const loadFromSupabase = async () => {
       memoryStateSnapshots.set(`${snap.kind}:${snap.entity_id}`, snap.payload);
       if (!memoryStateByKind.has(snap.kind)) memoryStateByKind.set(snap.kind, new Map());
       memoryStateByKind.get(snap.kind).set(snap.entity_id, snap.payload);
+      const rv = Number(snap.revision);
+      memoryStateRevisions.set(`${snap.kind}:${snap.entity_id}`, Number.isFinite(rv) ? rv : 0);
     }
 
     // Friend requests
@@ -955,6 +1007,7 @@ export const loadFromSupabase = async () => {
     // demarre en ecriture non conditionnelle, on le signale, et on rend
     // l'etat consultable dans `/api/health`.
     await occSupporte();
+    await occStateSupporte();
 
     // Idem pour la table du secret 2FA admin : toleratee aussi a l'absence
     // (une base d'avant la 2FA n'a pas la table), mais l'etat doit etre
@@ -1033,6 +1086,8 @@ let stateLoadError = null;
 export const isReloadInProgress = () => reloadInProgress;
 export const isStateTrusted = () => stateTrusted;
 export const getStateLoadError = () => stateLoadError;
+/** Test hook : bascule `stateTrusted` sans chargement complet. */
+export const setStateTrustedPourTest = (valeur) => { stateTrusted = Boolean(valeur); };
 
 /** Vider tous les caches mémoire (avant un (re)chargement complet). */
 const clearAllMemoryCaches = () => {
@@ -1114,6 +1169,12 @@ export const getHealthInfo = () => ({
   // false = elle est absente : les ecritures deviennent inconditionnelles et
   // la fenetre multi-instance s'ouvre. null = pas encore sonde.
   occRevisionColumn: revisionSupporte,
+  // true = la colonne `state_snapshots.revision` existe, les écritures
+  // d'entités sont conditionnelles (CAS). false = absente (migration
+  // `supabase/migrate-state-revision.sql` non jouée) : écritures
+  // inconditionnelles + fenêtre multi-instance ouverte sur les
+  // collections. null = pas encore sonde.
+  stateRevisionColumn: stateRevisionSupported,
   // false = les secrets 2FA des admins ne survivent PAS a un redemarrage tant
   // que la table `admin_2fa_secrets` manque. null = pas encore sonde. Miroir
   // de `loginLockoutPersisted` : cf. 03-securite.md 16.9 — l'ecriture du
@@ -3616,11 +3677,14 @@ export const replaceStateCollection = async (kind, items) => {
   // « optimiste » à la base et la divergence devient invisible.
   const previousById = new Map(kindMap);
   const previousFlatKeys = new Set(memoryStateSnapshots.keys());
+  const previousRevisions = new Map(memoryStateRevisions);
   const rollbackMemory = () => {
     kindMap.clear();
     for (const [id, payload] of previousById) kindMap.set(id, payload);
     for (const key of previousFlatKeys) memoryStateSnapshots.delete(key);
     for (const item of items) memoryStateSnapshots.set(`${kind}:${item.id}`, item);
+    memoryStateRevisions.clear();
+    for (const [k, v] of previousRevisions) memoryStateRevisions.set(k, v);
   };
 
   // Update memory (both flat and per-kind maps)
@@ -3637,9 +3701,16 @@ export const replaceStateCollection = async (kind, items) => {
   for (const id of idsToDelete) {
     memoryStateSnapshots.delete(`${kind}:${id}`);
     kindMap.delete(id);
+    memoryStateRevisions.delete(`${kind}:${id}`);
   }
 
-  if (!supabase) return;
+  if (!supabase) {
+    for (const item of items) {
+      const k = `${kind}:${item.id}`;
+      memoryStateRevisions.set(k, (previousRevisions.get(k) ?? 0) + 1);
+    }
+    return;
+  }
   // Les IDs évincés doivent aussi disparaître en base, sinon le prochain
   // reload les ressuscite (divergence mémoire/base).
   if (idsToDelete.length > 0) {
@@ -3650,8 +3721,19 @@ export const replaceStateCollection = async (kind, items) => {
     await sbDeleteKindEntities(kind, null);
     return;
   }
-  // Sync to Supabase (batch upsert with retry)
-  const rows = items.map(item => ({ kind, entity_id: item.id, payload: item, updated_at: getNow() }));
+  // Sync to Supabase (batch upsert with retry). Quand la colonne
+  // `revision` existe, chaque ligne porte `observée + 1` pour que la
+  // prochaine écriture conditionnelle (`upsertStateEntity`) compare
+  // contre la révision écrite ici, pas contre l'ancienne.
+  const stateSupported = await occStateSupporte();
+  const rows = items.map(item => {
+    const k = `${kind}:${item.id}`;
+    const nextRevision = (previousRevisions.get(k) ?? 0) + 1;
+    return {
+      kind, entity_id: item.id, payload: item, updated_at: getNow(),
+      ...(stateSupported ? { revision: nextRevision } : {}),
+    };
+  });
   for (let i = 0; i < rows.length; i += 100) {
     const batch = rows.slice(i, i + 100);
     let upserted = false;
@@ -3671,6 +3753,10 @@ export const replaceStateCollection = async (kind, items) => {
       rollbackMemory();
       throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
     }
+  }
+  for (const item of items) {
+    const k = `${kind}:${item.id}`;
+    memoryStateRevisions.set(k, (previousRevisions.get(k) ?? 0) + 1);
   }
 };
 
@@ -3774,24 +3860,65 @@ export const upsertStateEntity = async (kind, entity) => {
   // doit revenir à sa valeur d'origine (nouvelle -> absente, existante ->
   // valeur précédente), sinon le prochain appel compare un état « optimiste »
   // à la base et la divergence devient invisible.
+  const key = `${kind}:${entity.id}`;
   const ancien = kindMap.has(entity.id) ? kindMap.get(entity.id) : null;
+  const revisionAncienne = memoryStateRevisions.has(key) ? memoryStateRevisions.get(key) : null;
   kindMap.set(entity.id, entity);
-  memoryStateSnapshots.set(`${kind}:${entity.id}`, entity);
+  memoryStateSnapshots.set(key, entity);
 
   if (supabase) {
-    const ok = await sbUpsert('state_snapshots', { kind, entity_id: entity.id, payload: entity, updated_at: getNow() });
-    if (!ok) {
-      // FAIL CLOSED, comme `replaceStateCollection`. Avaler l'échec renvoyait
-      // « réussi » au client alors que la base n'avait rien : un règlement
-      // interrompu se relancerait en croyant l'état persisté.
-      if (ancien) {
-        kindMap.set(entity.id, ancien);
-        memoryStateSnapshots.set(`${kind}:${entity.id}`, ancien);
+    const supported = await occStateSupporte();
+    if (supported) {
+      // Écriture conditionnelle : ne touche la ligne que si sa révision est
+      // toujours celle observée. 0 ligne = une autre instance a écrit ;
+      // pour une entité nouvelle (jamais vue), la ligne n'existe pas non
+      // plus — on distingue par `ancien` (null = création, sinon conflit).
+      const observee = revisionAncienne ?? 0;
+      if (ancien !== null || revisionAncienne !== null) {
+        const resultat = await ecrireStateEntitySiRevision(kind, entity.id, observee, entity);
+        if (resultat === OCC_CONFLIT) {
+          // Conflit d'écriture : rollback mémoire + refus rejouable.
+          kindMap.set(entity.id, ancien);
+          memoryStateSnapshots.set(key, ancien);
+          throw makeError('STATE_CONFLICT', 'Une autre instance a modifie cette entite. Reessaie.');
+        }
+        if (resultat === OCC_ECHEC) {
+          kindMap.set(entity.id, ancien);
+          memoryStateSnapshots.set(key, ancien);
+          throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+        }
+        // Succès : révision locale = observee + 1.
+        memoryStateRevisions.set(key, observee + 1);
       } else {
-        kindMap.delete(entity.id);
-        memoryStateSnapshots.delete(`${kind}:${entity.id}`);
+        // Création : insertion à révision 1 (upsert initial).
+        const ok = await sbUpsert('state_snapshots', {
+          kind, entity_id: entity.id, payload: entity, updated_at: getNow(), revision: 1,
+        });
+        if (!ok) {
+          kindMap.delete(entity.id);
+          memoryStateSnapshots.delete(key);
+          throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+        }
+        memoryStateRevisions.set(key, 1);
       }
-      throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+    } else {
+      const ok = await sbUpsert('state_snapshots', { kind, entity_id: entity.id, payload: entity, updated_at: getNow() });
+      if (!ok) {
+        // FAIL CLOSED, comme `replaceStateCollection`. Avaler l'échec renvoyait
+        // « réussi » au client alors que la base n'avait rien : un règlement
+        // interrompu se relancerait en croyant l'état persisté.
+        if (ancien) {
+          kindMap.set(entity.id, ancien);
+          memoryStateSnapshots.set(key, ancien);
+        } else {
+          kindMap.delete(entity.id);
+          memoryStateSnapshots.delete(key);
+        }
+        throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+      }
+      // Sans colonne, la révision mémoire ne porte pas de garantie : on
+      // l'incrémente quand même pour garder la structure cohérente.
+      memoryStateRevisions.set(key, (revisionAncienne ?? 0) + 1);
     }
   }
 };

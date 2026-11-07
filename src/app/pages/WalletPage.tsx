@@ -575,7 +575,12 @@ if (!payoutCountry) {
                       key={preset}
                       onClick={() => setDepositAmount(preset.toString())}
                       aria-label={`Ajouter ${preset} ZC`}
-                      className="px-4 py-3 touch-target bg-white/5 border border-white/10 hover:border-zoyd-yellow text-zoyd-yellow font-display font-bold transition-all"
+                      aria-pressed={depositAmount === preset.toString()}
+                      className={`px-4 py-3 touch-target border font-display font-bold transition-all ${
+                        depositAmount === preset.toString()
+                          ? 'bg-white/10 border-zoyd-yellow text-white'
+                          : 'bg-white/5 border-white/10 hover:border-zoyd-yellow text-zoyd-yellow'
+                      }`}
                   >
                     {preset} ZC
                   </button>
@@ -601,6 +606,7 @@ if (!payoutCountry) {
                       key={operator.id}
                       onClick={() => setSelectedOperator(operator.id)}
                       aria-label={`Payer avec ${operator.name}`}
+                      aria-pressed={selectedOperator === operator.id}
                       className={`p-4 touch-target border transition-all ${
                       selectedOperator === operator.id
                         ? 'border-zoyd-yellow bg-white/10'

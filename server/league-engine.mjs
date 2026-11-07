@@ -46,6 +46,7 @@ import {
 } from './wallet-engine.mjs';
 import { withWalletMutex } from './mutex.mjs';
 import { roundAmount, getNow, makeError, addXpToProgression } from './utils.mjs';
+import { normalizeProofRefs } from './proof-helpers.mjs';
 
 const log = createLogger('league-engine');
 
@@ -504,7 +505,7 @@ export const startLeagueDayOnServer = (seasons, actor, seasonId, dayKey) => {
   };
 };
 
-export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey, results) => {
+export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey, results, proofs = undefined) => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut soumettre les resultats.');
   const nextSeasons = cloneLeagues(seasons);
@@ -577,6 +578,15 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
 
   daySlot.results = processedResults;
   daySlot.status = 'finished';
+  // Preuves de journée (optionnelles) : même filtre anti-XSS que MJ.
+  // Stockées normalisées (et dédupliquées) pour contestation ultérieure.
+  if (proofs !== undefined) {
+    daySlot.proofs = {
+      scoreboard: normalizeProofRefs(proofs?.scoreboard),
+      finalResult: normalizeProofRefs(proofs?.finalResult),
+      extraEvidence: normalizeProofRefs(proofs?.extraEvidence),
+    };
+  }
 
   for (const result of processedResults) {
     const standing = season.standings.find((s) => s.userId === result.userId);
@@ -634,7 +644,7 @@ export const advanceToFinalOnServer = (seasons, actor, seasonId) => {
   };
 };
 
-export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId, finalResults) => {
+export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId, finalResults, proofs = undefined) => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut soumettre les resultats de la finale.');
   const nextSeasons = cloneLeagues(seasons);
@@ -705,6 +715,15 @@ export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId,
     results: processedFinal,
     status: 'finished',
   };
+  // Preuves de finale (optionnelles) : même filtre que MJ, stockées
+  // normalisées pour l'arbitrage d'une contestation ultérieure.
+  if (proofs !== undefined) {
+    season.finalMatch.proofs = {
+      scoreboard: normalizeProofRefs(proofs?.scoreboard),
+      finalResult: normalizeProofRefs(proofs?.finalResult),
+      extraEvidence: normalizeProofRefs(proofs?.extraEvidence),
+    };
+  }
 
   season.status = 'completed';
   season.finishedAt = getNow();

@@ -88,6 +88,9 @@ import { countPendingArbiterFees, getPublicMatchesForUser } from '../match-engin
 import { countPendingTournamentPayouts, countPendingTournamentRefunds } from '../tournament-engine.mjs';
 import { countPendingLeaguePayouts, countPendingLeagueRefunds } from '../league-engine.mjs';
 import { countPendingBrSettlements } from '../br-engine.mjs';
+// P0 observabilite argent : resume anonyme des dettes (comptes + ZC + age).
+// La sante reste sans effet de bord : collectFinanceDebts ne mute rien.
+import { collectFinanceDebts, FINANCE_STALE_MS, FINANCE_CRITICAL_MS } from '../finance-observability.mjs';
 import { metricsToPrometheus, setGauge } from '../metrics.mjs';
 import { channels } from '../channel-presence.mjs';
 import {
@@ -147,6 +150,21 @@ if (req.method === 'GET' && pathname === '/api/health') {
     leagueRefunds: countPendingLeagueRefunds(leagues),
     brSettlements: countPendingBrSettlements(brLobbies),
   };
+  // P0 : resume anonyme detaille (total ZC + age). Aucun id fut, lectures
+  // memoire pures. `finance` permet d'alerter sans lire les dettes admin.
+  const finance = collectFinanceDebts({
+    matches,
+    tournaments,
+    leagues,
+    brLobbies,
+    listUserIds,
+    getWallet: (userId) => getUserById(userId)?.wallet,
+    nowMs: Date.now(),
+  }).summary;
+  const warnings = [];
+  if (finance.criticalCount > 0) warnings.push('FINANCE_CRITICAL_AGE');
+  else if (finance.staleCount > 0) warnings.push('FINANCE_STALE');
+  if (finance.uncollectableCount > 0) warnings.push('FINANCE_UNCOLLECTABLE');
   respondJson(res, health.stateTrusted ? 200 : 503, {
     ok: health.stateTrusted,
     service: 'zoyd-api',
@@ -158,6 +176,9 @@ if (req.method === 'GET' && pathname === '/api/health') {
         (userId) => getUserById(userId)?.wallet,
       ),
       pendingSettlements,
+      finance,
+      warnings,
+      thresholds: { staleMs: FINANCE_STALE_MS, criticalMs: FINANCE_CRITICAL_MS },
     },
     timestamp: getNow(),
   });
@@ -415,6 +436,28 @@ if (req.method === 'GET' && pathname === '/metrics') {
   setGauge('zoyd_stored_tournaments', getStoredTournaments().length);
   setGauge('zoyd_stored_leagues', getStateCollection('leagues').length);
   setGauge('zoyd_stored_users', getStateCollection('users')?.length || 0);
+  // P0 observabilite argent : jauges anonymes pour alerter (compteurs + ZC
+  // + age). Aucun label par entite : cardinalite bornee a 7 series.
+  {
+    const finance = collectFinanceDebts({
+      matches: getStateCollection('matches'),
+      tournaments: getStoredTournaments(),
+      leagues: getStateCollection('leagues'),
+      brLobbies: getStateCollection('brLobbies'),
+      listUserIds,
+      getWallet: (userId) => getUserById(userId)?.wallet,
+      nowMs: Date.now(),
+    }).summary;
+    setGauge('zoyd_finance_total_debts', finance.totalDebts);
+    setGauge('zoyd_finance_total_zc', finance.totalZC);
+    setGauge('zoyd_finance_oldest_age_seconds', finance.oldestAgeMs == null ? 0 : finance.oldestAgeMs / 1000);
+    setGauge('zoyd_finance_stale_debts', finance.staleCount);
+    setGauge('zoyd_finance_critical_debts', finance.criticalCount);
+    setGauge('zoyd_finance_uncollectable_debts', finance.uncollectableCount);
+    for (const [type, n] of Object.entries(finance.byType || {})) {
+      setGauge('zoyd_finance_debts_by_type', n, { type });
+    }
+  }
   const body = metricsToPrometheus();
   res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
   res.end(body);

@@ -100,8 +100,8 @@ export const ALLOWED_ORIGINS = [
     ? process.env.ZOYD_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : devOrigins),
   'https://zoyd.vercel.app',
-  'https://zoyd.africa',
-  'https://www.zoyd.africa',
+  // zoyd.africa / www.zoyd.africa retires : DNS mort ; un domaine
+  // reattribue aurait herite de la liste CORS/CSP (usurpation d'origine).
 ];
 
 /**
@@ -423,6 +423,7 @@ case 'INSUFFICIENT_FUNDS':
     case 'TRUST_REQUIRED':
     case 'NO_SLOT_AVAILABLE':
     case 'ARBITER_TAKEN':
+    case 'STATE_CONFLICT':
     case 'SELF_BLOCK':
     case 'TRANSACTION_ALREADY_PROCESSED':
     case 'MATCH_LAUNCHED':

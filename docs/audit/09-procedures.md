@@ -169,5 +169,5 @@ L'inverse te laisse sans base fonctionnelle.
 | Export CSV + JSON | Tous les 3 mois | Tableau de bord admin |
 | Test de restauration | Une fois, maintenant | Supabase → Backups |
 | Vérifier `/api/health` | **Toujours, avant tout diagnostic** | `curl .../api/health` |
-| Rotation FedaPay | Trimestriel ou en cas de doute | Render → Environment |
+| Rotation des clés prestataire | Trimestriel ou en cas de doute | Render → Environment |
 | Vérifier le commit déployé | Après chaque déploiement | `/api/health` → `deployedCommitShort` |

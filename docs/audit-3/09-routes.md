@@ -45,7 +45,7 @@ invariants `docs/05-invariants.md`, commentaires `PIEGE:`/`INVARIANT:`.
   d'énumération (réponse identique que le compte existe ou non, `:326-332`).
 - **wallet.mjs** : tous les invariants d'en-tête sont appliqués —
   idempotence OBLIGATOIRE (`:221-226`), lecture de l'état d'idempotence
-  DANS le mutex (`:247-282`), débit sous verrou puis FedaPay HORS verrou
+  DANS le mutex (`:247-282`), débit sous verrou puis prestataire HORS verrou
   (`:283-289`, `:315`), remboursement conditionné à `payoutMaybeSent`
   (`:335-358`), tag `failed` + clé relâchée dans `finally` (`:383-407`),
   drapeau `abandonner` (le `return true` du callback ne sort pas de la

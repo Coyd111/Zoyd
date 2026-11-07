@@ -36,12 +36,12 @@ audit-2) :
   plafonnée par l'activité du joueur (`:636-656`) — le PIEGE de la fenêtre 200
   est connu du module et traité pour la réconciliation ; ordre
   remboursement-AVANT-tag avec reconvergence documentée (`:695-709`) ;
-  `Math.abs` du montant (`:693`) ; erreur de lecture FedaPay → aucune décision,
+  `Math.abs` du montant (`:693`) ; erreur de lecture du prestataire → aucune décision,
   `stillPending` (`:728-735`).
 - **Plafond journalier réel** : `Math.abs` sur les montants négatifs
   (`getWindowedWithdrawalTotal :91-94`), solde vérifié AVANT plafond, frais via
   `calcWithdrawNet` source unique (`:104-108`).
-- **`payoutMaybeSent`** porte le `payoutId` de FedaPay : la réconciliation a une
+- **`payoutMaybeSent`** porte le `payoutId` du prestataire : la réconciliation a une
   clé de lecture fiable même si la tx a disparu de l'historique.
 
 ## Constats
@@ -58,7 +58,7 @@ audit-2) :
   dépôt côté payout (les seuls `sent` sont le `delivery` d'auth, sans rapport).
 - Le branchement production est confirmé : le cron injecte bien ces deux
   prédicats (`cron.mjs:770-772`, import `:67`). Donc pour tout payout que
-  FedaPay marque `sent` — le cas nominal d'un versement réussi :
+  le prestataire marque `sent` — le cas nominal d'un versement réussi :
   1. `reconcilePendingWithdrawals` tombe dans la branche ni-succès-ni-échec
      (`wallet-engine.mjs:725-727`) → `stillPending` ;
   2. l'entrée ne sort JAMAIS de `payoutsEnAttente` : la lecture
@@ -72,13 +72,13 @@ audit-2) :
   même hypothèse, pas le branchement production. Aucune fixture n'utilise
   `sent`. Les autres tests mockent la réconciliation entière (ex.
   `arbiter-fee-wiring.test.mjs:55`).
-- Symétrique partiel : l'échec définitif FedaPay est `failed` (couvert) ; les
+- Symétrique partiel : l'échec définitif du prestataire est `failed` (couvert) ; les
   variantes `refused`/`declined` ne le sont pas non plus.
 
 Gravité MAJEUR : pas d'argent perdu (le payout part quand même, la
 réconciliation ne fait que relire), mais la fonction « trancher la dette de
 retrait » échoue sur son cas nominal de succès : état du joueur faux pour
-toujours, file de réconciliation qui grossit sans fin, requêtes FedaPay
+toujours, file de réconciliation qui grossit sans fin, requêtes de payout
 rejouées indéfiniment.
 
 Piste de correctif : aligner les deux prédicats sur le cycle de vie réel —
@@ -130,7 +130,7 @@ conserver un total agrégé par jour.
   (grep `src/` : 0 match), donc aucun affichage faux aujourd'hui ; le nom de
   l'API ment pour le prochain consommateur. À arbitrer : renommer `usedToday`
   ou publier `dailyLimit - cumul`.
-- **Erreurs FedaPay masquées** : `TRANSACTION_NOT_APPROVED`/`INVALID_AMOUNT`
+- **Erreurs prestataire masquées** : `TRANSACTION_NOT_APPROVED`/`INVALID_AMOUNT`
   remontent au front sous le code générique `FEDAPAY_API_ERROR`
   (`payment-engine.mjs:168-179`) — diagnostic support plus lent, aucune fuite.
 - **`tagTx(userId, txId || null)`** : quand la tx a disparu des 200 dernières,
@@ -143,7 +143,7 @@ conserver un total agrégé par jour.
 
 Un MAJEUR dans la réconciliation des retraits : les prédicats `payoutSucceeded`
 /`payoutFailed` ignorent `sent`, statut final de succès du cycle de vie
-officiel FedaPay — tout payout réussi reste « en attente » pour toujours
+officiel du provider — tout payout réussi reste « en attente » pour toujours
 (étiquette fausse pour le joueur, file qui grossit sans fin, requêtes
 rejouées à chaque cycle), et les tests injectent le même vocabulaire, donc ne
 peuvent pas le voir. Le reste du flux d'argent est solide : plafond réel

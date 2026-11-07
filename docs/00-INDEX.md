@@ -222,5 +222,5 @@ match : l'auteur connaissait le motif, il l'avait oublié 20 lignes plus bas.
 - Validation 02/11/2026 : vitest 950 passés + 2 sautés (portée `server/`, 90
   fichiers de test) · E2E 232/232 (projets `api` + `ui`, sans projet live) ·
   TSC 0 · ESLint 0 · build Vite succès
-- FedaPay : aucun webhook de payout dans le code — les retraits vivent en
+- Paiement Mobile Money : aucun webhook de payout — les retraits vivent en
   `pending_review` + réconciliation (`server/wallet-engine.mjs`), suivi manuel

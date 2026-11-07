@@ -41,7 +41,7 @@ radix réels de `src/app/components/ui/**`.
 ## Ce qui a été vérifié et jugé solide
 
 - **`vercel.json`** : CSP complète et cohérente avec le code réel (CDN et
-  checkout FedaPay, `wss://zoyd.onrender.com`, fonts Google), HSTS,
+  checkout Mobile Money, `wss://zoyd.onrender.com`, fonts Google), HSTS,
   `X-Frame-Options: DENY`, Permissions-Policy stricte, `no-store` sur les
   pages app et `no-cache` sur `index.html` — la déclinaison cache est
   réfléchie par type de ressource.

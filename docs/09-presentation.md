@@ -116,10 +116,10 @@ décision**.
 Le Mobile Money (envoyer de l'argent via son téléphone, sans banque) est la
 manière normale de payer en Afrique francophone. Un site de compétition qui
 ne parlerait que carte bancaire serait inutilisable pour la majorité des
-joueurs. ZOYD est donc branché dès le premier jour sur **FedaPay**, une
-plateforme de paiement qui agrège les opérateurs de Mobile Money, et toute
-l'économie intérieure du site tourne en unités locales : **1 ZOYD Coin
-(ZC) = 10 FCFA**. *(source : `docs/02-modele-metier.md`, § 1.2.)*
+joueurs. ZOYD est donc branché dès le premier jour sur le **paiement
+Mobile Money** via un prestataire de paiement qui agrège les opérateurs,
+et toute l'économie intérieure du site tourne en unités locales :
+**1 ZOYD Coin (ZC) = 10 FCFA**. *(source : `docs/02-modele-metier.md`, § 1.2.)*
 
 ### 2.3 Le problème n° 3 : le silence des horloges
 
@@ -263,12 +263,12 @@ de confirmation, reprendre un règlement interrompu par une panne. Le
 chapitre 11 est leur portrait complet — seize balayages, du plus rapide
 (30 secondes) au plus lent (6 heures).
 
-### 3.8 FedaPay, le tiers de confiance de l'argent
+### 3.8 Le prestataire de paiement, tiers de confiance de l'argent
 
-FedaPay n'est pas un personnage du site, mais c'est lui qui parle avec le
-monde réel : quand vous déposez, l'argent arrive par Mobile Money ; quand
-vous retirez, l'argent repart vers le Mobile Money. ZOYD ne garde pas les
-vrais billets — il tient un grand livre de jetons (les ZC) et dit à FedaPay
+Le prestataire n'est pas un personnage du site, mais c'est lui qui parle
+avec le monde réel : quand vous déposez, l'argent arrive par Mobile Money ;
+quand vous retirez, l'argent repart vers le Mobile Money. ZOYD ne garde pas
+les vrais billets — il tient un grand livre de jetons (les ZC) et indique
 quand faire entrer ou sortir le cash du monde réel.
 
 ---
@@ -346,10 +346,10 @@ joueur déplace hors du site — sur 1 000 ZC retirés, 20 ZC restent à ZOYD. *
 cagnottes** : le pot est redistribué à 100 %, moins seulement la part de
 l'arbitre. *(source : `docs/02-modele-metier.md`, § 1.1.)*
 
-**FedaPay.** Le prestataire de paiement qui fait la traduction entre ZC et
+**Prestataire de paiement.** Le tiers qui fait la traduction entre ZC et
 Mobile Money.
 
-**Dépôt / retrait.** Entrée de cash (via FedaPay, il devient du ZC) et
+**Dépôt / retrait.** Entrée de cash (via Mobile Money, il devient du ZC) et
 sortie (le ZC redevient du Mobile Money, moins 2 %).
 
 **Bonus.** Une part du solde qui peut servir à jouer mais pas à être
@@ -455,7 +455,7 @@ authentification). En marge : la page `/infos`. *(source :
 ### 5.8 La ville cachée : ce que le visiteur ne voit pas
 
 Le joueur voit la vitrine ; toute la sécurité, elle, est en dessous : un **serveur** (la salle des machines, chapitre 9), une **base de
-données** (le grand livre), un **circuit de paiement** (FedaPay) et une
+données** (le grand livre), un **circuit de paiement** (Mobile Money) et une
 **horlogerie automatique** (les crons). Le reste du document parle surtout
 de cette ville cachée, car c'est là que la confiance est gagnée ou perdue.
 
@@ -699,7 +699,7 @@ et ne fait disparaître rien.
 ### 8.2 Entrer : le dépôt
 
 Le joueur ouvre la page portefeuille, choisit un montant, et le paiement
-passe par Mobile Money via FedaPay. À la confirmation, le cash du
+passe par Mobile Money via le prestataire. À la confirmation, le cash du
 portefeuille est crédité de l'équivalent en ZC (1 ZC = 10 FCFA). La
 fonction `depositToWallet` est la seule porte d'entrée de l'économie :
 chaque ZC déposé est la trace écrite d'un paiement réellement effectué.
@@ -766,12 +766,12 @@ les portes :
 2. **Cash suffisant.** Le bonus ne passe jamais la porte.
 3. **Plafond de 50 000 ZC sur 24 heures glissantes.**
 4. **Commission de 2 %.** Net = brut − 2 %.
-5. **Le débit porte le brut ; le net part chez FedaPay.** Si un joueur
+5. **Le débit porte le brut ; le net part en Mobile Money.** Si un joueur
    retire 1 000 ZC, son compte est débité de 1 000 ZC, et 980 ZC partent
    vers le Mobile Money. Les 20 restants sont la seule recette de la
    plateforme.
 
-Un versement peut rester incertain : la confirmation du côté FedaPay
+Un versement peut rester incertain : la confirmation du prestataire
 n'arrive pas toujours. Ces retraits incertains sont placés dans une
 file d'attente dédiée, et un balayage toutes les 30 minutes reprend leurs dossiers jusqu'à ce
 qu'une réponse claire soit enregistrée. C'est la
@@ -823,7 +823,7 @@ simples. Il ne demande aucune connaissance préalable.
 | Le serveur (le "back") | La cuisine du restaurant | Le cerveau qui décide : inscriptions, verrous, règlements, horloges. Tourne sur **Render** |
 | La base de données | Le grand livre de comptes | La mémoire durable, chez **Supabase** (une base PostgreSQL) |
 | Le fil direct | Le talkie-walkie | La liaison temps réel (**Socket.IO**) qui pousse les changements à l'écran sans rafraîchir la page |
-| La caisse externe | Le comptoir de change | **FedaPay**, qui convertit Mobile Money ↔ ZC |
+| La caisse externe | Le comptoir de change | **Le prestataire de paiement**, qui convertit Mobile Money ↔ ZC |
 | Les réveils | Les crons | Les travaux de fond à heures fixes (changements de statut, remboursements) |
 | La sonnette | Les notifications | Les notifications du téléphone et du navigateur (Web Push) |
 
@@ -922,8 +922,8 @@ Pour donner l'échelle, décompté sur le dépôt au commit `b780b44`
 Plus de 91 000 lignes de code, plus de 1 500 tests automatisés
 (chapitre 12). Et pourtant, le projet tient dans peu de serveurs : un site
 front sur Vercel, un unique processus backend sur Render, une base chez
-Supabase — trois « tiers » auxquels viennent s'ajouter FedaPay et le service
-de notifications push.
+Supabase — trois « tiers » auxquels s'ajoutent le prestataire de
+paiement et le service de notifications push.
 
 ### 9.7 Les outils nommés
 
@@ -1027,7 +1027,7 @@ Chaque catégorie d'action a un quota : c'est un **videur**, par groupe
 | auth (connexion, inscription, reset) | 50 | 15 min |
 | auth_logout | 60 | 1 min |
 | social (amis, signalements, recherche, création de match ou tournoi) | 30 | 1 min |
-| wallet (dépôts, retraits, vérification FedaPay) | 20 | 10 min |
+| wallet (dépôts, retraits, vérification Mobile Money) | 20 | 10 min |
 | chat | 60 | 1 min |
 | admin | 20 | 5 min |
 | default (tout le reste) | 60 | 1 min |
@@ -1121,8 +1121,8 @@ d'un audit payé pour flatter.
 ### 11.1 Les seize balayages
 
 Quand quelque chose reste bloqué (une personne a coupé le wifi, l'arbitre a
-fermé son téléphone, FedaPay n'a pas répondu), l'argent ne doit jamais rester
-suspendu par hasard. Seize balayages automatiques (les « crons »)
+fermé son téléphone, le prestataire n'a pas répondu), l'argent ne doit
+jamais rester suspendu par hasard. Seize balayages automatiques (les « crons »)
 ouvrent l'horlogerie de fond. Voici la liste complète — **tous branchés** et
 vérifiés par les tests (source : `docs/02-modele-metier.md`, § 9.1) :
 
@@ -1157,7 +1157,7 @@ vérifiés par les tests (source : `docs/02-modele-metier.md`, § 9.1) :
 
 ### 11.3 Ce que tout cela donne, en résumé
 
-Si un joueur coupe son téléphone au milieu d'un match ; si FedaPay ne
+Si un joueur coupe son téléphone au milieu d'un match ; si le prestataire ne
 confirme pas un retrait ; si l'arbitre disparaît ; si le serveur est
 redémarré pendant un règlement — un balayage repasse, reconnaît l'état, et tranche : reprise, remboursement
 ou expiration. L'argent ne reste jamais sous le verre de la cagnotte par
@@ -1205,8 +1205,8 @@ Le document de tests consacre une partie entière à **ce que les tests ne
 prouvent pas** — c'est rare et c'est sain. En substance : ils prouvent
 que le code dit vrai dans les scénarios couverts ; ils ne prouvent **pas**
 que la migration SQL a été appliquée en base de production, que
-l'infrastructure tierce (FedaPay, Render) se comportera pareil demain, ni
-que l'expérience forme le joueur. La sonde publique `/api/health` expose
+l'infrastructure tierce (Render, le prestataire) se comportera pareil
+demain, ni que l'expérience forme le joueur. La sonde publique `/api/health` expose
 certains états réels de production (colonne de révision présente,
 verrouillage persistant, sanctions persistées), choses qu'un test
 automatique ne peut pas toujours dire.
@@ -1232,7 +1232,7 @@ recette, à chaque fois, sans exception.
 | Site front | **Vercel** | Les pages, reconstruites à chaque mise à jour du code ; la CSP y est posée |
 | Serveur back | **Render** | L'unique processus Node (la commande `startCommand` est dans `render.yaml`) |
 | Base de données | **Supabase** | PostgreSQL (l'armoire) |
-| Paiement | **FedaPay** | Mobile Money ↔ ZC |
+| Paiement | **Le prestataire de paiement** | Mobile Money ↔ ZC |
 | Notifications | Web Push (VAPID) | La sonnette du navigateur |
 
 Deux domaines coexistent : le site public (`zoyd.africa`) et le site
@@ -1243,7 +1243,7 @@ technique (`zoyd.vercel.app`), tous deux dans la liste blanche du serveur.
 Le code vit dans un dépôt Git. Chaque mise à jour de la branche principale
 fait reconstruire le site front par Vercel et relancer le serveur sur
 Render (avec sa commande `node server/realtime-server.mjs`). Les variables
-d'environnement (clés FedaPay, secret des notifications, adresses
+d'environnement (clés du prestataire, secret des notifications, adresses
 autorisées, etc.) sont dans `docs/07-exploitation.md` avec leur rôle et
 leur comportement si elles manquent.
 
@@ -1312,17 +1312,17 @@ les sondes de production vérifiées le 02/11/2026) :
 - **Les audits du code sont documentés dans le dépôt** (`docs/audit-3/`,
   `docs/audit-4/`) : les 47 invariants d'argent numérotés (document 05), la liste des
   menaces couvertes et non couvertes, la recette de mutation des tests.
-- Les raccordements aux trois tiers extérieurs (Supabase, FedaPay,
-  notifications push) sont opérationnels.
+- Les raccordements aux trois tiers extérieurs (Supabase, le prestataire
+  de paiement, notifications push) sont opérationnels.
 
 ## 15. Ce qui n'est pas fini (et c'est assumé)
 
 Un document honnête doit dire ce qui reste. Voici la liste des chantiers
 connus, chacun déjà identifié et documenté :
 
-1. **Le webhook FedaPay** : la confirmation des paiements passe
+1. **Le webhook du prestataire** : la confirmation des paiements passe
    aujourd'hui par la route de vérification (et la réconciliation
-   automatique aux 30 minutes) — un appel automatique de FedaPay vers
+   automatique aux 30 minutes) — un appel automatique du prestataire vers
    ZOYD (le « webhook ») reste à brancher pour raccourcir le délai de
    confirmation du dépôt.
 2. **La montée en charge** : le serveur exige un **processus unique**
@@ -1379,7 +1379,7 @@ répond mais refuse les écritures. Si une panne coupe un règlement en
 cours, un balayage programmé le reprend dès que le serveur revient, sans
 payer deux fois qui que ce soit (idempotence).
 
-**Q. Que se passe-t-il si FedaPay ne confirme pas mon paiement ?**
+**Q. Que se passe-t-il si mon paiement Mobile Money n'est pas confirmé ?**
 R. Votre dépôt reste en attente, et la réconciliation relit sa trace
 toutes les 30 minutes jusqu'à une réponse claire.
 
@@ -1442,7 +1442,7 @@ repenser le socle — c'est l'ambition documentée du projet.
 | Cron | Un travail de fond programmé (30 s, 60 s, 30 min, 5 min, 1 h, 6 h) |
 | Idempotence | « Le même paiement ne peut pas arriver deux fois » |
 | OCC | Le ticket de révision qui bloque deux écritures qui se croisent |
-| Webhook | L'appel automatique d'un tiers (FedaPay) vers ZOYD pour confirmer un paiement |
+| Webhook | L'appel automatique d'un tiers (le prestataire) vers ZOYD pour confirmer un paiement |
 | Session | La preuve serveur que vous êtes connecté (cookie invisible) |
 | Cookie | Le petit badge électronique que le site pose dans votre navigateur |
 | CSRF | L'attaque où un site tiers force votre navigateur à agir sous votre session |

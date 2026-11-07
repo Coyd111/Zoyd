@@ -31,7 +31,7 @@ environnement de test, démarre un service incomplet qui ne le signale pas.
 | `ALLOW_DEBUG_CODES` | aucun secret en réponse (fail-closed, §4) |
 | `ZOYD_ADMIN_PASSWORD` | seed admin impossible au premier démarrage uniquement |
 | `RESEND_API_KEY`, `BREVO_API_KEY`, `SMTP_*`, `CODE_DELIVERY_WEBHOOK` | aucun canal d'envoi : **codes d'activation et réinitialisation impossibles à livrer** |
-| `FEDAPAY_SECRET_KEY` | dépôts et retraits FedaPay inopérants |
+| `FEDAPAY_SECRET_KEY` | dépôts et retraits Mobile Money inopérants |
 | `ZOYD_DISABLE_SUPABASE`, `ZOYD_BR_START_EARLY_MS`, `NODE_ENV` | usage interne, tests et développement |
 
 ### Avec repli en dur

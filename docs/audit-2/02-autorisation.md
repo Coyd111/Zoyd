@@ -111,8 +111,8 @@ Légende des gardes :
 | 39 | `GET /api/wallet/history` | SESS + RL `default` | Scopé au compte, `limit` plafonné à 200. **Conforme.** |
 | 40 | `GET /api/wallet/me` | SESS + RL `default` | Dossier + politique de retrait. **Conforme.** |
 | 41 | `POST /api/wallet/deposit` | **2FA** + RL `wallet` | `amount` ∈ (0, 5 000 000], `userId` exigé. **Conforme.** |
-| 42 | `POST /api/wallet/withdraw` | SESS + RL `wallet` | Montant ∈ [150, 100 000], pays whitelisté, opérateur whitelisté, téléphone parsé, **clé d'idempotence obligatoire**, état lu dans le mutex, appel FedaPay hors verrou, remboursement conditionné à `payoutMaybeSent !== true`. **Conforme.** |
-| 43 | `POST /api/wallet/verify-fedapay` | SESS + RL `wallet` | `transactionId` numérique, transaction relue chez FedaPay, statut `approved`, **anti-vol par appartenance** (`ZOYD:<userId>`), devise XOF, idempotence BDD. **Conforme.** |
+| 42 | `POST /api/wallet/withdraw` | SESS + RL `wallet` | Montant ∈ [150, 100 000], pays whitelisté, opérateur whitelisté, téléphone parsé, **clé d'idempotence obligatoire**, état lu dans le mutex, appel au prestataire hors verrou, remboursement conditionné à `payoutMaybeSent !== true`. **Conforme.** |
+| 43 | `POST /api/wallet/verify-fedapay` | SESS + RL `wallet` | `transactionId` numérique, transaction relue chez le prestataire, statut `approved`, **anti-vol par appartenance** (`ZOYD:<userId>`), devise XOF, idempotence BDD. **Conforme.** |
 
 ### 2.5 `routes/tournament.mjs` — 9 endpoints
 
@@ -888,9 +888,9 @@ Vérifié :
 - **Changement d'email** : exige le mot de passe courant (`auth.mjs:472-479`), unicité
   vérifiée sous mutex (`auth.mjs:483-488`).
 - **Retrait** : clé d'idempotence obligatoire, état lu **dans** `withWalletMutex`, appel
-  FedaPay **hors** verrou, remboursement conditionné à la preuve que l'argent n'est pas
+  au prestataire **hors** verrou, remboursement conditionné à la preuve que l'argent n'est pas
   parti, clés relâchées dans tous les cas (`wallet.mjs:183-430`).
-- **Dépôt FedaPay** : transaction relue chez le provider, statut `approved` exigé,
+- **Dépôt Mobile Money** : transaction relue chez le provider, statut `approved` exigé,
   **anti-vol par appartenance** à l'appelant, devise XOF, réservation atomique avant crédit,
   idempotence en base (`payment-engine.mjs`, `verifyFedaPayTransactionAndCredit`).
 - **Signalements** : l'expéditeur est la session, la gravité est calculée serveur

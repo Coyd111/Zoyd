@@ -196,7 +196,7 @@ animate-marquee         /* Scroll horizontal infini (theme.css) */
 
 ### ✅ Wallet
 - [x] Page wallet complète : solde, historique, modales dépôt/retrait
-- [x] Dépôt via FedaPay (Mobile Money) — checkout embarqué
+- [x] Dépôt via Mobile Money — checkout embarqué
 - [x] Retrait avec **commission 2%** (`wallet-engine.mjs`), plafond journalier
 - [x] Opérateurs par pays : MTN/Moov/Celtiis (BJ), MTN/Moov/Orange/Wave (CI),
       Orange/Wave (SN), Moov/Togocel (TG)
@@ -263,7 +263,7 @@ secret côté `VITE_*`** : tout ce qui porte ce préfixe finit dans le bundle.
 ### 4. Wallet
 - Accès via Navbar ou Sidebar
 - Consultation solde et transactions
-- Dépôt via Mobile Money (FedaPay selon le pays)
+- Dépôt via Mobile Money (opérateur selon le pays)
 - Retrait avec commission 2% et plafond journalier
 
 ## 📱 Responsive
@@ -319,7 +319,7 @@ invariants, pièges) : 38/40 fichiers `server/`, la majorité de `src/`.
 La feuille de route vivante est tenue dans `docs/00-INDEX.md` et
 `docs/audit-4/00-SYNTHESE.md`. Axes connus au 02/11/2026 :
 
-1. **Webhook FedaPay** — les retraits vivent en `pending_review` avec
+1. **Webhook du prestataire** — les retraits vivent en `pending_review` avec
    réconciliation manuelle ; aucun webhook de payout dans le code.
 2. **Multi-instance** — le single-process-guard est la seule barrière ;
    l'OCC `revision` protège `app_users` (prod : colonne présente).

@@ -2,11 +2,11 @@
 
 ## Portée
 
-Le portefeuille, les dépôts FedaPay, les retraits, le verrouillage des
+Le portefeuille, les dépôts Mobile Money, les retraits, le verrouillage des
 cagnottes, les règlements de matchs, tournois, ligues et BR, et le code mort
 qui touche à l'argent.
 
-## 1. Correction : fenêtre de double crédit sur les dépôts FedaPay
+## 1. Correction : fenêtre de double crédit sur les dépôts Mobile Money
 
 **Sévérité : moyenne.** Fenêtre étroite, mais le scénario est réel et le
 montant en jeu est le dépôt d'un joueur.
@@ -91,7 +91,7 @@ l'argent est un passif, pas une archive.
 
 Autant de valeur que de défauts.
 
-- **Dépôt FedaPay** : le motif *claim / release* est correct. La transaction
+- **Dépôt Mobile Money** : le motif *claim / release* est correct. La transaction
   est réservée de façon atomique **avant** le crédit, et libérée si l'écriture
   échoue — sans quoi un échec de crédit laisserait la transaction marquée
   traitée à jamais, avec l'argent jamais crédité.

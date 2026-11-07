@@ -105,10 +105,10 @@ if (pending.length === 0) return { resolved: 0, refunded: 0, stillPending: 0 };
 **Impact concret.** Le job `sweepPendingWithdrawals` (toutes les 30 min +
 45 s au boot) **ne fait rien, depuis toujours**. Conséquences :
 
-- Un retrait dont l'envoi FedaPay est incertain (`payoutMaybeSent`) est marqué
+- Un retrait dont l'envoi au prestataire est incertain (`payoutMaybeSent`) est marqué
   `pending_review` par la route (`server/routes/wallet.mjs:346-356`) et
   empilé dans `wallet.payoutsEnAttente` (`server/persistence.mjs:2093-2104`).
-  Il n'est **jamais** relu chez FedaPay, **jamais** remboursé si le
+  Il n'est **jamais** relu chez le prestataire, **jamais** remboursé si le
   prestataire a refusé, **jamais** solder si le virement est passé.
 - **L'argent du joueur reste débité indéfiniment** : le solde est amputé, le
   joueur a reçu une erreur, et aucun chemin automatique ne le rend.
@@ -829,14 +829,14 @@ try { await withWalletMutex(session.user.id, async () => {
 
 Le `return true` ne quitte que le callback du mutex : la route **continue** et
 appelle `verifyFedaPayTransactionAndCredit` avec un identifiant invalide.
-L'appel à FedaPay échoue → le `catch` de la route (`:479`) appelle
+L'appel au prestataire échoue → le `catch` de la route (`:479`) appelle
 `respondMappedError` → **seconde** `respondJson` → `res.writeHead` sur une
 réponse déjà envoyée → `ERR_HTTP_HEADERS_SENT` (avalée par le filet de
 `server/realtime-server.mjs:312-317`, mais le client a déjà reçu un 400 et le
 journal se remplit d'erreurs internes).
 
 **Impact concret.** Aucun argent (un identifiant mal formé ne peut pas être
-crédité), mais : un appel réseau inutile à FedaPay pour chaque requête
+crédité), mais : un appel réseau inutile au prestataire pour chaque requête
 malformée, une erreur interne par requête, et surtout **le même schéma que
 celui qui a valu un double versement** sur `/api/wallet/withdraw` — là, il a
 été corrigé par le drapeau `abandonner` (`server/routes/wallet.mjs:246`,
@@ -866,7 +866,7 @@ try { await withWalletMutex(body.userId, async () => {
 **Impact concret.** Un double-clic, un retry de client ou un double envoi
 crédite **deux fois** le compte, sans trace de l'opération dans les métadonnées
 de la transaction (aucun `idempotencyKey`, aucun `adminId`). Le contrôle de
-l`'idempotence des dépôts FedaPay (`claimTransaction`) ne s'applique pas ici :
+l`'idempotence des dépôts Mobile Money (`claimTransaction`) ne s'applique pas ici :
 c'est le seul chemin de crédit du portefeuille qui n'ait aucune clé.
 
 **Correction proposée.** Exiger une `idempotencyKey` dans le corps (comme
@@ -914,9 +914,9 @@ documentée ni testée, alors que celle de `winningsKeys` l'est
 
 | Chemin | Fichier de test | Ce qui est verrouillé |
 |---|---|---|
-| Dépôt FedaPay : réservation atomique entre instances | `server/feda-claim-idempotence.test.mjs` | `insert` et non `upsert` ; double instance avec cache mémoire vierge |
-| Dépôt FedaPay : vol d'une transaction | `server/payment-engine.test.mjs:136-191` | propriété `ZOYD:<userId>` ; collision par suffixe de téléphone refusée |
-| Dépôt FedaPay : calcul 1 ZC = 10 FCFA | `server/payment-engine.test.mjs:110` | conversion et rejets |
+| Dépôt Mobile Money : réservation atomique entre instances | `server/feda-claim-idempotence.test.mjs` | `insert` et non `upsert` ; double instance avec cache mémoire vierge |
+| Dépôt Mobile Money : vol d'une transaction | `server/payment-engine.test.mjs:136-191` | propriété `ZOYD:<userId>` ; collision par suffixe de téléphone refusée |
+| Dépôt Mobile Money : calcul 1 ZC = 10 FCFA | `server/payment-engine.test.mjs:110` | conversion et rejets |
 | Idempotence des gains (hors historique de 200) | `server/winnings-key-index.test.mjs` | index `winningsKeys` persisté ; survie au redémarrage ; borne de 500 assumée |
 | Idempotence des retraits (hors historique de 200) | `server/withdrawal-key-durability.test.mjs` | champ `withdrawalKeys` persisté ; libération d'une clé brûlée |
 | Rejeu d'un retrait hors fenêtre | `server/withdrawal-replay-outside-window.test.mjs` | file `payoutsEnAttente` ; pas de double traitement |
@@ -934,7 +934,7 @@ documentée ni testée, alors que celle de `winningsKeys` l'est
 | Arrondi des tarifs (match, tournoi, ligue) | `server/roundings-and-realtime-sanctions.test.mjs` | tarif arrondi à 2 décimales avant tout calcul de pot |
 | Règlement des ligues (tarif, podium) | `server/league-settlement-recovery.test.mjs:63-108` | `NaN` refusé ; tarif figé dès le premier inscrit |
 | Statistiques de commission | `server/commission-stats.test.mjs` | revenu = frais de retrait seuls ; commission d'arbitre hors revenu ; payout échoué exclu |
-| Erreurs FedaPay (diagnostic) | `server/payment-payout-errors.test.mjs` | 403/401/429 message ; `payoutId` remonter ; identifiant invalide refusé avant l'appel |
+| Erreurs prestataire (diagnostic) | `server/payment-payout-errors.test.mjs` | 403/401/429 message ; `payoutId` remonter ; identifiant invalide refusé avant l'appel |
 | Verrous | `server/mutex.test.mjs`, `server/settlement-idempotence.test.mjs:148-200` | exclusion mutuelle par salon BR ; verrou libéré sur exception |
 | Multi-instance / OCC | `server/write-window-race.test.mjs`, `server/occ-revision-invariant.test.mjs`, `server/stale-base-write.test.mjs` | écriture conditionnelle ; rejeu sur état frais |
 

@@ -747,7 +747,7 @@ ne peut pas disparaître des deux côtés à la fois. `hydrateWithdrawalKeys` /
 
 `submitMatchResultOnServer` persiste d'abord `payoutDistributed:'pending'`
 (`server/match-engine.mjs:990`) et ne verse qu'ensuite. Côté retrait, le débit
-est fait sous `withWalletMutex` et l'appel réseau FedaPay **hors** verrou
+est fait sous `withWalletMutex` et l'appel réseau au prestataire **hors** verrou
 (`server/routes/wallet.mjs:248-290` puis `:316-324`) : l'inverse rendrait le
 double paiement possible — c'est le piège décrit dans l'en-tête de
 `server/mutex.mjs:18-20`, et il est correctement évité.

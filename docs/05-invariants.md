@@ -110,7 +110,7 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 
 | | |
 |---|---|
-| **Énoncé** | Retrait ≥ 150 ZC, solde cash suffisant, cumul 24 h ≤ 50 000 ZC, commission = 2 % du brut, le **net** part chez FedaPay. |
+| **Énoncé** | Retrait ≥ 150 ZC, solde cash suffisant, cumul 24 h ≤ 50 000 ZC, commission = 2 % du brut, le **net** part vers le Mobile Money. |
 | **Code** | `server/wallet-engine.mjs:4` (150), `:146-148`, `:154-156`, `:158-164`, `:18-19` (50 000 / 24 h), `:34-48` (fenêtre glissante), `:55-59` (`calcWithdrawNet`), `:170` (débit du **brut**) |
 | **Erreur** | `WITHDRAWAL_MIN`, `INSUFFICIENT_FUNDS`, `DAILY_WITHDRAWAL_LIMIT` |
 | **Tests** | `server/wallet-engine.test.mjs:53`, `:66`, `:90` « should calculate fee correctly (2%) » · `server/withdrawal-daily-cap.test.mjs:62`, `:72`, `:82`, `:95`, `:110`, `:126` · `e2e/api/wallet.spec.ts:180`, `:192`, `:253`, `:298` |
@@ -119,11 +119,11 @@ premiers parce que ce sont eux qui coûtent le plus cher quand ils cassent.
 
 | | |
 |---|---|
-| **Énoncé** | Si FedaPay a pu traiter le payout alors que la réponse s'est perdue, on ne rembourse pas automatiquement. |
+| **Énoncé** | Si le prestataire a pu traiter le payout alors que la réponse s'est perdue, on ne rembourse pas automatiquement. |
 | **Code** | `server/routes/wallet.mjs:290-313` (marquage `pending_review`) · `server/payment-engine.mjs:331-345` (`createdPayoutId` remonté) · `server/wallet-engine.mjs:478-565` (`reconcilePendingWithdrawals`) · file `wallet.payoutsEnAttente` `server/persistence.mjs:2017-2047` |
 | **Tests** | `server/withdrawal-double-payout.test.mjs:123` « un retrait en attente de revue ne declenche AUCUN payout » · `server/withdrawal-reconciliation.test.mjs:67`, `:77`, `:87`, `:96` · `server/withdrawal-replay-outside-window.test.mjs:54`, `:74`, `:94`, `:114`, `:134` |
 
-### I11 — Un dépôt FedaPay n'est crédité qu'une fois, et seulement à son titulaire
+### I11 — Un dépôt Mobile Money n'est crédité qu'une fois, et seulement à son titulaire
 
 | | |
 |---|---|

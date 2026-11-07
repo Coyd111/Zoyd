@@ -111,7 +111,7 @@ tournament (8, dont `TournamentBracketPage.tsx` 591), league (7, dont
   comme approximations documentées), `HubMJPage` (PIEGES appliqués).
 - **Legal (7/7)** : `LegalLayout` (ASSISTANCE partagée, SEO `path` toujours
   passé), `ConditionsPage`, `ConfidentialitePage`, `MentionsPage`
-  (hébergeurs réels front Vercel / API Render, FedaPay nommé),
+  (hébergeurs réels front Vercel / API Render, prestataire nommé),
   `JeuResponsablePage`, `LitigesPage`, `AntiFraudePage` (sanctions
   graduées cohérentes avec `sanctions.mjs` : `warning`/`temporary_ban`/
   `permanent_ban`). Chiffres croisés : 1 ZC = 10 FCFA, min/max retrait et

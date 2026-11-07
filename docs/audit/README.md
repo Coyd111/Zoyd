@@ -12,7 +12,7 @@ routes, 690 tests unitaires, 154 E2E API, 48 E2E UI, 7 tests d accessibilite.
 |---|-------|--------|-------------------|
 | 0 | Cartographie | fait | 5 zones, dette faible (3 TODO) |
 | 1 | Sécurité & secrets | **fait** | 25 variables d'environnement non documentées |
-| 2 | Argent & intégrité financière | **fait** | fenêtre de double crédit sur les dépôts FedaPay |
+| 2 | Argent & intégrité financière | **fait** | fenêtre de double crédit sur les dépôts Mobile Money |
 | 3 | Données & persistance | **fait** | `user_reports` sans DDL ; signalements jamais relus (corrigé depuis) |
 | 4 | Concurrence & temps réel | **fait** | après coupure, l'interface affiche « live » avec un état périmé ; config de tests décrivant un environnement inexistant |
 | 5 | Performance & bundle | **fait** | 364 kB de graphiques sur le chemin critique ; 12,8 Mo de doublons d'images ; fonds 4K à 13,1 Mo |
@@ -29,7 +29,7 @@ routes, 690 tests unitaires, 154 E2E API, 48 E2E UI, 7 tests d accessibilite.
 | Faible | `NODE_ENV=test` **et** `ALLOW_DEBUG_CODES=true` désactivent tout le rate limiting | `server/rate-limiter.mjs` | **corrigé** — exige en plus une base désactivée |
 | Info | `lockFunds`/`unlockFunds` : code mort d'UI optimiste sur des fonds | `src/app/stores/walletStore.ts` | **supprimé** — doublait le verrouillage serveur |
 | Info | 4 canaux d'envoi de code coexistent (Resend, Brevo, SMTP, webhook) | `server/code-delivery.mjs` | documenter la precedence |
-| Info | Conversion FedaPay `amount / 10` non confirmée en réel | `server/payment-engine.mjs` | bloqué : clés live requises |
+| Info | Conversion `amount / 10` non confirmée en réel | `server/payment-engine.mjs` | bloqué : clés live requises |
 | Info | Verrous en mémoire, corrects pour un processus ; un déploiement est une fenêtre à deux instances | ensemble des moteurs | **documenté** (étape 4) — risque résiduel faible, parades listées |
 | Moyenne | `user_reports` utilisée par le code sans DDL dans le dépôt | `supabase/schema.sql` | **corrigé** — DDL et index ajoutés |
 | Moyenne | Les signalements etaient ecrits en base mais **jamais relus** : le tableau de bord n affichait que ceux faits dans ce navigateur | `friendsStore`, `AdminDashboardPage` | **corrige** - `GET /api/admin/reports` + file de moderation |
@@ -76,7 +76,7 @@ ils ne sont pas à refaire.
 - **Seed admin** : ne peut plus écraser un compte existant.
 - **Verrous de portefeuille** : toutes les mutations passent par
   `withWalletMutex`, puis `updateUserAccount`.
-- **Dépôt FedaPay** : réservation atomique *avant* le crédit, libération si
+- **Dépôt Mobile Money** : réservation atomique *avant* le crédit, libération si
   l'écriture échoue ; anti-vol par appartenance de la transaction.
 - **Règlement des matchs** en deux phases (`payoutDistributed: 'pending'`
   avant versement), donc pas de versement orphelin après un crash.

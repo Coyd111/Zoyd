@@ -20,7 +20,7 @@
         ┌──────────────┼──────────────┐
         ▼              ▼              ▼
 ┌──────────────┐ ┌───────────┐ ┌───────────┐
-│  Supabase    │ │  FedaPay  │ │  web-push  │
+│  Supabase    │ │Mobile Money│ │  web-push  │
 │  (PostgreSQL)│ │  (paiement)│ │ (notifs)  │
 └──────────────┘ └───────────┘ └───────────┘
 ```
@@ -39,7 +39,7 @@
 | Backend | Node.js ESM (http natif) | Serveur REST + WebSocket |
 | Database | Supabase (PostgreSQL) | Persistance |
 | Auth | Cookies de session (`zoyd_auth`, httpOnly) | Authentification — seul le SHA-256 du jeton est stocké ; scrypt pour les mots de passe |
-| Paiement | FedaPay | Mobile Money |
+| Paiement | prestataire de paiement | Mobile Money |
 | Push | web-push + VAPID | Notifications navigateur |
 | Deploy FE | Vercel | Frontend statique |
 | Deploy BE | Render | Backend Node.js |
@@ -84,7 +84,7 @@ Multiplayer Gaming Platform/
 │   ├── tournament-engine.mjs    # Tournois + bracket
 │   ├── league-engine.mjs        # Ligues + saisons
 │   ├── wallet-engine.mjs        # Wallet + transactions
-│   ├── payment-engine.mjs       # FedaPay integration
+│   ├── payment-engine.mjs       # Mobile Money integration
 │   ├── br-engine.mjs            # Battle Royale (variantes, salons, arbitrage)
 │   ├── routes/                  # 11 modules de routing HTTP
 │   ├── cron.mjs                 # Tâches planifiées
@@ -116,7 +116,7 @@ Engines métier (logique pure)
 ├── tournament-engine.mjs   # Tournois, bracket, inscriptions
 ├── league-engine.mjs       # Saisons, qualifications, Score Z
 ├── wallet-engine.mjs       # Dépôts, retraits, lock/unlock
-├── payment-engine.mjs      # Vérification FedaPay
+├── payment-engine.mjs      # Vérification paiements
 └── br-engine.mjs           # Battle Royale (variantes Classic/Blitz/…)
 
 Routes HTTP

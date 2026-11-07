@@ -44,7 +44,7 @@ ou un bracket gelé. Prouvé par un reproducteur vitest exécuté puis supprimé
 ### MAJEUR (6)
 
 1. **P4 C1 — Argent : le vocabulaire de statuts payout ne connaît pas `sent`** (`04-argent.md:49`).
-   Un payout FedaPay réellement payé reste « en attente » pour toujours : ni
+   Un payout réellement payé reste « en attente » pour toujours : ni
    l'affichage joueur, ni les stats de commission ne voient la sortie réelle.
 2. **P3 C1 — Match : la dérive de statut écrase `awaiting_confirmation`** (`03-match.md:47`).
    Le pot gèle hors de tous les radars et la fenêtre de contestation est fermée
@@ -121,7 +121,7 @@ Le noyau du produit est solide : OCC complète, sortie d'argent unique gardée
 par l'arbitre, idempotences durables (retraits, gains, dettes), sessions et
 sanctions persistées, garde admin 2FA à quatre portes mutées et détectées,
 CI bloquante sur typecheck/lint/e2e. Les 7 constats de gravité élevée sont
-concentrés sur des chaînes TRANSVERSALES (bye, statut FedaPay `sent`, salle,
+concentrés sur des chaînes TRANSVERSALES (bye, statut payout `sent`, salle,
 push, navigation) — précisément celles que ni les tests unitaires (par
 construction), ni les e2e locaux (mode mémoire) ne traversent, et que la
 suite live ne lance que sur demande explicite.

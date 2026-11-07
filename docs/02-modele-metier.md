@@ -57,7 +57,7 @@ Trois garde-fous matérielisent cette règle :
 
 - **ZC** = *Zoyd Coins*. 1 ZC = 10 FCFA (`server/payment-engine.mjs`,
   test `server/payment-engine.test.mjs:110` « should compute ZC correctly »).
-- Les retraits passent par **FedaPay** (Mobile Money, 4 pays) :
+- Les retraits passent par **Mobile Money** (4 pays, via le prestataire) :
   `server/payout-countries.mjs`.
 - Les pots et les soldes sont arrondis à 2 décimales par `roundAmount` :
   `server/utils.mjs:1-5`.
@@ -73,7 +73,7 @@ Trois garde-fous matérielisent cette règle :
 | 3 | `server/league-engine.mjs` | 1 239 | Ligue BR saisonnière (5 journées, top 40, finale) | **0 %** — l'admin *est* l'arbitre |
 | 4 | `server/br-engine.mjs` | 1 230 | Salon Battle Royale (5 → 100 joueurs, un lobby) | **≤ 5 %** du pot |
 | 5 | `server/wallet-engine.mjs` | 750 | Portefeuille, séquestre, retraits, réconciliation | — |
-| 6 | `server/payment-engine.mjs` | 441 | FedaPay : dépôts (crédit ZC) et retraits (payout) | — |
+| 6 | `server/payment-engine.mjs` | 441 | Paiement Mobile Money : dépôts (crédit ZC) et retraits (payout) | — |
 | 7 | `server/cron.mjs` | 904 | Orchestrateur des balayages automatiques | — |
 
 Socle transversal, non compté ci-dessus :
@@ -648,7 +648,7 @@ withdrawFromWallet (server/wallet-engine.mjs:144)
    ├─ solde cash suffisant (`:154-156`)
    ├─ plafond cumulé 50 000 ZC / 24 h glissantes (`:158-164`, `:18-19`, `:34-48`)
    ├─ commission 2 % : calcWithdrawNet (`:55-59`) → net = brut − 2 %
-   └─ DÉBIT DU BRUT (`:170`) ; c'est le NET qui part chez FedaPay
+   └─ DÉBIT DU BRUT (`:170`) ; c'est le NET qui part vers le Mobile Money
       (server/routes/wallet.mjs)
 ```
 

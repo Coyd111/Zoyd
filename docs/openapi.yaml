@@ -104,7 +104,7 @@ paths:
         403 ADMIN_REQUIRED hors role admin, 403 2FA_REQUIRED si la 2FA n'est
         pas activee ou pas fraichement verifiee. En production, les depots
         joueurs passent par /api/wallet/verify-fedapay (confirmation du
-        paiement FedaPay), pas par cette route manuelle.
+        paiement Mobile Money), pas par cette route manuelle.
       security: [{ cookieAuth: [] }]
       requestBody:
         content:

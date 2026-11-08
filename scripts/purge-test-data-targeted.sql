@@ -5,7 +5,7 @@
 -- de test qui polluent classements / tournois / ligues :
 --   pseudos TestJoueur1..4 (TE, gains fictifs 19 / 11,4 / 7,6 ZC),
 --   AUDIT CUP 1V1, Bracket Test (T-MJ-MTBME3NZ), ligues #2-#4 ANNULÉE,
---   comptes d'audit créés le 07/11 (Audit*, Acc*, Real*).
+--   comptes d'audit créés le 07/11 (Audit*, Acc*, Real*, Live*, Shell*, Sweep*).
 --
 -- Périmètre : UNIQUEMENT ces pseudos + leurs enfants. L'admin
 -- ('admin-zoyd-control') et tout autre joueur réel sont hors périmètre :
@@ -22,7 +22,7 @@
 --      les lignes supprimées en base).
 --
 -- RÉFÉRENCE pseudo/email (à adapter si tu as renommé vos tests) :
---   TestJoueur%, TE, AUDIT%, Audit%, Acc%, Real%, ZOYDLIVE%
+--   TestJoueur%, TE, AUDIT%, Audit%, Acc%, Real%, Live%, Shell%, Sweep%, ZOYDLIVE%
 --   (ZOYDLIVE = suite E2E live, cf. scripts/cleanup-live-e2e.sql)
 -- ═══════════════════════════════════════════════════════════════════════════
 
@@ -43,6 +43,7 @@ WHERE payload->>'pseudo' LIKE 'TestJoueur%'
    OR payload->>'pseudo' LIKE 'Acc%'
    OR payload->>'pseudo' LIKE 'Real%'
    OR payload->>'pseudo' LIKE 'ZOYDLIVE%'
+   OR payload->>'pseudo' LIKE 'Live%' OR payload->>'pseudo' LIKE 'Shell%' OR payload->>'pseudo' LIKE 'Sweep%'
    OR payload->>'email' LIKE '%@test.local'
    OR payload->>'email' LIKE '%@example.com'
 ORDER BY created_at;
@@ -54,7 +55,8 @@ SELECT kind, entity_id,
 FROM state_snapshots
 WHERE kind = 'tournaments'
   AND (payload->>'name' ILIKE '%test%' OR payload->>'name' ILIKE '%audit%'
-       OR payload::text ILIKE '%testjoueur%' OR payload::text ILIKE '%zoydlive%');
+       OR payload::text ILIKE '%testjoueur%' OR payload::text ILIKE '%zoydlive%'
+       OR payload::text ILIKE '%live%' OR payload::text ILIKE '%shell%' OR payload::text ILIKE '%sweep%');
 
 SELECT kind, entity_id,
        payload->>'name' AS name,
@@ -177,7 +179,8 @@ WHERE blocker_id IN (
 DELETE FROM chat_messages
 WHERE payload->>'senderPseudo' LIKE 'TestJoueur%' OR payload->>'senderPseudo' LIKE 'Test%'
    OR payload->>'senderPseudo' LIKE 'Audit%'    OR payload->>'senderPseudo' LIKE 'Acc%'
-   OR payload->>'senderPseudo' LIKE 'Real%'     OR payload->>'senderPseudo' LIKE 'ZOYDLIVE%';
+   OR payload->>'senderPseudo' LIKE 'Real%'     OR payload->>'senderPseudo' LIKE 'ZOYDLIVE%'
+   OR payload->>'senderPseudo' LIKE 'Live%' OR payload->>'senderPseudo' LIKE 'Shell%' OR payload->>'senderPseudo' LIKE 'Sweep%';
 
 -- Matchs des comptes de test (filet large : le pseudo est cherché dans tout
 -- le payload ; un match réel ne contient aucun de ces marqueurs).
@@ -185,13 +188,15 @@ DELETE FROM state_snapshots
 WHERE kind = 'matches'
   AND (payload::text LIKE '%TestJoueur%' OR payload::text LIKE '%Test%'
     OR payload::text LIKE '%Audit%'    OR payload::text LIKE '%ZOYDLIVE%'
-    OR payload::text LIKE '%Real%');
+    OR payload::text LIKE '%Real%' OR payload::text LIKE '%Live%'
+    OR payload::text LIKE '%Shell%' OR payload::text LIKE '%Sweep%');
 
 -- Tournois de test identifiés par leur nom (Bracket Test, AUDIT CUP...).
 DELETE FROM state_snapshots
 WHERE kind = 'tournaments'
   AND (payload->>'name' ILIKE '%test%' OR payload->>'name' ILIKE '%audit%'
-       OR payload::text ILIKE '%testjoueur%' OR payload::text ILIKE '%zoydlive%');
+       OR payload::text ILIKE '%testjoueur%' OR payload::text ILIKE '%zoydlive%'
+       OR payload::text ILIKE '%live%' OR payload::text ILIKE '%shell%' OR payload::text ILIKE '%sweep%');
 
 -- Ligues de test annulées (Saison 2/3/4, 0 joueur — dette irrecouvrable
 -- déjà reclassée uncollectable en santé ; on retire l'affichage mort).

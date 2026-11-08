@@ -22,6 +22,8 @@
 import React, { useMemo, useState } from 'react';
 import { Crosshair, Search, Activity, Swords, ShieldCheck, Radio, Zap, ChevronRight } from 'lucide-react';
 import { MatchCard } from '../../components/MatchCard';
+import { AnimatedNumber } from '../../components/ui/AnimatedNumber';
+import { formatZC } from '../../../lib/utils';
 import { Link } from 'react-router';
 import FriendsWidget from '../../components/social/FriendsWidget';
 import { useMatchStore } from '../../stores/matchStore';
@@ -120,9 +122,9 @@ const HubMJPage: React.FC = () => {
           </div>
 
           <div className="hidden md:flex gap-10 border-l border-white/10 pl-10 py-4">
-            <Metric label="Matchs Actifs" value={metrics.active.toString()} accent="text-white" />
-            <Metric label="Cagnotte globale" value={`${metrics.livePool.toLocaleString()} ZC`} accent="text-zoyd-yellow" />
-            <Metric label="Arbitres Demandés" value={metrics.arbitersNeeded.toString()} accent="text-zoyd-blue" />
+            <Metric label="Matchs Actifs" numeric={metrics.active} accent="text-white" />
+            <Metric label="Cagnotte globale" numeric={metrics.livePool} format={(v) => `${formatZC(v)}`} accent="text-zoyd-yellow" />
+            <Metric label="Arbitres Demandés" numeric={metrics.arbitersNeeded} accent="text-zoyd-blue" />
           </div>
         </div>
       </header>
@@ -215,7 +217,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
             </div>
           ) : filteredMatches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {filteredMatches.map((match) => {
+              {filteredMatches.map((match, index) => {
                 const rules = match.rules;
                 // P1 (audit UI) : la cascade qui projetait `awaiting_arbiter`,
                 // `disputed` et `archived` sur 'finished' est supprimee — la
@@ -225,6 +227,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 return (
                 <MatchCard
                   key={match.id}
+                  enterDelay={Math.min(index * 0.04, 0.4)}
                   id={match.id}
                   map={rules.map || ''}
                   format={match.format}
@@ -320,11 +323,13 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
   );
 };
 
-const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
+const Metric = React.memo(({ label, numeric, format, accent }: { label: string; numeric: number; format?: (v: number) => string; accent: string }) => (
   <div className="flex flex-col">
     <span className="text-[10px] font-mono font-bold text-white/70 uppercase tracking-widest mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
-      <span className={`text-4xl font-display font-black italic ${accent}`}>{value}</span>
+      <span className={`text-4xl font-display font-black italic tabular-nums ${accent}`}>
+        <AnimatedNumber value={numeric} format={format} />
+      </span>
     </div>
   </div>
 ));

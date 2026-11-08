@@ -24,7 +24,9 @@
  */
 import React, { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router';
+import { AnimatePresence, motion } from 'motion/react';
 import ToastContainer from '../components/notifications/ToastContainer';
+import { pageTransition, pageTransitionProps } from '../../lib/motion';
 
 /** Scroll to top on route change */
 const ScrollToTop: React.FC = () => {
@@ -41,6 +43,7 @@ import { useSocketStore } from '../stores/socketStore';
 
 const RootLayout: React.FC = () => {
   const isAuthenticated = useAuthStore((state: AuthState) => state.isAuthenticated);
+  const { pathname } = useLocation();
   // P13 C8 (audit-3) : l'identite, pas seulement un booleen - changer de
   // compte doit re-bootstraper, une coupure de transport ne doit pas
   // (meme critere que useRealtimeHeartbeat).
@@ -130,7 +133,20 @@ const RootLayout: React.FC = () => {
   return (
     <>
       <ScrollToTop />
-      <Outlet />
+      {/* Transition des pages publiques (landing, auth, légales) — même
+          grammaire que AppLayout. Quand le joueur est authentifié, le
+          chrome applicatif est déjà monté et AppLayout anime son contenu :
+          on ne monte donc PAS un second wrapper ici (double fondu + chrome
+          remonté à chaque navigation interne). */}
+      {!isAuthenticated ? (
+        <AnimatePresence mode="wait">
+          <motion.div key={pathname} {...pageTransitionProps} variants={pageTransition}>
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
+      ) : (
+        <Outlet />
+      )}
       <ToastContainer />
     </>
   );

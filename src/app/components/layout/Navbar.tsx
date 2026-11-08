@@ -26,6 +26,7 @@ import { formatZC } from '../../../lib/utils';
 import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import NotificationSettingsModal from '../notifications/NotificationSettingsModal';
 import ZoydLogo from '../branding/ZoydLogo';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 
 const Navbar: React.FC = React.memo(() => {
   const { user } = useAuthStore();
@@ -87,7 +88,7 @@ const Navbar: React.FC = React.memo(() => {
           >
             <Wallet className="w-4 h-4 text-zoyd-yellow" />
             <span className="font-display font-black text-xs text-zoyd-yellow tracking-widest leading-none tabular-nums">
-              {formatZC(totalBalance)}
+              <AnimatedNumber value={totalBalance} format={(v) => formatZC(v)} />
             </span>
           </Link>
 

@@ -18,6 +18,9 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { motion } from 'motion/react';
+import { staggerContainer, staggerItem } from '../../../lib/motion';
+import { AnimatedNumber } from '../../../app/components/ui/AnimatedNumber';
 import { Calendar, Map as MapIcon, Users, Swords, ChevronRight, AlertTriangle, Clock, Trophy } from 'lucide-react';
 
 import { useAuthStore } from '../../../app/stores/authStore';
@@ -249,22 +252,22 @@ const BrPage: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider mb-1">Salons ouverts</div>
-            <div className="text-lg md:text-2xl font-black text-zoyd-yellow">{openCount}</div>
+            <div className="text-lg md:text-2xl font-black tabular-nums text-zoyd-yellow"><AnimatedNumber value={openCount} /></div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider mb-1">En cours</div>
-            <div className="text-lg md:text-2xl font-black text-white">{liveCount}</div>
+            <div className="text-lg md:text-2xl font-black tabular-nums text-white"><AnimatedNumber value={liveCount} /></div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider mb-1">Joueurs inscrits</div>
-            <div className="text-lg md:text-2xl font-black text-white">
-              {lobbies.reduce((sum, l) => sum + l.players.length, 0)}
+            <div className="text-lg md:text-2xl font-black tabular-nums text-white">
+              <AnimatedNumber value={lobbies.reduce((sum, l) => sum + l.players.length, 0)} />
             </div>
           </div>
           <div className="border border-white/10 bg-zoyd-surface/30 px-4 py-3">
             <div className="text-[10px] font-mono text-white/60 uppercase tracking-wider mb-1">Cagnotte en jeu</div>
-            <div className="text-lg md:text-2xl font-black text-green-400">
-              {formatZC(lobbies.reduce((sum, l) => sum + (l.pot || 0), 0))}
+            <div className="text-lg md:text-2xl font-black tabular-nums text-green-400">
+              <AnimatedNumber value={lobbies.reduce((sum, l) => sum + (l.pot || 0), 0)} format={(v) => formatZC(v)} />
             </div>
           </div>
         </div>
@@ -284,20 +287,27 @@ const BrPage: React.FC = () => {
                 <p className="text-white/50 text-xs mt-2">Les salons sont ouverts 24 a 48 h a l'avance.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+              >
                 {lobbies.map((lobby) => (
-                  <BrLobbyCard
-                    key={lobby.id}
-                    lobby={lobby}
-                    config={config || { maps: {}, modes: {}, rankingModes: {} } as unknown as BrConfig}
-                    // Le roster public ne contient AUCUN userId (vie privée) : on
-                    // compare donc sur le pseudo, seul identifiant visible ici.
-                    joined={Boolean(user?.pseudo) && lobby.players.some((p) => p.pseudo === user?.pseudo)}
-                    isLoading={joiningId === lobby.id}
-                    onJoin={handleJoin}
-                  />
+                  <motion.div key={lobby.id} variants={staggerItem}>
+                    <BrLobbyCard
+                      lobby={lobby}
+                      config={config || { maps: {}, modes: {}, rankingModes: {} } as unknown as BrConfig}
+                      // Le roster public ne contient AUCUN userId (vie privée) : on
+                      // compare donc sur le pseudo, seul identifiant visible ici.
+                      joined={Boolean(user?.pseudo) && lobby.players.some((p) => p.pseudo === user?.pseudo)}
+                      isLoading={joiningId === lobby.id}
+                      onJoin={handleJoin}
+                    />
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </div>
         )}

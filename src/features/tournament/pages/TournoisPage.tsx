@@ -20,6 +20,9 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { motion } from 'motion/react';
+import { staggerContainer, staggerItem } from '../../../lib/motion';
+import { AnimatedNumber } from '../../../app/components/ui/AnimatedNumber';
 import { Plus, Search, Swords, Trophy, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../app/components/ui/Tabs';
 import { TournamentCard } from '../components/TournamentCard';
@@ -154,9 +157,9 @@ const TournoisPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap lg:flex-nowrap gap-6 md:gap-10 border-t lg:border-t-0 lg:border-l border-white/10 pt-6 lg:pt-0 lg:pl-10 py-2 md:py-4 w-full lg:w-auto mt-4 lg:mt-0">
-            <Metric label="Tournois visibles" value={metrics.visible.toString()} accent="text-white" />
-            <Metric label="A gagner" value={formatZC(metrics.playerPool)} accent="text-zoyd-yellow" />
-            <Metric label="Places ouvertes" value={metrics.openSlots.toString()} accent="text-zoyd-blue" />
+            <Metric label="Tournois visibles" numeric={metrics.visible} accent="text-white" />
+            <Metric label="A gagner" numeric={metrics.playerPool} format={(v) => formatZC(v)} accent="text-zoyd-yellow" />
+            <Metric label="Places ouvertes" numeric={metrics.openSlots} accent="text-zoyd-blue" />
           </div>
         </div>
       </header>
@@ -301,25 +304,32 @@ const TournamentGrid = ({
   }
 
   return (
-    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
+    <motion.div
+      variants={staggerContainer}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true }}
+      className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8"
+    >
       {tournaments.map((tournament) => (
-        <Link
-          key={tournament.id}
-          to={`/mj/tournois/${tournament.id}`}
-          className="block hover:opacity-95 transition-opacity"
-        >
-          <TournamentCard tournament={tournament} />
-        </Link>
+        <motion.div key={tournament.id} variants={staggerItem}>
+          <Link
+            to={`/mj/tournois/${tournament.id}`}
+            className="block hover:opacity-95 transition-opacity"
+          >
+            <TournamentCard tournament={tournament} />
+          </Link>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 };
 
-const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
+const Metric = React.memo(({ label, numeric, format, accent }: { label: string; numeric: number; format?: (v: number) => string; accent: string }) => (
   <div className="flex flex-col">
     <span className="text-[10px] md:text-[10px] font-mono font-bold text-white/70 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
-      <span className={`text-3xl sm:text-4xl font-display font-black italic ${accent}`}>{value}</span>
+      <span className={`text-3xl sm:text-4xl font-display font-black italic tabular-nums ${accent}`}><AnimatedNumber value={numeric} format={format} /></span>
     </div>
   </div>
 ));

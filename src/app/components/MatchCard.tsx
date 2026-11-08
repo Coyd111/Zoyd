@@ -23,6 +23,7 @@ import { getMapImage } from '../../lib/competition';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import { type MatchStatus, MATCH_STATUS_COPY } from '../lib/matchStatus';
+import { MOTION_DURATION, MOTION_EASE } from '../../lib/motion';
 
 interface MatchCardProps {
   id: string;
@@ -51,6 +52,8 @@ interface MatchCardProps {
   // cle manquante fait echouer TypeScript au moment de la compilation.
   status: MatchStatus;
   trustScoreMin?: number;
+  /** Délai d'entrée (cascade dans les listes) : 0 par défaut. */
+  enterDelay?: number;
 }
 
 
@@ -68,6 +71,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
   arbitre,
   status,
   trustScoreMin,
+  enterDelay = 0,
 }) => {
   const renderSlots = (filled: number, total: number, colorClass: string) => (
     <div className="flex gap-1.5">
@@ -89,6 +93,7 @@ const MatchCard: React.FC<MatchCardProps> = React.memo(({
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
+      transition={{ duration: MOTION_DURATION.slow, ease: [...MOTION_EASE], delay: enterDelay }}
       className="group"
     >
       <div className="p-6 transition-all duration-500 overflow-hidden">

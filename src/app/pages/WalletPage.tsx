@@ -38,6 +38,7 @@ import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormat
 import { ZC_TO_FCFA, formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { getTransactionTypeLabel } from '../../lib/transactionLabels';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 import { WithdrawalFeesNotice, useWithdrawalFeesNoticeDismissed } from '../components/wallet/WithdrawalFeesNotice';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
 import { SEOHead } from '../components/SEOHead';
@@ -477,10 +478,10 @@ if (!payoutCountry) {
         ) : null}
 
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <BalanceCard label="Solde dispo" value={formatZC(spendableBalance)} hint={`~ ${formatFCFA(spendableBalance)}`} accent />
-          <BalanceCard label="Cash retirable" value={formatZC(cashBalance)} hint="Pret au retrait" />
-          <BalanceCard label="En jeu" value={formatZC(lockedBalance)} hint="Parties et tournois en cours" />
-          <BalanceCard label="Bonus ZC" value={formatZC(bonusBalance)} hint="Utilisable, non retirable" />
+          <BalanceCard label="Solde dispo" numeric={spendableBalance} hint={`~ ${formatFCFA(spendableBalance)}`} accent />
+          <BalanceCard label="Cash retirable" numeric={cashBalance} hint="Pret au retrait" />
+          <BalanceCard label="En jeu" numeric={lockedBalance} hint="Parties et tournois en cours" />
+          <BalanceCard label="Bonus ZC" numeric={bonusBalance} hint="Utilisable, non retirable" />
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 mb-8">
@@ -825,13 +826,13 @@ const OperatorBadge = React.memo(({ operator }: { operator: PayoutOperator }) =>
   </div>
 ));
 
-const BalanceCard = React.memo(({ label, value, hint, accent = false }: { label: string; value: string; hint: string; accent?: boolean }) => (
+const BalanceCard = React.memo(({ label, numeric, hint, accent = false }: { label: string; numeric: number; hint: string; accent?: boolean }) => (
   <Card className={accent ? 'bg-gradient-to-br from-zoyd-yellow/10 to-transparent border-zoyd-yellow' : ''}>
     <CardHeader>
       <CardTitle className="text-white/60 text-sm">{label}</CardTitle>
     </CardHeader>
     <CardContent>
-      <div className={`text-2xl sm:text-3xl md:text-4xl font-display font-black mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}>{value}</div>
+      <div className={`text-2xl sm:text-3xl md:text-4xl font-display font-black tabular-nums mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}><AnimatedNumber value={numeric} format={(v) => formatZC(v)} /></div>
       <div className="text-sm text-white/60">{hint}</div>
     </CardContent>
   </Card>

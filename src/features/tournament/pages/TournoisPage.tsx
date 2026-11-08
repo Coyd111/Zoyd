@@ -145,7 +145,7 @@ const TournoisPage: React.FC = () => {
             <div className="mt-4 md:mt-6">
               <Link
                 to="/mj/tournois/creer"
-                className="inline-flex items-center justify-center w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
+                className="inline-flex items-center justify-center min-h-[44px] w-full sm:w-auto gap-3 bg-zoyd-yellow text-black px-4 sm:px-6 py-3 sm:py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Créer un tournoi

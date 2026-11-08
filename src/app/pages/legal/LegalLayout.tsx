@@ -52,7 +52,7 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({ title, description, pa
     <div className="min-h-dvh bg-zoyd-black font-ui safe-top safe-bottom">
       <SEOHead title={`${title} — ZOYD`} description={description} path={path} />
       <div className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
-        <Link to="/" className="inline-flex items-center gap-2 text-white/60 hover:text-white text-xs font-mono uppercase tracking-widest mb-8">
+        <Link to="/" className="inline-flex items-center gap-2 min-h-[44px] text-white/60 hover:text-white text-xs font-mono uppercase tracking-widest mb-8">
           <ArrowLeft className="w-4 h-4" /> Retour accueil
         </Link>
         <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zoyd-yellow mb-2">ZOYD — Informations légales</p>
@@ -64,7 +64,7 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({ title, description, pa
             <Link
               key={item.path}
               to={item.path}
-              className={`px-4 py-2 text-[11px] font-display font-black uppercase tracking-widest italic border transition-colors ${
+              className={`px-4 min-h-[44px] inline-flex items-center text-[11px] font-display font-black uppercase tracking-widest italic border transition-colors ${
                 location.pathname === item.path
                   ? 'bg-zoyd-yellow text-black border-zoyd-yellow'
                   : 'text-white/60 border-white/10 hover:text-white hover:border-white/30'
@@ -80,11 +80,11 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({ title, description, pa
         <footer className="mt-12 pt-8 border-t border-white/10 text-center">
           <p className="text-white/50 text-xs font-mono uppercase tracking-widest">
             Une question ? Écris à{' '}
-            <a href={`mailto:${ASSISTANCE.email}`} className="text-zoyd-yellow hover:text-white">
+            <a href={`mailto:${ASSISTANCE.email}`} className="text-zoyd-yellow hover:text-white inline-flex items-center min-h-[44px]">
               {ASSISTANCE.email}
             </a>{' '}
             ou{' '}
-            <a href={ASSISTANCE.whatsappLink} target="_blank" rel="noreferrer" className="text-zoyd-yellow hover:text-white">
+            <a href={ASSISTANCE.whatsappLink} target="_blank" rel="noreferrer" className="text-zoyd-yellow hover:text-white inline-flex items-center min-h-[44px]">
               WhatsApp {ASSISTANCE.whatsapp}
             </a>
           </p>

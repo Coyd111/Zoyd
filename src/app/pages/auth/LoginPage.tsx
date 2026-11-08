@@ -284,7 +284,7 @@ cancelled = true;
             <div className="flex justify-end">
               <Link
                 to="/auth/forgot"
-                className="text-xs text-white/60 hover:text-zoyd-yellow transition-colors touch-target py-2"
+                className="inline-flex items-center min-h-[44px] text-xs text-white/60 hover:text-zoyd-yellow transition-colors touch-target py-2"
               >
                 Mot de passe oublié ?
               </Link>
@@ -331,7 +331,7 @@ cancelled = true;
           <footer className="mt-12 text-center border-t border-white/5 pt-8">
             <p className="text-white/70 text-[11px] font-mono uppercase tracking-widest">
               Pas encore de compte ?{' '}
-              <Link to="/auth/register" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2">
+              <Link to="/auth/register" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2 inline-flex items-center min-h-[44px]">
                 CRÉER MON COMPTE
               </Link>
             </p>

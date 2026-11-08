@@ -151,7 +151,7 @@ const ActivatePage: React.FC = () => {
             <p className="text-white/60 text-center text-xs mb-8">
               Cette page ne sert qu'aux comptes créés avant l'activation immédiate.
               {' '}
-              <button type="button" onClick={() => navigate('/auth/login')} className="text-zoyd-yellow hover:text-white underline">
+              <button type="button" onClick={() => navigate('/auth/login')} className="text-zoyd-yellow hover:text-white underline min-h-[44px] inline-flex items-center px-2">
                 Aller à la connexion
               </button>
             </p>

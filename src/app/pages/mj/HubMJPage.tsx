@@ -187,8 +187,8 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               </div>
             </div>
 
-            <div className="flex gap-4 w-full lg:w-[420px]">
-              <div className="relative flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-[420px]">
+              <div className="relative w-full sm:flex-1 sm:min-w-0">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
                 <input
                   type="text"
@@ -199,7 +199,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:border-zoyd-blue transition-colors"
                 />
               </div>
-              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target">
+              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target w-full sm:w-auto">
                 <Activity className="w-4 h-4" /> CRÉER UN WAGER
               </Link>
             </div>

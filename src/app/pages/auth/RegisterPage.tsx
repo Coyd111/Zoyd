@@ -870,7 +870,7 @@ cancelled = true;
           <footer className="mt-12 text-center border-t border-white/5 pt-8">
             <p className="text-white/70 text-[11px] font-mono uppercase tracking-widest">
               Déjà membre ?{' '}
-              <Link to="/auth/login" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2">
+              <Link to="/auth/login" className="text-zoyd-yellow hover:text-white transition-colors font-black italic ml-2 inline-flex items-center min-h-[44px]">
                 ME CONNECTER
               </Link>
             </p>

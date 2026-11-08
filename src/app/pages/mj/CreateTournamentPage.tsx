@@ -485,7 +485,7 @@ const CreateTournamentPage: React.FC = () => {
                           type="button"
                           onClick={() => setValue('bestOf', preset)}
                           aria-label={`Preset best of ${preset}`}
-                          className={`px-3 py-2 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
+                          className={`min-h-[44px] inline-flex items-center px-3 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
                             selectedBestOf === preset
                               ? 'border-white bg-white/10 text-white'
                               : 'border-white/10 text-white/40 hover:border-white/30 hover:text-white/70'

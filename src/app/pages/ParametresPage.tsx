@@ -28,6 +28,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle, Bell, Gamepad2, Save, Shield, User } from 'lucide-react';
 import { toast } from '../lib/toast';
 import { useAuthStore, type User as AuthUser } from '../stores/authStore';
+import { useSocketConnectionStore } from '../stores/socketConnectionStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -77,6 +78,7 @@ type NotificationSettings = {
 
 const ParametresPage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
+  const serverConnected = useSocketConnectionStore((s) => s.serverConnected);
   const updateUser = useAuthStore((s) => s.updateUser);
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
   const prefersReducedMotion = useReducedMotion();
@@ -496,7 +498,7 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <StatusCard label="Fiabilité" value={`${user.trustScore}/100`} accent="text-zoyd-yellow" />
                   <StatusCard label="Solde affiche" value={user.walletBalance.toFixed(1) + ' ZC'} accent="text-white" />
-                  <StatusCard label="Connexion" value={user.isOnline ? 'Active' : 'Hors ligne'} accent={user.isOnline ? 'text-green-400' : 'text-white/75'} />
+                  <StatusCard label="Connexion" value={serverConnected ? 'Active' : 'Hors ligne'} accent={serverConnected ? 'text-green-400' : 'text-white/75'} />
                 </div>
               </div>
             ) : null}

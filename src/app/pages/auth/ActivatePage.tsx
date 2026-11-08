@@ -31,7 +31,6 @@ import { Input } from '../../components/ui/Input';
 import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react';
 import { activateAccount, resendActivationCode, changeActivationEmail } from '../../lib/authApi';
 import { SEOHead } from '../../components/SEOHead';
-
 const RESEND_COOLDOWN_SECONDS = 60;
 
 const ActivatePage: React.FC = () => {
@@ -143,9 +142,20 @@ const ActivatePage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-display font-black text-white text-center mb-2 uppercase italic">
             Active ton compte
           </h1>
-          <p className="text-white/70 text-center text-sm mb-8">
-            Entre le code d'activation envoyé à ton email
+          <p className="text-white/70 text-center text-sm mb-4">
+            {initialEmail
+              ? "Entre le code d'activation envoyé à ton email"
+              : "Comptes créés après septembre 2026 : déjà actifs, connecte-toi directement."}
           </p>
+          {!initialEmail && (
+            <p className="text-white/60 text-center text-xs mb-8">
+              Cette page ne sert qu'aux comptes créés avant l'activation immédiate.
+              {' '}
+              <button type="button" onClick={() => navigate('/auth/login')} className="text-zoyd-yellow hover:text-white underline">
+                Aller à la connexion
+              </button>
+            </p>
+          )}
 
           <form onSubmit={handleActivate} className="space-y-4">
             {initialEmail ? (

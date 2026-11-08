@@ -223,8 +223,8 @@ const ModeSelectionPage: React.FC = () => {
               <div>
                 <div className="flex items-center gap-3 mb-1 flex-wrap">
                   <span className="text-base sm:text-lg font-display font-black uppercase italic text-white">BR League</span>
-                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">Événement hebdomadaire</span>
-                  <span className="border border-white/10 bg-white/5 text-white/70 px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">Ouverture différée</span>
+                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.22em]">Événement hebdomadaire</span>
+                  <span className="border border-white/10 bg-white/5 text-white/70 px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.22em]">Ouverture différée</span>
                 </div>
                 <div className="text-sm text-white/60">
                   500 joueurs, 5 jours de qualification, 1 finale. Les saisons démarrent après l&apos;ouverture
@@ -258,7 +258,7 @@ const ModeSelectionPage: React.FC = () => {
 
 const InfoChip = ({ label, value, className = '' }: { label: string; value: string; className?: string }) => (
   <div className={`border border-white/8 bg-black/35 px-3 md:px-4 py-2.5 md:py-3 ${className}`}>
-    <div className="text-[9px] md:text-[10px] font-mono uppercase tracking-[0.22em] text-white/70 mb-1">{label}</div>
+    <div className="text-[10px] md:text-[10px] font-mono uppercase tracking-[0.22em] text-white/70 mb-1">{label}</div>
     <div className="text-sm md:text-base font-display font-black uppercase italic text-white leading-tight">{value}</div>
   </div>
 );

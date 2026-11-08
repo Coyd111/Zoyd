@@ -569,14 +569,14 @@ if (!payoutCountry) {
           <div className="space-y-6">
             <div>
               <label htmlFor="deposit-amount" className="block text-sm font-medium text-white mb-3">Montant à ajouter</label>
-              <div className="grid grid-cols-4 gap-2 mb-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                 {presetAmounts.map((preset) => (
                     <button
                       key={preset}
                       onClick={() => setDepositAmount(preset.toString())}
                       aria-label={`Ajouter ${preset} ZC`}
                       aria-pressed={depositAmount === preset.toString()}
-                      className={`px-4 py-3 touch-target border font-display font-bold transition-all ${
+                      className={`px-3 py-3 min-h-[44px] whitespace-nowrap touch-target border font-display font-bold transition-all ${
                         depositAmount === preset.toString()
                           ? 'bg-white/10 border-zoyd-yellow text-white'
                           : 'bg-white/5 border-white/10 hover:border-zoyd-yellow text-zoyd-yellow'

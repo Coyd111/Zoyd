@@ -283,7 +283,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   <span className="text-base sm:text-lg font-display font-black uppercase italic text-white">
                     Battle Royale
                   </span>
-                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.22em]">
+                  <span className="border border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.22em]">
                     Salons ouverts
                   </span>
                 </div>
@@ -302,7 +302,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               </Link>
               <Link
                 to="/br-league"
-                className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1"
+                className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1"
               >
                 BR League — événement hebdo
               </Link>

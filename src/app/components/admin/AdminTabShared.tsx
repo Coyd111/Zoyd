@@ -187,7 +187,7 @@ export const StatCard = ({ icon, label, value, hint }: { icon: React.ReactNode; 
       <div className="text-[10px] font-mono text-white/60 uppercase tracking-widest mb-1 break-words">{label}</div>
       <div className="text-2xl font-display font-black italic break-words">{value}</div>
       {/* Precision comptable : sans elle, un montant de sortie se lit comme un revenu. */}
-      {hint && <div className="text-[9px] font-mono text-white/40 mt-1 leading-snug">{hint}</div>}
+      {hint && <div className="text-[10px] font-mono text-white/40 mt-1 leading-snug">{hint}</div>}
     </div>
   </div>
 );

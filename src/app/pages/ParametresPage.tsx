@@ -413,12 +413,12 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
                         Affiche un pseudo different quand tu veux jouer ou streamer plus discretement.
                       </div>
                     </div>
-                    <label className="flex items-center gap-3 cursor-pointer touch-target">
+                    <label className="flex items-center gap-3 cursor-pointer touch-target min-h-[44px]">
                       <input
                         type="checkbox"
                         checked={form.streamerMode}
                         onChange={(event) => updateForm('streamerMode', event.target.checked)}
-                        className="w-4 h-4 accent-zoyd-yellow"
+                        className="w-5 h-5 accent-zoyd-yellow"
                       />
                       <span className="text-sm text-white/60">Activer</span>
                     </label>
@@ -1006,8 +1006,8 @@ const NotificationRow = React.memo(({
 }) => {
   const id = `notif-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
-    <div className="hud-panel p-4 bg-zoyd-surface/20 flex items-center justify-between gap-4">
-      <label htmlFor={id} className="flex-1 cursor-pointer">
+    <div className="hud-panel p-4 min-h-[44px] bg-zoyd-surface/20 flex items-center justify-between gap-4">
+      <label htmlFor={id} className="flex-1 cursor-pointer min-h-[44px] flex flex-col justify-center">
         <div className="font-display font-black text-white text-sm uppercase italic">{label}</div>
         <div className="text-[10px] font-mono text-white/70 mt-1">{desc}</div>
       </label>
@@ -1016,7 +1016,7 @@ const NotificationRow = React.memo(({
         type="checkbox"
         checked={value}
         onChange={(event) => onChange(event.target.checked)}
-        className="w-5 h-5 accent-zoyd-yellow"
+        className="w-6 h-6 accent-zoyd-yellow"
       />
     </div>
   );

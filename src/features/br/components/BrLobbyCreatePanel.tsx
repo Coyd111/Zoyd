@@ -357,7 +357,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             {PLACE_FIELDS.map((field) => (
               <div key={field.key}>
-                <label htmlFor={`br-payout-${field.key}`} className="block text-[9px] font-mono text-white/50 uppercase mb-1">
+                <label htmlFor={`br-payout-${field.key}`} className="block text-[10px] font-mono text-white/50 uppercase mb-1">
                   {field.label}
                 </label>
                 <input
@@ -373,7 +373,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
               </div>
             ))}
             <div>
-              <label htmlFor="br-payout-arbiter" className="block text-[9px] font-mono text-white/50 uppercase mb-1">
+              <label htmlFor="br-payout-arbiter" className="block text-[10px] font-mono text-white/50 uppercase mb-1">
                 Arbitre
               </label>
               <input

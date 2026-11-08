@@ -46,7 +46,7 @@ const Navbar: React.FC = React.memo(() => {
         {/* Marque : la tuile Z carree. Arbitrage 2026-11-01 : dans le header,
             l'icone EST le logo a utiliser - le wordmark comprime en h-8
             rendait les lettres OYD du contour invisibles sur fond noir. */}
-        <Link to="/mj" aria-label="ZOYD — Aller au hub" className="shrink-0 group flex items-center">
+        <Link to="/mj" aria-label="ZOYD — Aller au hub" className="shrink-0 group flex items-center justify-center min-h-[44px] min-w-[44px]">
           <ZoydLogo icon className="group-hover:opacity-90 transition-opacity" />
         </Link>
 

@@ -84,7 +84,7 @@ const BrLobbyCard: React.FC<{
               {lobby.creatorPseudo ? `Organise par ${lobby.creatorPseudo}` : 'Organise par ZOYD'}
             </div>
           </div>
-          <span className={`shrink-0 text-[9px] font-mono font-black uppercase tracking-widest border px-1.5 py-0.5 ${badge.className}`}>
+          <span className={`shrink-0 text-[10px] font-mono font-black uppercase tracking-widest border px-1.5 py-0.5 ${badge.className}`}>
             {badge.label}
           </span>
         </div>

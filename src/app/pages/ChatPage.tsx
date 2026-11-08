@@ -265,7 +265,7 @@ const ChatPage: React.FC = () => {
                 setShowFriendPicker((open) => !open);
               }}
               aria-expanded={showFriendPicker}
-              className="w-full bg-white text-black py-3 font-display font-black text-[10px] tracking-[0.2em] uppercase italic hover:bg-zoyd-yellow transition-colors"
+              className="w-full bg-white text-black py-3 min-h-[44px] font-display font-black text-[10px] tracking-[0.2em] uppercase italic hover:bg-zoyd-yellow transition-colors"
               aria-label="Choisir un ami pour démarrer une discussion"
             >
               Nouvelle discussion

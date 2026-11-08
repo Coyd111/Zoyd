@@ -130,7 +130,7 @@ const TournoisPage: React.FC = () => {
               <div className="w-8 h-8 md:w-10 md:h-10 border border-zoyd-yellow flex items-center justify-center text-zoyd-yellow">
                 <Trophy className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <span className="text-[9px] md:text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
+              <span className="text-[10px] md:text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
                 Tournois competitifs
               </span>
             </div>
@@ -226,15 +226,15 @@ const TournoisPage: React.FC = () => {
                   {format}
                 </button>
               ))}
-              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
+              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <Users className="w-3.5 h-3.5" />
                 Solo et équipe
               </div>
-              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
+              <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <Swords className="w-3.5 h-3.5" />
                 Élimination directe
               </div>
-              <div className="inline-flex items-center gap-2 border border-zoyd-yellow/20 px-3 sm:px-4 py-2.5 sm:py-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow/80">
+              <div className="inline-flex items-center gap-2 border border-zoyd-yellow/20 px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow/80">
                 <Trophy className="w-3.5 h-3.5" />
                 Selon ton profil
               </div>
@@ -317,7 +317,7 @@ const TournamentGrid = ({
 
 const Metric = React.memo(({ label, value, accent }: { label: string; value: string; accent: string }) => (
   <div className="flex flex-col">
-    <span className="text-[10px] md:text-[9px] font-mono font-bold text-white/70 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
+    <span className="text-[10px] md:text-[10px] font-mono font-bold text-white/70 uppercase tracking-[0.2em] md:tracking-widest mb-2 md:mb-3 italic">{label}</span>
     <div className="flex items-baseline gap-2">
       <span className={`text-3xl sm:text-4xl font-display font-black italic ${accent}`}>{value}</span>
     </div>

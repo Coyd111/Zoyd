@@ -346,7 +346,7 @@ const BrLobbyDetailPage: React.FC = () => {
                       : <Clock className="w-3.5 h-3.5 text-white/30 shrink-0" aria-hidden="true" />}
                     <span className="truncate">{player.pseudo}</span>
                     {player.pseudo === user?.pseudo && (
-                      <span className="text-[9px] font-mono text-zoyd-yellow shrink-0">TOI</span>
+                      <span className="text-[10px] font-mono text-zoyd-yellow shrink-0">TOI</span>
                     )}
                   </span>
                   <span className="text-[10px] font-mono text-white/50 shrink-0">

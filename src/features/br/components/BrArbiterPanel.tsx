@@ -303,7 +303,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                 <div>
                   <label
                     htmlFor="br-elim"
-                    className="block text-[9px] font-mono text-white/50 uppercase mb-1"
+                    className="block text-[10px] font-mono text-white/50 uppercase mb-1"
                   >
                     Joueur elimine
                   </label>
@@ -324,7 +324,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                 <div>
                   <label
                     htmlFor="br-killer"
-                    className="block text-[9px] font-mono text-white/50 uppercase mb-1"
+                    className="block text-[10px] font-mono text-white/50 uppercase mb-1"
                   >
                     Tué par (laisser vide si mort sans tueur)
                   </label>
@@ -345,7 +345,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                 <div>
                   <label
                     htmlFor="br-assists"
-                    className="block text-[9px] font-mono text-white/50 uppercase mb-1"
+                    className="block text-[10px] font-mono text-white/50 uppercase mb-1"
                   >
                     Assists du tueur (0 a 10)
                   </label>
@@ -379,7 +379,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
 
               {eliminated.length > 0 && (
                 <div className="mt-5 pt-4 border-t border-white/10">
-                  <p className="text-[9px] font-mono text-white/50 uppercase tracking-widest mb-2">
+                  <p className="text-[10px] font-mono text-white/50 uppercase tracking-widest mb-2">
                     Eliminés (ordre de sortie)
                   </p>
                   <ul className="space-y-1">
@@ -483,7 +483,7 @@ const Stat: React.FC<{ label: string; value: number; accent?: boolean }> = ({
   label, value, accent,
 }) => (
   <div className="border border-white/10 bg-black/20 px-3 py-2">
-    <dt className="text-[9px] font-mono text-white/50 uppercase tracking-widest">{label}</dt>
+    <dt className="text-[10px] font-mono text-white/50 uppercase tracking-widest">{label}</dt>
     <dd className={`font-display font-black text-lg ${accent ? 'text-zoyd-yellow' : 'text-white'}`}>
       {value}
     </dd>
@@ -531,7 +531,7 @@ const Requirement: React.FC<{ ok: boolean; label: string }> = ({ ok, label }) =>
 /** Classement final et versements, une fois la session reglee. */
 const FinalStandings: React.FC<{ view: BrArbiterView }> = ({ view }) => (
   <div>
-    <p className="text-[9px] font-mono text-white/50 uppercase tracking-widest mb-2">
+    <p className="text-[10px] font-mono text-white/50 uppercase tracking-widest mb-2">
       Classement final et versements
     </p>
     <ul className="space-y-1">

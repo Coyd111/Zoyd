@@ -491,7 +491,7 @@ const CreateMatchPage: React.FC = () => {
                           aria-label="Limite de temps en minutes"
                           className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                         />
-                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
                           Vide = libre. Un preset remplit ce champ.
                         </p>
                       </div>
@@ -520,7 +520,7 @@ const CreateMatchPage: React.FC = () => {
                             </button>
                           ))}
                         </div>
-                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
                           {MJ_BEST_OF_SCENE}
                         </p>
                       </div>
@@ -541,7 +541,7 @@ const CreateMatchPage: React.FC = () => {
                             Picks en alternance par manche
                           </span>
                         </label>
-                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
                           Manche 1 : createur / Manche 2 : adversaire / Departage : accord (convention wager)
                         </p>
                       </div>

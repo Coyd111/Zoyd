@@ -495,7 +495,7 @@ const CreateTournamentPage: React.FC = () => {
                         </button>
                       ))}
                     </div>
-                    <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                    <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
                       {MJ_BEST_OF_SCENE}
                     </p>
                   </div>
@@ -522,7 +522,7 @@ const CreateTournamentPage: React.FC = () => {
                         Picks en alternance par manche
                       </span>
                     </label>
-                    <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest mt-2 ml-15">
+                    <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2 ml-15">
                       {MJ_PICKS_ALTERNANCE_BRACKET}
                     </p>
                   </div>

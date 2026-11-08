@@ -72,25 +72,15 @@ import {
   getPublicUserById,
   getStateCollection,
   getUserById,
-  isReloadInProgress,
   listUserIds,
   sanitizeText,
 } from '../persistence.mjs';
-// P4 C3 (audit-3) : la sante expose le nombre de retraits en attente de
-// reconciliation, compte par le meme module qui les reluira (miroir fidele
-// de `reconcilePendingWithdrawals`) — la sante ne re-invente pas la regle.
-import { countPendingWithdrawals } from '../wallet-engine.mjs';
-// Audit-3 C7 : la sante doit AUSSI voir les dettes de reglement (matchs en
-// attente de confirmation/versement, remboursements et gains de tournoi,
-// podium de ligue, salons BR en cours de reglement, commissions d'arbitre).
-// Compteurs existants uniquement, totaux anonymes — jamais d'identifiants.
-import { countPendingArbiterFees, getPublicMatchesForUser } from '../match-engine.mjs';
-import { countPendingTournamentPayouts, countPendingTournamentRefunds } from '../tournament-engine.mjs';
-import { countPendingLeaguePayouts, countPendingLeagueRefunds } from '../league-engine.mjs';
-import { countPendingBrSettlements } from '../br-engine.mjs';
-// P0 observabilite argent : resume anonyme des dettes (comptes + ZC + age).
-// La sante reste sans effet de bord : collectFinanceDebts ne mute rien.
-import { collectFinanceDebts, FINANCE_STALE_MS, FINANCE_CRITICAL_MS } from '../finance-observability.mjs';
+// Les compteurs de dettes (matchs/tournois/ligues/BR) et le resume finance
+// vivent derriere `/api/admin/finance/debts` (requireAdmin2fa) et
+// `/metrics` (jeton). `/api/health` ne les scanne plus (audit securite).
+import { getPublicMatchesForUser } from '../match-engine.mjs';
+// La finance reste exposee sur `/metrics` (jeton), pas sur la sante.
+import { collectFinanceDebts } from '../finance-observability.mjs';
 import { metricsToPrometheus, setGauge } from '../metrics.mjs';
 import { channels } from '../channel-presence.mjs';
 import {
@@ -127,58 +117,22 @@ const secretsEqual = (a, b) => {
 
 export const handlePublicRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'GET' && pathname === '/api/health') {
+  // Santé minimisée (audit sécurité 2026-11-08) : la sonde publique
+  // ne doit ni coûter un balayage complet ni fuiter l'état financier.
+  // Avant, chaque hit appelait collectFinanceDebts + compteurs sur
+  // matches/tournois/ligues/salons+users (O(n)), donc un curl en boucle
+  // devenait un DoS CPU déguisé, et les totaux partaient en clair.
+  // Maintenant : lectures mémoire pures (tailles de Maps via getHealthInfo)
+  // + rate-limit `default`. Les agrégats finance vivent derrière
+  // `/api/admin/finance/debts` (requireAdmin2fa) et `/metrics` (jeton).
+  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
   const health = getHealthInfo();
-  // P4 C3 (audit-3) : `pendingWithdrawals` compte les dettes de retrait que
-  // la reprise relira reellement (file dediee + historique, dedoublonnees
-  // par payoutId) — un orchestrateur voit l'arriere-plan de reprise sans
-  // scraper une route admin. La valeur reste un TOTAL anonyme : ni liste
-  // d'identifiants, ni montant, donc rien a fuiter sur une route sans
-  // garde. Lectures memoire pures, pas d'ecriture : la sante partagée
-  // reste sans effet de bord.
-  // ok=false quand l'état mémoire n'est pas fiable : les écritures sont
-  // refusées, un orchestrateur doit le savoir plutôt que de croire au vert.
-  const matches = getStateCollection('matches');
-  const tournaments = getStateCollection('tournaments');
-  const leagues = getStateCollection('leagues');
-  const brLobbies = getStateCollection('brLobbies');
-  const pendingSettlements = {
-    matchesPayoutPending: matches.filter((m) => m?.result?.payoutDistributed === 'pending').length,
-    arbiterFeesPending: countPendingArbiterFees(matches),
-    tournamentPayouts: countPendingTournamentPayouts(tournaments),
-    tournamentRefunds: countPendingTournamentRefunds(tournaments),
-    leaguePayouts: countPendingLeaguePayouts(leagues),
-    leagueRefunds: countPendingLeagueRefunds(leagues),
-    brSettlements: countPendingBrSettlements(brLobbies),
-  };
-  // P0 : resume anonyme detaille (total ZC + age). Aucun id fut, lectures
-  // memoire pures. `finance` permet d'alerter sans lire les dettes admin.
-  const finance = collectFinanceDebts({
-    matches,
-    tournaments,
-    leagues,
-    brLobbies,
-    listUserIds,
-    getWallet: (userId) => getUserById(userId)?.wallet,
-    nowMs: Date.now(),
-  }).summary;
-  const warnings = [];
-  if (finance.criticalCount > 0) warnings.push('FINANCE_CRITICAL_AGE');
-  else if (finance.staleCount > 0) warnings.push('FINANCE_STALE');
-  if (finance.uncollectableCount > 0) warnings.push('FINANCE_UNCOLLECTABLE');
   respondJson(res, health.stateTrusted ? 200 : 503, {
     ok: health.stateTrusted,
     service: 'zoyd-api',
     persistence: {
-      ...health,
-      reloadInProgress: isReloadInProgress(),
-      pendingWithdrawals: countPendingWithdrawals(
-        listUserIds,
-        (userId) => getUserById(userId)?.wallet,
-      ),
-      pendingSettlements,
-      finance,
-      warnings,
-      thresholds: { staleMs: FINANCE_STALE_MS, criticalMs: FINANCE_CRITICAL_MS },
+      stateTrusted: health.stateTrusted,
+      deployedCommitShort: health.deployedCommitShort || null,
     },
     timestamp: getNow(),
   });

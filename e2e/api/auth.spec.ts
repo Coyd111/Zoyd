@@ -333,8 +333,37 @@ test.describe('Auth API', () => {
     expect(me.status).toBe(200);
   });
 
-  test('DELETE /api/auth/me — échoue sans backend de persistance (mode mémoire)', async () => {
+  test('DELETE /api/auth/me — 400 sans mot de passe actuel', async () => {
+    // Gardiou : la suppression destructive exige la preuve de possession du
+    // mot de passe actuel. Sans lui, un cookie seul suffit à anéantir le
+    // compte et son solde (audit sécurité, session volée / PC partagé).
     const res = await call(deletable, 'DELETE', `${BASE}/auth/me`, { confirmForfeit: true });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('PASSWORD_REQUIRED');
+
+    const me = await call(deletable, 'GET', `${BASE}/auth/me`);
+    expect(me.status).toBe(200);
+  });
+
+  test('DELETE /api/auth/me — 403 mot de passe incorrect', async () => {
+    const res = await call(deletable, 'DELETE', `${BASE}/auth/me`, {
+      confirmForfeit: true,
+      currentPassword: 'WrongPassword9!',
+    });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('WRONG_PASSWORD');
+
+    const me = await call(deletable, 'GET', `${BASE}/auth/me`);
+    expect(me.status).toBe(200);
+  });
+
+  test('DELETE /api/auth/me — échoue sans backend de persistance (mode mémoire)', async () => {
+    const res = await call(deletable, 'DELETE', `${BASE}/auth/me`, {
+      confirmForfeit: true,
+      currentPassword: PLAYER_PASSWORD,
+    });
 
     // Contrat observé : `deleteUserAccount` exige un DELETE strict en base
     // (sbDeleteStrict) ; sans Supabase il refuse d'effacer la mémoire seule,

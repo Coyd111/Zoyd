@@ -754,6 +754,17 @@ if (req.method === 'DELETE' && pathname === '/api/auth/me') {
       respondJson(res, 400, { ok: false, error: 'Confirme la perte du solde restant pour supprimer ton compte.', code: 'CONFIRM_REQUIRED' });
       return true;
     }
+    // Suppression destructive : exiger la preuve de possession du mot de passe
+    // actuel. Un cookie seul (session volée, PC partagé) ne doit pas suffire
+    // à anéantir le compte et son solde (cf. change-password, PATCH /me).
+    if (!body?.currentPassword || typeof body.currentPassword !== 'string') {
+      respondJson(res, 400, { ok: false, error: 'Mot de passe actuel requis pour supprimer ton compte.', code: 'PASSWORD_REQUIRED' });
+      return true;
+    }
+    if (!(await verifyUserPassword(session.user.id, body.currentPassword))) {
+      respondJson(res, 403, { ok: false, error: 'Mot de passe actuel incorrect.', code: 'WRONG_PASSWORD' });
+      return true;
+    }
     const { forfeitedCash } = await deleteUserAccount(session.user.id);
     // Clear HttpOnly cookie (all sessions already revoked)
     res.setHeader('Set-Cookie', serializeAuthCookie('', 0));

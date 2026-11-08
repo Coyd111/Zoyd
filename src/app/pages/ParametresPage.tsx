@@ -635,6 +635,7 @@ const DangerZone: React.FC = () => {
   const navigate = useNavigate();
   const [armed, setArmed] = useState(false);
   const [understood, setUnderstood] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!user || user.role === 'admin') return null;
@@ -648,9 +649,13 @@ const DangerZone: React.FC = () => {
       toast.error('Coche la case pour confirmer que tu comprends.');
       return;
     }
+    if (!deletePassword) {
+      toast.error('Saisis ton mot de passe actuel pour supprimer ton compte.');
+      return;
+    }
     setIsDeleting(true);
     try {
-      const res = await deleteOwnAccount();
+      const res = await deleteOwnAccount(deletePassword);
       toast.success(res.message || 'Compte supprimé.');
       logout();
       navigate('/');
@@ -671,17 +676,27 @@ const DangerZone: React.FC = () => {
         </p>
       <div className="mt-3 flex flex-col gap-3">
         {armed ? (
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={understood}
-              onChange={(e) => setUnderstood(e.target.checked)}
-              className="w-4 h-4 mt-0.5 accent-red-500"
+          <>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={understood}
+                onChange={(e) => setUnderstood(e.target.checked)}
+                className="w-4 h-4 mt-0.5 accent-red-500"
+              />
+              <span className="text-[11px] font-mono uppercase tracking-widest text-white/70">
+                Je comprends, supprimer mon compte et abandonner mon solde restant
+              </span>
+            </label>
+            <Input
+              label="Mot de passe actuel (requis)"
+              type="password"
+              autoComplete="current-password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Ton mot de passe actuel"
             />
-            <span className="text-[11px] font-mono uppercase tracking-widest text-white/70">
-              Je comprends, supprimer mon compte et abandonner mon solde restant
-            </span>
-          </label>
+          </>
         ) : null}
         <div>
           <Button

@@ -72,6 +72,9 @@ import {
   getCommissionStats,
   saveAdminTotpSecret,
   markAdmin2faVerified,
+  getMfaLockState,
+  recordMfaFailure,
+  clearMfaFailures,
   getStateCollection,
   listUserReports,
   listUserIds,
@@ -629,6 +632,15 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
     const session = requireAdmin(req, res);
     if (!session) return true;
+    // Verrouillage PAR COMPTE ADMIN (audit sécurité) : le rate-limit par IP
+    // ne suffit pas — un attaquant distribuerait ses essais sur des IPs.
+    // 5 échecs → 5 min, persisté dans login_attempts (clé 2fa:<id>).
+    const lockKey = session.user.id;
+    const lock = await getMfaLockState(lockKey);
+    if (lock.lockedUntil && Date.now() < lock.lockedUntil) {
+      respondJson(res, 429, { ok: false, error: 'Trop d\'essais 2FA. Reessayez dans 5 minutes.', code: 'ACCOUNT_LOCKED' });
+      return true;
+    }
     const body = await parseRequestBody(req).catch(() => ({}));
     const { code } = body || {};
     if (!code || typeof code !== 'string') {
@@ -641,10 +653,12 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
       return true;
     }
     if (!verifyTotp(totpEntry.secret, code)) {
-      log.warn('Admin 2FA verify failed — invalid code', { adminId: session.user.id });
+      const next = await recordMfaFailure(lockKey);
+      log.warn('Admin 2FA verify failed — invalid code', { adminId: session.user.id, failures: next.count, locked: Boolean(next.lockedUntil) });
       respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.', code: 'MFA_INVALID' });
       return true;
     }
+    clearMfaFailures(lockKey);
     // Persiste sur la session STOCKÉE (getAuthSession renvoie une copie — muter `session` ne suffit pas)
     markAdmin2faVerified(readBearerToken(req));
     log.info('Admin 2FA verified', { adminId: session.user.id });

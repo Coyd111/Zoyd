@@ -373,9 +373,17 @@ test.describe('LIVE — compte jetable (inscription, session, suppression)', () 
     expect(refused.status()).toBe(400);
     expect((await refused.json()).code).toBe('CONFIRM_REQUIRED');
 
-    const deleted = await request.delete(`${BASE}/auth/me`, {
+    // Sans mot de passe actuel : refus (preuve de possession exigée).
+    const noPassword = await request.delete(`${BASE}/auth/me`, {
       headers: HEADERS,
       data: { confirmForfeit: true },
+    });
+    expect(noPassword.status()).toBe(400);
+    expect((await noPassword.json()).code).toBe('PASSWORD_REQUIRED');
+
+    const deleted = await request.delete(`${BASE}/auth/me`, {
+      headers: HEADERS,
+      data: { confirmForfeit: true, currentPassword: PASSWORD },
     });
     expect(deleted.status()).toBe(200);
 

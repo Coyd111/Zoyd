@@ -2469,6 +2469,35 @@ const clearLoginAttempt = (lookupKey) => {
   sbFire('clearLoginAttempt', () => sbDelete('login_attempts', { id: hashLockoutKey(lookupKey) }));
 };
 
+// ─── Verrouillage 2FA admin (même table, autre namespace) ───────────────
+// Le verify 2FA n'avait qu'un rate-limit par IP : un attaquant avec un mot
+// de passe admin volé pouvait distribuer ses essais sur N IPs pour
+// atteindre l'espace TOTP (10⁶) dans la fenêtre de 30 s. On verrouille
+// donc PAR COMPTE ADMIN (clé 2fa:<adminId>), persisté dans
+// `login_attempts` pour survivre aux redéploiements — même modèle que le
+// verrou de connexion, même table (aucune migration supplémentaire).
+const MFA_MAX_ATTEMPTS = 5;
+const MFA_LOCKOUT_MS = 5 * 60 * 1000;
+
+export const getMfaLockState = async (adminId) => {
+  const state = await readLoginAttempt(`2fa:${adminId}`);
+  return { count: state?.count || 0, lockedUntil: state?.lockedUntil || null };
+};
+
+export const recordMfaFailure = async (adminId) => {
+  const key = `2fa:${adminId}`;
+  const current = await readLoginAttempt(key);
+  const newCount = (current?.count || 0) + 1;
+  const next = newCount >= MFA_MAX_ATTEMPTS
+    ? { count: 0, lockedUntil: Date.now() + MFA_LOCKOUT_MS }
+    : { count: newCount, lockedUntil: null };
+  loginAttempts.set(key, next);
+  writeLoginAttempt(key, next);
+  return next;
+};
+
+export const clearMfaFailures = (adminId) => clearLoginAttempt(`2fa:${adminId}`);
+
 /** Purge les lignes expirees : un verrou qui ne rend plus n'a plus de sens a etre conserve. */
 const purgeStaleLoginAttempts = async () => {
   const now = Date.now();
@@ -2873,6 +2902,24 @@ export const deleteUserAccount = async (userId) => withUserMutex(userId, async (
     throw makeError(
       'ACTIVE_WAGER',
       'Tu as des wagers en cours. Termine ou annule tes matchs avant de supprimer ton compte.'
+    );
+  }
+  // Retraits FedaPay dont le statut est inconnu (`pending_review`) : le
+  // payout PEUT être parti. Supprimer le compte ici laisserait l'argent
+  // dans la nature sans chemin de remboursement ni réconciliation.
+  // Attendre que la file `payoutsEnAttente` soit purgée par le cron.
+  const wallet = user.wallet || {};
+  const payoutFile = Array.isArray(wallet.payoutsEnAttente) ? wallet.payoutsEnAttente : [];
+  const hasPendingReview = Array.isArray(wallet.transactions)
+    && wallet.transactions.some((tx) => (
+      tx?.metadata?.payoutStatus === 'pending_review'
+      || tx?.payoutStatus === 'pending_review'
+      || tx?.status === 'pending_review'
+    ));
+  if (payoutFile.length > 0 || hasPendingReview) {
+    throw makeError(
+      'PAYOUT_PENDING_REVIEW',
+      'Un retrait est en cours de vérification auprès du prestataire. Attends sa résolution avant de supprimer ton compte.'
     );
   }
   const forfeitedCash = roundAmount(getWalletSnapshot(userId)?.cashBalance || 0);

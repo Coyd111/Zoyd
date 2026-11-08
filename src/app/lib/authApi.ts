@@ -125,8 +125,8 @@ export const submitCovenant = async (
 ): Promise<CovenantResponse> =>
   authorizedPost<CovenantResponse>('/api/auth/covenant', report ? { version, report } : { version });
 
-export const deleteOwnAccount = async (): Promise<{ ok: boolean; message: string }> => {
-  return authorizedDelete<{ ok: boolean; message: string }>('/api/auth/me', { confirmForfeit: true });
+export const deleteOwnAccount = async (currentPassword: string): Promise<{ ok: boolean; message: string }> => {
+  return authorizedDelete<{ ok: boolean; message: string }>('/api/auth/me', { confirmForfeit: true, currentPassword });
 };
 
 export const activateAccount = async (email: string, code: string): Promise<ActivationResponse> => {

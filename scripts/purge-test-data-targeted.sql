@@ -232,4 +232,5 @@ UNION ALL SELECT 'restants test',
        count(*) FROM app_users
        WHERE payload->>'pseudo' LIKE 'Test%' OR payload->>'pseudo' LIKE 'Audit%'
           OR payload->>'pseudo' LIKE 'Acc%'  OR payload->>'pseudo' LIKE 'Real%'
-          OR payload->>'pseudo' LIKE 'ZOYDLIVE%';
+          OR payload->>'pseudo' LIKE 'Live%' OR payload->>'pseudo' LIKE 'Shell%'
+          OR payload->>'pseudo' LIKE 'Sweep%' OR payload->>'pseudo' LIKE 'ZOYDLIVE%';

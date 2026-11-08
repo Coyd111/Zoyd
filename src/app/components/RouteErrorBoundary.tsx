@@ -23,7 +23,13 @@ export function RouteErrorBoundary() {
   let title = 'Une erreur est survenue';
   let message = 'Recharge la page ou réessaye plus tard.';
 
-  if (isRouteErrorResponse(error)) {
+  if (error instanceof Error && /chunk|dynamically imported|Failed to fetch/i.test(error.message)) {
+    // Déploiement entre la première charge et le lazy-load (serment long) :
+    // l'index en mémoire pointe sur d'anciens chunks. Un rechargement frais
+    // récupère le nouveau bundle.
+    title = 'Une mise à jour est arrivée';
+    message = 'Le site s\u2019est mis à jour pendant que tu jouais. Recharge pour continuer.';
+  } else if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
       title = 'Page introuvable';
       message = 'Cette page n\'existe pas ou a été déplacée.';

@@ -37,27 +37,49 @@ import ConfidentialitePage from './pages/legal/ConfidentialitePage';
 import MentionsPage from './pages/legal/MentionsPage';
 import JeuResponsablePage from './pages/legal/JeuResponsablePage';
 
-// Lazy page loaders
-const modeLoader = async () => { const { default: Component } = await import('./pages/ModeSelectionPage'); return { Component }; };
-const hubLoader = async () => { const { default: Component } = await import('./pages/mj/HubMJPage'); return { Component }; };
-const createMatchLoader = async () => { const { default: Component } = await import('./pages/mj/CreateMatchPage'); return { Component }; };
-const createTournamentLoader = async () => { const { default: Component } = await import('./pages/mj/CreateTournamentPage'); return { Component }; };
-const walletLoader = async () => { const { default: Component } = await import('./pages/WalletPage'); return { Component }; };
-const profilLoader = async () => { const { default: Component } = await import('./pages/ProfilPage'); return { Component }; };
-const classementsLoader = async () => { const { default: Component } = await import('./pages/ClassementsGateway'); return { Component }; };
-const chatLoader = async () => { const { default: Component } = await import('./pages/ChatPage'); return { Component }; };
-const parametresLoader = async () => { const { default: Component } = await import('./pages/ParametresPage'); return { Component }; };
-const earningsLoader = async () => { const { default: Component } = await import('./pages/EarningsDashboard'); return { Component }; };
-const matchDetailLoader = async () => { const { default: Component } = await import('../features/match/pages/MatchDetailPage'); return { Component }; };
-const tournoisLoader = async () => { const { default: Component } = await import('../features/tournament/pages/TournoisPage'); return { Component }; };
-const bracketLoader = async () => { const { default: Component } = await import('../features/tournament/pages/TournamentBracketPage'); return { Component }; };
-const leagueLoader = async () => { const { default: Component } = await import('../features/league/pages/LeaguePage'); return { Component }; };
-const leagueSeasonLoader = async () => { const { default: Component } = await import('../features/league/pages/LeagueSeasonPage'); return { Component }; };
-const brLoader = async () => { const { default: Component } = await import('../features/br/pages/BrPage'); return { Component }; };
-const brLobbyLoader = async () => { const { default: Component } = await import('../features/br/pages/BrLobbyDetailPage'); return { Component }; };
-const leaksLoader = async () => { const { default: Component } = await import('./pages/LeaksPage'); return { Component }; };
-const adminLoader = async () => { const { default: Component } = await import('./pages/AdminDashboardPage'); return { Component }; };
-const publicProfilLoader = async () => { const { default: Component } = await import('./pages/PublicProfilPage'); return { Component }; };
+// Lazy page loaders — retry sur chunk périmé (déploiement entre le
+// chargement de la page et le premier rendu paresseux, ex. serment long
+// pendant un redéploiement Vercel : le hash du chunk a changé, l'ancien
+// `index.html` pointe dans le vide → 404 → RouteErrorBoundary).
+// Un rechargement frais récupère le nouvel index. Gardé à UN essai/session
+// pour ne jamais boucler.
+const LAZY_RETRY_KEY = 'zoyd_lazy_retry';
+const lazyWithRetry = (loader: () => Promise<{ default: React.ComponentType }>) => async () => {
+  try {
+    const { default: Component } = await loader();
+    return { Component };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    const staleChunk = /chunk|dynamically imported|Failed to fetch/i.test(message);
+    if (staleChunk && !sessionStorage.getItem(LAZY_RETRY_KEY)) {
+      sessionStorage.setItem(LAZY_RETRY_KEY, '1');
+      window.location.reload();
+      // Ne revient jamais en service normal ; ce retour évite le type.
+      return { Component: (() => null) as React.ComponentType };
+    }
+    throw error;
+  }
+};
+const modeLoader = lazyWithRetry(() => import('./pages/ModeSelectionPage'));
+const hubLoader = lazyWithRetry(() => import('./pages/mj/HubMJPage'));
+const createMatchLoader = lazyWithRetry(() => import('./pages/mj/CreateMatchPage'));
+const createTournamentLoader = lazyWithRetry(() => import('./pages/mj/CreateTournamentPage'));
+const walletLoader = lazyWithRetry(() => import('./pages/WalletPage'));
+const profilLoader = lazyWithRetry(() => import('./pages/ProfilPage'));
+const classementsLoader = lazyWithRetry(() => import('./pages/ClassementsGateway'));
+const chatLoader = lazyWithRetry(() => import('./pages/ChatPage'));
+const parametresLoader = lazyWithRetry(() => import('./pages/ParametresPage'));
+const earningsLoader = lazyWithRetry(() => import('./pages/EarningsDashboard'));
+const matchDetailLoader = lazyWithRetry(() => import('../features/match/pages/MatchDetailPage'));
+const tournoisLoader = lazyWithRetry(() => import('../features/tournament/pages/TournoisPage'));
+const bracketLoader = lazyWithRetry(() => import('../features/tournament/pages/TournamentBracketPage'));
+const leagueLoader = lazyWithRetry(() => import('../features/league/pages/LeaguePage'));
+const leagueSeasonLoader = lazyWithRetry(() => import('../features/league/pages/LeagueSeasonPage'));
+const brLoader = lazyWithRetry(() => import('../features/br/pages/BrPage'));
+const brLobbyLoader = lazyWithRetry(() => import('../features/br/pages/BrLobbyDetailPage'));
+const leaksLoader = lazyWithRetry(() => import('./pages/LeaksPage'));
+const adminLoader = lazyWithRetry(() => import('./pages/AdminDashboardPage'));
+const publicProfilLoader = lazyWithRetry(() => import('./pages/PublicProfilPage'));
 
 export const router = createBrowserRouter([
   {

@@ -17,13 +17,15 @@
  * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React from 'react';
-import { Outlet, Navigate } from 'react-router';
+import { Outlet, Navigate, useLocation } from 'react-router';
+import { AnimatePresence, motion } from 'motion/react';
 import { Navbar } from '../components/layout/Navbar';
 import { Sidebar } from '../components/layout/Sidebar';
 import { BottomNav } from '../components/layout/BottomNav';
 import { useRealtimeHeartbeat } from '../hooks/useRealtimeHeartbeat';
 import { useAuthStore } from '../stores/authStore';
 import { IntegrityCovenantModal } from '../components/integrity/IntegrityCovenantModal';
+import { pageTransition, pageTransitionProps } from '../../lib/motion';
 
 interface AppLayoutProps {
   requireAdmin?: boolean;
@@ -34,6 +36,7 @@ const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const user = useAuthStore((s) => s.user);
+  const location = useLocation();
 
   const isAdmin = user?.role === 'admin';
 
@@ -78,7 +81,19 @@ const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
             inputs, grilles) étire main au-delà du viewport (flex item min-width:auto).
             Avec overflow-x-clip, ça ne scrollait pas — mais le contenu était rogné. */}
         <main id="main-content" className="flex-1 min-w-0 pb-24 md:pb-4 overflow-x-clip">
-          {children ?? <Outlet />}
+          {/* Transition de page (fade + montée 10 px) : sans elle, chaque
+              navigation remplaçait l'écran d'un bloc — perceptible comme un
+              flash. Clé = pathname : la page sortante fade-out pendant
+              que la suivante monte, sans mode="wait" (pas de latence). */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              {...pageTransitionProps}
+              variants={pageTransition}
+            >
+              {children ?? <Outlet />}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
       <BottomNav />

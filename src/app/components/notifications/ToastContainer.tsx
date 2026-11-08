@@ -20,6 +20,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle, AlertTriangle, XCircle, Info, X, ExternalLink } from 'lucide-react';
 import { useToastStore } from '../../stores/toastStore';
 import type { ToastType } from '../../stores/toastStore';
+import { MOTION_SPRING } from '../../../lib/motion';
 
 const toastConfig: Record<ToastType, { icon: React.ReactNode; border: string; bg: string; text: string }> = {
   success: {
@@ -68,7 +69,7 @@ const ToastContainer: React.FC = () => {
               initial={{ opacity: 0, x: 60, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 40, scale: 0.9 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              transition={MOTION_SPRING}
               className={`relative border ${cfg.border} ${cfg.bg} backdrop-blur-sm p-4 shadow-lg shadow-black/40`}
               role="alert"
             >

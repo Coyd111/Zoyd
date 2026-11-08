@@ -144,6 +144,7 @@
   }
   .animate-marquee {
     animation: marquee 20s linear infinite;
+    will-change: transform;
   }
 
   /* Mobile scrollbar hide */

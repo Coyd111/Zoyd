@@ -23,6 +23,7 @@ import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../lib/utils';
 import { motion } from 'motion/react';
+import { MOTION_SPRING } from '../../../lib/motion';
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 font-display font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]',
@@ -85,7 +86,12 @@ const Button = ({
 
   if (animate) {
     return (
-      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={fullWidth ? 'w-full' : 'inline-block'}>
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={MOTION_SPRING}
+        className={cn(fullWidth ? 'w-full' : 'inline-block', 'will-change-transform')}
+      >
         {buttonContent}
       </motion.div>
     );

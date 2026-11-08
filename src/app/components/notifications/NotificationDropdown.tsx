@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Check, Trash2, X, Swords, Trophy, UserPlus, AlertTriangle, Wallet, ShieldCheck, Clock } from 'lucide-react';
 import { useNotificationStore, type Notification, type NotificationType, selectUnreadCount } from '../../stores/notificationStore';
 import { useServiceWorker } from '../../hooks/useServiceWorker';
+import { MOTION_DURATION, MOTION_EASE } from '../../../lib/motion';
 
 const SAFE_PROTOCOLS = ['https:', 'http:'];
 
@@ -100,7 +101,7 @@ export const NotificationDropdown: React.FC = () => {
             initial={{ opacity: 0, y: -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: MOTION_DURATION.fast, ease: [...MOTION_EASE] }}
             className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[calc(100vw-2rem)] sm:max-w-[380px] bg-zoyd-black border border-white/10 shadow-2xl shadow-black/80 z-50"
           >
             {/* HEADER */}

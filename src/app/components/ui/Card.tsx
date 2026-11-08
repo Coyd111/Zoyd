@@ -19,6 +19,7 @@
 import React from 'react';
 import { cn } from '../../../lib/utils';
 import { motion, type MotionProps } from 'motion/react';
+import { MOTION_DURATION, MOTION_EASE } from '../../../lib/motion';
 
 type NativeCardProps = React.HTMLAttributes<HTMLDivElement>;
 type MotionOverriddenKeys = Extract<keyof NativeCardProps, keyof MotionProps>;
@@ -48,7 +49,7 @@ const Card = ({ className, hover = false, animate = false, children, ref, ...pro
         className={cardClasses}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: MOTION_DURATION.base, ease: [...MOTION_EASE] }}
         {...props}
       >
         {children}

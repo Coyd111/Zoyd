@@ -22,6 +22,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import { MOTION_DURATION, MOTION_EASE } from '../../../lib/motion';
 
 interface ModalProps {
   isOpen: boolean;
@@ -101,6 +102,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: MOTION_DURATION.fast, ease: [...MOTION_EASE] }}
             onClick={onClose}
             // P13 C6 (audit-3) : `bg-zoyd-black-80` n'existe pas - aucun token
             // d'opacite dans theme.css (@theme inline, :25-33), la classe ne
@@ -117,7 +119,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: MOTION_DURATION.base, ease: [...MOTION_EASE] }}
               role="dialog"
               aria-modal="true"
               aria-labelledby={title ? 'modal-title' : undefined}

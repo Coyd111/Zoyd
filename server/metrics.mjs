@@ -62,6 +62,7 @@ export const incCounter = (name, labels = {}, amount = 1) => {
 // ─── Gauges ──────────────────────────────────────────────────────────────────
 const gauges = new Map();
 const MAX_GAUGE_ENTRIES = 5000;
+const _setGaugeSeen = new Map();
 
 export const setGauge = (name, value, labels = {}) => {
   const key = name + '|' + JSON.stringify(labels);
@@ -72,6 +73,31 @@ export const setGauge = (name, value, labels = {}) => {
     }
   }
   gauges.set(key, { name, labels, value });
+  // Filet anti-séries figées (audit dette) : on retient les clés
+  // `zoyd_finance_debts_by_type` posées au DERNIER exposition, pour que
+  // le nettoyage puisse éjecter celles qui ont disparu du résumé
+  // (une dette résolue laissait sa jauge à l'ancienne valeur).
+  if (name === 'zoyd_finance_debts_by_type') {
+    _setGaugeSeen.set(name, (_setGaugeSeen.get(name) || new Set()).add(key));
+  }
+};
+
+/**
+ * Éjecte les séries finance `byType` qui ne sont plus dans le résumé :
+ * sans cela, un type résolu reste figé à l'ancienne valeur pour toujours
+ * et l'alerte Prometheus ne se résout jamais.
+ * À appeler par le producteur de la série (routes/public.mjs /metrics).
+ */
+export const clearStaleFinanceTypeGauges = (currentByType = {}) => {
+  const seen = _setGaugeSeen.get('zoyd_finance_debts_by_type') || new Set();
+  const currentKeys = new Set(
+    Object.keys(currentByType || {}).map((type) => `zoyd_finance_debts_by_type|${JSON.stringify({ type })}`),
+  );
+  for (const key of seen) {
+    if (!currentKeys.has(key)) gauges.delete(key);
+  }
+  // Remplace le seen par les clés courantes (repart du cycle suivant).
+  _setGaugeSeen.set('zoyd_finance_debts_by_type', currentKeys);
 };
 
 export const incGauge = (name, labels = {}, amount = 1) => {

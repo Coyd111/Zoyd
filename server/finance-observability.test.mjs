@@ -178,4 +178,29 @@ describe('summarizeFinanceDebts', () => {
     expect(FINANCE_STALE_MS).toBe(6 * 60 * 60 * 1000);
     expect(FINANCE_CRITICAL_MS).toBe(24 * 60 * 60 * 1000);
   });
+
+  it('les dettes refund portent amount (ecriture reelle des moteurs)', () => {
+    // Formes émises par cancelStaleLeagueSeasonOnServer /
+    // cancelTournoiOnServer après correctif : amount = pass verrouillé.
+    const { summary, debts } = collectFinanceDebts({
+      matches: [], brLobbies: [],
+      tournaments: [{
+        id: 'T-REF', name: 'Cup',
+        pendingRefunds: [{ userId: 'u1', entryId: 'e1', amount: 100, lastError: 'X', at: isoH(2) }],
+        uncollectableRefunds: [{ userId: 'u2', entryId: 'e2', amount: 100, reason: 'ACCOUNT_DELETED', at: isoH(2) }],
+        updatedAt: isoH(2),
+      }],
+      leagues: [{
+        id: 'L-REF',
+        pendingRefunds: [{ userId: 'u3', pseudo: 'a', amount: 50, lastError: 'X', at: isoH(1) }],
+        uncollectableRefunds: [{ userId: 'u4', pseudo: 'b', amount: 50, reason: 'ACCOUNT_DELETED', at: isoH(1) }],
+        updatedAt: isoH(1),
+      }],
+      listUserIds: () => [], getWallet: () => undefined, nowMs: NOW,
+    });
+    expect(debts.filter((d) => String(d.type).includes('refund')).map((d) => d.amountZC)).toEqual(expect.arrayContaining([100, 50]));
+    // 2 dettes tournoi (100+100) + 2 dettes ligue (50+50) = 300 ZC, plus 0.
+    expect(summary.totalZC).toBe(300);
+    expect(summary.uncollectableCount).toBe(2);
+  });
 });

@@ -81,7 +81,7 @@ import {
 import { getPublicMatchesForUser } from '../match-engine.mjs';
 // La finance reste exposee sur `/metrics` (jeton), pas sur la sante.
 import { collectFinanceDebts } from '../finance-observability.mjs';
-import { metricsToPrometheus, setGauge } from '../metrics.mjs';
+import { metricsToPrometheus, setGauge, clearStaleFinanceTypeGauges } from '../metrics.mjs';
 import { channels } from '../channel-presence.mjs';
 import {
   getStoredTournaments,
@@ -411,6 +411,10 @@ if (req.method === 'GET' && pathname === '/metrics') {
     for (const [type, n] of Object.entries(finance.byType || {})) {
       setGauge('zoyd_finance_debts_by_type', n, { type });
     }
+    // Purge des séries résolues : sans cela, `zoyd_finance_debts_by_type`
+    // reste figé à l'ancienne valeur après résolution (alerte qui ne
+    // se résout jamais).
+    clearStaleFinanceTypeGauges(finance.byType || {});
   }
   const body = metricsToPrometheus();
   res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });

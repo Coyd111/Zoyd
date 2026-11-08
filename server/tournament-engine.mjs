@@ -1390,9 +1390,12 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
       refunded += 1;
     } catch (error) {
       // Compte supprime : dette impossible a honorer, close separement.
+      // `amount` = le pass verrouille (le collector ne lit que
+      // amount|amountZC|value : sans lui la dette valait 0 ZC).
+      const fee = roundAmount(Number(tournament.entryFee || 0));
       if (isUnrecoverableRefundError(error)) {
         log.error('Tournament refund impossible: compte supprime, dette close', { tournamentId, userId: target.userId });
-        uncollectable.push({ userId: target.userId, entryId: target.entryId, reason: 'ACCOUNT_DELETED', at: getNow() });
+        uncollectable.push({ userId: target.userId, entryId: target.entryId, amount: fee, reason: 'ACCOUNT_DELETED', at: getNow() });
         continue;
       }
       // NE PAS perdre la trace : l'entrée reste dans pendingRefunds et le
@@ -1400,7 +1403,7 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
       // `entries = []` détruisait la preuve de la dette : les ZC restaient
       // bloqués dans lockedEntries sans aucun chemin pour les libérer.
       log.error('Tournament refund failed', { tournamentId, userId: target.userId, error: error.message });
-      failedRefunds.push({ userId: target.userId, entryId: target.entryId, lastError: error.message, at: getNow() });
+      failedRefunds.push({ userId: target.userId, entryId: target.entryId, amount: fee, lastError: error.message, at: getNow() });
     }
   }
 
@@ -1459,7 +1462,7 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
         // `pendingRefunds` la rejouerait a chaque cycle, pour toujours.
         if (isUnrecoverableRefundError(error)) {
           log.error('Tournament refund abandon: compte supprime, dette close', { tournamentId: tournament.id, userId: targetUserId });
-          uncollectable.push({ userId: targetUserId, entryId: item.entryId, reason: 'ACCOUNT_DELETED', at: getNow() });
+          uncollectable.push({ userId: targetUserId, entryId: item.entryId, amount: roundAmount(Number(item.amount ?? tournament.entryFee ?? 0)), reason: 'ACCOUNT_DELETED', at: getNow() });
           abandoned += 1;
           continue;
         }

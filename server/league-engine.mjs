@@ -1018,13 +1018,17 @@ export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason 
     } catch (error) {
       // Compte supprime : le remboursement est definitivement impossible. On
       // le trace separement plutot que de le laisser en reprise perpetuelle.
+      // Le montant confirme la dette dams l'observabilite : sans lui,
+      // `pendingRefunds` etait compte `amountZC: 0` (collector lit
+      // `amount|amountZC|value`).
+      const fee = roundAmount(Number(player?.entryFee ?? season?.entryFee ?? LEAGUE_ENTRY_FEE) || 0);
       if (isUnrecoverableRefundError(error)) {
         log.error('League refund impossible: compte supprime, dette close', { seasonId, userId, pseudo: player?.pseudo });
-        uncollectable.push({ userId, pseudo: player?.pseudo, reason: 'ACCOUNT_DELETED', at: getNow() });
+        uncollectable.push({ userId, pseudo: player?.pseudo, amount: fee, reason: 'ACCOUNT_DELETED', at: getNow() });
         continue;
       }
       log.error('League refund failed', { seasonId, userId, error: error.message });
-      failed.push({ userId, pseudo: player?.pseudo, lastError: error.message });
+      failed.push({ userId, pseudo: player?.pseudo, amount: fee, lastError: error.message, at: getNow() });
     }
   }
 
@@ -1078,7 +1082,7 @@ export const retryPendingLeagueRefunds = async (seasons) => {
         // `pendingRefunds` la rejouerait a chaque cycle, pour toujours.
         if (isUnrecoverableRefundError(error)) {
           log.error('League refund abandon: compte supprime, dette close', { seasonId: season.id, userId: item.userId });
-          uncollectable.push({ userId: item.userId, pseudo: item.pseudo, reason: 'ACCOUNT_DELETED', at: getNow() });
+          uncollectable.push({ userId: item.userId, pseudo: item.pseudo, amount: roundAmount(Number(item.amount ?? season.entryFee ?? LEAGUE_ENTRY_FEE) || 0), reason: 'ACCOUNT_DELETED', at: getNow() });
           abandoned += 1;
           continue;
         }

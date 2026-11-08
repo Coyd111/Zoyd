@@ -94,11 +94,22 @@ const readRawBody = async (req) => {
   return Buffer.concat(chunks);
 };
 
-/** Extrait l'entité (transaction ou payout) d'un événement vérifié. */
+/** Extrait l'entité (transaction ou payout) d'un événement vérifié.
+ *  `event.entity` peut être une chaîne ('transaction') — le vrai objet est
+ *  alors `event.object` (Event SDK). On ne prend que des objets. */
 export const extractWebhookEntity = (event) => {
   if (!event || typeof event !== 'object') return {};
-  const entity = event.entity || event.data?.entity || event.object || event.data || event;
-  return entity && typeof entity === 'object' ? entity : {};
+  const candidats = [
+    event.object,
+    event.entity,
+    event.data?.entity,
+    event.data,
+    event,
+  ];
+  for (const candidat of candidats) {
+    if (candidat && typeof candidat === 'object') return candidat;
+  }
+  return {};
 };
 
 /** Nom canonique de l'événement (FedaPay : `transaction.approved`...). */

@@ -327,18 +327,21 @@ const LeaksPage: React.FC = () => {
 
         {/* Live Data Tabs */}
         <div className="mb-12 border border-white/10 bg-zoyd-surface/30">
-          <div className="flex border-b border-white/5">
-            {([
-              { id: 'bundles' as LiveTab, label: 'BOUTIQUE CODM', icon: ShoppingBag, badge: bundles.length > 0 ? bundles.length : undefined },
-              { id: 'armes' as LiveTab, label: 'BASE ARMES', icon: Swords, badge: String(TOTAL_WEAPONS) },
-            ]).map((tab) => {
+          <div className="relative">
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-zoyd-black to-transparent z-10" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-zoyd-black to-transparent z-10" />
+            <div className="flex border-b border-white/5 overflow-x-auto scrollbar-hide">
+              {([
+                { id: 'bundles' as LiveTab, label: 'BOUTIQUE CODM', icon: ShoppingBag, badge: bundles.length > 0 ? bundles.length : undefined },
+                { id: 'armes' as LiveTab, label: 'BASE ARMES', icon: Swords, badge: String(TOTAL_WEAPONS) },
+              ]).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeLiveTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveLiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
+                  className={`flex flex-none items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
                     isActive
                       ? 'bg-white text-black border-white'
                       : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
@@ -354,6 +357,7 @@ const LeaksPage: React.FC = () => {
                 </button>
               );
             })}
+            </div>
           </div>
 
           {activeLiveTab === 'bundles' && (
@@ -491,7 +495,7 @@ const LeaksPage: React.FC = () => {
               const isActive = activeCategory === cat.id;
               return (
                 <button key={cat.id} role="tab" aria-selected={isActive} onClick={() => setActiveCategory(cat.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
+                  className={`flex flex-none items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
                     isActive ? 'bg-white text-black border-white' : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
                   }`}><Icon className="w-4 h-4" />{cat.label}</button>
               );

@@ -345,7 +345,7 @@ const ClassementsPage: React.FC = () => {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
+                  className={`flex flex-none items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
                     isActive
                       ? 'bg-white text-black border-white'
                       : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'

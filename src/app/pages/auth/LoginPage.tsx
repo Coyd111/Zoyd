@@ -319,12 +319,11 @@ cancelled = true;
             </div>
 
             <div className="grid grid-cols-1 gap-3">
-              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest cursor-not-allowed">
-                CONTINUER AVEC GOOGLE — BIENTÔT DISPONIBLE
-              </Button>
-              <Button type="button" variant="ghost" fullWidth disabled className="border-white/5 text-white/60 font-mono text-[10px] tracking-widest cursor-not-allowed">
-                CONNEXION PAR NUMÉRO — BIENTÔT DISPONIBLE
-              </Button>
+              <div className="border border-white/5 px-4 py-3 text-center">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-white/50">
+                  Connexion par Google ou numéro : bientôt disponible — email + mot de passe pour l&apos;instant
+                </span>
+              </div>
             </div>
           </form>
 

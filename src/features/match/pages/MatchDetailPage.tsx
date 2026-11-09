@@ -50,6 +50,7 @@ import {
   toggleServerReady,
 } from '../../../app/lib/matchApi';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
+import { ApiError } from '../../../app/lib/apiClient';
 import { useAuthStore, type User } from '../../../app/stores/authStore';
 import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { useMatchStore, type DisputeCategory, type Match } from '../../../app/stores/matchStore';
@@ -228,8 +229,13 @@ const MatchDetailPage: React.FC = () => {
   const statusLabel = match ? MATCH_STATUS_COPY[match.status].label : '';
   const canJoinAsPlayer = !!match && !!user && !currentPlayer && !isArbiter && !CLOSED_STATUSES.includes(match.status);
   const canJoinArbiterSlot = !!match && !!user && canJoinAsArbiter(match.id);
-  const canCheckIn = !!match && !!currentPlayer && ['full', 'check_in', 'ready'].includes(match.status);
-  const canToggleReady = !!match && !!currentPlayer && currentPlayer.isCheckedIn && ['check_in', 'ready'].includes(match.status);
+  // Miroir exact du serveur (checkIn/toggleReady refusent seulement
+  // MATCH_CLOSED / awaiting_confirmation). L'ancienne liste
+  // `full/check_in/ready` interdisait presence+ready en `recruiting` et
+  // `awaiting_arbiter` — deadlock UI : aucun bouton n'etait cliquable
+  // alors que l'API repondait 200.
+  const canCheckIn = !!match && !!currentPlayer && !CLOSED_STATUSES.includes(match.status) && match.status !== 'awaiting_confirmation';
+  const canToggleReady = !!match && !!currentPlayer && currentPlayer.isCheckedIn && !CLOSED_STATUSES.includes(match.status) && match.status !== 'awaiting_confirmation';
   // P13 C2 (audit-3) : la salle est livree par destinataire (`match.room`) ;
   // le serveur exige LUI AUSSI la salle au lancement (MATCH_NOT_READY).
   const canLaunch = !!match && isArbiter && !!match.room?.name && !!match.room?.password && match.players.every((player) => player.isCheckedIn && player.isReady);
@@ -253,15 +259,17 @@ const MatchDetailPage: React.FC = () => {
     && !matchIsClosed
     && !match.startedAt
     && !match.result;
-  // Annulation createur : tant qu un autre joueur n a pas pose son pass,
-  // le roster ne porte que le createur. Le serveur tranche au juste
-  // (OPPONENTS_PRESENT) : un joueur peut s inscrire entre le rendu et le
-  // clic, le bouton ne garantit rien de plus que sa garde serveur.
+  // Annulation createur : le serveur rembourse PRESQUE tout le roster
+  // (createur + adversaires) tant que le match n'est pas lance. Avant,
+  // le bouton disparaissait des qu'un adversaire avait pose son pass
+  // (`players.length <= 1`), ce qui se lisait « aucun moyen d annuler ».
+  // Le serveur garde la vraie garde (pas lance / pas de resultat /
+  // pas de litige) : l'UI propose donc l'annulation des que le
+  // createur est seul a decider.
   const canCancelSelfMatch = !!match && creatorIsMe
     && !matchIsClosed
     && !match.startedAt
-    && !match.result
-    && match.players.length <= 1;
+    && !match.result;
   // On ne pretend pas qu'un litige est possible : on dit ce qui est possible.
   const closedRecourseMessage = matchIsClosed
     ? (match?.result
@@ -410,6 +418,14 @@ const MatchDetailPage: React.FC = () => {
       applyMatchResponse(response);
       toast.success("Place d'arbitre réservée. Tu peux maintenant gérer la salle du match.");
     } catch (error) {
+      // Compte admin : `require2faIfAdmin` exige une 2FA fraîche. L'erreur
+      // « Verification 2FA requise » seul est incompréhensible : on dit
+      // explicitement quoi faire, et où.
+      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+        toast.error('Mode admin : active la 2FA dans Paramètres > Sécurité, puis reviens postuler.');
+        navigate('/parametres');
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "La place d'arbitre n'est plus disponible.");
     }
   }, [user, navigate, match?.id, applyMatchResponse]);

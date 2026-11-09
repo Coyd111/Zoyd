@@ -70,6 +70,8 @@ interface MatchFormData {
   meleeAllowed: boolean;
   isPrivate: boolean;
   creatorTeam: number;
+  /** Role du createur : joueur (pass bloque) ou arbitre (aucun pass). */
+  creatorRole: 'player' | 'arbiter';
 }
 
 const CreateMatchPage: React.FC = () => {
@@ -92,6 +94,7 @@ const CreateMatchPage: React.FC = () => {
       bestOf: 3,
       isPrivate: false,
       creatorTeam: 0,
+      creatorRole: 'player',
       pointstreaks: 'restricted',
       operatorSkills: 'restricted',
       timeLimitMinutes: undefined,
@@ -101,6 +104,8 @@ const CreateMatchPage: React.FC = () => {
   });
 
   const selectedPass = Number(watch('passAmount') || 0);
+  const selectedCreatorRole = watch('creatorRole');
+  const isArbiterCreator = selectedCreatorRole === 'arbiter';
   const selectedCreatorTeam = Number(watch('creatorTeam') || 0);
   // P3 : la convention "picks en alternance" ne concerne que les BO3+.
   const bestOfValue = Number(watch('bestOf') || 1);
@@ -202,7 +207,9 @@ const CreateMatchPage: React.FC = () => {
       return;
     }
 
-    if (selectedPass > availableSpend) {
+    // Un créateur-arbitre ne bloque aucun pass : le garde de solde
+    // ne s'applique qu'au joueur.
+    if (selectedCreatorRole === 'player' && selectedPass > availableSpend) {
       toast.error("Solde insuffisant. Recharge d'abord ton portefeuille pour engager ton pass.");
       navigate(
         buildFundingPath({
@@ -235,6 +242,7 @@ const CreateMatchPage: React.FC = () => {
           : undefined;
       const response = await createServerMatch({
         creatorTeam: Number(getValues('creatorTeam') || 0) === 1 ? 1 : 0,
+        creatorRole: getValues('creatorRole') === 'arbiter' ? 'arbiter' : 'player',
         format: selectedFormat,
         entryFee: Number(getValues('passAmount') || 0),
         visibility: getValues('isPrivate') ? 'private' : 'public',
@@ -634,26 +642,56 @@ const CreateMatchPage: React.FC = () => {
                           </select>
                         </div>
 
+                        {/* Choix du rôle : joueur (pass bloqué) ou arbitre
+                            (aucun pass). En mode arbitre, le champ équipe
+                            disparaît : il n'y a aucun slot à prendre. */}
                         <div>
                           <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
-                            Ton équipe
+                            Ton rôle
                           </label>
-                          <div id="team-group" role="radiogroup" aria-label="Sélection de l'équipe" className="grid grid-cols-2 gap-2">
-                            {TEAM_OPTIONS.map((team) => (
+                          <div id="role-group" role="radiogroup" aria-label="Sélection du rôle" className="grid grid-cols-2 gap-2">
+                            {([
+                              { label: 'Joueur', value: 'player' as const, desc: 'Tu bloques ton pass et tu joues.' },
+                              { label: 'Arbitre', value: 'arbiter' as const, desc: 'Tu arbitres, tu ne paies pas.' },
+                            ]).map((role) => (
                               <button
-                                key={team.value}
+                                key={role.value}
                                 type="button"
                                 role="radio"
-                                aria-checked={selectedCreatorTeam === team.value}
-                                aria-label={`Équipe ${team.label}`}
-                                onClick={() => setValue('creatorTeam', team.value)}
-                                className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
+                                aria-checked={selectedCreatorRole === role.value}
+                                aria-label={`Rôle ${role.label}`}
+                                onClick={() => setValue('creatorRole', role.value)}
+                                className={`p-4 border text-left font-display font-black italic uppercase transition-all ${selectedCreatorRole === role.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
                               >
-                                {team.label}
+                                {role.label}
+                                <span className="block mt-1 text-[9px] font-mono font-bold uppercase tracking-widest opacity-70">{role.desc}</span>
                               </button>
                             ))}
                           </div>
                         </div>
+
+                        {!isArbiterCreator && (
+                          <div>
+                            <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
+                              Ton équipe
+                            </label>
+                            <div id="team-group" role="radiogroup" aria-label="Sélection de l'équipe" className="grid grid-cols-2 gap-2">
+                              {TEAM_OPTIONS.map((team) => (
+                                <button
+                                  key={team.value}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={selectedCreatorTeam === team.value}
+                                  aria-label={`Équipe ${team.label}`}
+                                  onClick={() => setValue('creatorTeam', team.value)}
+                                  className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
+                                >
+                                  {team.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <label htmlFor="isPrivate" className="flex items-center gap-4 cursor-pointer group">
                           <div className="w-5 h-5 border-2 border-white/20 flex items-center justify-center group-hover:border-zoyd-blue transition-colors">
@@ -711,7 +749,8 @@ const CreateMatchPage: React.FC = () => {
                       formatTimeLimit(Number(getValues('timeLimitMinutes') || 0) * 60, rulePreset?.timeLimitScope) || 'Libre'
                     }
                   />
-                  <SummaryBox label="Ton équipe" value={selectedCreatorTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} />
+                  {isArbiterCreator ? null : <SummaryBox label="Ton équipe" value={selectedCreatorTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} />}
+                  <SummaryBox label="Ton rôle" value={isArbiterCreator ? 'Arbitre (sans pass)' : 'Joueur (pass bloqué)'} />
                   <SummaryBox label="Visibilité" value={getValues('isPrivate') ? 'Privé' : 'Public'} />
                 </div>
 
@@ -742,12 +781,14 @@ const CreateMatchPage: React.FC = () => {
         >
           <div className="space-y-5">
             <p className="text-sm text-white/70">
-              Tu vas bloquer ton pass dès la mise en ligne. Vérifie les montants avant de publier.
+              {isArbiterCreator
+                ? 'En tant que créateur-arbitre, tu ne bloques aucun pass. Les joueurs paieront leur droit d\'entrée à la jointure.'
+                : 'Tu vas bloquer ton pass dès la mise en ligne. Vérifie les montants avant de publier.'}
             </p>
             <dl className="border border-white/10 bg-black/40 divide-y divide-white/5 text-sm">
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/75">Pass bloqué</dt>
-                <dd className="font-display font-black text-zoyd-yellow">{selectedPass.toFixed(1)} ZC</dd>
+                <dt className="text-white/75">{isArbiterCreator ? 'Ton rôle' : 'Pass bloqué'}</dt>
+                <dd className="font-display font-black text-zoyd-yellow">{isArbiterCreator ? 'ARBITRE' : `${selectedPass.toFixed(1)} ZC`}</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
                 <dt className="text-white/75">Cagnotte totale ({playerSlots} joueurs)</dt>

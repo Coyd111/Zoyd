@@ -184,12 +184,23 @@ describe('Annulation volontaire par le createur (cancel self)', () => {
     expect(res.matches[0].finishedAt).toBeTruthy();
   });
 
-  it('refuse si un autre joueur a pose un pass : OPPONENTS_PRESENT, rien ne bouge', async () => {
-    await expect(cancelMatchSelfOnServer([matchSquelette()], { id: 'createur' }, 'M-1')).rejects.toMatchObject({
-      code: 'OPPONENTS_PRESENT',
-    });
+  // ETENDUE (2026-11-09) : meme avec un adversaire, le createur peut
+  // annuler pre-lancement — TOUS les passes sont rembourses.
+  it('annule et rembourse TOUT le monde quand un adversaire a pose son pass', async () => {
+    const res = await cancelMatchSelfOnServer([matchSquelette()], { id: 'createur' }, 'M-1');
 
-    // Le match reste vivant, aucun remboursement n a eu lieu.
+    expect(rembourses).toEqual([
+      { userId: 'createur', matchId: 'M-1', raison: 'Annulation volontaire du match M-1' },
+      { userId: 'p-2', matchId: 'M-1', raison: 'Annulation volontaire du match M-1' },
+    ]);
+    expect(res.matches[0].status).toBe('cancelled');
+  });
+
+  it('refuse un match deja lance (MATCH_ALREADY_STARTED), sans remboursement', async () => {
+    const lance = { ...matchSquelette(), startedAt: new Date().toISOString() };
+    await expect(cancelMatchSelfOnServer([lance], { id: 'createur' }, 'M-1')).rejects.toMatchObject({
+      code: 'MATCH_ALREADY_STARTED',
+    });
     expect(rembourses).toHaveLength(0);
   });
 

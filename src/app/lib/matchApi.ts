@@ -51,6 +51,8 @@ interface MatchListResponse {
 
 export interface CreateMatchPayload {
   creatorTeam?: 0 | 1;
+  /** Role du créateur : `player` (pass bloqué) ou `arbiter` (créateur-arbitre). */
+  creatorRole?: 'player' | 'arbiter';
   format?: string;
   entryFee?: number;
   visibility?: 'public' | 'private';

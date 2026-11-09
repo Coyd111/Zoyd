@@ -20,7 +20,7 @@ vi.mock('./wallet-engine.mjs', () => ({
 
 import * as matchEngine from './match-engine.mjs';
 import { getUserById } from './persistence.mjs';
-import { lockEntryFee, releaseWalletWinnings, settleMatchLossWallet } from './wallet-engine.mjs';
+import { lockEntryFee, refundLockedEntry, releaseWalletWinnings, settleMatchLossWallet } from './wallet-engine.mjs';
 
 describe('match-engine - XP Progression', () => {
   it('should add XP and stay at same level when below threshold', () => {
@@ -124,6 +124,33 @@ describe('match-engine - createMatchOnServer : creatorTeam borne a {0,1}', () =>
       format: '1VS1', entryFee: 10,
     });
     expect(match.players[0].team).toBe(0);
+  });
+
+  it('createur-arbitre : aucun pass bloque, place d arbitre occupee', async () => {
+    const { match } = await matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '2VS2', entryFee: 100, creatorRole: 'arbiter',
+    });
+    expect(match.creatorRole).toBe('arbiter');
+    expect(match.arbiter.userId).toBe(creator.id);
+    expect(match.players).toHaveLength(0);
+    expect(lockEntryFee).not.toHaveBeenCalled();
+  });
+
+  it('annulation createur avec adversaire : tous les passes rembourses', async () => {
+    const { match } = await matchEngine.createMatchOnServer([], { id: creator.id }, {
+      format: '1VS1', entryFee: 100,
+    });
+    const withOpponent = {
+      ...match,
+      players: [
+        match.players[0],
+        { userId: 'opp-1', pseudo: 'Opp', team: 1, joinedAt: '2026-01-01T00:00:00Z', trustScore: 100, isReady: false, isCheckedIn: false, isCaptain: true },
+      ],
+    };
+    const out = await matchEngine.cancelMatchSelfOnServer([withOpponent], { id: creator.id }, match.id);
+    expect(out.match.status).toBe('cancelled');
+    // Les deux joueurs (createur + adversaire) ont ete rembourses via le helper.
+    expect(lockEntryFee).toHaveBeenCalledTimes(1);
   });
 });
 

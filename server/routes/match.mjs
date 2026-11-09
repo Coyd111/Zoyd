@@ -112,6 +112,10 @@ if (req.method === 'POST' && pathname === '/api/matches') {
       respondJson(res, 400, { ok: false, error: 'entryFee doit être un nombre positif.', code: 'INVALID_ENTRY_FEE' });
       return true;
     }
+    if (body.creatorRole !== undefined && body.creatorRole !== 'player' && body.creatorRole !== 'arbiter') {
+      respondJson(res, 400, { ok: false, error: 'creatorRole invalide (player ou arbiter).', code: 'INVALID_CREATOR_ROLE' });
+      return true;
+    }
     // Le tarif est arrondi a 2 decimales AVANT tout calcul de pot.
     //
     // Meme raison que pour les tournois : le pot est un produit (entryFee x

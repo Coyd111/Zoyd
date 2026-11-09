@@ -718,17 +718,27 @@ export const createMatchOnServer = async (matches, actor, input) => {
   if (creatorTeam !== 0 && creatorTeam !== 1) {
     throw makeError('INVALID_TEAM', 'L\'equipe du createur est limitee a 0 ou 1.');
   }
+  // Role du createur (2026-11-09) : `player` (defaut, pass bloque) ou
+  // `arbiter` (ne paie aucun pass, occupe la place d'arbitre des la
+  // creation). Sans ce choix, impossible de creer un match qu'on arbitre
+  // soi-meme. L'arbitrage reste verifie par le moteur (`arbiter` present).
+  const creatorRole = input.creatorRole === 'arbiter' ? 'arbiter' : 'player';
 
   const matchId = `M-${Date.now().toString(36).toUpperCase()}`;
   const maxPlayers = teamSize * 2;
   const prizePool = roundAmount(input.entryFee * maxPlayers);
 
-  await lockEntryFee(actorUser.id, input.entryFee, matchId);
+  if (creatorRole === 'player') {
+    await lockEntryFee(actorUser.id, input.entryFee, matchId);
+  }
+  // Arbitre-createur : aucun pass n'est bloque (le pot se formera quand
+  // les joueurs paieront leur droit d'entree).
 
   const match = {
     id: matchId,
     creatorId: actorUser.id,
     creatorPseudo: actorUser.pseudo,
+    creatorRole,
     format: input.format,
     teamSize,
     maxPlayers,
@@ -746,21 +756,32 @@ export const createMatchOnServer = async (matches, actor, input) => {
     deviceRestriction: input.deviceRestriction || 'open',
     controllerRestriction: input.controllerRestriction || 'open',
     status: 'recruiting',
-    players: [
-      {
-        userId: actorUser.id,
-        pseudo: actorUser.pseudo,
-        team: creatorTeam,
-        joinedAt: getNow(),
-        trustScore: actorUser.trustScore,
-        rankMJ: actorUser.rankMJ,
-        controllerType: actorUser.controllerType,
-        device: actorUser.device,
-        isReady: false,
-        isCheckedIn: false,
-        isCaptain: true,
-      },
-    ],
+    arbiter: creatorRole === 'arbiter'
+      ? {
+          userId: actorUser.id,
+          pseudo: actorUser.pseudo,
+          assignedAt: getNow(),
+          trustScore: actorUser.trustScore,
+          hasSubmittedResult: false,
+        }
+      : undefined,
+    players: creatorRole === 'player'
+      ? [
+          {
+            userId: actorUser.id,
+            pseudo: actorUser.pseudo,
+            team: creatorTeam,
+            joinedAt: getNow(),
+            trustScore: actorUser.trustScore,
+            rankMJ: actorUser.rankMJ,
+            controllerType: actorUser.controllerType,
+            device: actorUser.device,
+            isReady: false,
+            isCheckedIn: false,
+            isCaptain: true,
+          },
+        ]
+      : [],
     disputes: [],
     chatChannelId: `match-${matchId}`,
     channelId: `match-${matchId}`,
@@ -1660,14 +1681,21 @@ export const cancelMatchSelfOnServer = async (matches, actor, matchId) => {
   if ((match.disputes || []).some((dispute) => dispute.status === 'open' || dispute.status === 'under_review')) {
     throw makeError('MATCH_DISPUTED', 'Un litige est ouvert : seule l administration peut trancher.');
   }
-  // Garde centrale : des qu un autre joueur a pose un pass, l annulation
-  // volontaire se ferme. L appelant recoit OPPONENTS_PRESENT et le match
-  // reste vivant — aucun remboursement n a encore eu lieu.
-  if (match.players.some((player) => player.userId !== actorUser.id)) {
-    throw makeError('OPPONENTS_PRESENT', 'Des joueurs ont rejoint ton match : leur pass est engage, demande a la moderation pour solder.');
+  // Annulation createur ETENDUE (2026-11-09) : tant que le match n'est
+  // pas lance et sans resultat, le createur peut annuler MEME si des
+  // adversaires ont pose leur pass — TOUS les passes sont alors
+  // rembourses integralement. Avant, un adversaire suffisait a fermer
+  // l'annulation (`OPPONENTS_PRESENT`) : le createur etait reste bloque
+  // sur un match qu'il ne pouvait ni annuler ni lancer (sans arbitre).
+  // Garde conservee : lance / resultat / litige ouvert restent associes a
+  // la moderation (le coté money a deja tourne ou est conteste).
+  if (match.startedAt) {
+    throw makeError('MATCH_ALREADY_STARTED', 'Le match est deja lance : l annulation n est plus possible.');
   }
-
-  await refundLockedEntry(actorUser.id, match.id, `Annulation volontaire du match ${match.id}`);
+  const echecs = await refundMatchPlayers(match, 'Annulation volontaire du match');
+  if (echecs.length > 0) {
+    throw makeError('REFUND_FAILED', `Remboursement incomplet (${echecs.length} joueur(s) en echec) : le match reste ouvert.`);
+  }
 
   match.status = 'cancelled';
   match.finishedAt = getNow();

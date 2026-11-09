@@ -30,15 +30,18 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Copy,
   ExternalLink,
   Flame,
   Gavel,
   Hourglass,
   PlusCircle,
+  Share,
   ShieldAlert,
   Trophy,
 } from 'lucide-react';
 import { formatZC } from '../../../lib/utils';
+import { toast } from '../../../app/lib/toast';
 import type { Match, MatchPlayer, DisputeCategory, Dispute } from '../../../app/stores/matchStore';
 import type { User } from '../../../app/stores/authStore';
 import { getArbiterFee } from '../../../lib/matchPayout';
@@ -245,6 +248,44 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
     <div className="p-6">
       <h2 className="text-lg font-display font-black uppercase italic mb-4">Entrer dans la partie</h2>
 
+      {user && (
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              const url = `${window.location.origin}/mj/match/${match.id}`;
+              try {
+                await navigator.clipboard.writeText(url);
+                toast.success('Lien du match copié — partage-le à ton adversaire.');
+              } catch {
+                toast.error('Copie impossible : sélectionne manuellement le lien.');
+              }
+            }}
+            className="w-full border border-white/15 text-white/70 py-3 font-display font-black uppercase tracking-widest text-xs italic hover:border-white/40 hover:text-white transition-colors inline-flex items-center justify-center gap-2"
+          >
+            <Copy className="w-4 h-4" /> COPIER LE LIEN
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              const url = `${window.location.origin}/mj/match/${match.id}`;
+              if (!navigator.share) {
+                toast.error('Partage natif indisponible ici : copie le lien.');
+                return;
+              }
+              try {
+                await navigator.share({ title: 'Match ZOYD', text: `Rejoins mon match ${match.format} sur ZOYD`, url });
+              } catch {
+                // annulé par l'utilisateur : rien à signaler
+              }
+            }}
+            className="w-full border border-white/15 text-white/70 py-3 font-display font-black uppercase tracking-widest text-xs italic hover:border-white/40 hover:text-white transition-colors inline-flex items-center justify-center gap-2"
+          >
+            <Share className="w-4 h-4" /> PARTAGER
+          </button>
+        </div>
+      )}
+
       {!user && (
         <div className="space-y-4">
           <p className="text-white/70 text-sm">
@@ -291,9 +332,16 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
       )}
 
       {user && canJoinArbiterSlot && (
-        <button onClick={handlers.joinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
-          POSTULER COMME ARBITRE (COMMISSION: {formatZC(getArbiterFee(match))})
-        </button>
+        <>
+          <button onClick={handlers.joinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
+            POSTULER COMME ARBITRE (COMMISSION: {formatZC(getArbiterFee(match))})
+          </button>
+          {user.role === 'admin' && (
+            <p className="mt-2 text-[10px] font-mono uppercase tracking-widest text-white/50">
+              Mode admin : la 2FA du compte est exigée avant de postuler (Paramètres &gt; Sécurité).
+            </p>
+          )}
+        </>
       )}
 
       {currentPlayer && (
@@ -748,6 +796,17 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               Ouvrir un litige
             </button>
           </div>
+        </div>
+      ) : match.status !== 'cancelled' && match.status !== 'finished' && match.status !== 'forfeited' && match.status !== 'archived' && match.result?.payoutDistributed !== true ? (
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <ShieldAlert className="w-4 h-4 text-zoyd-blue" />
+            <h2 className="text-lg font-display font-black uppercase italic text-white">Espace spectateur</h2>
+          </div>
+          <p className="text-sm text-white/60">
+            Tu n&apos;es ni joueur ni arbitre sur ce match : tu peux le suivre ici, mais rouvrir un litige
+            n&apos;est réserve qu&apos;aux joueurs et à l&apos;arbitre. Rejoins une équipe pour y participer.
+          </p>
         </div>
       ) : (
         <div className="p-6">

@@ -31,12 +31,34 @@ function excludeHeavyPublicDirs(dirs: string[]) {
   }
 }
 
+// Identifiant du build embarqué dans le bundle ET dans dist/version.json
+// (servi sans cache) : versionWatcher compare les deux et recharge en
+// silence quand Vercel a purgé les anciens chunks.
+const ZOYD_BUILD_ID =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+  process.env.ZOYD_BUILD_ID ||
+  Date.now().toString(36);
+
+function zoydVersionJson() {
+  return {
+    name: 'zoyd-version-json',
+    closeBundle() {
+      const out = path.resolve(import.meta.dirname, 'dist', 'version.json');
+      fs.writeFileSync(out, JSON.stringify({ buildId: ZOYD_BUILD_ID, ts: Date.now() }));
+    },
+  }
+}
+
 export default defineConfig({
+  define: {
+    __ZOYD_BUILD_ID__: JSON.stringify(ZOYD_BUILD_ID),
+  },
   plugins: [
     figmaAssetResolver(),
     react(),
     tailwindcss(),
     excludeHeavyPublicDirs(['raw_unity']),
+    zoydVersionJson(),
   ],
   resolve: {
     alias: {

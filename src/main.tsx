@@ -20,6 +20,7 @@ import { createRoot } from "react-dom/client";
 import { Component, type ReactNode } from "react";
 import App from "./app/App.tsx";
 import "./styles/index.css";
+import { startVersionWatcher } from "./lib/versionWatcher";
 
 class RootErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -60,3 +61,6 @@ createRoot(document.getElementById("root")!).render(
     </RootErrorBoundary>
   </StrictMode>
 );
+
+// Détection préventive d'un nouveau déploiement (voir versionWatcher).
+startVersionWatcher();

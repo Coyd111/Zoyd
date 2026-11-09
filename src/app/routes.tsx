@@ -22,6 +22,7 @@ import RootLayout from './layouts/RootLayout';
 import AuthLayout from './layouts/AuthLayout';
 import AppLayout from './layouts/AppLayout';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { isStaleChunkError, chunkRetryKey, reloadWithFreshBuild } from '../lib/buildVersion';
 
 // Critical pages loaded synchronously (landing + auth)
 import LoginPage from './pages/auth/LoginPage';
@@ -38,24 +39,27 @@ import MentionsPage from './pages/legal/MentionsPage';
 import JeuResponsablePage from './pages/legal/JeuResponsablePage';
 
 // Lazy page loaders — retry sur chunk périmé (déploiement entre le
-// chargement de la page et le premier rendu paresseux, ex. serment long
-// pendant un redéploiement Vercel : le hash du chunk a changé, l'ancien
-// `index.html` pointe dans le vide → 404 → RouteErrorBoundary).
-// Un rechargement frais récupère le nouvel index. Gardé à UN essai/session
-// pour ne jamais boucler.
-const LAZY_RETRY_KEY = 'zoyd_lazy_retry';
+// chargement de la page et le premier rendu paresseux : le hash du chunk a
+// changé, l'ancien `index.html` pointe dans le vide → 404 → RouteErrorBoundary).
+//
+// ANTI-RÉCURRENCE (corrige l'écran « UNE MISE À JOUR EST ARRIVÉE » dès le
+// 2e déploiement) : l'ancien garde `zoyd_lazy_retry = 1` par SESSION
+// bloquait tout retry après le premier déploiement. Désormais la clé est
+// PAR (build, chunk) et le rechargement contourne le cache : chaque nouveau
+// déploiement récupère un retry, sans boucler. En parallèle, versionWatcher
+// (/version.json) recharge préventivement avant le clic fautif.
 const lazyWithRetry = (loader: () => Promise<{ default: React.ComponentType }>) => async () => {
   try {
     const { default: Component } = await loader();
     return { Component };
   } catch (error) {
-    const message = error instanceof Error ? error.message : '';
-    const staleChunk = /chunk|dynamically imported|Failed to fetch/i.test(message);
-    if (staleChunk && !sessionStorage.getItem(LAZY_RETRY_KEY)) {
-      sessionStorage.setItem(LAZY_RETRY_KEY, '1');
-      window.location.reload();
-      // Ne revient jamais en service normal ; ce retour évite le type.
-      return { Component: (() => null) as React.ComponentType };
+    if (isStaleChunkError(error)) {
+      const key = chunkRetryKey(error);
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        reloadWithFreshBuild();
+        return { Component: (() => null) as React.ComponentType };
+      }
     }
     throw error;
   }

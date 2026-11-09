@@ -130,7 +130,7 @@ const AdminDashboardPage: React.FC = () => {
     setTwofaOpen(true);
   };
 
-  const reloadCommissions = async () => {
+  const reloadCommissions = async (allowPrompt = true) => {
     try {
       const data = await fetchAdminCommissions();
       setCommissions(data);
@@ -140,7 +140,10 @@ const AdminDashboardPage: React.FC = () => {
       // avec un texte générique réseau, alors qu'un simple « vérifier »
       // suffit — on ouvre donc le même invite que les autres actions,
       // et on rejoue la lecture après le code TOTP.
-      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+      // Sur le chargement initial (allowPrompt=false), on n'ouvre PAS la
+      // modale : la carte reste N/D avec un bouton explicite, mais l'admin
+      // ne se voit pas imposer un code dès l'arrivée.
+      if (allowPrompt && error instanceof ApiError && error.code === '2FA_REQUIRED') {
         openTwofaPrompt(() => reloadCommissions());
       }
       setCommissionsUnavailable(true);
@@ -157,7 +160,7 @@ const AdminDashboardPage: React.FC = () => {
 
   useEffect(() => {
     if (user?.role !== 'admin') return;
-    reloadCommissions();
+    reloadCommissions(false);
     void reloadReports();
   }, [user?.role]);
   const handleExportHistory = async (format: 'csv' | 'json') => {
@@ -452,6 +455,11 @@ const AdminDashboardPage: React.FC = () => {
             value={commissionsUnavailable ? 'N/D' : formatZC(commissions.arbiterPayouts)}
             hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau) — vérifie la 2FA pour recharger' : 'Part de cagnotte versée aux arbitres (sortie, pas revenu)'}
           />
+          {commissionsUnavailable && (
+            <button type="button" onClick={() => void reloadCommissions(true)} className="self-center border border-zoyd-yellow/40 px-4 py-2 text-[10px] font-display font-black uppercase tracking-widest text-zoyd-yellow hover:bg-zoyd-yellow hover:text-black transition-colors touch-target">
+              Vérifier la 2FA et recharger
+            </button>
+          )}
         </div>
 
         {/*

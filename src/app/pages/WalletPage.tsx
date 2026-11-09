@@ -38,7 +38,6 @@ import { getPayoutCountry, PAYOUT_COUNTRIES, isValidPhoneForCountry, phoneFormat
 import { ZC_TO_FCFA, formatZC, formatFCFA, getRelativeTime } from '../../lib/utils';
 import { getTransactionTypeLabel } from '../../lib/transactionLabels';
 import { ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
-import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 import { WithdrawalFeesNotice, useWithdrawalFeesNoticeDismissed } from '../components/wallet/WithdrawalFeesNotice';
 import { verifyFedaPayTransaction } from '../lib/walletApi';
 import { SEOHead } from '../components/SEOHead';
@@ -479,7 +478,7 @@ if (!payoutCountry) {
 
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <BalanceCard label="Solde dispo" numeric={spendableBalance} hint={`~ ${formatFCFA(spendableBalance)}`} accent />
-          <BalanceCard label="Cash retirable" numeric={cashBalance} hint="Pret au retrait" />
+          <BalanceCard label="Cash retirable" numeric={cashBalance} hint={cashBalance >= withdrawalMinAmount ? "Pret au retrait" : `Minimum ${formatZC(withdrawalMinAmount)} pour retirer`} />
           <BalanceCard label="En jeu" numeric={lockedBalance} hint="Parties et tournois en cours" />
           <BalanceCard label="Bonus ZC" numeric={bonusBalance} hint="Utilisable, non retirable" />
         </div>
@@ -832,7 +831,9 @@ const BalanceCard = React.memo(({ label, numeric, hint, accent = false }: { labe
       <CardTitle className="text-white/60 text-sm">{label}</CardTitle>
     </CardHeader>
     <CardContent>
-      <div className={`text-2xl sm:text-3xl md:text-4xl font-display font-black tabular-nums mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}><AnimatedNumber value={numeric} format={(v) => formatZC(v)} /></div>
+      {/* Solde en texte statique : AnimatedNumber animait depuis 0 après hydratation,
+          d'où "0 ZC / ~11 544 FCFA" transitoire vu en capture OpenCLI. */}
+      <div className={`text-2xl sm:text-3xl md:text-4xl font-display font-black tabular-nums mb-2 ${accent ? 'text-zoyd-yellow' : 'text-white'}`}>{formatZC(numeric)}</div>
       <div className="text-sm text-white/60">{hint}</div>
     </CardContent>
   </Card>

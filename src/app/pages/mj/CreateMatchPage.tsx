@@ -145,7 +145,11 @@ const CreateMatchPage: React.FC = () => {
   const livePot = useMemo(() => selectedPass * playerSlots, [playerSlots, selectedPass]);
   const arbiterShare = useMemo(() => livePot * ARBITER_FEE_RATE, [livePot]);
   const winnerShare = useMemo(() => Math.max(0, livePot - arbiterShare), [arbiterShare, livePot]);
-  const requiredTopUp = useMemo(() => getRequiredTopUp(selectedPass, availableSpend), [availableSpend, selectedPass]);
+  // Un arbitre ne paie rien : le requiredTopUp ne s'applique qu'au joueur.
+  const requiredTopUp = useMemo(
+    () => (isArbiterCreator ? 0 : getRequiredTopUp(selectedPass, availableSpend)),
+    [isArbiterCreator, availableSpend, selectedPass],
+  );
 
   const onStep1Submit = () => {
     if (!selectedFormat) {
@@ -734,7 +738,11 @@ const CreateMatchPage: React.FC = () => {
                 <div className="grid md:grid-cols-2 gap-4 mb-12">
                   <SummaryBox label="Format" value={selectedFormat || '-'} />
                   <SummaryBox label="Mode / carte" value={`${selectedGameMode || '-'} / ${selectedMap || '-'}`} />
-                  <SummaryBox label="Pass" value={`${selectedPass.toFixed(1)} ZC`} highlight />
+                  <SummaryBox
+                        label={isArbiterCreator ? 'Droit d\u2019entrée par joueur' : 'Ton pass'}
+                        value={`${selectedPass.toFixed(1)} ZC`}
+                        highlight
+                      />
                   <SummaryBox label="Solde dispo" value={`${availableSpend.toFixed(1)} ZC`} />
                   <SummaryBox label="Armes" value={getValues('weapons') || 'Toutes'} />
                   {Number(getValues('bestOf') || 1) >= 3 && getValues('picksAlternate') ? (
@@ -765,8 +773,8 @@ const CreateMatchPage: React.FC = () => {
                   <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label="Verrouiller la mise et publier" className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
-                    <span className="text-xs sm:text-sm">VERROUILLER LA MISE & PUBLIER</span> <ShieldCheck className="w-6 h-6" />
+                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label={isArbiterCreator ? 'Publier le match' : 'Verrouiller la mise et publier'} className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
+                    <span className="text-xs sm:text-sm">{isArbiterCreator ? 'Publier le match' : 'Verrouiller la mise & publier'}</span> <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>
               </div>
@@ -803,8 +811,8 @@ const CreateMatchPage: React.FC = () => {
                 <dd className="font-display font-black text-green-400">{winnerShare.toFixed(1)} ZC</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/75">Solde après blocage</dt>
-                <dd className="font-display font-black text-white">{(availableSpend - selectedPass).toFixed(1)} ZC</dd>
+                <dt className="text-white/75">{isArbiterCreator ? 'Solde (inchangé, sans pass)' : 'Solde après blocage'}</dt>
+                <dd className="font-display font-black text-white">{isArbiterCreator ? `${availableSpend.toFixed(1)} ZC` : `${(availableSpend - selectedPass).toFixed(1)} ZC`}</dd>
               </div>
             </dl>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

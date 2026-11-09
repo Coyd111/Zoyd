@@ -182,13 +182,13 @@ const ModeSelectionPage: React.FC = () => {
                     Battle Royale
                   </h2>
                   <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
-                    Salons ouverts, inscriptions directes : crée ton salon — tu en seras l&apos;arbitre — ou rejoins un
-                    salon en préparation. Ton pass est remboursable si tu te désinscris avant le lancement.
+                    1 salon ouvert ici, 100 joueurs max, pass 20 ZC = 200 FCFA — tu peux aussi créer le tien (tu seras l’arbitre). Ton
+                    pass est remboursable si tu te désinscris avant le lancement.
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
-                    <InfoChip label="Salon" value="À la demande" />
-                    <InfoChip label="Pass" value="Remboursable" />
+                    <InfoChip label="Salon" value="100 joueurs" />
+                    <InfoChip label="Pass" value="20 ZC = 200 FCFA" />
                     <InfoChip label="Création" value="Ouverte à tous" className="col-span-2 sm:col-span-1" />
                   </div>
 

@@ -497,6 +497,9 @@ cancelled = true;
                     placeholder="+229 60 00 00 00"
                   />
                 </div>
+                <p className="text-[11px] text-white/60">
+                  Ton numéro reçoit ton retrait Mobile Money (dépôt / retrait). Il détermine les opérateurs disponibles selon ton pays.
+                </p>
 
                 <div className="relative">
                   <Input

@@ -346,20 +346,27 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
 
       {currentPlayer && (
         <div className="space-y-4">
+          {/* P0-5 : ordre numéroté — avant, Présence et Ready côte à côte
+              sans ordre, le joueur ne savait pas quoi faire en premier. */}
+          <ol className="text-[10px] font-mono uppercase tracking-widest text-white/60 space-y-1">
+            <li>1 — Confirme ta présence (check-in)</li>
+            <li>2 — Passe prêt quand ton équipe est complète</li>
+            <li>3 — L'arbitre lance le match et partage la salle CODM</li>
+          </ol>
           <div className="grid md:grid-cols-2 gap-3">
             <button
               onClick={handlers.checkIn}
               disabled={!canCheckIn || currentPlayer.isCheckedIn}
               className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30"
             >
-              {currentPlayer.isCheckedIn ? 'Présence confirmée' : 'Confirmer ma presence'}
+              {currentPlayer.isCheckedIn ? '✓ 1. Présence confirmée' : '1. Confirmer ma présence'}
             </button>
             <button
               onClick={handlers.toggleReady}
               disabled={!canToggleReady}
               className="border border-zoyd-yellow/30 text-zoyd-yellow py-4 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30"
             >
-              {currentPlayer.isReady ? 'Retirer le ready' : 'Je suis pret'}
+              {currentPlayer.isReady ? '✓ 2. Prêt (retirer)' : '2. Je suis prêt'}
             </button>
           </div>
           <p className="text-xs text-white/70">
@@ -556,7 +563,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                 : 'bg-zoyd-yellow text-black hover:bg-white'
             }`}
           >
-            {isConfirmingResult ? 'Confirmation en cours...' : 'Confirmer le resultat'}
+            {isConfirmingResult ? 'Confirmation en cours...' : 'Confirmer que l\'adversaire a gagné'}
           </button>
         ) : (
           <p className="text-xs text-white/60">

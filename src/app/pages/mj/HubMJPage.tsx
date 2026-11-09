@@ -76,18 +76,28 @@ const HubMJPage: React.FC = () => {
     });
   }, [getFilteredMatches, debouncedQuery, needsArbiter, matches]);
 
+  // P0-3 : un match annulé/terminé/forfait n'est ni "actif" ni dans la
+  // liste des matchs jouables du hub, et sa cagnotte ne monte pas le total.
+  // Avant, la carte "MATCH ANNULÉ" comptait pour "MATCHS ACTIFS 1" et gonflait
+  // la cagnotte — contradiction visible sur une plateforme vide.
+  const CLOSED_STATUSES = new Set(['cancelled', 'finished', 'forfeited', 'archived']);
+  const openMatches = useMemo(
+    () => filteredMatches.filter((m) => !CLOSED_STATUSES.has(m.status)),
+    [filteredMatches],
+  );
+
   const metrics = useMemo(() => {
-    const livePool = filteredMatches.reduce((sum, match) => sum + match.prizePool, 0);
+    const livePool = openMatches.reduce((sum, match) => sum + match.prizePool, 0);
     // P3-10 (audit UI) : un litige (`disputed`) attend un ADMIN (matchStatus.ts :
     // « l'admin tranche »), pas un arbitre : l'exclure ici, comme finished /
     // cancelled / forfeited / awaiting_confirmation, sinon le compteur surcompte.
-    const arbitersNeeded = filteredMatches.filter((match) => !match.arbiter && match.status !== 'finished' && match.status !== 'cancelled' && match.status !== 'forfeited' && match.status !== 'awaiting_confirmation' && match.status !== 'disputed').length;
+    const arbitersNeeded = openMatches.filter((match) => !match.arbiter && match.status !== 'awaiting_confirmation' && match.status !== 'disputed').length;
     return {
-      active: filteredMatches.length,
+      active: openMatches.length,
       livePool,
       arbitersNeeded,
     };
-  }, [filteredMatches]);
+  }, [openMatches]);
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui">
@@ -216,9 +226,9 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 <Skeleton key={i} className="h-48 bg-white/5" />
               ))}
             </div>
-          ) : filteredMatches.length > 0 ? (
+          ) : openMatches.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {filteredMatches.map((match, index) => {
+              {openMatches.map((match, index) => {
                 const rules = match.rules;
                 // P1 (audit UI) : la cascade qui projetait `awaiting_arbiter`,
                 // `disputed` et `archived` sur 'finished' est supprimee — la

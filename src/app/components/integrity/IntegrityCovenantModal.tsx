@@ -187,7 +187,7 @@ const CONTINUE_TO: Partial<Record<ScreenId, ScreenId>> = {
   f9: 'f10',
 };
 
-export const IntegrityCovenantModal = () => {
+export const IntegrityCovenantModal = ({ onClose }: { onClose?: () => void }) => {
   const [screen, setScreen] = useState<ScreenId>('f1');
   const [reportPseudo, setReportPseudo] = useState('');
   const [reportNote, setReportNote] = useState('');
@@ -388,6 +388,15 @@ export const IntegrityCovenantModal = () => {
                 </button>
               )}
             </>
+          )}
+          {screen === 'f1' && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full touch-target border border-white/15 text-white/70 font-display font-black uppercase italic tracking-tighter text-sm px-6 py-3"
+            >
+              Découvrir l'arène d'abord
+            </button>
           )}
           {screen === 'f10' && (
             <>

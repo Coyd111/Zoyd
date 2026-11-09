@@ -42,6 +42,9 @@ const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
 
   useRealtimeHeartbeat(isAuthenticated);
 
+  const [covenantDismissed, setCovenantDismissed] = React.useState(false);
+  const [covenantOpen, setCovenantOpen] = React.useState(false);
+
   if (isLoading) {
     return (
       <div className="min-h-dvh bg-zoyd-black flex items-center justify-center">
@@ -58,19 +61,28 @@ const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
     return <Navigate to="/mj" replace />;
   }
 
-  // Gate du serment d'intégrité : tant que le compte n'a pas de
-  // `covenant.acceptedAt` (scellé une fois par compte, date posée par le
-  // serveur), AUCUN chrome ne se rend — plein écran F1..F10. Ce n'est pas une
-  // sécurité mais un rite d'entrée : tout ce qui est derrière reste
-  // techniquement appelable sans navigateur (mêmes invariants qu'en haut).
-  // Les comptes EXISTANTS verront le serment une fois, à leur prochaine
-  // connexion, puis plus jamais (idempotence serveur).
-  if (user && !user.covenant?.acceptedAt) {
-    return <IntegrityCovenantModal />;
-  }
+  // Serment d'intégrité (P0-1 UI/UX) : le joueur doit voir l'arène AVANT de
+  // signer — un mur plein écran de 10 clics avant le 1er match fait abandonner.
+  // Le scellement reste serveur, une seule fois par compte. On affiche le
+  // chrome et on propose le serment en bannière + modale fermable ("Découvrir
+  // l'arène d'abord"). La date reste posée serveur au scellement, invariante.
+  const covenantMissing = Boolean(user && !user.covenant?.acceptedAt);
+  const showCovenantModal = covenantMissing && covenantOpen;
 
   return (
     <div className="min-h-dvh bg-zoyd-black safe-top">
+      {showCovenantModal ? (
+        <IntegrityCovenantModal onClose={() => setCovenantOpen(false)} />
+      ) : null}
+      {covenantMissing && !showCovenantModal && !covenantDismissed ? (
+        <div className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-zoyd-yellow/30 bg-zoyd-black/95 px-4 py-2 text-[11px] font-mono uppercase tracking-widest text-white/80">
+          <span>Serment d'intégrité à signer avant de miser</span>
+          <span className="flex shrink-0 gap-2">
+            <button type="button" onClick={() => setCovenantOpen(true)} className="bg-zoyd-yellow px-3 py-1.5 font-display font-black text-black">Signer</button>
+            <button type="button" onClick={() => setCovenantDismissed(true)} className="border border-white/20 px-3 py-1.5">Découvrir d'abord</button>
+          </span>
+        </div>
+      ) : null}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:text-black focus:font-display focus:font-black focus:text-xs focus:uppercase focus:tracking-widest">
         Aller au contenu principal
       </a>

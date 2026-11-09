@@ -142,9 +142,37 @@ const CreateMatchPage: React.FC = () => {
     return selectedFormat ? parseInt(selectedFormat.split('VS')[0], 10) * 2 : 2;
   }, [selectedFormat]);
 
-  const livePot = useMemo(() => selectedPass * playerSlots, [playerSlots, selectedPass]);
+  // P0-4 : le pot réel = pass × joueurs réellement inscrits (ici le créateur
+  // seul si rôle joueur, 0 si rôle arbitre). `livePot` (max théorique) sert
+  // à afficher le gain potentiel, mais on doit dire "bloqué à 100 ZC (1/2)"
+  // pour ne pas promettre 200 ZC quand un seul joueur s'est inscrit.
+  const realPot = useMemo(() => (isArbiterCreator ? 0 : selectedPass * 1), [isArbiterCreator, selectedPass]);
+  const maxPot = useMemo(() => selectedPass * playerSlots, [playerSlots, selectedPass]);
+  const livePot = maxPot;
   const arbiterShare = useMemo(() => livePot * ARBITER_FEE_RATE, [livePot]);
   const winnerShare = useMemo(() => Math.max(0, livePot - arbiterShare), [arbiterShare, livePot]);
+
+  // Brouillon local : un rechargement (chunk périmé) ne doit pas effacer le
+  // remplissage. Sauvegarde/restauration en localStorage, vidée après publication.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('zoyd_create_match_draft');
+      if (!raw) return;
+      const d = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof d.format === 'string') setSelectedFormat(d.format as MatchFormat);
+      if (typeof d.mode === 'string') setSelectedGameMode(d.mode as string);
+      if (typeof d.map === 'string') setSelectedMap(d.map as string);
+      if (typeof d.pass === 'number') setValue('passAmount', d.pass);
+    } catch { /* brouillon corrompu : on ignore */ }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'zoyd_create_match_draft',
+        JSON.stringify({ format: selectedFormat, mode: selectedGameMode, map: selectedMap, pass: selectedPass, step: currentStep }),
+      );
+    } catch { /* stockage indisponible : brouillon best-effort */ }
+  }, [selectedFormat, selectedGameMode, selectedMap, selectedPass, currentStep]);
   // Un arbitre ne paie rien : le requiredTopUp ne s'applique qu'au joueur.
   const requiredTopUp = useMemo(
     () => (isArbiterCreator ? 0 : getRequiredTopUp(selectedPass, availableSpend)),
@@ -275,6 +303,7 @@ const CreateMatchPage: React.FC = () => {
 
       hydrateMatches([response.match]);
       applyServerAccountState(response);
+      try { localStorage.removeItem('zoyd_create_match_draft'); } catch { /* best-effort */ }
       toast.success('Partie publiée. Ta place est réservée.');
       navigate(`/mj/match/${response.match.id}`);
     } catch (error) {
@@ -619,7 +648,7 @@ const CreateMatchPage: React.FC = () => {
                         <div className="space-y-4 relative z-10">
                           <div className="flex justify-between border-b border-white/10 pb-4">
                             <span className="text-xs font-display font-black text-white/70 italic">Pot Total (Cagnotte)</span>
-                            <span className="font-display font-black text-2xl text-zoyd-yellow">{livePot.toLocaleString()} ZC</span>
+                            <span className="font-display font-black text-2xl text-zoyd-yellow">{livePot.toLocaleString()} ZC <span className="text-sm text-white/60">({livePot.toLocaleString()} × 10 FCFA = {(livePot * 10).toLocaleString()} FCFA)</span></span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-xs font-display font-black text-white/70 italic">Pour le gagnant</span>
@@ -799,8 +828,8 @@ const CreateMatchPage: React.FC = () => {
                 <dd className="font-display font-black text-zoyd-yellow">{isArbiterCreator ? 'ARBITRE' : `${selectedPass.toFixed(1)} ZC`}</dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
-                <dt className="text-white/75">Cagnotte totale ({playerSlots} joueurs)</dt>
-                <dd className="font-display font-black text-white">{livePot.toFixed(1)} ZC</dd>
+                <dt className="text-white/75">Cagnotte totale ({playerSlots} joueurs, réelle {realPot.toFixed(1)} ZC pour l'instant)</dt>
+                <dd className="font-display font-black text-white">{livePot.toFixed(1)} ZC <span className="text-xs text-white/50">({(livePot * 10).toLocaleString()} FCFA)</span></dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
                 <dt className="text-white/75">Part arbitre (2 %)</dt>

@@ -124,17 +124,40 @@ const AdminDashboardPage: React.FC = () => {
   // reloadReports() deja appele apres chaque action de l admin (resoudre un
   // signalement, lever une sanction). Un jour de vrai temps reel, ce sera un
   // evenement socket dedie — a construire, pas a simuler par un compteur.
+  const openTwofaPrompt = (pending: () => Promise<void>) => {
+    pendingAdminActionRef.current = pending;
+    setTwofaError(null);
+    setTwofaOpen(true);
+  };
+
+  const reloadCommissions = async () => {
+    try {
+      const data = await fetchAdminCommissions();
+      setCommissions(data);
+      setCommissionsUnavailable(false);
+    } catch (error) {
+      // F5 : sans retry sur 2FA_REQUIRED, la carte restait « indisponible »
+      // avec un texte générique réseau, alors qu'un simple « vérifier »
+      // suffit — on ouvre donc le même invite que les autres actions,
+      // et on rejoue la lecture après le code TOTP.
+      if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
+        openTwofaPrompt(() => reloadCommissions());
+      }
+      setCommissionsUnavailable(true);
+    }
+  };
+
+  // F5 : invite TOTP pour les actions sous requireAdmin2fa. Au moment ou
+  // le serveur repond `2FA_REQUIRED` (verification moins recente que 5 min),
+  // l'action en attente est memorisee dans `pendingAdminActionRef`, l'invite
+  // s'ouvre, et apres `verifyAdmin2fa` on la rejoue. Avant ce correctif,
+  // l'admin recevait un toast et devait aller dans Parametres puis
+  // recliquer : ni le tableau de bord ni le panneau ligue ne proposent
+  // d'invite (le pattern venait de BrArbiterPanel et n'y etait pas extrait).
+
   useEffect(() => {
     if (user?.role !== 'admin') return;
-    fetchAdminCommissions()
-      .then((data) => {
-        setCommissions(data);
-        setCommissionsUnavailable(false);
-      })
-      // F4 : l'ancien commentaire disait « on garde 0 plutot que de mentir »
-      // et le code faisait le contraire : une carte « 0 ZC » que personne
-      // n'a mesuree. Desormais « indisponible » est affiche, pas un montant.
-      .catch(() => { setCommissionsUnavailable(true); });
+    reloadCommissions();
     void reloadReports();
   }, [user?.role]);
   const handleExportHistory = async (format: 'csv' | 'json') => {
@@ -316,11 +339,6 @@ const AdminDashboardPage: React.FC = () => {
 
   // Le serveur repond `2FA_REQUIRED` : on retient l'action et on ouvre
   // l'invite au lieu d'abuser un toast qui demande de quitter l'ecran.
-  const openTwofaPrompt = (pending: () => Promise<void>) => {
-    pendingAdminActionRef.current = pending;
-    setTwofaError(null);
-    setTwofaOpen(true);
-  };
 
   const applyAdminMatchResponse = (payload: { match: Match; user?: Partial<User>; wallet?: Partial<WalletSnapshot> | null }) => { hydrateMatches([payload.match]); applyServerAccountState({ user: payload.user, wallet: payload.wallet ? { ...EMPTY_WALLET, ...payload.wallet } : null }); };
   const handleResolveWinner = async (matchId: string, winnerTeam: 0 | 1) => {
@@ -425,14 +443,14 @@ const AdminDashboardPage: React.FC = () => {
           <StatCard
             icon={<TrendingUp className="w-5 h-5 text-green-400" aria-hidden="true" />}
             label="REVENUS ZOYD (2 % RETRAITS)"
-            value={commissionsUnavailable ? 'indisponible' : formatZC(commissions.revenue)}
-            hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau)' : `${commissions.withdrawalCount} retrait(s) honoré(s)`}
+            value={commissionsUnavailable ? 'N/D' : formatZC(commissions.revenue)}
+            hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau) — vérifie la 2FA pour recharger' : `${commissions.withdrawalCount} retrait(s) honoré(s)`}
           />
           <StatCard
             icon={<Scale className="w-5 h-5 text-white/60" aria-hidden="true" />}
             label="SORTIES ARBITRES"
-            value={commissionsUnavailable ? 'indisponible' : formatZC(commissions.arbiterPayouts)}
-            hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau)' : 'Part de cagnotte versée aux arbitres (sortie, pas revenu)'}
+            value={commissionsUnavailable ? 'N/D' : formatZC(commissions.arbiterPayouts)}
+            hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau) — vérifie la 2FA pour recharger' : 'Part de cagnotte versée aux arbitres (sortie, pas revenu)'}
           />
         </div>
 

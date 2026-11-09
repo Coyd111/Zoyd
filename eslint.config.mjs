@@ -19,10 +19,10 @@ import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', 'playwright-report/**', 'test-results/**'],
+    ignores: ['node_modules/**', 'dist/**'],
   },
   {
-    files: ['src/**/*.{ts,tsx,js,mjs}', 'e2e/**/*.{ts,tsx,js,mjs}'],
+    files: ['src/**/*.{ts,tsx,js,mjs}'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -72,12 +72,6 @@ export default [
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
-    },
-  },
-  {
-    files: ['**/*.test.ts', '**/*.test.tsx', '**/*.test.mjs', 'src/test/**', 'e2e/**'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];

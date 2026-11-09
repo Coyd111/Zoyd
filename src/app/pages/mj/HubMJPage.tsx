@@ -132,9 +132,11 @@ const HubMJPage: React.FC = () => {
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-16 relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
         <div>
           <div className="flex flex-col lg:flex-row gap-8 mb-12 items-start lg:items-center">
-            <div className="overflow-x-auto scrollbar-hide" role="region" aria-label="Filtres défilants"
-            >
-              <div className="flex flex-nowrap gap-2 flex-1">
+            {/* Filtres FORMAT en grille (wrap) : en rangée scrollable, les
+                derniers chips (5VS5, STATUTS...) restaient invisibles sur
+                mobile sans autre indication que le défilement. Le wrap les
+                rend tous visibles en 2 lignes — aucun scroll caché. */}
+            <div className="flex flex-wrap gap-2 w-full lg:flex-1" role="group" aria-label="Filtres de format et de statut">
               {MATCH_FORMATS.map((format) => (
                 <button
                   key={format}
@@ -186,7 +188,6 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               >
                 FIABILITÉ 50+
               </button>
-              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-[420px]">
@@ -295,17 +296,20 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 </div>
               </div>
             </div>
-            <div className="flex sm:flex-col items-start sm:items-end gap-2 shrink-0">
+            {/* Actions en colonne sur mobile : cote a cote, le bouton
+                `whitespace-nowrap` se faisait rogner (« ENTRE ») par la
+                rangée. Pleine largeur sur mobile, compacte sur desktop. */}
+            <div className="flex flex-col items-stretch sm:items-end gap-3 sm:gap-2 w-full sm:w-auto shrink-0">
               <Link
                 to="/br"
-                className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-4 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.24em] italic hover:bg-white transition-colors touch-target whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-2 bg-zoyd-yellow text-black px-4 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.24em] italic hover:bg-white transition-colors touch-target whitespace-nowrap w-full sm:w-auto"
               >
                 Entrer en salons
                 <ChevronRight className="w-4 h-4" />
               </Link>
               <Link
                 to="/br-league"
-                className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1"
+                className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1 text-center sm:text-right"
               >
                 BR League — événement hebdo
               </Link>

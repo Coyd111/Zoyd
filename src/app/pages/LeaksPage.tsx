@@ -451,13 +451,17 @@ const LeaksPage: React.FC = () => {
                     className="w-full bg-zoyd-surface/50 border border-white/10 text-white text-xs font-mono pl-9 pr-4 py-2.5 placeholder:text-white/60 focus:border-zoyd-yellow/50 transition-colors" />
                 </div>
               </div>
-              <div className="flex flex-nowrap gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-2">
-                {WEAPON_CATEGORIES.map((cat) => (
-                  <button key={cat} onClick={() => { setSelectedWeaponCategory(cat); setWeaponSearch(''); }}
-                    className={`px-3 py-1.5 font-display font-black text-[10px] tracking-wider italic uppercase whitespace-nowrap transition-all border ${
-                      selectedWeaponCategory === cat ? 'bg-white text-black border-white' : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
-                    }`}>{cat}</button>
-                ))}
+              <div className="relative">
+                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-zoyd-black to-transparent z-10" />
+                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-zoyd-black to-transparent z-10" />
+                <div className="flex flex-nowrap gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-2">
+                  {WEAPON_CATEGORIES.map((cat) => (
+                    <button key={cat} onClick={() => { setSelectedWeaponCategory(cat); setWeaponSearch(''); }}
+                      className={`px-3 py-1.5 font-display font-black text-[10px] tracking-wider italic uppercase whitespace-nowrap transition-all border ${
+                        selectedWeaponCategory === cat ? 'bg-white text-black border-white' : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
+                      }`}>{cat}</button>
+                  ))}
+                </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                 {searchedWeapons.map((weapon, i) => (
@@ -480,6 +484,7 @@ const LeaksPage: React.FC = () => {
 
         {/* Category Filters */}
         <div role="tablist" aria-label="Categories" className="relative mb-12 border-b border-white/5 pb-4">
+          <div className="pointer-events-none absolute left-0 top-0 bottom-4 w-12 bg-gradient-to-r from-zoyd-black to-transparent pointer-events-none z-10" />
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
             {categories.map((cat) => {
               const Icon = cat.icon;

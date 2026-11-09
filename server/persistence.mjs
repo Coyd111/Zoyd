@@ -1306,16 +1306,12 @@ export const verifyDataIntegrity = async () => {
       }
       // On ne peut pas verrouiller plus que ce qu'on possede : la somme des
       // reservations ne peut pas depasser le total disponible.
+      // Le verrou NET reste donc `entriesTotal === lockedBalance` (deja teste
+      // plus haut) : comparer `lockedBalance` a `cash+bonus` flaguait tout
+      // wallet ENTIEREMENT verrouille (cash 0, locked 100) comme corrompu,
+      // alors qu'il est sain. Supprime — aucun etat reel ne peut etre
+      // detecte par cette comparison que l'egalite ci-dessus ne voit pas.
       const disponible = roundAmount(cash + bonus);
-      if (lockedBalance > disponible + 0.01) {
-        walletIssues.push({
-          userId,
-          reason: 'LOCKED_EXCEEDS_BALANCE',
-          lockedBalance,
-          available: disponible,
-          diff: roundAmount(lockedBalance - disponible),
-        });
-      }
       // Le total affiche est derive des deux soldes : un ecart signifie
       // qu'une ecriture a modifie l'un sans recomputer l'autre.
       const total = roundAmount((user.walletBalance === undefined ? disponible : Number(user.walletBalance)) || 0);

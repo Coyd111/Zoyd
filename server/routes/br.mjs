@@ -57,7 +57,8 @@ import {
   respondMappedError,
 } from '../http-utils.mjs';
 import { require2faIfAdmin } from '../admin-totp.mjs';
-import { withBrLobbyMutex } from '../mutex.mjs';
+import { withBrLobbyMutex, withWalletMutex } from '../mutex.mjs';
+import { refundLockedEntry } from '../wallet-engine.mjs';
 import {
   BR_MAPS,
   BR_MAP_IDS,
@@ -271,7 +272,28 @@ if (brLobbyAction && req.method === 'POST') {
       // L'ecriture EST le verrou : elle part AVANT de le relacher. Dehors, une
       // action concurrente sur le meme salon persistait la sienne par-dessus
       // (C1) ; l'ecriture par entite rend aussi les autres salons epargnes (C2).
-      await saveBrLobbies(io, result.lobbies);
+      // Verrou orphelin (audit) : sur `join`, le pass est deja bloque cote
+      // wallet quand `saveBrLobbies` echoue (conflit OCC en overlap) — sans
+      // compensation, le joueur paie silencieusement sans etre dans le salon
+      // persiste, et `ALREADY_LOCKED` l'empeche de se reinscrire.
+      if (action === 'join') {
+        try {
+          await saveBrLobbies(io, result.lobbies);
+        } catch (saveError) {
+          await withWalletMutex(actor.user.id, async () => {
+            await refundLockedEntry(actor.user.id, lobbyId, 'Inscription salon BR non enregistree');
+          }).catch((remboursementError) => {
+            log.error('Restitution du pass BR apres echec de sauvegarde impossible', {
+              lobbyId,
+              userId: actor.user.id,
+              error: String(remboursementError?.message || remboursementError),
+            });
+          });
+          throw saveError;
+        }
+      } else {
+        await saveBrLobbies(io, result.lobbies);
+      }
 
       if (action !== 'finish') return { outcome: result };
 

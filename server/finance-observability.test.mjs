@@ -179,7 +179,7 @@ describe('summarizeFinanceDebts', () => {
     expect(FINANCE_CRITICAL_MS).toBe(24 * 60 * 60 * 1000);
   });
 
-  it('les dettes refund portent amount (ecriture reelle des moteurs)', () => {
+  it('dettes refund portent amount (ecriture reelle des moteurs)', () => {
     // Formes émises par cancelStaleLeagueSeasonOnServer /
     // cancelTournoiOnServer après correctif : amount = pass verrouillé.
     const { summary, debts } = collectFinanceDebts({
@@ -202,5 +202,45 @@ describe('summarizeFinanceDebts', () => {
     // 2 dettes tournoi (100+100) + 2 dettes ligue (50+50) = 300 ZC, plus 0.
     expect(summary.totalZC).toBe(300);
     expect(summary.uncollectableCount).toBe(2);
+  });
+
+  it('match pending + commission = pot, pas pot + commission (pas de double compte)', () => {
+    const { summary, debts } = collectFinanceDebts({
+      matches: [{
+        id: 'M-DBL',
+        status: 'finished',
+        prizePool: 1000,
+        settlementBasis: { lockedPot: 1000 },
+        pendingArbiterFee: 20,
+        result: { payoutDistributed: 'pending', submittedAt: isoH(2) },
+        createdAt: isoH(30), updatedAt: isoH(2),
+      }],
+      tournaments: [], leagues: [], brLobbies: [],
+      listUserIds: () => [], getWallet: () => undefined, nowMs: NOW,
+    });
+    // match_pending = pot - commission (980) + commission (20) = 1000.
+    expect(summary.totalZC).toBe(1000);
+    expect(summary.totalDebts).toBe(2);
+    expect(debts.find((d) => d.type === 'match_pending')?.amountZC).toBe(980);
+  });
+
+  it('litige ouvert prime : un seul pot compte, pas pending + dispute', () => {
+    const { summary, debts } = collectFinanceDebts({
+      matches: [{
+        id: 'M-DSP',
+        status: 'finished',
+        prizePool: 1000,
+        settlementBasis: { lockedPot: 1000 },
+        pendingArbiterFee: 20,
+        result: { payoutDistributed: 'pending', submittedAt: isoH(2) },
+        disputes: [{ status: 'open', openedAt: isoH(1) }],
+        createdAt: isoH(30), updatedAt: isoH(2),
+      }],
+      tournaments: [], leagues: [], brLobbies: [],
+      listUserIds: () => [], getWallet: () => undefined, nowMs: NOW,
+    });
+    expect(debts).toHaveLength(1);
+    expect(debts[0].type).toBe('dispute_frozen');
+    expect(summary.totalZC).toBe(1000);
   });
 });

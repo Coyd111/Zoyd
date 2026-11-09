@@ -327,13 +327,15 @@ describe('getHealthInfo publie le dernier controle', () => {
 
   it('expose un KO avec le nombre d\'anomalies', async () => {
     const user = await createUser();
-    // 77 verrouilles, 0 reserve correspondante, 0 possede : cet etat fabrique
-    // viole DEUX invariants distincts, d'ou deux anomalies et non une.
+    // 77 verrouilles, 0 reserve correspondante : UNE anomalie reelle (mise
+    // bloquee sans reservation = argent perdu). L'ancien second compteur
+    // (`LOCKED_EXCEEDS_BALANCE`) flaguait aussi le cash 0 alors que la
+    // comparaison est saine par construction — supprime (B11 audit).
     await setWallet(user.id, { ...{ cashBalance: 0, bonusBalance: 0, lockedBalance: 77, pendingWinnings: 0, lockedEntries: {}, transactions: [] } });
     await persistence.verifyDataIntegrity();
     const health = persistence.getHealthInfo();
     expect(health.integrity.ok).toBe(false);
-    expect(health.integrity.walletIssues).toBe(2);
+    expect(health.integrity.walletIssues).toBe(1);
   });
 });
 
@@ -371,14 +373,18 @@ describe('invariants de portefeuille', () => {
     expect(await anomalies({ bonusBalance: -1 })).toBeGreaterThan(0);
   });
 
-  it('detecte un verrouillage superieur a ce qu on possede', async () => {
-    // 30 bloques alors qu on n a que 120 : l invariant ne declenche pas. On
-    // monte le verrouillage au-dela du disponible, entrees coherentes.
+  it('ne déclenche rien sur un portefeuille ENTIEREment verrouillé (cash 0, locked = entries)', async () => {
+    // B11 (audit) : le contrôle `LOCKED_EXCEEDS_BALANCE` flaguait ce cas
+    // sain — le verrou DEDUIT du cash (lockEntryFee), donc cash 0 + locked
+    // 500 est l'état NORMAL d'un joueur qui a bloqué tout son solde.
+    // La vraie garde reste `entriesTotal === lockedBalance` (réservation sans
+    // mise = argent perdu, et inverse = argent fantôme).
     expect(await anomalies({
-      cashBalance: 10,
+      cashBalance: 0,
+      bonusBalance: 0,
       lockedBalance: 500,
       lockedEntries: { m: { amount: 500, cashAmount: 500, bonusAmount: 0, lockedAt: '2026-01-01T00:00:00.000Z' } },
-    })).toBeGreaterThan(0);
+    })).toBe(0);
   });
 
   it('detecte un total affiche desynchronise des soldes', async () => {

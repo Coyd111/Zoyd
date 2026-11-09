@@ -78,33 +78,13 @@ export const collectFinanceDebts = (input = {}) => {
 
   for (const m of Array.isArray(matches) ? matches : []) {
     if (!m?.id) continue;
-    // Match en attente de versement (`pending` = a solder, jamais `false`).
-    if (m?.result?.payoutDistributed === 'pending') {
-      const basis = Number(m.settlementBasis?.lockedPot);
-      const lockedPot = Number.isFinite(basis) && basis > 0
-        ? basis
-        : Number(m.prizePool || 0);
-      debts.push({
-        type: 'match_pending',
-        id: String(m.id),
-        status: String(m.status || 'awaiting_confirmation'),
-        amountZC: roundAmount(lockedPot),
-        ageMs: ageOf([m.result?.submittedAt, m.updatedAt, m.createdAt], nowMs),
-        since: m.result?.submittedAt || m.updatedAt || m.createdAt || null,
-        detail: m.confirmationDeadline ? 'confirmation deadline ouverte' : 'reglement intercerve',
-      });
-    }
-    const arbiterDue = roundAmount(m?.pendingArbiterFee || 0);
-    if (arbiterDue > 0) {
-      debts.push({
-        type: 'arbiter_fee_pending',
-        id: String(m.id),
-        amountZC: arbiterDue,
-        ageMs: ageOf([m.updatedAt, m.finishedAt, m.createdAt], nowMs),
-        since: m.updatedAt || m.finishedAt || m.createdAt || null,
-        arbiterId: m.arbiter?.userId ? String(m.arbiter.userId) : null,
-      });
-    }
+    // UN POT, UNE DETTE : `match_pending` (pot complet), `arbiter_fee_pending`
+    // (slice 2 % du meme pot) et `dispute_frozen` (meme pot, autre etat)
+    // comptaient le meme argent 2 a 3 fois : un match a 1000 + 20 de
+    // commission + litige affichait 2020 ZC dues pour 1000 verrouilles.
+    // Regle : le litige PRIME (pot gelee, pas versable) ; sinon
+    // `match_pending` vaux pot - commission, et la commission reste une
+    // dette separee actionnable. Total toujours = pot.
     const disputes = Array.isArray(m?.disputes) ? m.disputes : [];
     const openDispute = disputes.find((d) => d?.status === 'open' || d?.status === 'under_review');
     if (openDispute) {
@@ -116,6 +96,35 @@ export const collectFinanceDebts = (input = {}) => {
         amountZC: roundAmount(Number.isFinite(basis) && basis > 0 ? basis : Number(m.prizePool || 0)),
         ageMs: ageOf([openDispute.openedAt, m.updatedAt, m.createdAt], nowMs),
         since: openDispute.openedAt || m.updatedAt || null,
+      });
+      continue;
+    }
+    const arbiterDue = roundAmount(m?.pendingArbiterFee || 0);
+    // Match en attente de versement (`pending` = a solder, jamais `false`).
+    if (m?.result?.payoutDistributed === 'pending') {
+      const basis = Number(m.settlementBasis?.lockedPot);
+      const lockedPot = Number.isFinite(basis) && basis > 0
+        ? basis
+        : Number(m.prizePool || 0);
+      const payable = Math.max(0, roundAmount(lockedPot - arbiterDue));
+      debts.push({
+        type: 'match_pending',
+        id: String(m.id),
+        status: String(m.status || 'awaiting_confirmation'),
+        amountZC: payable,
+        ageMs: ageOf([m.result?.submittedAt, m.updatedAt, m.createdAt], nowMs),
+        since: m.result?.submittedAt || m.updatedAt || m.createdAt || null,
+        detail: m.confirmationDeadline ? 'confirmation deadline ouverte' : 'reglement intercerve',
+      });
+    }
+    if (arbiterDue > 0) {
+      debts.push({
+        type: 'arbiter_fee_pending',
+        id: String(m.id),
+        amountZC: arbiterDue,
+        ageMs: ageOf([m.updatedAt, m.finishedAt, m.createdAt], nowMs),
+        since: m.updatedAt || m.finishedAt || m.createdAt || null,
+        arbiterId: m.arbiter?.userId ? String(m.arbiter.userId) : null,
       });
     }
   }

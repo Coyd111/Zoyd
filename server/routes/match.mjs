@@ -70,6 +70,7 @@ import {
   escalateDisputeOnServer,
 } from '../match-engine.mjs';
 import { getStateCollection } from '../persistence.mjs';
+import { refundLockedEntry } from '../wallet-engine.mjs';
 import { saveMatches, buildMatchActionPayload } from '../state-helpers.mjs';
 import { deliverNotification, notifyAllAdmins } from '../push-notifications.mjs';
 import { require2faIfAdmin } from '../admin-totp.mjs';
@@ -124,7 +125,25 @@ if (req.method === 'POST' && pathname === '/api/matches') {
     const outcome = await withWalletMutex(session.user.id, async () =>
       createMatchOnServer(getStateCollection('matches'), session.user, normalizedBody)
     );
-    await saveMatches(io, outcome.matches, outcome.match);
+    // Verrou orphelin (audit) : le moteur a deja bloque le pass cote wallet,
+    // la persistance du match est l'etape qui peut echouer ensuite (conflit
+    // OCC en overlap de deploiement, 503 Supabase). Sans compensation, le
+    // joueur est debite et absent du match persiste — pass gele a jamais
+    // (`ALREADY_LOCKED` au rejoin). Meme patron que la ligue (league.mjs).
+    try {
+      await saveMatches(io, outcome.matches, outcome.match);
+    } catch (saveError) {
+      await withWalletMutex(session.user.id, async () => {
+        await refundLockedEntry(session.user.id, outcome.match.id, 'Creation de match non enregistree');
+      }).catch((remboursementError) => {
+        log.error('Restitution du pass match apres echec de sauvegarde impossible', {
+          matchId: outcome.match.id,
+          userId: session.user.id,
+          error: String(remboursementError?.message || remboursementError),
+        });
+      });
+      throw saveError;
+    }
     respondJson(res, 201, buildMatchActionPayload(outcome.match, session.user.id));
   });
   } catch (error) {
@@ -153,7 +172,22 @@ if (req.method === 'POST' && matchJoin) {
     const outcome = await withWalletMutex(session.user.id, async () =>
       joinMatchOnServer(getStateCollection('matches'), session.user, matchJoin[1], body.team)
     );
-    await saveMatches(io, outcome.matches, outcome.match);
+    // Verrou orphelin (audit) : miroir de la creation ci-dessus — le pass
+    // est bloque cote wallet, seul `saveMatches` peut encore echouer.
+    try {
+      await saveMatches(io, outcome.matches, outcome.match);
+    } catch (saveError) {
+      await withWalletMutex(session.user.id, async () => {
+        await refundLockedEntry(session.user.id, outcome.match.id, 'Inscription match non enregistree');
+      }).catch((remboursementError) => {
+        log.error('Restitution du pass match apres echec de sauvegarde impossible', {
+          matchId: outcome.match.id,
+          userId: session.user.id,
+          error: String(remboursementError?.message || remboursementError),
+        });
+      });
+      throw saveError;
+    }
     respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
   });
   } catch (error) {

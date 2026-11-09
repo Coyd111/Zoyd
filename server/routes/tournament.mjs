@@ -46,7 +46,8 @@ import {
   respondJson,
   respondMappedError,
 } from '../http-utils.mjs';
-import { withTournamentMutex } from '../mutex.mjs';
+import { withTournamentMutex, withWalletMutex } from '../mutex.mjs';
+import { refundLockedEntry } from '../wallet-engine.mjs';
 import {
   createTournamentOnServer,
   registerForTournamentOnServer,
@@ -158,7 +159,22 @@ if (req.method === 'POST' && tournamentRegister) {
     // ensuite eux-memes par POST /api/tournaments/:id/join, en payant chacun
     // leur propre pass depuis leur propre portefeuille.
     const outcome = await registerForTournamentOnServer(getStoredTournaments(), session.user, tournamentRegister[1], body);
-    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    // Verrou orphelin (audit) : pass bloque cote wallet, seule la
+    // persistance du tournoi peut encore echouer ensuite.
+    try {
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    } catch (saveError) {
+      await withWalletMutex(session.user.id, async () => {
+        await refundLockedEntry(session.user.id, outcome.tournament.id, 'Inscription tournoi non enregistree');
+      }).catch((remboursementError) => {
+        log.error('Restitution du pass tournoi apres echec de sauvegarde impossible', {
+          tournamentId: outcome.tournament.id,
+          userId: session.user.id,
+          error: String(remboursementError?.message || remboursementError),
+        });
+      });
+      throw saveError;
+    }
     respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
   }); } catch (error) {
     respondMappedError(res, error);
@@ -182,7 +198,21 @@ if (req.method === 'POST' && tournamentJoin) {
     // existeante (ouverte a tous, ou privee sur invitation si son pseudo est
     // dans la liste). Ses fonds sont verrouilles sur SON portefeuille.
     const outcome = await joinTournamentOnServer(getStoredTournaments(), session.user, tournamentJoin[1], tournamentJoin[2]);
-    await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    // Verrou orphelin (audit) : miroir de l'inscription ci-dessus.
+    try {
+      await saveTournaments(io, outcome.tournaments, outcome.tournament);
+    } catch (saveError) {
+      await withWalletMutex(session.user.id, async () => {
+        await refundLockedEntry(session.user.id, outcome.tournament.id, 'Inscription tournoi non enregistree');
+      }).catch((remboursementError) => {
+        log.error('Restitution du pass tournoi apres echec de sauvegarde impossible', {
+          tournamentId: outcome.tournament.id,
+          userId: session.user.id,
+          error: String(remboursementError?.message || remboursementError),
+        });
+      });
+      throw saveError;
+    }
     respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));
   }); } catch (error) {
     respondMappedError(res, error);

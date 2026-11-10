@@ -100,7 +100,8 @@ const saveTournaments = async (io, tournaments, changedTournament = null) => {
   }
   const targets = changedTournament ? [changedTournament] : getStateCollection('tournaments');
   // Par socket, comme pour les matchs : `isMe` est different par destinataire.
-  for (const socket of io.sockets.sockets.values()) {
+  // `io` peut etre absent : les crons ecrivent hors de tout cycle socket.
+  for (const socket of io?.sockets?.sockets?.values?.() || []) {
     const viewerId = socket.data?.session?.userId || null;
     socket.emit('state:tournaments', {
       items: targets.map((t) => sanitizeTournamentForBroadcast(t, viewerId)),
@@ -133,7 +134,8 @@ const buildMatchActionPayload = (match, userId) => {
  * la grandeur du jeu, et un match ne change que quelques fois par minute.
  */
 const broadcastMatchesToSessions = (io, matches) => {
-  for (const socket of io.sockets.sockets.values()) {
+  // `io` peut etre absent : les crons ecrivent hors de tout cycle socket.
+  for (const socket of io?.sockets?.sockets?.values?.() || []) {
     const viewerId = socket.data?.session?.userId || null;
     const viewer = viewerId ? getUserById(viewerId) : null;
     // Filtre par peripherie ET visibilite : un `io.emit` global poussait

@@ -31,6 +31,18 @@ vi.mock('./persistence.mjs', () => ({
   replaceStateCollection: vi.fn((nom, valeur) => {
     if (nom === 'matches') etat.matches = valeur;
   }),
+  // Ecriture PAR ENTITE (C5) : le cron ecrit plus la collection en bloc.
+  getStateEntity: vi.fn((nom, id) => (nom === 'matches' ? etat.matches.find((m) => m?.id === id) || null : null)),
+  upsertStateEntity: vi.fn(async (nom, entity) => {
+    if (nom !== 'matches') return;
+    const i = etat.matches.findIndex((m) => m?.id === entity?.id);
+    if (i >= 0) etat.matches[i] = entity;
+    else etat.matches.push(entity);
+  }),
+  // Canaux de chat : `saveMatches` synchronise les canaux avant d ecrire.
+  ensureGlobalChatChannel: vi.fn(() => ({ id: 'global' })),
+  getChatChannelById: vi.fn(() => null),
+  upsertChatChannel: vi.fn((channel) => channel),
   getUserById: vi.fn((id) => ({ id, pseudo: id, role: 'player', wallet: {} })),
   updateUserAccount: vi.fn(),
   sanitizeText: vi.fn((v) => String(v || '').trim()),
@@ -121,5 +133,26 @@ describe('Le job de reprise des commissions d arbitre est branche', () => {
     await sweepPendingArbiterFees();
 
     expect(etat.matches[0].pendingArbiterFee).toBe(20);
+  });
+
+  it('ecrit PAR ENTITE, jamais la collection en bloc', async () => {
+    // L ecriture en bloc (`replaceStateCollection`) ecrase les actions
+    // concurrentes des autres entites et peut faire RECULER la revision en
+    // base — ce qui casse la garantie du compare-and-swap. Toutes les routes
+    // ecrivent deja par entite ; le cron etait le dernier chemin d argent a
+    // passer par le bloc. Ce test verrouille ce point.
+    const { replaceStateCollection, upsertStateEntity } = await import('./persistence.mjs');
+    etat.matches = [matchAvecCreance()];
+
+    await sweepPendingArbiterFees();
+
+    expect(
+      replaceStateCollection,
+      'le cron ne doit plus ecrire la collection en bloc',
+    ).not.toHaveBeenCalled();
+    expect(
+      upsertStateEntity,
+      'le cron doit ecrire l entite concernee, une par une',
+    ).toHaveBeenCalledWith('matches', expect.objectContaining({ id: 'M-CABLE' }));
   });
 });

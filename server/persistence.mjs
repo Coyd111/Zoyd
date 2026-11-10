@@ -3687,6 +3687,28 @@ export const ensureGlobalChatChannel = () =>
 
 // ─── State Snapshots (matches, tournaments) ─────────────────────────────────
 /**
+ * PIEGE — NE PLUS APPELER POUR UN CHEMIN D ARGENT.
+ *
+ * Cette fonction ecrit la collection ENTIERE, en un upsert inconditionnel,
+ * avec une revision calculee en MEMOIRE. Deux defauts, tous deux payants :
+ *
+ *   1. elle ecrase les actions concurrentes des autres entites, et SUPPRIME
+ *      les entites absentes de l'instantane ;
+ *   2. la revision ecrite peut RECULER en base (celle de la memoire + 1,
+ *      pas celle reellement lue) : le compare-and-swap perd alors sa
+ *      garantie, et un conflits peut etre detecte trop tard — apres
+ *      l'ecriture.
+ *
+ * Toute ecriture doit passer par `upsertStateEntity`, qui est CONDITIONNELLE
+ * (`revision` comparee a celle observee) et n efface jamais une entite
+ * absente de la liste. Les helpers `state-helpers.mjs` (`saveMatches`,
+ * `saveTournaments`, `saveLeagues`, `saveBrLobbies`) le font deja.
+ *
+ * Au 2026-11-10, il ne reste plus AUCUN appelant en production : les
+ * routes comme les crons ecrivent par entite (migration C5). La fonction
+ * est conservee pour son test et comme point de comparaison.
+ */
+/**
  * Replace an entire state collection (e.g. matches, tournaments) with retry.
  * Updates memory and syncs to Supabase in batches of 100 with 3 retries each.
  * @param {string} kind - Collection kind identifier

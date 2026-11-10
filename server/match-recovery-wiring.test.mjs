@@ -53,6 +53,10 @@ vi.mock('./persistence.mjs', () => ({
     brut.clear();
     for (const item of items) brut.set(item.id, { ...item });
   }),
+  // Canaux de chat : `saveMatches` synchronise les canaux avant d ecrire.
+  ensureGlobalChatChannel: vi.fn(() => ({ id: 'global' })),
+  getChatChannelById: vi.fn(() => null),
+  upsertChatChannel: vi.fn((channel) => channel),
   getStateCollection: vi.fn((kind) => Array.from((h.etat.get(kind) || new Map()).values())),
   getStateEntity: vi.fn((kind, id) => (h.etat.get(kind) || new Map()).get(id) || null),
   getUserById: vi.fn((id) => (id ? { id, pseudo: `pseudo-${id}` } : null)),
@@ -124,7 +128,18 @@ vi.mock('./state-helpers.mjs', () => ({
   saveBrLobbies: vi.fn(async () => {}),
   toPublicBrLobby: vi.fn((x) => ({ ...x, diffuse: true })),
   toPublicBrRanking: vi.fn((x) => x || []),
-  saveMatches: vi.fn(async () => {}),
+  // Ecriture PAR ENTITE (C5) : le cron passe desormais par `saveMatches`,
+  // qui ecrit chaque entite modifiee. Le mock reproduit ce comportement —
+  // une stub sans effet laisserait la collection dans son etat initial et
+  // le test ne verifierait plus rien.
+  saveMatches: vi.fn(async (_io, matches) => {
+    if (!h.etat.has('matches')) h.etat.set('matches', new Map());
+    const brut = h.etat.get('matches');
+    for (const match of (Array.isArray(matches) ? matches : [])) {
+      if (!match || !match.id) continue;
+      brut.set(match.id, { ...match });
+    }
+  }),
   buildMatchActionPayload: vi.fn(),
 }));
 

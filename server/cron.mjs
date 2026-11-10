@@ -67,7 +67,7 @@ import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbi
 import { retryPendingBrSettlements, countStaleBrLobbies, getStaleBrLobbyIds, cancelStaleBrLobbyOnServer } from './br-engine.mjs';
 import { reconcilePendingWithdrawals, refundRejectedWithdrawal, refundLockedEntry, buildWithdrawalRefundKey } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
-import { saveBrLobbies } from './state-helpers.mjs';
+import { saveBrLobbies, saveMatches, saveTournaments, saveLeagues } from './state-helpers.mjs';
 import { getNow } from './utils.mjs';
 
 const log = createLogger('cron');
@@ -104,7 +104,7 @@ export const sweepPendingArbiterFees = async () => {
       if (outstanding === 0) return;
       const outcome = await retryPendingArbiterFees(matches);
       if (outcome.retried > 0 || outcome.remaining !== outstanding) {
-        await replaceStateCollection('matches', outcome.matches);
+        await saveMatches(null, outcome.matches);
       }
       if (outcome.retried > 0) {
         log.warn('Commissions d arbitre rejouees', { retried: outcome.retried });
@@ -172,7 +172,7 @@ export const sweepPendingSettlements = async () => {
           log.error('Reprise de reglement echouee', { matchId: match.id, error: error.message });
         }
       }
-      await replaceStateCollection('matches', list);
+      await saveMatches(null, list);
     });
   } catch (error) {
     log.error('Erreur reprise des reglements', error);
@@ -202,7 +202,7 @@ export const sweepExpiredConfirmations = async () => {
       if (expiring.length === 0) return;
       const outcome = await expireConfirmationsOnServer(matches);
       if (outcome.settled.length > 0) {
-        await replaceStateCollection('matches', outcome.matches);
+        await saveMatches(null, outcome.matches);
         log.warn('Fenetres de confirmation expirees : gains liberes', {
           count: outcome.settled.length,
           failed: outcome.settled.filter((s) => !s.success).map((s) => s.id),
@@ -485,7 +485,7 @@ export const initCronJobs = () => {
         const outcome = await runMatchCleanupOnServer(matches, fourteenDaysAgo);
 
         if (outcome.archivedCount > 0) {
-          await replaceStateCollection('matches', outcome.nextMatches);
+          await saveMatches(null, outcome.nextMatches);
         }
 
         log.info(`Nettoyage terminé. ${outcome.archivedCount} matchs archivés.`
@@ -560,7 +560,7 @@ export const initCronJobs = () => {
         });
 
         if (changed) {
-          await replaceStateCollection('leagues', updatedSeasons);
+          await saveLeagues(null, updatedSeasons);
           log.info('Inscriptions ligue fermées automatiquement.');
         }
       });
@@ -667,7 +667,7 @@ export const initCronJobs = () => {
           }
         }
         if (updated !== tournaments) {
-          await replaceStateCollection('tournaments', updated);
+          await saveTournaments(null, updated);
           log.warn('Tournois expires annules', { count: expiredIds.length, refunds: totalRefunded });
         }
       });
@@ -748,7 +748,7 @@ export const initCronJobs = () => {
         if (outstanding === 0) return;
         const outcome = await retryPendingTournamentRefunds(tournaments);
         if (outcome.retried > 0 || outcome.remaining !== outstanding) {
-          await replaceStateCollection('tournaments', outcome.tournaments);
+          await saveTournaments(null, outcome.tournaments);
         }
         if (outcome.retried > 0) {
           log.warn('Remboursements de tournoi rejoues', { retried: outcome.retried, remaining: outcome.remaining });
@@ -793,7 +793,7 @@ export const initCronJobs = () => {
         if (outstanding === 0) return;
         const outcome = await retryPendingTournamentPayouts(tournaments);
         if (outcome.retried > 0 || outcome.remaining !== outstanding) {
-          await replaceStateCollection('tournaments', outcome.tournaments);
+          await saveTournaments(null, outcome.tournaments);
         }
         if (outcome.remaining > 0) {
           log.error('Gains de tournoi toujours en echec', { remaining: outcome.remaining });
@@ -824,7 +824,7 @@ export const initCronJobs = () => {
         if (outstanding === 0) return;
         const outcome = await retryPendingLeaguePayouts(leagues);
         if (outcome.retried > 0 || outcome.remaining !== outstanding) {
-          await replaceStateCollection('leagues', outcome.leagues);
+          await saveLeagues(null, outcome.leagues);
         }
         if (outcome.remaining > 0) {
           log.error('Gains de ligue toujours en echec', { remaining: outcome.remaining });
@@ -934,7 +934,7 @@ export const initCronJobs = () => {
             log.error('Annulation de ligue expiree echouee', { seasonId: id, error: error.message });
           }
         }
-        await replaceStateCollection('leagues', seasons);
+        await saveLeagues(null, seasons);
         log.warn('Ligues expirees annulees', { count: staleIds.length, refunds: totalRefunded });
       });
     } catch (error) {
@@ -960,7 +960,7 @@ export const initCronJobs = () => {
         if (outstanding === 0) return;
         const outcome = await retryPendingLeagueRefunds(seasons);
         if (outcome.retried > 0 || outcome.remaining !== outstanding) {
-          await replaceStateCollection('leagues', outcome.seasons);
+          await saveLeagues(null, outcome.seasons);
         }
         if (outcome.retried > 0) {
           log.warn('Remboursements de ligue rejoues', { retried: outcome.retried, remaining: outcome.remaining });

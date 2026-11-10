@@ -62,6 +62,7 @@ import {
 import {
   reconcilePendingWithdrawals,
   refundRejectedWithdrawal,
+  buildWithdrawalRefundKey,
 } from '../wallet-engine.mjs';
 import { withWalletMutex } from '../mutex.mjs';
 import { deliverNotification } from '../push-notifications.mjs';
@@ -159,9 +160,11 @@ export const reconcileWithdrawalsForWebhook = async (deps = {}) => {
     refund = (userId, amount, extra) => refundRejectedWithdrawal(
       userId,
       amount,
-      extra?.idempotencyKey
-        ? `refund:${extra.idempotencyKey}`
-        : (extra?.payoutId != null ? `refund:payout:${extra.payoutId}` : null),
+      // Meme cle que le cron, et pour la meme raison : la dette est identifiee
+      // par son `payoutId` (unique par dette), pas par la cle d idempotence
+      // du retrait (REUTILISABLE — deux dettes, meme cle, remboursement
+      // saute). Voir `buildWithdrawalRefundKey`.
+      buildWithdrawalRefundKey(extra?.payoutId),
       {
         description: 'Remboursement - retrait rejete par le prestataire',
         metadata: { reason: 'PAYOUT_REJECTED', payoutId: extra?.payoutId ?? null },

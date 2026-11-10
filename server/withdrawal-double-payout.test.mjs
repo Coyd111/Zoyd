@@ -18,12 +18,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * requete qui a debite sans repondre (crash entre le debit et le tag).
  */
 
+const hook = vi.hoisted(() => ({ echecRefund: false }));
+
 vi.mock('./supabase.mjs', () => ({
   supabase: {
     from: vi.fn(() => {
       const q = {};
       q.select = vi.fn(() => q);
-      q.upsert = vi.fn(() => Promise.resolve({ error: null }));
+      // L'echec vise UNIQUEMENT l'ecriture du remboursement : celle qui
+      // porte une transaction de type `refund`. Le debit (type `withdraw`)
+      // et le tag qui suit restent ecrits normalement — sinon on testerait
+      // l'echec du tag, pas celui du remboursement.
+      q.upsert = vi.fn((payload) => {
+        const txs = payload?.payload?.wallet?.transactions;
+        if (hook.echecRefund && Array.isArray(txs) && txs.some((t) => t?.type === 'refund')) {
+          return Promise.resolve({ error: { message: 'ecriture cassee (test)' } });
+        }
+        return Promise.resolve({ error: null });
+      });
       q.delete = vi.fn(() => q);
       q.eq = vi.fn(() => Promise.resolve({ data: [], error: null }));
       q.in = vi.fn(() => Promise.resolve({ data: [], error: null }));
@@ -124,6 +136,7 @@ const retirer = async (token, cle) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  hook.echecRefund = false;
   initiateFedaPayPayout.mockImplementation(async () => ({ status: 'success', payoutId: 1 }));
 });
 
@@ -180,5 +193,45 @@ describe('Retrait : la branche 409 ne doit pas lancer un second transfert', () =
     expect(initiateFedaPayPayout, 'le doublon ne doit pas relancer de transfert').toHaveBeenCalledTimes(1);
     expect(res2.statusCode).toBe(200);
     expect(res2.corps.duplicate).toBe(true);
+  });
+});
+
+describe('Retrait : un remboursement ECHOUE ne doit pas clore la dette', () => {
+  it('la dette reste ouverte et consultable quand le remboursement echoue', async () => {
+    // Le cas le plus grave du chemin d argent : le prestataire refuse le
+    // virement (l argent est parti), ET l ecriture du remboursement echoue
+    // aussitot (base saturee).
+    //
+    // AVANT correctif : l erreur du remboursement etait avalee, puis la
+    // transaction etait marquee `failed` et la cle d idempotence liberee. La
+    // dette DISPARAISSAIT des radars : plus rien a reconcilier, plus rien a
+    // rejouer, et le joueur avait perdu son argent sans trace. Seuls les logs
+    // en gardaient une copie — un journal n est pas un registre de dettes.
+    //
+    // APRES correctif : la transaction reste `pending_review`. Elle demeure
+    // visible (historique du joueur, observables `withdrawal_pending_review`)
+    // et la cle n est pas liberee : le joueur ne peut pas relancer un
+    // transfert sur une dette encore ouverte.
+    const { joueur, token } = await nouveauJoueur();
+    const cle = 'cle-refund-echoue';
+
+    // Le payout est refuse, ET l ecriture du remboursement echoue aussitot.
+    initiateFedaPayPayout.mockImplementation(async () => {
+      hook.echecRefund = true;
+      const err = new Error('payout refuse par le prestataire');
+      err.code = 'PAYOUT_FAILED';
+      throw err;
+    });
+
+    await retirer(token, cle);
+
+    const wallet = getUserById(joueur.id).wallet;
+    const tx = (wallet.transactions || []).find((t) => t?.metadata?.idempotencyKey === cle);
+    expect(tx, 'la transaction de retrait existe').toBeTruthy();
+    expect(
+      tx.metadata.payoutStatus,
+      'la dette reste OUVERTE : un retrait echoue n est pas un retrait clos',
+    ).toBe('pending_review');
+    expect(tx.status).toBe('pending_review');
   });
 });

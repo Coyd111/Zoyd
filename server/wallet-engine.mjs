@@ -216,6 +216,44 @@ return (await updateWalletSnapshot(userId, (wallet) => {
 };
 
 /**
+ * Cle d'idempotence du REMBOURSEMENT d'un retrait refuse par le prestataire.
+ *
+ * Elle identifie UNE DETTE, pas une INTENTION.
+ *
+ * Pourquoi PAS la cle d'idempotence du retrait : cette cle est
+ * REUTILISABLE. `hasActiveWithdrawalKey` (persistence.mjs) la libere des que
+ * le retrait est rembourse ou marque `failed` — le joueur peut donc s en
+ * servir pour un SECOND retrait. Si la cle de remboursement en derivait, les
+ * deux dettes partageraient la MEME cle : le second remboursement serait vu
+ * comme un rejeu du premier, donc SAUTE — et le cycle le compterait quand
+ * meme comme rembourse. Resultat : le joueur est DEBITE deux fois et
+ * REMBOURSE une seule fois. Perte seche, sans dette visible.
+ *
+ * Le `payoutId` est, lui, unique par dette : un retrait = un payout chez le
+ * prestataire. Un rejeu du meme retrait relit le MEME payout, donc la meme
+ * cle — l idempotence du remboursement tient. Un retrait suivant a un payout
+ * different, donc une cle differente — le remboursement a lieu.
+ *
+ * Repli sur l'id de TRANSACTION : un retrait dont le prestataire a refuse
+ * SANS creer de payout (echec avant toute creation) n a pas de `payoutId`.
+ * Sa dette est alors identifiee par la transaction de ce retrait — unique
+ * elle aussi, et stable dans le temps.
+ *
+ * @param {string|number|null|undefined} payoutId - Identifiant du payout chez le prestataire
+ * @param {string|null|undefined} [txId] - Identifiant de la transaction de retrait (repli)
+ * @returns {string|null} La cle de remboursement, ou null si la dette n est pas identifiable
+ */
+export const buildWithdrawalRefundKey = (payoutId, txId = null) => {
+  if (payoutId !== null && payoutId !== undefined && payoutId !== '') {
+    return `refund:payout:${payoutId}`;
+  }
+  if (txId !== null && txId !== undefined && txId !== '') {
+    return `refund:withdraw:${txId}`;
+  }
+  return null;
+};
+
+/**
  * Rembourse un retrait REFUSE par le prestataire, de facon IDEMPOTENTE.
  *
  * La reconciliation des retraits traverse plusieurs cycles : une remise
@@ -227,9 +265,15 @@ return (await updateWalletSnapshot(userId, (wallet) => {
  * (`winningsKeys`, donc persistee avec lui) ET dans l'index memoire. C'est le
  * seul endroit qui credite ET trace en meme temps, dans une seule ecriture.
  *
- * NOMENCLATURE : la cle doit etre derivee de cote appelant (`refund:` +
- * cle d'idempotence du retrait, ou `refund:payout:` + payoutId). Elle partage
- * l'espace des gains sans jamais entrer en collision : deux formats distincts.
+ * NOMENCLATURE : la cle doit etre derivee de cote appelant, via
+ * `buildWithdrawalRefundKey` (UN SEUL endroit decide) : `refund:payout:` +
+ * `payoutId`. Elle partage l'espace des gains sans jamais entrer en
+ * collision : deux formats distincts.
+ *
+ * PIEGE : la cle d'idempotence du RETRAIT ne convient pas — elle est
+ * REUTILISABLE (liberee des que le retrait est rembourse), donc deux dettes
+ * differentes se retrouveraient avec la meme cle de remboursement et le
+ * second remboursement serait saute. Voir `buildWithdrawalRefundKey`.
  *
  * @param {string} userId - ID du joueur
  * @param {number} montant - Montant a CREDITER (positif, jamais le negatif de l'historique)

@@ -427,6 +427,38 @@ export const getRankFromElo = (elo) => {
 const payoutFlagAfterSettlement = (settlementResult) =>
   (settlementResult.success ? true : 'pending');
 
+/**
+ * Marque un match dont l argent a ete RENDBU : plus rien ne doit etre verse
+ * pour ce match.
+ *
+ * Deux effets, indissociables :
+ *
+ *   1. `result.payoutDistributed = false` — la troisieme valeur documentee
+ *      (« deliberement non verse »). Seuls les `'pending'` sont repris par
+ *      le cron : le match sort donc du radar de la reprise. Sans cela, un
+ *      match rembourse par la moderation restait `'pending'` et le cron le
+ *      REGELEAIT sur la base figee — versant le gagnant une seconde fois,
+ *      sur un pot qui n existe plus (mint).
+ *
+ *   2. effacement de `settlementBasis` — la base figee decrit le pot
+ *      constate au PREMIER essai. Apres un remboursement, les reservations
+ *      sont rendues et le pot n existe plus : la conserver ferait
+ *      recommencer le reglement sur une base fantome.
+ *
+ * PIEGE : `payoutDistributed = false` n est PAS « pas encore verse » — c
+ * est l etat initial d un resultat soumis SANS `deferSettlement`, et
+ * l etat final d un forfait. Seuls les `'pending'` sont repris par le cron :
+ * le marqueur est donc sur, mais il ne dit pas seul qu un match est
+ * rembourse — c est le statut `cancelled` qui l dit (garde de
+ * `applyResultSettlement`).
+ */
+const markMatchRefunded = (match) => {
+  if (match.result) {
+    match.result.payoutDistributed = false;
+  }
+  delete match.settlementBasis;
+};
+
 const applyResultSettlement = async (match, result) => {
     // Garde-fou du reglement : sans arbitre designe, RIEN n est distribue.
     //
@@ -440,6 +472,21 @@ const applyResultSettlement = async (match, result) => {
     // `sweepMatchesWithoutArbiter`.
     if (!match.arbiter?.userId) {
       throw makeError('ARBITER_REQUIRED', 'Aucun arbitre : le match ne peut pas etre regle.');
+    }
+    //
+    // Un match ANNULE ne se solde JAMAIS.
+    //
+    // L annulation (moderation, createur, automation) a rendu les mises : le
+    // pot n existe plus. Regler quand meme paierait le gagnant sur une base
+    // figee qui decrit le pot d avant le remboursement (mint), ou ecirait un
+    // versement de 0 ZC qui BLOQUERAIT la cle d idempotence
+    // `prize_win:<matchId>` pour tout essai legitime ulterieur.
+    //
+    // Le garde vise `cancelled` SEUL, pas `CLOSED_STATUSES` : le forfait et
+    // la soumission directe(reglee immediatement) posent leur statut terminal
+    // AVANT d appeler cette fonction, et un garde plus large les casserait.
+    if (match.status === 'cancelled') {
+      throw makeError('MATCH_CLOSED', 'Match annule : les mises ont ete rendues, aucun reglement ne peut etre applique.');
     }
   // Anti-mint : on ne distribue QUE l'argent réellement verrouillé.
   // match.prizePool est calculé sur maxPlayers à la création ; s'il servait de
@@ -1520,6 +1567,10 @@ export const resolveDisputeOnServer = async (matches, actor, matchId, resolution
         await refundLockedEntry(player.userId, match.id, `Remboursement litige ${match.id}`);
       });
     }
+    // L argent est rendu : plus rien ne doit etre verse pour ce match. Sans
+    // ce marqueur, le resultat restait `'pending'` et le cron le re-reglait
+    // sur la base figee — paye du pot d AVANT le remboursement (mint).
+    markMatchRefunded(match);
     match.status = 'cancelled';
     match.finishedAt = getNow();
     match.confirmationDeadline = null;
@@ -1738,6 +1789,10 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
 
   match.disputes = resolveOpenDisputes(match, reason);
   match.dispute = match.disputes[0];
+  // Meme marqueur que l annulation par litige : les mises sont rendues,
+  // donc plus rien ne doit etre verse pour ce match (le cron ne doit pas le
+  // reprendre sur la base figee).
+  markMatchRefunded(match);
   match.status = 'cancelled';
   match.finishedAt = getNow();
   match.updatedAt = getNow();
@@ -1781,6 +1836,7 @@ const cancelForAutomation = async (match, reason) => {
     });
   }
 
+  markMatchRefunded(match);
   match.status = 'cancelled';
   match.finishedAt = getNow();
   match.updatedAt = getNow();
@@ -1818,6 +1874,14 @@ export const processMatchAutomationOnServer = async (matches, nowMs = Date.now()
   for (const match of nextMatches) {
     try {
       if (match.status === 'disputed' || CLOSED_STATUSES.includes(match.status)) {
+        continue;
+      }
+      // Un match dont le reglement est EN ATTENTE (`'pending'`) a de l argent
+      // qui n a pas encore ete verse : l annuler automatiquement le
+      // REMBOURSERait, et le gagnant ne toucherait jamais sa part. Le cron de
+      // reprise le solde d abord (toutes les 60 s) ; l automation reprendra le
+      // match ensuite, une fois le reglement passe.
+      if (match.result?.payoutDistributed === 'pending') {
         continue;
       }
 

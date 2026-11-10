@@ -93,7 +93,7 @@ import {
   tagWalletTransaction,
   setOccSupportePourTest,
 } from './persistence.mjs';
-import { depositToWallet, refundRejectedWithdrawal, reconcilePendingWithdrawals } from './wallet-engine.mjs';
+import { depositToWallet, refundRejectedWithdrawal, reconcilePendingWithdrawals, buildWithdrawalRefundKey } from './wallet-engine.mjs';
 import { getNow } from './utils.mjs';
 
 const MOT_DE_PASSE = 'MotDePasseSolide2026!';
@@ -145,12 +145,16 @@ const semerRetraitEnAttente = async (userId, { cle, payoutId, txId = 'TX-1' }) =
   await settle();
 };
 
-/** Le wrapper EXACT du cron : meme derivation de cle, meme contexte. */
+/** Le wrapper EXACT du cron : meme derivation de cle, meme contexte.
+ *
+ * La derivation vient de `buildWithdrawalRefundKey` — le MEME helper que le
+ * cron et le webhook utilisent. Ce test ne peut donc plus diverger du code
+ * de production : c etait precisement la faute qui laissait passer le bug
+ * de cle de remboursement (le test dupliquait la derivation, donc il
+ * verifiait la faute au lieu de la detecter). */
 const refundDuCron = (userId, montant, extra) => refundRejectedWithdrawal(
   userId, montant,
-  extra?.idempotencyKey
-    ? `refund:${extra.idempotencyKey}`
-    : (extra?.payoutId != null ? `refund:payout:${extra.payoutId}` : null),
+  buildWithdrawalRefundKey(extra?.payoutId),
   { metadata: { payoutId: extra?.payoutId ?? null } },
 );
 
@@ -228,6 +232,86 @@ describe('refundRejectedWithdrawal — idempotence du remboursement', () => {
     await depositToWallet(joueur.id, 100, 'test');
     expect(getWalletSnapshot(joueur.id).payoutsEnAttente, 'la file survit au depot').toHaveLength(1);
     expect(getWalletSnapshot(joueur.id).payoutsEnAttente[0]).toMatchObject({ payoutId: 49, idempotencyKey: 'cle-file-1' });
+  });
+});
+
+describe('reconciliation — deux dettes, deux cles de remboursement', () => {
+  it('une cle d idempotence REUTILISEE ne fait pas sauter le remboursement suivant', async () => {
+    // La cle d idempotence du retrait est REUTILISABLE : apres le
+    // remboursement, `hasActiveWithdrawalKey` la libere, et le joueur peut
+    // s en servir pour un second retrait. C est legal, et c est meme
+    // l usage normal d une cle d idempotence cote client.
+    //
+    // Si la cle de REMBOURSEMENT en derivait, les deux dettes partageraient
+    // la meme cle : le second remboursement serait lu comme un rejeu du
+    // premier, donc saute — et le cycle le compterait malgre tout comme
+    // rembourse. Le joueur aurait ete DEBITE deux fois et REMBOURSE une
+    // seule fois : perte seche, invisible (aucune dette ne subsiste).
+    //
+    // La cle de remboursement derive donc du `payoutId`, unique par dette.
+    const joueur = await nouveauJoueur();
+    const avant = solde(joueur.id);
+
+    const retrieve = async (payoutId) => ({ payoutId, status: 'failed' });
+    const reconcilier = () => reconcilePendingWithdrawals(
+      PAIEMENT_REUSSITE, PAIEMENT_ECHEC, retrieve,
+      () => [joueur.id],
+      (userId) => getWalletSnapshot(userId),
+      (userId, txId, patch) => tagWalletTransaction(userId, txId, patch),
+      refundDuCron,
+      () => {},
+      vi.fn(),
+    );
+
+    // ─── Dette 1 : meme cle d idempotence, payout 1001 ─────────────────────
+    await semerRetraitEnAttente(joueur.id, { cle: 'cle-reutilisee', payoutId: 1001, txId: 'TX-A' });
+    const r1 = await reconcilier();
+    expect(r1).toMatchObject({ refunded: 1, stillPending: 0 });
+    expect(solde(joueur.id), 'dette 1 remboursee').toBe(avant + 200);
+
+    // ─── Dette 2 : MEME cle d idempotence, payout DIFFERENT ────────────────
+    await semerRetraitEnAttente(joueur.id, { cle: 'cle-reutilisee', payoutId: 1002, txId: 'TX-B' });
+    const r2 = await reconcilier();
+    expect(r2, 'la deuxieme dette est bien remboursee').toMatchObject({ refunded: 1, stillPending: 0 });
+    expect(
+      solde(joueur.id),
+      'le joueur est REMBOURSE deux fois : deux dettes, deux credits',
+    ).toBe(avant + 400);
+
+    // Deux traces, deux cles distinctes : rien n a ete confondu.
+    const traces = refundTxs(joueur.id);
+    expect(traces).toHaveLength(2);
+    expect(traces.map((t) => t.metadata.winningsKey).sort())
+      .toEqual(['refund:payout:1001', 'refund:payout:1002']);
+  });
+
+  it('le rejeu de la MEME dette ne credite pas deux fois', async () => {
+    // Le symetrique exact : le meme payoutId relu (le prestataire n a pas
+    // tranche au premier cycle) doit produire la meme cle, donc un seul
+    // credit.
+    const joueur = await nouveauJoueur();
+    const avant = solde(joueur.id);
+
+    const retrieve = async (payoutId) => ({ payoutId, status: 'failed' });
+    const reconcilier = () => reconcilePendingWithdrawals(
+      PAIEMENT_REUSSITE, PAIEMENT_ECHEC, retrieve,
+      () => [joueur.id],
+      (userId) => getWalletSnapshot(userId),
+      (userId, txId, patch) => tagWalletTransaction(userId, txId, patch),
+      refundDuCron,
+      () => {},
+      vi.fn(),
+    );
+
+    await semerRetraitEnAttente(joueur.id, { cle: 'cle-rejeu', payoutId: 2001, txId: 'TX-C' });
+    await reconcilier();
+    expect(solde(joueur.id)).toBe(avant + 200);
+
+    // Le meme payout, rejoue : le credit ne doit pas se repeter.
+    await semerRetraitEnAttente(joueur.id, { cle: 'cle-rejeu', payoutId: 2001, txId: 'TX-D' });
+    await reconcilier();
+    expect(solde(joueur.id), 'un SEUL credit pour la meme dette').toBe(avant + 200);
+    expect(refundTxs(joueur.id)).toHaveLength(1);
   });
 });
 

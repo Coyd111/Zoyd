@@ -72,6 +72,8 @@ import {
   depositToWallet,
   getServerWallet,
   withdrawFromWallet,
+  refundRejectedWithdrawal,
+  buildWithdrawalRefundKey,
 } from '../wallet-engine.mjs';
 import { requireAdmin2fa } from '../admin-totp.mjs';
 import { withWalletMutex } from '../mutex.mjs';
@@ -358,18 +360,35 @@ await withWalletMutex(session.user.id, async () => {
     }
 
     log.error('Payout failed, refunding wallet', { userId: session.user.id, error: payoutError.message });
+    // Le remboursement passe par `refundRejectedWithdrawal` : le credit ET la
+    // trace d idempotence sont ecrits DANS LA MEME operation. Un
+    // `depositToWallet` nu laissait le credit sans trace - une reecriture
+    // dont la REPONSE a ete perdue (timeout apres commit) aurait alors verse
+    // DEUX FOIS.
+    //
+    // La cle est deduite de l id de la TRANSACTION de ce retrait : stable
+    // pour CETTE dette et unique. La cle d idempotence du retrait, elle, ne
+    // convient pas - elle est REUTILISABLE (un nouveau retrait peut la
+    // reprendre), donc deux dettes se retrouveraient avec la meme cle et le
+    // second remboursement serait saute. Voir `buildWithdrawalRefundKey`.
+    let refundReussi = false;
     try {
       await withWalletMutex(session.user.id, async () => {
         // `type: 'refund'` et non `deposit` : dans l'historique, un
         // remboursement d'un retrait echoue doit se lire comme tel. Ecrit
         // comme un depot, il laissait croire a un versement que personne
         // n'avait effectue.
-        await depositToWallet(session.user.id, body.amount, 'Remboursement', {
-          type: 'refund',
-          description: `Remboursement — retrait echoue (${body.amount} ZC rendus)`,
-          metadata: { reason: 'PAYOUT_FAILED', idempotencyKey: cleanKey },
-        });
+        await refundRejectedWithdrawal(
+          session.user.id,
+          body.amount,
+          buildWithdrawalRefundKey(null, withdrawTxId),
+          {
+            description: `Remboursement — retrait echoue (${body.amount} ZC rendus)`,
+            metadata: { reason: 'PAYOUT_FAILED', idempotencyKey: cleanKey },
+          },
+        );
       });
+      refundReussi = true;
     } catch (refundError) {
       // Perte sèche : l'argent est parti sans que le remboursement passe.
       // On le laisse CRISSER dans les logs plutôt que de l'avaler.
@@ -377,6 +396,7 @@ await withWalletMutex(session.user.id, async () => {
         userId: session.user.id,
         amount: body.amount,
         idempotencyKey: cleanKey,
+        withdrawTxId,
         error: refundError.message,
       });
     }
@@ -385,7 +405,9 @@ if (withdrawTxId) {
           // `status: 'failed'` ETANT `payoutStatus` : le statut est ce que
           // l'historique affiche. Sans lui, un retrait refuse par FedaPay
           // restait « completed » avec une coche verte.
-          await tagWalletTransaction(session.user.id, withdrawTxId, { payoutStatus: 'failed', status: 'failed' });
+          await tagWalletTransaction(session.user.id, withdrawTxId, refundReussi
+            ? { payoutStatus: 'failed', status: 'failed' }
+            : { payoutStatus: 'pending_review', status: 'pending_review' });
         } catch (tagError) {
           // Avant : `.catch(() => {})`. Avalé, le retrait restait NON marqué
           // 'failed', donc compté dans les commissions ZOYD alors que la
@@ -402,7 +424,7 @@ if (withdrawTxId) {
         } finally {
           // La cle est liberee DANS TOUS LES CAS : le joueur a ete rembourse,
           // un retry doit pouvoir relancer un vrai payout.
-if (cleanKey) forgetWithdrawalKey(session.user.id, cleanKey);
+if (refundReussi && cleanKey) forgetWithdrawalKey(session.user.id, cleanKey);
           }
       }
       respondMappedError(res, payoutError);

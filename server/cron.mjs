@@ -65,7 +65,7 @@ import { assignPlayersToDays, getStaleLeagueSeasonIds, cancelStaleLeagueSeasonOn
 import { getExpiredTournamentIds, cancelStaleTournamentOnServer, retryPendingTournamentRefunds, countPendingTournamentRefunds, countUncollectableTournamentRefunds, retryPendingTournamentPayouts, countPendingTournamentPayouts } from './tournament-engine.mjs';
 import { settlePendingMatchResult, expireConfirmationsOnServer, countPendingArbiterFees, retryPendingArbiterFees } from './match-engine.mjs';
 import { retryPendingBrSettlements, countStaleBrLobbies, getStaleBrLobbyIds, cancelStaleBrLobbyOnServer } from './br-engine.mjs';
-import { reconcilePendingWithdrawals, refundRejectedWithdrawal, refundLockedEntry } from './wallet-engine.mjs';
+import { reconcilePendingWithdrawals, refundRejectedWithdrawal, refundLockedEntry, buildWithdrawalRefundKey } from './wallet-engine.mjs';
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 import { saveBrLobbies } from './state-helpers.mjs';
 import { getNow } from './utils.mjs';
@@ -871,12 +871,14 @@ export const initCronJobs = () => {
         // trace present rend le rejeu SANS effet sur le solde.
         (userId, amount, extra) => refundRejectedWithdrawal(
           userId, amount,
-          // Cle STABLE pour la meme dette, dans tous les cycles :
-          // derivee de la cle d'idempotence du retrait quand elle existe,
-          // du `payoutId` sinon.
-          extra?.idempotencyKey
-            ? `refund:${extra.idempotencyKey}`
-            : (extra?.payoutId != null ? `refund:payout:${extra.payoutId}` : null),
+          // Cle STABLE pour la meme dette, dans tous les cycles — et
+          // UNIQUE par dette : elle derive du `payoutId`, pas de la cle
+          // d idempotence du retrait (celle-ci est REUTILISABLE : le joueur
+          // peut la repasser sur un second retrait, et les deux dettes se
+          // partageraient alors la meme cle — le second remboursement serait
+          // saute, le joueur perdrait son argent). Voir
+          // `buildWithdrawalRefundKey`.
+          buildWithdrawalRefundKey(extra?.payoutId),
           {
             description: 'Remboursement - retrait rejete par le prestataire',
             metadata: { reason: 'PAYOUT_REJECTED', payoutId: extra?.payoutId ?? null },

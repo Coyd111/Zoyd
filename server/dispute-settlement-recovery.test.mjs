@@ -181,6 +181,66 @@ describe('C3 - resolveDisputeOnServer : le reglement en echec tombe dans le rada
   });
 });
 
+describe('MINT - un match REMBOURSE par la moderation ne doit plus etre regle', () => {
+  // Le scenario de l audit :
+  //   1. le reglement passe en ECHEC PARTIEL — la base est figee sur le pot
+  //      constate au premier essai (`settlementBasis.lockedPot`), le drapeau
+  //      reste `'pending'` ;
+  //   2. la moderation, informee de l echec, rembourse TOUT le monde ;
+  //   3. le cron de reprise repasse sur le match (toutes les 60 s).
+  //
+  // AVANT correctif : le match gardait `'pending'` ET sa base figee. La
+  // reprise le REGLEAIT : le gagnant etait paye `settlementBasis.lockedPot`
+  // (le pot d AVANT le remboursement) alors que ses mises venaient de lui
+  // etre rendues. Mint : la plateforme encaissait 30 et versait 60.
+  const matchARembourser = (surcharge = {}) => matchLitige({
+    result: {
+      winnerTeam: 0,
+      payoutDistributed: 'pending',
+      confirmedByTeams: ['u1', 'u2', 'u3'],
+      submittedAt: '2026-01-01T00:00:00Z',
+    },
+    settlementBasis: { lockedPot: 30 },
+    ...surcharge,
+  });
+
+  const modererRemboursement = async () => moteur.resolveDisputeOnServer(
+    [matchARembourser()], adminActor(), idMatch, 'Tricheuse averee : tout est rembourse',
+    { action: 'refund' },
+  );
+
+  it('le remboursement efface la base figee et sort le match de la reprise', async () => {
+    const resolution = await modererRemboursement();
+
+    expect(resolution.match.status).toBe('cancelled');
+    // Le marqueur : `false` = « deliberement non verse ». Seuls les
+    // `'pending'` sont repris par le cron.
+    expect(resolution.match.result.payoutDistributed).toBe(false);
+    // La base figee decrit un pot qui n existe plus : elle disparait.
+    expect(resolution.match.settlementBasis).toBeUndefined();
+  });
+
+  it('la reprise du cron NE re-regle pas un match rembourse', async () => {
+    const resolution = await modererRemboursement();
+
+    // LE CRON : il repasse sur ce match une minute plus tard.
+    const reprise = await moteur.settlePendingMatchResult(resolution.matches, idMatch);
+    expect(reprise.success, 'un match rembourse ne se re-regle pas').toBe(false);
+    expect(reprise.match.result.payoutDistributed, 'et surtout pas « regle »').not.toBe(true);
+  });
+
+  it('la moderation ne peut pas REGLER un match qu elle vient de rembourser', async () => {
+    const resolution = await modererRemboursement();
+
+    // Une seconde decision de la moderation, cette fois « settle » : le
+    // match est annule et rembourse, il n a plus de pot a distribuer.
+    await expect(moteur.resolveDisputeOnServer(
+      resolution.matches, adminActor(), idMatch, 'On tente de regler quand meme',
+      { action: 'settle' },
+    )).rejects.toMatchObject({ code: 'MATCH_CLOSED' });
+  });
+});
+
 describe('C3 - settlePendingMatchResult : cloture des etats de dette', () => {
   it('un etat HISTORIQUE disputed + deadline + litiges resolves est clos par la reprise', async () => {
     // Cas de base deja vieux dans la base : litige clos mais statut

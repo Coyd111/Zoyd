@@ -10,6 +10,9 @@
  * renormaliser dans chaque composant.
  * PIEGE : le proxy peut repondre en mode degrade (catalogue indisponible).
  * L'ecran doit distinguer ' pas de donnees ' de ' service indisponible '.
+ * PIEGE : la route exige une session joueur. L'appel doit porter
+ * `credentials: 'include'` (cookie httpOnly cross-origine) : sans lui, la
+ * reponse est 401 et le catalogue revient vide, silencieusement.
  * PIEGE : ce catalogue est un CONTENU, pas une source de verite metier. Une
  * regle de jeu ne doit jamais dependre d'une reponse Codashop.
  */
@@ -79,7 +82,15 @@ export async function fetchCODMStore(country = 'BJ'): Promise<CodashopStoreRespo
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
-    const response = await fetch(getApiUrl(`/api/codm/store?country=${country}`), { signal: controller.signal });
+    const response = await fetch(getApiUrl(`/api/codm/store?country=${country}`), {
+      // Cookie httpOnly cross-origine (Vercel -> Render) : indispensable.
+      // La route `/api/codm/store` exige une session joueur
+      // (`getAuthenticatedAppSession`). Sans `credentials`, le cookie n'est
+      // pas envoye : la reponse est 401 et le catalogue arrive vide — sans
+      // le moindre signe visible pour le joueur.
+      credentials: 'include',
+      signal: controller.signal,
+    });
     clearTimeout(timeout);
     if (!response.ok) return { bundles: [], catalogCurrency: 'INR', priceIsLocal: false };
     const data = await response.json();

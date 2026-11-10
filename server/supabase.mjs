@@ -17,9 +17,10 @@
  *   d'URL ne prouve rien et la suite E2E tournerait contre le reseau.
  * INVARIANT : le client est cree sans session persistee ni rafraichissement
  *   automatique : c'est un client de service, pas un client utilisateur.
- * PIEGE : `dotenv.config()` REECRIT les variables du process avec le contenu
- *   de `.env.server` : vider SUPABASE_URL dans le process ne suffit pas a
- *   isoler les tests, d'ou ZOYD_DISABLE_SUPABASE.
+ * PIEGE : `dotenv.config()` N'ECRASE PAS les variables deja presentes dans le
+ *   process (comportement par defaut de dotenv, verifie sur la 18.0.9) :
+ *   vider SUPABASE_URL dans le shell ne suffit donc pas a isoler les tests
+ *   si `.env.server` la repose. D'ou ZOYD_DISABLE_SUPABASE, qui l'emporte.
  * PIEGE : une table manquante n'echoue pas ici : elle ressort plus tard
  *   "relation does not exist" dans les journaux (ex. `user_reports`).
  * PIEGE : l'import a des effets de bord (lecture du .env, ouverture d'une

@@ -599,13 +599,29 @@ export const initCronJobs = () => {
     try {
       const integrity = await verifyDataIntegrity();
       if (!integrity.ok) {
-        log.error('Intégrité des données compromise', {
-          memoryUsers: integrity.memoryUsers,
-          dbUsers: integrity.dbUsers,
-          stateMismatches: integrity.stateMismatches,
-          walletIssueCount: (integrity.walletIssues || []).length,
-          walletIssues: (integrity.walletIssues || []).slice(0, 10),
-        });
+        // `ok:false` n'est PAS toujours une corruption. Sans client Supabase
+        // (mode memoire : dev local, suite de tests, base indisponible), le
+        // controle ne peut pas comparer la memoire a la base : il renvoie un
+        // `reason` et aucun etat. Journalier "donnees compromise" dans ce
+        // cas produirait une fausse alerte sur l'argent — le genre d'alerte
+        // que l'on finit par ignorer. La divergence REELLE (comptages
+        // divergents, snapshots divergents, portefeuille incoherent) n'a
+        // elle pas de `reason` : c'est elle qui doit rester en error.
+        if (integrity.reason) {
+          log.warn('Controle d integrite impossible', {
+            reason: integrity.reason,
+            memoryUsers: integrity.memoryUsers,
+            dbUsers: integrity.dbUsers,
+          });
+        } else {
+          log.error('Intégrité des données compromise', {
+            memoryUsers: integrity.memoryUsers,
+            dbUsers: integrity.dbUsers,
+            stateMismatches: integrity.stateMismatches,
+            walletIssueCount: (integrity.walletIssues || []).length,
+            walletIssues: (integrity.walletIssues || []).slice(0, 10),
+          });
+        }
       }
     } catch (error) {
       log.error('Erreur contrôle intégrité', error);

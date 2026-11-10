@@ -23,8 +23,10 @@
  * PIEGE : `readBearerToken` privilegie le COOKIE alors que
  *   `getAuthenticatedAppSession` privilegie l'en-tete Authorization : les
  *   priorites sont volontairement inversees.
- * PIEGE : `getCorsOrigin` renvoie '' pour une origine non whitelistee : la
- *   reponse part alors sans `Access-Control-Allow-Origin`.
+ * PIEGE : `getCorsOrigin` renvoie '' pour une origine non whitelistee :
+ *   l'en-tete `Access-Control-Allow-Origin` est alors OMIS de la reponse,
+ *   jamais pose a '' — une valeur vide est invalide (spec Fetch) et ferait
+ *   remonter au navigateur un message trompeur sur le vrai motif du refus.
  * PIEGE : ni CSP ni `X-XSS-Protection` ici : ces regles visent les
  *   DOCUMENTS (vercel.json), pas une reponse JSON.
  * PIEGE : `normalizePathForMetrics` doit etre applique au pathname avant de
@@ -95,7 +97,14 @@ const devOrigins = process.env.NODE_ENV === 'production' ? [] : ['http://localho
 export const ALLOWED_ORIGINS = [
   ...(process.env.ZOYD_ALLOWED_ORIGINS
     ? process.env.ZOYD_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-    : devOrigins),
+    : []),
+  // Les origines de dev sont AJOUTEES, pas SUBSTITUEES : poser
+  // ZOYD_ALLOWED_ORIGINS ne doit pas rendre le front Vite local
+  // injoignable (le gabarit .env.server.example le pose : la liste etait
+  // alors remplacee, et tout appel du front local partait en erreur CORS).
+  // Elles sont VIDES en production (NODE_ENV=production) : la liste de
+  // production — donc le garde CSRF et le handshake WebSocket — est inchangee.
+  ...devOrigins,
   'https://zoyd.vercel.app',
   // zoyd.africa / www.zoyd.africa retires : DNS mort ; un domaine
   // reattribue aurait herite de la liste CORS/CSP (usurpation d'origine).
@@ -142,9 +151,8 @@ export const respondJson = (res, statusCode, payload, req = null) => {
     }
   }
 
-  res.writeHead(statusCode, {
+  const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
@@ -163,7 +171,18 @@ export const respondJson = (res, statusCode, payload, req = null) => {
     // DOCUMENTS : sur une reponse JSON elle est inerte. Celle qui compte est
     // posee par vercel.json sur les fichiers HTML, et celle-la n'autorise
     // `unsafe-inline` que pour `style-src` (le <style> inline de index.html).
-  });
+  };
+
+  // L'en-tete n'est pose QUE si l'origine est blanche. Une valeur VIDE est
+  // invalide (spec Fetch : une seule origine ou `*`) : le navigateur la
+  // refuse et remonte « header contains the invalid value '' » — un message
+  // qui masque le vrai motif (origine non autorisee). Omettre l'en-tete
+  // donne le refus attendu, sans message trompeur.
+  if (origin) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+
+  res.writeHead(statusCode, headers);
   res.end(JSON.stringify(payload));
 
   if (effectiveReq && effectiveReq._metricsStart) {

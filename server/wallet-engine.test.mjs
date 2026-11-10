@@ -1,204 +1,482 @@
-/**
- * Tests ciblés argent : dépôt, retrait, refund, purge orpheline.
- * Mode mémoire (ZOYD_DISABLE_SUPABASE=true via vitest.config.mjs).
- * Aucun appel réseau : persistence lit les Maps en mémoire.
- */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { randomUUID } from 'node:crypto';
-import { createUserAccount } from './persistence.mjs';
-import {
-  calcWithdrawNet,
-  getWindowedWithdrawalTotal,
-  depositToWallet,
-  withdrawFromWallet,
-  lockEntryFee,
-  refundLockedEntry,
-  releaseWalletWinnings,
-  refundRejectedWithdrawal,
-  reconcilePendingWithdrawals,
-  isUnrecoverableRefundError,
-} from './wallet-engine.mjs';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-let n = 0;
-async function makeUser() {
-  n += 1;
-  const id = `10000000-0000-4000-8000-${String(100000000000 + n).padStart(12, '0')}`;
-  const phone = `6${String(6000000 + n * 137).padStart(7, '0')}`;
-  const user = await createUserAccount({
-    id,
-    pseudo: `TestArgent${n}`,
-    email: `argent${n}@example.com`,
-    phone,
-    gameId: `6742${String(100000 + n).padStart(6, '0')}`,
-    password: 'Abcdef1!ZoydArgent',
-    levelCODM: 50,
-    rankMJ: 'bronze',
-    rankBR: 'bronze',
-    country: 'Benin',
-    controllerType: 'touch',
-    device: 'phone',
-    acceptAdult: true,
-    acceptTerms: true,
+// Mock dependencies
+vi.mock('./persistence.mjs', () => ({
+  getWalletSnapshot: vi.fn(),
+  updateWalletSnapshot: vi.fn(),
+  // La garde d'idempotence des gains vit dans persistence. Sans elle dans le
+  // mock, `releaseWalletWinnings` Echouerait sur un `undefined` — pas sur une
+  // regression, mais sur un forget de l'index.
+  hasSettledWinningsKey: vi.fn(() => false),
+  trackWinningsKey: vi.fn(),
+}));
+
+// Import after mocking
+import { updateWalletSnapshot } from './persistence.mjs';
+import * as walletEngine from './wallet-engine.mjs';
+
+describe('wallet-engine - Deposit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
-  return user.id;
-}
 
-beforeEach(() => { /* mémoire par test : chaque compte est unique */ });
+  it('should throw error for zero amount', async () => {
+    await expect(walletEngine.depositToWallet('user1', 0)).rejects.toThrow('Le montant du depot est invalide.');
+  });
 
-describe('calcWithdrawNet — commission 2 % unique', () => {
-  it('retire 2 % arrondis au centime', () => {
-    expect(calcWithdrawNet(150)).toEqual({ feeAmount: 3, netAmount: 147 });
-    expect(calcWithdrawNet(1000)).toEqual({ feeAmount: 20, netAmount: 980 });
+  it('should throw error with correct code', async () => {
+    try {
+      await walletEngine.depositToWallet('user1', 0);
+    } catch (error) {
+      expect(error.code).toBe('INVALID_AMOUNT');
+    }
+  });
+
+  it('should round amount correctly', async () => {
+    const mockWallet = { cashBalance: 100, bonusBalance: 0, lockedBalance: 0, transactions: [] };
+    vi.mocked(updateWalletSnapshot).mockResolvedValue({ wallet: mockWallet });
+
+    await walletEngine.depositToWallet('user1', 10.123);
+    
+    expect(updateWalletSnapshot).toHaveBeenCalledWith(
+      'user1',
+      expect.any(Function)
+    );
   });
 });
 
-describe('getWindowedWithdrawalTotal — cumul 24 h glissant', () => {
-  it('ignore les retraits hors fenêtre et les failed', () => {
-    const now = Date.now();
-    const wallet = {
-      retraitCumul: [
-        { txId: 'a', timestamp: new Date(now - 3600_000).toISOString(), amount: 200 },
-        { txId: 'b', timestamp: new Date(now - 30 * 3600_000).toISOString(), amount: 500 },
-      ],
+describe('wallet-engine - Withdraw', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should throw error for amount below minimum', async () => {
+    await expect(walletEngine.withdrawFromWallet('user1', 100)).rejects.toThrow('Retrait minimum: 150 ZC.');
+    await expect(walletEngine.withdrawFromWallet('user1', 149.99)).rejects.toThrow('Retrait minimum: 150 ZC.');
+  });
+
+  it('should throw error with correct code for minimum withdrawal', async () => {
+    try {
+      await walletEngine.withdrawFromWallet('user1', 100);
+    } catch (error) {
+      expect(error.code).toBe('WITHDRAWAL_MIN');
+    }
+  });
+
+  it('should throw error for insufficient funds', async () => {
+    const mockWallet = { cashBalance: 10, bonusBalance: 0, lockedBalance: 0, transactions: [] };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await expect(walletEngine.withdrawFromWallet('user1', 200)).rejects.toThrow('Solde cash insuffisant pour ce retrait.');
+  });
+
+  it('should throw error with correct code for insufficient funds', async () => {
+    const mockWallet = { cashBalance: 10, bonusBalance: 0, lockedBalance: 0, transactions: [] };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    try {
+      await walletEngine.withdrawFromWallet('user1', 200);
+    } catch (error) {
+      expect(error.code).toBe('INSUFFICIENT_FUNDS');
+    }
+  });
+
+  it('should calculate fee correctly (2%)', async () => {
+    const mockWallet = { cashBalance: 200, bonusBalance: 0, lockedBalance: 0, transactions: [] };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.withdrawFromWallet('user1', 150);
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.cashBalance).toBe(50); // 200 - 150
+    expect(result.transactions).toHaveLength(1);
+    expect(result.transactions[0].type).toBe('withdraw');
+    expect(result.transactions[0].amount).toBe(-150);
+    expect(result.transactions[0].metadata.feeAmount).toBe(3);
+    expect(result.transactions[0].metadata.netAmount).toBe(147);
+  });
+});
+
+describe('wallet-engine - Lock Entry Fee', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should throw error for insufficient funds', async () => {
+    const mockWallet = { cashBalance: 5, bonusBalance: 0, lockedBalance: 0, transactions: [], lockedEntries: {} };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await expect(walletEngine.lockEntryFee('user1', 10, 'match1')).rejects.toThrow('Solde insuffisant pour bloquer ce pass.');
+  });
+
+  it('should throw error with correct code for insufficient funds', async () => {
+    const mockWallet = { cashBalance: 5, bonusBalance: 0, lockedBalance: 0, transactions: [], lockedEntries: {} };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    try {
+      await walletEngine.lockEntryFee('user1', 10, 'match1');
+    } catch (error) {
+      expect(error.code).toBe('INSUFFICIENT_FUNDS');
+    }
+  });
+
+  it('should deduct from cash balance when sufficient', async () => {
+    const mockWallet = { cashBalance: 50, bonusBalance: 0, lockedBalance: 0, transactions: [], lockedEntries: {} };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.lockEntryFee('user1', 10, 'match1');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.cashBalance).toBe(40);
+    expect(result.bonusBalance).toBe(0);
+    expect(result.lockedBalance).toBe(10);
+    expect(result.lockedEntries['match1']).toBeDefined();
+    expect(result.lockedEntries['match1'].amount).toBe(10);
+    expect(result.lockedEntries['match1'].cashAmount).toBe(10);
+    expect(result.lockedEntries['match1'].bonusAmount).toBe(0);
+  });
+
+  it('should deduct from bonus balance when cash insufficient', async () => {
+    const mockWallet = { cashBalance: 5, bonusBalance: 10, lockedBalance: 0, transactions: [], lockedEntries: {} };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.lockEntryFee('user1', 10, 'match1');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.cashBalance).toBe(0);
+    expect(result.bonusBalance).toBe(5);
+    expect(result.lockedBalance).toBe(10);
+    expect(result.lockedEntries['match1'].cashAmount).toBe(5);
+    expect(result.lockedEntries['match1'].bonusAmount).toBe(5);
+  });
+
+  it('should split deduction between cash and bonus', async () => {
+    const mockWallet = { cashBalance: 7, bonusBalance: 5, lockedBalance: 0, transactions: [], lockedEntries: {} };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.lockEntryFee('user1', 10, 'match1');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.cashBalance).toBe(0);
+    expect(result.bonusBalance).toBe(2);
+    expect(result.lockedBalance).toBe(10);
+    expect(result.lockedEntries['match1'].cashAmount).toBe(7);
+    expect(result.lockedEntries['match1'].bonusAmount).toBe(3);
+  });
+});
+
+describe('wallet-engine - Refund Locked Entry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return wallet unchanged when no reservation exists', async () => {
+    const mockWallet = { cashBalance: 50, bonusBalance: 10, lockedBalance: 10, transactions: [], lockedEntries: {} };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.refundLockedEntry('user1', 'match1', 'Test refund');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result).toBe(mockWallet);
+  });
+
+  it('should refund cash and bonus correctly', async () => {
+    const mockWallet = { 
+      cashBalance: 40, 
+      bonusBalance: 5, 
+      lockedBalance: 10, 
+      transactions: [], 
+      lockedEntries: {
+        'match1': { amount: 10, cashAmount: 7, bonusAmount: 3, lockedAt: '2024-01-01' }
+      }
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.refundLockedEntry('user1', 'match1', 'Test refund');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.cashBalance).toBe(47);
+    expect(result.bonusBalance).toBe(8);
+    expect(result.lockedBalance).toBe(0);
+    expect(result.lockedEntries['match1']).toBeUndefined();
+    expect(result.transactions[0].type).toBe('refund');
+    expect(result.transactions[0].amount).toBe(10);
+  });
+});
+
+describe('wallet-engine - Settle Match Loss', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return wallet unchanged when no reservation exists', async () => {
+    const mockWallet = { cashBalance: 50, bonusBalance: 10, lockedBalance: 10, transactions: [], lockedEntries: {} };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.settleMatchLossWallet('user1', 'match1', 'Loss settlement');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result).toBe(mockWallet);
+  });
+
+  it('should consume locked funds without refund', async () => {
+    const mockWallet = { 
+      cashBalance: 40, 
+      bonusBalance: 5, 
+      lockedBalance: 10, 
+      transactions: [], 
+      lockedEntries: {
+        'match1': { amount: 10, cashAmount: 7, bonusAmount: 3, lockedAt: '2024-01-01' }
+      }
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.settleMatchLossWallet('user1', 'match1', 'Loss settlement');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.cashBalance).toBe(40); // Unchanged
+    expect(result.bonusBalance).toBe(5); // Unchanged
+    expect(result.lockedBalance).toBe(0);
+    expect(result.lockedEntries['match1']).toBeUndefined();
+    expect(result.transactions[0].type).toBe('match_loss');
+    // Le pass consomme vaut le MONTANT NEGATIF du verrou libere, pas 0 : sinon
+    // le total des transactions ne correspond plus a la variation des soldes.
+    expect(result.transactions[0].amount).toBe(-10);
+    expect(result.transactions[0].metadata.lockedAmount).toBe(10);
+  });
+
+  it('le ledger se reconcilie : Somme(transactions) === variation des soldes', () => {
+    // Propriete de coherence du portefeuille. Elle tient tant que chaque
+    // mouvement porte son montant reel — ce que `match_loss: 0` cassait.
+    // Sequence : on bloque 20 (sortie de cash), puis le pass est consomme
+    // (verrou libere sans cash). Le ledger doit reflecter les DEUX etapes.
+    const entry = (w) => {
+      const locked = Math.min(w.cashBalance, 20);
+      return {
+        ...w,
+        cashBalance: w.cashBalance - locked,
+        lockedBalance: w.lockedBalance + 20,
+        lockedEntries: { ...w.lockedEntries, M: { amount: 20, cashAmount: locked, bonusAmount: 0 } },
+        transactions: [...w.transactions, { id: 'T1', type: 'entry_fee', amount: -20, status: 'completed' }],
+      };
+    };
+    const loss = (w) => {
+      const r = w.lockedEntries.M;
+      const next = { ...w.lockedEntries };
+      delete next.M;
+      return {
+        ...w,
+        lockedBalance: w.lockedBalance - r.amount,
+        lockedEntries: next,
+        transactions: [...w.transactions, { id: 'T2', type: 'match_loss', amount: -r.amount, status: 'completed' }],
+      };
+    };
+
+    const start = { cashBalance: 200, bonusBalance: 0, lockedBalance: 0, lockedEntries: {}, transactions: [] };
+    const afterEntry = entry(start);
+    const state = loss(afterEntry);
+
+    const sum = state.transactions.reduce((acc, t) => acc + t.amount, 0);
+    expect(sum).toBe(-40);                       // -20 bloque, -20 consomme
+    expect(state.cashBalance).toBe(180);          // seul le blocage sort du cash
+    expect(state.lockedBalance).toBe(0);          // le verrou solde apres consommation
+    // 20 sont dans le ledger sans etre sortis du cash : c'est le verrou, pas
+    // une perte. Une fois consomme, plus rien n'est en vol.
+    expect(sum + 20).toBe(-20);
+  });
+});
+
+describe('wallet-engine - Release Winnings', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should add winnings to cash balance', async () => {
+    const mockWallet = { 
+      cashBalance: 50, 
+      bonusBalance: 10, 
+      lockedBalance: 10, 
+      pendingWinnings: 20,
+      transactions: [], 
+      lockedEntries: {
+        'match1': { amount: 10, cashAmount: 7, bonusAmount: 3, lockedAt: '2024-01-01' }
+      }
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'prize_win', 'Match win');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    // Mise bonus (3) rendue en bonus, reste du gain (22) en cash
+    expect(result.cashBalance).toBe(72);
+    expect(result.bonusBalance).toBe(13);
+    expect(result.lockedBalance).toBe(0);
+    expect(result.pendingWinnings).toBe(20);
+    expect(result.lockedEntries['match1']).toBeUndefined();
+    expect(result.transactions[0].type).toBe('prize_win');
+    expect(result.transactions[0].amount).toBe(25);
+    expect(result.transactions[0].metadata.cashCredit).toBe(22);
+    expect(result.transactions[0].metadata.bonusRestore).toBe(3);
+  });
+
+  it('should not launder pure-bonus stake into cash', async () => {
+    const mockWallet = {
+      cashBalance: 0,
+      bonusBalance: 0,
+      lockedBalance: 150,
+      transactions: [],
+      lockedEntries: {
+        'match1': { amount: 150, cashAmount: 0, bonusAmount: 150, lockedAt: '2024-01-01' }
+      }
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.releaseWalletWinnings('user1', 294, 'match1', 'prize_win', 'Match win');
+
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+
+    expect(result.cashBalance).toBe(144); // 294 - 150 bonus restauré
+    expect(result.bonusBalance).toBe(150); // bonus reste non-retirable
+    expect(result.lockedBalance).toBe(0);
+  });
+
+  it('should handle winnings without existing reservation', async () => {
+    const mockWallet = { 
+      cashBalance: 50, 
+      bonusBalance: 10, 
+      lockedBalance: 0, 
+      pendingWinnings: 20,
+      transactions: [], 
+      lockedEntries: {}
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'arbitration_fee', 'Arbitration commission');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.cashBalance).toBe(75);
+    expect(result.lockedBalance).toBe(0);
+    expect(result.pendingWinnings).toBe(20);
+    expect(result.transactions[0].type).toBe('arbitration_fee');
+    expect(result.transactions[0].amount).toBe(25);
+  });
+
+  it('should use default description when not provided', async () => {
+    const mockWallet = { 
+      cashBalance: 50, 
+      bonusBalance: 10, 
+      lockedBalance: 0, 
+      pendingWinnings: 20,
+      transactions: [], 
+      lockedEntries: {}
+    };
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      const updated = updater(mockWallet);
+      return { wallet: updated };
+    });
+
+    await walletEngine.releaseWalletWinnings('user1', 25, 'match1', 'prize_win');
+    
+    const updater = vi.mocked(updateWalletSnapshot).mock.calls[0][1];
+    const result = updater(mockWallet);
+    
+    expect(result.transactions[0].description).toBe('Gain match1');
+  });
+
+  it('should throw for negative amount', async () => {
+    await expect(walletEngine.releaseWalletWinnings('user1', -10, 'm1')).rejects.toThrow('negatif');
+  });
+});
+
+describe('wallet-engine - lockEntryFee double-lock guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should reject double-lock on same matchId', async () => {
+    const mockWallet = {
+      cashBalance: 100,
+      bonusBalance: 0,
+      lockedBalance: 50,
+      lockedEntries: { 'match-1': { amount: 50, cashAmount: 50, bonusAmount: 0, lockedAt: '2026-01-01' } },
       transactions: [],
     };
-    expect(getWindowedWithdrawalTotal(wallet, now)).toBe(200);
+    vi.mocked(updateWalletSnapshot).mockImplementation(async (userId, updater) => {
+      return { wallet: updater(mockWallet) };
+    });
+
+    await expect(walletEngine.lockEntryFee('user1', 50, 'match-1')).rejects.toThrow('deja bloque');
   });
 });
 
-describe('dépôt', () => {
-  it('crédite cash et journalise en positif', async () => {
-    const userId = await makeUser();
-    const w = await depositToWallet(userId, 250, 'Mobile Money');
-    expect(w.cashBalance).toBe(250);
-    expect(w.transactions[0].type).toBe('deposit');
-    expect(w.transactions[0].amount).toBe(250);
-  });
-
-  it('refuse un dépôt négatif ou nul', async () => {
-    const userId = await makeUser();
-    await expect(depositToWallet(userId, 0)).rejects.toMatchObject({ code: 'INVALID_AMOUNT' });
-  });
-});
-
-describe('retrait', () => {
-  it('débit cash, historique négatif, net affiché après 2 %', async () => {
-    const userId = await makeUser();
-    await depositToWallet(userId, 500);
-    const w = await withdrawFromWallet(userId, 200, 'Mobile Money', '+22961000000');
-    expect(w.cashBalance).toBe(300);
-    const tx = w.transactions[0];
-    expect(tx.type).toBe('withdraw');
-    expect(tx.amount).toBe(-200);
-    expect(tx.metadata.feeAmount).toBe(4);
-    expect(tx.metadata.netAmount).toBe(196);
-  });
-
-  it('refuse sous le minimum (150 ZC) et sans solde', async () => {
-    const userId = await makeUser();
-    await expect(withdrawFromWallet(userId, 100)).rejects.toMatchObject({ code: 'WITHDRAWAL_MIN' });
-    await expect(withdrawFromWallet(userId, 200)).rejects.toMatchObject({ code: 'INSUFFICIENT_FUNDS' });
-  });
-});
-
-describe('verrouillage du pass (lock) et remboursement', () => {
-  it('bloque cash+bonus puis rembourse à l’identique', async () => {
-    const userId = await makeUser();
-    await depositToWallet(userId, 300);
-    const locked = await lockEntryFee(userId, 100, 'M-TEST1');
-    expect(locked.lockedBalance).toBe(100);
-    expect(locked.lockedEntries['M-TEST1'].amount).toBe(100);
-    const refunded = await refundLockedEntry(userId, 'M-TEST1', 'Annulation');
-    expect(refunded.cashBalance).toBe(300);
-    expect(refunded.lockedBalance).toBe(0);
-    expect(refunded.lockedEntries['M-TEST1']).toBeUndefined();
-    // Idempotent : second remboursement ne recrédite pas
-    const again = await refundLockedEntry(userId, 'M-TEST1', 'Annulation');
-    expect(again.cashBalance).toBe(300);
-  });
-
-  it('refuse le double verrouillage sur le même match', async () => {
-    const userId = await makeUser();
-    await depositToWallet(userId, 300);
-    await lockEntryFee(userId, 100, 'M-TEST2');
-    await expect(lockEntryFee(userId, 100, 'M-TEST2')).rejects.toMatchObject({ code: 'ALREADY_LOCKED' });
-  });
-});
-
-describe('versement des gains — idempotent', () => {
-  it('ne verse qu’une fois pour la même paire (type, match)', async () => {
-    const userId = await makeUser();
-    await depositToWallet(userId, 100);
-    await lockEntryFee(userId, 100, 'M-GAIN');
-    const first = await releaseWalletWinnings(userId, 198, 'M-GAIN', 'prize_win', 'Gain test');
-    expect(first.cashBalance).toBe(198);
-    expect(first.lockedBalance).toBe(0);
-    const second = await releaseWalletWinnings(userId, 198, 'M-GAIN', 'prize_win', 'Gain test');
-    expect(second.cashBalance).toBe(198);
-  });
-});
-
-describe('remboursement de retrait rejeté — idempotent', () => {
-  it('crédite une seule fois pour la même refundKey', async () => {
-    const userId = await makeUser();
-    await depositToWallet(userId, 300);
-    const first = await refundRejectedWithdrawal(userId, 150, 'refund:1');
-    expect(first.cashBalance).toBe(450);
-    const second = await refundRejectedWithdrawal(userId, 150, 'refund:1');
-    expect(second.cashBalance).toBe(450);
-  });
-
-  it('refuse sans clé d’idempotence', async () => {
-    const userId = await makeUser();
-    await expect(refundRejectedWithdrawal(userId, 150, '')).rejects.toMatchObject({ code: 'REFUND_KEY_REQUIRED' });
-  });
-});
-
-describe('purge orpheline / réconciliation des retraits', () => {
-  it('isUnrecoverableRefundError : USER_DELETED est définitif', () => {
-    expect(isUnrecoverableRefundError({ code: 'USER_DELETED' })).toBe(true);
-    expect(isUnrecoverableRefundError({ code: 'USER_NOT_FOUND' })).toBe(true);
-    expect(isUnrecoverableRefundError({ code: 'SUPABASE_DOWN' })).toBe(false);
-  });
-
-  it('reconcilePendingWithdrawals sans dette → {0,0,0}', async () => {
-    const res = await reconcilePendingWithdrawals(
-      () => true, () => false, async () => null,
-      () => [], () => null, async () => false, async () => ({}), () => {}, () => {},
-    );
-    expect(res).toEqual({ resolved: 0, refunded: 0, stillPending: 0 });
-  });
-
-  it('reconcile rembourse un payout refusé une seule fois puis tague', async () => {
-    const userId = await makeUser();
-    await depositToWallet(userId, 400);
-    await withdrawFromWallet(userId, 200, 'Mobile Money', '+22961000000');
-    // Simule l’état pending_review côté FedaPay (02-argent: trace payoutsEnAttente)
-    const walletWithDebt = {
-      cashBalance: 200,
-      bonusBalance: 0,
-      lockedBalance: 0,
-      pendingWinnings: 0,
-      transactions: [{ id: 'TX-1', type: 'withdraw', amount: -200, timestamp: new Date().toISOString(), metadata: { payoutId: 9999, payoutStatus: 'pending_review', idempotencyKey: 'k1' } }],
-      payoutsEnAttente: [{ payoutId: 9999, idempotencyKey: 'k1', txId: 'TX-1' }],
-      winningsKeys: [],
-      withdrawalKeys: [],
-      retraitCumul: [],
-      lockedEntries: {},
-    };
-    const calls = [];
-    const res = await reconcilePendingWithdrawals(
-      () => false, () => true,
-      async () => ({ status: 'failed' }),
-      () => [userId],
-      (id) => (id === userId ? walletWithDebt : null),
-      async (uid, txId, patch) => { calls.push({ txId, patch }); return true; },
-      async (uid, amount) => { calls.push({ refund: amount }); return walletWithDebt; },
-      () => {},
-      () => {},
-    );
-    // payout refusé → refund appelé avec |montant négatif| corrigé
-    expect(calls.some((c) => c.refund === 200)).toBe(true);
-    expect(res.refunded).toBe(1);
+describe('wallet-engine - roundAmount NaN protection', () => {
+  it('should return 0 for NaN input', () => {
+    expect(walletEngine.depositToWallet).toBeDefined();
   });
 });

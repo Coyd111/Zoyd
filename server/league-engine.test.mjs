@@ -1,0 +1,1105 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('./persistence.mjs', () => ({  // Applique une seule fois par competition : c'est le comportement reel.
+  // Sans lui dans le mock, le test echouerait sur un appel a undefined.
+  applyUserSettlementOnce: vi.fn(async (userId, _key, updater) => updater({ id: userId, stats: {}, progression: {} })),
+
+getUserById: vi.fn(),
+updateUserAccount: vi.fn(),
+// normalizeLeagueSeason sanitize le nom de la ligue.
+sanitizeText: vi.fn((value) => String(value || '').trim()),
+}));
+
+vi.mock('./wallet-engine.mjs', () => ({
+  lockEntryFee: vi.fn(),
+  refundLockedEntry: vi.fn(),
+  releaseWalletWinnings: vi.fn(),
+  settleMatchLossWallet: vi.fn(),
+  // Copie de la vraie implementation : le contrat de classification fait
+  // partie du comportement teste, un stub le rendrait invisible.
+  isUnrecoverableRefundError: (error) => error?.code === 'USER_NOT_FOUND' || error?.code === 'USER_DELETED',
+}));
+
+import * as leagueEngine from './league-engine.mjs';
+import { getUserById, updateUserAccount } from './persistence.mjs';
+import { lockEntryFee, refundLockedEntry } from './wallet-engine.mjs';
+
+const mockAdmin = { id: 'admin-1', pseudo: 'Admin', role: 'admin', wallet: {} };
+const mockPlayer = { id: 'player-1', pseudo: 'ShadowX', role: 'player', wallet: {} };
+const mockPlayer2 = { id: 'player-2', pseudo: 'Ghost', role: 'player', wallet: {} };
+
+const makeSeason = (overrides = {}) =>
+  leagueEngine.normalizeLeagueSeason({
+    id: 'LS-TEST',
+    cycleNumber: 1,
+    status: 'registering',
+    entryFee: 50,
+    maxPlayers: 500,
+    registeredPlayers: [],
+    qualificationGroups: {},
+    standings: [],
+    finalists: [],
+    finalMatch: { matchId: null, results: [], status: 'pending' },
+    podium: { first: null, second: null, third: null },
+    payout: { gross: 0, first: 0, second: 0, third: 0 },
+    schedule: {
+      registrationOpens: new Date().toISOString(),
+      registrationCloses: null,
+      qualifyingStarts: null,
+      qualifyingEnds: null,
+      finalAt: null,
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  });
+
+describe('league-engine - normalizeLeagueSeason', () => {
+  it('should fill defaults for empty season', () => {
+    const season = leagueEngine.normalizeLeagueSeason({});
+    expect(season.id).toMatch(/^LS-/);
+    expect(season.status).toBe('registering');
+    expect(season.entryFee).toBe(50);
+    expect(season.maxPlayers).toBe(500);
+    expect(season.registeredPlayers).toEqual([]);
+    expect(season.standings).toEqual([]);
+    expect(season.podium).toEqual({ first: null, second: null, third: null });
+  });
+
+  it('should preserve existing values', () => {
+    const season = leagueEngine.normalizeLeagueSeason({
+      id: 'LS-CUSTOM',
+      cycleNumber: 3,
+      status: 'qualifying',
+      entryFee: 100,
+      maxPlayers: 200,
+    });
+    expect(season.id).toBe('LS-CUSTOM');
+    expect(season.cycleNumber).toBe(3);
+    expect(season.status).toBe('qualifying');
+    expect(season.entryFee).toBe(100);
+    expect(season.maxPlayers).toBe(200);
+  });
+
+  it('should normalize qualification groups for all days', () => {
+    const season = leagueEngine.normalizeLeagueSeason({ qualificationGroups: {} });
+    const days = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    for (const day of days) {
+      expect(season.qualificationGroups[day]).toEqual({
+        players: [],
+        matchId: null,
+        results: [],
+        status: 'pending',
+      });
+    }
+  });
+});
+
+describe('league-engine - normalizeLeagueCollection', () => {
+  it('should sort by updatedAt descending', () => {
+    const s1 = makeSeason({ id: 'LS-1', updatedAt: '2026-01-01T00:00:00Z' });
+    const s2 = makeSeason({ id: 'LS-2', updatedAt: '2026-01-02T00:00:00Z' });
+    const result = leagueEngine.normalizeLeagueCollection([s1, s2]);
+    expect(result[0].id).toBe('LS-2');
+    expect(result[1].id).toBe('LS-1');
+  });
+
+  it('should handle empty input', () => {
+    expect(leagueEngine.normalizeLeagueCollection([])).toEqual([]);
+    expect(leagueEngine.normalizeLeagueCollection(null)).toEqual([]);
+  });
+});
+
+describe('league-engine - createLeagueSeasonOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('should create season as admin', () => {
+    const result = leagueEngine.createLeagueSeasonOnServer([], mockAdmin);
+    expect(result.season).toBeDefined();
+    expect(result.season.status).toBe('registering');
+    expect(result.season.cycleNumber).toBe(1);
+    expect(result.seasons).toHaveLength(1);
+  });
+
+  it('should increment cycle number', () => {
+    const existing = [makeSeason({ cycleNumber: 5 })];
+    const result = leagueEngine.createLeagueSeasonOnServer(existing, mockAdmin);
+    expect(result.season.cycleNumber).toBe(6);
+  });
+
+  it('should reject non-admin', () => {
+    getUserById.mockReturnValue(mockPlayer);
+    expect(() => leagueEngine.createLeagueSeasonOnServer([], mockPlayer)).toThrow();
+  });
+
+  // Le front appelle createServerLeagueSeason() SANS argument (body {}), donc
+  // le moteur doit generer un nom/format par defaut au lieu de lever.
+  it('should create season without name/format (front sends empty body)', () => {
+    const result = leagueEngine.createLeagueSeasonOnServer([], mockAdmin, {});
+    expect(result.season.name).toBeTruthy();
+    expect(result.season.format).toBeTruthy();
+  });
+
+  it('should use the provided name, format and teamSize', () => {
+    const result = leagueEngine.createLeagueSeasonOnServer([], mockAdmin, {
+      name: 'Ligue ZOYD Gold',
+      format: '2VS2',
+      teamSize: 2,
+    });
+    expect(result.season.name).toBe('Ligue ZOYD Gold');
+    expect(result.season.format).toBe('2VS2');
+    expect(result.season.teamSize).toBe(2);
+  });
+});
+
+describe('league-engine - joinLeagueSeasonOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockPlayer);
+  });
+
+  it('should join registering season', async () => {
+    const season = makeSeason();
+    const result = await leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST');
+    expect(result.season.registeredPlayers).toHaveLength(1);
+    expect(result.season.registeredPlayers[0].userId).toBe('player-1');
+    expect(lockEntryFee).toHaveBeenCalledWith('player-1', 50, 'LS-TEST');
+  });
+
+  it('should reject if already joined', async () => {
+    const season = makeSeason({
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+    });
+    await expect(leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
+  });
+
+  it('should reject if season is full', async () => {
+    const players = Array.from({ length: 500 }, (_, i) => ({
+      userId: `p-${i}`,
+      pseudo: `P${i}`,
+      joinedAt: new Date().toISOString(),
+    }));
+    const season = makeSeason({ registeredPlayers: players });
+    await expect(leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
+  });
+
+  it('should reject if not registering', async () => {
+    const season = makeSeason({ status: 'qualifying' });
+    await expect(leagueEngine.joinLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
+  });
+
+  it('should reject if season not found', async () => {
+    await expect(leagueEngine.joinLeagueSeasonOnServer([], mockPlayer, 'LS-NOPE')).rejects.toThrow();
+  });
+});
+
+describe('league-engine - leaveLeagueSeasonOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockPlayer);
+  });
+
+  it('should remove player from season', async () => {
+    const season = makeSeason({
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+    });
+    const result = await leagueEngine.leaveLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST');
+    expect(result.season.registeredPlayers).toHaveLength(0);
+    expect(refundLockedEntry).toHaveBeenCalledWith('player-1', 'LS-TEST', expect.any(String));
+  });
+
+  it('should reject if not joined', async () => {
+    const season = makeSeason();
+    await expect(leagueEngine.leaveLeagueSeasonOnServer([season], mockPlayer, 'LS-TEST')).rejects.toThrow();
+  });
+});
+
+describe('league-engine - saisons restées en inscription (sweeper)', () => {
+  const staleSeason = (players) => makeSeason({
+    registeredPlayers: players.map((p) => ({
+      userId: p, pseudo: p.toUpperCase(), joinedAt: new Date().toISOString(), paid: true,
+    })),
+    schedule: {
+      registrationOpens: new Date(Date.now() - 3 * 3600_000).toISOString(),
+      registrationCloses: new Date(Date.now() - 2 * 3600_000).toISOString(),
+      qualifyingStarts: null,
+      qualifyingEnds: null,
+      finalAt: null,
+    },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockPlayer);
+    updateUserAccount.mockImplementation(async (_id, updater) => ({ wallet: updater({ lockedEntries: {} }) }));
+    refundLockedEntry.mockResolvedValue({});
+  });
+
+  it('detecte une saison dont la clôture des inscriptions est passée', () => {
+    const ids = leagueEngine.getStaleLeagueSeasonIds([staleSeason(['p1'])]);
+    expect(ids).toEqual(['LS-TEST']);
+  });
+
+  // P6 C2 (audit-3) : le sweep ne vise plus une saison PLEINE — son propre
+  // commentaire annonce « moins de 10 inscrits » mais le code ne verifiait
+  // jamais l'effectif : un redemarrage autour d'une cloture annulait une
+  // saison a 10+ inscrits (passes rembourses en masse, motif de log faux)
+  // avant le cron de fermeture, qui n'a pas de boot differe contrairement au
+  // sweep (+22 s).
+  it('ignore une saison pleine (10 inscrits ou plus) meme passe la cloture', () => {
+    const full = staleSeason(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10']);
+    expect(leagueEngine.getStaleLeagueSeasonIds([full])).toEqual([]);
+    // Garde limite : neuf inscrits restent vises par le sweep.
+    const almost = staleSeason(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9']);
+    expect(leagueEngine.getStaleLeagueSeasonIds([almost])).toEqual(['LS-TEST']);
+  });
+
+  it('ignore une saison encore ouverte ou deja lancée', () => {
+    const open = makeSeason({
+      schedule: {
+        registrationOpens: new Date().toISOString(),
+        registrationCloses: new Date(Date.now() + 3600_000).toISOString(),
+        qualifyingStarts: null, qualifyingEnds: null, finalAt: null,
+      },
+    });
+    const launched = { ...staleSeason(['p1']), status: 'qualifying' };
+    expect(leagueEngine.getStaleLeagueSeasonIds([open, launched])).toEqual([]);
+  });
+
+  it('rembourse chaque inscrit et annule la saison', async () => {
+    const seasons = [staleSeason(['p1', 'p2', 'p3'])];
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer(seasons, 'LS-TEST');
+    expect(outcome.season.status).toBe('cancelled');
+    expect(outcome.refunded).toBe(3);
+    expect(refundLockedEntry).toHaveBeenCalledTimes(3);
+    // Remboursée : plus personne d inscrit, donc plus de pass bloque.
+    expect(outcome.season.registeredPlayers).toEqual([]);
+    expect(outcome.season.pendingRefunds).toEqual([]);
+  });
+
+  it('CONSERVE la dette quand un remboursement échoue, et la rejoue au retry', async () => {
+    // Perte sèche si on oublie : les ZC resteraient bloques sans trace.
+    refundLockedEntry.mockImplementation(async (userId) => {
+      if (userId === 'p2') throw new Error('SUPABASE_DOWN');
+      return {};
+    });
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer([staleSeason(['p1', 'p2'])], 'LS-TEST');
+    expect(outcome.refunded).toBe(1);
+    expect(outcome.season.status).toBe('cancelled');
+    expect(outcome.season.pendingRefunds).toHaveLength(1);
+    expect(outcome.season.pendingRefunds[0].userId).toBe('p2');
+    // L inscrit non remboursé reste visible pour le support.
+    expect(outcome.season.registeredPlayers).toHaveLength(1);
+    expect(leagueEngine.countPendingLeagueRefunds([outcome.season])).toBe(1);
+
+    // Le retry rejoue et solde la dette.
+    refundLockedEntry.mockResolvedValue({});
+    const retry = await leagueEngine.retryPendingLeagueRefunds([outcome.season]);
+    expect(retry.retried).toBe(1);
+    expect(retry.remaining).toBe(0);
+    expect(retry.seasons[0].registeredPlayers).toEqual([]);
+  });
+
+  it('clot la dette sans la rejouer quand le compte a ete supprime', async () => {
+    // Log observe en production : `League refund retry failed ... Compte joueur
+    // introuvable`, repete toutes les 6 h, indefiniment.
+    const deleted = Object.assign(new Error('Compte joueur introuvable'), { code: 'USER_NOT_FOUND' });
+    refundLockedEntry.mockImplementation(async (userId) => {
+      if (userId === 'p2') throw deleted;
+      return {};
+    });
+
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer([staleSeason(['p1', 'p2'])], 'LS-TEST');
+    expect(outcome.refunded).toBe(1);
+    expect(outcome.pendingRefunds).toBe(0);
+    expect(outcome.uncollectableRefunds).toBe(1);
+    // Trace conservee : dette close, pas oubliee.
+    expect(outcome.season.uncollectableRefunds[0]).toMatchObject({ userId: 'p2', reason: 'ACCOUNT_DELETED' });
+    // Le joueur supprime n'a plus de profil a contacter, il sort de la liste.
+    expect(outcome.season.registeredPlayers).toEqual([]);
+    expect(leagueEngine.countPendingLeagueRefunds([outcome.season])).toBe(0);
+
+    // Second passage : plus rien a rejouer. C'est tout l'objet.
+    refundLockedEntry.mockClear();
+    const retry = await leagueEngine.retryPendingLeagueRefunds([outcome.season]);
+    expect(refundLockedEntry).not.toHaveBeenCalled();
+    expect(retry.remaining).toBe(0);
+    expect(retry.abandoned).toBe(0);
+  });
+
+  it('clot une dette en attente quand le compte disparait avant la reprise', async () => {
+    // Dette enregistree pour une panne passagere, puis le joueur supprime son
+    // compte avant le passage du cron 6 h plus tard.
+    const fresh = leagueEngine.normalizeLeagueSeason({
+      ...staleSeason(['p1', 'p2'])[0],
+      status: 'cancelled',
+      cancelReason: 'Annule',
+      pendingRefunds: [
+        { userId: 'p1', lastError: 'SUPABASE_DOWN' },
+        { userId: 'p2', lastError: 'SUPABASE_DOWN' },
+      ],
+    });
+    expect(leagueEngine.countUncollectableLeagueRefunds([fresh])).toBe(0);
+
+    refundLockedEntry.mockImplementation(async (userId) => {
+      if (userId === 'p2') throw Object.assign(new Error('Compte joueur introuvable'), { code: 'USER_NOT_FOUND' });
+      return {};
+    });
+    const retry = await leagueEngine.retryPendingLeagueRefunds([fresh]);
+    expect(retry.retried).toBe(1);
+    expect(retry.remaining).toBe(0);
+    expect(retry.abandoned).toBe(1);
+    expect(retry.seasons[0].uncollectableRefunds).toHaveLength(1);
+    expect(leagueEngine.countUncollectableLeagueRefunds(retry.seasons)).toBe(1);
+
+    // Et la trace elle-meme survit au rechargement, sinon la dette disparait
+    // sans que personne ne sache qu'elle n'a jamais ete honoree.
+    const reloaded = leagueEngine.normalizeLeagueSeason(retry.seasons[0]);
+    expect(reloaded.uncollectableRefunds).toHaveLength(1);
+    expect(reloaded.uncollectableRefunds[0].reason).toBe('ACCOUNT_DELETED');
+  });
+
+  it('ne classe en definitive qu\'un echec par CODE, pas par libelle', async () => {
+    // Un message contenant USER_NOT_FOUND sans code n'est pas une preuve :
+    // la classification se fait sur `error.code`, seul contrat fiable.
+    refundLockedEntry.mockRejectedValue(Object.assign(new Error('weird'), { code: 'LOCK_TIMEOUT' }));
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer([staleSeason(['p1'])], 'LS-TEST');
+    expect(outcome.pendingRefunds).toBe(1);
+    expect(outcome.uncollectableRefunds).toBe(0);
+  });
+
+  it('la dette survit au rechargement depuis la base', () => {
+    // normalizeLeagueSeason reconstruit l objet champ par champ : sans
+    // `pendingRefunds` preserve, la preuve de la dette disparait au reload.
+    const reloaded = leagueEngine.normalizeLeagueSeason({
+      id: 'LS-1', status: 'cancelled', pendingRefunds: [{ userId: 'p9' }],
+    });
+    expect(reloaded.pendingRefunds).toHaveLength(1);
+    expect(leagueEngine.countPendingLeagueRefunds([reloaded])).toBe(1);
+  });
+});
+
+describe('league-engine - C4 : phase de qualification abandonnee', () => {
+  const saisonQualification = (ageJours) => makeSeason({
+    status: 'qualifying',
+    registeredPlayers: ['p1', 'p2'].map((p) => ({
+      userId: p, pseudo: p.toUpperCase(), joinedAt: new Date().toISOString(), paid: true,
+    })),
+    qualificationGroups: {
+      tuesday: { players: ['p1', 'p2'], matchId: null, results: [], status: 'scheduled' },
+    },
+    schedule: {
+      registrationOpens: new Date(Date.now() - 30 * 24 * 3600_000).toISOString(),
+      registrationCloses: new Date(Date.now() - (10 + ageJours) * 24 * 3600_000).toISOString(),
+      qualifyingStarts: new Date(Date.now() - ageJours * 24 * 3600_000).toISOString(),
+      qualifyingEnds: null,
+      finalAt: null,
+    },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockPlayer);
+    refundLockedEntry.mockResolvedValue({});
+  });
+
+  it('C4 - detecte une qualification ancienne, pas une recente', () => {
+    // Grace d'une semaine : les journees se suivent au quotidien, donc 8
+    // jours sans cloture de journee est un abandon, pas une pause.
+    expect(leagueEngine.getStaleLeagueSeasonIds([saisonQualification(8)])).toEqual(['LS-TEST']);
+    expect(leagueEngine.getStaleLeagueSeasonIds([saisonQualification(2)])).toEqual([]);
+    // Analyse sans horloge : rien a prouver, rien a contester.
+    const condition = saisonQualification(8);
+    condition.schedule.qualifyingStarts = null;
+    expect(leagueEngine.getStaleLeagueSeasonIds([condition])).toEqual([]);
+  });
+
+  it('C4 - annule la saison qualifying et rembourse les inscrits', async () => {
+    const outcome = await leagueEngine.cancelStaleLeagueSeasonOnServer(
+      [saisonQualification(8)], 'LS-TEST',
+      'Ligue annulee automatiquement : qualification abandonnee par les organisateurs.',
+    );
+
+    expect(outcome.season.status).toBe('cancelled');
+    expect(outcome.refunded).toBe(2);
+    expect(refundLockedEntry).toHaveBeenCalledTimes(2);
+    expect(outcome.season.cancelReason).toContain('qualification abandonnee');
+    expect(outcome.season.pendingRefunds).toEqual([]);
+  });
+});
+
+describe('league-engine - getLeagueLeaderboard', () => {
+  it('should return standings for season WITHOUT internal identifiers', () => {
+    const standings = [
+      { userId: 'p1', pseudo: 'A', totalPoints: 100, bestPlacement: 1, matchesPlayed: 5, placements: [1, 2, 3] },
+    ];
+    const season = makeSeason({ standings });
+    const result = leagueEngine.getLeagueLeaderboard([season], 'LS-TEST');
+    expect(result).toHaveLength(1);
+    // Le endpoint est PUBLIC (sans session) : jamais d'identifiant interne.
+    expect(result[0].userId, 'userId ne doit JAMAIS fuiter sur le leaderboard public').toBeUndefined();
+    expect(result[0].pseudo).toBe('A');
+    expect(result[0].totalPoints).toBe(100);
+  });
+
+  it('should throw if season not found', () => {
+    expect(() => leagueEngine.getLeagueLeaderboard([], 'LS-NOPE')).toThrow();
+  });
+});
+
+describe('league-engine - updateLeagueSettingsOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('should update maxPlayers as admin', () => {
+    const season = makeSeason();
+    const result = leagueEngine.updateLeagueSettingsOnServer([season], mockAdmin, 'LS-TEST', { maxPlayers: 100 });
+    expect(result.season.maxPlayers).toBe(100);
+  });
+
+  it('should update entryFee as admin', () => {
+    const season = makeSeason();
+    const result = leagueEngine.updateLeagueSettingsOnServer([season], mockAdmin, 'LS-TEST', { entryFee: 75 });
+    expect(result.season.entryFee).toBe(75);
+  });
+
+  it('should reject maxPlayers < 10', () => {
+    const season = makeSeason();
+    expect(() =>
+      leagueEngine.updateLeagueSettingsOnServer([season], mockAdmin, 'LS-TEST', { maxPlayers: 5 })
+    ).toThrow();
+  });
+
+  it('should reject entryFee > 500', () => {
+    const season = makeSeason();
+    expect(() =>
+      leagueEngine.updateLeagueSettingsOnServer([season], mockAdmin, 'LS-TEST', { entryFee: 600 })
+    ).toThrow();
+  });
+
+  it('should reject if not admin', () => {
+    getUserById.mockReturnValue(mockPlayer);
+    const season = makeSeason();
+    expect(() =>
+      leagueEngine.updateLeagueSettingsOnServer([season], mockPlayer, 'LS-TEST', { maxPlayers: 100 })
+    ).toThrow();
+  });
+
+  it('should reject if not registering', () => {
+    const season = makeSeason({ status: 'qualifying' });
+    expect(() =>
+      leagueEngine.updateLeagueSettingsOnServer([season], mockAdmin, 'LS-TEST', { maxPlayers: 100 })
+    ).toThrow();
+  });
+});
+
+describe('league-engine - getLeaguePayments', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return payments for registered players', () => {
+    getUserById.mockReturnValue({
+      ...mockPlayer,
+      wallet: { lockedEntries: { 'LS-TEST': { amount: 50, cashAmount: 40, bonusAmount: 10 } } },
+    });
+    const season = makeSeason({
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+    });
+    const result = leagueEngine.getLeaguePayments([season], 'LS-TEST');
+    expect(result).toHaveLength(1);
+    expect(result[0].paid).toBe(true);
+    expect(result[0].locked).toBe(true);
+    expect(result[0].amount).toBe(50);
+  });
+
+  // Regression P1 : `paid` derive du verrouillage, qui est libere au
+  // reglement -> apres versement du podium, TOUS les joueurs apparaissent
+  // "impayes". `paid` est fige a l'inscription, `locked` suit les fonds.
+  it('should keep paid=true after funds are released (payout done)', () => {
+    getUserById.mockReturnValue({ ...mockPlayer, wallet: {} });
+    const season = makeSeason({
+      status: 'completed',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      finalMatch: { matchId: 'LMF-LS-TEST', results: [], status: 'finished' },
+    });
+    const result = leagueEngine.getLeaguePayments([season], 'LS-TEST');
+    expect(result[0].paid).toBe(true);
+    expect(result[0].locked).toBe(false);
+    expect(result[0].settled).toBe(true);
+    expect(result[0].amount).toBe(50);
+  });
+
+  it('should flag unpaid players explicitly', () => {
+    getUserById.mockReturnValue({ ...mockPlayer, wallet: {} });
+    const season = makeSeason({
+      registeredPlayers: [{
+        userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString(), paid: false,
+      }],
+    });
+    const result = leagueEngine.getLeaguePayments([season], 'LS-TEST');
+    expect(result[0].paid).toBe(false);
+  });
+
+  it('should throw if season not found', () => {
+    expect(() => leagueEngine.getLeaguePayments([], 'LS-NOPE')).toThrow();
+  });
+});
+
+describe('league-engine - refundLeaguePlayerOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('should refund and remove player', async () => {
+    const season = makeSeason({
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 50, bestPlacement: 3, matchesPlayed: 2, placements: [3, 5] }],
+    });
+    const result = await leagueEngine.refundLeaguePlayerOnServer([season], mockAdmin, 'LS-TEST', 'player-1');
+    expect(result.season.registeredPlayers).toHaveLength(0);
+    expect(result.season.standings).toHaveLength(0);
+    expect(refundLockedEntry).toHaveBeenCalled();
+  });
+
+  it('should reject if player not in season', async () => {
+    const season = makeSeason();
+    await expect(leagueEngine.refundLeaguePlayerOnServer([season], mockAdmin, 'LS-TEST', 'player-1')).rejects.toThrow();
+  });
+});
+
+describe('league-engine - reassignPlayerOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('should move player between days', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'pending' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+    });
+    const result = leagueEngine.reassignPlayerOnServer(
+      [season], mockAdmin, 'LS-TEST', 'player-1', 'tuesday', 'wednesday'
+    );
+    expect(result.season.qualificationGroups.tuesday.players).not.toContain('player-1');
+    expect(result.season.qualificationGroups.wednesday.players).toContain('player-1');
+  });
+
+  it('should reject if not qualifying', () => {
+    const season = makeSeason({ status: 'registering' });
+    expect(() =>
+      leagueEngine.reassignPlayerOnServer([season], mockAdmin, 'LS-TEST', 'player-1', 'tuesday', 'wednesday')
+    ).toThrow();
+  });
+});
+
+describe('league-engine - advanceToFinalOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('should advance to final with top 40', () => {
+    const standings = Array.from({ length: 50 }, (_, i) => ({
+      userId: `p-${i}`,
+      pseudo: `Player${i}`,
+      totalPoints: 500 - i * 10,
+      bestPlacement: i + 1,
+      matchesPlayed: 5,
+      placements: [i + 1],
+    }));
+    const season = makeSeason({
+      status: 'qualifying',
+      standings,
+      qualificationGroups: {
+        tuesday: { players: [], matchId: null, results: [], status: 'finished' },
+        wednesday: { players: [], matchId: null, results: [], status: 'finished' },
+        thursday: { players: [], matchId: null, results: [], status: 'finished' },
+        friday: { players: [], matchId: null, results: [], status: 'finished' },
+        saturday: { players: [], matchId: null, results: [], status: 'finished' },
+      },
+    });
+    const result = leagueEngine.advanceToFinalOnServer([season], mockAdmin, 'LS-TEST');
+    expect(result.season.status).toBe('final');
+    expect(result.season.finalists).toHaveLength(40);
+    expect(result.season.finalists[0].userId).toBe('p-0');
+  });
+
+  it('should reject if not all days finished', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      qualificationGroups: {
+        tuesday: { players: [], matchId: null, results: [], status: 'finished' },
+        wednesday: { players: [], matchId: null, results: [], status: 'live' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+    });
+    expect(() => leagueEngine.advanceToFinalOnServer([season], mockAdmin, 'LS-TEST')).toThrow();
+  });
+});
+
+describe('league-engine - Score Z System', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('should calculate Score Z = survival + kills for 1st place with 5 kills', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    const result = leagueEngine.submitLeagueDayResultsOnServer(
+      [season], mockAdmin, 'LS-TEST', 'tuesday',
+      [{ userId: 'player-1', placement: 1, kills: 5 }]
+    );
+
+    const dayResult = result.season.qualificationGroups.tuesday.results[0];
+    expect(dayResult.survivalPoints).toBe(25);
+    expect(dayResult.killPoints).toBe(10);
+    expect(dayResult.points).toBe(35);
+
+    const standing = result.season.standings.find((s) => s.userId === 'player-1');
+    expect(standing.totalPoints).toBe(35);
+  });
+
+  it('should calculate Score Z for 10th place with 2 kills', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    const result = leagueEngine.submitLeagueDayResultsOnServer(
+      [season], mockAdmin, 'LS-TEST', 'tuesday',
+      [{ userId: 'player-1', placement: 10, kills: 2 }]
+    );
+
+    const dayResult = result.season.qualificationGroups.tuesday.results[0];
+    expect(dayResult.survivalPoints).toBe(10);
+    expect(dayResult.killPoints).toBe(4);
+    expect(dayResult.points).toBe(14);
+  });
+
+  it('should accumulate Score Z across multiple days (3 lobbies)', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        thursday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    // Day 1: 3rd place, 3 kills = 17 + 6 = 23
+    let result = leagueEngine.submitLeagueDayResultsOnServer(
+      [season], mockAdmin, 'LS-TEST', 'tuesday',
+      [{ userId: 'player-1', placement: 3, kills: 3 }]
+    );
+    expect(result.season.standings[0].totalPoints).toBe(23);
+
+    // Day 2: 1st place, 8 kills = 25 + 16 = 41
+    result = leagueEngine.submitLeagueDayResultsOnServer(
+      result.seasons, mockAdmin, 'LS-TEST', 'wednesday',
+      [{ userId: 'player-1', placement: 1, kills: 8 }]
+    );
+    expect(result.season.standings[0].totalPoints).toBe(64);
+
+    // Day 3: 15th place, 1 kill = 6 + 2 = 8
+    result = leagueEngine.submitLeagueDayResultsOnServer(
+      result.seasons, mockAdmin, 'LS-TEST', 'thursday',
+      [{ userId: 'player-1', placement: 15, kills: 1 }]
+    );
+    expect(result.season.standings[0].totalPoints).toBe(72);
+  });
+
+  it('should handle 0 kills (survival only)', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    const result = leagueEngine.submitLeagueDayResultsOnServer(
+      [season], mockAdmin, 'LS-TEST', 'tuesday',
+      [{ userId: 'player-1', placement: 25, kills: 0 }]
+    );
+
+    const dayResult = result.season.qualificationGroups.tuesday.results[0];
+    expect(dayResult.survivalPoints).toBe(3);
+    expect(dayResult.killPoints).toBe(0);
+    expect(dayResult.points).toBe(3);
+  });
+
+  it('should reject results for unregistered player in day', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday',
+        [{ userId: 'player-99', placement: 1, kills: 5 }]
+      )
+    ).toThrow();
+  });
+
+  it('should reject placement outside range 1-100', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday',
+        [{ userId: 'player-1', placement: 0, kills: 5 }]
+      )
+    ).toThrow();
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday',
+        [{ userId: 'player-1', placement: 101, kills: 5 }]
+      )
+    ).toThrow();
+  });
+
+  // P6 C1 (audit-3) : la garde de placement etait `Number(x) < 1 || > 100` —
+  // NaN passe les deux comparaisons (fail-open), puis `PLACEMENT_POINTS[NaN]`
+  // valait undefined et `placements.push(NaN)` corrompait les standings de
+  // facon persistante. Meme piege sur `kills`, sans garde finie ni borne
+  // inferieure (`kills: -100` sabotait le total d'un joueur).
+  it('should reject non-integer, NaN and negative day inputs', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [{ userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() }],
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [{ userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] }],
+    });
+
+    const badResults = [
+      { userId: 'player-1', placement: 'abc', kills: 5 },
+      { userId: 'player-1', placement: 1.5, kills: 5 },
+      { userId: 'player-1', placement: 1, kills: 'abc' },
+      { userId: 'player-1', placement: 1, kills: -5 },
+      { userId: 'player-1', placement: 1, kills: 1.5 },
+    ];
+    for (const bad of badResults) {
+      expect(() =>
+        leagueEngine.submitLeagueDayResultsOnServer(
+          [season], mockAdmin, 'LS-TEST', 'tuesday', [bad]
+        )
+      ).toThrow();
+    }
+  });
+
+  // P6 C1 (audit-3) : deux joueurs a la meme place de journee cumulaient les
+  // memes points de survie — la finale refuse deja cet etat (unicite des
+  // places).
+  it('should reject duplicate placement in day results', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      registeredPlayers: [
+        { userId: 'player-1', pseudo: 'ShadowX', joinedAt: new Date().toISOString() },
+        { userId: 'player-2', pseudo: 'Ghost', joinedAt: new Date().toISOString() },
+      ],
+      qualificationGroups: {
+        tuesday: { players: ['player-1', 'player-2'], matchId: null, results: [], status: 'live' },
+        wednesday: { players: [], matchId: null, results: [], status: 'pending' },
+        thursday: { players: [], matchId: null, results: [], status: 'pending' },
+        friday: { players: [], matchId: null, results: [], status: 'pending' },
+        saturday: { players: [], matchId: null, results: [], status: 'pending' },
+      },
+      standings: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] },
+        { userId: 'player-2', pseudo: 'Ghost', totalPoints: 0, bestPlacement: 0, matchesPlayed: 0, placements: [] },
+      ],
+    });
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday',
+        [
+          { userId: 'player-1', placement: 1, kills: 5 },
+          { userId: 'player-2', placement: 1, kills: 3 },
+        ]
+      )
+    ).toThrow();
+  });
+
+  it('should reject empty results array', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      qualificationGroups: {
+        tuesday: { players: ['player-1'], matchId: null, results: [], status: 'live' },
+      },
+    });
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday', []
+      )
+    ).toThrow();
+  });
+
+  // Regression : un joueur liste deux fois cumulait ses points ET ses
+  // matchesPlayed, faussant le classement et le calcul des finalistes.
+  it('should reject duplicate player in day results', () => {
+    const season = makeSeason({
+      status: 'qualifying',
+      qualificationGroups: {
+        tuesday: { players: ['player-1', 'player-2'], matchId: null, results: [], status: 'live' },
+      },
+    });
+
+    expect(() =>
+      leagueEngine.submitLeagueDayResultsOnServer(
+        [season], mockAdmin, 'LS-TEST', 'tuesday',
+        [
+          { userId: 'player-1', placement: 1, kills: 5 },
+          { userId: 'player-1', placement: 2, kills: 3 },
+        ]
+      )
+    ).toThrow(/plusieurs fois/);
+  });
+});
+
+describe('league-engine - assignPlayersToDays', () => {
+  it('should distribute players across all 5 days', () => {
+    const players = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];
+    const groups = leagueEngine.assignPlayersToDays(players);
+
+    expect(Object.keys(groups)).toEqual(['tuesday', 'wednesday', 'thursday', 'friday', 'saturday']);
+    const allAssigned = Object.values(groups).flat();
+    expect(allAssigned.sort()).toEqual(players.sort());
+  });
+
+  it('should handle empty array', () => {
+    const groups = leagueEngine.assignPlayersToDays([]);
+    for (const day of Object.values(groups)) {
+      expect(day).toEqual([]);
+    }
+  });
+
+  it('should handle single player', () => {
+    const groups = leagueEngine.assignPlayersToDays(['only-one']);
+    const allAssigned = Object.values(groups).flat();
+    expect(allAssigned).toEqual(['only-one']);
+  });
+
+  it('should not duplicate players across days', () => {
+    const players = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'];
+    const groups = leagueEngine.assignPlayersToDays(players);
+    const allAssigned = Object.values(groups).flat();
+    expect(new Set(allAssigned).size).toBe(players.length);
+  });
+
+  it('should distribute evenly when divisible by 5', () => {
+    const players = ['p1', 'p2', 'p3', 'p4', 'p5'];
+    const groups = leagueEngine.assignPlayersToDays(players);
+    for (const day of Object.values(groups)) {
+      expect(day).toHaveLength(1);
+    }
+  });
+
+  it('aucune journee ne depasse l effectif maximum attendu par journee', () => {
+    // Le plafond est une regle du moteur (`assignPlayersToDays` refuse au-dela
+    // de la capacite). Ce test verifie la consequence sur l'effectif maximal
+    // prevu : la repartition complete respecte le plafond de chaque journee.
+    const joueurs = Array.from({ length: 500 }, (_, i) => `p${i}`);
+    const groups = leagueEngine.assignPlayersToDays(joueurs);
+
+    for (const jour of Object.values(groups)) {
+      expect(jour.length).toBeLessThanOrEqual(leagueEngine.LEAGUE_PLAYERS_PER_DAY);
+    }
+    // Et la repartition est complete : personne n'est perdu, personne n'est
+    // duplique.
+    expect(Object.values(groups).flat()).toHaveLength(500);
+  });
+
+  it('refuse de repartir au-dela de la capacite des journees', () => {
+    // La branche du plafond est vivante : un admin peut monter `maxPlayers`
+    // a 1000 (updateLeagueSettingsOnServer), donc plus de 500 inscrits est
+    // un etat atteignable. La repartition est refusee au lieu de produire
+    // des journees surpeuplees.
+    const joueurs = Array.from({ length: 501 }, (_, i) => `p${i}`);
+    expect(() => leagueEngine.assignPlayersToDays(joueurs)).toThrow(/capacite de la qualification/);
+  });
+});
+
+describe('league-engine - submitLeagueFinalResultsOnServer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUserById.mockReturnValue(mockAdmin);
+  });
+
+  it('should reject result for non-finalist', async () => {
+    const season = makeSeason({
+      status: 'final',
+      finalists: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 100, bestPlacement: 1 },
+      ],
+      finalMatch: { matchId: null, results: [], status: 'pending' },
+    });
+
+    await expect(
+      leagueEngine.submitLeagueFinalResultsOnServer(
+        [season], mockAdmin, 'LS-TEST',
+        [{ userId: 'player-99', placement: 1, kills: 5 }]
+      )
+    ).rejects.toThrow();
+  });
+
+  it('should reject placement outside valid range', async () => {
+    const season = makeSeason({
+      status: 'final',
+      finalists: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 100, bestPlacement: 1 },
+      ],
+      finalMatch: { matchId: null, results: [], status: 'pending' },
+    });
+
+    await expect(
+      leagueEngine.submitLeagueFinalResultsOnServer(
+        [season], mockAdmin, 'LS-TEST',
+        [{ userId: 'player-1', placement: 0, kills: 5 }]
+      )
+    ).rejects.toThrow();
+  });
+
+  it('should accept valid final results', async () => {
+    const season = makeSeason({
+      status: 'final',
+      finalists: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 100, bestPlacement: 1 },
+        { userId: 'player-2', pseudo: 'Ghost', totalPoints: 80, bestPlacement: 2 },
+      ],
+      finalMatch: { matchId: null, results: [], status: 'pending' },
+      payout: { gross: 200, first: 100, second: 60, third: 40 },
+    });
+
+    const result = await leagueEngine.submitLeagueFinalResultsOnServer(
+      [season], mockAdmin, 'LS-TEST',
+      [
+        { userId: 'player-1', placement: 1, kills: 10 },
+        { userId: 'player-2', placement: 2, kills: 5 },
+      ]
+    );
+
+    expect(result.season.status).toBe('completed');
+    expect(result.season.podium.first).toBe('player-1');
+    expect(result.season.podium.second).toBe('player-2');
+  });
+
+  // Regression P0 : une seule ligne suffisait pour solder la saison. Le 1er
+  // touchait 60 % du pot et les 39 autres finalistes absorbaient 40 % via
+  // settleMatchLossWallet sans versement (poids du pot detruit).
+  it('should reject incomplete final results (missing finalists)', async () => {
+    const season = makeSeason({
+      status: 'final',
+      finalists: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 100, bestPlacement: 1 },
+        { userId: 'player-2', pseudo: 'Ghost', totalPoints: 80, bestPlacement: 2 },
+      ],
+      finalMatch: { matchId: null, results: [], status: 'pending' },
+      payout: { gross: 200, first: 100, second: 60, third: 40 },
+    });
+
+    await expect(
+      leagueEngine.submitLeagueFinalResultsOnServer(
+        [season], mockAdmin, 'LS-TEST',
+        [{ userId: 'player-1', placement: 1, kills: 10 }]
+      )
+    ).rejects.toThrow(/finalistes/);
+  });
+
+  it('should keep the season open when final results are incomplete', async () => {
+    const season = makeSeason({
+      status: 'final',
+      finalists: [
+        { userId: 'player-1', pseudo: 'ShadowX', totalPoints: 100, bestPlacement: 1 },
+        { userId: 'player-2', pseudo: 'Ghost', totalPoints: 80, bestPlacement: 2 },
+      ],
+      finalMatch: { matchId: null, results: [], status: 'pending' },
+      payout: { gross: 200, first: 100, second: 60, third: 40 },
+    });
+
+    await expect(
+      leagueEngine.submitLeagueFinalResultsOnServer(
+        [season], mockAdmin, 'LS-TEST',
+        [{ userId: 'player-1', placement: 1, kills: 10 }]
+      )
+    ).rejects.toThrow();
+
+    // La saison d'origine (cloneSerialize) ne doit pas avoir ete soldee.
+    expect(season.status).toBe('final');
+    expect(season.podium.first).toBeNull();
+  });
+});

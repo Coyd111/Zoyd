@@ -11,6 +11,9 @@
  * INVARIANT : seul un 401 - ou un 403 explicitement code AUTH_REQUIRED -
  * purge l'etat. Un 403 METIER (2FA, mot de passe actuel, transaction d'un
  * autre compte) ne doit PAS detruire la session.
+ * INVARIANT : un 401 d'AUTHENTIFICATION ENTRANTE (voir
+ * INBOUND_AUTH_FAILURE_CODES) ne purge PAS : le serveur refuse ce que le
+ * client vient de presenter, pas la session.
  * PIEGE : le cycle d'imports. Ce module NE DOIT PAS importer sessionReset
  * (ni socketStore, ni realtimeClient) : le cycle
  * apiClient -> sessionReset -> socketStore -> socketConnectionStore ->
@@ -54,22 +57,51 @@ export const getAuthHeaders = () => {
   return {};
 };
 
+/**
+ * Codes d'ÉCHEC D'AUTHENTIFICATION ENTRANTE : le serveur refuse ce que le
+ * client vient de PRÉSENTER, pas la session elle-même.
+ *
+ * - `INVALID_CREDENTIALS` : `/api/auth/login` avec un mauvais mot de passe.
+ *   Le serveur repond 401 (server/http-utils.mjs mappe le code sur 401).
+ *   C'est un échec de SAISIE : le cookie de session du joueur — s'il en a un —
+ *   est parfaitement valide. Sans cette exclusion, taper un mauvais mot de
+ *   passe déconnectait le joueur ET vidait ses stores de session.
+ * - `UNAUTHORIZED` : la ressource demandée n'appartient pas au joueur
+ *   (server/persistence.mjs : accepter la demande d'ami d'un autre joueur).
+ *   La session est valide, la demande ne l'est pas.
+ *
+ * INVARIANT : tout 401 d'AUTRE code (`AUTH_REQUIRED`, 401 sans code) purge la
+ * session : c'est le seul signal que le cookie ne vaut plus.
+ */
+const INBOUND_AUTH_FAILURE_CODES = new Set(['INVALID_CREDENTIALS', 'UNAUTHORIZED']);
+
 const handleAuthError = (status: number, code?: string) => {
   // 403 = refus d'autorisation MÉTIER (2FA requise, mot de passe actuel faux,
   // transaction d'un autre compte) : la session est valide, ne la détruit pas.
   // Seul un 401 (ou un 403 explicitement lié à l'authentification) purge l'état.
   const isAuthFailure = status === 401 || (status === 403 && code === 'AUTH_REQUIRED');
-  if (isAuthFailure) {
-    if (!logoutQueued) {
-      logoutQueued = true;
-      queueMicrotask(() => {
-        logoutQueued = false;
-        // Purge aussi les données de session (solde, matchs, chat, amis) :
-        // sinon elles restent visibles pour un compte connecté ensuite.
+  if (!isAuthFailure) return;
+
+  // 401 d'authentification ENTRANTE : la session reste valide, on ne purge
+  // rien. Déconnecter le joueur parce qu'il a tapé un mauvais mot de passe
+  // est exactement le bug que ce garde corrige.
+  if (status === 401 && code && INBOUND_AUTH_FAILURE_CODES.has(code)) return;
+
+  if (!logoutQueued) {
+    logoutQueued = true;
+    queueMicrotask(() => {
+      logoutQueued = false;
+      // Purge aussi les données de session (solde, matchs, chat, amis) :
+      // sinon elles restent visibles pour un compte connecté ensuite.
+      //
+      // On ne purge QUE si une session existe RÉELLEMENT côté front : un 401
+      // sur une page publique (visiteur anonyme) ne doit pas vider des stores
+      // qui, de toute façon, ne contiennent rien pour ce visiteur.
+      if (useAuthStore.getState().isAuthenticated) {
         purgeSessionStores();
-        useAuthStore.getState().logout();
-      });
-    }
+      }
+      useAuthStore.getState().logout();
+    });
   }
 };
 

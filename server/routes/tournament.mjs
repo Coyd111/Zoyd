@@ -11,6 +11,18 @@
  * le quota doit proteger le garde, pas l'inverse. La soumission de resultat
  * ajoute `require2faIfAdmin` : l'override admin ne peut pas couter moins
  * que l'arbitre du duel lui-meme.
+ * P9 C4 (audit-3, CORRIGE) : le rate limit couvre desormais TOUTES les
+ * routes d'ecriture du fichier, y compris `start`, `room` et `live`, qui
+ * n'en avaient AUCUN. Ces trois routes prennent le mutex GLOBAL des
+ * tournois et ecrivent en base a chaque appel : sans quota, un compte
+ * authentifie serealise les tournois de toute la plateforme et epuise le
+ * budget d'ecritures. Les gardes du moteur bornent l'ETAT d'un tournoi,
+ * pas le TEMPS d'occupation du mutex : invoquer les uns pour se dispenser
+ * de l'autre etait circulaire.
+ * PIEGE : le groupe `social` (30/min) est partage avec le domaine match et
+ *   les routes sociales : c'est le meme seau par IP. Le plafond doit rester
+ *   large pour un cycle de tournoi complet (inscription, salle, direct,
+ *   resultat, confirmation).
  *
  * INVARIANT : toute mutation est entierement sous `withTournamentMutex` : le
  *   tournoi, ses entrees et ses matchs partagent la meme collection.
@@ -262,6 +274,11 @@ if (req.method === 'POST' && tournamentArbiter) {
 
 const tournamentStart = pathname.match(/^\/api\/tournaments\/([^/]+)\/start$/);
 if (req.method === 'POST' && tournamentStart) {
+  // Garde de debit : le lancement prend le mutex GLOBAL des tournois, ecrit
+  // en base et notifie TOUS les participants. Le rate limit passe AVANT la
+  // session (convention du fichier) : le quota protege le mutex, pas
+  // l'inverse.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -299,6 +316,9 @@ if (req.method === 'POST' && tournamentStart) {
 
 const tournamentRoom = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/room$/);
 if (req.method === 'POST' && tournamentRoom) {
+  // Garde de debit : la route prend le mutex GLOBAL des tournois et ecrit en
+  // base a chaque appel (idem `start` ci-dessus).
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -325,6 +345,9 @@ if (req.method === 'POST' && tournamentRoom) {
 
 const tournamentLive = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/live$/);
 if (req.method === 'POST' && tournamentLive) {
+  // Garde de debit : la mise en direct prend le mutex GLOBAL des tournois et
+  // ecrit en base a chaque appel (idem `start` ci-dessus).
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });

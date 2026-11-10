@@ -11,6 +11,16 @@
  * reponse. Les routes qui deplacent de l'argent ajoutent `requireAdmin2fa`
  * (remboursement d'un pass, lecture des paiements, chaines resultats/
  * avance-to-final/final-results de la ligue - audit-2 S2).
+ * P9 C4 (audit-3, CORRIGE) : les routes qui deplacent de l'argent ont
+ * MAINTENANT un rate limit. Elles prenaient toutes le mutex GLOBAL des
+ * ligues et ecrivaient en base a chaque appel : `join` bloque un pass,
+ * `leave` en rembourse un, et les routes d'administration (creation,
+ * qualification, journee, reglages, reassignment) font de meme. Sans quota,
+ * un compte authentifie serealise les ligues de toute la plateforme et
+ * epuise le budget d'ecritures. Groupes : `social` (30/min) pour `join` et
+ * `leave` - les memes actions sociales que le domaine match - et `admin`
+ * (20/5 min) pour les routes reservees a l'administration, dont le moteur
+ * exige deja le role admin.
  *
  * INVARIANT : la liste ET le detail exigent une session : une saison expose
  *   le `userId` de chaque joueur inscrit (le modele `isMe` complet n'est pas
@@ -126,6 +136,10 @@ if (req.method === 'POST' && pathname === '/api/leagues') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : la creation prend le mutex GLOBAL des ligues et ecrit
+  // en base. Le moteur exige le role admin : le quota `admin` est le bon
+  // groupe (20/5 min, comme les autres routes d'administration).
+  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     // `name` et `format` sont OPTIONNELS : la route les exigeait (>= 3
@@ -164,6 +178,11 @@ if (req.method === 'POST' && leagueJoin) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : l'inscription BLOQUE un pass (deplacement d'argent) et
+  // ecrit en base sous le mutex GLOBAL. Groupe `social` : meme nature que
+  // l'inscription a un match (le meme joueur peut s'inscrire a plusieurs
+  // ligues et a plusieurs matchs).
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   try { await withLeagueMutex(async () => {
     const seasonId = leagueJoin[1];
     const outcome = await joinLeagueSeasonOnServer(getStoredLeagues(), session.user, seasonId);
@@ -206,6 +225,11 @@ if (req.method === 'POST' && leagueLeave) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : le retrait REMBOURSE un pass (deplacement d'argent) et
+  // ecrit en base sous le mutex GLOBAL. Groupe `social`, comme `join` : les
+  // deux doivent se borner mutuellement (un aller-retour inscription /
+  // retrait ne doit pas pouvoir vider le seau).
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   try { await withLeagueMutex(async () => {
     const outcome = await leaveLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueLeave[1]);
     await saveLeagues(io, outcome.seasons);
@@ -223,6 +247,10 @@ if (req.method === 'POST' && leagueStartQualification) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : le lancement de la qualification prend le mutex GLOBAL
+  // des ligues et ecrit en base. Le moteur exige le role admin -> groupe
+  // `admin`.
+  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
   try { await withLeagueMutex(async () => {
     const outcome = startLeagueQualificationOnServer(getStoredLeagues(), session.user, leagueStartQualification[1]);
     await saveLeagues(io, outcome.seasons);
@@ -240,6 +268,10 @@ if (req.method === 'POST' && leagueStartDay) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : le lancement d'une journee prend le mutex GLOBAL des
+  // ligues, ecrit en base et notifie tous les inscrits. Role admin exige
+  // par le moteur -> groupe `admin`.
+  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
   try { await withLeagueMutex(async () => {
     const outcome = startLeagueDayOnServer(getStoredLeagues(), session.user, leagueStartDay[1], leagueStartDay[2]);
     await saveLeagues(io, outcome.seasons);
@@ -349,6 +381,10 @@ if (req.method === 'PATCH' && leagueUpdateSettings) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : les reglages (droit d'entree, nombre de places, ...)
+  // pretent de l'argent : ils modifient le montant que les joueurs vont
+  // bloquer. Le moteur exige le role admin -> groupe `admin`.
+  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     const outcome = updateLeagueSettingsOnServer(getStoredLeagues(), session.user, leagueUpdateSettings[1], body);
@@ -367,6 +403,10 @@ if (req.method === 'POST' && leagueReassign) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : le reassignment deplace un joueur entre journees, donc
+  // de l'argent (passes differentes). Le moteur exige le role admin ->
+  // groupe `admin`.
+  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     const outcome = reassignPlayerOnServer(

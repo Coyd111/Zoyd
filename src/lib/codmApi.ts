@@ -15,6 +15,12 @@
  * reponse est 401 et le catalogue revient vide, silencieusement.
  * PIEGE : ce catalogue est un CONTENU, pas une source de verite metier. Une
  * regle de jeu ne doit jamais dependre d'une reponse Codashop.
+ * INVARIANT : un echec de chargement LEVE, il ne se degrade pas en
+ * catalogue vide. Un 401 renvoye par la route doit atteindre
+ * `handleAuthError` (apiClient) : c'est lui qui purge la session. Avaler le
+ * 401 laissait le front convinced que la session est vivante, avec un
+ * catalogue vide et un bouton « Reessayer » qui refaisait la meme requete
+ * 401 en boucle.
  */
 
 /**
@@ -22,7 +28,7 @@
  * The backend handles CORS and upstream requests to Codashop.
  */
 
-import { getApiUrl } from '../app/lib/apiClient';
+import { getApiUrl, readJson, ApiError } from '../app/lib/apiClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,6 +68,20 @@ export interface CodashopBundle {
 // ---------------------------------------------------------------------------
 
 /**
+ * Reponse brute du proxy backend (`server/routes/public.mjs`).
+ *
+ * Le proxy repond 200 + `ok:true` meme quand le catalogue est vide (c'est un
+ * catalogue VIDE cote serveur, pas une panne) et 502/500 quand l'amont
+ * Codashop tombe. `ok:false` en 200 reste traite comme une panne.
+ */
+interface CodashopProxyResponse {
+  ok?: boolean;
+  bundles?: CodashopBundle[];
+  catalogCurrency?: string;
+  priceIsLocal?: boolean;
+}
+
+/**
  * Catalogue CODM via Codashop.
  *
  * Le proxy ZOYD retourne le catalogue INTERNATIONAL : l'API Codashop ignore
@@ -78,10 +98,17 @@ export interface CodashopStoreResponse {
   priceIsLocal: boolean;
 }
 
+/**
+ * Charge le catalogue CODM.
+ *
+ * LEVE en cas d'echec (401 de session, 502 de l'amont, timeout reseau) : le
+ * caller doit pouvoir distinguer « catalogue vide » (reponse 200 sans
+ * bundle) de « chargement impossible » (exception).
+ */
 export async function fetchCODMStore(country = 'BJ'): Promise<CodashopStoreResponse> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
     const response = await fetch(getApiUrl(`/api/codm/store?country=${country}`), {
       // Cookie httpOnly cross-origine (Vercel -> Render) : indispensable.
       // La route `/api/codm/store` exige une session joueur
@@ -91,16 +118,36 @@ export async function fetchCODMStore(country = 'BJ'): Promise<CodashopStoreRespo
       credentials: 'include',
       signal: controller.signal,
     });
-    clearTimeout(timeout);
-    if (!response.ok) return { bundles: [], catalogCurrency: 'INR', priceIsLocal: false };
-    const data = await response.json();
-    if (!data?.ok) return { bundles: [], catalogCurrency: 'INR', priceIsLocal: false };
+    // `readJson` fait le travail qu'il faut : il appelle `handleAuthError`
+    // (purge de session sur un vrai 401) puis LEVE une ApiError typee.
+    // Le `if (!response.ok) return { bundles: [] }` d'avant avalait le 401 :
+    // aucune purge, aucune erreur, un catalogue vide a l'ecran et un
+    // « Reessayer » qui rejouait la meme requete 401 en boucle.
+    const data = await readJson<CodashopProxyResponse>(response);
+    if (!data?.ok) {
+      throw new ApiError(
+        'Catalogue CODM indisponible.',
+        'CODM_CATALOG_UNAVAILABLE',
+        502
+      );
+    }
     return {
       bundles: Array.isArray(data.bundles) ? data.bundles : [],
       catalogCurrency: String(data.catalogCurrency || 'INR'),
       priceIsLocal: Boolean(data.priceIsLocal),
     };
-  } catch {
-    return { bundles: [], catalogCurrency: 'INR', priceIsLocal: false };
+  } catch (err) {
+    // Timeout : on le traduit en ApiError explicite (comme apiClient) au
+    // lieu de laisser remonter une DOMException brute.
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError(
+        'Delai depasse — le catalogue CODM ne repond pas.',
+        'TIMEOUT',
+        408
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
 }

@@ -586,6 +586,36 @@ const ecrireStateEntitySiRevision = async (kind, entityId, revisionObservee, pay
 };
 
 /**
+ * Relit UNE ligne `state_snapshots` (revision + payload).
+ *
+ * Sert au traitement d un conflit d ecriture : l etat frais de l autre
+ * instance doit pouvoir etre ADOPTE, sinon la revision locale n avance
+ * jamais et l entite reste definitivement inecrivable.
+ *
+ * @returns {Promise<{revision: number, payload: object}|null>} null si la
+ *   ligne n existe plus (suppression concurrente) ou si la lecture echoue.
+ */
+const rechargerStateEntity = async (kind, entityId) => {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('state_snapshots')
+    .select('revision, payload')
+    .eq('kind', kind)
+    .eq('entity_id', entityId)
+    .limit(1);
+  if (error) {
+    log.error('Lecture state_snapshots impossible', { kind, entityId, message: error.message });
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row) return null;
+  return {
+    revision: Number(row.revision) || 0,
+    payload: row.payload,
+  };
+};
+
+/**
  * Test hook : place un payload arbitraire dans le cache memoire.
  *
  * Sert a reproduire la situation multi-instance ou une instance n'a pas encore
@@ -1100,6 +1130,11 @@ const clearAllMemoryCaches = () => {
   memoryChatReads.clear();
   memoryStateSnapshots.clear();
   memoryStateByKind.clear();
+  // Les revisions suivent : une revision conservee pour une entite
+  // absente de la memoire ferait passer le prochain ecriture en
+  // branche CONDITIONNELLE alors que la ligne n existe pas en base :
+  // l entite ne pourrait plus jamais etre creee (409 definitif).
+  memoryStateRevisions.clear();
   memoryFriendRequests.clear();
   memoryFriendships.clear();
   memoryFriendshipsByUser.clear();
@@ -3743,7 +3778,14 @@ export const replaceStateCollection = async (kind, items) => {
   const rollbackMemory = () => {
     kindMap.clear();
     for (const [id, payload] of previousById) kindMap.set(id, payload);
-    for (const key of previousFlatKeys) memoryStateSnapshots.delete(key);
+    // On ne retire QUE les cles du kind courant : `previousFlatKeys` contient
+    // TOUTES les entites, tous kinds confondus. Les supprimer toutes laissait
+    // le miroir plat incoherent - les kinds tiers disparaisaient de
+    // `memoryStateSnapshots` alors que leurs entites restaient vivantes
+    // (`snapshotsInMemory` exposait alors un compte faux).
+    for (const key of previousFlatKeys) {
+      if (key.startsWith(`${kind}:`)) memoryStateSnapshots.delete(key);
+    }
     for (const item of items) memoryStateSnapshots.set(`${kind}:${item.id}`, item);
     memoryStateRevisions.clear();
     for (const [k, v] of previousRevisions) memoryStateRevisions.set(k, v);
@@ -3784,9 +3826,14 @@ export const replaceStateCollection = async (kind, items) => {
     return;
   }
   // Sync to Supabase (batch upsert with retry). Quand la colonne
-  // `revision` existe, chaque ligne porte `observée + 1` pour que la
-  // prochaine écriture conditionnelle (`upsertStateEntity`) compare
-  // contre la révision écrite ici, pas contre l'ancienne.
+  // `revision` existe, chaque ligne porte la revision de la MEMOIRE + 1.
+  // ATTENTION : ce n est PAS « l observee + 1 » - la revision reellement
+  // lue en base n est pas consultee ici. Une ecriture en bloc peut donc
+  // faire RECULER la revision en base quand une autre instance a ecrit
+  // entre temps : le compare-and-swap perd alors sa garantie (un conflit
+  // peut etre detecte TROP TARD, apres l ecriture qui l a provoque).
+  // C est pourquoi AUCUN chemin d argent n ecrit plus en bloc : les writes
+  // passent par `upsertStateEntity`, qui est conditionnel et relit la base.
   const stateSupported = await occStateSupporte();
   const rows = items.map(item => {
     const k = `${kind}:${item.id}`;
@@ -3939,9 +3986,33 @@ export const upsertStateEntity = async (kind, entity) => {
       if (ancien !== null || revisionAncienne !== null) {
         const resultat = await ecrireStateEntitySiRevision(kind, entity.id, observee, entity);
         if (resultat === OCC_CONFLIT) {
-          // Conflit d'écriture : rollback mémoire + refus rejouable.
-          kindMap.set(entity.id, ancien);
-          memoryStateSnapshots.set(key, ancien);
+          // Conflit : une AUTRE instance a ecrit cette entite.
+          //
+          // On ADOPTE son etat au lieu de restaurer le notre (perime) :
+          //  - la memoire servirait sinon une version perimee alors que la
+          //    base en tient une plus recente ;
+          //  - et surtout, la revision locale n avancant pas, CHAQUE
+          //    ecriture ulterieure rejouait le meme compare-and-swap et
+          //    echouait : l entite devenait DEFINITIVEMENT inecrivable
+          //    depuis cette instance (tout ce qui passe par elle - check-in,
+          //    resultat, litige - restait en 409, sans reprise possible).
+          //
+          // Le rejeu de l appelant repart de l etat FRAIS : le moteur
+          // recalcule depuis la memoire, redevenue coherente.
+          const frais = await rechargerStateEntity(kind, entity.id);
+          if (frais) {
+            kindMap.set(entity.id, frais.payload);
+            memoryStateSnapshots.set(key, frais.payload);
+            memoryStateRevisions.set(key, frais.revision);
+          } else {
+            // La ligne a disparu en base (suppression concurrente) : l
+            // entite n existe plus. On la retire de la memoire (le miroir
+            // ne doit pas montrer une entite fantome) ET on oublie sa
+            // revision : le prochain essai part du principe « creation ».
+            kindMap.delete(entity.id);
+            memoryStateSnapshots.delete(key);
+            memoryStateRevisions.delete(key);
+          }
           throw makeError('STATE_CONFLICT', 'Une autre instance a modifie cette entite. Reessaie.');
         }
         if (resultat === OCC_ECHEC) {
@@ -3952,11 +4023,29 @@ export const upsertStateEntity = async (kind, entity) => {
         // Succès : révision locale = observee + 1.
         memoryStateRevisions.set(key, observee + 1);
       } else {
-        // Création : insertion à révision 1 (upsert initial).
-        const ok = await sbUpsert('state_snapshots', {
+        // Création : INSERT (et non upsert).
+        //
+        // Un upsert ECRAASSAIT une ligne deja presente et REMETTAIT sa
+        // revision a 1 : la revision RECULAIT en base - le compare-and-swap
+        // perdait sa garantie, et l entite ecrasee par une autre instance
+        // disparaissait sans trace.
+        //
+        // L INSERT refuse le doublon (23505) : c est un CONFLIT attendu,
+        // pas une panne. On adopte alors l etat deja present, comme pour
+        // un conflit de revision.
+        const insere = await sbInsert('state_snapshots', {
           kind, entity_id: entity.id, payload: entity, updated_at: getNow(), revision: 1,
         });
-        if (!ok) {
+        if (!insere) {
+          // Doublon (23505) ou echec d ecriture : on relit la base pour
+          // savoir lequel des deux, et on agit en consequence.
+          const frais = await rechargerStateEntity(kind, entity.id);
+          if (frais) {
+            kindMap.set(entity.id, frais.payload);
+            memoryStateSnapshots.set(key, frais.payload);
+            memoryStateRevisions.set(key, frais.revision);
+            throw makeError('STATE_CONFLICT', 'Une autre instance a cree cette entite. Reessaie.');
+          }
           kindMap.delete(entity.id);
           memoryStateSnapshots.delete(key);
           throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');

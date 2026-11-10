@@ -130,6 +130,36 @@ if (req.method === 'GET' && pathname === '/api/health') {
     persistence: {
       stateTrusted: health.stateTrusted,
       deployedCommitShort: health.deployedCommitShort || null,
+      // SONDES DE SECURITE — des BOOLEENS, rien de financier.
+      //
+      // La minimisation ci-dessus visait les AGREGATS (totaux de cagnotte,
+      // compteurs) : ils coutaient un balayage O(n) et fuyaient l etat
+      // financier. Ces booleens-la ne coutent RIEN (ils sont deja calculees
+      // en memoire) et ne revelent rien : ils disent SEULEMENT si un
+      // garde-fou est en place.
+      //
+      // Sans eux, la sonde publique etait incapable de dire qu une fenetre
+      // etait ouverte, alors que le code affirme partout que « /api/health
+      // suffit » a verifier une migration sans connexion SQL :
+      //   - `stateRevisionColumn` false = la migration
+      //     `state_snapshots.revision` n est pas jouee : les ecritures des
+      //     collections ne sont plus conditionnelles et la fenetre
+      //     multi-instance qui ecrase les mutations de portefeuille est
+      //     OUVERTE — sans aucun signal ;
+      //   - `occRevisionColumn` false = meme chose pour les portefeuilles ;
+      //   - `loginLockoutPersisted` false = le verrouillage de connexion ne
+      //     survit pas a un redemarrage ;
+      //   - `adminTotpPersisted` false = les secrets 2FA des admins ne
+      //     survivent pas au redemarrage ;
+      //   - `sanctionsPersisted` false = les bannissements ne survivent pas ;
+      //   - `integrityOk` false = l etat diverge de la base.
+      // null = pas encore sonde (le demarrage vient de commencer).
+      occRevisionColumn: health.occRevisionColumn ?? null,
+      stateRevisionColumn: health.stateRevisionColumn ?? null,
+      loginLockoutPersisted: health.loginLockoutPersisted ?? null,
+      adminTotpPersisted: health.adminTotpPersisted ?? null,
+      sanctionsPersisted: health.sanctionsPersisted ?? null,
+      integrityOk: health.integrity ? health.integrity.ok : null,
     },
     timestamp: getNow(),
   });

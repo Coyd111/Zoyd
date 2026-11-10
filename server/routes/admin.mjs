@@ -61,6 +61,7 @@ import {
   parseRequestBody,
   parseQueryParams,
   readBearerToken,
+  readSessionToken,
   respondMappedError,
 } from '../http-utils.mjs';
 import {
@@ -77,6 +78,7 @@ import {
   listUserIds,
 } from '../persistence.mjs';
 import { collectFinanceDebts, FINANCE_STALE_MS, FINANCE_CRITICAL_MS } from '../finance-observability.mjs';
+import { supabase } from '../supabase.mjs';
 import {
   submitMatchResultOnServer,
   settlePendingMatchResult,
@@ -169,6 +171,147 @@ const buildMatchesCsv = (matches) => {
 };
 
 export { buildMatchesCsv };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Etat PERSISTE de la 2FA admin — la source de verite anti-takeover.
+//
+// Pourquoi une lecture directe de la base
+// ----------------------------------------
+// Le garde anti-takeover de `/api/admin/2fa/setup` lisait `adminTotpSecrets`,
+// une Map EN MEMOIRE. Or `loadAdminTotpSecrets` (persistence.mjs) avale
+// toutes ses erreurs et SAUTE les lignes indechiffrables : table
+// `admin_2fa_secrets` absente, requete en echec, ou `ZOYD_2FA_ENC_KEY`
+// absente/erronee suffisent a laisser la Map VIDE.
+//
+// Une Map vide ne distingue pas « aucun admin n'a de 2FA » de « les secrets
+// ont ete perdus ». Le garde ne se declenchait donc pas (`existing` valait
+// `undefined`, pas `enabled`), le serveur generait un secret NEUF et le
+// renvoyait EN CLAIR dans `otpauthUrl`. Concretement : un attaquant ayant le
+// mot de passe admin — mais pas le TOTP — s'auto-enrolait, puis pilotait
+// `/api/admin/commissions`, `/api/wallet/deposit`,
+// `/api/admin/matches/:id/award` et `/api/leagues/:id/final-results` :
+// l'argent des joueurs.
+//
+// La LIGNE PERSISTEE, elle, dit si ce compte a une 2FA active, meme quand la
+// Map memoire ne sait plus la lire. C'est elle qui fait foi.
+//
+// PIEGE : cette lecture est un acces BASE dans une route — inhabituel, mais
+//   deliberé : c'est la seule source qui ne peut pas mentir. Le reste du
+//   fichier lit la memoire, qui est un cache, et un cache peut etre vide pour
+//   une raison qui n'a rien a voir avec l'etat reel des comptes.
+// PIEGE : `enabled` est un BOOLEEN. Une ligne `enabled = false` veut dire
+//   « enrolement en cours », pas « 2FA active » : la reponse n'est pas
+//   interchangeable avec l'absence de ligne.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Colonnes lues : ni le secret, ni sa version chiffree. */
+const COLONNES_2FA = 'user_id, enabled';
+
+/**
+ * Etat persiste de la 2FA d'UN compte admin.
+ *
+ * @param {string} adminId
+ * @returns {Promise<{status: 'memory-only'|'present'|'absent'|'unavailable', enabled: boolean, error: string|null}>}
+ *   - `memory-only`  : aucune base configuree — la Map memoire est la seule
+ *                      source (mode memoire / developpement).
+ *   - `present`      : une ligne existe pour ce compte.
+ *   - `absent`       : la table a ete lue, aucune ligne pour ce compte.
+ *   - `unavailable`  : la table n'a pas PU etre lue. On ne peut alors rien
+ *                      prouver : c'est le cas qui interdit l'enrolement.
+ */
+export const readPersistedAdmin2fa = async (adminId) => {
+  if (!supabase) return { status: 'memory-only', enabled: false, error: null };
+  try {
+    const { data, error } = await supabase
+      .from('admin_2fa_secrets')
+      .select(COLONNES_2FA)
+      .eq('user_id', adminId)
+      .limit(1);
+    if (error) return { status: 'unavailable', enabled: false, error: error.message || 'lecture impossible' };
+    const ligne = Array.isArray(data) ? data[0] : null;
+    if (!ligne) return { status: 'absent', enabled: false, error: null };
+    return { status: 'present', enabled: ligne.enabled === true, error: null };
+  } catch (err) {
+    return { status: 'unavailable', enabled: false, error: err?.message || 'lecture impossible' };
+  }
+};
+
+/**
+ * Toutes les lignes `admin_2fa_secrets` (user_id + enabled uniquement).
+ *
+ * @returns {Promise<{status: 'memory-only'|'present'|'unavailable', rows: Array<{user_id: string, enabled: boolean}>, error: string|null}>}
+ */
+export const readPersistedAdmin2faRows = async () => {
+  if (!supabase) return { status: 'memory-only', rows: [], error: null };
+  try {
+    const { data, error } = await supabase.from('admin_2fa_secrets').select(COLONNES_2FA);
+    if (error) return { status: 'unavailable', rows: [], error: error.message || 'lecture impossible' };
+    return { status: 'present', rows: Array.isArray(data) ? data : [], error: null };
+  } catch (err) {
+    return { status: 'unavailable', rows: [], error: err?.message || 'lecture impossible' };
+  }
+};
+
+/**
+ * Audit du magasin des secrets 2FA — le signal de demarrage.
+ *
+ * `loadedCount` = nombre de secrets effectivement dechiffres au chargement.
+ * On le compare aux lignes PERSISTEES : l'ecart, c'est exactement la
+ * population de comptes dont la 2FA existe en base mais n'est plus lisible
+ * (cle de chiffrement absente/erronee, ligne alteree). Ces comptes sont, pour
+ * un attaquant qui n'a que le mot de passe, a une echelle du controle
+ * financier complet.
+ *
+ * `fatal` = le serveur ne doit PAS demarrer dans cet etat : des secrets
+ * existent et AUCUN n'a pu etre lu. On prefere un serveur qui ne demarre pas
+ * a un serveur qui pretend proteger l'argent.
+ *
+ * @param {{ loadedCount: number }} params
+ * @returns {Promise<{fatal: boolean, warning: boolean, reason: string, adminsInMemory: number, loadedCount: number, persistedRows: number|null, adminTotpPersisted: boolean|null, adminTotpError: string|null, storeStatus: string, storeError: string|null}>}
+ */
+export const auditAdmin2faStore = async ({ loadedCount }) => {
+  const health = getHealthInfo();
+  const store = await readPersistedAdmin2faRows();
+  const base = {
+    adminsInMemory: health.adminsInMemory || 0,
+    loadedCount,
+    persistedRows: store.status === 'present' ? store.rows.length : null,
+    adminTotpPersisted: health.adminTotpPersisted,
+    adminTotpError: health.adminTotpError || null,
+    storeStatus: store.status,
+    storeError: store.error || null,
+  };
+  if (store.status === 'memory-only') {
+    // Aucune base : le secret ne vit que dans le processus. Rien n'a pu etre
+    // perdu, donc rien n'a a etre signale.
+    return { ...base, fatal: false, warning: false, reason: 'memory-only' };
+  }
+  if (store.status === 'unavailable') {
+    // Table illisible : on ne peut pas prouver que les comptes admin n'ont
+    // pas de 2FA. L'enrolement est refuse par la route (fail-closed) ; le
+    // serveur demarre quand meme — les joueurs continue de jouer — mais
+    // l'etat est signale.
+    return { ...base, fatal: false, warning: true, reason: 'store-unreadable' };
+  }
+  const rows = store.rows.length;
+  if (rows === 0) {
+    // Aucun secret persiste : rien n'a pu etre perdu.
+    return { ...base, fatal: false, warning: false, reason: 'no-persisted-secret' };
+  }
+  if (loadedCount === 0) {
+    // Des secrets EXISTENT en base et AUCUN n'a pu etre lu : la cle de
+    // chiffrement est absente ou erronee. Tous les comptes admin concernes
+    // sont a un mot de passe vole d'un acces financier complet.
+    return { ...base, fatal: true, warning: true, reason: 'persisted-secrets-unreadable' };
+  }
+  if (loadedCount < rows) {
+    // Chargement PARTIEL : certains comptes ont une 2FA persistee illisible.
+    // La route refuse leur re-enrolement ; on le signale sans couper le
+    // service.
+    return { ...base, fatal: false, warning: true, reason: 'partial-load' };
+  }
+  return { ...base, fatal: false, warning: false, reason: 'ok' };
+};
 
 /**
  * Traite les routes `/api/admin/*`.
@@ -571,6 +714,43 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
       });
       return true;
     }
+
+      // Anti-takeover, version PERSISTEE — le garde qui ne peut pas mentir.
+      //
+      // La Map memoire (`existing`) n'a pas valeur de preuve : elle est vide
+      // quand le chargement a echoue (table absente, requete en echec,
+      // `ZOYD_2FA_ENC_KEY` absente/erronee — voir `readPersistedAdmin2fa`).
+      // Dans ce cas `existing` vaut `undefined`, le garde ci-dessus ne se
+      // declenche pas, et le serveur renvoyait un secret NEUF EN CLAIR : un
+      // attaquant ayant le seul mot de passe admin s'auto-enrolait et
+      // prenait le controle financier complet.
+      //
+      // La LIGNE PERSISTEE dit la verite : si ce compte a une 2FA active en
+      // base, on refuse le re-enrolement, que la Map memoire le sache ou non.
+      const persisted = await readPersistedAdmin2fa(session.user.id);
+      if (persisted.status === 'unavailable') {
+        // Etat 2FA ILLISIBLE : on ne peut pas prouver que ce compte n'a pas
+        // deja une 2FA active. Re-enroller serait laisser un mot de passe
+        // vole remplacer un secret existant. On refuse — fail-closed.
+        log.error('2FA setup refuse : etat 2FA admin illisible', {
+          adminId: session.user.id,
+          error: persisted.error,
+        });
+        respondJson(res, 503, {
+          ok: false,
+          error: 'Configuration 2FA indisponible : reessaie dans un instant.',
+          code: '2FA_STORE_UNAVAILABLE',
+        }, req);
+        return true;
+      }
+      if (persisted.status === 'present' && persisted.enabled) {
+        respondJson(res, 409, {
+          ok: false,
+          error: '2FA deja activee. Verifie un code TOTP pour la re-enroller.',
+          code: '2FA_ALREADY_ENABLED',
+        }, req);
+        return true;
+      }
     const secret = toBase32(crypto.randomBytes(20));
     adminTotpSecrets.set(session.user.id, { secret, enabled: false, verifiedAt: null });
     try {
@@ -618,7 +798,15 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
       log.error('2FA enable: failed to persist secret', { adminId: session.user.id, error: dbErr.message });
     }
     // Persiste sur la session STOCKÉE (getAuthSession renvoie une copie — muter `session` ne suffit pas)
-    markAdmin2faVerified(readBearerToken(req));
+    //
+    // `readSessionToken` et non `readBearerToken` : c'est le token que le
+    // GARDE a authentifie (en-tete `Authorization` d'abord). `readBearerToken`
+    // privilegierait le COOKIE : quand la requete porte les deux, le
+    // marquage 2FA partirait sur une session DIFFERENTE de celle
+    // authentifiee — et une session volee se verrait attribuer
+    // `admin2faVerified = true` pendant cinq minutes, avec le droit de
+    // deplacer l'argent.
+    markAdmin2faVerified(readSessionToken(req));
     log.info('Admin 2FA enabled', { adminId: session.user.id });
     respondJson(res, 200, { ok: true });
     return true;
@@ -657,7 +845,11 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     }
     clearMfaFailures(lockKey);
     // Persiste sur la session STOCKÉE (getAuthSession renvoie une copie — muter `session` ne suffit pas)
-    markAdmin2faVerified(readBearerToken(req));
+    //
+    // Meme token que celui du garde (`readSessionToken`, en-tete
+    // `Authorization` d'abord) : marquer une AUTRE session que celle
+    // authentifiee laisserait une session volee avec la fenetre 2FA ouverte.
+    markAdmin2faVerified(readSessionToken(req));
     log.info('Admin 2FA verified', { adminId: session.user.id });
     respondJson(res, 200, { ok: true });
     return true;

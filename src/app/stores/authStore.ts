@@ -14,9 +14,20 @@
  * champ sans l'y inscrire le fait silencieusement ignorer.
  * PIEGE : login et hydrateSession vident aussi le score de confiance
  * (trustScoreStore) : ne pas oublier cette propagation.
+ * INVARIANT : un CHANGEMENT DE COMPTE purge les stores de session (solde,
+ * matchs, chat, amis, notifications) AVANT d'ecrire le nouvel utilisateur.
+ * Sans cette purge, la navbar affiche le solde du compte precedent et /wallet
+ * son historique : la session du compte A a expire cote serveur, le front
+ * n'a fait aucun appel API (donc aucun 401, donc aucune purge), et le joueur
+ * se connecte avec B sur /auth/login.
+ * PIEGE : authStore NE DOIT PAS importer sessionReset.ts : le cycle
+ * apiClient -> sessionReset -> socketStore -> socketConnectionStore ->
+ * realtimeClient -> apiClient se referme (documente dans apiClient.ts). La
+ * purge passe par le REGISTRE sessionPurge.ts, qui n'importe rien.
  */
 import { create } from 'zustand';
 import { useTrustScoreStore } from './trustScoreStore';
+import { purgeSessionStores } from '../lib/sessionPurge';
 
 export type ControllerType = 'touch' | 'controller' | 'emulator' | 'pc' | 'other';
 export type PlayerLevel = 'DÉBUTANT' | 'COMPETITEUR' | 'CONFIRME' | 'VETERAN' | 'ELITE_ZOYD';
@@ -110,21 +121,46 @@ const normalizeUser = (user: User | null | undefined): User | null => {
   };
 };
 
+/**
+ * Purge l'etat de session du compte PRECEDENT, si le compte change.
+ *
+ * Le registre `sessionPurge.ts` porte la vraie purge (sessionReset), branche
+ * au chargement de `useAuthSessionBootstrap` : `authStore` ne peut pas
+ * l'appeler directement (cycle d'imports, cf. sessionReset.ts).
+ *
+ * INVARIANT : meme compte -> AUCUNE purge. Reconnecter le meme joueur ne
+ * doit pas vider son portefeuille : ses donnees lui appartiennent, et le
+ * bootstrap wallet les rafraichit de toute facon.
+ */
+const purgePreviousSession = (previousUserId: string | undefined, nextUserId: string | undefined) => {
+  if (!previousUserId || !nextUserId) return;
+  if (previousUserId === nextUserId) return;
+  purgeSessionStores();
+};
+
 // Auth cookie-only : le token vit dans le cookie httpOnly `zoyd_auth`,
 // jamais en JS (ni localStorage, ni mémoire). La session est revalidée
 // au chargement via GET /api/auth/me (cookie envoyé automatiquement).
-export const useAuthStore = create<AuthState>()((set) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
   expiresAt: null,
   login: (user, expiresAt) => {
     const normalized = normalizeUser(user);
+    // Changement de compte : purge l'etat du compte PRECEDENT avant
+    // d'ecrire le nouveau. Sans cette purge, le solde, l'historique, le
+    // chat et les amis de A restent visibles chez B (appareil partage,
+    // session de A expiree cote serveur sans appel API de la part du front).
+    purgePreviousSession(get().user?.id, normalized?.id);
     useTrustScoreStore.getState().hydrateFromUser(normalized ?? {});
     set({ user: normalized, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },
   hydrateSession: (user, expiresAt) => {
     const normalized = normalizeUser(user);
+    // Meme règle que `login` : l'hydratation remplace la session, donc un
+    // changement d'identité purge l'etat du compte précédent.
+    purgePreviousSession(get().user?.id, normalized?.id);
     useTrustScoreStore.getState().hydrateFromUser(normalized ?? {});
     set({ user: normalized, isAuthenticated: true, isLoading: false, expiresAt: expiresAt || null });
   },

@@ -12,6 +12,11 @@
  * confiance pour une regle metier.
  * PIEGE : un echec de l'API CODM ne doit pas casser la page : la section
  * catalogue doit degrader proprement, sans faire disparaitre les stats.
+ * INVARIANT : « catalogue VIDE » (reponse 200 sans bundle) et « chargement
+ * IMPOSSIBLE » (exception) sont deux etats distincts. Le second affiche un
+ * message d'erreur et un bouton « Reessayer » ; le premier n'affiche qu'une
+ * phrase — promettre un reessai sur un catalogue legitimement vide ferait
+ * rejouer la meme requete pour rien.
  */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -378,9 +383,9 @@ const LeaksPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              {!bundlesLoading && bundles.length === 0 && (
+              {!bundlesLoading && bundlesError && (
                 <div className="text-center py-8 text-white/60 text-sm space-y-3">
-                  <p>Donnees du store temporairement indisponibles.</p>
+                  <p>Chargement du catalogue impossible : le serveur ne repond pas.</p>
                   <button
                     type="button"
                     onClick={() => setBundleRetry((n) => n + 1)}
@@ -388,6 +393,14 @@ const LeaksPage: React.FC = () => {
                   >
                     Réessayer
                   </button>
+                </div>
+              )}
+              {!bundlesLoading && !bundlesError && bundles.length === 0 && (
+                <div className="text-center py-8 text-white/60 text-sm">
+                  {/* Catalogue VIDE cote serveur : ce n'est pas une panne.
+                      Le distinguer de l'echec de chargement evite de
+                      promettre un « Reessayer » qui ne servirait a rien. */}
+                  <p>Aucune offre disponible dans le catalogue CODM pour le moment.</p>
                 </div>
               )}
               {bundlesError && bundles.length > 0 && (

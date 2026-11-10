@@ -13,12 +13,35 @@
  * avait, et le joueur croyait son portefeuille vide.
  * PIEGE : une seule hydratation par utilisateur. Le ref userId sert de
  * garde : changer de compte doit relancer le chargement, pas le bloquer.
+ * INVARIANT : la file de retentatives se TERMINE par un SIGNAL, jamais par
+ * le silence. Sans lui, la navbar affichait `0 ZC` en permanence chez un
+ * joueur qui pouvait avoir 20 000 ZC — le portefeuille indisponible se
+ * lisait exactement comme un portefeuille vide. Le bootstrap CHAT emetait
+ * deja un toast a l'epuisement : le wallet est aligne sur ce comportement.
  */
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
+import { useToastStore } from '../stores/toastStore';
 
-const RETRY_DELAYS_MS = [2000, 5000, 10000, 20000];
+/** Les memes delais que useChatSessionBootstrap (miroir intangible). */
+export const WALLET_BOOTSTRAP_RETRY_DELAYS_MS = [2000, 5000, 10000, 20000];
+
+/**
+ * Decision apres `attempt` echecs consecutifs (0 = apres la tentative
+ * initiale). Exporte pour test : la sequence doit rester alignee avec le
+ * bootstrap chat. Apres le dernier delai vient le SIGNAL (toast d'echec
+ * unique avec un bouton « Reessayer »), jamais une purge du store.
+ */
+export const walletBootstrapFailurePlan = (
+  attempt: number
+): { retry: boolean; delayMs: number; signal: boolean } => {
+  const delayMs = WALLET_BOOTSTRAP_RETRY_DELAYS_MS[attempt];
+  if (typeof delayMs === 'number') {
+    return { retry: true, delayMs, signal: false };
+  }
+  return { retry: false, delayMs: 0, signal: true };
+};
 
 export const useWalletSessionBootstrap = () => {
   const userId = useAuthStore((state) => state.user?.id);
@@ -41,14 +64,43 @@ export const useWalletSessionBootstrap = () => {
 
     const scheduleRetry = () => {
       const { attempt, timer } = retryRef.current;
-      if (timer || cancelled || attempt >= RETRY_DELAYS_MS.length) return;
-      const delay = RETRY_DELAYS_MS[attempt];
+      if (timer || cancelled) return;
+      const plan = walletBootstrapFailurePlan(attempt);
+      if (!plan.retry) {
+        // File epuisee : UN seul signal utilisateur. Pas de purge : le
+        // portefeuille du joueur n'est pas modifie, seul son miroir local
+        // est reste vide.
+        //
+        // Sur un 401, apiClient a deja purge et deconnecte : le toast
+        // « portefeuille indisponible » ne serait que du bruit. On ne
+        // signale donc que si la session est toujours celle du joueur.
+        if (useAuthStore.getState().user?.id !== userId) return;
+        useToastStore.getState().addToast({
+          id: 'wallet-bootstrap-failed',
+          type: 'error',
+          title: 'Portefeuille indisponible',
+          message: "Impossible de charger ton portefeuille : le serveur ne repond pas. Ton solde n'est pas perdu — reessaie dans un instant.",
+          duration: 8000,
+          action: {
+            label: 'Réessayer',
+            onClick: () => {
+              // Relance une tentativeImmediate : on repart d'une file
+              // neuve, sinon le plan resterait epuise et le signal
+              // partirait aussitot.
+              retryRef.current = { attempt: 0, timer: null };
+              hydratedRef.current = null;
+              void load();
+            },
+          },
+        });
+        return;
+      }
       retryRef.current = {
         attempt: attempt + 1,
         timer: window.setTimeout(() => {
           retryRef.current = { attempt: retryRef.current.attempt, timer: null };
           void load();
-        }, delay),
+        }, plan.delayMs),
       };
     };
 

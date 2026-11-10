@@ -5,8 +5,9 @@
  * Fenetre glissante simplifiee : un compteur par couple (IP, groupe), remis a
  * zero quand la fenetre est depassee.
  *
- * INVARIANT : la cle de bucket est `${ip}|${group}` - les quotas sont
- *   independants par groupe pour une meme IP.
+ * INVARIANT : la cle de bucket est `${ip}|${groupe canonique}` - les quotas
+ *   sont independants par groupe pour une meme IP (un alias et son groupe
+ *   cible partagent le meme compteur, cf. RATE_LIMIT_GROUP_ALIASES).
  * INVARIANT : le `X-Forwarded-For` retenu est le DERNIER saut : le premier
  *   est entierement controle par l'appelant, qui pourrait changer d'en-tete a
  *   chaque requete pour obtenir un bucket neuf.
@@ -19,11 +20,17 @@
  *   (NODE_ENV=test, ALLOW_DEBUG_CODES=true, ZOYD_DISABLE_SUPABASE=true) : un
  *   service connecte a une base reelle ne doit jamais pouvoir se mettre en
  *   mode detendu.
+ * INVARIANT : un ALIAS de groupe designe le MEME seau que son groupe cible :
+ *   la resolution est faite AVANT la construction de la cle de bucket, donc
+ *   `${ip}|${groupe canonique}` - deux alias d'un meme groupe partagent
+ *   forcement le meme compteur.
  * PIEGE : un groupe absent de `RATE_LIMIT_CONFIG` retombe sur `default` avec
  *   UN warn par nom de groupe inconnu (pas par appel : les handlers socket
  *   appellent `checkRateLimit` en boucle, un warn/appel serait du spam). Le
- *   groupe `match` utilise par `POST /api/br/lobbies` est un example connu :
- *   il est assume. Une faute de frappe future doit, elle, laisser une trace.
+ *   groupe `match` utilise par `POST /api/br/lobbies` est desormais
+ *   DECLARE (10/min) : avant, il retombait sur `default` (60/min) et
+ *   partageait le seau de toutes les lectures publiques. Une faute de frappe
+ *   future doit, elle, laisser une trace.
  * PIEGE : le compteur est REINITIALISE, pas glisse : une rafale terminee la
  *   fenetre passe encore.
  * PIEGE : a saturation de MAX_RATE_LIMIT_BUCKETS, le plus ancien bucket est
@@ -32,6 +39,17 @@
  *   socket (groupes 'chat' et 'default'), sans passer par le garde HTTP.
  * PIEGE : `logout` a son propre groupe (`auth_logout`) : le partager avec
  *   `auth` permettait de verrouiller la connexion de toute une IP partagee.
+ * PIEGE : `wallet` est un ALIAS de `wallet_withdraw` : les deux nomment le
+ *   meme seau, pas deux quotas. C'est le pont de transition : tant que
+ *   `routes/wallet.mjs` demande encore le groupe `wallet`, le comportement
+ *   est INCHANGE (un seul seau 20/10 min pour le retrait, la verification de
+ *   depot et le depot admin). Des que la route passe a `wallet_withdraw`,
+ *   `wallet_deposit` et `wallet_admin`, chaque operation d'argent aura son
+ *   propre seau.
+ * PIEGE : le seau est PAR IP : en CGNAT (tres courant en Afrique), des
+ *   centaines de joueurs partagent une IP publique. Un quota unique pour
+ *   toutes les operations d'argent signifiait qu UN SEUL compte suffisait a
+ *   paralyser les retraits de tous les autres pendant 10 minutes.
  */
 
 import { respondJson } from './http-utils.mjs';
@@ -46,18 +64,80 @@ const MAX_RATE_LIMIT_BUCKETS = 50000;
 /** Groupes inconnus deja avertis : un seul log par nom, anti-spam. */
 const unknownGroupsWarned = new Set();
 
-/** @type {{ auth: { max: number, windowMs: number }, auth_logout: { max: number, windowMs: number }, social: { max: number, windowMs: number }, wallet: { max: number, windowMs: number }, chat: { max: number, windowMs: number }, admin: { max: number, windowMs: number }, default: { max: number, windowMs: number } }} */
+/**
+ * Config du retrait, PARTAGEE par le groupe canonique `wallet_withdraw` et
+ * son alias historique `wallet` (meme objet : meme plafond, meme fenetre).
+ */
+const WALLET_WITHDRAW_CONFIG = { max: 20, windowMs: 10 * 60 * 1000 };
+
+/** @type {{ auth: { max: number, windowMs: number }, auth_logout: { max: number, windowMs: number }, match: { max: number, windowMs: number }, social: { max: number, windowMs: number }, wallet: { max: number, windowMs: number }, wallet_withdraw: { max: number, windowMs: number }, wallet_deposit: { max: number, windowMs: number }, wallet_admin: { max: number, windowMs: number }, chat: { max: number, windowMs: number }, admin: { max: number, windowMs: number }, default: { max: number, windowMs: number } }} */
 const RATE_LIMIT_CONFIG = {
   auth:    { max: 50,  windowMs: 15 * 60 * 1000 },
   // `logout` est appelable sans session et ne prouve rien. Le partager avec
   // `auth` permettait a n'importe qui de verrouiller la connexion de tous les
   // utilisateurs d'une IP partagee pendant 15 minutes.
   auth_logout: { max: 60, windowMs: 60 * 1000 },
+  // `POST /api/br/lobbies` (creation de salon BR). Le groupe N'EXISTAIT PAS :
+  // la route retombait silencieusement sur `default` (60/min) et partageait
+  // le seau de toutes les lectures publiques - le nom du groupe ne
+  // protegeait rien. 10/min : creer un salon est une action de joueur, pas
+  // un flux, et chaque creation ecrit en base.
+  match:   { max: 10,  windowMs: 60 * 1000 },
   social:  { max: 30,  windowMs: 60 * 1000 },
-  wallet:  { max: 20,  windowMs: 10 * 60 * 1000 },
+  // Operations d'argent : trois seaux DISTINCTS.
+  //
+  // AVANT, un seul seau `wallet` (20/10 min) couvrait le retrait, la
+  // verification de depot et le depot admin. Le seau est par IP : en CGNAT
+  // (tres courant en Afrique), des centaines de joueurs partagent une IP
+  // publique, et un SEUL compte suffisait a paralyser les retraits de tous
+  // les autres pendant 10 minutes. On ne change AUCUN plafond : on change
+  // la granularite des seaux, pour qu'une operation ne puisse plus epuiser
+  // le budget d'une autre.
+  //
+  // `wallet` reste l'alias de `wallet_withdraw` (meme objet de config ET
+  // meme seau, cf. RATE_LIMIT_GROUP_ALIASES) : les appelants existants
+  // (`routes/wallet.mjs`) gardent exactement le budget d'aujourd'hui.
+  wallet:          WALLET_WITHDRAW_CONFIG,
+  wallet_withdraw: WALLET_WITHDRAW_CONFIG,
+  // Verification de depot : credit d'argent apres un paiement FedaPay.
+  wallet_deposit:  { max: 20, windowMs: 10 * 60 * 1000 },
+  // Depot admin (credit manuel) : action d'administration, cadence faible.
+  wallet_admin:    { max: 20, windowMs: 5 * 60 * 1000 },
   chat:    { max: 60,  windowMs: 60 * 1000 },
   admin:   { max: 20,  windowMs: 5 * 60 * 1000 },
   default: { max: 60,  windowMs: 60 * 1000 },
+};
+
+/**
+ * Alias de groupes de quota.
+ *
+ * Un alias designe le MEME seau que son groupe cible : ce n'est pas une
+ * simple recopie de configuration, c'est une IDENTITE de compteur. C'est ce
+ * qui permet de separer le retrait du depot SANS casser les appelants
+ * existants du groupe `wallet` (`routes/wallet.mjs`), qui continuent de
+ * consommer exactement le meme budget qu'avant.
+ *
+ * INVARIANT : la resolution se fait AVANT la construction de la cle de
+ *   bucket (`${ip}|${groupe canonique}`) : `wallet` et `wallet_withdraw`
+ *   epuisent donc forcement le meme compteur.
+ *
+ * PIEGE : ajouter un alias ici N'ATTENU EN AUCUN CAS un quota. Le seau
+ *   reste unique : c'est le but (une operation ne doit pas epuiser le
+ *   budget d'une autre). Le jour ou `wallet.mjs` n'utilise plus `wallet`,
+ *   cet alias n'est plus appele et peut etre supprime.
+ */
+const RATE_LIMIT_GROUP_ALIASES = {
+  wallet: 'wallet_withdraw',
+};
+
+/**
+ * Resout un alias de groupe vers son groupe canonique.
+ * @param {string} group
+ * @returns {string}
+ */
+const resolveRateLimitGroup = (group) => {
+  const name = String(group || 'default');
+  return RATE_LIMIT_GROUP_ALIASES[name] || name;
 };
 
 /**
@@ -110,7 +190,12 @@ if (TEST_ONLY_RELAXATION) {
  * @returns {{ allowed: boolean, remaining: number, retryAfter: number }}
  */
 const checkRateLimit = (ip, group = 'default') => {
-  let config = RATE_LIMIT_CONFIG[group];
+  // Alias : `wallet` et `wallet_withdraw` doivent partager le MEME seau.
+  // La resolution se fait AVANT la cle de bucket, sinon l'alias aurait son
+  // propre compteur et la separation des operations d'argent n'existerait
+  // que sur le papier.
+  const canonicalGroup = resolveRateLimitGroup(group);
+  let config = RATE_LIMIT_CONFIG[canonicalGroup];
   if (!config) {
     // Retombee visible : un groupe inconnu signale probablement une faute de
     // frappe qui affaiblit un quota anti-bruteforce sans crier. Un seul warn
@@ -126,7 +211,7 @@ const checkRateLimit = (ip, group = 'default') => {
       );
     }
   }
-  const key = `${ip}|${group}`;
+  const key = `${ip}|${canonicalGroup}`;
   const now = Date.now();
   const record = rateLimitBuckets.get(key);
   if (!record || now - record.windowStart > config.windowMs) {
@@ -135,7 +220,7 @@ const checkRateLimit = (ip, group = 'default') => {
       const oldest = rateLimitBuckets.keys().next().value;
       rateLimitBuckets.delete(oldest);
     }
-    rateLimitBuckets.set(key, { windowStart: now, attempts: 1, group });
+    rateLimitBuckets.set(key, { windowStart: now, attempts: 1, group: canonicalGroup });
     return { allowed: true, remaining: config.max - 1, retryAfter: 0 };
   }
   record.attempts += 1;
@@ -269,6 +354,8 @@ const rateLimitGuard = (res, ip, group) => {
 export {
   rateLimitBuckets,
   RATE_LIMIT_CONFIG,
+  RATE_LIMIT_GROUP_ALIASES,
+  resolveRateLimitGroup,
   checkRateLimit,
   cleanupRateLimits,
   isValidIp,

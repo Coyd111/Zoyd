@@ -15,6 +15,10 @@
  * INVARIANT : les deux resolutions de token ne sont PAS interchangeables.
  *   `getAuthenticatedRealtimeSession` n'accepte que l'en-tete Bearer, car le
  *   cookie `zoyd_auth` n'est PAS un token temps reel.
+ * INVARIANT : `readSessionToken` est LA resolution de token du garde
+ *   d'authentification : toute action qui vise LA SESSION authentifiee
+ *   (marquage 2FA, rotation) doit passer par elle, sinon elle vise une
+ *   session differente de celle que le garde a authentifiee.
  * INVARIANT : toute erreur metier porte un `error.code` : c'est ce code que
  *   `mapPersistenceError` fait correspondre ; un code inconnu tombe sur un
  *   500 generique.
@@ -23,6 +27,10 @@
  * PIEGE : `readBearerToken` privilegie le COOKIE alors que
  *   `getAuthenticatedAppSession` privilegie l'en-tete Authorization : les
  *   priorites sont volontairement inversees.
+ * PIEGE : `readSessionToken` (en-tete d'abord) est donc la seule resolution
+ *   qui designe la session reellement authentifiee par le garde. Utiliser
+ *   `readBearerToken` pour agir SUR cette session (marquage 2FA) vise une
+ *   session differente des que le garde a authentifiee.
  * PIEGE : `getCorsOrigin` renvoie '' pour une origine non whitelistee :
  *   l'en-tete `Access-Control-Allow-Origin` est alors OMIS de la reponse,
  *   jamais pose a '' — une valeur vide est invalide (spec Fetch) et ferait
@@ -35,7 +43,7 @@
  *   `CLIENT_ABORTED` - ce n'est pas une session invalide.
  */
 
-import { getAuthSession, getRealtimeSession } from './persistence.mjs';
+import { getAuthSession, getRealtimeSession, getUserById } from './persistence.mjs';
 import { incCounter, endTimer } from './metrics.mjs';
 import log from './logger.mjs';
 
@@ -283,6 +291,37 @@ export const readBearerToken = (req) => {
 };
 
 /**
+ * Le token de session reellement utilise par le garde d'authentification.
+ *
+ * `readBearerToken` privilegie le COOKIE ; `getAuthenticatedAppSession`
+ * privilegie l'en-tete `Authorization`. Les deux resolutions sont
+ * volontairement inversees (cf. `getAuthenticatedRealtimeSession`, qui
+ * n'accepte que l'en-tete), donc elles ne designent PAS la meme session
+ * quand une requete porte les deux.
+ *
+ * Consequence concrete du melange : le garde `requireAdmin` authentifie la
+ * session de l'en-tete `Authorization`, mais le marquage 2FA partait sur le
+ * COOKIE. Une requete portant les deux attribuait `admin2faVerified = true`
+ * a la session du cookie — c'est-a-dire a une session VOLEE pendant cinq
+ * minutes, avec le droit de deplacer l'argent.
+ *
+ * Toute action qui vise LA SESSION authentifiee passe donc par ici.
+ *
+ * @param {import('node:http').IncomingMessage} req
+ * @returns {string|null}
+ */
+export const readSessionToken = (req) => {
+  const authorization = req.headers.authorization || '';
+  if (authorization.startsWith('Bearer ')) {
+    const token = authorization.slice('Bearer '.length).trim();
+    if (token) return token;
+  }
+  // Repli sur le cookie : meme ordre que `readBearerToken` pour le cas
+  // « pas d'en-tete », donc exactement le meme token.
+  return readBearerToken(req);
+};
+
+/**
  * Resolve the authenticated app session from the request token.
  *
  * La rotation est active sur les deux chemins. Le nouveau token est depose
@@ -297,13 +336,46 @@ export const readBearerToken = (req) => {
  */
 export const getAuthenticatedAppSession = (req) => {
   const emitToken = (token) => { req._authRotation = token; };
-  const authorization = req.headers.authorization || '';
-  if (authorization.startsWith('Bearer ')) {
-    const token = authorization.slice('Bearer '.length).trim();
-    return token ? getAuthSession(token, { emitToken }) : null;
-  }
-  const token = readBearerToken(req);
+  const token = readSessionToken(req);
   return token ? getAuthSession(token, { emitToken }) : null;
+};
+
+/**
+ * Le role COURANT d'un socket temps reel.
+ *
+ * Pourquoi relire, et ne pas se fier a `socket.data.session`
+ * -------------------------------------------------------
+ * `io.use` (realtime-server.mjs) FIGE `socket.data.session` au moment de la
+ * connexion : or une session socket vit des HEURES. Un administrateur
+ * retrograde — ou un compte compromis puis retrograde — gardait donc le
+ * droit d'ecrire un push arbitraire (titre, corps, url) sur le telephone de
+ * n'importe quel joueur pendant toute la duree de vie de ses sockets : un
+ * vecteur de phishing deguise en notification officielle.
+ *
+ * C'est le meme defaut que celui corrige pour le bannissement : le controle
+ * portait sur l'evenement declencheur (la connexion) et non sur l'etat
+ * courant.
+ *
+ * `getRealtimeSession` (persistence.mjs) relit DEJA le role a chaque appel
+ * et supprime la session si le compte a disparu ou est banni : on s'appuie
+ * dessus. Quand le jeton temps reel est inconnu (reconnexion par cookie),
+ * on relit le compte lui-meme — c'est la meme source de verite.
+ *
+ * @param {string|null} token - Jeton temps reel, s'il est connu
+ * @param {string} userId - Identifiant du compte du socket
+ * @returns {string|null} Le role courant, ou `null` si la session n'est plus valide
+ */
+export const resolveRealtimeRole = (token, userId) => {
+  if (token) {
+    const live = getRealtimeSession(token);
+    // Session invalide (expiree, bannie, compte supprime) : plus AUCUN
+    // privilege. On ne se rabat pas sur le compte : la session temps reelle
+    // fait foi.
+    if (!live) return null;
+    return live.role || null;
+  }
+  const user = getUserById(userId);
+  return user?.role || null;
 };
 
 /**

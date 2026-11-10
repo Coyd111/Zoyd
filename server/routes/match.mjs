@@ -6,16 +6,27 @@
  * Renvoie `true` des qu'il a ecrit la reponse, `false` sinon.
  *
  * Ordre des gardes : session (401 `AUTH_REQUIRED`) -> rate limit (`social`
- * pour les actions sociales) -> lecture du corps -> `withMatchMutex` (global)
- * -> `withWalletMutex` (par joueur) -> moteur -> `saveMatches` -> reponse.
+ * pour TOUTES les routes d'ecriture) -> lecture du corps -> `withMatchMutex`
+ * (global) -> `withWalletMutex` (par joueur) -> moteur -> `saveMatches` ->
+ * reponse.
  * Les resultats et places d'arbitre ajoutent `require2faIfAdmin` : une
  * session admin doit avoir une 2FA fraiche, un joueur arbitre passe sans
  * code (l'override admin ne doit pas couter moins que /api/admin/*).
- * P9 C4 (audit-3) : le rate limit `social` couvre create/join/arbiter/
- * check-in/ready SEULEMENT. Schedule/room/launch/result/confirm/disputes/
- * evidence/escalate n'en ont PAS - par choix : les gardes du moteur bornent
- * l'impact de chacun (etats, droits, mutex) ; l'en-tete historique laissait
- * croire qu'il couvrait tout le fichier.
+ * P9 C4 (audit-3, CORRIGE) : le rate limit `social` couvre AUJOURD'HUI
+ * TOUTES les routes d'ecriture du fichier (create/join/leave/cancel/
+ * arbiter/check-in/ready/schedule/room/launch/result/confirm/disputes/
+ * evidence/escalate). L'audit avait laisse les neuf dernieres SANS garde,
+ * en invoquant « les gardes du moteur bornent l'impact de chacun » : c'etait
+ * circulaire. Ce que les gardes du moteur bornent, c'est l'ETAT d'un match
+ * (qui peut faire quoi) ; ce qu'elles ne bornaient pas, c'est le TEMPS
+ * d'occupation du mutex GLOBAL et le nombre d'ecritures Supabase. Un
+ * compte authentifie pouvait donc sérialiser les operations de match de
+ * toute la plateforme et epuiser le budget d'ecritures.
+ * PIEGE : le quota `social` est par IP, comme tous les quotas : le garde
+ *   protege la ressource PARTAGEE (le mutex global, le budget d'ecritures),
+ *   pas le compte. En CGNAT, une IP porte plusieurs joueurs : d'ou le
+ *   plafond de 30/min, large pour un cycle de match complet (programmation,
+ *   salle, lancement, resultat, confirmation, litige, preuves).
  *
  * INVARIANT : le verrou GLOBAL est pris AVANT le verrou par portefeuille :
  *   l'ordre inverse ouvre la porte a un deadlock.
@@ -341,6 +352,10 @@ if (req.method === 'POST' && matchSchedule) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : la route prend le mutex GLOBAL des matchs et ecrit en
+  // base a chaque appel. Sans quota, un compte authentifie sature le mutex
+  // et le budget d'ecritures de toute la plateforme.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
@@ -368,6 +383,9 @@ if (req.method === 'POST' && matchRoom) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : meme raison que la programmation (ci-dessus) - mutex
+  // GLOBAL + ecriture en base a chaque appel.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
@@ -401,6 +419,9 @@ if (req.method === 'POST' && matchLaunch) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : meme raison que la programmation - mutex GLOBAL +
+  // ecriture en base a chaque appel.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = launchMatchOnServer(getStateCollection('matches'), session.user, matchLaunch[1]);
@@ -422,6 +443,10 @@ if (req.method === 'POST' && matchResult) {
   // demandait pas (audit-2 S1).
   const session = require2faIfAdmin(req, res);
   if (!session) { return true; }
+  // Garde de debit : la soumission du resultat est la route la plus
+  // convoitée du fichier (elle arme le reglement) et elle ecrit en base a
+  // chaque appel, sous le mutex GLOBAL.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation —
   // c'est le pire cas : jusqu'1 Mo de JSON ou un client qui n'enverra
@@ -471,6 +496,9 @@ if (req.method === 'POST' && matchConfirm) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : la confirmation arme le reglement de la cagnotte et
+  // ecrit en base sous le mutex GLOBAL.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = await confirmMatchResultOnServer(getStateCollection('matches'), session.user, matchConfirm[1]);
@@ -510,6 +538,9 @@ if (req.method === 'POST' && matchDisputes) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : l'ouverture d'un litige ecrit en base sous le mutex
+  // GLOBAL et envoi une notification aux joueurs.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
@@ -550,6 +581,8 @@ if (req.method === 'POST' && matchDisputeEvidence) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : l'ajout de preuves ecrit en base sous le mutex GLOBAL.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
   try {
@@ -581,6 +614,9 @@ if (req.method === 'POST' && matchDisputeEscalate) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  // Garde de debit : l'escalade ecrit en base sous le mutex GLOBAL et
+  // notifie TOUS les admins.
+  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
   try { await withMatchMutex(async () => {
     const outcome = escalateDisputeOnServer(
       getStateCollection('matches'),

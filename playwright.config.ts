@@ -1,0 +1,146 @@
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  timeout: 60_000,
+  retries: 1,
+  workers: 1,
+  reporter: 'list',
+  use: {
+    extraHTTPHeaders: {
+      'Content-Type': 'application/json',
+    },
+  },
+  webServer: [
+    {
+      command: 'node server/realtime-server.mjs',
+      port: 4001,
+      reuseExistingServer: true,
+      // Vite met ~21 s a démarrer sur un disque lent (exFAT : lecture de
+      // thousands de fichiers sans cache OS), et `npx` ajoute son propre
+      // overhead de resolution. 30 s laissait passer le boot a peine et
+      // echouait de facon aleatoire, ce qui masquait les vrais echecs de test.
+      timeout: 120_000,
+      // Les specs lisent body.token après login/register. Depuis le passage en
+      // cookie-only, le token n'est renvoyé que si ALLOW_DEBUG_CODES=true
+      // (jamais en prod). Sans ça, TOUTES les assertions de token échouent en
+      // 401 et l'E2E ne testait plus rien — en silence, du temps ou la CI ne
+      // lancait pas Playwright (depuis, les jobs `e2e` et `e2e-ui` existent).
+      //
+      // ZOYD_DISABLE_SUPABASE force le mode mémoire : les tests deviennent
+      // hermétiques (pas de réseau, pas de données réelles) et l'écriture
+      // d'état est autorisée (en base injoignable, `stateTrusted` reste false
+      // et TOUTE création de match/tournoi répond 503).
+      env: {
+        ...process.env,
+        ALLOW_DEBUG_CODES: 'true',
+        NODE_ENV: 'test',
+        ZOYD_DISABLE_SUPABASE: 'true',
+        // `.env.server` fixe ZOYD_ALLOWED_ORIGINS=https://zoyd.vercel.app.
+        // Les specs `ui` echouaient en CORS (« Access-Control-Allow-Origin
+        // contient la valeur vide ») pour DEUX raisons, toutes deux
+        // corrigees depuis dans http-utils.mjs :
+        //   1. la variable REMPLACAIT les origines de dev (http://localhost:5173)
+        //      construites par le serveur — les origines de dev sont desormais
+        //      AJOUTEES a la liste configuree, pas substituees ;
+        //   2. l en-tete `Access-Control-Allow-Origin` etait pose a la valeur
+        //      VIDE pour une origine non blanche (valeur invalide) — il est
+        //      desormais OMIS.
+        // La liste reste posee explicitement : elle rend le harness
+        // hermetique, independamment de `.env.server`.
+        ZOYD_ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173,https://zoyd.vercel.app',
+        // requis au boot (seed du compte de contrôle) et doit passer la
+        // politique de mot de passe fort ; absente ou faible, le serveur
+        // journalise [FATAL] et DÉMARRE QUAND MÊME — sans aucun admin
+        ZOYD_ADMIN_PASSWORD: process.env.ZOYD_ADMIN_PASSWORD || 'ZoydE2E!Admin2026',
+        // La creation d'un salon BR impose 24 a 48 h d'avance, donc aucun
+        // salon cree par l'API n'est demarrable immediatement. Sans cette
+        // surcharge (reservere aux tests par une double condition cote
+        // serveur), le cycle demarrage -> eliminations -> versement ne serait
+        // testable qu'en unite, jamais via HTTP.
+        ZOYD_BR_START_EARLY_MS: String(48 * 3600 * 1000),
+      },
+    },
+    {
+      command: 'npx vite --port 5173',
+      port: 5173,
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+  ],
+  projects: [
+    {
+      name: 'api',
+      testDir: './e2e/api',
+      use: { baseURL: 'http://localhost:4001' },
+    },
+    {
+      name: 'ui',
+      testDir: './e2e/ui',
+      // Prechauffage de Vite AVANT les tests : sans ca, le premier `goto` de la
+      // suite paie le pre-bundling esbuild et expire son propre budget.
+      globalSetup: './e2e/ui/globalSetup.ts',
+      // Vite sert les modules A LA DEMANDE et pre-bundle ses dependances au
+      // tout premier requete : sur un disque lent, le premier `page.goto`
+      // d'un test depassait le budget du fichier, et le test echouait en
+      // "Timeout" sans qu'une seule assertion n'ait ete evaluee. Budget double
+      // pour le projet ui ; les assertions, elles, ne sont pas relachees.
+      //
+      // `timeout` et `expect` se placent AU NIVEAU DU PROJET, pas dans `use` :
+      // places dans `use`, ils sont silencieusement ignores et les 60 s / 5 s
+      // par defaut restent en vigueur.
+      timeout: 120_000,
+      expect: { timeout: 15_000 },
+      use: {
+        baseURL: 'http://localhost:5173',
+        browserName: 'chromium',
+        headless: true,
+        screenshot: 'only-on-failure',
+        trace: 'on-first-retry',
+        navigationTimeout: 60_000,
+        actionTimeout: 30_000,
+      },
+    },
+    // ─── Projets LIVE : hors configuration par défaut ─────────────────────────
+  //
+  // Ces deux projets visent la PRODUCTION (zoyd.onrender.com). Leur `beforeAll`
+  // INSCRIT un compte, et chaque relance en laisse un de plus derriere elle.
+  //
+  // Avec ces projets dans la liste, `playwright test` sans `--project` suffisait
+  // a polluer la base de production — c'est arrived pendant la session : la
+  // suite complete a ete lancee sans y penser, et les tests live ont echoue sur
+  // un DNS instable. Ils s'executaient quand meme.
+  //
+  // La protection est donc STRUCTURELLE : sans `ZOYD_ALLOW_LIVE_TESTS=1`, ces
+  // projets n'exISTENT PAS dans la configuration. `playwright test` ne peut plus
+  // toucher la production par megarde ; il faut le demander explicitement.
+  ...(process.env.ZOYD_ALLOW_LIVE_TESTS === '1'
+    ? [
+      {
+        name: 'live-api',
+        testDir: './e2e/live-api',
+        // `retries: 0` OBLIGATOIRE en live : chaque retry rejoue le beforeAll,
+        // qui INSCRIT un compte. Avec retries: 1, un seul test en echec laissait
+        // 2 comptes dans la base de production.
+        retries: 0,
+        use: {
+          baseURL: 'https://zoyd.onrender.com',
+          extraHTTPHeaders: {
+            'Origin': 'https://zoyd.vercel.app',
+          },
+        },
+      },
+      {
+        name: 'live-ui',
+        testDir: './e2e/live-ui',
+        use: {
+          baseURL: 'https://zoyd.vercel.app',
+          browserName: 'chromium',
+          headless: true,
+          screenshot: 'only-on-failure',
+          trace: 'on-first-retry',
+        },
+      },
+    ]
+    : []),
+  ],
+});

@@ -24,3 +24,64 @@ jobs:
       - run: pnpm test:run
         env:
           ZOYD_DISABLE_SUPABASE: 'true'
+
+  e2e:
+    name: E2E API (playwright)
+    runs-on: ubuntu-latest
+    # Les specs API tournent en mode MEMOIRE (ZOYD_DISABLE_SUPABASE) : pas de
+    # reseau, pas de donnees reelles, et les rate-limits sont partages entre
+    # fichiers (workers: 1 dans playwright.config.ts).
+    #
+    # Elles sont BLOQUANTES : c'est la couche qui voit le contrat HTTP reel.
+    # Le deadlock d annulation du createur (le serveur ne repondait plus et
+    # le mutex GLOBAL des matchs restait bloque) n etait visible QUE ici : les
+    # tests unitaires appelaient le moteur directement et ne passaient pas
+    # par la route.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e:api
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-api
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  e2e-ui:
+    name: E2E UI (playwright)
+    runs-on: ubuntu-latest
+    # Les specs d interface ne tournaient nulle part : le job precedent ne
+    # lancait que `--project=api`. Tout ce qui concerne `/br`, la
+    # deconnexion, le wallet, la 2FA ou le serment d integrite n etait donc
+    # verifie qu en local — c est a dire pas du tout au moment du commit.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e:ui
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-ui
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

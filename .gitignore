@@ -33,3 +33,4 @@ AUDIT_*.md
 *_AUDIT.md
 
 test-results/
+playwright-report/

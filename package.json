@@ -11,9 +11,15 @@
     "dev:realtime": "node server/realtime-server.mjs",
     "start": "node server/realtime-server.mjs",
     "typecheck": "node node_modules/typescript7/bin/tsc --noEmit -p tsconfig.app.json",
-    "lint": "eslint src server --max-warnings 0",
+    "lint": "eslint src server e2e --max-warnings 0",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:e2e": "playwright test --config=playwright.config.ts",
+    "test:e2e:api": "playwright test --config=playwright.config.ts --project=api",
+    "test:e2e:ui": "playwright test --config=playwright.config.ts --project=ui",
+    "test:e2e:live": "playwright test --config=playwright.config.ts --project=live-api",
+    "test:e2e:live-ui": "playwright test --config=playwright.config.ts --project=live-ui",
+    "test:e2e:live-all": "playwright test --config=playwright.config.ts --project=live-api --project=live-ui"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.2",
@@ -66,7 +72,9 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.65.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

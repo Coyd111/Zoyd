@@ -239,9 +239,21 @@ if (req.method === 'POST' && matchCancelSelf) {
   if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
 
   try { await withMatchMutex(async () => {
-    const outcome = await withWalletMutex(session.user.id, async () =>
-      cancelMatchSelfOnServer(getStateCollection('matches'), session.user, matchCancelSelf[1])
-    );
+    // PAS de `withWalletMutex` autour de cet appel.
+    //
+    // `cancelMatchSelfOnServer` rembourse TOUS les joueurs via
+    // `refundMatchPlayers`, qui prend LUI-MEME le verrou wallet de chaque
+    // joueur (`withWalletMutex(player.userId)`). Le mutex n est PAS
+    // re-entrant : envelopper cet appel du verrou du createur deadlockait
+    // la requete — et, avec elle, le mutex GLOBAL des matchs, donc TOUTES
+    // les operations de match de la plateforme (creation, inscription,
+    // lancement, resultat) restaient bloquees indefiniment.
+    //
+    // L invariant est pose dans match-engine.mjs (`refundMatchPlayers`) :
+    // l appelant tient des verrous GLOBAUX, JAMAIS le verrou wallet d un
+    // joueur. La route d annulation ADMIN (`routes/admin.mjs`) respecte
+    // deja cette regle.
+    const outcome = await cancelMatchSelfOnServer(getStateCollection('matches'), session.user, matchCancelSelf[1]);
     await saveMatches(io, outcome.matches, outcome.match);
     respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
   });

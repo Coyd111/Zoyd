@@ -19,10 +19,10 @@ import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**'],
+    ignores: ['node_modules/**', 'dist/**', 'playwright-report/**', 'test-results/**'],
   },
   {
-    files: ['src/**/*.{ts,tsx,js,mjs}'],
+    files: ['src/**/*.{ts,tsx,js,mjs}', 'e2e/**/*.{ts,tsx,js,mjs}'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -72,6 +72,16 @@ export default [
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
+    // Tests : `no-explicit-any` desactive. Un test ecrit des charges
+    // utiles volontairement malformees (snapshot partiel, reponse d API
+    // degradee) : le `any` y EST l intention, et le typer strictement
+    // obligerait a ecrire des casts qui brisent la lisibilite du test.
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/*.test.mjs', 'src/test/**', 'e2e/**'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];

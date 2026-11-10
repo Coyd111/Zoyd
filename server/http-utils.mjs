@@ -447,12 +447,18 @@ case 'INSUFFICIENT_FUNDS':
     case 'NOT_IN_MATCH':
     case 'OPPONENTS_PRESENT':
     case 'MATCH_DISPUTED':
+    case 'MATCH_ALREADY_STARTED':
       return { status: 409, message, code };
     // Sortie volontaire + annulation du createur (match-engine, 2026-11-06) :
     // conflits d etat — match deja lance, createur qui tente une sortie,
     // joueur absent du roster, adversaire deja engage, litige en cours.
     // 409 partout : le demandeur peut changer d avis tout de suite, la
     // ressource subsiste.
+    // `MATCH_ALREADY_STARTED` (bb58fb1, 2026-11-09) : l annulation du
+    // createur sur un match LANCE est un refus metier, comme les autres.
+    // Sans ce cas, le code tombait dans le 500 generique — un refus normal
+    // se deguisait en panne du serveur, et le client ne pouvait plus
+    // distinguer les deux.
     // Squads libres (2026-11-05) : la squad existe mais est deja complete.
     // 409 : conflit d'etat transitoire, le client peut choisir une autre
     // squad et reessayer tout de suite.

@@ -14,8 +14,6 @@
  * aucune API. Une dependance ici se propage partout.
  * PIEGE : le formatage des montants est en ZC (monnaie du jeu), pas en
  * FCFA : ne pas melanger les deux dans le meme ecran.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';

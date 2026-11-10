@@ -16,8 +16,6 @@
  * PIEGE : un gain n'est affiche que si le pot est reellement verse
  * (isMatchPayoutSettled). Un resultat en attente de confirmation affiche
  * ' - ', pas un montant.
- *
- * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
  */
 import React from 'react';
 import { Link } from 'react-router';

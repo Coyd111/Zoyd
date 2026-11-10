@@ -13,8 +13,6 @@
  * PIEGE : la fermeture du bandeau est memorisee en local (localStorage). Ne
  * pas y mettre de donnee sensible : le stockage du navigateur est lisible
  * par le joueur.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';

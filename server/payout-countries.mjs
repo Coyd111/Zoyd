@@ -25,9 +25,6 @@
  *   rejette seulement les formats qu'aucun retrait ne pourrait jamais payer.
  * PIEGE : le prefixe international (+229 ...) est attendu, mais la forme
  *   locale est aussi acceptee.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // Matrice pays → opérateurs Mobile Money supportés par FedaPay (payout).

@@ -17,8 +17,6 @@
  * PIEGE : le type `User` de lucide et le type `User` du store portent le
  * meme nom : le type du store est aliase (`AuthUser`). Ne pas retirer
  * l'alias.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';

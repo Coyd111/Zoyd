@@ -17,8 +17,6 @@
  * hebdomadaire DIFFERE (saisons lancees apres l'ouverture publique), PAS le
  * mode BR courant — celui-ci, ce sont les salons (/br). L'UI de cet ecran
  * porte donc l'etiquette « evenement hebdomadaire » partout.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';

@@ -13,8 +13,6 @@
  * une canonique vers la racine.
  * PIEGE : les pages legales ne doivent pas dependre du design system au point
  * d'etre illisibles si le CSS ne charge pas.
- *
- * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
 import React from 'react';
 import { Link, useLocation } from 'react-router';

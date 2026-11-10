@@ -23,9 +23,6 @@
  * PIEGE : `severityForReason` normalise avec `trim()` seulement : une
  *   difference de casse ou d'espace change le resultat (le reste retombe
  *   dans 'a_qualifier').
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 /**

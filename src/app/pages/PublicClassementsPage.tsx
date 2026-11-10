@@ -25,7 +25,7 @@
  * PIEGE : /api/stats est accessoire : sa panne n'arrete PAS le classement.
  *
  * Voir aussi : ClassementsGateway.tsx (arbitrage), ClassementsPage.tsx
- * (version authentifiee), server/routes/public.mjs, docs/08-frontend.md 10.1.
+ * (version authentifiee), server/routes/public.mjs.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';

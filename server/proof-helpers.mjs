@@ -25,9 +25,6 @@
  * PIEGE : `buildProofHash` lie les refs au match (anti-rejeu intra-
  *   match), `buildProofContentHash` lie le contenu seul (rejeu entre
  *   matchs) : ne pas confondre.
- *
- * Invariants détaillés : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import crypto from 'node:crypto';

@@ -20,8 +20,6 @@
  * P3-3 (audit UI) : l'invite est montee sur ui/Modal, qui pose le focus sur
  * le PREMIER focusable (le champ TOTP) et gere Echap (Annuler) et le piege de
  * focus Tab, ce que l'ancien div brutal n'implémentait pas.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React, { useEffect, useState } from 'react';
 import { Shield } from 'lucide-react';

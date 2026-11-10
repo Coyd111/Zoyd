@@ -12,8 +12,6 @@
  * a un retrait de noindex.
  * PIEGE : les actions sociales (demande d'ami, blocage, signalement) passent
  * par le store friendsStore, donc par l'API.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';

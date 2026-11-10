@@ -14,8 +14,6 @@
  * chaine est le raccourci `{ description }` : c'est l'usage dominant, ne pas
  * le retirer sans migrer tous les appelants.
  * PIEGE : un `id` stable remplace le toast au lieu de l'empiler.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import { useToastStore } from '../stores/toastStore';
 

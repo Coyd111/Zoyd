@@ -2,7 +2,7 @@
  * ZoydLogo - le logo ZOYD selon son role.
  *
  * Deux visuels coexistent (separation etablie par la pass logo du
- * 2026-10-26, docs/audit-ux/01-RELECTURE.md - section 4) :
+ * 2026-10-26) :
  *  - `logo.png` (940x264) : le wordmark complet - branding a grande
  *    taille (elements heroiques, footer de la landing). ATTENTION : les
  *    lettres OYD sont un contour a fond transparent, lisible seulement

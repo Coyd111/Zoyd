@@ -13,8 +13,6 @@
  * une place en double ou hors rangee doit etre refusee par l'API.
  * PIEGE : la saisie doit etre conservee apres une erreur reseau : vider le
  * formulaire ferait perdre un classement deja rempli.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import { useState } from 'react';
 

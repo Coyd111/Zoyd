@@ -18,8 +18,6 @@
  * public d'un tiers, isMe vaut false partout. Ne pas le recomputer.
  * PIEGE : la normalisation des pseudos (casse, accents, tirets) sert a
  * regrouper les variantes d'ecriture d'un meme pseudo.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import type { User } from '../app/stores/authStore';
 import type { Friend, Report } from '../app/stores/friendsStore';

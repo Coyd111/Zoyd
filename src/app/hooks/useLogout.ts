@@ -15,8 +15,6 @@
  * PIEGE : la deconnexion du socket passe par le store (sessionReset appelle
  * `disconnect()`), pas par un import direct de realtimeClient : c'est le
  * store qui reinitialise la presence.
- *
- * Voir aussi : docs/08-frontend.md - section 6.1 (Les hooks de session)
  */
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';

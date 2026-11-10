@@ -13,8 +13,6 @@
  * avait, et le joueur croyait son portefeuille vide.
  * PIEGE : une seule hydratation par utilisateur. Le ref userId sert de
  * garde : changer de compte doit relancer le chargement, pas le bloquer.
- *
- * Voir aussi : docs/08-frontend.md - section 6.1 (Les hooks de session)
  */
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';

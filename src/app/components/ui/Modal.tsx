@@ -15,8 +15,6 @@
  * caractere saisi.
  * PIEGE : ce composant n'a pas de portail : s'il est rendu dans un conteneur
  * en `overflow-hidden`, il sera coupe.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';

@@ -11,8 +11,6 @@
  * d'entrees affichees.
  * PIEGE : la liste des arbitres est un type local limite a `userId` : ne
  * pas y ajouter de champs sans verifier ce que le serveur transmet.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React from 'react';
 import { Link } from 'react-router';

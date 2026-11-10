@@ -14,8 +14,6 @@
  * dediee.
  * PIEGE : le composant est memoise : les props doivent etre stables, sinon
  * le memo est inutile.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React from 'react';
 import type { TournamentMatch } from '../../../app/stores/tournamentStore';

@@ -25,8 +25,6 @@
     * (voir profileMetrics et communityInsights).
  * PIEGE : la commission d'arbitre (2 %) ne s'applique que s'il y a un
  * arbitre. L'afficher sur un match sans arbitre est faux.
- *
- * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
  */
 // Partition d'un pot de match, cote front.
 //

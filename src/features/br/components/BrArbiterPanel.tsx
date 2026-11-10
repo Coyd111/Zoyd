@@ -16,8 +16,6 @@
  * reponse serveur.
  * PIEGE : le code TOTP expire vite (fenetre courte) : le renvoyer doit
  * changer le code attendu, pas reuse le precedent.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {

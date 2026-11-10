@@ -12,8 +12,6 @@
  * PIEGE : un `id` ou un `aria-label` est obligatoire a l'appel : le champ
  * doit etre identifiable, sinon l'autocompletion mobile et le lecteur
  * d'ecran ne savent pas quoi remplir.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import React from 'react';
 import { cn } from '../../../lib/utils';

@@ -31,9 +31,6 @@
  *   l'utiliser comme label, sinon la cardinalite des series explose.
  * PIEGE : une coupure du client pendant la lecture du corps remonte
  *   `CLIENT_ABORTED` - ce n'est pas une session invalide.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getAuthSession, getRealtimeSession } from './persistence.mjs';

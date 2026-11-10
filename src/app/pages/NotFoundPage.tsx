@@ -10,8 +10,6 @@
  * INVARIANT : elle porte un `noindex`. Sans lui, un 404 peut etre indexe.
  * PIEGE : le message doit etre court et actionnable ; un 404 qui propose
  * de se connecter masque l'erreur reelle.
- *
- * Voir aussi : docs/08-frontend.md - section 3.1 (Inventaire)
  */
 import React from 'react';
 import { Link } from 'react-router';

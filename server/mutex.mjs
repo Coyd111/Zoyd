@@ -24,9 +24,6 @@
  *   meme temps, c'est voulu.
  * PIEGE : le nettoyage toutes les 5 min ne retire que les verrous INACTIFS
  *   depuis plus de 30 min ET non verrouilles.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { Mutex } from 'async-mutex';

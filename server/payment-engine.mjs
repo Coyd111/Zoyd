@@ -28,9 +28,6 @@
  * PIEGE : le SDK cache la vraie raison du refus : passer par
  *   `extraireErreurFedaPay` pour la journaliser, sinon le log ne dit que
  *   "403".
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { FedaPay, Transaction, Payout } from 'fedapay';

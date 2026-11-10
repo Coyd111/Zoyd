@@ -17,8 +17,6 @@
  * recevras ' sans cette precision (voir WithdrawalFeesNotice).
  * PIEGE : un 403 metier (2FA, transaction d'un autre compte) ne doit pas
  * etre traite comme une session expiree.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';

@@ -17,8 +17,6 @@
  * divergence d'affichage.
  * PIEGE : le serveur ne livre pas userId dans les matchs diffuses : compter
  * sur userId ferait correspondre aucun match a un joueur.
- *
- * Voir aussi : docs/08-frontend.md - section 12.3 (Le piege du total)
  */
 import type { User, UserStats } from '../app/stores/authStore';
 import { isMatchPayoutSettled, type Match, type MatchPlayer } from '../app/stores/matchStore';

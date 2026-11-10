@@ -14,8 +14,6 @@
  * authStore est importe par walletStore, un import direct creerait un cycle.
  * PIEGE : chaque etape est isolee dans un try/catch : une purge partielle
  * ne doit pas empecher les autres stores d'etre vides.
- *
- * Voir aussi : docs/08-frontend.md - section 6.3 (Ce qui se passe hors ligne)
  */
 import { useSocketStore } from '../stores/socketStore';
 import { useWalletStore } from '../stores/walletStore';

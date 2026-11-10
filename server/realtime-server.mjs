@@ -33,9 +33,6 @@
  *   pendante.
  * PIEGE : `unhandledRejection` journalise mais n'arrete PAS le processus ;
  *   `uncaughtException` journalise puis sort en code 1.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import crypto from 'node:crypto';

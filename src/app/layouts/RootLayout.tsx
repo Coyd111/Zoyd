@@ -19,8 +19,6 @@
  * socket - a la reconnexion, socketConnectionStore resynchronise deja les
  * deltas perdus (dirtySinceDisconnect) : refetcher la en plus etait un
  * doublon (pic de charge a chaque retour reseau mobile).
- *
- * Voir aussi : docs/08-frontend.md - section 4 (Les layouts)
  */
 import React, { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router';

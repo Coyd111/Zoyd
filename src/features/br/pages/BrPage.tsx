@@ -13,8 +13,6 @@
  * etre visible avant le clic, pas dans une confirmation apres coup.
  * PIEGE : le roster public n'expose AUCUN userId : l'identification d'un
  * joueur passe par son pseudo.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';

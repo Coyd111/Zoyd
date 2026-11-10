@@ -13,8 +13,6 @@
  * AdminDashboardPage, qui appelle l'API.
  * PIEGE : les libelles FR sont une table unique : dupliquer une regle
  * d'affichage dans un onglet la desynchronise des autres.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React from 'react';
 import type { Match } from '../../stores/matchStore';

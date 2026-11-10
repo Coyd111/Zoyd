@@ -14,8 +14,6 @@
  * userId : il n'est plus dans le payload.
  * PIEGE : subscribeToTournaments est un simple polling toutes les 30 s.
  * Ne pas le confondre avec une diffusion socket.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import type {
   CreateTournamentInput,

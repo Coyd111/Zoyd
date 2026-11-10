@@ -21,8 +21,6 @@
  * PIEGE : les graphes et cartesUsesocket pour la presence : hors ligne,
  * la page doit afficher un etat, pas une liste figee presentee comme
  * vivante.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';

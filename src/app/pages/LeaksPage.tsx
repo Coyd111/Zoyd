@@ -12,8 +12,6 @@
  * confiance pour une regle metier.
  * PIEGE : un echec de l'API CODM ne doit pas casser la page : la section
  * catalogue doit degrader proprement, sans faire disparaitre les stats.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';

@@ -17,8 +17,6 @@
  * serveur, apres avoir deja rempli le formulaire.
  * PIEGE : l'horaire conditionne la possibilite de se desinscrire avec
  * remboursement : une heure dans le passe rend le salon inexploitable.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, Coins, Info, Map as MapIcon, Swords, Trophy, User, X } from 'lucide-react';

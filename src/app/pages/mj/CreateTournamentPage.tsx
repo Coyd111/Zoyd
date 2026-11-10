@@ -13,8 +13,6 @@
  * donnerait un palier faux des le premier ecart de roster.
  * PIEGE : la date de debut conditionne le deroulement des journees : une
  * date dans le passe doit etre refusee avant l'envoi.
- *
- * Voir aussi : docs/08-frontend.md - section 10.4 (Pages mj)
  */
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';

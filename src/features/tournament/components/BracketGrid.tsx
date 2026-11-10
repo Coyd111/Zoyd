@@ -15,8 +15,6 @@
  * PIEGE : un match de bracket a un statut qui lui est propre (pending,
  * ready, live, finished) : ne pas le confondre avec le statut d'un match
  * de la section match.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React from 'react';
 import { CheckCircle2, Trophy } from 'lucide-react';

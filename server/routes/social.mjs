@@ -29,9 +29,6 @@
  *   requete metier.
  * PIEGE : une demande d'ami porte une DIRECTION (expediteur -> destinataire) :
  *   c'est le RECIPIENT qui l'accepte (`requestId` + `session.user.id`).
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

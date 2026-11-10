@@ -17,8 +17,6 @@
  * PIEGE : hydrateReportsFromServer est separe de hydrateFromServer : sans
  * lui, le tableau de bord admin ne montrait que les signalements faits dans
  * CE navigateur.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
 import {

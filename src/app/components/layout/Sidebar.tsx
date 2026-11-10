@@ -13,8 +13,6 @@
  * : le solde, le chat et les amis resteraient visibles.
  * PIEGE : la Sidebar est la navigation LATERALE (desktop). La version mobile
  * est BottomNav : les deux listes doivent rester coherentes.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React from 'react';
 import { Link, useLocation } from 'react-router';

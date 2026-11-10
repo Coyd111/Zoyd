@@ -43,9 +43,6 @@
  *   de persistance : un changement n'est pas immediat.
  * PIEGE : la pagination borne le `limit` a [1, 500] : en demander 10 000 ne
  *   renvoie pas plus.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

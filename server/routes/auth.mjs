@@ -41,9 +41,6 @@
  *   chemin nominal.
  * PIEGE : la suppression du compte est irreversible et le solde est perdu :
  *   la confirmation n'est pas une formalite.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

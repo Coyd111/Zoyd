@@ -13,8 +13,6 @@
  * non une liste vide qui se lirait comme ' personne ne signale rien '.
  * PIEGE : les appels admin exigent la 2FA cote serveur. Le front ne peut
  * pas s'en passer.
- *
- * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
  */
 import { authorizedPost, authorizedDelete, authorizedGet } from './apiClient';
 import type { FriendProfileInput, FriendRequest } from '../stores/friendsStore';

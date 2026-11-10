@@ -13,8 +13,6 @@
  * PIEGE : une opacite s'ecrit `/50`, pas `-50`. La faute passe le compilateur
  * et le lint : la bordure disparaait silencieusement au survol.
  * PIEGE : ce composant ne doit contenir aucun etat ni appel reseau.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import React from 'react';
 import { cn } from '../../../lib/utils';

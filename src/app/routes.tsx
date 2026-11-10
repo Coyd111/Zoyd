@@ -14,8 +14,6 @@
  * s'il s'agit de l'accueil, de l'auth, d'une page legale ou du 404.
  * PIEGE : deux routes de compatibilite redirigent les URLs accentuees vers
  * les URLs ASCII ; les supprimer casse les liens deja partages.
- *
- * Voir aussi : docs/08-frontend.md - section 3 (Le routeur)
  */
 import { createBrowserRouter, Navigate } from 'react-router';
 import RootLayout from './layouts/RootLayout';

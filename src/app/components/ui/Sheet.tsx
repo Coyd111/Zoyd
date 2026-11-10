@@ -14,8 +14,6 @@
  * l'action est irreversible.
  * PIEGE : le sens d'ouverture (gauche/droite) est porte par les classes de
  * position : ne pas l'inverser dans une variante.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 "use client";
 

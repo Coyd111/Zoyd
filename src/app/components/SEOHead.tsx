@@ -18,8 +18,6 @@
  * index.html, qui n'a aucun equivalent dynamique.
  * PIEGE : `SITE` lit VITE_SITE_URL au BUILD, avec repli sur la production.
  * Un build sans variable doit produire la production, pas une URL vide.
- *
- * Voir aussi : docs/08-frontend.md - section 9 (Le SEO)
  */
 import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';

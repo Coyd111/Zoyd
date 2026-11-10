@@ -32,9 +32,6 @@
  *   cagnotte reste pour les absents.
  * PIEGE : un joueur liste deux fois n'est paye qu'une fois (drapeau
  *   `settled`).
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getUserById } from './persistence.mjs';

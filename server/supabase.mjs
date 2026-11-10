@@ -25,9 +25,6 @@
  * PIEGE : l'import a des effets de bord (lecture du .env, ouverture d'une
  *   connexion) : ce module ne doit pas etre importe par un script de test
  *   qui veut rester hors ligne.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // Supabase client — Primary database
@@ -44,8 +41,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '..', '.env.server') });
 
 const supabaseUrl = process.env.SUPABASE_URL;
-// SUPABASE_SERVICE_ROLE_KEY est le nom documente dans DEPLOYMENT.md et celui
-// utilise par le dashboard Supabase. SUPABASE_SERVICE_KEY est aussi accepte
+// SUPABASE_SERVICE_ROLE_KEY est le nom officiel du dashboard Supabase et celui
+// documente dans .env.server.example. SUPABASE_SERVICE_KEY est aussi accepte
 // (c-est le nom dans render.yaml) pour retro-compatibilite : sans cela, un
 // deploiement configure selon la doc se retrouvait en mode degrade
 // (supabase = null) et perdait toute persistance.

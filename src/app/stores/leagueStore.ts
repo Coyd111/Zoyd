@@ -13,8 +13,6 @@
  * cles absences doivent produire des slots `pending`, pas `undefined`).
  * INVARIANT : isPlayerRegistered compare sur userId, qui reste lisible dans
  * les donnees de ligue : ce store n'est pas diffuse en mode isMe.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';

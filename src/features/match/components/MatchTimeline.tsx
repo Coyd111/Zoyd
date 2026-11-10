@@ -12,8 +12,6 @@
  * actuel serait faux.
  * PIEGE : l'ordre chronologique doit rester stable : un evenement recu
  * tardivement ne doit pas remonter avant un evenement deja affiche.
- *
- * Voir aussi : docs/08-frontend.md - section 7 (Le client temps reel)
  */
 import React from 'react';
 import { MatchChat } from './MatchChat';

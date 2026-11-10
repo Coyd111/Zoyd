@@ -12,8 +12,6 @@
  * PIEGE : les restrictions d'arme et de score streak sont des options du
  * serveur ; les afficher suppose qu'elles sont presentes, pas qu'elles
  * s'appliquent.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React from 'react';
 import type { Match } from '../../../app/stores/matchStore';

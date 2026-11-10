@@ -15,8 +15,6 @@
  * rien), et une promesse sans mecanisme est le pire defaut possible dans
  * une page de jeu responsable. Le reintroduire suppose d'implementer le
  * mecanisme serveur d'abord.
- *
- * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';

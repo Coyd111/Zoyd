@@ -10,8 +10,6 @@
  * position qui n'est pas la sienne tout en bloquant l'inscription.
  * PIEGE : les regles du tournoi viennent du serveur : les recopier en dur
  * ici les desynchronise a la premiere edition.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import React from 'react';
 import { CheckCircle2, Gamepad2, Radio } from 'lucide-react';

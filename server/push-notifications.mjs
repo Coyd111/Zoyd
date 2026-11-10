@@ -24,9 +24,6 @@
  *   n'a pas ete prevenu.
  * PIEGE : `requireInteraction` decide de la priorite ('urgent' sinon 'high')
  *   et donc de la visibilite sur le telephone.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import webpush from 'web-push';

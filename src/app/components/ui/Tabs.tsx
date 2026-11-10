@@ -11,8 +11,6 @@
  * comportement differe. Ne pas le changer sans verifier le formulaire.
  * PIEGE : les Tabs sont des boutons a role d'onglet : le focus clavier
  * (fleches) est gere par Radix, pas par une implementation maison.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 "use client";
 

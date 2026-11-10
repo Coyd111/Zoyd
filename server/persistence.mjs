@@ -57,9 +57,6 @@
  *   n'est pas une validation, et un champ absent n'y est pas un refus.
  * PIEGE : le role d'un compte est RELU a chaque resolution de session, jamais
  *   repris d'une session creee plus tot.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // persistence.mjs — Supabase-primary with in-memory sync cache

@@ -18,8 +18,6 @@
  * organise la resynchronisation.
  * PIEGE : le push et l'authentification temps reel utilisent un Bearer, pas
  * le cookie applicatif.
- *
- * Voir aussi : docs/08-frontend.md - section 7 (Le client temps reel)
  */
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';

@@ -20,8 +20,6 @@
  * et non une liste vide, qui se lirait comme « personne ne signale rien ».
  * PIEGE : les actions admin exigent la 2FA ; les erreurs 2FA doivent etre
  * distinguees des erreurs de reseau.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router';

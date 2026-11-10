@@ -16,8 +16,6 @@
  * PIEGE : le toast n'est declenche que si la notification est nouvelle ou si
  * son contenu a change ; et le push navigateur exige priorite haute ou
  * urgente ET un onglet en arriere-plan.
- *
- * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
 import { create } from 'zustand';
 import { useToastStore, type ToastType } from './toastStore';

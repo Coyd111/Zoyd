@@ -11,8 +11,6 @@
  *   admin (userId encore present), on retombe sur la comparaison explicite.
  * PIEGE : une saison sans classement doit afficher un etat vide explicite,
  * pas un tableau a zero ligne qui se lirait comme ' personne n'a joue '.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import type { LeagueStanding } from '../../../app/stores/leagueStore';
 

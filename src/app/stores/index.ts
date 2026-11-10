@@ -13,8 +13,6 @@
  * PIEGE : la liste des exports est une surface publique : retirer un export
  * casse les appelants qui passent par le barrel, meme si le store
  * d'origine est intact.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 export { useAuthStore } from './authStore';
 export type { User, UserStats, ControllerType, PlayerLevel } from './authStore';

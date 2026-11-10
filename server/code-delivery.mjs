@@ -24,9 +24,6 @@
  *   rattrape et le canal SMTP est saute.
  * PIEGE : l'expiration de 15 minutes du code est geree par la couche de
  *   persistance, pas ici.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // server/code-delivery.mjs — Auth code delivery (activation / password reset).

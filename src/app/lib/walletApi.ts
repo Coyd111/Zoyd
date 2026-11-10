@@ -16,8 +16,6 @@
  * recalculer localement pouvait afficher un montant different de celui
  * reellement verse par FedaPay.
  * INVARIANT : les appels admin (commissions) exigent la 2FA cote serveur.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { authorizedGet, authorizedPost } from './apiClient';
 

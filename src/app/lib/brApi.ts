@@ -12,8 +12,6 @@
  * joueur passe par son pseudo.
  * PIEGE : la repartition du pot est une operation serveur : le front ne
  * recalcule pas la repartition, il affiche ce que le serveur renvoie.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import { authorizedGet, authorizedPost } from './apiClient';
 

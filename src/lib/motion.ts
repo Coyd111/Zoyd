@@ -10,8 +10,6 @@
  * jamais de `width`/`height`/`top` animés (reflow à chaque frame).
  * `MotionConfig reducedMotion: 'user'` (App.tsx) coupe déjà les
  * transforms ; ces variantes gardent donc les seules valeurs utiles.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import type { Variants, Transition } from 'motion/react';
 

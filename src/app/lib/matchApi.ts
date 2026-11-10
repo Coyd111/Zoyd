@@ -14,8 +14,6 @@
  * PIEGE : le resultat d'un match n'est pas verse au moment de la soumission.
  * Le pot est gele jusqu'a la confirmation des DEUX equipes : c'est
  * `payoutDistributed` qui dit si l'argent est parti.
- *
- * Voir aussi : docs/08-frontend.md - section 4 (Les layouts)
  */
 import type { Match } from '../stores/matchStore';
 import type { User } from '../stores/authStore';

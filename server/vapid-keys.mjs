@@ -21,9 +21,6 @@
  *   serveur.
  * PIEGE : un avertissement est journalise a l'import : un push desactive ne
  *   se voit pas autrement (aucune erreur n'est levee).
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // VAPID Keys for Web Push Notifications

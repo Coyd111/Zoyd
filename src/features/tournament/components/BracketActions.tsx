@@ -19,8 +19,6 @@
  * pendant la soumission, sinon un double-clic cree deux inscriptions.
  * PIEGE : le pass d'un tournoi n'est PAS remboursable apres le lancement :
  * l'interface doit le dire avant le clic, pas apres.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React from 'react';
 import { Link } from 'react-router';

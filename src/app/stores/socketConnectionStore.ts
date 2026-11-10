@@ -20,8 +20,6 @@
  * PIEGE : le rechargement passe par reloadReports / bootstrapServerState
  * declenche par les VRAIES causes (montage, action de l'admin). Ne jamais le
  * conditionner a un compteur de matchs.
- *
- * Voir aussi : docs/08-frontend.md - section 6.3 (Ce qui se passe hors ligne)
  */
 import { create } from 'zustand';
 import type { User } from './authStore';

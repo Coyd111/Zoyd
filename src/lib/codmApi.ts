@@ -12,8 +12,6 @@
  * L'ecran doit distinguer ' pas de donnees ' de ' service indisponible '.
  * PIEGE : ce catalogue est un CONTENU, pas une source de verite metier. Une
  * regle de jeu ne doit jamais dependre d'une reponse Codashop.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 
 /**

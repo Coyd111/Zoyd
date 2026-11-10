@@ -14,8 +14,6 @@
  * champ sans l'y inscrire le fait silencieusement ignorer.
  * PIEGE : login et hydrateSession vident aussi le score de confiance
  * (trustScoreStore) : ne pas oublier cette propagation.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
 import { useTrustScoreStore } from './trustScoreStore';

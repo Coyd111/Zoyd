@@ -12,8 +12,6 @@
  * le presenter comme la part d'un joueur.
  * PIEGE : les preuves peuvent etre absentes (resultat sans capture) :
  * l'interface doit le dire plutot que d'afficher un bloc vide.
- *
- * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
  */
 import React from 'react';
 import { isMatchPayoutSettled, type Match } from '../../../app/stores/matchStore';

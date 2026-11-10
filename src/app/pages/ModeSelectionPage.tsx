@@ -17,8 +17,6 @@
  * store lu ici doit tolerer un etat vide.
  * PIEGE : les redirections doivent passer par `navigate`, pas par un
  * <a href> : un rechargement complet casserait la session en memoire.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React from 'react';
 import { Link, useNavigate } from 'react-router';

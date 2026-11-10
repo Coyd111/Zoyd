@@ -18,8 +18,6 @@
  * sessionPurge.ts, et les URLs par le module feuille apiUrl.ts.
  * PIEGE : credentials: 'include' est obligatoire (cookie cross-origine
  * Vercel -> Render). L'oublier fait tomber toutes les requetes en 401.
- *
- * Voir aussi : docs/08-frontend.md - section 2 (L'arborescence de src/)
  */
 import { useAuthStore } from '../stores/authStore';
 import { getBaseUrl, getApiUrl } from './apiUrl';

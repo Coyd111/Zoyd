@@ -1,0 +1,424 @@
+-- ZOYD Platform — Supabase Schema Migration
+-- Exécuter dans le SQL Editor du dashboard Supabase
+
+-- ============================================================
+-- 1. APP USERS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS app_users (
+  id TEXT PRIMARY KEY,
+  pseudo_key TEXT NOT NULL UNIQUE,
+  email_key TEXT NOT NULL UNIQUE,
+  phone_key TEXT NOT NULL UNIQUE,
+  game_id_key TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL DEFAULT 'player',
+  password_hash TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_users_pseudo ON app_users(pseudo_key);
+CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email_key);
+CREATE INDEX IF NOT EXISTS idx_app_users_phone ON app_users(phone_key);
+CREATE INDEX IF NOT EXISTS idx_app_users_game_id ON app_users(game_id_key);
+CREATE INDEX IF NOT EXISTS idx_app_users_role ON app_users(role);
+
+-- ============================================================
+-- 2. AUTH SESSIONS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at);
+
+-- Filiation de session et borne absolue.
+--
+-- Ces deux colonnes vivaient uniquement en RAM. Deux garanties Announces par le
+-- code ne tenaient donc qu'entre deux redemarrages :
+--
+-- 1. `absolute_expires_at` — plafond de 30 jours de la famille de sessions.
+--    Sans lui, un redeploiement redistribuait 30 jours neufs depuis la session
+--    mere : le plafond reculait de 30 jours a chaque deploiement.
+-- 2. `supersedes` — ligne de filiation mere -> fils. Sans elle, un logout fait
+--    avec le jeton fils (le cas normal apres rotation) ne supprimait que le
+--    fils : la mere restait valable, et un cookie vole survivait au logout
+--    jusqu a l'expiration de la mere.
+--
+-- `sbLineageSupporte` detecte leur presence : en cas d'absence, le serveur
+-- retombe sur le comportement anterieur au lieu d'echouer sur chaque ecriture.
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS absolute_expires_at TIMESTAMPTZ;
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS supersedes TEXT;
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_supersedes ON auth_sessions(supersedes);
+
+-- ============================================================
+-- 2a-bis. CONCURRENCE MULTI-INSTANCE — compteur de révision
+-- ============================================================
+-- L 'état des joueurs est en mémoire et chaque mutation écrit le `payload`
+-- complet. Le verrou qui sérialise ces mutations est un verrou de PROCESSUS :
+-- il protège une instance, rien entre deux. Pendant un déploiement, Render
+-- garde l'ancienne instance le temps que la nouvelle démarre, et deux mutations
+-- lisent alors le MÊME instantané. La dernière écrase la première :
+--
+--   instance A : lit solde 1 000, retire 800  -> écrit solde 200
+--   instance B : lit solde 1 000, crédite 500 -> écrit solde 1 500
+--   résultat   : solde 1 500. Les 800 de A ont disparu.
+--
+-- Et rien ne le signale : `/api/health` reste vert, chaque instance étant
+-- individuellement cohérente. C'est ce qui rend la perte invisible, pas rare.
+--
+-- `revision` est un compteur entier incrémenté par TOUTE écriture de la table,
+-- quel que soit le chemin (création, portefeuille, mot de passe, profil,
+-- maintenance). Une écriture n'est appliquée que si la révision lue AVANT le
+-- calcul est toujours celle en base ; sinon elle ne touche aucune ligne et le
+-- calcul est rejoué sur un état frais.
+--
+-- Pourquoi un entier et pas `updated_at` : comparer un TIMESTAMPTZ par égalité
+-- via PostgREST est piégeux — Postgres stocke en microsecondes, le code écrit en
+-- millisecondes. Une égalité qui ne matche pas ne signale aucune erreur : elle
+-- fait échouer toutes les écritures, silencieusement.
+--
+-- NOT NULL DEFAULT 0 rend les lignes existantes immédiatement cohérentes.
+-- `occSupporte()` detecte la presence de la colonne : migration non appliquee,
+-- le serveur retombe sur l'ecriture inconditionnelle d'avant plutot que de
+-- refuser toute mutation.
+--
+-- ⚠️ L'ALTER ci-dessous a été AJOUTÉ APRÈS coup : le commentaire existait,
+-- la colonne non. Une base recréée depuis ce dépôt n'avait donc AUCUNE
+-- protection OCC, et rien ne le signalait. C'est ce que vérifie
+-- `server/schema-coverage.test.mjs` — sans lui, l'écart peut se rouvrir.
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS revision BIGINT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_app_users_revision ON app_users(revision);
+
+-- ============================================================
+-- 2b. VERROUILLAGE DE CONNEXION
+-- ============================================================
+-- Le compteur d'echecs vivait en RAM : chaque redemarrage Render le remettait
+-- a zero et le verrouillage devenait decoratif. Cette table le rend durable.
+--
+-- `id` est le SHA-256 de l'identifiant normalise, JAMAIS l'identifiant en
+-- clair : la table ne doit pas devenir un annuaire des pseudos et emails
+-- essayes en force.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0,
+  locked_until TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_updated ON login_attempts(updated_at);
+
+-- ============================================================
+-- 3. REALTIME SESSIONS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS realtime_sessions (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  pseudo TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'player',
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_realtime_sessions_user ON realtime_sessions(user_id);
+
+-- ============================================================
+-- 4. PUSH SUBSCRIPTIONS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  endpoint TEXT PRIMARY KEY,
+  payload JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
+
+-- ============================================================
+-- 5. CHAT CHANNELS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_channels (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL DEFAULT 'private',
+  payload JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================================
+-- 6. CHAT MESSAGES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  channel_id TEXT NOT NULL REFERENCES chat_channels(id) ON DELETE CASCADE,
+  payload JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_channel ON chat_messages(channel_id, created_at DESC);
+
+-- ============================================================
+-- 7. CHAT READS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_reads (
+  channel_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  read_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (channel_id, user_id)
+);
+
+-- ============================================================
+-- 8. STATE SNAPSHOTS (matches, tournaments)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS state_snapshots (
+  kind TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Concurrence multi-instance (cf. migrate-state-revision.sql) :
+  -- compteur incrémenté par toute écriture d'une entité, miroir de
+  -- `app_users.revision` pour les collections d'état.
+  revision BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (kind, entity_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_state_snapshots_kind ON state_snapshots(kind, updated_at DESC);
+
+-- ============================================================
+-- 9. FRIEND REQUESTS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS friend_requests (
+  id TEXT PRIMARY KEY,
+  sender_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  target_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  message TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(sender_id, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_friend_requests_target ON friend_requests(target_id, status);
+CREATE INDEX IF NOT EXISTS idx_friend_requests_sender ON friend_requests(sender_id);
+
+-- ============================================================
+-- 10. FRIENDSHIPS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS friendships (
+  user_id_1 TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  user_id_2 TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id_1, user_id_2)
+);
+
+-- ============================================================
+-- 11. USER BLOCKS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_blocks (
+  blocker_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  blocked_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (blocker_id, blocked_id)
+);
+
+-- ============================================================
+-- 12. USER NOTIFICATIONS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_notifications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'normal',
+  action_url TEXT,
+  metadata JSONB,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user ON user_notifications(user_id, is_read, created_at DESC);
+
+-- ============================================================
+-- 13. PROCESSED TRANSACTIONS (FedaPay idempotency)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS processed_transactions (
+  transaction_id TEXT PRIMARY KEY,
+  processed_at BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM now()),
+  user_id TEXT,
+  amount_zc NUMERIC(12,2)
+);
+
+-- ============================================================
+-- 14. WALLET TRANSACTIONS (historique détaillé)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'completed',
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user ON wallet_transactions(user_id, created_at DESC);
+
+-- ============================================================
+-- 15. ADMIN 2FA SECRETS (TOTP)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS admin_2fa_secrets (
+  user_id TEXT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  -- Format auto-descriptible :
+  --   absent de prefixe → SECRET EN CLAIR (legacy, migre automatiquement)
+  --   v1:<iv b64>:<tag b64>:<ciphertext b64> → AES-256-GCM (server/secret-crypto.mjs)
+  -- Aucune colonne supplementaire requise. Cle de chiffrement : ZOYD_2FA_ENC_KEY
+  -- (env serveur, 32 octets base64). Rotation : ZOYD_2FA_ENC_KEY_NEXT.
+  secret TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT false,
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================================
+-- RLS POLICIES
+-- ============================================================
+
+ALTER TABLE app_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auth_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE realtime_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_reads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE state_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE friend_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE processed_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_2fa_secrets ENABLE ROW LEVEL SECURITY;
+
+-- Service role bypasses all RLS (le frontend n'utilise JAMAIS Supabase directement :
+-- tout passe par le serveur custom avec la service_role key). Les politiques
+-- ci-dessous restreignent explicitement l'acces a service_role, donc une
+-- clé anon/authenticated exposee ne pourrait rien lire/ecrire (filet de sécurité).
+CREATE POLICY "Service role only" ON app_users FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON auth_sessions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON realtime_sessions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON push_subscriptions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON chat_channels FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON chat_messages FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON chat_reads FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON state_snapshots FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON friend_requests FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON friendships FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON user_blocks FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON user_notifications FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON processed_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON wallet_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON admin_2fa_secrets FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+
+-- ============================================================
+-- UPDATED_AT TRIGGER
+-- ============================================================
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_app_users_updated_at
+  BEFORE UPDATE ON app_users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER trigger_chat_channels_updated_at
+  BEFORE UPDATE ON chat_channels
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- GLOBAL CHAT CHANNEL SEED
+-- ============================================================
+INSERT INTO chat_channels (id, type, payload, created_at, updated_at)
+VALUES (
+  'global',
+  'global',
+  '{"id":"global","type":"global","name":"Chat Global ZOYD","participants":[],"scope":"public","inbox":"all"}'::jsonb,
+  now(),
+  now()
+) ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- 15. USER REPORTS (signalements de joueurs)
+--
+-- AJOUTE APRES COUPE : la table etait utilisee par /api/social/report
+-- sans qu'aucun .sql du depot ne la declare. Sur un environnement neuf,
+-- rien ne la creait et les signalements etaient perdus en silence.
+--
+-- MEME FORME que state_snapshots : le code ecrit `{ id, payload, created_at }`.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_reports (
+  id TEXT PRIMARY KEY,
+  reporter_id TEXT,
+  target_id TEXT,
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  payload JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_reports_status ON user_reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_reports_target ON user_reports(target_id, created_at DESC);
+
+-- ============================================================
+-- 16. USER SANCTIONS (historique de sanction)
+--
+-- Table DEDIEE plutot que des colonnes sur app_users : une sanction doit
+-- etre un evenement traceable, reversible et consultable. Un joueur peut
+-- avoir recu plusieurs avertissements puis un bannissement temporaire, puis
+-- une levee de sanction. Ecraser un `status` ne raconterait rien de tout cela,
+-- et la seule trace « qui a tranche, quand » disparaitrait.
+--
+-- `revoked_at` non nul = sanction levee. La ligne n'est jamais supprimee :
+-- c'est l'historique qui fait foi.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_sanctions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  reason TEXT,
+  note TEXT,
+  report_id TEXT,
+  issued_by TEXT NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  revoked_by TEXT
+);
+
+-- Index des sanctions ACTIVES par joueur : c'est la seule requete du chemin
+-- d'authentification, elle doit rester une lecture de cle.
+CREATE INDEX IF NOT EXISTS idx_user_sanctions_active ON user_sanctions(user_id) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_user_sanctions_user ON user_sanctions(user_id, issued_at DESC);
+
+-- ============================================================
+-- 17. MODERATION DES SIGNALEMENTS
+--
+-- Colonnes ajoutees apres coup sur la table creee le 14/10/2026. `ALTER TABLE
+-- ... IF NOT EXISTS` est idempotent, donc le bloc se rejoue sans risque.
+-- ============================================================
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS severity TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS resolution TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS sanction_id TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_user_reports_queue ON user_reports(status, severity) WHERE status = 'pending';

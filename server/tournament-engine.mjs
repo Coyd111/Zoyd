@@ -47,9 +47,6 @@
  *   squad du podium et verse DIRECTEMENT a chacun. Le capitaine ne touche
  *   l'argent de personne ; les parts des membres fantomes legacy remontent au
  *   capitaine, seul a avoir jamais engage l'argent dans l'ancien modele.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getUserById, updateUserAccount, sanitizeText, applyUserSettlementOnce } from './persistence.mjs';

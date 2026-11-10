@@ -13,8 +13,6 @@
  * total alors que la page portefeuille est deja a jour.
  * PIEGE : le lien ' Control ' est une commodite d'UX. Le role `admin` dans
  * le store n'est PAS une autorisation : la barriere est serveur.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import React, { useState } from 'react';
 import { Link } from 'react-router';

@@ -13,8 +13,6 @@
  * connexions simultanees creent deux sessions cote serveur.
  * PIEGE : la 2FA d'administration a sa propre page (Parametres) : la
  * connexion ne doit pas la melanger a l'authentification simple.
- *
- * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
  */
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';

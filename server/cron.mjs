@@ -43,9 +43,6 @@
  * PIEGE : la cloture des inscriptions de ligue passe le statut de
  *   `registering` a `qualifying` et tire les journees : c'est le moment
  *   unique ou la repartition des joueurs est figee.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import {

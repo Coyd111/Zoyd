@@ -10,8 +10,6 @@
  * PIEGE : ne jamais passer de secret, de token ni de donnee personnelle dans
  * le `context` : le payload part en console et peut finir dans un rapport
  * d'erreur ou une capture d'ecran.
- *
- * Voir aussi : docs/08-frontend.md - section 11 (Les points de vigilance)
  */
 type ErrorLevel = 'error' | 'warn' | 'info';
 

@@ -12,8 +12,6 @@
  * PIEGE : ne pas deduire l'etat d'un match du seul fait qu'il n'est pas
  * termine : un match dispute, en attente de confirmation ou en attente
  * d'arbitre sont trois etats differents.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React from 'react';
 import { Filter } from 'lucide-react';

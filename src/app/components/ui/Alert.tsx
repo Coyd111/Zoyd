@@ -11,8 +11,6 @@
  * rouge.
  * PIEGE : les couleurs d'icone viennent du `cn()` et de la variante : ne
  * pas teinter l'icone a la main, il y aurait deux sources de verite.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";

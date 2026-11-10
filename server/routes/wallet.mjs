@@ -39,9 +39,6 @@
  *   remboursement : le joueur doit pouvoir relancer un vrai payout.
  * PIEGE : la notification de depot est best-effort : l'argent est deja
  *   credite, son echec ne doit pas faire echouer la requete.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

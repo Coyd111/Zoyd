@@ -11,8 +11,6 @@
  * sur un simple div n'est jamais atteint au clavier.
  * PIEGE : ne pas mettre de lien ni de bouton dans le contenu : le focus ne
  * peut pas y entrer.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 "use client";
 

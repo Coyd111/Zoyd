@@ -32,9 +32,6 @@
  *   socket (groupes 'chat' et 'default'), sans passer par le garde HTTP.
  * PIEGE : `logout` a son propre groupe (`auth_logout`) : le partager avec
  *   `auth` permettait de verrouiller la connexion de toute une IP partagee.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { respondJson } from './http-utils.mjs';

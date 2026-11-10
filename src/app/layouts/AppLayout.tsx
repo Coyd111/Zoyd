@@ -13,8 +13,6 @@
  * eux, le min-content des descendants etire main au-dela du viewport.
  * PIEGE : le socket est monte ici (useRealtimeHeartbeat) : le debrancher
  * laisse l'interface affichee sans jamais resynchroniser.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import React from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router';

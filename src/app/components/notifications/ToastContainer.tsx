@@ -12,8 +12,6 @@
  * PIEGE : la fermeture manuelle doit appeler removeToast, pas seulement
  * masquer l'element : le timer du store continuerait de tourner et
  * re-ecrirait l'etat.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';

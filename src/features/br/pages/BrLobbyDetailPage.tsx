@@ -17,8 +17,6 @@
  * meme si des places sont libres.
  * PIEGE : les frais FedaPay s'ajoutent a la commission ZOYD : le net
  * annonce n'est pas ce qui est credite sur le numero du joueur.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';

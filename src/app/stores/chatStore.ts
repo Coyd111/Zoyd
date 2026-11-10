@@ -16,8 +16,6 @@
  * PIEGE : applyServerRead ignore un read emis pour un autre utilisateur ;
  * sans ce controle, le compteur de non-lus d'un tiers se mettait a zero chez
  * tout le monde.
- *
- * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
 import { create } from 'zustand';
 

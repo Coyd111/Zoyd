@@ -13,8 +13,6 @@
  * reapparait sur l'ecran suivant.
  * PIEGE : le store n'est pas persiste. Un rechargement perd les toasts :
  * c'est voulu, un toast n'est pas une notification.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 import { create } from 'zustand';
 

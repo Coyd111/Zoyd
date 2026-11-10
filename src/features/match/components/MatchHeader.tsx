@@ -12,8 +12,6 @@
  * dire, sinon le joueur croit a un match termine.
  * PIEGE : ce composant est purement presentatif : il ne declenche aucune
  * action.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React from 'react';
 import { Link } from 'react-router';

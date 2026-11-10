@@ -13,8 +13,6 @@
  * deduire l'un de l'autre.
  * PIEGE : les valeurs par defaut (entryFee, maxPlayers) du store ne sont
  * qu'un repli d'affichage ; la source reste la reponse serveur.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import type { LeagueSeason, LeagueDayKey } from '../stores/leagueStore';
 import { authorizedGet, authorizedPost, authorizedPatch } from './apiClient';

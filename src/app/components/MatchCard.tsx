@@ -13,8 +13,6 @@
  * d'arbitre est vivant : il ne doit pas etre affiche comme termine.
  * PIEGE : le pot affiche vient des props, pas d'un recalcul local : le
  * serveur calcule la partition sur la cagnotte reellement bloquee.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React from 'react';
 import { ShieldCheck, Clock, Radio, Users } from 'lucide-react';

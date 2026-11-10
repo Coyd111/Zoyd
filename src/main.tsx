@@ -12,8 +12,6 @@
  * system - c'est la derniere ligne de defense quand React echoue.
  * PIEGE : StrictMode monte les effets deux fois en dev : tout effet de bord
  * (abonnement socket, fetch) doit etre idempotent.
- *
- * Voir aussi : docs/08-frontend.md - section 1 (Vue d'ensemble)
  */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

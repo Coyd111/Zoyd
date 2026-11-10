@@ -42,9 +42,6 @@
  * PIEGE : les fonctions FedaPay sont INJECTEES dans
  *   `reconcilePendingWithdrawals` : ce module ne doit pas importer
  *   `payment-engine.mjs`, sous peine de cycle.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import crypto from 'node:crypto';

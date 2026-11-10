@@ -11,8 +11,6 @@
  * prizePool) et ce document doivent dire la meme chose.
  * PIEGE : ce document est en `noindex` implicite ou explicite selon le
  * layout : verifier la coherence avec le SEO.
- *
- * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
 import React from 'react';
 import { Link } from 'react-router';

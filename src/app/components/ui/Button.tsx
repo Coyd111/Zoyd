@@ -15,9 +15,7 @@
  * PIEGE : les classes viennent de cva ET de cn(). twMerge resout les
  * conflits Tailwind : ne pas reinventer un ordre de classes a la main.
  * PIEGE : une correction de classe se verifie dans le CSS GENERE, pas dans
- * la source (voir docs/06-tests.md).
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
+ * la source.
  */
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';

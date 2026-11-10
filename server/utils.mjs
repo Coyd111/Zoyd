@@ -22,9 +22,6 @@
  *   `payoutId` qui permet a l'appelant d'eviter un double remboursement.
  * PIEGE : `LEVEL_THRESHOLDS.PRO` vaut Infinity : la boucle d'XP s'arrete a PRO
  *   et `nextLevelXp` y vaut Infinity.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 export const roundAmount = (value) => {

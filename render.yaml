@@ -10,7 +10,7 @@ services:
         value: production
       # Un SEUL processus, explicitement.
       #
-      # `docs/audit/02-argent.md` affirmait que `WEB_CONCURRENCY=1` garantissait ça
+      # Un audit affirmait que `WEB_CONCURRENCY=1` garantissait ça
       # « aujourd'hui » — alors que la variable n'était configurée NULLE PART.
       # La garantie ne tenait donc que par l'absence de `cluster` dans la
       # commande de démarrage : un concours de circonstances, pas une

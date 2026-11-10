@@ -15,8 +15,6 @@
  * pas faire confiance aux parametres de la query string.
  * PIEGE : `parseFundingPrompt` doit retourner null sur un contexte inconnu
  * ou un montant non fini, et non une invite a moitie vide.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 export type FundingContext = 'match-join' | 'match-create' | 'tournament-entry';
 

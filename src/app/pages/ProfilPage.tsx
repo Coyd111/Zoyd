@@ -12,8 +12,6 @@
  * ' - ', pas un montant.
  * PIEGE : la deconnexion passe par useLogout, qui vide tous les stores de
  * session, pas par un simple logout() du store d'auth.
- *
- * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
  */
 import { useMemo } from 'react';
 import { Link } from 'react-router';

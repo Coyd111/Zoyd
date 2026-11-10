@@ -18,8 +18,6 @@
  * PIEGE : le taux de frais et le minimum de retrait sont PUBLIES par le
  * serveur. Les constantes locales ne servent qu'a la premiere seconde de
  * chargement : ne pas les coder en dur comme une source de verite.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
 import { depositWalletBalance, fetchWalletSnapshot, type WalletSnapshot, type WithdrawalPolicy, withdrawWalletBalance } from '../lib/walletApi';

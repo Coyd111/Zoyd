@@ -19,8 +19,6 @@
  * et le manque doit proposer la recharge (walletFunding).
  * PIEGE : un slot d'arbitre ouvert est une ressource comptee par le
  * serveur : ne pas recompter localement les slots libres.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';

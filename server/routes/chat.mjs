@@ -32,9 +32,6 @@
  *   les deux bornes sont differentes et voulues.
  * PIEGE : l'accuse de lecture est diffusee dans la room personnelle
  *   `user:<userId>`, pas dans la room du canal.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

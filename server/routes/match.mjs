@@ -38,9 +38,6 @@
  *   (`updateMatchSnapshot` le derive).
  * PIEGE : le `isMe` de la reponse vient de `buildMatchActionPayload` : le
  *   client ne le calcule pas.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import {

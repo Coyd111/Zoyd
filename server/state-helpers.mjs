@@ -35,9 +35,6 @@
  *   booleen `isArbiter`.
  * PIEGE : `saveBrLobbies` diffuse la vue SANITISEE : diffuser l'etat brut
  *   rendrait la sanitisation HTTP sans effet.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { syncMatchChatChannels, buildMatchChatChannel, broadcastChatChannel } from './chat-helpers.mjs';
@@ -471,7 +468,6 @@ const getStoredBrLobbies = () => normalizeBrLobbyCollection(getStateCollection('
  * check-in, un salon cree entre-temps, disparaissaient de la liste ecrite, et
  * `replaceStateCollection` SUPPRIME les entites absentes de la liste : le salon
  * disparaissait, et les passes bloques n'avaient plus aucun chemin de sortie.
- * Voir C1/C2 dans docs/audit-2/03-concurrence.md.
  *
  * La comparaison se fait sur l'etat NORMALISE des deux cotes : le stockage brut
  * peut suivre une ancienne forme (champs absents), ce n'est pas une difference

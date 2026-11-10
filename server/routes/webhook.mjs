@@ -42,9 +42,6 @@
  *   `application/json` sans Origin : passe.
  * PIEGE : `io` peut être absent en test : la notification dépôt est
  *   best-effort elle aussi (l'argent est déjà crédité).
- *
- * Invariants détaillés : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { Webhook } from 'fedapay';

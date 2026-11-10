@@ -20,8 +20,6 @@
  * (stats fausses).
  * PIEGE : StoredMatch n'a PAS de signature d'index : une faute de frappe
  * devient une erreur de compilation au lieu d'un `unknown` silencieux.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
 import type { User } from './authStore';

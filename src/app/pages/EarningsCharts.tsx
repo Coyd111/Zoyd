@@ -9,8 +9,6 @@
  * couleur codee en dur dans un graphique diverge du reste de l'UI.
  * PIEGE : un graphique sans etat vide affiche un cadre vide sans
  * explication : prevoir le cas ' aucune donnee ' explicitement.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React from 'react';
 import {

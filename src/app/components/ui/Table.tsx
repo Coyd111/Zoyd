@@ -14,8 +14,6 @@
  * PIEGE : ScrollArea autour d'un tableau large est accepte, mais le tableau
  * doit rester lisible en entier : la colonne la plus importante ne doit pas
  * disparaitre dans le defilement horizontal.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 "use client";
 

@@ -30,9 +30,6 @@
  * PIEGE : la compensation d'un pass quand l'ecriture echoue est faite dans
  *   la ROUTE (routes/league.mjs), pas seulement dans le moteur : le moteur a
  *   deja rendu la main quand la persistence echoue.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { createLogger } from './logger.mjs';

@@ -22,9 +22,6 @@
  *   est manquant - ce n'est pas une erreur a propager.
  * PIEGE : le nombre de messages non lus vient de la couche de persistance
  *   (`getUnreadCountForUser`), pas du tableau des messages.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import {

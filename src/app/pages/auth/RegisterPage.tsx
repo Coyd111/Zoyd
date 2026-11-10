@@ -13,8 +13,6 @@
  * disponibles (payoutOperators). Ne pas proposer un operateur invalide.
  * PIEGE : la confirmation des conditions (18 ans, CGU) est une condition
  * d'inscription : elle doit etre explicitement cochee.
- *
- * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
  */
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';

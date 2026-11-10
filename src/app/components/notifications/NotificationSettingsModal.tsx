@@ -23,8 +23,6 @@
  * montage est refuse par les navigateurs.
  * PIEGE : la permission peut etre accordee, refusee ou unsupported selon le
  * navigateur : `unsupported` n'est pas une erreur, c'est un etat legitime.
- *
- * Voir aussi : docs/08-frontend.md - section 7.4 (Le push Web)
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, Monitor } from 'lucide-react';

@@ -16,8 +16,6 @@
  * déclenche un rechargement automatique avec contournement du cache au
  * lieu d'attendre un clic — l'utilisateur ne voit plus l'écran figé
  * « UNE MISE À JOUR EST ARRIVÉE » que s'il clique avant le compte à rebours.
- *
- * Voir aussi : docs/08-frontend.md - section 3.3 (Erreurs de route)
  */
 import { useEffect, useState } from 'react';
 import { useRouteError, isRouteErrorResponse, Link } from 'react-router';

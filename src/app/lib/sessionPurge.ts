@@ -15,8 +15,6 @@
  * PIEGE : purgeSessionStores est SILENCIEUX si aucun gestionnaire n'est
  * branche. Ne pas "corriger" ce silence par une exception : une purge ratee
  * ne doit jamais masquer la reponse d'origine.
- *
- * Voir aussi : docs/08-frontend.md - section 2 (L'arborescence de src/)
  */
 // ─────────────────────────────────────────────────────────────────────────────
 // Purge des stores de session — registre sans dépendance.

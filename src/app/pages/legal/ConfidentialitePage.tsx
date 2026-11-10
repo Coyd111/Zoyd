@@ -11,8 +11,6 @@
  * omettre un nouveau prestataire : les deux sont des obligations.
  * PIEGE : le document decrit ce que le code fait reellement. Ne pas y
  * annoncer une donnee qui n'est pas collectee.
- *
- * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';

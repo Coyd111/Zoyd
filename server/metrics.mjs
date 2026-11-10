@@ -27,9 +27,6 @@
  * PIEGE : les metriques HTTP sont enregistrees dans `respondJson` : une
  *   reponse ecrite en direct avec `res.writeHead` (route /metrics, export
  *   CSV) n'est PAS comptee.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // server/metrics.mjs — Lightweight Prometheus-compatible metrics (zero deps)

@@ -12,8 +12,6 @@
  * PIEGE : le compteur de non-lus vient du selecteur dedie
  * (selectUnreadCount) : le recalculer ici dupliquerait la regle de
  * priorite et de dismissal.
- *
- * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
 import React, { useRef, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';

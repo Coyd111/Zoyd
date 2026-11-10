@@ -21,8 +21,6 @@
  * la BR League, EVENEMENT hebdomadaire differe — distinct des salons BR
  * courants (/br, le mode ouvert). L'en-tete porte l'etiquette
  * « evenement hebdomadaire ».
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router';

@@ -11,8 +11,6 @@
  * PIEGE : un dossier `open` et un dossier `under_review` sont tous deux
  * actifs. Ne filtrer que sur `open`, c'est laisser en attente un litige deja
  * pris en charge.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React from 'react';
 import { Link } from 'react-router';

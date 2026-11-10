@@ -15,8 +15,6 @@
  * un formulaire valide qui echoue a l'envoi.
  * PIEGE : un logo absent ne doit pas casser l'affichage : le badge texte
  * stylise est le repli prevu.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 // Opérateurs Mobile Money par pays (miroir de PAYOUT_COUNTRY_CONFIG côté serveur).
 // Modes FedaPay vérifiés dans la doc : mtn_open/moov/sbin (BJ), mtn_ci/moov_ci/

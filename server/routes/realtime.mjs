@@ -26,9 +26,6 @@
  *   complete passe par les routes API dediees.
  * PIEGE : la souscription de push exige un `endpoint` : c'est l'identifiant
  *   de la souscription, sans lui rien n'est enregistre.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

@@ -11,8 +11,6 @@
  * valeur de trustScore.
  * PIEGE : le mode compact et le mode detaille doivent rester coherents : un
  * score affichable en badge ne doit pas disparaitre en detail.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import React from 'react';
 import { motion } from 'motion/react';

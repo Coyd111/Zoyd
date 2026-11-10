@@ -18,8 +18,6 @@
  * d'identifiant.
  * PIEGE : la soumission d'un resultat et l'ouverture d'un litige sont
  * exclusives. Verifier l'etat avant d'afficher les deux.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import React from 'react';
 import type { Dispatch, SetStateAction } from 'react';

@@ -44,9 +44,6 @@
  *   figure pas dans le roster.
  * PIEGE : les reponses des actions renvoient la vue PUBLIQUE du salon : les
  *   `userId` n'y sont jamais.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

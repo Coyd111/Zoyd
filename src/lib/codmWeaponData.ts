@@ -12,8 +12,6 @@
  * une arme est ajoutee : un compteur faux se voit sur l'ecran public.
  * PIEGE : le contenu de ce fichier est volumineux : toute modification doit
  * rester lisible et verifiable (les listes sont ordonnees).
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 
 /**

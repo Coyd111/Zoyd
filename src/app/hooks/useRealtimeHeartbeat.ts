@@ -22,8 +22,6 @@
  * meme backoff que le portefeuille (2 s -> 5 s -> 10 s -> 20 s). Apres
  * epuisement, le store porte `bootstrapFailed` et les ecrans rendent un
  * etat "chargement impossible + Reessayer".
- *
- * Voir aussi : docs/08-frontend.md - section 6.2 (Le cycle de synchronisation)
  */
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';

@@ -14,8 +14,6 @@
  * PIEGE : un tournoi annule peut avoir des remboursements en attente
  * (pendingRefunds) : l'etat visible doit rester coherent avec celui du
  * store.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React from 'react';
 import { ArrowRight, Clock3, Radio, Trophy, Users } from 'lucide-react';

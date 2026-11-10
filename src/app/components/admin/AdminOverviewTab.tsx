@@ -13,8 +13,6 @@
  * tableau paraissait vivant alors qu'il bougeait pour une fausse raison.
  * PIEGE : ce composant ne fait AUCUNE requete : tout passe par le parent,
  * qui recharge apres chaque action.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';

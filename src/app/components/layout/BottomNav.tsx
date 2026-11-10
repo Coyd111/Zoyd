@@ -13,8 +13,6 @@
  * PIEGE : la barre occupe le bas de l'ecran : le contenu principal doit
  * garder une marge basse (pb-24 sur le main d'AppLayout), sinon la
  * navigation cache la derniere ligne d'un ecran.
- *
- * Voir aussi : docs/08-frontend.md - section 4 (Les layouts)
  */
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';

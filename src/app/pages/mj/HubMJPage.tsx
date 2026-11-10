@@ -16,8 +16,6 @@
  * il est exclu aussi (P3-10, audit UI).
  * PIEGE : la recherche est debouncee (useDebounce) : ne pas relancer une
  * requete a chaque frappe.
- *
- * Voir aussi : docs/08-frontend.md - section 6.2 (Le cycle de synchronisation)
  */
 import React, { useMemo, useState } from 'react';
 import { Crosshair, Search, Activity, Swords, ShieldCheck, Radio, Zap, ChevronRight } from 'lucide-react';

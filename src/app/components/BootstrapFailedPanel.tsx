@@ -12,8 +12,6 @@
  * INVARIANT : ne PAS utiliser ce composant tant que le backoff est en cours
  * (screens ne lisent `bootstrapFailed` que pour choisir entre squelette et
  * panne - la difference est visible, l'utilisateur comprend ce qui se passe).
- *
- * Voir aussi : docs/08-frontend.md - section 6.2 (Le cycle de synchronisation)
  */
 import React from 'react';
 import { CloudOff } from 'lucide-react';

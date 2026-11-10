@@ -12,8 +12,6 @@
  * l'abonnement passe par subscribeToRealtimePush (realtimeClient.ts).
  * PIEGE : l'enregistrement est asynchrone ; les ecrans qui demandent la
  * permission doivent attendre navigator.serviceWorker.ready.
- *
- * Voir aussi : docs/08-frontend.md - section 7.4 (Le push Web)
  */
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';

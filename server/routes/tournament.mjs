@@ -33,9 +33,6 @@
  * PIEGE : la commission d'arbitre vaut 5 % ou 10 % selon le NOMBRE
  *   D'ARBITRES (2 au-dela de 8 entrees maxi), pas selon le format : le taux
  *   de la cagnotte change avec la taille du tournoi.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

@@ -22,7 +22,7 @@
  * le socket n'a pas ete bootstrappe et tournerait en echec repetes.
  *
  * Voir aussi : routes.tsx (classementsLoader), PublicClassementsPage.tsx,
- * ClassementsPage.tsx, docs/08-frontend.md - section 5 (Les gardes client).
+ * ClassementsPage.tsx.
  */
 import React, { Suspense } from 'react';
 import AppLayout from '../layouts/AppLayout';

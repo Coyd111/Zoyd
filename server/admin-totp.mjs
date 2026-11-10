@@ -31,9 +31,6 @@
  *   de passe obligatoire sur `/api/admin/2fa/setup`.
  * PIEGE : `requireAdmin2fa` verifie `admin2faVerified` ET `admin2faExpires` :
  *   un seul des deux ne suffit pas.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import crypto from 'node:crypto';

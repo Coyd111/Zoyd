@@ -15,8 +15,6 @@
  * PIEGE : les soldes viennent du walletStore, pas d'un calcul local sur les
  * transactions (les bonus et les montants bloques n'ont pas la meme
  * definition qu'une somme de lignes).
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React, { useMemo, Suspense } from 'react';
 import { motion } from 'motion/react';

@@ -13,8 +13,6 @@
  * l'id du controle. Sans FormControl autour, l'association est rompue.
  * PIEGE : ce composant ne fait aucune requete. La soumission reste du
  * ressort du parent, via l'API.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 "use client";
 

@@ -15,8 +15,6 @@
  * annulation avec remboursement.
  * PIEGE : la recherche est debouncee : ne pas relancer une requete a chaque
  * frappe.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';

@@ -11,8 +11,6 @@
  * l'inscription.
  * PIEGE : le delai d'attente avant de redemander un code doit etre
  * respecte, comme sur la page d'activation.
- *
- * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
  */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';

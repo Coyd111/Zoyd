@@ -13,8 +13,6 @@
  * PIEGE : l'enregistrement du handler de purge se fait au CHARGEMENT du
  * module (top-level de App.tsx), donc avant le premier rendu et avant toute
  * requete : ne pas le deplacer dans un useEffect.
- *
- * Voir aussi : docs/08-frontend.md - section 6.1 (Les hooks de session)
  */
 import { useEffect, useRef } from 'react';
 import { toast } from '../lib/toast';

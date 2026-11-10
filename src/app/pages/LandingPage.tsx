@@ -17,8 +17,6 @@
  * de selection disparaitrait silencieusement.
  * PIEGE : cette page vit hors AppLayout : pas de session, pas de socket, pas
  * de chrome applicative. Tout store lu ici doit tolerer un etat vide.
- *
- * Voir aussi : docs/08-frontend.md - section 9 (Le SEO)
  */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';

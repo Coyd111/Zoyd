@@ -12,8 +12,6 @@
  * meme temps que dans le code.
  * PIEGE : la description SEO est passee au layout : elle doit correspondre
  * au contenu reel de la page.
- *
- * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';

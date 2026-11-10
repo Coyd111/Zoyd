@@ -16,8 +16,6 @@
  * mort sur chaque ami. Il ouvre maintenant la conversation privee a deux
  * via /chat?dm=<id>, que ChatPage resout par find-or-create (le serveur
  * accepte les participants supplementaires existants, chat.mjs:131).
- *
- * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
  */
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';

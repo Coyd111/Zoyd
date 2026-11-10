@@ -15,8 +15,6 @@
  * GELE. L'afficher comme gagne (et donc verse) serait un gain fictif.
  * PIEGE : ne jamais recalculer un gain localement : la cagnotte est calculee
  * par le serveur sur les fonds reellement bloques.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React, { useMemo } from 'react';
 import { Link } from 'react-router';

@@ -48,9 +48,6 @@
  *   les mises ont deja ete remboursees ou consommees.
  * PIEGE : `sweepMatchesWithoutArbiter` REMBOURSE (il ne bloque pas) et saute
  *   tout match ayant un litige ouvert : c'est l'admin qui tranche.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // ─── Delais d arbitrage ──────────────────────────────────────────────────────

@@ -14,8 +14,6 @@
  * sont distinctes.
  * PIEGE : la liste DAY_KEYS sert a plusieurs composants : la modifier
  * change l'affichage de toute la ligue.
- *
- * Voir aussi : docs/08-frontend.md - section 10.5 (Pages src/features/)
  */
 import { Trophy, Play, Clock } from 'lucide-react';
 import type { LeagueSeason } from '../../../app/stores/leagueStore';

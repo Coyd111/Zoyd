@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /wallet
+Disallow: /earnings
+Disallow: /parametres
+Disallow: /chat
+# Audit prod 2026-11-01 (S-1) : ces routes RESTENT derriere AppLayout — un
+# visiteur anonyme y est redirige vers /auth/login. Indexables jusqu'ici,
+# elles gaspillaient du crawl budget en reponse permanente de connexion.
+# /classements est sortie de cette liste le 2026-11-02 : une version
+# anonyme reelle sert maintenant le vrai classement (PublicClassementsPage
+# via les endpoints publics /api/leaderboard + /api/stats).
+Disallow: /mj
+Disallow: /br-league
+Disallow: /br
+Disallow: /infos
+
+Sitemap: https://zoyd.vercel.app/sitemap.xml

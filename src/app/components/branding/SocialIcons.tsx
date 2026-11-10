@@ -17,8 +17,6 @@
  * non la couleur de la marque : un lien de reseau sur un site de marque
  * qui joue la carte monochrome coherence vaut mieux qu'un pave fluo au
  * milieu du footer.
- *
- * Voir aussi : docs/00-INDEX.md — les liens sociaux.
  */
 import React from 'react';
 

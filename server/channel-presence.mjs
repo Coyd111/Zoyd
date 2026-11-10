@@ -24,9 +24,6 @@
  *   inactifs depuis plus de 24 h, SAUF `global` - qui n'est jamais supprime.
  * PIEGE : les canaux supprimes ici sont des canaux EN MEMOIRE ; les canaux
  *   persistes sont du ressort de la couche de persistance.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getMemoryChatChannels } from './persistence.mjs';

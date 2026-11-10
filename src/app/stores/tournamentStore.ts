@@ -15,8 +15,6 @@
  * l'entree du precedent (fuite de donnees + inscription bloquee a tort).
  * PIEGE : le serveur ne produit que 1 ou 2 arbitres ; le repli sur le nombre
  * maximal d'entrees est un garde-fou, pas une regle metier.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
 import type { User } from './authStore';

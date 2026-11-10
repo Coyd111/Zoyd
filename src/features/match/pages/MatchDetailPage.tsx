@@ -21,8 +21,6 @@
  * PIEGE : la diffusion doit etre PER SOCKET. Un composant qui lit `isMe`
  * ne peut pas etre servi par une diffusion globale : le drapeau n'a de
  * sens que pour le destinataire.
- *
- * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';

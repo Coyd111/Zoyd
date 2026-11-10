@@ -8,8 +8,6 @@
  * PIEGE : Toggle n'a pas de role de case a cocher : dans un formulaire, un
  * Checkbox est le bon composant.
  * PIEGE : les classes viennent de cva + cn() : twMerge resout les conflits.
- *
- * Voir aussi : docs/08-frontend.md - section 8 (Le design system)
  */
 "use client";
 

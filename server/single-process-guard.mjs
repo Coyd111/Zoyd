@@ -18,14 +18,11 @@
  *   bon".
  * PIEGE : deux demarrages independants (hors `WEB_CONCURRENCY` et hors
  *   cluster) ne sont PAS detectes : c'est la limite connue et bornee de
- *   cette protection (cf. docs/audit/02-argent.md).
+ *   cette protection.
  * PIEGE : `TRUST_PROXY` et `WEB_CONCURRENCY` n'ont rien a voir : ne pas
  *   confondre les deux variables lors d'un diagnostic.
  * PIEGE : le module est importable a tout moment, mais `assertSingleProcess`
  *   leve : l'appeler hors demarrage arreterait le processus de test.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 /**
@@ -75,7 +72,7 @@ import cluster from 'node:cluster';
  * Le defaut de cette protection est donc borne et connu : si quelqu'un lance
  * deux processus SANS passer par `WEB_CONCURRENCY` ni `cluster` — c'est-a-dire
  * avec deux commandes de demarrage independantes, ce que Render ne fait pas —
- * rien ne le detecte. Ce cas est traite dans `docs/audit/02-argent.md`.
+ * rien ne le detecte.
  */
 const VALEUR_ATTENDUE = Symbol('valeur-illisible');
 

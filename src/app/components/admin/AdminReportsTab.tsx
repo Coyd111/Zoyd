@@ -16,8 +16,6 @@
  * resterait invisible.
  * PIEGE : une reponse serveur degradee doit afficher un echec de lecture,
  * pas une liste vide qui se lirait comme ' personne ne signale rien '.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Ban, Clock, ShieldAlert, Check, Gavel } from 'lucide-react';

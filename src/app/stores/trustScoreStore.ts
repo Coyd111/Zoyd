@@ -15,8 +15,6 @@
  * de design : les modifier change le libelle affiche partout en un coup.
  * PIEGE : le store se purge a la deconnexion et se rehydrate sur chaque
  * login/hydrateSession.
- *
- * Voir aussi : docs/08-frontend.md - section 6 (Les stores Zustand)
  */
 import { create } from 'zustand';
 // P3-8 (audit UI) : la palette de confiance (fonctions PURES de

@@ -20,8 +20,6 @@
  * aconsiderer le joueur comme non connecte tant que le code n'est pas passe.
  * PIEGE : ne jamais journaliser le code d'activation : c'est un secret a
  * usage unique.
- *
- * Voir aussi : docs/08-frontend.md - section 10.2 (Pages auth)
  */
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';

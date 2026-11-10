@@ -26,8 +26,6 @@
  * au demarrage a froid via /chat?dm=, le bootstrap App peut encore etre en
  * vol et un find local raterait le canal existant (les ids de canal sont
  * des timestamps : aucune deduplication par participants cote serveur).
- *
- * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';

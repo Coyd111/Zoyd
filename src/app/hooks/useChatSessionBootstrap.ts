@@ -16,8 +16,6 @@
  * volontaire), jamais a un echec reseau.
  * PIEGE : aucune hydratation double : hydratedRef sert de garde par
  * identite ; le nettoyage annule le flag cancelled et le timer en attente.
- *
- * Voir aussi : docs/08-frontend.md - section 6.1 (Les hooks de session)
  */
 import { useEffect, useRef } from 'react';
 import { fetchChatBootstrap } from '../lib/chatApi';

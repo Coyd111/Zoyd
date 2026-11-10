@@ -16,8 +16,6 @@
  * ou une URL absolue serait une redirection ouverte.
  * PIEGE : le match cree debloque les frais DANS la cagnotte : la partition
  * affichee est celle du serveur, pas prizePool moins des frais.
- *
- * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';

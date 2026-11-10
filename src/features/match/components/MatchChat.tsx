@@ -15,8 +15,6 @@
  * PIEGE : le canal est fermee quand le socket est coupe : l'ecran doit
  * l'indiquer, pas laisser croire que le chat est muet alors que les
  * messages partiront a la reconnexion.
- *
- * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Send, ShieldCheck, Terminal, Users, Radio } from 'lucide-react';

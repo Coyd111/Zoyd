@@ -27,9 +27,6 @@
  * PIEGE : `pendingRefunds` des tournois/ligues n'a pas de montant garanti
  *   selon les ecritures — `Number(... || 0)` est assume, le total est une
  *   borne basse, jamais definitive.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { roundAmount } from './utils.mjs';

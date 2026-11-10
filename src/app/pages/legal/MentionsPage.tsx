@@ -11,8 +11,6 @@
  * LegalLayout (ASSISTANCE), pour eviter deux numeros de contact.
  * PIEGE : verifier que les hebergeurs cites correspondent a l'infrastructure
  * reelle (front Vercel, API Render) apres un changement d'hebergement.
- *
- * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';

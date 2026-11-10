@@ -35,9 +35,6 @@
  *   copie renvoyee par `getAuthSession` n'a aucun effet.
  * PIEGE : la fenetre TOTP est de 30 s : l'interface doit afficher le temps
  *   restant.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // ─────────────────────────────────────────────────────────────────────────────

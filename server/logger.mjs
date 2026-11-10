@@ -19,9 +19,6 @@
  *   `createLogger(nom)` pour un journal identifie.
  * PIEGE : en developpement la sortie n'est pas du JSON (prefixe ANSI) - ne
  *   pas parser stdout en local pour extraire des champs.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 // server/logger.mjs — Lightweight structured logger (zero external deps)

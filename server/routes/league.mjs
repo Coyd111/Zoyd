@@ -30,9 +30,6 @@
  *   saison.
  * PIEGE : le classement est un GET sans session : il n'expose que le
  *   classement, pas les identifiants.
- *
- * Invariants detailles : docs/05-invariants.md
- * Architecture et routage : docs/01-architecture.md
  */
 
 import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';

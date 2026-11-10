@@ -13,8 +13,6 @@
  * PIEGE : un signalement d'admin sur un compte ne doit jamais etre deduit
  * d'un simple statut 'watch' affiche par le filtre : c'est une
  * recommandation, pas une sanction.
- *
- * Voir aussi : docs/08-frontend.md - section 10.1 (Pages de src/app/pages/)
  */
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';

@@ -18,8 +18,6 @@
  * channel:seen, typing:update) ne partent que si le socket est connecte.
  * Le serveur reecrit l'identite du demandeur : il n'est pas maitre de son
  * propre userId.
- *
- * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
 import { create } from 'zustand';
 import type { Match } from './matchStore';

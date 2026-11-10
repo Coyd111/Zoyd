@@ -13,8 +13,6 @@
  * de l'autre.
  * PIEGE : l'ecran de paiement doit tolerer un serveur en veille (timeout) :
  * afficher ' paiement indisponible ' plutot que zero.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import { useEffect, useState } from 'react';
 import { Settings, DollarSign, RefreshCw, UserMinus } from 'lucide-react';

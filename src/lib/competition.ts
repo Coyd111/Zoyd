@@ -13,8 +13,6 @@
  * contenir : les valeurs sont comparees et stockees.
  * PIEGE : getMapImage mappe une carte vers son visuel ; une carte ajoutee
  * au referentiel sans image fait tomber l'ecran sur une image par defaut.
- *
- * Voir aussi : docs/08-frontend.md - section 10 (Inventaire des pages)
  */
 export const CODM_RANGS = [
   'Rookie',

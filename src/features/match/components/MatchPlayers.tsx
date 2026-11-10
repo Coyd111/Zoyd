@@ -13,8 +13,6 @@
  * repartir par joueur afficherait un gain qui n'existe pas.
  * PIEGE : le gameId (repere stable du joueur) est optionnel : un joueur
  * inscrit avant son introduction n'en a pas.
- *
- * Voir aussi : docs/08-frontend.md - section 12 (Le champ perWinner)
  */
 import React from 'react';
 import { Clock3, CreditCard, ShieldCheck, Trophy } from 'lucide-react';

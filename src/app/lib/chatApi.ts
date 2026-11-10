@@ -12,8 +12,6 @@
  * le premier est le canal de chat, le second le canal de presence.
  * PIEGE : marquer un canal comme lu est une ecriture : elle part au serveur
  * et se propage aux autres onglets par l'evenement socket chat:read.
- *
- * Voir aussi : docs/08-frontend.md - section 7.2 (Les 13 evenements)
  */
 import type { ChatChannel, ChatChannelDef, ChatMessage } from '../stores/chatStore';
 import { authorizedGet, authorizedPost } from './apiClient';

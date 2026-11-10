@@ -12,8 +12,6 @@
  * ferait promettre au joueur une sanction qui n'existe pas.
  * PIEGE : le document ne doit pas devenir une description technique du
  * systeme anti-triche : il decrit des regles opposables au joueur.
- *
- * Voir aussi : docs/08-frontend.md - section 10.3 (Pages legales)
  */
 import React from 'react';
 import { Link } from 'react-router';

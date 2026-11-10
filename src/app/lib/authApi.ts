@@ -13,8 +13,6 @@
  * requireAdmin2fa sur /api/admin/*.
  * PIEGE : l'inscription peut renvoyer un code d'activation a saisir dans une
  * autre page : ne pas enchainer l'activation automatiquement.
- *
- * Voir aussi : docs/08-frontend.md - section 5 (Les gardes client)
  */
 import type { User } from '../stores/authStore';
 import { authorizedGet, authorizedPost, authorizedPatch, authorizedDelete, getApiUrl } from './apiClient';

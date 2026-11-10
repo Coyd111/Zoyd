@@ -12,8 +12,6 @@
  * PIEGE : un boundary React ne rattrape PAS les erreurs des gestionnaires
  * d'evenements, des promesses rejetees ni des effets asynchrones : ceux-la
  * doivent etre catches explicitement (voir apiClient.readJson).
- *
- * Voir aussi : docs/08-frontend.md - section 3.3 (Erreurs de route)
  */
 import React from 'react';
 import { logError } from '../lib/logger';

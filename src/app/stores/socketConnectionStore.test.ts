@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useSocketConnectionStore } from './socketConnectionStore';
 import { useNotificationStore } from './notificationStore';
+import { useFriendsStore } from './friendsStore';
+import { useAuthStore } from './authStore';
 
 const { handlers, fetchRealtimeBootstrap } = vi.hoisted(() => ({
   // P11 (audit-3, hors constat) : `Record<string, () => void>` refusait
@@ -26,6 +28,10 @@ vi.mock('../lib/realtimeClient', () => ({
 // `window` minimal pour survivre a cette garde, qui existe pour le SSR.
 beforeEach(() => {
   (globalThis as unknown as { window?: unknown }).window = globalThis;
+  // Identite courante : le garde multi-compte de `bootstrapServerState`
+  // compare l utilisateur du bootstrap a celui du store d authentification —
+  // sans identite posee, tout bootstrap serait refuse.
+  useAuthStore.setState({ user, isAuthenticated: true });
 });
 afterEach(() => {
   delete (globalThis as unknown as { window?: unknown }).window;
@@ -255,5 +261,84 @@ describe('socketConnectionStore — push serveur sans contourner le garde (P12 C
     expect(notif?.metadata?.showBrowser).not.toBe(true);
     expect(notif?.priority).toBe('high');
     expect(notif?.metadata?.source).toBe('server-push');
+  });
+});
+
+/**
+ * Garde multi-compte.
+ *
+ * Le bootstrap temps reel part pour le compte connecte au moment de
+ * l appel. Sa reponse peut arriver PLUS TARD : le joueur s est deconnecte
+ * (le socket se ferme) et a reconnecte un autre compte entre-temps. Sans
+ * controle, la reponse du compte PRECEDENT hydrate chez le nouveau joueur
+ * ses amis, ses demandes d ami et ses notifications — du contenu PRIVE
+ * d un autre compte.
+ *
+ * Meme famille que le garde de `onWalletUpdate` (le solde du compte
+ * precedent ne doit pas s ecrire chez le nouveau).
+ */
+describe('socketConnectionStore — le bootstrap n hydrate pas un autre compte', () => {
+  beforeEach(() => {
+    fetchRealtimeBootstrap.mockReset();
+    useAuthStore.setState({ user: { id: 'u1', pseudo: 'FAVARO' } as never, isAuthenticated: true });
+    useFriendsStore.setState({ friends: [], requests: [], blockedIds: [] });
+    useNotificationStore.setState({ notifications: [] });
+    useSocketConnectionStore.setState({ bootstrapReady: false, bootstrapFailed: false });
+  });
+
+  it('ignore la reponse si le compte a change depuis le depart du bootstrap', async () => {
+    // Le bootstrap part pour le compte A (u1)...
+    fetchRealtimeBootstrap.mockResolvedValue({
+      friends: [{ id: 'f-A', pseudo: 'AMI-A' }],
+      friendRequests: [],
+      blockedIds: [],
+      notifications: [{
+        id: 'n-A',
+        type: 'info',
+        title: 'NOTIF PRIVEE DE A',
+        message: 'contenu prive',
+        priority: 'normal',
+        isRead: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }],
+      matches: [],
+      tournaments: [],
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+
+    // ...mais avant la reponse, le joueur passe au compte B (u2).
+    useAuthStore.setState({ user: { id: 'u2', pseudo: 'FAVARO-B' } as never, isAuthenticated: true });
+
+    await useSocketConnectionStore.getState().bootstrapServerState(user);
+
+    // La reponse de A ne doit RIEN ecrire chez B.
+    expect(useFriendsStore.getState().friends, 'les amis de A ne doivent pas arriver chez B').toHaveLength(0);
+    expect(useNotificationStore.getState().notifications, 'les notifications de A ne doivent pas arriver chez B').toHaveLength(0);
+  });
+
+  it('hydrate normalement quand le compte est toujours le meme', async () => {
+    fetchRealtimeBootstrap.mockResolvedValue({
+      friends: [{ id: 'f-A', pseudo: 'AMI-A' }],
+      friendRequests: [],
+      blockedIds: [],
+      notifications: [{
+        id: 'n-A',
+        type: 'info',
+        title: 'NOTIF',
+        message: 'message',
+        priority: 'normal',
+        isRead: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }],
+      matches: [],
+      tournaments: [],
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+
+    await useSocketConnectionStore.getState().bootstrapServerState(user);
+
+    // Témoin : le garde ne doit pas bloquer le cas normal.
+    expect(useFriendsStore.getState().friends).toHaveLength(1);
+    expect(useNotificationStore.getState().notifications).toHaveLength(1);
   });
 });

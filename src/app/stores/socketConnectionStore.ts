@@ -392,6 +392,14 @@ connect: (user) => {
     try {
       const bootstrap = await fetchRealtimeBootstrap(user);
 
+      // Garde-fou multi-compte : le bootstrap peut arriver APRÈS un logout
+      // suivi d'une autre connexion (le socket du compte précédent se ferme,
+      // sa dernière réponse peut encore arriver). Sans ce contrôle, les amis,
+      // les demandes d'ami et les notifications du compte PRÉCÉDENT
+      // s'écriraient chez le nouveau joueur — contenu privé d'un autre
+      // compte, visible. Même famille que le garde de `onWalletUpdate`.
+      if (useAuthStore.getState().user?.id !== user.id) return;
+
       useFriendsStore.getState().hydrateFromServer(
         bootstrap.friends || [],
         bootstrap.friendRequests || [],

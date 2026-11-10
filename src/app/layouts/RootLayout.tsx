@@ -57,15 +57,33 @@ const RootLayout: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated || !userId) return;
 
+    // Le store ne doit jamais ecrire la REPONSE D UN AUTRE COMPTE.
+    //
+    // La reponse peut arriver apres un logout suivi d'une autre connexion :
+    // sur reseau mobile, 1 a 30 s (plus le timeout de 30 s du client). Le
+    // nettoyage ci-dessous vide le store au changement d identite, mais une
+    // reponse deja EN VOL le remplacerait — avec la liste complete de
+    // matchs du compte precedent, dont ses matchs PRIVES et les drapeaux
+    // `isMe` calcules pour LUI. Le hub du nouveau joueur afficherait alors la
+    // vie privee d'un autre.
+    //
+    // Le garde est pose au moment de l ECRITURE (pas au moment du
+    // depart) : c est la seule fenetre qui compte.
+    const expectedUserId = userId;
+    const ecrireSiMemeCompte = (ecrire: () => void) => {
+      if (useAuthStore.getState().user?.id !== expectedUserId) return;
+      ecrire();
+    };
+
     fetchAllMatchesFromDb().then((matches) => {
-      useMatchStore.getState().replaceFromServer(matches);
+      ecrireSiMemeCompte(() => useMatchStore.getState().replaceFromServer(matches));
     }).catch((err) => {
       console.warn('[RootLayout] Failed to fetch matches:', err?.message);
     });
 
     fetchServerTournaments().then((res) => {
       if (res.ok) {
-        useTournamentStore.getState().replaceFromServer(res.tournaments);
+        ecrireSiMemeCompte(() => useTournamentStore.getState().replaceFromServer(res.tournaments));
       }
     }).catch((err) => {
       console.warn('[RootLayout] Failed to fetch tournaments:', err?.message);
@@ -90,13 +108,16 @@ const RootLayout: React.FC = () => {
 
     if (wasConnected) {
       fetchAllMatchesFromDb().then((matches) => {
+        // Meme garde multi-compte que le bootstrap : le polling peut repondre
+        // apres un logout suivi d'une autre connexion.
+        if (useAuthStore.getState().user?.id !== userId) return;
         useMatchStore.getState().replaceFromServer(matches);
       }).catch((err) => {
         console.warn('[RootLayout] Failed to fetch matches:', err?.message);
       });
 
       fetchServerTournaments().then((res) => {
-        if (res.ok) {
+        if (res.ok && useAuthStore.getState().user?.id === userId) {
           useTournamentStore.getState().replaceFromServer(res.tournaments);
         }
       }).catch((err) => {
@@ -106,6 +127,9 @@ const RootLayout: React.FC = () => {
 
     const unsubscribeMatches = subscribeToMatches(() => {
       fetchAllMatchesFromDb().then((matches) => {
+        // Meme garde multi-compte que le bootstrap : le polling peut repondre
+        // apres un logout suivi d'une autre connexion.
+        if (useAuthStore.getState().user?.id !== userId) return;
         useMatchStore.getState().replaceFromServer(matches);
       }).catch((err) => {
         console.warn('[RootLayout] Failed to poll matches:', err?.message);
@@ -114,7 +138,7 @@ const RootLayout: React.FC = () => {
 
     const unsubscribeTournaments = subscribeToTournaments(() => {
       fetchServerTournaments().then((res) => {
-        if (res.ok) {
+        if (res.ok && useAuthStore.getState().user?.id === userId) {
           useTournamentStore.getState().replaceFromServer(res.tournaments);
         }
       }).catch((err) => {

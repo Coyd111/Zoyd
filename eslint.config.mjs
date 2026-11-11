@@ -75,6 +75,25 @@ export default [
     },
   },
   {
+    // Outils d'exploitation (`scripts/`) : memes regles que le serveur
+    // (mjs, ESM, globals node). Un outil de diagnostic qui lit la base de
+    // production doit etre lint au meme titre que le serveur qui l utilise —
+    // c'est lui qui manipule les identifiants.
+    files: ['scripts/**/*.{mjs,js}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node, structuredClone: 'readonly' },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-unused-vars': 'off',
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
     // Tests : `no-explicit-any` desactive. Un test ecrit des charges
     // utiles volontairement malformees (snapshot partiel, reponse d API
     // degradee) : le `any` y EST l intention, et le typer strictement

@@ -74,7 +74,7 @@ export const LEASE_UNAVAILABLE = 'unavailable';
  */
 export const isLeaseValid = (row, nowMs = Date.now()) => {
   if (!row) return false;
-  const expiresAt = Date.parse(row?.expiresAt || '');
+  const expiresAt = Number(row?.expiresAt);
   if (!Number.isFinite(expiresAt)) return false;
   return expiresAt > nowMs;
 };
@@ -87,7 +87,7 @@ export const isLeaseValid = (row, nowMs = Date.now()) => {
  */
 export const isLeaseExpired = (row, nowMs = Date.now()) => {
   if (!row) return true;
-  const expiresAt = Date.parse(row?.expiresAt || '');
+  const expiresAt = Number(row?.expiresAt);
   if (!Number.isFinite(expiresAt)) return true;
   return expiresAt <= nowMs;
 };
@@ -95,12 +95,19 @@ export const isLeaseExpired = (row, nowMs = Date.now()) => {
 /**
  * Calcule l'expiration d'un bail.
  *
+ * PIEGE : l unite est l'EPOCH EN MILLICONDES, pas l'ISO. La colonne
+ * `expires_at` est un `BIGINT` : y ecrire une chaine ISO
+ * (« 2026-11-11T11:56:20.860Z ») fait echouer l'INSERT avec « invalid
+ * input syntax for type bigint ». C'est arrive en production : le bail
+ * n'etait donc jamais acquis, et la protection multi-instance restait
+ * inactive — degradee, sans arreter les jobs, mais inactive.
+ *
  * @param {number} nowMs
  * @param {number} ttlMs
- * @returns {string} horodatage ISO
+ * @returns {number} epoch en millisecondes
  */
 export const leaseExpiry = (nowMs = Date.now(), ttlMs = CRON_LEASE_TTL_MS) =>
-  new Date(nowMs + ttlMs).toISOString();
+  Math.round(nowMs + ttlMs);
 
 // ─── Acces base ──────────────────────────────────────────────────────────────
 //
@@ -129,17 +136,46 @@ const log = createLogger('cron-lease');
  * ne s'arrete. L'etat est expose dans `/api/health` pour que l'operateur
  * puisse voir que la migration manque.
  *
- * null = pas encore sonde.
+ * PIEGE : le resultat NEGATIF ne doit PAS etre memorise DEFINITIVEMENT.
+ * La migration est appliquee par un humain, A N'IMPORTE QUEL MOMENT : si
+ * le serveur a sonde une fois l'absence de la table, il doit pouvoir la
+ * voir apparaitre SANS redemarrage. Memoiser `false` pour toujours
+ * condamnait la protection a ne jamais s'activer — c'est exactement ce qui
+ * est arrive en production : le serveur demarre a 11:36, la migration
+ * jouee a 11:42, et la sonde reste negative jusqu'au prochain deploiement.
+ *
+ * INVARIANT : le resultat POSITIF est memorise (la table ne disparait pas).
+ * INVARIANT : le resultat NEGATIF est re-sonde au plus frequently toutes les
+ * `PROBE_INTERVAL_MS` — une seule requete SELECT par minute, negligeable.
  */
 let tableAvailable = null;
 let tableError = null;
+let lastProbeAt = 0;
+
+/** Delai minimum entre deux sondes lorsque la table est absente. */
+export const PROBE_INTERVAL_MS = 60 * 1000;
 
 const probeTable = async () => {
   if (!supabase) { tableAvailable = false; return false; }
-  if (tableAvailable !== null) return tableAvailable;
+  // Resultat positif : la table existe, elle ne disparait pas. Inutile de
+  // re-sonder (et le resultat ne change pas).
+  if (tableAvailable === true) return true;
+  // Resultat negatif : on re-sonde, mais pas plus souvent que
+  // `PROBE_INTERVAL_MS` (une migration peut avoir ete jouee entre-temps).
+  const maintenant = Date.now();
+  if (tableAvailable === false && maintenant - lastProbeAt < PROBE_INTERVAL_MS) {
+    return false;
+  }
+  lastProbeAt = maintenant;
   try {
     const { error } = await supabase.from('cron_leases').select('job_name').limit(1);
-    tableAvailable = !error;
+    const nouveau = !error;
+    // On ne journalise le passage a « disponible » que lors du CHANGEMENT :
+    // sinon la sonde rejouerait le meme warn a chaque minute.
+    if (nouveau && tableAvailable === false) {
+      log.info('Table cron_leases presente : les jobs de fond sont proteges contre l execution en double.');
+    }
+    tableAvailable = nouveau;
     tableError = error?.message || null;
     if (error) {
       log.warn('Table cron_leases absente : les jobs de fond ne sont PAS proteges contre l execution en double (migration en attente).', { message: error.message });
@@ -165,6 +201,7 @@ export const getCronLeaseHealth = () => ({
 export const resetCronLeaseStateForTests = () => {
   tableAvailable = null;
   tableError = null;
+  lastProbeAt = 0;
 };
 
 /**
@@ -222,11 +259,16 @@ export const acquireCronLease = async (jobName, options = {}) => {
   // Bail expire : on le reprend. L UPDATE est conditionnel sur
   // l expiration observee : si l autre instance l a repris entre-temps,
   // 0 ligne est touchee et l on s arrete aussi.
+  //
+  // PIEGE : la comparaison est en EPOCH EN MILLISECONDES (entier), comme la
+  // colonne. Comparer une chaine ISO a un BIGINT fait echouer la requete
+  // (« invalid input syntax for type bigint ») : le bail n etait jamais
+  // repris, et la protection multi-instance restait inactive.
   const { data: touches } = await supabase
     .from('cron_leases')
     .update({ holder, acquired_at: maintenant, expires_at: expiresAt })
     .eq('job_name', jobName)
-    .lt('expires_at', new Date(maintenant).toISOString())
+    .lt('expires_at', maintenant)
     .select('job_name');
   if (Array.isArray(touches) && touches.length === 1) {
     log.info('Bail de cron repris (expire)', { job: jobName, ancienHolder: row?.holder || null });

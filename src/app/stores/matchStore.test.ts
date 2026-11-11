@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useMatchStore } from './matchStore';
+import { useMatchStore, MAX_MATCHES_IN_MEMORY } from './matchStore';
 
 /**
  * Le socket ne diffuse QUE des deltas : un seul match modifie. `hydrateFromServer`
@@ -153,6 +153,75 @@ describe('matchStore — replaceFromServer (liste complete)', () => {
     useMatchStore.getState().replaceFromServer([match({ id: 'GARDE' })]);
 
     expect(ids()).toEqual(['GARDE']);
+  });
+});
+
+/**
+ * La liste de matchs tient en MEMOIRE : elle est bornee.
+ *
+ * Pourquoi
+ * --------
+ * `replaceFromServer` (lecture complete) est deja plafonne par le serveur a
+ * 100. Mais `hydrateFromServer` — le chemin du SOCKET — FUSIONNE la liste au
+ * lieu de la remplacer : a chaque match cree, la liste grossissait, pour une
+ * duree de vie indefinite. Le hub rendait alors des centaines de cartes de
+ * match (chacune avec ses joueurs et sa cagnotte), sans borne cote client.
+ *
+ * La borne est donc posee dans le STORE, pas seulement dans l'API : elle ne
+ * depend ni du serveur, ni d'une reponse particuliere.
+ */
+describe('matchStore — la liste de matchs est bornee', () => {
+  beforeEach(() => {
+    useMatchStore.setState({ matches: [], filters: { format: 'all', status: 'all' } });
+  });
+
+  it('la fusion par le socket ne fait pas depasser le plafond', () => {
+    // 300 matchs arrives par deltas successifs : la liste doit rester
+    // bornee, sinon elle grossit pour toute la duree de la session.
+    for (let i = 0; i < 300; i += 1) {
+      useMatchStore.getState().hydrateFromServer([
+        match({ id: `M-${i}`, updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString() }),
+      ]);
+    }
+
+    expect(
+      current().length,
+      'la liste fusionnee doit rester bornee',
+    ).toBeLessThanOrEqual(MAX_MATCHES_IN_MEMORY);
+  });
+
+  it('la lecture complete est elle aussi bornee', () => {
+    const beaucoup = Array.from({ length: 400 }, (_, i) =>
+      match({ id: `L-${i}`, updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString() }),
+    );
+    useMatchStore.getState().replaceFromServer(beaucoup as never);
+
+    expect(current().length).toBeLessThanOrEqual(MAX_MATCHES_IN_MEMORY);
+  });
+
+  it('ce sont les matchs les PLUS RECENTS qui sont conserves', () => {
+    // La liste est triee du plus recent au plus ancien : la troncature
+    // conserve les premiers elements. Un match vieux est termine ou perime :
+    // il ne pese plus dans le hub, et le joueur le retrouve dans son
+    // historique.
+    const beaucoup = Array.from({ length: 400 }, (_, i) =>
+      match({ id: `L-${i}`, updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString() }),
+    );
+    useMatchStore.getState().replaceFromServer(beaucoup as never);
+
+    const idsConserves = ids();
+    // `L-399` est le plus recent : il doit etre la.
+    expect(idsConserves[0]).toBe('L-399');
+    // Et le plus ancien (`L-0`) a du sortir.
+    expect(idsConserves).not.toContain('L-0');
+  });
+
+  it('le plafond laisse la place a la lecture complete du serveur', () => {
+    // Le serveur renvoie 100 matchs par lecture complete. Si le plafond
+    // etait egal ou inferieur, un match recemment annonce par le socket
+    // disparaitrait au rechargement suivant : le joueur verrait un match
+    // s'evaporer.
+    expect(MAX_MATCHES_IN_MEMORY).toBeGreaterThan(100);
   });
 });
 

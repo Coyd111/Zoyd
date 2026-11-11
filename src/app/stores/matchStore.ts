@@ -314,6 +314,35 @@ export interface MatchState {
 }
 
 export const MATCH_AUTOMATION_INTERVAL_MS = 30_000;
+
+/**
+ * Plafond de la liste de matchs TENUE EN MEMOIRE.
+ *
+ * Pourquoi une borne
+ * ------------------
+ * `replaceFromServer` (lecture complete) est plafonne par le serveur a 100
+ * (`parseQueryParams` : limit 100 par defaut). Mais `hydrateFromServer` — le
+ * chemin du SOCKET — FUSIONNE la liste au lieu de la remplacer. Sans borne,
+ * la liste grossissait a chaque match cree, pour une duree de vie indefinite :
+ * le hub rendue alors des centaines de cartes de match, chacune avec ses
+ * joueurs et sa cagnotte. Le cout etait borne par la BASE (chaque match
+ * existe en base), pas par l affichage.
+ *
+ * Pourquoi 200 et pas 100
+ * ----------------------
+ * 100 = exactement la limite de la lecture complete. BOrner la fusion a la
+ * meme valeur ferait disparaitre de l ecran un match que le socket venait
+ * d annoncer (la fusion en garde 200, la lecture complete 100 : le joueur
+ * verrait un match disparaitre au prochain rechargement). 200 laisse la
+ * fusion deriver au-dela de la lecture complete, sans jamais montrer plus de
+ * 200 cartes.
+ *
+ * INVARIANT : ce sont les matchs LES PLUS RECENTS qui sont conserves. Un
+ * match vieux est un match termine ou perime : il ne pese plus dans le
+ * hub, et le joueur le retrouve dans son historique.
+ */
+export const MAX_MATCHES_IN_MEMORY = 200;
+
 const flattenProofs = (proofs?: MatchProofBundle) =>
   proofs
     ? [
@@ -601,6 +630,16 @@ const mergeMatchesByFreshness = (currentMatches: Match[], incomingMatches: Match
   );
 };
 
+/**
+ * Tronque la liste de matchs aux plus recents.
+ *
+ * La liste est deja triee du plus recent au plus ancien par
+ * `mergeMatchesByFreshness` : la troncature conserve donc les premiers
+ * elements, qui sont les plus recents.
+ */
+const bornerMatches = (matches: Match[]): Match[] =>
+  matches.length > MAX_MATCHES_IN_MEMORY ? matches.slice(0, MAX_MATCHES_IN_MEMORY) : matches;
+
 export const useMatchStore = create<MatchState>()((set, get) => {
       return {
         matches: [],
@@ -609,7 +648,11 @@ export const useMatchStore = create<MatchState>()((set, get) => {
 
         hydrateFromServer: (matches) => {
           set((state) => ({
-            matches: mergeMatchesByFreshness(state.matches, matches),
+            // La fusion est BORNEE : c'est le chemin du socket, il ne
+            // remplace pas la liste mais l'ETEND. Sans plafond, la liste
+            // grossissait a chaque match cree, pour une duree de vie
+            // indefinite — le hub rendait alors des centaines de cartes.
+            matches: bornerMatches(mergeMatchesByFreshness(state.matches, matches)),
           }));
         },
 
@@ -639,13 +682,19 @@ export const useMatchStore = create<MatchState>()((set, get) => {
             // Une lecture reussie efface l erreur precedente : le service
             // est revenu, le joueur ne doit plus voir un bandeau d erreur.
             loadError: null,
-            matches: matches
-              .map((match) => normalizeStoredMatch(match))
-              .sort(
-                (left, right) =>
-                  new Date(right.updatedAt || right.createdAt).getTime() -
-                  new Date(left.updatedAt || left.createdAt).getTime()
-              ),
+            // Borne comme la fusion : la lecture complete est deja plafonnee
+            // par le serveur a 100, mais le store ne doit pas dependre de
+            // cela pour rester borne (une reponse plus large, un mock, une
+            // evolution du serveur : la borne est ici, pas ailleurs).
+            matches: bornerMatches(
+              matches
+                .map((match) => normalizeStoredMatch(match))
+                .sort(
+                  (left, right) =>
+                    new Date(right.updatedAt || right.createdAt).getTime() -
+                    new Date(left.updatedAt || left.createdAt).getTime()
+                ),
+            ),
           }));
         },
 

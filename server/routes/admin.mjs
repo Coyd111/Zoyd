@@ -376,7 +376,22 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   //
   // 2FA obligatoire : la route expose l identite des instances (topologie
   // du deploiement).
-  if (req.method === 'GET' && pathname === '/api/admin/cron-leases') {
+  //
+  // La route est un GET STRICT. Toute autre methode est refusee ICI, et
+  // non laissee tomber au routeur : sans cette garde, la route renvoie
+  // `true` sans repondre, et l appelant recoit un 200 au corps vide —
+  // l appelant croit avoir reussi. (En production, le routeur finit par
+  // repondre 404, mais l ecart entre les deux comportement est exactement
+  // le genre de piege qu un test de bout en bout revele.)
+  if (pathname === '/api/admin/cron-leases') {
+    if (req.method !== 'GET') {
+      respondJson(res, 405, {
+        ok: false,
+        error: 'Methode non autorisee : cet historique est en lecture seule.',
+        code: 'METHOD_NOT_ALLOWED',
+      }, req);
+      return true;
+    }
     if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;

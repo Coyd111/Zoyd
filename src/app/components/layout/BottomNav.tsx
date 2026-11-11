@@ -15,10 +15,11 @@
  * navigation cache la derniere ligne d'un ecran.
  */
 import React, { useState } from 'react';
+import { Sheet, SheetContent } from '../ui/Sheet';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, X, Newspaper, Shield, ShieldCheck, TrendingUp, Plus } from 'lucide-react';
+import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, Newspaper, Shield, ShieldCheck, TrendingUp, Plus } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useAuthStore } from '../../stores/authStore';
 
 const navItems = [
@@ -64,48 +65,19 @@ const BottomNav: React.FC = React.memo(() => {
     navigate(path);
   };
 
-  React.useEffect(() => {
-    if (!menuOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [menuOpen]);
-
   return (
     <>
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="md:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="md:hidden fixed bottom-20 left-0 right-0 z-50 bg-zoyd-black border-t border-white/10 safe-bottom max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain scrollbar-hide"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Plus d'options"
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-              <span className="font-display font-black text-[10px] text-white/70 tracking-widest uppercase italic">Plus</span>
-              <button onClick={() => setMenuOpen(false)} className="touch-target flex items-center justify-center text-white/60 hover:text-white" aria-label="Fermer le menu">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-2 pb-4">
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="bottom"
+          className="md:hidden bottom-20 left-0 right-0 max-h-[calc(100dvh-5rem)] w-full overflow-y-auto overscroll-contain scrollbar-hide bg-zoyd-black border-t border-white/10 p-0 gap-0"
+          aria-label="Plus d'options"
+          closeLabel="Fermer le menu"
+        >
+          <div className="flex items-center justify-between px-4 py-3 pr-14 border-b border-white/5">
+            <span className="font-display font-black text-[10px] text-white/70 tracking-widest uppercase italic">Plus</span>
+          </div>
+          <div className="p-2 pb-4">
               <button
                 onClick={() => handleNavigate('/mj/creer')}
                 aria-label="Créer un match"
@@ -163,10 +135,9 @@ const BottomNav: React.FC = React.memo(() => {
                   ADMIN
                 </button>
               )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-zoyd-black/95 border-t border-white/10 safe-bottom backdrop-blur-xl">
         <div className="flex items-center justify-around h-[4.5rem] relative">

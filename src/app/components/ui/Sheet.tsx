@@ -65,9 +65,18 @@ function SheetContent({
   className,
   children,
   side = "right",
+  closeLabel,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
+  /**
+   * Libelle accessible du bouton de fermeture.
+   *
+   * « Fermer » seul est ambigu quand plusieurs panneaux peuvent etre ouverts
+   * sur la meme page : le lecteur d ecran annonce « Fermer, bouton » sans
+   * dire QUOI. Le tiroir de la navigation passe donc « Fermer le menu ».
+   */
+  closeLabel?: string;
 }) {
   return (
     <SheetPortal>
@@ -89,9 +98,12 @@ function SheetContent({
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="ring-offset-background data-[state=open]:bg-secondary absolute top-4 right-4 touch-target opacity-70 transition-opacity hover:opacity-100 focus:border-zoyd-yellow disabled:pointer-events-none">
+        <SheetPrimitive.Close
+          className="ring-offset-background data-[state=open]:bg-secondary absolute top-4 right-4 touch-target opacity-70 transition-opacity hover:opacity-100 focus:border-zoyd-yellow disabled:pointer-events-none"
+          aria-label={closeLabel}
+        >
           <XIcon className="size-4" />
-          <span className="sr-only">Fermer</span>
+          <span className="sr-only">{closeLabel || "Fermer"}</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
     </SheetPortal>

@@ -18,6 +18,7 @@
  */
 import React, { useMemo } from 'react';
 import { Link } from 'react-router';
+import { useShallow } from 'zustand/react/shallow';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   AlertTriangle,
@@ -90,10 +91,25 @@ const DashboardPage: React.FC = () => {
   const availableToSpend = useWalletStore((s) => s.getAvailableToSpend());
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
-  const recentNotifications = useNotificationStore((s) => s.getRecent(4).filter((n) => !n.dismissed));
+  // Ces deux selecteurs APPELENT une fonction qui CONSTRUIT un tableau
+  // (`getRecent` filtre puis slice, `getOnlineFriends` filtre) : ils
+  // renvoyaient un NOUVEAU tableau a chaque lecture.
+  //
+  // `useSyncExternalStore` compare le snapshot precedent au nouveau par
+  // reference : la reference changeant a chaque lecture, React estimait le
+  // store modifie, re-rendait, relisait, rebouclait — « Maximum update
+  // depth exceeded », et la page tombait sur son error boundary. Le
+  // Dashboard etait donc INUTILISABLE pour le joueur.
+  //
+  // `useShallow` compare element par element : la reference n'est deeme
+  // changee que si le CONTENU change. Meme correctif que
+  // `MatchDetailPage` (abonnements aux donnees).
+  const recentNotifications = useNotificationStore(
+    useShallow((s) => s.getRecent(4).filter((n) => !n.dismissed)),
+  );
   const unreadNotifCount = useNotificationStore((s) => s.getUnreadCount());
   const requests = useFriendsStore((s) => s.requests);
-  const onlineFriends = useFriendsStore((s) => s.getOnlineFriends());
+  const onlineFriends = useFriendsStore(useShallow((s) => s.getOnlineFriends()));
 
   const unreadMessages = useChatStore((s) => s.getUnreadTotal());
 

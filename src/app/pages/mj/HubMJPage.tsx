@@ -48,6 +48,11 @@ const HubMJPage: React.FC = () => {
   // Souscrit au tableau : sans ça, le useMemo ci-dessous ne recalcule jamais
   // quand RootLayout hydrate le store après le 1er rendu (liste vide figée).
   const matches = useMatchStore((s) => s.matches);
+  // Echec de lecture : etat, pas un log. La liste vide se lit sinon comme
+  // « il n y a aucun match ».
+  const loadError = useMatchStore((s) => s.loadError);
+  const reloadMatches = useMatchStore((s) => s.reloadFromServer);
+  const [isReloading, setIsReloading] = useState(false);
   const bootstrapReady = useSocketStore((s) => s.bootstrapReady);
   // F2 : echec definitif du bootstrap -> panneau explicite au lieu du
   // squelette eternel (voir BootstrapFailedPanel).
@@ -139,6 +144,37 @@ const HubMJPage: React.FC = () => {
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-16 relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
         <div>
+          {/* Echec de LECTURE : sans ce bandeau, une liste vide se lit
+              comme « il n y a aucun match » et le joueur attend un match qui
+              n arrivera jamais, sans savoir que la lecture a echoue. */}
+          {loadError && (
+            <div
+              role="alert"
+              className="mb-8 flex flex-col sm:flex-row sm:items-center gap-3 justify-between border border-red-500/40 bg-red-500/10 px-4 py-3"
+            >
+              <div>
+                <p className="text-sm font-display font-black uppercase tracking-widest text-red-300">
+                  Chargement impossible
+                </p>
+                <p className="text-xs text-white/60 mt-1">
+                  La liste des matchs n&apos;a pas pu être chargée. Le service est peut-être indisponible.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsReloading(true);
+                  void reloadMatches(useAuthStore.getState().user?.id)
+                    .catch(() => {})
+                    .finally(() => setIsReloading(false));
+                }}
+                disabled={isReloading}
+                className="touch-target shrink-0 border border-white/20 px-4 py-2 text-[10px] font-display font-black tracking-widest uppercase italic text-white hover:bg-white/10 disabled:opacity-50"
+              >
+                {isReloading ? 'Reessai…' : 'Reessayer'}
+              </button>
+            </div>
+          )}
           <div className="flex flex-col lg:flex-row gap-8 mb-12 items-start lg:items-center">
             {/* Filtres FORMAT en grille (wrap) : en rangée scrollable, les
                 derniers chips (5VS5, STATUTS...) restaient invisibles sur

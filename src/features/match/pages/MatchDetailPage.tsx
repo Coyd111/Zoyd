@@ -24,6 +24,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { useShallow } from 'zustand/react/shallow';
 import { toast } from '../../../app/lib/toast';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import {
@@ -85,10 +86,30 @@ const MatchDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const getMatchById = useMatchStore((s) => s.getMatchById);
-  const canJoinAsArbiter = useMatchStore((s) => s.canJoinAsArbiter);
+  // Les DONNEES, pas les accesseurs.
+  //
+  // Un accesseur (`getMatchById`, `getMessagesForChannel`...) renvoie une
+  // FONCTION : la reference est stable, `useSyncExternalStore` ne voit donc
+  // jamais de changement, et l ecran ne se re-rend pas. Consequence
+  // concrete : un message qui arrivait par le socket n etait PAS affiche
+  // avant le heartbeat suivant (jusqu a 15 s) — et le canal tactique
+  // ramenait le joueur en bas toutes les 15 s, meme en train de lire
+  // l historique.
+  //
+  // On s abonne donc aux valeurs. `useShallow` evite la boucle de rendu :
+  // un selecteur qui renvoie un NOUVEAU tableau a chaque lecture ferait
+  // boucler `useSyncExternalStore` (le snapshot doit etre stable).
+  const match = useMatchStore((s) => (id ? s.matches.find((m) => m.id === id) : undefined));
+  const messages = useChatStore(
+    useShallow((s) => (match ? s.getMessagesForChannel(match.channelId) : [])),
+  );
+  const channelPresence = usePresenceStore(
+    useShallow((s) => (match ? s.getChannelPresence(match.channelId) : [])),
+  );
+  const typingUsers = usePresenceStore(
+    useShallow((s) => (match && user ? s.getTypingUsers(match.channelId, user.id) : [])),
+  );
   const hydrateMatches = useMatchStore((state) => state.hydrateFromServer);
-  const getMessagesForChannel = useChatStore((s) => s.getMessagesForChannel);
   const hydrateChat = useChatStore((s) => s.hydrateFromServer);
   const receiveServerMessage = useChatStore((s) => s.receiveServerMessage);
   const markAsRead = useChatStore((s) => s.markAsRead);
@@ -100,9 +121,6 @@ const MatchDetailPage: React.FC = () => {
   const bootstrapFailed = useSocketStore((s) => s.bootstrapFailed);
   const retryBootstrap = () => { void useSocketStore.getState().bootstrapServerState(user); };
   const seenByChannel = usePresenceStore((s) => s.seenByChannel);
-  const getChannelPresence = usePresenceStore((s) => s.getChannelPresence);
-  const getPresenceSummary = usePresenceStore((s) => s.getPresenceSummary);
-  const getTypingUsers = usePresenceStore((s) => s.getTypingUsers);
   const joinChannel = usePresenceStore((s) => s.joinChannel);
   const leaveChannel = usePresenceStore((s) => s.leaveChannel);
   const markChannelSeen = usePresenceStore((s) => s.markChannelSeen);
@@ -141,9 +159,6 @@ const MatchDetailPage: React.FC = () => {
   const [isCancellingSelf, setIsCancellingSelf] = useState(false);
   const [showResultConfirm, setShowResultConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
-
-  const match = id ? getMatchById(id) : undefined;
-  const messages = match ? getMessagesForChannel(match.channelId) : [];
 
   useEffect(() => {
     if (!match?.channelId || !user) return;
@@ -214,11 +229,9 @@ const MatchDetailPage: React.FC = () => {
     (dispute) => dispute.status === 'open' || dispute.status === 'under_review'
   );
   const availableSpend = getAvailableToSpend();
-  const channelPresence = match ? getChannelPresence(match.channelId) : [];
-  const presenceSummary = match
-    ? getPresenceSummary(match.channelId)
-    : { onlineCount: 0, checkedInCount: 0, readyCount: 0, arbiterOnline: false, total: 0 };
-  const typingUsers = match && user ? getTypingUsers(match.channelId, user.id) : [];
+  const presenceSummary = usePresenceStore((s) => (match
+    ? s.getPresenceSummary(match.channelId)
+    : { onlineCount: 0, checkedInCount: 0, readyCount: 0, arbiterOnline: false, total: 0 }));
   const readCount = match ? Object.keys(seenByChannel[match.channelId] || {}).length : 0;
   const channelConnected = !!user && socketConnected && match ? isChannelLive(match.channelId) : false;
 
@@ -226,7 +239,7 @@ const MatchDetailPage: React.FC = () => {
   const teamBravo = (match?.players ?? []).filter((player) => player.team === 1);
   const statusLabel = match ? MATCH_STATUS_COPY[match.status].label : '';
   const canJoinAsPlayer = !!match && !!user && !currentPlayer && !isArbiter && !CLOSED_STATUSES.includes(match.status);
-  const canJoinArbiterSlot = !!match && !!user && canJoinAsArbiter(match.id);
+  const canJoinArbiterSlot = useMatchStore((s) => !!(match && user) && s.canJoinAsArbiter(match.id));
   // Miroir exact du serveur (checkIn/toggleReady refusent seulement
   // MATCH_CLOSED / awaiting_confirmation). L'ancienne liste
   // `full/check_in/ready` interdisait presence+ready en `recruiting` et

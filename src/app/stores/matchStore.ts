@@ -25,6 +25,7 @@ import { create } from 'zustand';
 import type { User } from './authStore';
 import { useAuthStore } from './authStore';
 import { ACTIVE_STATUSES, CLOSED_STATUSES, HISTORY_STATUSES, type MatchStatus } from '../lib/matchStatus';
+import { fetchAllMatchesFromDb } from '../lib/matchApi';
 
 export type { MatchStatus };
 
@@ -292,6 +293,16 @@ export interface CreateMatchInput {
 export interface MatchState {
   matches: Match[];
   filters: MatchFilters;
+  // Derniere LECTURE en echec. Une liste vide se lit comme « il n y a aucun
+  // match » : le joueur attendait un match qui n arriverait jamais, sans
+  // savoir que le service etait indisponible. L erreur est donc etat, pas
+  // un simple `console.warn`.
+  loadError: string | null;
+  setLoadError: (message: string | null) => void;
+  // Recharge la liste depuis le serveur. Utilise par le bandeau
+  // « Reessayer » du hub : sans cette action, le joueur n avait aucun moyen
+  // de rattraper une lecture en echec sans recharger toute la page.
+  reloadFromServer: (expectedUserId?: string) => Promise<void>;
   hydrateFromServer: (matches: Match[]) => void;
   replaceFromServer: (matches: Match[]) => void;
   setFilters: (f: Partial<MatchFilters>) => void;
@@ -594,6 +605,7 @@ export const useMatchStore = create<MatchState>()((set, get) => {
       return {
         matches: [],
         filters: { format: 'all', status: 'all' },
+        loadError: null,
 
         hydrateFromServer: (matches) => {
           set((state) => ({
@@ -601,8 +613,32 @@ export const useMatchStore = create<MatchState>()((set, get) => {
           }));
         },
 
+        setLoadError: (message) => {
+          set(() => ({ loadError: message ? String(message) : null }));
+        },
+
+        reloadFromServer: async (expectedUserId) => {
+          // Ne swallow PAS l erreur : l appelant (le bandeau) doit savoir
+          // si la reprise a reussi.
+          try {
+            const matches = await fetchAllMatchesFromDb();
+            // Garde-fou multi-compte : la reponse peut arriver apres un
+            // logout suivi d une autre connexion.
+            if (expectedUserId && useAuthStore.getState().user?.id !== expectedUserId) return;
+            get().replaceFromServer(matches);
+          } catch (error) {
+            if (expectedUserId && useAuthStore.getState().user?.id !== expectedUserId) return;
+            const raison = error instanceof Error ? error.message : String(error);
+            get().setLoadError(raison || 'Chargement des matchs impossible');
+            throw error;
+          }
+        },
+
         replaceFromServer: (matches) => {
           set(() => ({
+            // Une lecture reussie efface l erreur precedente : le service
+            // est revenu, le joueur ne doit plus voir un bandeau d erreur.
+            loadError: null,
             matches: matches
               .map((match) => normalizeStoredMatch(match))
               .sort(

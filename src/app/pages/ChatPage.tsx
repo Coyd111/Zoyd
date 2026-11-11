@@ -41,6 +41,7 @@ import {
   sendServerChatMessage,
 } from '../lib/chatApi';
 import { useChatStore } from '../stores/chatStore';
+import { FENETRE_MESSAGES, selectVisibleMessages, countHiddenMessages } from '../lib/chatWindow';
 import { useAuthStore } from '../stores/authStore';
 import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
@@ -83,6 +84,50 @@ const ChatPage: React.FC = () => {
     () => (activeChannelId ? getMessagesForChannel(activeChannelId) : []),
     [activeChannelId, messages, getMessagesForChannel]
   );
+
+  // FENETRAGE : le store conserve jusqu a 500 messages par canal. Les rendre
+  // tous d un coup produisait un scroll saccade sur telephone d entree de
+  // gamme (le public vise), et chaque message animee (motion) multiplie le
+  // cout. On rend donc les DERNIERS messages, et on laisse un bouton pour
+  // remonter dans l historique.
+  //
+  // La logique pure est dans `lib/chatWindow.ts` : elle est testee SANS DOM
+  // (vitest tourne en environnement `node`, cf. vitest.config.mjs).
+  const [messagesAffiches, setMessagesAffiches] = useState(FENETRE_MESSAGES);
+  const messagesVisibles = useMemo(
+    () => selectVisibleMessages(currentMessages, messagesAffiches),
+    [currentMessages, messagesAffiches],
+  );
+  const messagesMasques = countHiddenMessages(currentMessages, messagesAffiches);
+  // Un changement de canal repart de la fenetre recente.
+  useEffect(() => {
+    setMessagesAffiches(FENETRE_MESSAGES);
+  }, [activeChannelId]);
+
+  // Conservation de la position de lecture quand on prepend des messages.
+  //
+  // PIEGE : prepended sans correction, le contenu pousse vers le bas et le
+  // conteneur saute vers le HAUT : le joueur perdait sa place dans la
+  // conversation, au milieu d une lecture. On memorise donc la hauteur
+  // avant l ajout, et on repositionne sur la meme distance depuis le bas.
+  const scrollRestoreRef = useRef<number | null>(null);
+  const chargerMessagesAnciens = useCallback(() => {
+    const el = containerRef.current;
+    if (el) scrollRestoreRef.current = el.scrollHeight;
+    setMessagesAffiches((n) => n + FENETRE_MESSAGES);
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const attendu = scrollRestoreRef.current;
+    if (attendu === null) return;
+    const el = containerRef.current;
+    scrollRestoreRef.current = null;
+    if (!el) return;
+    // La hauteur a AUGMENTE (les messages prepends) : on decale le scroll
+    // de la meme quantite, sinon le curseur remonte de toute la hauteur
+    // ajoutee.
+    el.scrollTop += el.scrollHeight - attendu;
+  }, [messagesAffiches]);
   const activeChannel = channels.find((channel) => channel.id === activeChannelId);
 
   useEffect(() => {
@@ -389,6 +434,24 @@ const ChatPage: React.FC = () => {
                   UTILISATEUR (mutedChannelIds persistes + routes serveur) :
                   le reintroduire suppose ce mecanisme d'abord. */}
 
+              {/* FENETRAGE : bouton de chargement des messages plus anciens.
+                  Il est HORS du conteneur `role="log"` : ce conteneur est une
+                  region live (`aria-live="polite"`), et un bouton qui y
+                  apparaitrait serait annonce par le lecteur d ecran a chaque
+                  changement de fenetre. Il est aussi fixe (hors du flux
+                  scrollable) : il reste atteignable sans remonter. */}
+              {messagesMasques > 0 && (
+                <div className="flex justify-center border-b border-white/5 bg-zoyd-black/60 px-4 py-2">
+                  <button
+                    type="button"
+                    onClick={chargerMessagesAnciens}
+                    className="touch-target px-3 py-1 text-[10px] font-display font-black tracking-widest uppercase italic text-white/70 hover:text-white hover:bg-white/5 border border-white/10"
+                  >
+                    Voir les {messagesMasques} message{messagesMasques > 1 ? 's' : ''} plus ancien{messagesMasques > 1 ? 's' : ''}
+                  </button>
+                </div>
+              )}
+
               <div ref={containerRef} role="log" aria-live="polite" className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                 <AnimatePresence>
                   {currentMessages.length === 0 && (
@@ -403,7 +466,11 @@ const ChatPage: React.FC = () => {
                       </span>
                     </motion.div>
                   )}
-                  {currentMessages.map((message) => {
+                  {/* FENETRAGE : on rend `messagesVisibles` (les derniers),
+                      pas `currentMessages` (tous). Le store garde 500 messages
+                      par canal ; les rendre tous d un coup suffisait a
+                      saccader le scroll sur telephone d entree de gamme. */}
+                  {messagesVisibles.map((message) => {
                     const isMe = message.senderId === user?.id;
 
                     if (message.isSystem) {

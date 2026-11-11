@@ -78,7 +78,14 @@ const RootLayout: React.FC = () => {
     fetchAllMatchesFromDb().then((matches) => {
       ecrireSiMemeCompte(() => useMatchStore.getState().replaceFromServer(matches));
     }).catch((err) => {
+      // L erreur est un ETAT, pas un simple log : une liste de matchs vide
+      // se lit comme « il n y a aucun match », et le joueur attendait un
+      // match qui n arriverait jamais, sans savoir que la lecture avait
+      // echoue. Le hub affiche un bandeau « Reessayer ».
       console.warn('[RootLayout] Failed to fetch matches:', err?.message);
+      ecrireSiMemeCompte(() => useMatchStore.getState().setLoadError(
+        err?.message || 'Chargement des matchs impossible',
+      ));
     });
 
     fetchServerTournaments().then((res) => {

@@ -675,9 +675,15 @@ const applyResultSettlement = async (match, result) => {
     // quand `arbiterErrors` est encore vide - une creance naissante n'etait
     // donc jamais ecrite, et la file de reprise ne captait que les matchs
     // donnes d'etat exteriorises. La note devient censee apres la tentative.
-    if (!settlementErrors.length && arbiterErrors.length) {
+    // La creance s'ecrit INDEPENDAMMENT de `settlementErrors` : si un JOUEUR
+    // ET l'arbitre ont echoue, aucune des deux anciennes branches ne
+    // s'executait - la commission due (2 % du pot) disparaitait donc sans
+    // trace : ni dans `pendingArbiterFee`, ni dans la file de reprise
+    // `retryPendingArbiterFees`, ni dans l'observabilite. L'arbitre, qui
+    // avait fait son travail, perdait sa part sans que rien le signale.
+    if (arbiterErrors.length) {
       match.pendingArbiterFee = roundAmount(arbiterFee);
-    } else if (!arbiterErrors.length) {
+    } else {
       // La creance est soldee des que la commission aboutit : la laisser
       // afficherait une dette inexistante.
       delete match.pendingArbiterFee;

@@ -34,6 +34,7 @@ import { FedaPay, Transaction, Payout } from 'fedapay';
 import { depositToWallet, debitFromWallet, refundLockedEntry } from './wallet-engine.mjs';
 import { hasTransactionBeenProcessed, claimTransaction, releaseTransaction, makeError } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
+import { roundAmount } from './utils.mjs';
 
 const log = createLogger('payment');
 
@@ -132,7 +133,11 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
     }
 
     // 3. Calculer les Zoyd Coins (1 ZC = 10 FCFA) + validation
-    const amountZC = transaction.amount / 10;
+    // Arrondi comme tout montant monetaire : le credit est arrondi, mais la
+    // valeur renvoyee au client et celle stockee dans
+    // `processed_transactions` ne l etaient pas - le joueur voyait
+    // 100.29999999999999715 ZC au lieu de 100.30.
+    const amountZC = roundAmount(transaction.amount / 10);
     if (!Number.isFinite(amountZC) || amountZC <= 0) {
       throw makeError('INVALID_AMOUNT', 'Montant de transaction FedaPay invalide.');
     }

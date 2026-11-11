@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useFriendsStore } from '../stores/friendsStore';
 
@@ -131,5 +131,108 @@ describe('Selecteurs zustand — reference stable', () => {
       x.length === y.length && x.every((v, i) => v === y[i]);
     expect(egal(a, b)).toBe(true);
     expect(egal(a, [{ id: 1 }, { id: 2 }])).toBe(false);
+  });
+});
+
+/**
+ * REGLE GENERALE : aucun selecteur de store ne doit etre APPELE dans le
+ * corps d'un composant.
+ *
+ * Pourquoi une regle, plutot qu'un test par composant
+ * ---------------------------------------------------
+ * Le defaut s est reproduit : chaque fois qu un composant appele un
+ * accesseur qui CONSTRUIT un tableau (`getOnlineFriends`, `getRecent`), il
+ * faut s en souvenir. Le Dashboard etait casse par cela ; puis
+ * `FriendsWidget`, monte dans le hub MJ — la page la plus frequentee.
+ *
+ * Une regle mechanique le couvre TOUS, y compris le composant ecrit dans
+ * six mois. Le test echoue des qu un appel direct apparait dans un corps de
+ * composant, en nommant le fichier et la ligne.
+ *
+ * Ce que la regle autorise
+ * -----------------------
+ * 1. Prendre l ACCESSEUR (`const get = useStore((s) => s.getX)`) : la
+ *    reference de la fonction est stable.
+ * 2. L APPELER dans un `useMemo` : le resultat est recalcule quand les
+ *    dependances changent.
+ * 3. S abonner directement aux DONNEES (`useStore((s) => s.friends)`).
+ *
+ * Ce qu elle interdit : `const x = getX()` dans le corps — la reference
+ * change a chaque rendu, et `useSyncExternalStore` boucle.
+ */
+describe('Selecteurs de store — regle : jamais appeles hors d un hook', () => {
+  const racine = resolve('src');
+  const fichiersComposants: string[] = [];
+
+  const parcourir = (dossier: string) => {
+    for (const entree of readdirSync(dossier, { withFileTypes: true })) {
+      const chemin = join(dossier, entree.name);
+      if (entree.isDirectory()) {
+        parcourir(chemin);
+        continue;
+      }
+      if (!entree.name.endsWith('.tsx')) continue;
+      if (entree.name.endsWith('.test.tsx')) continue;
+      fichiersComposants.push(chemin);
+    }
+  };
+  parcourir(racine);
+
+  it('la regle a des fichiers a inspecter (sinon elle ne verifierait rien)', () => {
+    expect(fichiersComposants.length).toBeGreaterThan(10);
+  });
+
+  it('aucun composant n appelle un accesseur de LECTURE hors d un hook', () => {
+    const coupables: string[] = [];
+
+    for (const fichier of fichiersComposants) {
+      const source = readFileSync(fichier, 'utf8');
+      const lignes = source.split(/\r?\n/);
+
+      // On repere les accesseurs de LECTURE pris au store :
+      //   `const getX = useYStore((s) => s.getZ)`.
+      // Une ACTION (`s.logout`, `s.markAllAsRead`) est une FONCTION, dont la
+      // reference est stable : l appeler dans un gestionnaire de clic est
+      // correct et sans effet sur le rendu. Seules les LECTURES comptent.
+      const accesseurs = new Map<string, string>();
+      for (const ligne of lignes) {
+        const m = /const\s+(\w+)\s*=\s*use\w+Store\(\(s\)\s*=>\s*s\.(get\w+)\)/.exec(ligne);
+        if (m) accesseurs.set(m[1], m[2]);
+      }
+      if (accesseurs.size === 0) continue;
+
+      for (let i = 0; i < lignes.length; i += 1) {
+        const ligne = lignes[i];
+        for (const [nom] of accesseurs) {
+          const appel = new RegExp(`\\b${nom}\\s*\\(\\s*\\)`).exec(ligne);
+          if (!appel) continue;
+          // La DEFINITION de l accesseur n est pas un appel.
+          if (new RegExp(`=\\s*${nom}\\s*\\(`).test(ligne)) continue;
+
+          // Un appel est legitime s il est dans un hook. Le hook peut etre
+          // sur la meme ligne, ou ouvrir un corps multi-lignes dont l appel
+          // est a deux lignes du `useMemo(`.
+          const contexte = [lignes[i - 1] || '', lignes[i - 2] || '', ligne].join('\n');
+          if (/useMemo\(|useCallback\(|useEffect\(/.test(contexte)) continue;
+
+          coupables.push(`${fichier}:${i + 1}  ${ligne.trim()}`);
+        }
+      }
+    }
+
+    expect(
+      coupables.length,
+      'accesseurs de LECTURE appeles hors d un hook '
+      + '(reference instable -> boucle de rendu) :\n  ' + coupables.join('\n  '),
+    ).toBe(0);
+  });
+  it('FriendsWidget est bien corrige (le cas reel)', () => {
+    const source = readFileSync(
+      resolve('src/app/components/social/FriendsWidget.tsx'),
+      'utf8',
+    );
+    // Avant : `const onlineFriends = getOnlineFriends();` — appel dans le corps.
+    expect(source).not.toMatch(/const\s+onlineFriends\s*=\s*getOnlineFriends\(\)/);
+    expect(source).toMatch(/useShallow\(\(s\)\s*=>\s*s\.getOnlineFriends\(\)\)/);
   });
 });

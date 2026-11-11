@@ -19,6 +19,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useShallow } from 'zustand/react/shallow';
 import { toast } from '../../lib/toast';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -54,7 +55,6 @@ const FriendsWidget: React.FC = () => {
   const declineRequest = useFriendsStore((s) => s.declineRequest);
   const removeFriend = useFriendsStore((s) => s.removeFriend);
   const unblockUser = useFriendsStore((s) => s.unblockUser);
-  const getOnlineFriends = useFriendsStore((s) => s.getOnlineFriends);
 
   const [isOpen, setIsOpen] = useState(true);
   const [search, setSearch] = useState('');
@@ -69,7 +69,16 @@ const FriendsWidget: React.FC = () => {
   // plus rien.
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
-  const onlineFriends = getOnlineFriends();
+  // `getOnlineFriends` CONSTRUIT un tableau (il filtre la liste des amis).
+  // L appeler DANS le rendu renvoyait donc un NOUVEAU tableau a chaque
+  // rendu : `useSyncExternalStore` estimait le store modifie, re-rendait,
+  // relisait — « Maximum update depth exceeded » — et le widget tombait sur
+  // son error boundary.
+  //
+  // Meme defaut que le Dashboard (corrige dans le meme lot) : l abonnement
+  // porte sur les DONNEES, avec `useShallow` pour que la reference ne
+  // change que si le CONTENU change.
+  const onlineFriends = useFriendsStore(useShallow((s) => s.getOnlineFriends()));
   const filteredFriends = useMemo(
     () => friends.filter((friend) => friend.pseudo.toLowerCase().includes(search.toLowerCase())),
     [friends, search]

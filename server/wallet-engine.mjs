@@ -325,11 +325,38 @@ export const refundRejectedWithdrawal = async (userId, montant, refundKey, conte
       // credit dans un cycle concurrent.
       trackWinningsKey(userId, refundKey);
 
+      // La transaction de retrait ET l entree du cumul journalier sont
+      // corrigees ICI, dans la meme ECRITURE que le remboursement.
+      //
+      // Elles ne l etaient que via le TAG `failed`, donc SEULEMENT si
+      // l ecriture du tag reussissait. Un tag en echec laissait :
+      //   - l historique classer le retrait en `completed` — donc le
+      //     COMPTER sur le plafond des 24 h, alors que l argent avait ete
+      //     rendu ;
+      //   - l entree du registre toujours presente.
+      // Le joueur, REMBOURSE, se voyait plafonne sans trace : un retrait
+      // refuse lui coutait de l argent alors qu il n avait rien recu.
+      const base = context.clearRetraitCumulTxId
+        ? {
+          ...wallet,
+          retraitCumul: (Array.isArray(wallet.retraitCumul) ? wallet.retraitCumul : [])
+            .filter((e) => e?.txId !== context.clearRetraitCumulTxId),
+          transactions: (Array.isArray(wallet.transactions) ? wallet.transactions : [])
+            .map((tx) => (tx?.id === context.clearRetraitCumulTxId
+              ? {
+                ...tx,
+                status: 'failed',
+                metadata: { ...(tx.metadata || {}), payoutStatus: 'failed' },
+              }
+              : tx)),
+        }
+        : wallet;
+
       return withTransaction(
         {
-          ...wallet,
-          cashBalance: roundAmount(wallet.cashBalance + safeAmount),
-          winningsKeys: [...(Array.isArray(wallet.winningsKeys) ? wallet.winningsKeys : []), refundKey],
+          ...base,
+          cashBalance: roundAmount(base.cashBalance + safeAmount),
+          winningsKeys: [...(Array.isArray(base.winningsKeys) ? base.winningsKeys : []), refundKey],
         },
         {
           type: 'refund',
@@ -812,7 +839,13 @@ export const reconcilePendingWithdrawals = async (
         // La trace accepte un retrait sans cle d'idempotence : `payoutId`
         // arrive a toutes les sources de la file et est unique par dette.
         if (montant > 0) {
-          await refund(item.userId, montant, { idempotencyKey: item.idempotencyKey, payoutId: item.payoutId });
+          await refund(item.userId, montant, {
+            idempotencyKey: item.idempotencyKey,
+            payoutId: item.payoutId,
+            // Le txId permet a l appelant de retirer l entree du cumul
+            // journalier DANS la meme ecriture que le remboursement.
+            txId: item.tx?.id || null,
+          });
         } else {
           warn('Retrait en attente resolu sans transaction : aucun montant a rembourser', {
             userId: item.userId, payoutId: item.payoutId,

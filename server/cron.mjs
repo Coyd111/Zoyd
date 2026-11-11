@@ -69,8 +69,32 @@ import { reconcilePendingWithdrawals, refundRejectedWithdrawal, refundLockedEntr
 import { retrieveFedaPayPayout, payoutSucceeded, payoutFailed } from './payment-engine.mjs';
 import { saveBrLobbies, saveMatches, saveTournaments, saveLeagues } from './state-helpers.mjs';
 import { getNow } from './utils.mjs';
+// BAIL DISTRIBUE : les verrous de processus (`withMatchMutex`...) et les
+// drapeaux `*Running` ne valent RIEN entre deux instances. Or deux instances
+// coexistent pendant un deploiement (l'ancienne qui termine, la nouvelle qui
+// demarre) : les deux balayent les reglements en attente, l'appel a FedaPay
+// part deux fois, les compteurs avancent deux fois.
+//
+// Le bail est une ligne en base par job, acquise par INSERT qui refuse le
+// doublon (23505). Il expire seul : une instance disparue ne gele pas le
+// job pour toujours.
+import { withCronLease } from './cron-lease.mjs';
 
 const log = createLogger('cron');
+
+/**
+ * Enveloppe un job de fond pour qu'il ne s'execute que sur UNE instance.
+ *
+ * Le bail est rendu dans le `finally` de `withCronLease` : un job qui echoue
+ * ne doit pas laisser le verrou bloque pendant toute la duree du bail.
+ *
+ * @param {string} nomJob - identite stable du job (c'est la CLE en base)
+ * @param {Function} fn - le job
+ * @returns {Function} un wrapper utilisable dans `setInterval`/`setTimeout`
+ */
+const sousBail = (nomJob, fn) => async () => {
+  await withCronLease(nomJob, fn);
+};
 
 let arbiterFeeRetryRunning = false;
 let pendingSettlementRunning = false;
@@ -502,8 +526,8 @@ export const initCronJobs = () => {
   // Premier passage différé au boot (P8 C4), comme les jobs d'argent :
   // décalé a 35 s, juste après le sweep des règlements (15 s) qui partage
   // le même verrou de match.
-  setTimeout(() => { void runMatchCleanup(); }, 35 * 1000);
-  setInterval(() => { void runMatchCleanup(); }, 6 * 60 * 60 * 1000);
+  setTimeout(sousBail('runMatchCleanup', runMatchCleanup), 35 * 1000);
+  setInterval(sousBail('runMatchCleanup', runMatchCleanup), 6 * 60 * 60 * 1000);
 
   // Fermeture automatique des inscriptions ligue — toutes les heures
   setInterval(async () => {
@@ -691,14 +715,14 @@ export const initCronJobs = () => {
   // `'pending'`, puis la monnaie. Un arret entre les deux laissait le match
   // sans reprise. La fonction est exportee (top-level, comme
   // `sweepPendingArbiterFees`) pour etre testee directement.
-  setInterval(() => { void sweepPendingSettlements(); }, 60 * 1000);
+  setInterval(sousBail('sweepPendingSettlements', sweepPendingSettlements), 60 * 1000);
   // Au boot : un redemarrage Render est justement le cas le plus probable.
-  setTimeout(() => { void sweepPendingSettlements(); }, 15 * 1000);
+  setTimeout(sousBail('sweepPendingSettlements', sweepPendingSettlements), 15 * 1000);
 
   // Commission d'arbitre non versee : le job est defini au niveau module
   // (`sweepPendingArbiterFees`) pour etre testable directement.
-  setInterval(() => { void sweepPendingArbiterFees(); }, 30 * 60 * 1000);
-  setTimeout(() => { void sweepPendingArbiterFees(); }, 45 * 1000);
+  setInterval(sousBail('sweepPendingArbiterFees', sweepPendingArbiterFees), 30 * 60 * 1000);
+  setTimeout(sousBail('sweepPendingArbiterFees', sweepPendingArbiterFees), 45 * 1000);
 
   // Reglements BR interrompus (5 min + au boot).
   //
@@ -711,8 +735,8 @@ export const initCronJobs = () => {
   //
   // 5 min : un joueur a paye son pass et attend sa prime. C'est de l'argent
   // qui doit bouger, contrairement a une dette de commission d arbitre.
-  setInterval(() => { void sweepPendingBrSettlements(); }, 5 * 60 * 1000);
-  setTimeout(() => { void sweepPendingBrSettlements(); }, 60 * 1000);
+  setInterval(sousBail('sweepPendingBrSettlements', sweepPendingBrSettlements), 5 * 60 * 1000);
+  setTimeout(sousBail('sweepPendingBrSettlements', sweepPendingBrSettlements), 60 * 1000);
 
   // Salons BR en sequestre sans issue (30 min + au boot).
   //
@@ -725,13 +749,13 @@ export const initCronJobs = () => {
   // les ligues et les tournois, pas les salons BR. Et un salon BR n'a pas
   // d'`expiresAt`, alors qu'un match en a un (14 jours).
   // 30 min : un salon programme expire 2 h apres son heure : pas urgent.
-  setInterval(() => { void sweepStaleBrLobbies(); }, 30 * 60 * 1000);
-  setTimeout(() => { void sweepStaleBrLobbies(); }, 90 * 1000);
+  setInterval(sousBail('sweepStaleBrLobbies', sweepStaleBrLobbies), 30 * 60 * 1000);
+  setTimeout(sousBail('sweepStaleBrLobbies', sweepStaleBrLobbies), 90 * 1000);
 
   // Fin de fenetre de confirmation — toutes les 60 s.
   // La fonction est exportee (top-level) pour etre testee directement.
-  setInterval(() => { void sweepExpiredConfirmations(); }, 60 * 1000);
-  setTimeout(() => { void sweepExpiredConfirmations(); }, 25 * 1000);
+  setInterval(sousBail('sweepExpiredConfirmations', sweepExpiredConfirmations), 60 * 1000);
+  setTimeout(sousBail('sweepExpiredConfirmations', sweepExpiredConfirmations), 25 * 1000);
 
   // Reprise des remboursements de tournoi restés en echec — toutes les 6 h +
   // au boot. Sans ce retry, un refund rate (utilisateur supprime, mutex, panne
@@ -772,8 +796,8 @@ export const initCronJobs = () => {
       refundRetryRunning = false;
     }
   };
-  setInterval(() => { void sweepPendingRefunds(); }, 6 * 60 * 60 * 1000);
-  setTimeout(() => { void sweepPendingRefunds(); }, 20 * 1000);
+  setInterval(sousBail('sweepPendingRefunds', sweepPendingRefunds), 6 * 60 * 60 * 1000);
+  setTimeout(sousBail('sweepPendingRefunds', sweepPendingRefunds), 20 * 1000);
 
   // Gains de tournoi non verses (6 h + au boot).
   //
@@ -805,8 +829,8 @@ export const initCronJobs = () => {
       payoutRetryRunning = false;
     }
   };
-  setInterval(() => { void sweepPendingTournamentPayouts(); }, 6 * 60 * 60 * 1000);
-  setTimeout(() => { void sweepPendingTournamentPayouts(); }, 25 * 1000);
+  setInterval(sousBail('sweepPendingTournamentPayouts', sweepPendingTournamentPayouts), 6 * 60 * 60 * 1000);
+  setTimeout(sousBail('sweepPendingTournamentPayouts', sweepPendingTournamentPayouts), 25 * 1000);
   // Gains de ligue non verses (6 h + au boot).
   //
   // Les ligues avaient DEUX files de reprise (remboursements de saisons
@@ -836,8 +860,8 @@ export const initCronJobs = () => {
       leaguePayoutRetryRunning = false;
     }
   };
-  setInterval(() => { void sweepPendingLeaguePayouts(); }, 6 * 60 * 60 * 1000);
-  setTimeout(() => { void sweepPendingLeaguePayouts(); }, 30 * 1000);
+  setInterval(sousBail('sweepPendingLeaguePayouts', sweepPendingLeaguePayouts), 6 * 60 * 60 * 1000);
+  setTimeout(sousBail('sweepPendingLeaguePayouts', sweepPendingLeaguePayouts), 30 * 1000);
 
   // Retraits « peut-etre partis » : le payout peut avoir ete traite par FedaPay
   // alors que la reponse s est perdue. La route refuse alors de rembourser — a
@@ -882,6 +906,9 @@ export const initCronJobs = () => {
           {
             description: 'Remboursement - retrait rejete par le prestataire',
             metadata: { reason: 'PAYOUT_REJECTED', payoutId: extra?.payoutId ?? null },
+            // Le retrait est rembourse : il ne doit plus peser sur le
+            // plafond des 24 h, meme si le tag `failed` echoue ensuite.
+            clearRetraitCumulTxId: extra?.txId ?? null,
           },
         ),
         (userId, key) => forgetWithdrawalKey(userId, key),
@@ -901,8 +928,8 @@ export const initCronJobs = () => {
       withdrawalReconcileRunning = false;
     }
   };
-  setInterval(() => { void sweepPendingWithdrawals(); }, 30 * 60 * 1000);
-  setTimeout(() => { void sweepPendingWithdrawals(); }, 45 * 1000);
+  setInterval(sousBail('sweepPendingWithdrawals', sweepPendingWithdrawals), 30 * 60 * 1000);
+  setTimeout(sousBail('sweepPendingWithdrawals', sweepPendingWithdrawals), 45 * 1000);
 
   // Ligues en sequestre sans issue — libere les passes bloques (toutes les
   // 6 h + au boot). Deux etats (C4, audit-2) : `registering` jamais fermee
@@ -943,8 +970,8 @@ export const initCronJobs = () => {
       staleLeagueRunning = false;
     }
   };
-  setInterval(() => { void sweepStaleLeagues(); }, 6 * 60 * 60 * 1000);
-  setTimeout(() => { void sweepStaleLeagues(); }, 22 * 1000);
+  setInterval(sousBail('sweepStaleLeagues', sweepStaleLeagues), 6 * 60 * 60 * 1000);
+  setTimeout(sousBail('sweepStaleLeagues', sweepStaleLeagues), 22 * 1000);
 
   // Reprise des remboursements de ligue restes en echec — toutes les 6 h + au
   // boot. Meme raison que les tournois : un refund rate (compte supprime,
@@ -985,6 +1012,6 @@ export const initCronJobs = () => {
       leagueRefundRetryRunning = false;
     }
   };
-  setInterval(() => { void sweepPendingLeagueRefunds(); }, 6 * 60 * 60 * 1000);
-  setTimeout(() => { void sweepPendingLeagueRefunds(); }, 24 * 1000);
+  setInterval(sousBail('sweepPendingLeagueRefunds', sweepPendingLeagueRefunds), 6 * 60 * 60 * 1000);
+  setTimeout(sousBail('sweepPendingLeagueRefunds', sweepPendingLeagueRefunds), 24 * 1000);
 };

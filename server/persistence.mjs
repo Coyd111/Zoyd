@@ -70,6 +70,10 @@ const scryptAsync = promisify(crypto.scrypt);
 import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
 import { roundAmount, getNow, makeError } from './utils.mjs';
+// Feuille : l'identite d'instance est utilisee par la persistance ET par le
+// bail de cron, sans cycle entre les deux.
+import { INSTANCE_ID } from './instance-id.mjs';
+import { getCronLeaseHealth } from './cron-lease.mjs';
 // Module feuille : les regles pays/telephone doivent etre accessibles ici sans
 // cycle d'import (payment-engine importe persistence).
 import { isAnySupportedPhone, phoneFormatErrorAll } from './payout-countries.mjs';
@@ -1122,6 +1126,80 @@ let reloadInProgress = false;
 let stateTrusted = !supabase;
 let stateLoadError = null;
 
+// Identite de CETTE instance. Pendant un deploiement, Render fait
+// coexister l'ancienne et la nouvelle instance : les deux servent en
+// parallele, avec deux etats en memoire differents. C'est une limite
+// CONNUE et BORNEE (le garde-fou multi-processus ne voit pas ce cas,
+// cf. single-process-guard.mjs), mais elle doit etre VISIBLE : un
+// operateur qui voit deux identites sur la sonde publique sait qu'une
+// fenetre multi-instance est ouverte.
+//
+// Le calcul vit dans `instance-id.mjs` (module feuille) : le bail de cron
+// l'utilise aussi, pour designer le proprietaire du bail — et il ne doit
+// pas y avoir deux definitions qui divergent.
+const PROCESS_STARTED_AT = new Date().toISOString();
+
+export const getInstanceInfo = () => ({
+  instanceId: INSTANCE_ID,
+  processStartedAt: PROCESS_STARTED_AT,
+  pid: process.pid,
+});
+
+// Recuperation apres panne : une ecriture d etat qui echoue parce que la
+// base ne repondait plus laisse l etat « fiable » sur le papier, alors
+// qu il ne l est plus. Le drapeau est donc rabaisse et un rechargement
+// est programme — sans bloquer les ecritures (une panne transitoire ne
+// doit pas arreter la plateforme).
+let stateRecoveryTimer = null;
+// Echecs d ecriture CONSECUTIFS : le rechargement n est programme qu au
+// troisieme. Il vide les caches memoire avant de recharger, donc un
+// declenchement sur chaque hoquet serait disproportionne.
+let stateWriteFailures = 0;
+const scheduleStateRecovery = () => {
+  if (stateRecoveryTimer || reloadInProgress) return;
+  stateRecoveryTimer = setTimeout(async () => {
+    stateRecoveryTimer = null;
+    // `forceReloadFromSupabase` RENVOIE un booleen (il n leve pas) : un
+    // `try/catch` ici ne verrait jamais l echec, et le compteur serait remis
+    // a zero alors que l etat n a pas ete recharge. C'est ce qui se
+    // passait : le journal annoncait « Etat recharge » sur un echec.
+    const ok = await forceReloadFromSupabase();
+    if (ok) {
+      stateWriteFailures = 0;
+      log.info('Etat recharge apres panne d ecriture');
+    } else {
+      // L etat est-charge est parti dans le vide sans etre remplace :
+      // `loadFromSupabase` a pose `stateTrusted = false`. Les ecritures
+      // restent refusees (fail closed) — c'est le meme arbitrage qu au boot.
+      log.error('Rechargement de l etat apres panne : echec', {
+        consecutiveFailures: stateWriteFailures,
+      });
+      // On retente : une base revenue ne doit pas laisser le serveur en
+      // lecture seule pour le reste de sa vie.
+      scheduleStateRecovery();
+    }
+  }, 5000);
+  if (typeof stateRecoveryTimer.unref === 'function') stateRecoveryTimer.unref();
+};
+
+/**
+ * Signale une ecriture d etat IMPOSSIBLE (base injoignable ou trop lente).
+ *
+ * L etat n est pas declare « non fiable » sur-le-champ : cela refuserait
+ * TOUTES les ecritures, y compris sur une panne passagere. Mais l anomalie
+ * est consignee (visible dans `/api/health`) et un rechargement est programme
+ * apres trois echecs consecutifs.
+ */
+export const markStateWriteFailure = (error) => {
+  stateWriteFailures += 1;
+  stateLoadError = `Ecriture impossible : ${error?.message || String(error)}`;
+  log.error('Ecriture d etat impossible', {
+    message: error?.message || String(error),
+    consecutiveFailures: stateWriteFailures,
+  });
+  if (stateWriteFailures >= 3) scheduleStateRecovery();
+};
+
 export const isReloadInProgress = () => reloadInProgress;
 export const isStateTrusted = () => stateTrusted;
 export const getStateLoadError = () => stateLoadError;
@@ -1188,6 +1266,10 @@ export const forceReloadFromSupabase = async () => {
  */
 export const getHealthInfo = () => ({
   supabaseConnected: !!supabase,
+  // Identite de CETTE instance : pendant un deploiement, deux instances
+  // servent en parallele. La sonde publique les montre : un operateur qui
+  // en voit deux sait qu une fenetre multi-instance est ouverte.
+  ...getInstanceInfo(),
   // false = chargement incomplet : toutes les écritures d'état sont refusées
   // pour éviter une purge destructive. Doit remonter en alerte si false.
   stateTrusted,
@@ -1234,6 +1316,12 @@ export const getHealthInfo = () => ({
   sanctionsPersisted,
   loginAttemptRows: loginAttemptsRows,
   loginAttemptError: loginAttemptsError,
+  // true = la table `cron_leases` est lisible : les jobs de fond sont
+  // proteges contre l execution en double sur deux instances.
+  // false = absente (migration `supabase/migrate-cron-leases.sql` non
+  // jouee) : deux instances peuvent balayer le meme etat en parallele.
+  // null = pas encore sonde.
+  cronLease: getCronLeaseHealth(),
 
   // Quel commit tourne EN CE MOMENT. Sans ca, un deploiement manuel en
   // retard est indiscernable d'un probleme : on lisait un log de deploiement
@@ -2043,6 +2131,65 @@ const memoryWithdrawalKeys = new Map(); // userId -> Set<idempotencyKey>
 const MAX_TRACKED_WITHDRAWAL_KEYS = 500;
 
 /**
+ * Plafond du nombre de JOUEURS suivis par chaque registre d'idempotence.
+ *
+ * Le registre lui-meme etait borne (500 cles par joueur), mais le nombre de
+ * JOUEURS suivis, lui, ne l'etait pas : une Map entree par joueur, jamais
+ * purgee. Sur une base qui accumule les comptes, la RAM du processus
+ * grossissait lineairement avec le nombre de joueurs ayant deja retire ou
+ * gagne — et ce processus ne redemarre pas (Render le garde en vie).
+ *
+ * Chaque entree vaut jusqu'a 500 cles (~20 ko) : 5 000 joueurs suivis
+ * representent deja ~100 mo de cles en memoire, pour une information qui
+ * existe DEJA dans le portefeuille de chaque joueur (champ
+ * `wallet.withdrawalKeys` / `wallet.winningsKeys`).
+ *
+ * INVARIANT : l'eviction est SANS PERTE. Le registre memoire n'est qu'un
+ * cache devant le portefeuille ; a la lecture suivante, il est reconstruit
+ * depuis le portefeuille (cf. `getWithdrawalKeys` / `getWinningsKeys`).
+ * Evicter une entree ne perd donc aucune cle : elle est relue a la demande.
+ */
+const MAX_TRACKED_KEY_USERS = 5000;
+
+/**
+ * Evince l'entree la plus ancienne d'un registre, SAUF celle du joueur
+ * demande.
+ *
+ * PIEGE : `Map.set` sur une cle EXISTANTE ne change pas sa position dans
+ * l'ordre d'insertion. Evicter « la plus ancienne » pourrait donc evicter
+ * le joueur que l'on vient de servir : il resterait sans index, et
+ * `getWithdrawalKeys(...).has(key)` leverait sur `undefined`.
+ */
+const evicterJoueurRegistre = (map, userId) => {
+  if (map.size <= MAX_TRACKED_KEY_USERS) return;
+  for (const candidat of map.keys()) {
+    if (candidat === userId) continue;
+    map.delete(candidat);
+    return;
+  }
+};
+
+/**
+ * Les cles d'idempotence des retraits dont le PAIEMENT est en attente.
+ *
+ * Une telle cle DOIT rester dans le registre : c'est elle qui empeche un
+ * rejeu de declencher un second transfert Mobile Money pendant que le
+ * premier est encore en suspens (FedaPay a pu envoyer l'argent sans que la
+ * reponse arrive).
+ *
+ * C'est la QUELE entree de `payoutsEnAttente` qui porte la cle
+ * (`idempotencyKey`) : pas besoin de relire l'historique plafonne a 200.
+ */
+const clesEnAttenteDePaiement = (userId) => {
+  const file = memoryUsers.get(userId)?.wallet?.payoutsEnAttente;
+  const cles = new Set();
+  for (const entree of Array.isArray(file) ? file : []) {
+    if (entree?.idempotencyKey) cles.add(entree.idempotencyKey);
+  }
+  return cles;
+};
+
+/**
  * Cle d'idempotence des retraits : TENUE DANS LE PORTEFEUILLE, comme les gains.
  *
  * Avant, l'index vivait dans une Map separee, donc en RAM pure, et le seul filet
@@ -2062,6 +2209,10 @@ const getWithdrawalKeys = (userId) => {
     // survit a un redemarrage.
     const stocke = memoryUsers.get(userId)?.wallet?.withdrawalKeys;
     memoryWithdrawalKeys.set(userId, new Set(Array.isArray(stocke) ? stocke : []));
+    // Le nombre de joueurs suivis est borne : le registre est un CACHE
+    // devant le portefeuille, pas la source de verite. Une entree evincee
+    // est relue a la demande (ligne ci-dessus).
+    evicterJoueurRegistre(memoryWithdrawalKeys, userId);
   }
   return memoryWithdrawalKeys.get(userId);
 };
@@ -2104,7 +2255,12 @@ export const hasActiveWithdrawalKey = (userId, key, transactions = []) => {
   const inHistory = liste.some((tx) => tx?.metadata?.idempotencyKey === key
     && tx.type === 'withdraw'
     && tx.metadata?.payoutStatus !== 'failed');
-  return active || inHistory;
+  // La file des paiements EN ATTENTE est la source DURABLE de cette cle : elle
+  // n'est pas tronquee (contrairement a l'historique, plafonne a 200, et au
+  // champ `withdrawalKeys`, plafonne a 500). C'est donc elle qui fait foi
+  // quand l'index memoire a oublie une cle.
+  const inPaiementsEnAttente = clesEnAttenteDePaiement(userId).has(key);
+  return active || inHistory || inPaiementsEnAttente;
 };
 
 /** Enregistre une cle au moment du debit. */
@@ -2113,9 +2269,24 @@ export const trackWithdrawalKey = (userId, key) => {
   const set = getWithdrawalKeys(userId);
   // Garde-fou memoire : un joueur tres actif ne doit pas faire croitre l'index
   // indefiniment. On repart de la valeur recente, pas de l'historique infini.
+  //
+  // PIEGE : on n'evince PAS une cle dont le PAIEMENT EST EN ATTENTE. Cette
+  // cle-la est celle qui empeche un rejeu de declencher un SECOND transfert
+  // Mobile Money pendant que le premier est en suspens (FedaPay a pu envoyer
+  // l'argent sans que la reponse arrive). L'evicer pour gagner de la place
+  // rouvrirait exactement la fenetre que l'index existe pour fermer.
+  //
+  // Consequence : un joueur ne peut pas avoir plus de
+  // `MAX_TRACKED_WITHDRAWAL_KEYS` retraits EN ATTENTE. C'est le prix de la
+  // securite, et il est borne : le nombre de retraits simultanement en
+  // suspens est limite par le taux de succes de FedaPay, pas par le joueur.
   if (set.size >= MAX_TRACKED_WITHDRAWAL_KEYS) {
-    const oldest = set.values().next().value;
-    set.delete(oldest);
+    const enAttente = clesEnAttenteDePaiement(userId);
+    for (const candidat of set) {
+      if (enAttente.has(candidat)) continue;
+      set.delete(candidat);
+      break;
+    }
   }
   set.add(key);
   // Reporte dans le portefeuille. La persistance se fait avec l'ecriture
@@ -2139,6 +2310,26 @@ export const forgetWithdrawalKey = (userId, key) => {
   memoryWithdrawalKeys.get(userId)?.delete(key);
   syncWithdrawalKeys(userId, memoryWithdrawalKeys.get(userId));
 };
+
+/**
+ * Tailles des registres d'idempotence, et crochets de test.
+ *
+ * Le registre est un CACHE devant le portefeuille : une entree peut
+ * disparaitre du cache sans qu'aucune cle ne soit perdue (elle est relue
+ * depuis `wallet.withdrawalKeys` / `wallet.winningsKeys`). `evictAll` permet
+ * au test de reproduire ce cas — le plus defavorable — sans dependre du
+ * plafond (5 000 joueurs a creer pour le atteindre).
+ */
+export const getIdempotencyRegistrySizesForTests = () => ({
+  withdrawalUsers: memoryWithdrawalKeys.size,
+  winningsUsers: memoryWinningsKeys.size,
+  maxUsers: MAX_TRACKED_KEY_USERS,
+  maxKeysPerUser: MAX_TRACKED_WITHDRAWAL_KEYS,
+  evictAll: () => {
+    memoryWithdrawalKeys.clear();
+    memoryWinningsKeys.clear();
+  },
+});
 
 /** Reconstruit l'index depuis les portefeuilles charges (apres redemarrage). */
 export const hydrateWithdrawalKeys = () => {
@@ -2194,7 +2385,16 @@ const MAX_TRACKED_WINNINGS_KEYS = 500;
 const WINNINGS_TX_TYPES = new Set(['prize_win', 'arbitration_fee']);
 
 const getWinningsKeys = (userId) => {
-  if (!memoryWinningsKeys.has(userId)) memoryWinningsKeys.set(userId, new Set());
+  if (!memoryWinningsKeys.has(userId)) {
+    // Reconstruction depuis le portefeuille : c'est la source de verite.
+    // SANS cette reconstruction, une entree evincee du cache repartirait
+    // d'un Set VIDE : le gain serait recreditable. C'est l'equivalent du
+    // `hydrateWinningsKeys` pour un joueur precis.
+    const stocke = memoryUsers.get(userId)?.wallet?.winningsKeys;
+    memoryWinningsKeys.set(userId, new Set(Array.isArray(stocke) ? stocke : []));
+    // Nombre de joueurs suivis borne (cf. `MAX_TRACKED_KEY_USERS`).
+    evicterJoueurRegistre(memoryWinningsKeys, userId);
+  }
   return memoryWinningsKeys.get(userId);
 };
 
@@ -2512,7 +2712,19 @@ const probeLoginAttemptsTable = async () => {
   }
 };
 
-/** Lit l'etat de verrouillage, en memoire d'abord puis en base. */
+// ─── BAIL DISTRIBUE DES TRAVAUX DE FOND ─────────────────────────────────────
+//
+// L'IMPLEMENTATION du bail vit dans `cron-lease.mjs` (module feuille : il
+// importe `supabase.mjs` directement). Raison : `cron.mjs` est teste par
+// plusieurs fichiers qui REMPLACENT `persistence.mjs` par un mock. Un bail
+// loge ici aurait impose d ajouter l export a chacun de ces mocks, et le
+// moindre oubli aurait casse des tests qui n ont rien a voir avec le sujet.
+//
+// La persistance n expose que l ETAT de la protection (pour `/api/health`),
+// parce que l operateur doit pouvoir voir que la migration manque.
+export { getCronLeaseHealth };
+
+/** Lit l etat de verrouillage, en memoire d abord puis en base. */
 const readLoginAttempt = async (lookupKey) => {
   const cached = loginAttempts.get(lookupKey);
   if (cached) return cached;
@@ -3907,6 +4119,7 @@ export const replaceStateCollection = async (kind, items) => {
       // 'pending' disparaissait et la cagnotte restait gelée, ou (pire) le
       // règlement était rejoué et créditait deux fois.
       rollbackMemory();
+      markStateWriteFailure('ecriture d etat impossible');
       throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
     }
   }
@@ -4068,6 +4281,7 @@ export const upsertStateEntity = async (kind, entity) => {
         if (resultat === OCC_ECHEC) {
           kindMap.set(entity.id, ancien);
           memoryStateSnapshots.set(key, ancien);
+          markStateWriteFailure('ecriture d etat impossible');
           throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
         }
         // Succès : révision locale = observee + 1.
@@ -4098,6 +4312,7 @@ export const upsertStateEntity = async (kind, entity) => {
           }
           kindMap.delete(entity.id);
           memoryStateSnapshots.delete(key);
+          markStateWriteFailure('ecriture d etat impossible');
           throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
         }
         memoryStateRevisions.set(key, 1);
@@ -4115,6 +4330,7 @@ export const upsertStateEntity = async (kind, entity) => {
           kindMap.delete(entity.id);
           memoryStateSnapshots.delete(key);
         }
+        markStateWriteFailure('ecriture d etat impossible');
         throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
       }
       // Sans colonne, la révision mémoire ne porte pas de garantie : on

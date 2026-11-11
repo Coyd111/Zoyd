@@ -255,8 +255,7 @@ CREATE TABLE IF NOT EXISTS processed_transactions (
 
 -- ============================================================
 -- 14. WALLET TRANSACTIONS (historique détaillé)
--- ============================================================
-CREATE TABLE IF NOT EXISTS wallet_transactions (
+-- ============================================================CREATE TABLE IF NOT EXISTS wallet_transactions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
@@ -422,3 +421,29 @@ ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
 ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_user_reports_queue ON user_reports(status, severity) WHERE status = 'pending';
+
+-- ============================================================
+-- 18. CRON LEASES (bail distribue des travaux de fond)
+-- ============================================================
+-- Une instance par job de fond. L'acquisition est un INSERT qui refuse le
+-- doublon (23505) : deux instances en competition, une seule obtient le bail.
+-- C'est le mecanisme de la reservation FedaPay (`processed_transactions`).
+--
+-- `expires_at` est INDISPENSABLE : sans expiration, l'instance qui detient
+-- le bail et qui meurt (crash, redemarrage) gelerait le job POUR TOUJOURS.
+-- Le job le plus important de la plateforme — le reglement des matchs —
+-- resterait bloque indefiniment. Passé l'echeance, le bail est reprenable.
+--
+-- Tant que cette table manque, le bail est ACCORDE (degrade, pas arret) :
+-- la protection multi-instance n'est pas active, et `/api/health` expose
+-- `cronLease.available: false` pour que l'operateur le voie.
+--
+-- Migration seule : supabase/migrate-cron-leases.sql.
+CREATE TABLE IF NOT EXISTS cron_leases (
+  job_name TEXT PRIMARY KEY,
+  holder TEXT NOT NULL,
+  acquired_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT,
+  expires_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_cron_leases_expires ON cron_leases(expires_at);

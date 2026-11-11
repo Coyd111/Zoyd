@@ -130,6 +130,14 @@ if (req.method === 'GET' && pathname === '/api/health') {
     persistence: {
       stateTrusted: health.stateTrusted,
       deployedCommitShort: health.deployedCommitShort || null,
+      // Identite de l instance qui repond. Pendant un deploiement, Render
+      // fait coexister l ancienne et la nouvelle instance : deux identites
+      // sur la sonde = fenetre multi-instance ouverte, visible.
+      instanceId: health.instanceId || null,
+      processStartedAt: health.processStartedAt || null,
+      // Derniere ecriture d etat impossible : signale une base momentanement
+      // injoignable (le rechargement est automatique apres trois echecs).
+      stateWriteError: health.stateLoadError || null,
       // SONDES DE SECURITE — des BOOLEENS, rien de financier.
       //
       // La minimisation ci-dessus visait les AGREGATS (totaux de cagnotte,
@@ -152,7 +160,10 @@ if (req.method === 'GET' && pathname === '/api/health') {
       //   - `adminTotpPersisted` false = les secrets 2FA des admins ne
       //     survivent pas au redemarrage ;
       //   - `sanctionsPersisted` false = les bannissements ne survivent pas ;
-      //   - `integrityOk` false = l etat diverge de la base.
+      //   - `integrityOk` false = l etat diverge de la base ;
+      //   - `cronLeaseAvailable` false = les jobs de fond ne sont PAS
+      //     proteges contre l execution en double (migration
+      //     `supabase/migrate-cron-leases.sql` non jouee).
       // null = pas encore sonde (le demarrage vient de commencer).
       occRevisionColumn: health.occRevisionColumn ?? null,
       stateRevisionColumn: health.stateRevisionColumn ?? null,
@@ -160,6 +171,12 @@ if (req.method === 'GET' && pathname === '/api/health') {
       adminTotpPersisted: health.adminTotpPersisted ?? null,
       sanctionsPersisted: health.sanctionsPersisted ?? null,
       integrityOk: health.integrity ? health.integrity.ok : null,
+      // Bail distribue des jobs de fond : false = la table
+      // `cron_leases` manque, donc deux instances peuvent lancer le meme
+      // balayage en parallele (l appel FedaPay part deux fois, les
+      // compteurs avancent deux fois). L argent reste protege par les cles
+      // d idempotence, mais le journal et les appels externes mentent.
+      cronLeaseAvailable: health.cronLease ? health.cronLease.available : null,
     },
     timestamp: getNow(),
   });

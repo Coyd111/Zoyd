@@ -397,6 +397,9 @@ await withWalletMutex(session.user.id, async () => {
           {
             description: `Remboursement — retrait echoue (${body.amount} ZC rendus)`,
             metadata: { reason: 'PAYOUT_FAILED', idempotencyKey: cleanKey },
+            // Le retrait etant rembourse, il ne doit plus peser sur le
+            // plafond des 24 h — meme si le tag `failed` echoue ensuite.
+            clearRetraitCumulTxId: withdrawTxId,
           },
         );
       });

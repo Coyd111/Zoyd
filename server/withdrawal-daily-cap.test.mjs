@@ -34,6 +34,7 @@ import {
   getWindowedWithdrawalTotal,
   withdrawFromWallet,
   depositToWallet,
+  refundRejectedWithdrawal,
   MAX_WITHDRAWAL_DAILY_ZC,
 } from './wallet-engine.mjs';
 import { createUserAccount, getUserById, tagWalletTransaction } from './persistence.mjs';
@@ -226,6 +227,44 @@ describe('Cumul des retraits sur 24 h', () => {
     expect(getUserById(user.id).wallet.retraitCumul, 'l entree echouee sort du registre').toHaveLength(0);
     await expect(
       withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'f2' })
+    ).resolves.toBeTruthy();
+  });
+
+  it('un retrait refuse ne compte plus APRES LE REMBOURSEMENT, meme si le tag echoue', async () => {
+    // L entree du registre etait retiree par le TAG `failed` — donc
+    // SEULEMENT si l ecriture du tag reussissait. Un tag en echec laissait
+    // l entree en place : le joueur, REMBOURSE, restait plafonne par le
+    // cumul des 24 h, sans aucune trace. Un retrait refuse lui coutait de
+    // l argent alors qu il n avait rien recu.
+    //
+    // La correction retire l entree DANS LA MEME ECRITURE que le
+    // remboursement : le registre est donc coherent avec le solde, que le
+    // tag reussisse ou non.
+    const user = await nouveauCompte();
+    await depositToWallet(user.id, 100_000, 'test');
+    await settle();
+
+    await withdrawFromWallet(user.id, 30_000, 'Moov Money', '+22997000000', { idempotencyKey: 'f3' });
+    await settle();
+
+    const retrait = getUserById(user.id).wallet.transactions.find((t) => t?.type === 'withdraw');
+    expect(getUserById(user.id).wallet.retraitCumul, 'l entree est consignes').toHaveLength(1);
+
+    // Le remboursement porte l id de la transaction : l entree sort du
+    // registre dans la meme ecriture.
+    await refundRejectedWithdrawal(user.id, 30_000, 'refund:payout:77', {
+      clearRetraitCumulTxId: retrait.id,
+    });
+    await settle();
+
+    expect(
+      getUserById(user.id).wallet.retraitCumul,
+      'un retrait rembourse ne doit plus peser sur le plafond, meme sans tag reussi',
+    ).toHaveLength(0);
+
+    // Le plafond est donc entierement disponible pour lui.
+    await expect(
+      withdrawFromWallet(user.id, 50_000, 'Moov Money', '+22997000000', { idempotencyKey: 'f4' })
     ).resolves.toBeTruthy();
   });
 

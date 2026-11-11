@@ -168,6 +168,9 @@ export const reconcileWithdrawalsForWebhook = async (deps = {}) => {
       {
         description: 'Remboursement - retrait rejete par le prestataire',
         metadata: { reason: 'PAYOUT_REJECTED', payoutId: extra?.payoutId ?? null },
+        // Le retrait est rembourse : il ne doit plus peser sur le
+        // plafond des 24 h, meme si le tag `failed` echoue ensuite.
+        clearRetraitCumulTxId: extra?.txId ?? null,
       },
     ),
     forgetKey = (userId, key) => forgetWithdrawalKey(userId, key),

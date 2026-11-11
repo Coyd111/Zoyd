@@ -191,17 +191,61 @@ const probeTable = async () => {
 /** L'etat de la table des bails est-il connu et favorable ? */
 export const isCronLeaseTableAvailable = () => tableAvailable === true;
 
+/**
+ * COMPTEURS du bail, pour `/api/health`.
+ *
+ * Pourquoi des compteurs et pas seulement un booleen
+ * ---------------------------------------------------
+ * `cronLeaseAvailable` dit si la table est visible. Il ne dit pas si la
+ * protection FONCTIONNE. Les deux se dissocient : en production, la table
+ * etait visible (`available: true`) alors que chaque INSERT echouait sur un
+ * BIGINT — le bail n etait donc JAMAIS pris, et la protection promise
+ * n existait pas. Un operateur qui lisait seulement le booleen croyait le
+ * contraire.
+ *
+ * Ces compteurs ferment ce manque. Ils repondent a « le bail est-il
+ * REELLEMENT pris ? » en trois nombres :
+ *   - `acquis`  : bail obtenu (job execute sous bail) ;
+ *   - `refuses` : bail detenu par une autre instance (job saute, c'est le
+ *     comportement attendu en multi-instance) ;
+ *   - `erreurs` : la base a refuse le bail (job execute SANS protection) —
+ *     c'est le compteur qui doit rester a ZERO en regime normal.
+ *
+ * INVARIANT : `erreurs` a ZERO tant que la table est la et que les types
+ * sont corrects. Il grimpe des qu une migration manque ou qu un type
+ * diverge — les deux defauts vus en production.
+ *
+ * Ces compteurs sont ceux du PROCESSUS : ils repartent a zero au
+ * redemarrage. C'est voulu — ils mesurent l'etat courant de l'instance, pas
+ * un historique.
+ */
+const compteurs = {
+  acquis: 0,
+  refuses: 0,
+  erreurs: 0,
+  /** Jobs executes sans protection (table absente ou panne de base). */
+  degrades: 0,
+};
+
+/** Compteurs du bail, pour `/api/health`. */
+export const getCronLeaseCounters = () => ({ ...compteurs });
+
 /** Etat de la table des bails, pour `/api/health`. */
 export const getCronLeaseHealth = () => ({
   available: tableAvailable === true,
   error: tableError,
+  ...getCronLeaseCounters(),
 });
 
-/** Test hook : rejoue la sonde (l'etat est memorise). */
+/** Test hook : rejoue la sonde (l'etat est memorise) et remet les compteurs a zero. */
 export const resetCronLeaseStateForTests = () => {
   tableAvailable = null;
   tableError = null;
   lastProbeAt = 0;
+  compteurs.acquis = 0;
+  compteurs.refuses = 0;
+  compteurs.erreurs = 0;
+  compteurs.degrades = 0;
 };
 
 /**
@@ -223,14 +267,36 @@ export const acquireCronLease = async (jobName, options = {}) => {
   if (!supabase) return { acquired: true, reason: 'memoire' };
 
   const disponible = await probeTable();
-  if (!disponible) return { acquired: true, reason: 'table-absente' };
+  if (!disponible) {
+    // La table est absente : le job s execute quand meme, mais SANS
+    // protection. C'est un fonctionnement degrade — il doit se voir.
+    compteurs.degrades += 1;
+    return { acquired: true, reason: 'table-absente' };
+  }
 
   // INSERT atomique : refuse le doublon (23505). C'est le meme mecanisme que
   // la reservation FedaPay (`claimTransaction`).
-  const { error: erreurInsert } = await supabase
-    .from('cron_leases')
-    .insert({ job_name: jobName, holder, acquired_at: maintenant, expires_at: expiresAt });
-  if (!erreurInsert) return { acquired: true, reason: 'acquis' };
+  //
+  // PIEGE : l appel reseau peut LEVER (coupure reseau, timeout DNS) au lieu
+  // de renvoyer une `{ error }`. Sans garde, l exception remontait jusqu au
+  // job : le job de fond echouait entierement, et l anomalie n etait
+  // comptabilisee nulle part — exactement le genre de defaut qui ne se voit
+  // que par le log d'une panne, jamais par la sonde.
+  //
+  // La variable est declaree DANS le try pour ne pas pre-initialiser une
+  // valeur qui serait ensuite ecrasee (`no-useless-assignment`).
+  let erreurInsert;
+  try {
+    const reponse = await supabase
+      .from('cron_leases')
+      .insert({ job_name: jobName, holder, acquired_at: maintenant, expires_at: expiresAt });
+    erreurInsert = reponse?.error || null;
+  } catch (err) {
+    erreurInsert = { code: 'RESEAU', message: err?.message || String(err) };
+  }  if (!erreurInsert) {
+    compteurs.acquis += 1;
+    return { acquired: true, reason: 'acquis' };
+  }
 
   if (erreurInsert.code !== '23505') {
     // Panne de la base : on NE BLOQUE PAS le job. Un job de fond qui ne
@@ -240,19 +306,37 @@ export const acquireCronLease = async (jobName, options = {}) => {
     log.error('Bail de cron indisponible : le job s execute sans protection multi-instance', {
       job: jobName, message: erreurInsert.message,
     });
+    compteurs.erreurs += 1;
+    compteurs.degrades += 1;
     return { acquired: true, reason: 'erreur-base' };
   }
 
   // Le bail existe deja. Il peut etre detenu par l autre instance (on
   // s arrete) ou EXPIRE (on le reprend).
-  const { data: lignes } = await supabase
-    .from('cron_leases')
-    .select('job_name, holder, expires_at')
-    .eq('job_name', jobName)
-    .limit(1);
+  //
+  // Meme garde que pour l INSERT : une coupure reseau ne doit pas faire
+  // echouer le job.
+  let lignes;
+  try {
+    const reponse = await supabase
+      .from('cron_leases')
+      .select('job_name, holder, expires_at')
+      .eq('job_name', jobName)
+      .limit(1);
+    lignes = reponse?.data || null;
+  } catch (err) {
+    log.error('Lecture du bail de cron impossible', { job: jobName, message: err?.message });
+    compteurs.erreurs += 1;
+    compteurs.degrades += 1;
+    return { acquired: true, reason: 'erreur-base' };
+  }
   const row = Array.isArray(lignes) ? lignes[0] : null;
 
   if (row && !isLeaseExpired({ expiresAt: row.expires_at }, maintenant)) {
+    // Une autre instance detient le bail : c'est le comportement ATTENDU en
+    // multi-instance. Ce n'est pas une erreur — mais le compteur permet de
+    // le constater (un taux de refus eleve signale deux instances actives).
+    compteurs.refuses += 1;
     return { acquired: false, reason: 'busy' };
   }
 
@@ -264,16 +348,28 @@ export const acquireCronLease = async (jobName, options = {}) => {
   // colonne. Comparer une chaine ISO a un BIGINT fait echouer la requete
   // (« invalid input syntax for type bigint ») : le bail n etait jamais
   // repris, et la protection multi-instance restait inactive.
-  const { data: touches } = await supabase
-    .from('cron_leases')
-    .update({ holder, acquired_at: maintenant, expires_at: expiresAt })
-    .eq('job_name', jobName)
-    .lt('expires_at', maintenant)
-    .select('job_name');
+  let touches;
+  try {
+    const reponse = await supabase
+      .from('cron_leases')
+      .update({ holder, acquired_at: maintenant, expires_at: expiresAt })
+      .eq('job_name', jobName)
+      .lt('expires_at', maintenant)
+      .select('job_name');
+    touches = reponse?.data || null;
+  } catch (err) {
+    log.error('Reprise du bail de cron impossible', { job: jobName, message: err?.message });
+    compteurs.erreurs += 1;
+    compteurs.degrades += 1;
+    return { acquired: true, reason: 'erreur-base' };
+  }
   if (Array.isArray(touches) && touches.length === 1) {
     log.info('Bail de cron repris (expire)', { job: jobName, ancienHolder: row?.holder || null });
+    compteurs.acquis += 1;
     return { acquired: true, reason: 'repris' };
   }
+  // L autre instance a repris le bail entre-temps : on s arrete aussi.
+  compteurs.refuses += 1;
   return { acquired: false, reason: 'busy' };
 };
 
@@ -294,9 +390,16 @@ export const releaseCronLease = async (jobName, options = {}) => {
   const holder = options.holder || INSTANCE_ID;
   let requete = supabase.from('cron_leases').delete().eq('job_name', jobName);
   if (!options.force) requete = requete.eq('holder', holder);
-  const { error } = await requete;
-  if (error) {
-    log.error('Liberation du bail de cron impossible', { job: jobName, message: error.message });
+  // Meme garde que pour l acquisition : une coupure reseau ne doit pas
+  // faire echouer le job (le bail finira par expirer de toute facon).
+  try {
+    const { error } = await requete;
+    if (error) {
+      log.error('Liberation du bail de cron impossible', { job: jobName, message: error.message });
+      return false;
+    }
+  } catch (err) {
+    log.error('Liberation du bail de cron impossible', { job: jobName, message: err?.message });
     return false;
   }
   return true;

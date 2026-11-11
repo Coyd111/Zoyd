@@ -177,6 +177,28 @@ if (req.method === 'GET' && pathname === '/api/health') {
       // compteurs avancent deux fois). L argent reste protege par les cles
       // d idempotence, mais le journal et les appels externes mentent.
       cronLeaseAvailable: health.cronLease ? health.cronLease.available : null,
+      // COMPTEURS du bail : ils disent si la protection FONCTIONNE, ce que
+      // le seul booleen ne dit pas.
+      //
+      // En production, la table etait visible (`available: true`) alors que
+      // chaque INSERT echouait sur un BIGINT : le bail n etait JAMAIS pris,
+      // et la protection promise n existait pas. Un operateur qui lisait
+      // seulement le booleen croyait le contraire.
+      //
+      //   - `cronLeaseAcquis`  : bails obtenueS (jobs executes sous bail) ;
+      //   - `cronLeaseRefuses` : bails detenus par une autre instance (jobs
+      //     sautes) — c'est le comportement ATTENDU en multi-instance ;
+      //   - `cronLeaseErrors`  : la base a refuse le bail (jobs executes
+      //     SANS protection). Doit rester a ZERO en regime normal ;
+      //   - `cronLeaseDegraded` : jobs executes sans protection (table
+      //     absente ou panne de base).
+      //
+      // Ces compteurs sont ceux du PROCESSUS : ils repartent a zero au
+      // redemarrage de l instance.
+      cronLeaseAcquired: health.cronLease ? health.cronLease.acquis : null,
+      cronLeaseRefused: health.cronLease ? health.cronLease.refuses : null,
+      cronLeaseErrors: health.cronLease ? health.cronLease.erreurs : null,
+      cronLeaseDegraded: health.cronLease ? health.cronLease.degrades : null,
     },
     timestamp: getNow(),
   });

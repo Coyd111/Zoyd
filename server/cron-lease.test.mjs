@@ -158,6 +158,8 @@ import {
   isCronLeaseTableAvailable,
   withCronLease,
   PROBE_INTERVAL_MS,
+  getCronLeaseCounters,
+  getCronLeaseHealth,
 } from './cron-lease.mjs';
 
 const JOB = 'sweepPendingSettlements';
@@ -316,8 +318,89 @@ describe('Bail de cron — degrade sans base', () => {
   });
 });
 
-describe('Bail de cron — le job est protege, et libere', () => {
-  it('le job s execute quand le bail est obtenu', async () => {
+describe('Bail de cron — compteurs exposes (observabilite)', () => {
+  it('un bail obtenu compte comme acquis', async () => {
+    await acquireCronLease('job-compte-acquis');
+    expect(getCronLeaseCounters().acquis).toBe(1);
+    expect(getCronLeaseCounters().refuses).toBe(0);
+    expect(getCronLeaseCounters().erreurs).toBe(0);
+  });
+
+  it('un bail detenu par une autre instance compte comme REFUSE', async () => {
+    await acquireCronLease('job-compte-refus');
+    const second = await acquireCronLease('job-compte-refus');
+
+    expect(second.acquired).toBe(false);
+    // Un refus est le comportement ATTENDU en multi-instance : ce n'est pas
+    // une erreur. Mais il doit etre VISIBLE (un taux eleve signale deux
+    // instances actives en permanence).
+    expect(getCronLeaseCounters().refuses).toBe(1);
+    expect(getCronLeaseCounters().acquis).toBe(1);
+  });
+
+  it('un bail repris apres expiration compte comme acquis', async () => {
+    await acquireCronLease('job-compte-reprise');
+    lignes.get('job-compte-reprise').expires_at = Date.now() - 1000;
+
+    const reprise = await acquireCronLease('job-compte-reprise');
+    expect(reprise.acquired).toBe(true);
+    expect(getCronLeaseCounters().acquis).toBe(2);
+  });
+
+  it('une table absente compte comme degrade, PAS comme acquis', async () => {
+    // C'est le cas le plus important : le job s execute SANS protection.
+    // Le compter comme « acquis » donnerait une fausse reassurance — la
+    // protection serait annoncee active alors qu elle ne l est pas.
+    tableVisible = false;
+    const bail = await acquireCronLease('job-compte-degrade');
+
+    expect(bail.acquired).toBe(true);
+    expect(getCronLeaseCounters().degrades).toBe(1);
+    expect(getCronLeaseCounters().acquis, 'un job sans bail n est pas un bail acquis').toBe(0);
+  });
+
+  it('une panne de la base compte comme erreur ET degrade', async () => {
+    // Le cas vecu en production : l INSERT refuse pour un BIGINT. Le bail
+    // n etait jamais pris, et rien ne le disait. C'est le compteur
+    // `erreurs` qui doit l avoir montre.
+    //
+    // On force l echec de l INSERT en rendant le mock « pas configur » pour
+    // une requete dont la valeur est non entiere — exactement le defaut de
+    // type qui a produit l incident.
+    const vraiInsert = lignes.set.bind(lignes);
+    lignes.set = (cle, valeur) => {
+      if (cle === 'job-compte-erreur') {
+        throw new Error('invalid input syntax for type bigint');
+      }
+      return vraiInsert(cle, valeur);
+    };
+    try {
+      await acquireCronLease('job-compte-erreur');
+    } catch {
+      // Le mock peut laisser remonter l erreur : dans les deux cas, le job
+      // s execute sans protection.
+    } finally {
+      lignes.set = vraiInsert;
+    }
+
+    // L INSERT a echoue : le bail n est PAS acquis, et l anomalie est
+    // comptabilisee. C'est exactement ce que la sonde doit montrer.
+    expect(getCronLeaseCounters().acquis, 'un INSERT refuse n est pas un bail acquis').toBe(0);
+    expect(getCronLeaseCounters().erreurs, 'la panne doit etre comptabilisee').toBeGreaterThan(0);
+    expect(getCronLeaseCounters().degrades).toBeGreaterThan(0);
+  });
+
+  it('les compteurs sont exposes avec l etat de la table', () => {
+    const sante = getCronLeaseHealth();
+    expect(sante).toHaveProperty('available');
+    expect(sante).toHaveProperty('acquis');
+    expect(sante).toHaveProperty('refuses');
+    expect(sante).toHaveProperty('erreurs');
+    expect(sante).toHaveProperty('degrades');
+  });
+});
+
+describe('Bail de cron — le job est protege, et libere', () => {  it('le job s execute quand le bail est obtenu', async () => {
     let execute = 0;
     const resultat = await withCronLease('job-ok', async () => { execute += 1; });
 

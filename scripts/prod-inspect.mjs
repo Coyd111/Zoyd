@@ -194,6 +194,17 @@ const inspecterSante = async () => {
       console.log(`      instance          : ${persistance.instanceId || '?'}`);
       console.log(`      etat fiable        : ${persistance.stateTrusted}`);
       console.log(`      bail cron actif   : ${persistance.cronLeaseAvailable}`);
+      // Les compteurs disent si la protection FONCTIONNE, ce que le booleen
+      // seul ne dit pas. `cronLeaseErrors` et `cronLeaseDegraded` doivent
+      // rester a ZERO en regime normal.
+      console.log(`      bails acquis      : ${persistance.cronLeaseAcquired ?? '?'}`);
+      console.log(`      bails refuses      : ${persistance.cronLeaseRefused ?? '?'}`);
+      console.log(`      bails en ERREUR    : ${persistance.cronLeaseErrors ?? '?'}`);
+      console.log(`      bails degrades     : ${persistance.cronLeaseDegraded ?? '?'}`);
+      if (persistance.cronLeaseErrors > 0 || persistance.cronLeaseDegraded > 0) {
+        console.log('      !! ALERTE : des jobs se sont executes SANS protection multi-instance.');
+        console.log('         Les compteurs restent a zero apres un redemarrage de l instance.');
+      }
       console.log(`      integrite         : ${persistance.integrityOk}`);
     } catch (err) {
       console.log(`  ${cible} : injoignable (${err?.message})`);

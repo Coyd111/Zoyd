@@ -108,3 +108,78 @@ describe('health — dettes de reglement', () => {
     expect(source).not.toMatch(/total \+= payouts \+ refunds \+ uncollectable;/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Les COMPTEURS du bail de cron, dans la sonde publique.
+//
+// Pourquoi des compteurs en plus du booleen `cronLeaseAvailable`
+// ---------------------------------------------------------------
+// En production, la table `cron_leases` etait VISIBLE (`available: true`)
+// alors que chaque INSERT echouait sur un BIGINT : le bail n'etait donc
+// JAMAIS pris, et la protection multi-instance promise n'existait pas. Un
+// operateur qui lisait seulement le booleen croyait l'inverse.
+//
+// Les compteurs repondent a « la protection FONCTIONNE-t-elle ? » :
+// `cronLeaseErrors` et `cronLeaseDegraded` doivent rester a ZERO en regime
+// normal. `cronLeaseAcquired` doit monter.
+//
+// INVARIANT : la sonde est PUBLIQUE. Elle ne peut donc rien divulguer qui
+// permette de monter une requete authentifiee. Des compteurs ne le font pas :
+// ils ne disent ni qui, ni quoi, ni combien d'argent.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('health — compteurs du bail de cron', () => {
+  const lireRoute = () => readFileSync(resolve('server/routes/public.mjs'), 'utf8');
+
+  it('la sonde publie les quatre compteurs', () => {
+    const source = lireRoute();
+    for (const champ of [
+      'cronLeaseAcquired',
+      'cronLeaseRefused',
+      'cronLeaseErrors',
+      'cronLeaseDegraded',
+    ]) {
+      expect(source, `${champ} doit etre publie`).toContain(champ);
+    }
+  });
+
+  it('le booleen de disponibilite reste publie a cote', () => {
+    // Le booleen et les compteurs ne se remplacent pas : l un dit si la
+    // table est visible, les autres si la protection FONCTIONNE.
+    expect(lireRoute()).toContain('cronLeaseAvailable');
+  });
+
+  it('les compteurs viennent bien du module du bail', () => {
+    const source = lireRoute();
+    // Un compteur publie a la main (un `?? 0` pose dans la route) serait
+    // toujours a zero : l anomalie ne remonterait jamais.
+    expect(source).toMatch(/health\.cronLease \? health\.cronLease\.acquis : null/);
+    expect(source).toMatch(/health\.cronLease \? health\.cronLease\.refuses : null/);
+    expect(source).toMatch(/health\.cronLease \? health\.cronLease\.erreurs : null/);
+    expect(source).toMatch(/health\.cronLease \? health\.cronLease\.degrades : null/);
+  });
+
+  it('la sonde ne divulgue ni le detenteur du bail ni un secret', () => {
+    const source = lireRoute();
+    const bloc = source.slice(
+      source.indexOf('cronLeaseAvailable'),
+      source.indexOf('cronLeaseAvailable') + 2000,
+    );
+    // Le detenteur du bail est l identite de l instance : la publier
+    // donnerait la topologie du deploiement. Le bloc des compteurs ne doit
+    // donc contenir que des NOMBRES.
+    expect(bloc).not.toContain('holder');
+    expect(bloc).not.toContain('job_name');
+    expect(bloc).not.toContain('METRICS_TOKEN');
+    expect(bloc).not.toContain('SUPABASE_SERVICE');
+  });
+
+  it('les compteurs sont incrementes a chaque issue du bail', () => {
+    const source = readFileSync(resolve('server/cron-lease.mjs'), 'utf8');
+    // Un compteur declare mais jamais incremente vaut zero : l anomalie
+    // resterait invisible. Les quatre issues doivent etre comptees.
+    expect(source).toMatch(/compteurs\.acquis \+= 1;/);
+    expect(source).toMatch(/compteurs\.refuses \+= 1;/);
+    expect(source).toMatch(/compteurs\.erreurs \+= 1;/);
+    expect(source).toMatch(/compteurs\.degrades \+= 1;/);
+  });
+});

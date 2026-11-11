@@ -94,6 +94,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // `/version.json` est interroge toutes les 60 s par le `versionWatcher`,
+  // avec une query string anti-cache (`?t=...`). La cle de cache inclut la
+  // query string : chaque poll creait donc une ENTREE NOUVELLE, jamais
+  // evictable (le cache n est purge qu au deploiement du service worker).
+  // Un onglet ouvert 24 h accumulait ~1 440 entrees pour un fichier de
+  // quelques octets. Cette route ne se met PAS en cache : elle sert
+  // justement a detecter un deploiement, donc elle doit toujours venir du
+  // reseau.
+  if (url.pathname === '/version.json') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // Static assets (hashed JS/CSS): cache first, network fallback
   event.respondWith(
     caches.match(request).then((cached) => {

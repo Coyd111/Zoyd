@@ -32,6 +32,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Send, Hash, Lock, Globe, Users, MessageSquare, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from '../lib/toast';
+import { logWarning } from '../lib/logger';
 import {
   createServerChatChannel,
   fetchChatBootstrap,
@@ -88,7 +89,17 @@ const ChatPage: React.FC = () => {
     if (activeChannelId) {
       markAsRead(activeChannelId);
       if (user) {
-        void markServerChatChannelRead(activeChannelId).catch(() => undefined);
+        // Le marquage « lu » cote serveur n est pas cosmetique : c est lui
+        // qui synchronise les autres appareils du joueur. Avale, il laissait
+        // les messages re-apparaitre comme non lus ailleurs, sans aucune
+        // trace. On journalise donc l echec.
+        void markServerChatChannelRead(activeChannelId).catch((markError) => {
+          logWarning('Chat: marquage lu serveur en echec', {
+            component: 'ChatPage',
+            channelId: activeChannelId,
+            message: markError instanceof Error ? markError.message : String(markError),
+          });
+        });
       }
     }
   }, [activeChannelId, messages.length, markAsRead, user]);
@@ -102,7 +113,17 @@ const ChatPage: React.FC = () => {
         if (cancelled) return;
         hydrateFromServer([payload.channel], payload.messages);
       })
-      .catch(() => undefined);
+      .catch((loadError) => {
+        // Un canal vide SANS explication se lit comme « il n y a aucun
+        // message » : le joueur croit que la conversation est vide. On le
+        // dit, et on journalise.
+        logWarning('Chat: chargement du canal en echec', {
+          component: 'ChatPage',
+          channelId: activeChannelId,
+          message: loadError instanceof Error ? loadError.message : String(loadError),
+        });
+        toast.error('Conversation non chargée — réessaie dans un instant.');
+      });
 
     return () => {
       cancelled = true;

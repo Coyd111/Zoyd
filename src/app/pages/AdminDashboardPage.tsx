@@ -25,6 +25,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router';
 import { Shield, Swords, AlertTriangle, TrendingUp, DollarSign, Users, Lock, Scale, Download } from 'lucide-react';
 import { toast } from '../lib/toast';
+import { logWarning } from '../lib/logger';
 import { ApiError } from '../lib/apiClient';
 import { adminAwardServerMatch, adminCancelServerMatch, adminResolveServerDispute, downloadMatchHistory } from '../lib/matchApi';
 import { verifyAdmin2fa } from '../lib/authApi';
@@ -396,7 +397,19 @@ const AdminDashboardPage: React.FC = () => {
       // un echec. Succes uniquement ; la lecture serveur reste fait foi
       // (invariant l.16-18), et sa panne ne doit pas s'afficher comme un echec
       // d'annulation.
-      await reloadReports().catch(() => undefined);
+      // Le rechargement de la file ne doit pas etre AVEUGLE : avale, il
+      // laissait l admin devant l ancienne file, qui pouvait le faire
+      // croire que son action n avait rien change.
+      await reloadReports().catch((reloadError) => {
+        toast.error(
+          'File de signalements non rafraîchie',
+          'L’action a bien été envoyée au serveur, mais la liste n’a pas pu être rechargée. Recharge la page.',
+        );
+        logWarning('Admin reports reload failed', {
+          component: 'AdminDashboardPage',
+          message: reloadError instanceof Error ? reloadError.message : String(reloadError),
+        });
+      });
     } catch (error) {
       if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
         openTwofaPrompt(() => handleCancelMatch(matchId));

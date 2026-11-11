@@ -62,9 +62,17 @@ const WITHDRAWAL_FEE_RATE = 0.02;
  * repete, pas d empecher un retrait legitime.
  */
 const MAX_WITHDRAWAL_DAILY_ZC = 50_000;
+// Le plafond DUR d'un retrait unique : celui du prestataire de paiement
+// (1 000 000 FCFA = 100 000 ZC). Il ne faut PAS le confondre avec le
+// plafond journalier, qui est un CUMUL : une demande de 100 000 ZC est
+// recevable par la route (elle sera refusee ensuite par le cumul du jour,
+// avec le message dedie). Le plafond REEL disponible aujourd hui est donc
+// min(ce plafond, ce qu il reste du cumul journalier) — c est ce que la
+// route publie.
+const MAX_WITHDRAWAL_AMOUNT_ZC = 100_000;
 const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE, MAX_WITHDRAWAL_DAILY_ZC };
+export { MIN_WITHDRAWAL_ZC, WITHDRAWAL_FEE_RATE, MAX_WITHDRAWAL_DAILY_ZC, MAX_WITHDRAWAL_AMOUNT_ZC };
 
 /**
  * Consigne un retrait dans le registre dedie du cumul journalier.

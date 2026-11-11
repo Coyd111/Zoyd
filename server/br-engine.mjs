@@ -374,6 +374,14 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
   // La protection anti-fraude n'est pas son role : c'est `requireLobbyArbiter`
   // et son statut de non-joueur (il ne paie aucun pass et ne figure pas dans
   // `players`).
+  //
+  // RISQUE CONNU (signale par l audit, NON CORRIGE ici) : le createur
+  // designe un compte complice, qui touche la commission du pot sans payer
+  // de pass — l organisateur se deverserait ainsi une part de l argent des
+  // autres joueurs. Le comportement est VOLONTAIRE (il est teste et
+  // documente) : le corriger est une decision PRODUIT, pas un correctif de
+  // bug. Piste si la decision est prise : l arbitre designe doit ACCEPTER
+  // sa nomination, et le createur ne peut designer que lui-meme par defaut.
   const arbiterId = typeof input.arbiterId === 'string' && input.arbiterId.trim()
     ? input.arbiterId.trim()
     : actorUser.id;

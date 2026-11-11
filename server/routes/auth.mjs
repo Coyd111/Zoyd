@@ -147,8 +147,8 @@ const validerChampProfil = (field, value) => {
   // reel se faisait refuser — a l inscription comme a la mise a jour. Le
   // plafond est donc large (1000, tres au-dela du plafond du jeu), mais
   // la valeur reste un NOMBRE fini et strictement positif.
-  if (field === 'levelCODM' && (typeof value !== 'number' || value < 1 || value > 1000 || !Number.isFinite(value))) {
-    return { ok: false, error: 'Level CODM invalide (1-1000).', code: 'INVALID_ENUM' };
+  if (field === 'levelCODM' && (typeof value !== 'number' || value < 1 || value > 500 || !Number.isFinite(value))) {
+    return { ok: false, error: 'Level CODM invalide (1-500).', code: 'INVALID_ENUM' };
   }
   return { ok: true, value };
 };

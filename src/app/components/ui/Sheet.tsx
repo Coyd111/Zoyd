@@ -91,7 +91,7 @@ function SheetContent({
         {children}
         <SheetPrimitive.Close className="ring-offset-background data-[state=open]:bg-secondary absolute top-4 right-4 touch-target opacity-70 transition-opacity hover:opacity-100 focus:border-zoyd-yellow disabled:pointer-events-none">
           <XIcon className="size-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">Fermer</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
     </SheetPortal>

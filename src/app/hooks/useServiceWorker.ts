@@ -12,6 +12,13 @@
  * l'abonnement passe par subscribeToRealtimePush (realtimeClient.ts).
  * PIEGE : l'enregistrement est asynchrone ; les ecrans qui demandent la
  * permission doivent attendre navigator.serviceWorker.ready.
+ *
+ * INVARIANT : les effets de BORD sont UNIQUES au module, l ETAT est local.
+ * Le hook est monte deux fois (App.tsx et NotificationDropdown.tsx) : deux
+ * instances veuxaient dire deux listeners `controllerchange` — donc deux
+ * `window.location.reload()` a chaque mise a jour — et deux abonnements push,
+ * donc deux `POST /api/realtime/push/subscribe` par changement d utilisateur.
+ * Le module garde la main unique ; chaque instance garde son etat local.
  */
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
@@ -20,6 +27,13 @@ import { logWarning } from '../lib/logger';
 import { waitForServiceWorkerReady } from '../lib/serviceWorkerReady';
 
 let registrationPromise: Promise<ServiceWorkerRegistration> | null = null;
+
+// Effets de bord uniques au module (le hook est monte plusieurs fois).
+let controllerChangeInstalled = false;
+let updateFoundRegistration: ServiceWorkerRegistration | null = null;
+let updateFoundHandler: (() => void) | null = null;
+// Comptes deja abonnes au push : evite un POST par instance ET par rendu.
+const pushSubscribedFor = new Set<string>();
 
 const registerServiceWorker = () => {
   if (!registrationPromise) {
@@ -30,7 +44,12 @@ const registerServiceWorker = () => {
 };
 
 export function useServiceWorker() {
-  const { user } = useAuthStore();
+  // SELECTEUR, et non `useAuthStore()` sans selecteur : ce dernier
+  // abonne le composant a TOUT le store. Chaque `set()` — un `wallet:update`,
+  // un `syncAuthBalance` — re-rendait donc la racine `App`, et avec elle
+  // toute l arborescence de routes : micro-saccades sur le solde et la
+  // navigation, sur telephone d entree de gamme.
+  const user = useAuthStore((s) => s.user);
   const [isInstalled, setIsInstalled] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
@@ -64,9 +83,22 @@ export function useServiceWorker() {
           setUpdateAvailable(true);
         }
 
-        const onUpdateFound = () => setUpdateAvailable(true);
-        registration.addEventListener('updatefound', onUpdateFound);
-        updateFoundRef.current = () => registration.removeEventListener('updatefound', onUpdateFound);
+        // L ecouteur `updatefound` est pose UNE SEULE FOIS par
+        // enregistrement : le hook etant monte deux fois, il etait pose deux
+        // fois sur le meme registration.
+        if (updateFoundRegistration !== registration) {
+          updateFoundHandler?.();
+          updateFoundRegistration = registration;
+          updateFoundHandler = () => setUpdateAvailable(true);
+          registration.addEventListener('updatefound', updateFoundHandler);
+        }
+        updateFoundRef.current = () => {
+          if (updateFoundRegistration === registration && updateFoundHandler) {
+            registration.removeEventListener('updatefound', updateFoundHandler);
+            updateFoundRegistration = null;
+            updateFoundHandler = null;
+          }
+        };
 
         return navigator.serviceWorker.ready;
       })
@@ -82,20 +114,23 @@ export function useServiceWorker() {
         logWarning('SW Registration failed', { component: 'useServiceWorker', message: err?.message || String(err) });
       });
 
-    const onControllerChange = () => {
-      // Premiere installation : rien a remplacer, on ne recharge pas.
-      if (!hadControllerAtLoad) return;
-      window.location.reload();
-    };
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
-    controllerChangeRef.current = () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+    // Le rechargement au changement de controleur est pose UNE SEULE FOIS :
+    // deux listeners, c etaient deux rechargements a chaque mise a jour.
+    if (!controllerChangeInstalled) {
+      controllerChangeInstalled = true;
+      const onControllerChange = () => {
+        // Premiere installation : rien a remplacer, on ne recharge pas.
+        if (!hadControllerAtLoad) return;
+        window.location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+      controllerChangeRef.current = () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+    }
 
     return () => {
       mounted = false;
       updateFoundRef.current?.();
       updateFoundRef.current = null;
-      controllerChangeRef.current?.();
-      controllerChangeRef.current = null;
     };
   }, []);
 
@@ -103,9 +138,20 @@ export function useServiceWorker() {
     if (!user || !('serviceWorker' in navigator) || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
 
+    // L abonnement push est UNIQUE par compte : le hook etant monte deux
+    // fois, chaque instance rejouait l effectif — donc deux
+    // `POST /api/realtime/push/subscribe` par changement d utilisateur.
+    if (pushSubscribedFor.has(user.id)) return;
+
     navigator.serviceWorker.ready
-      .then((registration) => subscribeToRealtimePush(user, registration))
-      .catch((err) => logWarning('SW Push subscription failed', { component: 'useServiceWorker', message: err?.message || String(err) }));
+      .then((registration) => {
+        pushSubscribedFor.add(user.id);
+        return subscribeToRealtimePush(user, registration);
+      })
+      .catch((err) => {
+        pushSubscribedFor.delete(user.id);
+        logWarning('SW Push subscription failed', { component: 'useServiceWorker', message: err?.message || String(err) });
+      });
   }, [user]);
 
   const requestNotificationPermission = async () => {
@@ -117,9 +163,9 @@ export function useServiceWorker() {
     if (permission === 'granted' && user && 'serviceWorker' in navigator) {
       // P13 C16 (audit-3) : ce bloc awaitait `navigator.serviceWorker.ready`
       // (sans timeout) PUIS `subscribeToRealtimePush` — deux rejets possibles
-      // qui remontaient a NotificationDropdown, dont l'onClick fait `void
+      // qui remontaient a NotificationDropdown, dont l onClick fait `void
       // requestNotificationPermission()` : unhandled rejection. Blinde ici :
-      // le joueur a ACCEPTE la permission — l'echec d'abonnement push
+      // le joueur a ACCEPTE la permission — l echec d'abonnement push
       // (timeout SW, refusee) ne doit pas apparaitre comme un refus, le
       // consentement reste ce que l'utilisateur a vu.
       try {

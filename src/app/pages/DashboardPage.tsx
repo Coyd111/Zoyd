@@ -78,21 +78,24 @@ const statusColor: Record<string, string> = {
 const DashboardPage: React.FC = () => {
   const reduceMotion = useReducedMotion();
   const user = useAuthStore((s) => s.user);
-  const getTotalBalance = useWalletStore((s) => s.getTotalBalance);
-  const getAvailableCash = useWalletStore((s) => s.getAvailableCash);
-  const getAvailableToSpend = useWalletStore((s) => s.getAvailableToSpend);
+  const totalBalance = useWalletStore((s) => s.getTotalBalance());
+  // Les FONCTIONS sont APPELEES dans le selecteur.
+  //
+  // Returning the function itself returns a STABLE reference : with
+  // `useSyncExternalStore` the comparison never changes, so the component
+  // never re-renders on a value change. The message counter then stays at 0
+  // until some other state changes — the player thinks nobody answered.
+  // Meme pattern que `Sidebar.tsx`.
+  const availableCash = useWalletStore((s) => s.getAvailableCash());
+  const availableToSpend = useWalletStore((s) => s.getAvailableToSpend());
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
-  const getUnreadTotal = useChatStore((s) => s.getUnreadTotal);
-  const notifications = useNotificationStore((s) => s.notifications);
-  const getRecentNotifications = useNotificationStore((s) => s.getRecent);
-  const getUnreadNotifCount = useNotificationStore((s) => s.getUnreadCount);
-  const friends = useFriendsStore((s) => s.friends);
+  const recentNotifications = useNotificationStore((s) => s.getRecent(4).filter((n) => !n.dismissed));
+  const unreadNotifCount = useNotificationStore((s) => s.getUnreadCount());
   const requests = useFriendsStore((s) => s.requests);
-  const getOnlineFriends = useFriendsStore((s) => s.getOnlineFriends);
+  const onlineFriends = useFriendsStore((s) => s.getOnlineFriends());
 
-  const totalBalance = getTotalBalance();
-  const unreadMessages = getUnreadTotal();
+  const unreadMessages = useChatStore((s) => s.getUnreadTotal());
 
   const myActiveMatches = useMemo(
     () =>
@@ -121,13 +124,6 @@ const DashboardPage: React.FC = () => {
     [tournaments]
   );
 
-  const recentNotifications = useMemo(
-    () => getRecentNotifications(4).filter((n) => !n.dismissed),
-    [notifications, getRecentNotifications]
-  );
-  const unreadNotifCount = getUnreadNotifCount();
-
-  const onlineFriends = useMemo(() => getOnlineFriends(), [friends]);
   const pendingRequests = useMemo(
     () => requests.filter((r) => r.status === 'pending'),
     [requests]
@@ -556,11 +552,11 @@ const DashboardPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Cash</div>
-                <div className="font-display font-black text-sm text-white italic">{formatZC(getAvailableCash())}</div>
+                <div className="font-display font-black text-sm text-white italic">{formatZC(availableCash)}</div>
               </div>
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-white/60 mb-1">Disponible</div>
-                <div className="font-display font-black text-sm text-white italic">{formatZC(getAvailableToSpend())}</div>
+                <div className="font-display font-black text-sm text-white italic">{formatZC(availableToSpend)}</div>
               </div>
             </div>
             <div className="flex gap-3">

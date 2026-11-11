@@ -15,11 +15,14 @@ interface SearchResponse {
   users: SearchUser[];
 }
 
+/**
+ * Recherche un joueur par pseudo.
+ *
+ * L ERREUR EST PROPAGEE (et non absorbee en liste vide) : une panne reseau
+ * ou un serveur injoignable se lisait comme « ce joueur n existe pas »,
+ * et le joueur en concluait que son pseudo etait faux.
+ */
 export const searchUsers = async (query: string): Promise<SearchUser[]> => {
-  try {
-    const res = await authorizedGet<SearchResponse>(`/api/users/search?q=${encodeURIComponent(query)}`);
-    return res.users || [];
-  } catch {
-    return [];
-  }
+  const res = await authorizedGet<SearchResponse>(`/api/users/search?q=${encodeURIComponent(query)}`);
+  return res.users || [];
 };

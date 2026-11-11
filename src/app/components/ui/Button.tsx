@@ -19,6 +19,7 @@
  */
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { Slot } from '@radix-ui/react-slot';
 import { cn } from '../../../lib/utils';
 import { motion } from 'motion/react';
 import { MOTION_SPRING } from '../../../lib/motion';
@@ -70,16 +71,24 @@ const Button = ({
   animate = true,
   children,
   ref,
+  asChild = false,
   ...props
 }: ButtonProps) => {
+  // `asChild` est IMPLEMENTE (et non laisse dans `...props`) : declare mais
+  // non extrait, il se retrouvait etale sur le `<button>` DOM — un attribut
+  // inconnu que React signale, et un `asChild` sans effet.
+  //
+  // `Slot` (Radix) fusionne les props du Button sur l enfant provided :
+  // le style part sur le lien, et le Button cesse d etre un `<button>`.
+  const Comp = asChild ? Slot : 'button';
   const buttonContent = (
-    <button
+    <Comp
       className={cn(buttonVariants({ variant, size, fullWidth, className }))}
       ref={ref}
       {...props}
     >
       {children}
-    </button>
+    </Comp>
   );
 
   if (animate) {

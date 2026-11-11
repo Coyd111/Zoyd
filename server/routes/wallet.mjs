@@ -66,6 +66,7 @@ import {
   MIN_WITHDRAWAL_ZC,
   WITHDRAWAL_FEE_RATE,
   MAX_WITHDRAWAL_DAILY_ZC,
+  MAX_WITHDRAWAL_AMOUNT_ZC,
   getWindowedWithdrawalTotal,
   buildWithdrawalAmounts,
   calcWithdrawNet,
@@ -133,6 +134,14 @@ if (req.method === 'GET' && pathname === '/api/wallet/me') {
       withdrawal: {
         feeRate: WITHDRAWAL_FEE_RATE,
         minAmount: MIN_WITHDRAWAL_ZC,
+        // Le plafond REEL d'un retrait AUJOURD'HUI : le plus petit entre le
+        // plafond du prestataire et ce qu'il reste du cumul journalier.
+        // Publier le seul plafond du prestataire annoncait un maximum
+        // inatteignable (le cumul de 24 h plafonne a 50 000).
+        maxAmount: Math.min(
+          MAX_WITHDRAWAL_AMOUNT_ZC,
+          Math.max(0, MAX_WITHDRAWAL_DAILY_ZC - getWindowedWithdrawalTotal(wallet)),
+        ),
         // Publie pour que le front affiche la regle au lieu de decouvrir le refus.
         dailyLimit: MAX_WITHDRAWAL_DAILY_ZC,
         dailyWindowHours: 24,
@@ -195,9 +204,12 @@ if (req.method === 'POST' && pathname === '/api/wallet/withdraw') {
     respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
     return true;
   }
-  // Montants en ZC : 150 min, 100 000 ZC max (= 1 000 000 FCFA, plafond payout FedaPay)
-  if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount < MIN_WITHDRAWAL_ZC || body.amount > 100_000) {
-    respondJson(res, 400, { ok: false, error: `Montant invalide (${MIN_WITHDRAWAL_ZC} a 100 000 ZC).`, code: 'INVALID_AMOUNT' });
+  // Montants en ZC : le minimum, et le plafond REEL d'un retrait unique
+  // (`MAX_WITHDRAWAL_AMOUNT_ZC` = le plus petit entre le plafond du
+  // prestataire et le plafond journalier). Annoncer 100 000 alors que le
+  // cumul de 24 h plafonne a 50 000 rendait le maximum inatteignable.
+  if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount < MIN_WITHDRAWAL_ZC || body.amount > MAX_WITHDRAWAL_AMOUNT_ZC) {
+    respondJson(res, 400, { ok: false, error: `Montant invalide (${MIN_WITHDRAWAL_ZC} a ${MAX_WITHDRAWAL_AMOUNT_ZC} ZC).`, code: 'INVALID_AMOUNT' });
     return true;
   }
   // Pays payout : requête explicite, sinon profil, sinon Bénin (legacy).

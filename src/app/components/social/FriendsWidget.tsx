@@ -83,7 +83,16 @@ const FriendsWidget: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const results = await searchUsers(cleanPseudo);
+      let results;
+      try {
+        results = await searchUsers(cleanPseudo);
+      } catch {
+        // Une panne (reseau, serveur) ne doit PAS se lire comme « ce joueur
+        // n existe pas » : le joueur en concluait que son pseudo etait
+        // faux, alors que le service etait simplement indisponible.
+        toast.error('Recherche indisponible — réessaie dans un instant.');
+        return;
+      }
       const match = results[0];
       if (!match) {
         toast.error('Joueur introuvable.');

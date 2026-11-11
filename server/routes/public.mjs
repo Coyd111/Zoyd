@@ -199,6 +199,11 @@ if (req.method === 'GET' && pathname === '/api/health') {
       cronLeaseRefused: health.cronLease ? health.cronLease.refuses : null,
       cronLeaseErrors: health.cronLease ? health.cronLease.erreurs : null,
       cronLeaseDegraded: health.cronLease ? health.cronLease.degrades : null,
+      // L historique DURABLE des bails (table `cron_lease_audit`). false =
+      // migration `supabase/migrate-cron-lease-audit.sql` non jouee : les
+      // baux fonctionnent, mais rien n est conserve — c est ce qui manquait
+      // pour constater qu un job a tourne SANS protection.
+      cronLeaseAuditAvailable: health.cronLeaseAudit ? health.cronLeaseAudit.available : null,
     },
     timestamp: getNow(),
   });

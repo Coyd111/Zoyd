@@ -98,8 +98,10 @@ import {
   recordLeaseEventIfAvailable,
   purgeLeaseAudit,
   isCronLeaseAuditAvailable,
+  getCronLeaseAuditHealth,
   resetCronLeaseAuditStateForTests,
   AUDIT_RETENTION_DAYS,
+  AUDIT_PROBE_INTERVAL_MS,
 } from './cron-lease-audit.mjs';
 
 beforeEach(() => {
@@ -173,6 +175,51 @@ describe('Historique des bails — jamais une condition', () => {
 
   it('la table absente est signalee, pour que l operateur sache', () => {
     expect(isCronLeaseAuditAvailable(), 'la table doit etre declaree absente').toBe(false);
+    // L etat est expose pour `/api/health` : c est ce qui permet de
+    // verifier la migration sans connexion SQL.
+    expect(getCronLeaseAuditHealth().available).toBe(false);
+  });
+});
+
+describe('Historique des bails — la sonde se rejoue', () => {
+  it('une table absente puis creee est detectee SANS redemarrage', async () => {
+    // C est le defaut CORRIGE : la sonde memorisait DEFINITIVEMENT son
+    // resultat negatif. La migration d historique est jouee par un humain,
+    // A N IMPORTE QUEL MOMENT : le serveur demarre avant, sonde une fois
+    // l absence, et ne voyait jamais la table apparaitre — l historique
+    // restait donc inactif jusqu au redeploiement suivant.
+    tableAuditVisible = false;
+    await recordLeaseEventIfAvailable({ jobName: 'job-sonde', acquired: true });
+    expect(isCronLeaseAuditAvailable(), 'la premiere sonde doit voir l absence').toBe(false);
+
+    // La table apparait (migration jouee entre-temps).
+    tableAuditVisible = true;
+
+    // La sonde suivante doit la voir : on avance l horloge pour simuler
+    // l ecoulement du temps (en production, une minute).
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + AUDIT_PROBE_INTERVAL_MS + 1000);
+    try {
+      const ecrit = await recordLeaseEventIfAvailable({ jobName: 'job-sonde', acquired: true });
+      expect(
+        isCronLeaseAuditAvailable(),
+        'la table doit etre re-sondee et detectee apres sa creation',
+      ).toBe(true);
+      expect(ecrit, 'l historique doit etre ecrit').toBe(true);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('la sonde est ESPACEE : une base en panne ne martele pas la base', async () => {
+    tableAuditVisible = false;
+    await recordLeaseEventIfAvailable({ jobName: 'job-1', acquired: true });
+    const sondes = journal.filter((e) => e.op === 'insert').length;
+
+    await recordLeaseEventIfAvailable({ jobName: 'job-2', acquired: true });
+    expect(
+      journal.filter((e) => e.op === 'insert').length,
+      'la sonde ne doit pas repeter l INSERT pendant l intervalle',
+    ).toBe(sondes);
   });
 });
 

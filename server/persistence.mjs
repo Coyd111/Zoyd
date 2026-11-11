@@ -74,6 +74,10 @@ import { roundAmount, getNow, makeError } from './utils.mjs';
 // bail de cron, sans cycle entre les deux.
 import { INSTANCE_ID } from './instance-id.mjs';
 import { getCronLeaseHealth } from './cron-lease.mjs';
+// Etat de l historique durable des bails (table optionnelle : migration
+// manuelle). Expose dans /api/health pour que l operateur verifie, sans
+// connexion SQL, que la migration est effective.
+import { getCronLeaseAuditHealth } from './cron-lease-audit.mjs';
 // Module feuille : les regles pays/telephone doivent etre accessibles ici sans
 // cycle d'import (payment-engine importe persistence).
 import { isAnySupportedPhone, phoneFormatErrorAll } from './payout-countries.mjs';
@@ -1322,6 +1326,11 @@ export const getHealthInfo = () => ({
   // jouee) : deux instances peuvent balayer le meme etat en parallele.
   // null = pas encore sonde.
   cronLease: getCronLeaseHealth(),
+  // true = la table `cron_lease_audit` est lisible : l historique durable
+  // des prises de bail est actif. false = absente (migration
+  // `supabase/migrate-cron-lease-audit.sql` non jouee) : les baux
+  // fonctionnent, mais leur HISTORIQUE n est conserve.
+  cronLeaseAudit: getCronLeaseAuditHealth(),
 
   // Quel commit tourne EN CE MOMENT. Sans ca, un deploiement manuel en
   // retard est indiscernable d'un probleme : on lisait un log de deploiement

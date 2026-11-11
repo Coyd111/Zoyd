@@ -134,23 +134,48 @@ export const purgeLeaseAudit = async (retentionDays = AUDIT_RETENTION_DAYS) => {
  * Meme principe que la sonde des bails : la table est OPTIONNELLE (migration
  * manuelle) et son absence ne doit rien arreter.
  *
+ * PIEGE : le resultat NEGATIF ne doit PAS etre memorise DEFINITIVEMENT.
+ * La migration est jouee par un humain, A N IMPORTE QUEL MOMENT : si
+ * l instance a sonde une fois l absence de la table, elle doit pouvoir la
+ * voir apparaitre SANS redemarrage. C est exactement le defaut corrige sur
+ * la sonde des baux (production : serveur demarre a 11:36, migration jouee
+ * a 11:42, protection restee inactive jusqu au redeploiement suivant).
+ *
  * null = pas encore sonde.
  */
 let auditAvailable = null;
+let lastAuditProbeAt = 0;
+
+/** Delai minimum entre deux sondes lorsque la table est absente. */
+export const AUDIT_PROBE_INTERVAL_MS = 60 * 1000;
 
 export const isCronLeaseAuditAvailable = () => auditAvailable === true;
 
 /** Test hook : rejoue la sonde. */
 export const resetCronLeaseAuditStateForTests = () => {
   auditAvailable = null;
+  lastAuditProbeAt = 0;
 };
 
 const probeAuditTable = async () => {
   if (!supabase) { auditAvailable = false; return false; }
-  if (auditAvailable !== null) return auditAvailable;
+  // Resultat positif : la table existe, elle ne disparait pas. Inutile de
+  // re-sonder.
+  if (auditAvailable === true) return true;
+  // Resultat negatif : on re-sonde, mais pas plus souvent que
+  // `AUDIT_PROBE_INTERVAL_MS` (une migration peut avoir ete jouee entre-temps).
+  const maintenant = Date.now();
+  if (auditAvailable === false && maintenant - lastAuditProbeAt < AUDIT_PROBE_INTERVAL_MS) {
+    return false;
+  }
+  lastAuditProbeAt = maintenant;
   try {
     const { error } = await supabase.from('cron_lease_audit').select('id').limit(1);
-    auditAvailable = !error;
+    const nouveau = !error;
+    if (nouveau && auditAvailable === false) {
+      log.info('Table cron_lease_audit presente : l historique durable des bails est actif.');
+    }
+    auditAvailable = nouveau;
     if (error) {
       log.warn('Table cron_lease_audit absente : pas d historique durable des bails (migration en attente).', {
         message: error.message,
@@ -162,6 +187,19 @@ const probeAuditTable = async () => {
   }
   return auditAvailable;
 };
+
+/**
+ * Etat de l historique durable, pour `/api/health`.
+ *
+ * `available` dit si la table est detectee. C'est le SEUL signal qui
+ * permet a l operateur de verifier, sans connexion SQL, que la migration
+ * `supabase/migrate-cron-lease-audit.sql` est effective.
+ */
+export const getCronLeaseAuditHealth = () => ({
+  available: auditAvailable === true,
+  // null = pas encore sonde ; false = table absente.
+  error: auditAvailable === false ? 'table absente' : null,
+});
 
 /**
  * Enregistre une prise de bail, si la table d historique existe.

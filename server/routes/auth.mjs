@@ -100,6 +100,59 @@ const log = createLogger('auth-routes');
 import { refreshLiveMatchIdentities } from '../state-helpers.mjs';
 import { getServerWallet } from '../wallet-engine.mjs';
 
+/**
+ * Validation des champs de profil - PARTAGEE par l inscription et la mise a
+ * jour.
+ *
+ * L inscription laissait passer `levelCODM`, `rankMJ`, `rankBR`,
+ * `controllerType` et `device` SANS validation : un joueur pouvait s
+ * attribuer un rang frauduleux (segmentation du matchmaking, `trustScoreMin`)
+ * ou un niveau impossible. Les regles existaient - pour `PATCH /api/auth/me`
+ * - mais n etaient pas appliquees a l ENTREE : le compte etait CREE avec
+ * des valeurs invalides, que le PATCH aurait refusees ensuite. Les regles
+ * doivent s appliquer a l entree ET a la sortie.
+ *
+ * @param {string} field - Nom du champ
+ * @param {unknown} value - Valeur proposee
+ * @returns {{ok: true, value: unknown}|{ok: false, error: string, code: string}}
+ */
+const validerChampProfil = (field, value) => {
+  const ENUM_FIELDS = {
+    controllerType: ['touch', 'controller', 'emulator', 'pc', 'other'],
+    device: ['phone', 'tablet', 'pc', 'other'],
+  };
+  // Les rangs viennent du REFERENTIEL PARTAGE du front (`CODM_RANKS`,
+  // src/lib/competition.ts) : ce sont des ENUMS, pas des libelles, et le
+  // serveur doit accepter EXACTEMENT les valeurs que l ecran propose. Le
+  // serveur validait une autre liste (l ancienne nomenclature, Bronze ->
+  // Diamond) : un joueur qui choisissait « Elite » dans le formulaire se
+  // faisait refuser par l API — a l inscription comme a la mise a jour.
+  //
+  // La nomenclature historique est acceptee EN PLUS : des comptes crees
+  // avant le changement portent encore ces valeurs, et ils doivent pouvoir
+  // modifier leur profil.
+  const RANK_VALUES = [
+    'Rookie', 'Veteran', 'Elite', 'Pro', 'Master', 'Grandmaster', 'Legendary',
+    'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond',
+  ];
+  if (ENUM_FIELDS[field] && (typeof value !== 'string' || !ENUM_FIELDS[field].includes(value))) {
+    return { ok: false, error: `Valeur invalide pour ${field}. Valeurs acceptees: ${ENUM_FIELDS[field].join(', ')}`, code: 'INVALID_ENUM' };
+  }
+  if ((field === 'rankMJ' || field === 'rankBR') && !RANK_VALUES.includes(value)) {
+    return { ok: false, error: `Rang invalide pour ${field}. Valeurs acceptees: ${RANK_VALUES.join(', ')}`, code: 'INVALID_ENUM' };
+  }
+  // Le niveau CODM : le front ne pose AUCUN plafond (champ libre dans
+  // l inscription ET dans les parametres) et COD Mobile depasse largement 150
+  // depuis longtemps. Le serveur plafonnait a 150 : un joueur de niveau
+  // reel se faisait refuser — a l inscription comme a la mise a jour. Le
+  // plafond est donc large (1000, tres au-dela du plafond du jeu), mais
+  // la valeur reste un NOMBRE fini et strictement positif.
+  if (field === 'levelCODM' && (typeof value !== 'number' || value < 1 || value > 1000 || !Number.isFinite(value))) {
+    return { ok: false, error: 'Level CODM invalide (1-1000).', code: 'INVALID_ENUM' };
+  }
+  return { ok: true, value };
+};
+
 export const handleAuthRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'POST' && pathname === '/api/auth/register') {
   const clientIp = getClientIp(req);
@@ -128,6 +181,18 @@ if (req.method === 'POST' && pathname === '/api/auth/register') {
     }
     for (const field of ['pseudo', 'bio', 'streamerPseudo']) {
       if (field in safeBody) safeBody[field] = sanitizeText(safeBody[field] || '');
+    }
+    // Les champs de profil sont valides comme a la mise a jour : sinon le
+    // compte etait CREE avec un rang ou un niveau que le PATCH aurait
+    // refuses ensuite.
+    for (const field of ['controllerType', 'device', 'levelCODM', 'rankMJ', 'rankBR']) {
+      if (!(field in safeBody)) continue;
+      const verdict = validerChampProfil(field, safeBody[field]);
+      if (!verdict.ok) {
+        respondJson(res, 400, { ok: false, error: verdict.error, code: verdict.code });
+        return true;
+      }
+      safeBody[field] = verdict.value;
     }
     const user = await createUserAccount(safeBody);
     // V1 simplifiée (décision 2026-09-18) : compte directement actif,
@@ -551,18 +616,12 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
     for (const field of ALLOWED_PROFILE_FIELDS) {
       if (field in body) {
         let value = STRING_FIELDS.includes(field) ? sanitizeText(body[field]) : body[field];
-        if (ENUM_FIELDS[field] && (typeof value !== 'string' || !ENUM_FIELDS[field].includes(value))) {
-          respondJson(res, 400, { ok: false, error: `Valeur invalide pour ${field}. Valeurs acceptees: ${ENUM_FIELDS[field].join(', ')}`, code: 'INVALID_ENUM' });
+        const verdict = validerChampProfil(field, value);
+        if (!verdict.ok) {
+          respondJson(res, 400, { ok: false, error: verdict.error, code: verdict.code });
           return true;
         }
-        if ((field === 'rankMJ' || field === 'rankBR') && !RANK_VALUES.includes(value)) {
-          respondJson(res, 400, { ok: false, error: `Rang invalide pour ${field}. Valeurs acceptees: ${RANK_VALUES.join(', ')}`, code: 'INVALID_ENUM' });
-          return true;
-        }
-        if (field === 'levelCODM' && (typeof value !== 'number' || value < 1 || value > 150 || !Number.isFinite(value))) {
-          respondJson(res, 400, { ok: false, error: 'Level CODM invalide (1-150).', code: 'INVALID_ENUM' });
-          return true;
-        }
+        value = verdict.value;
         // Le telephone n'etait valide par AUCUNE validation, alors qu'il est
         // en `STRING_FIELDS` : il suffisait donc `sanitizeText`.
         //

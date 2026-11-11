@@ -458,8 +458,23 @@ if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
   }
   if (!rateLimitGuard(res, getClientIp(req), 'wallet')) { return true; }
 
+  // Le corps est lu HORS du verrou : le verrou doit couvrir la MUTATION,
+  // pas le parsing (meme regle que sur les routes de match).
+  //
+  // Un client qui envoie ses en-tetes puis n'envoie jamais son corps (1 Mo
+  // coupe, ou un client qui traine) retenait le verrou de PORTEFEUILLE
+  // pendant toute la lecture : les retraits, les gains de match et les
+  // commissions d'arbitre du joueur restaient alors tous en attente sur le
+  // meme mutex.
+  let body;
+  try {
+    body = await parseRequestBody(req);
+  } catch (error) {
+    respondMappedError(res, error);
+    return true;
+  }
+
   try { await withWalletMutex(session.user.id, async () => {
-    const body = await parseRequestBody(req);
     // FedaPay renvoie un id NUMÉRIQUE (ex: 23) : on accepte number et string.
     const transactionId = body.transactionId === undefined || body.transactionId === null
       ? ''

@@ -79,6 +79,9 @@ import {
 } from '../persistence.mjs';
 import { collectFinanceDebts, FINANCE_STALE_MS, FINANCE_CRITICAL_MS } from '../finance-observability.mjs';
 import { supabase } from '../supabase.mjs';
+// Compteurs vifs du bail de cron (ils repartent a zero au redemarrage de
+// l instance ; l historique durable, lui, survit).
+import { getCronLeaseCounters, isCronLeaseTableAvailable } from '../cron-lease.mjs';
 import {
   submitMatchResultOnServer,
   settlePendingMatchResult,
@@ -353,6 +356,74 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     } catch (err) {
       log.error('Admin commissions failed', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du calcul des commissions.', code: 'COMMISSIONS_ERROR' }, req);
+    }
+    return true;
+  }
+
+  // Historique durable des bails de cron.
+  //
+  // La table `cron_leases` ne garde que le bail COURANT : la ligne est
+  // supprimee a la fin de chaque job. Entre deux jobs, elle est VIDE — le
+  // comportement correct, mais cela veut dire qu'il n existe AUCUN endroit
+  // ou constater qu un job a tourne SANS protection multi-instance.
+  //
+  // C est ce qui s est produit en production apres le deploiement du bail :
+  // chaque INSERT echouait sur un BIGINT, donc le bail n etait JAMAIS pris,
+  // et rien ne le montrait. Cette route donne l historique : les tentatives
+  // refusees (`acquired: false`) prouvent qu une AUTRE instance detenait le
+  // job, et les tentatives sans bail marquent un job execute sans
+  // protection.
+  //
+  // 2FA obligatoire : la route expose l identite des instances (topologie
+  // du deploiement).
+  if (req.method === 'GET' && pathname === '/api/admin/cron-leases') {
+    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    const session = requireAdmin2fa(req, res);
+    if (!session) return true;
+    try {
+      const { limit, offset } = parseQueryParams(req.url);
+      const cap = Math.min(Math.max(limit || 100, 1), 500);
+      const maintenant = Date.now();
+      const depuis = Math.min(
+        Math.max(parseInt(new URL(req.url, `http://${req.headers.host}`).searchParams.get('sinceHours') || '24', 10) || 24, 1),
+        24 * 30,
+      ) * 60 * 60 * 1000;
+
+      // Les evenements sont lus par fenetre temporelle : la table est
+      //Retentionnee 30 jours, mais l operateur veut d abord « les 24 dernieres
+      // heures ».
+      const { data, error } = await supabase
+        .from('cron_lease_audit')
+        .select('job_name, holder, acquired, reason, acquired_at, duration_ms')
+        .gte('acquired_at', maintenant - depuis)
+        .order('acquired_at', { ascending: false })
+        .range(offset, offset + cap - 1);
+      if (error) throw new Error(error.message);
+
+      const evenements = data || [];
+      const refuses = evenements.filter((e) => e.acquired === false).length;
+      const degrades = evenements.filter(
+        (e) => e.acquired === true && e.reason !== 'acquis' && e.reason !== 'repris',
+      ).length;
+
+      respondJson(res, 200, {
+        ok: true,
+        sinceHours: Math.round(depuis / (60 * 60 * 1000)),
+        total: evenements.length,
+        // `refuses` = une autre instance detenait le job (deux instances
+        // actives). `degrades` = job execute SANS protection (table absente
+        // ou panne de base). Ce dernier doit rester a ZERO.
+        refuses,
+        degrades,
+        evenements,
+        // Les compteurs VIFS de l instance (ils repartent a zero au
+        // redemarrage, l historique non).
+        compteurs: getCronLeaseCounters(),
+        bailTableAvailable: isCronLeaseTableAvailable(),
+      }, req);
+    } catch (err) {
+      log.error('Admin cron leases failed', { adminId: session.user.id, error: err.message });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture de l historique des bails.', code: 'CRON_LEASES_ERROR' }, req);
     }
     return true;
   }

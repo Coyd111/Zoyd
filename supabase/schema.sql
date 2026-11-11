@@ -303,6 +303,16 @@ ALTER TABLE user_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE processed_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_2fa_secrets ENABLE ROW LEVEL SECURITY;
+-- `cron_leases` porte les bails de cron : qui detient quel job, et jusqu a
+-- quand. C est une table d EXPLOITATION — elle ne doit donc etre lisible que
+-- par le serveur (service_role). Sans RLS, une clé anon/authenticated
+-- exposée pourrait lire les identites d instances (la topologie du
+-- deploiement) et, pire, ecrire un bail : un attaquant s attribuerait le
+-- bail d un job de fond, et ce job ne tournerait plus.
+ALTER TABLE cron_leases ENABLE ROW LEVEL SECURITY;
+-- Meme raison pour l historique : il porte l identite de l instance qui a
+-- traite chaque job (topologie du deploiement).
+ALTER TABLE cron_lease_audit ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses all RLS (le frontend n'utilise JAMAIS Supabase directement :
 -- tout passe par le serveur custom avec la service_role key). Les politiques
@@ -323,6 +333,8 @@ CREATE POLICY "Service role only" ON user_notifications FOR ALL USING (auth.role
 CREATE POLICY "Service role only" ON processed_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Service role only" ON wallet_transactions FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 CREATE POLICY "Service role only" ON admin_2fa_secrets FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON cron_leases FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+CREATE POLICY "Service role only" ON cron_lease_audit FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
 
 -- ============================================================
 -- UPDATED_AT TRIGGER
@@ -447,3 +459,32 @@ CREATE TABLE IF NOT EXISTS cron_leases (
 );
 
 CREATE INDEX IF NOT EXISTS idx_cron_leases_expires ON cron_leases(expires_at);
+
+-- ============================================================
+-- 19. HISTORIQUE DES BAILS DE CRON
+-- ============================================================
+-- Une ligne par tentative de prise de bail, conservee 30 jours.
+--
+-- `cron_leases` ne garde que le bail COURANT (la ligne est supprimee a la
+-- fin de chaque job) : entre deux jobs, elle est vide — comportement
+-- correct, mais il n'existe alors AUCUN endroit ou constater qu'un job a
+-- tourne SANS protection multi-instance. C'est ce qui s'est produit en
+-- production apres le deploiement du bail : chaque INSERT echouait sur un
+-- BIGINT, le bail n'etait jamais pris, et rien ne le montrait.
+--
+-- `acquired = false` signale qu'une AUTRE instance detenait le job : donc
+-- que deux instances etaient actives en meme temps.
+--
+-- Migration seule : supabase/migrate-cron-lease-audit.sql.
+CREATE TABLE IF NOT EXISTS cron_lease_audit (
+  id BIGSERIAL PRIMARY KEY,
+  job_name TEXT NOT NULL,
+  holder TEXT NOT NULL,
+  acquired BOOLEAN NOT NULL,
+  reason TEXT,
+  acquired_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT,
+  duration_ms BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_cron_lease_audit_acquired ON cron_lease_audit(acquired_at);
+CREATE INDEX IF NOT EXISTS idx_cron_lease_audit_job ON cron_lease_audit(job_name, acquired_at DESC);

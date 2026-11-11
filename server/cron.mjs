@@ -79,6 +79,8 @@ import { getNow } from './utils.mjs';
 // doublon (23505). Il expire seul : une instance disparue ne gele pas le
 // job pour toujours.
 import { withCronLease } from './cron-lease.mjs';
+// Historique durable des prises de bail + purge de retention.
+import { purgeLeaseAudit } from './cron-lease-audit.mjs';
 
 const log = createLogger('cron');
 
@@ -608,6 +610,18 @@ export const initCronJobs = () => {
       log.error('Erreur nettoyage mémoire', error);
     }
   }, 60 * 60 * 1000);
+
+  // Purge de l'historique durable des bails — une fois par jour.
+  //
+  // L'historique doit etre RETENTIONNE (c'est sa raison d'etre) mais pas
+  // grossir sans borne : au-dela de la retention, il ne sert plus a rien.
+  // La purge est ici plutot que dans le job de nettoyage MEMOIRE : elle
+  // touche la BASE, pas la memoire, et elle doit etre isolee pour qu'un
+  // echec de purge n empoisonne pas le nettoyage memoire.
+  setInterval(() => { void purgeLeaseAudit(); }, 24 * 60 * 60 * 1000);
+  // Premier passage differe : une base deja chargee de lignes anciennes ne
+  // doit pas attendre 24 h.
+  setTimeout(() => { void purgeLeaseAudit(); }, 60 * 1000).unref?.();
 
   // Contrôle d'intégrité — toutes les heures.
   //

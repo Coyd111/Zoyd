@@ -124,6 +124,9 @@ export const leaseExpiry = (nowMs = Date.now(), ttlMs = CRON_LEASE_TTL_MS) =>
 import { supabase } from './supabase.mjs';
 import { createLogger } from './logger.mjs';
 import { INSTANCE_ID } from './instance-id.mjs';
+// Historique durable des prises de bail (complement : jamais une condition
+// d execution du job).
+import { recordLeaseEventIfAvailable } from './cron-lease-audit.mjs';
 
 const log = createLogger('cron-lease');
 
@@ -418,14 +421,39 @@ export const releaseCronLease = async (jobName, options = {}) => {
  *   l autre instance)
  */
 export const withCronLease = async (jobName, fn, options = {}) => {
+  const debut = Date.now();
   const bail = await acquireCronLease(jobName, options);
   if (!bail.acquired) {
     log.info('Job de fond ignore : une autre instance le traite', { job: jobName, raison: bail.reason });
+    // Trace durable : « une autre instance detient ce job » est un evenement
+    // d'exploitation (deux instances actives en permanence), pas un bruit.
+    await recordLeaseEventIfAvailable({
+      jobName,
+      acquired: false,
+      reason: bail.reason,
+      acquiredAt: debut,
+    });
     return false;
   }
   try {
     await fn();
+    await recordLeaseEventIfAvailable({
+      jobName,
+      acquired: true,
+      reason: bail.reason,
+      acquiredAt: debut,
+      durationMs: Date.now() - debut,
+    });
     return true;
+  } catch (err) {
+    await recordLeaseEventIfAvailable({
+      jobName,
+      acquired: true,
+      reason: 'erreur-job',
+      acquiredAt: debut,
+      durationMs: Date.now() - debut,
+    });
+    throw err;
   } finally {
     await releaseCronLease(jobName, { holder: options.holder });
   }

@@ -37,6 +37,25 @@ CREATE TABLE IF NOT EXISTS cron_leases (
 
 CREATE INDEX IF NOT EXISTS idx_cron_leases_expires ON cron_leases(expires_at);
 
+-- RLS : la table ne doit etre accessible qu'au serveur (service_role).
+--
+-- Elle porte l'IDENTITE de l'instance qui detient chaque job : la lire
+-- revele la topologie du deploiement (quelles instances sont actives).
+-- Et l'ECRIRE est un enjeu de disponibilite : ecrire un bail pour un job
+-- signifie que ce job ne sera traite par AUCUNE instance pendant toute la
+-- duree du bail.
+ALTER TABLE cron_leases ENABLE ROW LEVEL SECURITY;
+
+-- `CREATE POLICY IF NOT EXISTS` n'existe pas en Postgres : on supprime la
+-- politique si elle existe avant de la recreer. Le script est donc
+-- REJOUABLE, ce qui compte pour une migration manuelle.
+DROP POLICY IF EXISTS "Service role only" ON cron_leases;
+CREATE POLICY "Service role only" ON cron_leases
+  FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+
 -- Vérification (optionnel) :
 --   select table_name from information_schema.tables
 --   where table_name = 'cron_leases';
+--
+--   select relrowsecurity from pg_class
+--   where relname = 'cron_leases';   -- doit valoir true

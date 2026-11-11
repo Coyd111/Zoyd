@@ -103,6 +103,18 @@ const memoryStateByKind = new Map();   // kind -> Map<entityId, payload> (O(1) l
 // `app_users.revision` pour les collections d'état. Chargées au boot,
 // incrémentées par `upsertStateEntity` en écriture conditionnelle.
 const memoryStateRevisions = new Map(); // `${kind}:${entityId}` -> revision BIGINT
+// Nombre d ENTITES EVIQUEES de la memoire, par kind.
+//
+// L eviction sort l entite de la MEMOIRE seulement : la ligne reste en
+// base (une entite porte une cagnotte : la detruire serait une perte
+// seche). Le compte memoire est donc naturellement INFERIEUR au compte
+// base — et le controle d integrite, qui les comparait, concluait a une
+// divergence PERMANENTE des que le plafond etait atteint. Le seul
+// detecteur de divergence du projet etait alors SATURE, donc invisible.
+//
+// Ce compteur rend l ecart explicite : ce qui manque en memoire a ete
+// evince, pas perdu.
+const memoryStateEvictions = new Map(); // kind -> nombre d evictions
 let stateRevisionSupported = null;
 const MAX_STATE_PER_KIND = 10000;
 const memoryAdminIds = new Set();     // fast admin lookup (avoids a full user scan)
@@ -1130,6 +1142,9 @@ const clearAllMemoryCaches = () => {
   memoryChatReads.clear();
   memoryStateSnapshots.clear();
   memoryStateByKind.clear();
+  // Les evictions sont remises a zero : la memoire va etre reconstruite
+  // depuis la base, donc l ecart observe n aura plus de sens.
+  memoryStateEvictions.clear();
   // Les revisions suivent : une revision conservee pour une entite
   // absente de la memoire ferait passer le prochain ecriture en
   // branche CONDITIONNELLE alors que la ligne n existe pas en base :
@@ -1291,7 +1306,14 @@ export const verifyDataIntegrity = async () => {
     }
     const { data: stateRows, error: stateError } = await supabase
       .from('state_snapshots')
-      .select('kind');
+      .select('kind, entity_id, revision');
+
+    // COMPARAISON DES REVISIONS : un ecrasement de CONTENU ne change pas le
+    // nombre de lignes. Une instance qui ecrase la version d une autre
+    // laissait donc le compte intact — et aucune anomalie n etait signalee,
+    // ni dans les logs ni dans /api/health. La revision, elle, differe :
+    // c est elle qui dit QUELLE version est en base.
+    let revisionDivergences = 0;
 
     if (stateError) {
       log.error('State snapshot count failed', { message: stateError.message });
@@ -1304,7 +1326,30 @@ export const verifyDataIntegrity = async () => {
       for (const kind of kinds) {
         const mem = stateCounts[kind] || 0;
         const db = dbByKind[kind] || 0;
-        if (mem !== db) stateMismatches.push({ kind, memory: mem, db, diff: db - mem });
+        // Les entites EVIQUEES de la memoire restent en base : c est
+        // voulu (une entite porte une cagnotte). On les compte donc a part
+        // pour ne pas les confondre avec une PERTE.
+        const evincees = memoryStateEvictions.get(kind) || 0;
+        if (mem + evincees !== db) {
+          stateMismatches.push({ kind, memory: mem, evicted: evincees, db, diff: db - (mem + evincees) });
+        }
+      }
+
+      const dbRevisions = new Map();
+      for (const row of stateRows || []) {
+        // Une base qui ne renvoie pas de revision ne permet pas la
+        // comparaison : on ignore cette entite plutot que de la declarer
+        // divergente (faux positif sur une sonde de sante).
+        if (row.revision === undefined || row.revision === null) continue;
+        dbRevisions.set(`${row.kind}:${row.entity_id}`, Number(row.revision) || 0);
+      }
+      for (const [key, revision] of memoryStateRevisions) {
+        const dbRevision = dbRevisions.get(key);
+        // Entite absente de la base : elle a ete supprimee, ou elle
+        // n a jamais ete persistee. Ce n est pas une divergence de
+        // revision.
+        if (dbRevision === undefined) continue;
+        if (dbRevision !== revision) revisionDivergences += 1;
       }
     }
 
@@ -1361,7 +1406,8 @@ export const verifyDataIntegrity = async () => {
     const memoryCount = memoryUsers.size;
     const match = memoryCount === dbUserCount
       && stateMismatches.length === 0
-      && walletIssues.length === 0;
+      && walletIssues.length === 0
+      && revisionDivergences === 0;
 
     if (!match) {
       log.error('DATA INTEGRITY MISMATCH', {
@@ -1383,6 +1429,7 @@ export const verifyDataIntegrity = async () => {
       ok: match,
       memoryUsers: memoryCount,
       dbUsers: dbUserCount,
+      revisionDivergences,
       state: stateCounts,
       stateMismatches,
       walletIssues,
@@ -3960,6 +4007,9 @@ export const upsertStateEntity = async (kind, entity) => {
     const oldest = kindMap.keys().next().value;
     kindMap.delete(oldest);
     memoryStateSnapshots.delete(`${kind}:${oldest}`);
+    // L entite sort de la MEMOIRE, pas de la base : on compte l ecart
+    // pour que le controle d integrite ne le confonde pas avec une perte.
+    memoryStateEvictions.set(kind, (memoryStateEvictions.get(kind) || 0) + 1);
     log.warn('State entity evicted from memory (kept in database)', {
       kind, entityId: oldest, cap: MAX_STATE_PER_KIND,
     });
@@ -4382,9 +4432,29 @@ export const claimTransaction = async (transactionId, userId, amountZC) => {
  */
 export const releaseTransaction = async (transactionId) => {
   memoryProcessedTransactions.delete(transactionId);
-  try {
-    await sbDelete('processed_transactions', { transaction_id: transactionId });
-  } catch { /* rollback is best-effort — memory release already allows retry */ }
+  //
+  // La suppression doit etre VERIFIEE, et rejouee.
+  //
+  // `sbDelete` journalisait l erreur sans la propager : la liberation
+  // echouait donc EN SILENCE, la reservation restait en base, et un rejeu
+  // du webhook repondait « deja traitee » — le joueur n etait JAMAIS
+  // credite. L argent etait perdu, sans aucune dette visible.
+  //
+  // On rejoue la suppression (l echec est souvent transitoire : base
+  // saturee, timeout), puis on journalise un CRITICAL avec de quoi
+  // reconcilier a la main si elle echoue encore.
+  if (!supabase) return;
+  for (let tentative = 1; tentative <= 3; tentative += 1) {
+    const ok = await sbDeleteStrict('processed_transactions', { transaction_id: transactionId });
+    if (ok) return;
+    if (tentative < 3) {
+      await new Promise((r) => setTimeout(r, 200 * tentative));
+    }
+  }
+  log.error('CRITICAL: liberation de la reservation impossible — le credit sera bloque', {
+    transactionId,
+    hint: 'Rejouer le webhook apres resolution, ou crediter le joueur a la main.',
+  });
 };
 
 // ─── Admin 2FA Persistence ─────────────────────────────────────────────────

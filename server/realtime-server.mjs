@@ -43,7 +43,7 @@ import { vapidKeys } from './vapid-keys.mjs';
 import { assertSingleProcess } from './single-process-guard.mjs';
 import { createLogger } from './logger.mjs';
 import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from './metrics.mjs';
-import { serializeAuthCookie, ALLOWED_ORIGINS, ALLOW_DEBUG_CODES, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
+import { serializeAuthCookie, ALLOWED_ORIGINS, ALLOW_DEBUG_CODES, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError, resolveRealtimeRole } from './http-utils.mjs';
 import { checkRateLimit, getClientIp, rateLimitGuard, getPeerAddress, checkRateLimitComplet } from './rate-limiter.mjs';
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel, startChannelPresenceCleanupTimer, PRESENCE_ROLES, presenceTeamOf } from './channel-presence.mjs';
@@ -617,7 +617,22 @@ io.on('connection', (socket) => {
     if (!targetUserId || !title) return;
 
     // Security: users can only send push to themselves, admins can send to anyone
-    if (session.userId !== targetUserId && session.role !== 'admin') {
+    //
+    // PIEGE : `session.role` est FIGE a la connexion. Une session temps reel
+    // vit 6 h : un administrateur retrograde gardait donc le droit
+    // d ecrire dans le telephone de n IMPORTE QUEL joueur pendant toute
+    // cette duree - un vecteur de phishing deguise en notification
+    // officielle, alors que le compte etait `player` partout ailleurs.
+    //
+    // Le role doit donc etre RELU a chaque envoi. `resolveRealtimeRole`
+    // relit la session temps reel : il rend l ETAT COURANT, et il coupe
+    // tout privilege si la session a ete revoquee, si le compte est
+    // banni, ou s il a disparu.
+    const roleCourant = resolveRealtimeRole(
+      session.token || socket.handshake.auth?.token,
+      session.userId,
+    );
+    if (session.userId !== targetUserId && roleCourant !== 'admin') {
       return;
     }
 

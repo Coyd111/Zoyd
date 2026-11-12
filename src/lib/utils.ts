@@ -23,13 +23,27 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatZC(amount: number): string {
-  const rounded = Math.round(amount * 10) / 10;
+  // MIROIR de `formatZcForNotification` (server/utils.mjs).
+  //
+  // PIEGE : les deux versions doivent produire EXACTEMENT la meme chaine.
+  // Celle du serveur renvoyait '0 ZC' pour un montant non fini ; celle-ci
+  // renvoyait 'NaN ZC' - donc l'ecran affichait « NaN ZC » a un joueur dont
+  // le solde n'etait pas un nombre. L'invariant « les deux formats doivent
+  // rester identiques » etait donc viole d'un cote, et rien ne le verifiait :
+  // les deux implémentations vivaient dans deux langages, sans test commun.
+  const rounded = Math.round(Number(amount) * 10) / 10;
+  if (!Number.isFinite(rounded)) return '0 ZC';
   const display = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace('.', ',');
   return `${display} ZC`;
 }
 
 export function roundAmount(value: number): number {
-  return Math.round(value * 100) / 100;
+  // MIROIR de `roundAmount` (server/utils.mjs) : un montant non fini y
+  // vaut 0, pas NaN. Sans ce garde, `roundAmount(undefined)` renvoyait
+  // NaN, qui se propageait dans tous les totaux calcules ensuite.
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100 || 0;
 }
 
 // Audit-4 INFO : le taux 1 ZC = 10 FCFA etait re-encode a la main dans

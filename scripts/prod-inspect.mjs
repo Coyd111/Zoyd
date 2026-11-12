@@ -30,7 +30,8 @@
  *
  * Usage
  * -----
- *   node scripts/prod-inspect.mjs              # vue d'ensemble
+ *   node scripts/prod-inspect.mjs sante          # sonde publique (SANS identifiant)
+ *   node scripts/prod-inspect.mjs              # vue d'ensemble (identifiants requis)
  *   node scripts/prod-inspect.mjs leases        # detail des bails de cron
  *   node scripts/prod-inspect.mjs users <pseudo>
  *   node scripts/prod-inspect.mjs matches
@@ -43,6 +44,12 @@
  *
  * Le fichier est ignore par git (`.env.*`), donc il ne part jamais sur le
  * depot.
+ *
+ * PIEGE : seule la commande `sante` fonctionne SANS identifiants. Elle lit
+ * une URL PUBLIQUE (`/api/health`) : exiger un secret `service_role` pour
+ * consulter une sonde publique rendait l'outil inutilisable sur une machine
+ * qui n'a pas le secret — alors que c'est precisement la machine ou l on
+ * veut voir l etat de la production.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -86,27 +93,46 @@ const echouer = (message) => {
   process.exit(1);
 };
 
-if (!url || !cle) {
-  echouer(
-    `identifiants de production absents.\n`
-    + `  Créez ${FICHIER_CREDENTIALS} a la racine du depot :\n\n`
-    + `      SUPABASE_URL=https://<projet>.supabase.co\n`
-    + `      SUPABASE_SERVICE_KEY=<cle service_role>\n\n`
-    + `  Ce fichier est ignore par git.`,
-  );
-}
+const commande = process.argv[2] || 'vue';
 
-if (url.includes('YOUR_PROJECT')) {
-  echouer(
-    `SUPABASE_URL est encore la valeur de gabarit ("${url}").\n`
-    + `  Remplacez-la par l'URL reelle du projet Supabase.`,
-  );
-}
+/**
+ * Commandes qui n'ont besoin d'AUCUN identifiant.
+ *
+ * `sante` lit une URL PUBLIQUE. Lui exiger la cle `service_role` rendait
+ * l'outil inutilisable sur une machine qui n'a pas le secret — c'est a
+ * dire precisement la machine ou l operateur veut consulter l etat de la
+ * production (un ticket, un rapport, un incident en cours).
+ */
+const COMMANDES_SANS_BASE = new Set(['sante']);
 
-const { createClient } = await import('@supabase/supabase-js');
-const supabase = createClient(url, cle, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+/** Le client Supabase : il n'est cree que si la commande en a besoin. */
+let supabase = null;
+
+if (!COMMANDES_SANS_BASE.has(commande)) {
+  if (!url || !cle) {
+    echouer(
+      `identifiants de production absents.\n`
+      + `  Créez ${FICHIER_CREDENTIALS} a la racine du depot :\n\n`
+      + `      SUPABASE_URL=https://<projet>.supabase.co\n`
+      + `      SUPABASE_SERVICE_KEY=<cle service_role>\n\n`
+      + `  Ce fichier est ignore par git.\n\n`
+      + `  (La sonde publique, elle, ne demande aucun identifiant :\n`
+      + `   node scripts/prod-inspect.mjs sante)`,
+    );
+  }
+
+  if (url.includes('YOUR_PROJECT')) {
+    echouer(
+      `SUPABASE_URL est encore la valeur de gabarit ("${url}").\n`
+      + `  Remplacez-la par l'URL reelle du projet Supabase.`,
+    );
+  }
+
+  const { createClient } = await import('@supabase/supabase-js');
+  supabase = createClient(url, cle, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 const section = (titre) => console.log(`\n=== ${titre} ===`);
 
@@ -223,7 +249,6 @@ const inspecterSante = async () => {
   }
 };
 
-const commande = process.argv[2] || 'vue';
 switch (commande) {
   case 'leases':
     await inspecterBails();
@@ -243,4 +268,10 @@ switch (commande) {
     break;
 }
 
-process.exit(0);
+// PIEGE : pas de `process.exit(0)` ici. Sous Windows, tuer le processus
+// pendant que le socket HTTP (undici) se ferme provoque une assertion
+// libuv (« Assertion failed: !(handle->flags & UV_HANDLE_CLOSING) »), et
+// l outil se termine sur un code de crash (-1073740791) alors que tout
+// s est passe. On laisse donc Node sortir naturellement : `exitCode` dit
+// que c'est un succes, et la boucle d evenements vide se termine seule.
+process.exitCode = 0;

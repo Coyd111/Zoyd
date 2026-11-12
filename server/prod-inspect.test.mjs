@@ -27,6 +27,19 @@ import { resolve } from 'node:path';
  */
 const source = readFileSync(resolve('scripts/prod-inspect.mjs'), 'utf8');
 
+/**
+ * Retire les commentaires du source.
+ *
+ * PIEGE : une assertion sur le source BRUT tombe sur la PROSE qui explique
+ * le code. Il faut verifier le CODE, pas le commentaire qui le decrit —
+ * sinon le test echoue des qu on ecrit pourquoi on ne fait pas une chose.
+ */
+const sansCommentaires = (texte) => texte
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')
+  // `[^:]` protege les URL (`https://`) : sans lui, le reste de la ligne
+  // serait pris pour un commentaire.
+  .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
 describe('prod-inspect — etat de la purge de l historique', () => {
   it('affiche l etat de la purge et son horodatage', () => {
     // Mot entier : `toContain` matcherait aussi un nom prefixes par
@@ -48,8 +61,33 @@ describe('prod-inspect — etat de la purge de l historique', () => {
     // L outil ne doit jamais ecrire dans la production. Une seule
     // ecriture transformerait un outil de diagnostic en outil de
     // modification de donnees.
+    const code = sansCommentaires(source);
     for (const interdit of ['.insert(', '.update(', '.delete(', '.upsert(']) {
-      expect(source, `${interdit} interdit`).not.toContain(interdit);
+      expect(code, `${interdit} interdit`).not.toContain(interdit);
     }
+  });
+
+  it('la sonde publique ne demande AUCUN identifiant', () => {
+    // PIEGE : `sante` lit une URL PUBLIQUE. Exiger la cle `service_role`
+    // pour la consulter rendait l outil inutilisable sur une machine qui
+    // n a pas le secret — c est a dire precisement la machine ou l
+    // operateur veut voir l etat de la production.
+    const code = sansCommentaires(source);
+    expect(code).toMatch(/COMMANDES_SANS_BASE\s*=\s*new Set\(\['sante'\]\)/);
+    // Le client Supabase ne doit etre cree QUE pour les commandes qui
+    // interrogent la base.
+    expect(code).toMatch(/if \(!COMMANDES_SANS_BASE\.has\(commande\)\)/);
+  });
+
+  it('ne force pas la sortie du processus', () => {
+    // PIEGE : sous Windows, `process.exit(0)` pendant que le socket HTTP
+    // (undici) se ferme provoque une assertion libuv
+    // (« Assertion failed: !(handle->flags & UV_HANDLE_CLOSING) »).
+    // L outil se terminait alors sur un code de CRASH (-1073740791)
+    // alors que tout s etait passe : un script de diagnostic qui « echoue »
+    // sans raison est un script auquel on ne fait plus confiance.
+    const code = sansCommentaires(source);
+    expect(code).not.toMatch(/process\.exit\(0\)/);
+    expect(code).toMatch(/process\.exitCode = 0;/);
   });
 });

@@ -74,6 +74,7 @@ export const handleSocialRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'GET' && pathname === '/api/social/friends') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const { limit, offset } = parseQueryParams(req.url);
     const all = getFriendsForUser(session.user.id);
@@ -88,6 +89,7 @@ if (req.method === 'GET' && pathname === '/api/social/friends') {
 if (req.method === 'GET' && pathname === '/api/social/pending') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const { limit, offset } = parseQueryParams(req.url);
     const all = getFriendRequestsForUser(session.user.id).filter((fr) => fr.status === 'pending');
@@ -325,6 +327,7 @@ if (req.method === 'POST' && pathname === '/api/notifications/read-all') {
 if (req.method === 'GET' && pathname === '/api/notifications') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const unread = getUnreadNotificationsForUser(session.user.id);
     respondJson(res, 200, { ok: true, notifications: unread, count: unread.length });

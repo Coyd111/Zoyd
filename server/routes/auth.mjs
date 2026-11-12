@@ -475,6 +475,7 @@ if (req.method === 'POST' && pathname === '/api/auth/reset-password') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  if (!rateLimitGuard(res, getClientIp(req), 'auth', getPeerAddress(req))) { return true; }
 
   respondJson(res, 200, {
     ok: true,

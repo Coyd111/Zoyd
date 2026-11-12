@@ -140,6 +140,7 @@ if (req.method === 'POST' && pathname === '/api/realtime/push/subscribe') {
     respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -164,6 +165,7 @@ if (req.method === 'POST' && pathname === '/api/realtime/push/unsubscribe') {
     respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -188,6 +190,7 @@ if (req.method === 'POST' && pathname === '/api/realtime/push/test') {
     respondJson(res, 401, { ok: false, error: 'Session temps reel requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);

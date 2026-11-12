@@ -1913,6 +1913,51 @@ export const getPublicStats = () => {
  * @param {Function} updater - Async function that receives current user and returns modified user
  * @returns {Promise<object>} Updated sanitized user payload
  */
+/**
+ * Resynchronise les index d identite avec le payload RETENU.
+ *
+ * Ces index sont la contrepartie MEMOIRE de trois tables :
+ *   - `pseudoKeys` / `gameIdKeys` : trouver un joueur par son pseudo ;
+ *   - `memoryAdminIds` : reconnaitre un administrateur ;
+ *   - `memoryPasswordHashes` : trouver le hash pour se connecter.
+ *
+ * PIEGE : ils doivent suivre le payload RETENU, y compris apres un rejeu OCC.
+ *   Le rejeu peut ADOPTER une identite differente : si l autre instance a
+ *   retrograde le role (ou change le pseudo) entre notre lecture et notre
+ *   ecriture, le payload rejete porte la nouvelle identite - mais les index
+ *   restaient sur l ancienne. Un admin retrograde gardait donc ses droits
+ *   en memoire jusqu a la prochaine ecriture de ce compte, et un joueur
+ *   change de pseudo n etait plus trouvable.
+ *
+ * @param {string} userId
+ * @param {object} precedent - payload avant la mutation
+ * @param {object} suivant - payload retenu
+ * @param {string} passwordHash - hash conserve (vide si inconnu)
+ */
+const resynchroniserIndexesIdentite = (userId, precedent, suivant, passwordHash = '') => {
+  const ancienPseudoKey = normalizePseudoKey(precedent?.pseudo || '');
+  const ancienEmailKey = normalizeEmailKey(precedent?.email || '');
+  const ancienPhoneKey = normalizePhoneKey(precedent?.phone || '');
+  const nouveauPseudoKey = normalizePseudoKey(suivant?.pseudo || '');
+  const nouveauEmailKey = normalizeEmailKey(suivant?.email || '');
+  const nouveauPhoneKey = normalizePhoneKey(suivant?.phone || '');
+  // Les ANCIENNES cles d index de hash ne servent plus.
+  if (ancienPseudoKey !== nouveauPseudoKey) memoryPasswordHashes.delete(ancienPseudoKey);
+  if (ancienEmailKey !== nouveauEmailKey) memoryPasswordHashes.delete(ancienEmailKey);
+  if (ancienPhoneKey !== nouveauPhoneKey) memoryPasswordHashes.delete(ancienPhoneKey);
+  // Index courants.
+  pseudoKeys.set(userId, nouveauPseudoKey);
+  const ancienGameIdKey = normalizeGameIdKey(precedent?.gameId || '');
+  const nouveauGameIdKey = normalizeGameIdKey(suivant?.gameId || '');
+  if (ancienGameIdKey) gameIdKeys.delete(ancienGameIdKey);
+  if (nouveauGameIdKey) gameIdKeys.set(nouveauGameIdKey, userId);
+  if (suivant?.role === 'admin') memoryAdminIds.add(userId);
+  else memoryAdminIds.delete(userId);
+  if (passwordHash) {
+    storePasswordHash(userId, passwordHash, suivant?.pseudo, suivant?.email, suivant?.phone);
+  }
+};
+
 export const updateUserAccount = async (userId, updater) => {
   return await withUserMutex(userId, async () => {
     if (!memoryUsers.has(userId)) throw makeError('USER_NOT_FOUND', 'Compte joueur introuvable.');
@@ -1956,26 +2001,14 @@ export const updateUserAccount = async (userId, updater) => {
 
     let next = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(current))));
     memoryUsers.set(userId, next);
-    pseudoKeys.set(userId, normalizePseudoKey(next.pseudo || ''));
-    if (current.gameId) gameIdKeys.delete(normalizeGameIdKey(current.gameId));
-    if (next.gameId) gameIdKeys.set(normalizeGameIdKey(next.gameId), userId);
-
-    // Track admin role changes
-    if (next.role === 'admin') memoryAdminIds.add(userId);
-    else memoryAdminIds.delete(userId);
-
-    // Clean up old password hash lookup entries when pseudo/email/phone change
-    const oldPseudoKey = normalizePseudoKey(current.pseudo);
-    const oldEmailKey = normalizeEmailKey(current.email);
-    const oldPhoneKey = normalizePhoneKey(current.phone);
-    const newPseudoKey = normalizePseudoKey(next.pseudo);
-    const newEmailKey = normalizeEmailKey(next.email);
-    const newPhoneKey = normalizePhoneKey(next.phone);
-    if (oldPseudoKey !== newPseudoKey) memoryPasswordHashes.delete(oldPseudoKey);
-    if (oldEmailKey !== newEmailKey) memoryPasswordHashes.delete(oldEmailKey);
-    if (oldPhoneKey !== newPhoneKey) memoryPasswordHashes.delete(oldPhoneKey);
-
+    // Le hash est lu AVANT le nettoyage des anciennes cles : il est indexe
+    // par userId, mais le lire apres reste fragile.
     const passwordHash = memoryPasswordHashes.get(userId)?.[1] || '';
+    // Reindexe les identifiants (pseudo, gameId, role admin, hash) : sans
+    // ca, un joueur qui change son pseudo/telephone ne pouvait plus se
+    // connecter (authenticateUserAccount ne trouvait plus la cle) jusqu au
+    // redemarrage serveur.
+    resynchroniserIndexesIdentite(userId, current, next, passwordHash);
 
     // Réindexe les NOUVEAUX identifiants : sans ça, un joueur qui change son
     // pseudo/téléphone ne pouvait plus se connecter (authenticateUserAccount ne
@@ -2010,6 +2043,11 @@ export const updateUserAccount = async (userId, updater) => {
       const rafraichi = sanitizeUserPayload(updater(structuredClone(sanitizeUserPayload(frais))));
       next = rafraichi;
       memoryUsers.set(userId, rafraichi);
+      // PIEGE : le rejeu peut avoir ADOPTE une identite differente (l autre
+      // instance a retrograde le role, ou change le pseudo, entre notre
+      // lecture et notre ecriture). Les index doivent suivre le payload
+      // RETENU, sinon un admin retrograde gardait ses droits en memoire.
+      resynchroniserIndexesIdentite(userId, current, rafraichi, passwordHash);
       return {
         pseudo_key: normalizePseudoKey(rafraichi.pseudo),
         email_key: normalizeEmailKey(rafraichi.email),
@@ -2023,13 +2061,9 @@ export const updateUserAccount = async (userId, updater) => {
 
     if (supabase && persisted !== OCC_OK) {
       // On remet l'état mémoire d'avant : le client doit pouvoir rejouer.
-      if (next.gameId) gameIdKeys.delete(normalizeGameIdKey(next.gameId));
       memoryUsers.set(userId, current);
-      pseudoKeys.set(userId, normalizePseudoKey(current.pseudo || ''));
-      if (current.gameId) gameIdKeys.set(normalizeGameIdKey(current.gameId), userId);
-      memoryAdminIds.delete(userId);
-      if (current.role === 'admin') memoryAdminIds.add(userId);
-      if (passwordHash) storePasswordHash(userId, passwordHash, current.pseudo, current.email, current.phone);
+      // Les index reviennent a l etat d avant : sens inverse du rejeu.
+      resynchroniserIndexesIdentite(userId, next, current, passwordHash);
       throw makeError('SERVER_BUSY', 'Sauvegarde du profil impossible, reessaie dans un instant.');
     }
 

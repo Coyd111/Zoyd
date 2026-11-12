@@ -669,6 +669,29 @@ cas isoles.
 | `deploy-contract.test.mjs` | une variable d environnement declaree et non lue, ou lue et non declaree |
 | `selector-reference-stability.test.ts` (existant) | un accesseur de store appele hors d un hook |
 
+### Le keep-alive : l hibernation est traitee (deux mecanismes)
+
+Le service Render du plan gratuit dort apres ~15 minutes sans trafic, et
+les travaux de fond ne tournent QUE service eveille. Deux mecanismes,
+choisis pour des **modes de defaillance opposes** :
+
+| mecanisme | cadence | pourquoi |
+|---|---|---|
+| `.github/workflows/keepalive.yml` | 5 min | versionne dans le depot : relu, modifie et audite comme le reste du code. Declenchable a la main. |
+| `pg_cron` + `pg_net` (Supabase) | 1 min | precis, et survit au retard des taches planifiees de GitHub. |
+
+Pourquoi deux : le plan gratuit de Supabase met le PROJET en pause apres
+7 jours d inactivite complete - c est precisement le moment ou l on
+aurait le plus besoin du keep-alive. GitHub, lui, peut retarder une
+tache planifiee. Un seul des deux suffit presque toujours ; les deux
+ensemble ferment la fenetre.
+
+Le workflow utilise `curl --fail` : une sonde qui repond 500 fait
+ECHOUER la tache. Le keep-alive ne doit pas masquer une panne.
+
+Verification : le job `cron` a bien reussi a chaque minute (14:59, 15:00,
+15:01) et le service n a pas change d instance ni de processus.
+
 ### Ce qui reste ouvert (decision humaine)
 
 **L hibernation du plan gratuit.** Le service Render dort apres ~15 min

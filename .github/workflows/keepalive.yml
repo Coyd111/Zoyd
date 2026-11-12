@@ -1,0 +1,56 @@
+name: Keep-alive (Render)
+
+# Le plan gratuit de Render met le service en veille apres ~15 minutes sans
+# visite. Les travaux de fond (reglements, liberations de fenetres,
+# reconciliation des retraits) ne tournent QUE service eveille : un joueur
+# qui gagne un match pendant que le dernier visiteur a ferme l application
+# attendrait le prochain visiteur pour etre paye.
+#
+# Ce workflow maintient le service eveille. Il ne fait QUE cela : un GET
+# sur la sonde publique, qui rend aussi le premier joueur servi sans
+# attente de demarrage a froid.
+#
+# Pourquoi un second mecanisme (pg_cron cote Supabase) : le plan
+# gratuit de Supabase met le PROJET en pause apres 7 jours d inactivite
+# complete - et c est exactement le moment ou l on aurait le plus besoin
+# du keep-alive. Les deux mecanismes echouent donc dans des conditions
+# opposees : GitHub peut retarder une tache planifiee, Supabase peut
+# s endormir. Un seul des deux suffit dans 99 % des cas ; les deux
+# ensemble ferment la fenetre.
+
+on:
+  schedule:
+    # Le plus court intervalle accepte par GitHub. Le service dort apres
+    # 15 min sans trafic : un ping toutes les 5 min le maintient eveille.
+    - cron: '*/5 * * * *'
+  # Declenchement manuel : pour verifier la pinger sans attendre le
+  # prochain crontab, et pour un diagnostic a la demande.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Un seul ping a la fois : deux executions simultanees ne servent a rien
+  # et se concurrencent sur le quota de la sonde.
+  group: zoyd-keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    name: Ping de la sonde publique
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping
+        run: |
+          set -euo pipefail
+          # `--fail` : un HTTP >= 400 fait ECHOUER la tache. Le keep-alive
+          # ne doit pas masquer une panne : une sonde qui repond 500 doit
+          # etre visible dans l onglet Actions, pas passer en silence.
+          curl --fail --silent --show-error \
+               --max-time 20 \
+               --retry 2 --retry-delay 5 \
+               --user-agent "zoyd-keepalive/1.0 (github-actions)" \
+               https://zoyd.onrender.com/api/health
+          echo "Sonde atteinte."

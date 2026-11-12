@@ -169,3 +169,66 @@ describe('Exploitabilite - la CI controle ce que le developpeur controle', () =>
     expect(ci, 'les tests live ne doivent pas tourner dans la CI').not.toContain('test:e2e:live');
   });
 });
+
+/**
+ * Le keep-alive : le service Render doit rester eveille.
+ *
+ * Le plan gratuit dort apres ~15 min sans trafic, et les travaux de fond
+ * (reglements, liberations de fenetres, reconciliation des retraits) ne
+ * tournent QUE service eveille. Un joueur qui gagne un match pendant que
+ * le dernier visiteur a ferme l application attendrait le prochain
+ * visiteur pour etre paye.
+ *
+ * Le workflow est versionne dans le depot : il est donc relu, modifie et
+ * audite comme le reste du code. Le second mecanisme (pg_cron cote
+ * Supabase) n est PAS dans le depot - il vit dans la base, et son
+ * existence est verifiee par la sonde elle-meme (le service reste
+ * eveille).
+ */
+describe('Exploitabilite - le keep-alive est en place', () => {
+  const workflowPath = resolve('.github/workflows/keepalive.yml');
+  const workflow = readFileSync(workflowPath, 'utf8');
+
+  it('le workflow de keep-alive existe et pinge la sonde publique', () => {
+    expect(workflow).toContain('https://zoyd.onrender.com/api/health');
+  });
+
+  it('il est planifie au moins toutes les 5 minutes', () => {
+    // Au-dela de 5 minutes, le service peut dormir entre deux pings
+    // (le seuil de Render est de 15 min, mais la marge doit rester large).
+    const crons = [...workflow.matchAll(/cron:\s*'([^']+)'/g)].map((m) => m[1]);
+    expect(crons.length, 'le workflow doit avoir une planification').toBeGreaterThan(0);
+
+    // Champ « minutes » d une expression cron : on en deduit l intervalle
+    // maximal entre deux declenchements.
+    const intervalleMinutes = (cron) => {
+      const champ = cron.trim().split(/\s+/)[0];
+      if (champ === '*') return 1;
+      const etoile = /^\*\/(\d+)$/.exec(champ);
+      if (etoile) return Number(etoile[1]);
+      const intervalle = /^(\d+)\/(\d+)$/.exec(champ);
+      if (intervalle) return Number(intervalle[2]);
+      const plage = /^(\d+)-(\d+)$/.exec(champ);
+      if (plage) return Number(plage[2]);
+      const unique = /^(\d+)$/.exec(champ);
+      if (unique) return Number(unique[1]);
+      return Infinity;
+    };
+
+    for (const cron of crons) {
+      expect(
+        intervalleMinutes(cron),
+        `le keep-alive doit passer toutes les 5 minutes au maximum (cron : ${cron})`,
+      ).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it('un ping en erreur fait ECHOUER la tache (le keep-alive ne masque pas une panne)', () => {
+    // `--fail` : un HTTP >= 400 doit etre visible dans l onglet Actions.
+    expect(workflow).toContain('--fail');
+  });
+
+  it('il est declenchable a la main (diagnostic sans attendre le crontab)', () => {
+    expect(workflow).toContain('workflow_dispatch');
+  });
+});

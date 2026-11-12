@@ -30,6 +30,20 @@ export const roundAmount = (value) => {
   return Math.round(n * 100) / 100 || 0;
 };
 
+/**
+ * Taux de conversion : 1 ZC = 10 FCFA.
+ *
+ * MIROIR de `ZC_TO_FCFA` (src/lib/utils.ts). Le taux etait reencode a la
+ * main de chaque cote : le changer d un seul rend la conversion FAUSSE
+ * ET SILENCIEUSE - le joueur verrait un bon montant en FCFA et le
+ * prestataire en recevrait un autre.
+ *
+ * Il vit ici (module feuille, sans dependance) pour que le serveur ET le
+ * front puissent l importer, et le test de miroir (`src/lib/
+ * format-mirror.test.ts`) compare les deux valeurs.
+ */
+export const ZC_TO_FCFA = 10;
+
 export const getNow = () => new Date().toISOString();
 
 /**

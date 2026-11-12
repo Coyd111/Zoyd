@@ -20,6 +20,7 @@
  */
 
 export declare const roundAmount: (value: number) => number;
+export declare const ZC_TO_FCFA: number;
 export declare const getNow: () => string;
 export declare const makeError: (
   code: string,

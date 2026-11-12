@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { formatZC, roundAmount } from './utils';
+import { formatZC, roundAmount, ZC_TO_FCFA } from './utils';
 // Le MIROIR serveur : les deux implémentations vivent dans deux langages,
 // sans quoi l'invariant « les deux formats doivent rester identiques »
 // n'était vérifié par rien.
-import { formatZcForNotification, roundAmount as roundAmountServeur } from '../../server/utils.mjs';
+import {
+  formatZcForNotification,
+  roundAmount as roundAmountServeur,
+  ZC_TO_FCFA as ZC_TO_FCFA_SERVEUR,
+} from '../../server/utils.mjs';
 
 /**
  * Le formatage des montants doit etre IDENTIQUE des deux cotes.
@@ -73,5 +77,15 @@ describe('Formatage des montants — le front est le MIROIR du serveur', () => {
     expect(roundAmount(Number.NaN)).toBe(0);
     expect(roundAmount(Number.POSITIVE_INFINITY)).toBe(0);
     expect(Number.isNaN(roundAmount(undefined as unknown as number))).toBe(false);
+  });
+
+  it('le taux ZC -> FCFA est le MEME des deux cotes', () => {
+    // Le taux etait reencode a la main de chaque cote : le changer d un
+    // seul rendait la conversion FAUSSE ET SILENCIEUSE — le joueur verrait
+    // un bon montant en FCFA, le prestataire en recevrait un autre.
+    // Il est desormais importe d une source unique cote serveur, et ce
+    // test verrouille l egalite.
+    expect(ZC_TO_FCFA_SERVEUR).toBe(ZC_TO_FCFA);
+    expect(ZC_TO_FCFA).toBeGreaterThan(0);
   });
 });

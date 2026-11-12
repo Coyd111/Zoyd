@@ -36,6 +36,15 @@
  * PIEGE : pas de `rateLimitGuard` ici, volontairement : limiter par IP
  *   bloquerait les retries FedaPay si leurs IPs partagent un bucket
  *   (cf. `TRUST_PROXY`). L'anti-flood est la signature + l'idempotence.
+ *
+ *   Revue passe 2 (2026-11-12) : la decision a ete reexaminee et elle
+ *   TIENT, pour deux raisons. D une part, un quota par IP mettrait
+ *   effectivement le risque : les retries FedaPay passent par des IPs
+ *   partagees. D autre part — et c est decisif — la passe 1 a montre que
+ *   la cle de seau par IP est CHOISIE par l appelant (via
+ *   `X-Forwarded-For`) : un quota par IP n aurait donc protege de rien
+ *   contre un attaquant, tout en risquant de bloquer les depotsd. Ne pas
+ *   ajouter de quota ici sans avoir d'abord resolu la cle de seau.
  * PIEGE : le CSRF du pipeline ne rejette que si `Origin` est PRÉSENT et
  *   hors liste (webhook serveur-à-serveur sans Origin = accepté), et que
  *   si `Content-Type` est présent et non-JSON. FedaPay envoie

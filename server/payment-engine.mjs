@@ -34,7 +34,7 @@ import { FedaPay, Transaction, Payout } from 'fedapay';
 import { depositToWallet, debitFromWallet, refundLockedEntry } from './wallet-engine.mjs';
 import { hasTransactionBeenProcessed, claimTransaction, releaseTransaction, makeError } from './persistence.mjs';
 import { createLogger } from './logger.mjs';
-import { roundAmount } from './utils.mjs';
+import { roundAmount, ZC_TO_FCFA } from './utils.mjs';
 
 const log = createLogger('payment');
 
@@ -59,8 +59,6 @@ const getFedaPayConfig = () => {
  * s'inscrire avec un numéro cousin et réclamer le dépôt d'un autre.
  * L'email reste accepté : il n'est pas devinable par collision.
  */
-const normalizePhoneLoose = (value) => String(value || '').replace(/\D/g, '').slice(-8);
-
 export const isTransactionOwnedBy = (transaction, user) => {
   if (!transaction || !user) return false;
   const description = String(transaction.description || '');
@@ -297,9 +295,12 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
     throw makeError('INVALID_OPERATOR', `Opérateur non supporté (${cfg.label}) : ${Object.keys(cfg.operators).join(', ')}.`);
   }
 
-  // Taux de paiement : miroir du front (ZC_TO_FCFA dans src/lib/utils.ts).
-  // Changer un seul des deux cotes rend la conversion fausse en silence.
-  const amountFCFA = Math.round(amountZC * 10);
+  // Taux de paiement : MIROIR du front (`ZC_TO_FCFA` dans src/lib/utils.ts).
+  // Changer un seul des deux cotes rend la conversion fausse en silence :
+  // le joueur verrait un montant et le prestataire en recevrait un autre.
+  // La valeur est donc importee, pas reecrite — et le test de miroir
+  // (`src/lib/format-mirror.test.ts`) compare les deux cotes.
+  const amountFCFA = Math.round(amountZC * ZC_TO_FCFA);
   if (amountFCFA <= 0 || amountFCFA > 1_000_000) {
     throw makeError('INVALID_AMOUNT', 'Montant invalide pour le retrait (max 1 000 000 FCFA).');
   }

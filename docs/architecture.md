@@ -689,6 +689,29 @@ ensemble ferment la fenetre.
 Le workflow utilise `curl --fail` : une sonde qui repond 500 fait
 ECHOUER la tache. Le keep-alive ne doit pas masquer une panne.
 
+#### D ou vient le probleme (et pourquoi il est passe inapercu)
+
+Le keep-alive **existait deja** : il a ete cree le 9 novembre 2026
+(`bea0d4a`, « cron keep-alive Render toutes les 10 min »). Le meme jour,
+un commit de nettoyage (`13f44cd`, « tous les non-vital build/runtime
+restants ») a supprime **14 fichiers** d un coup : la CI, le keep-alive,
+les migrations Supabase, les fichiers `public/`, le gabarit `.env`...
+
+**Tout a ete restaure, sauf le keep-alive.** C est la seule omission, et
+elle est a l origine de toute la saga de l hibernation.
+
+Pourquoi personne ne l a vu : le symptome est **invisible sans trafic**.
+Un service qui dort ne casse rien - il ne fait que retarder un reglement
+ou une liberation de fenetre, chez un joueur qui n attendait rien. Aucun
+test ne le revele : les tests tournent en memoire, et la production ne
+regarde pas ses crons.
+
+La lecon, en une ligne : **un nettoyage trop large a supprime 14 choses,
+et 13 ont ete restaures par la suite - la 14e est tombee dans le trou.**
+Un test de non-regression ne l aurait pas vu non plus (le workflow est
+de la configuration, pas du code) : c est un controle de
+`deploy-contract.test.mjs` quiprotege desormais le keep-alive.
+
 Verification : le job `cron` a bien reussi a chaque minute (14:59, 15:00,
 15:01) et le service n a pas change d instance ni de processus.
 

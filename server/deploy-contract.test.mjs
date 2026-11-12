@@ -226,6 +226,16 @@ describe('Exploitabilite - le keep-alive est en place', () => {
   it('un ping en erreur fait ECHOUER la tache (le keep-alive ne masque pas une panne)', () => {
     // `--fail` : un HTTP >= 400 doit etre visible dans l onglet Actions.
     expect(workflow).toContain('--fail');
+    // Et la tache doit se terminer en erreur si la sonde ne repond pas.
+    expect(workflow).toMatch(/exit 1/);
+  });
+
+  it('le ping tolere le demarrage a froid (Render met 30 a 60 s a reveiller)', () => {
+    // Une seule tentative, courte, echouerait a chaque fois que le service
+    // dort : le keep-alive se reproduirait alors lui-meme le probleme.
+    const tentatives = (workflow.match(/for tentative in/g) || []).length;
+    expect(tentatives, 'le ping doit reessayer').toBeGreaterThan(0);
+    expect(workflow, 'chaque tentative doit avoir un timeout long').toMatch(/--max-time 60/);
   });
 
   it('il est declenchable a la main (diagnostic sans attendre le crontab)', () => {

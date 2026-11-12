@@ -44,13 +44,23 @@ jobs:
     steps:
       - name: Ping
         run: |
-          set -euo pipefail
-          # `--fail` : un HTTP >= 400 fait ECHOUER la tache. Le keep-alive
-          # ne doit pas masquer une panne : une sonde qui repond 500 doit
-          # etre visible dans l onglet Actions, pas passer en silence.
-          curl --fail --silent --show-error \
-               --max-time 20 \
-               --retry 2 --retry-delay 5 \
-               --user-agent "zoyd-keepalive/1.0 (github-actions)" \
-               https://zoyd.onrender.com/api/health
-          echo "Sonde atteinte."
+          set -uo pipefail
+          # Tolérance au DÉMARRAGE A FROID : si le service dort, Render
+          # met 30 à 60 s à le réveiller, et la première tentative expire.
+          # Le timeout est donc long (60 s) et l'on réessaie trois fois -
+          # comme le workflow d'origine, qui avait été supprimé par erreur
+          # le 9 novembre (avec 13 autres fichiers, tous restaurés depuis
+          # SAUF celui-ci).
+          for tentative in 1 2 3; do
+            if curl --fail --silent --show-error \
+                    --max-time 60 \
+                    --user-agent "zoyd-keepalive/1.0 (github-actions)" \
+                    https://zoyd.onrender.com/api/health; then
+              echo "Sonde atteinte (tentative $tentative)."
+              exit 0
+            fi
+            echo "Tentative $tentative : la sonde n'a pas repondu."
+            sleep 20
+          done
+          echo "La sonde n'a pas repondu apres 3 tentatives."
+          exit 1

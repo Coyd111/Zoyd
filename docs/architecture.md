@@ -325,6 +325,58 @@ pas controler.
 
 ---
 
+## 7 ter. Passe 2 - l argent : ce que la lecture a donne
+
+Modules lus : `wallet-engine.mjs` (917), `payment-engine.mjs` (445),
+`routes/webhook.mjs` (326), `routes/wallet.mjs` (545),
+`payout-countries.mjs` (178) - environ 2 400 lignes.
+
+### Defaut 4 - le taux ZC -> FCFA etait reecrit de chaque cote (MAJEUR)
+
+Le taux etait REECRIT a la main : `10` dans `payment-engine.mjs` (la
+conversion appliquee au payout) et `ZC_TO_FCFA` dans `src/lib/utils.ts`
+(la conversion affichee au joueur). Le serveur l appelait « miroir
+declare » - il reconnaissait donc lui-meme que les deux peuvent diverger,
+sans rien faire pour l empecher.
+
+Changer un seul des deux rend la conversion fausse ET SILENCIEUSE : le
+joueur verrait un montant en FCFA, le prestataire en recevrait un autre.
+
+**Correctif** : le taux est IMPORTE d une source unique cote serveur
+(`ZC_TO_FCFA` dans `server/utils.mjs`, module feuille), et le test de
+miroir compare les deux valeurs.
+
+### Defaut 5 - du code mort dans le moteur de paiement (MINEUR)
+
+`normalizePhoneLoose` etait declare et jamais appele : la preuve par le
+telephone avait ete abandonnee (les 8 derniers chiffres coincident entre
+pays), la fonction ne servait plus a rien. Supprimee.
+
+### Une decision reverifiee, et maintenue : le webhook n a pas de quota
+
+Le webhook est la seule route sans rate limit. Le code le dit
+explicitement : limiter par IP bloquerait les retries FedaPay si leurs
+IPs partagent un bucket.
+
+La passe 2 a reexamine la decision, et elle TIENT - pour deux raisons :
+un quota par IP mettrait le risque (les retries FedaPay passent par des
+IPs partagees), et surtout la **passe 1** a montre que la cle de seau
+par IP est **choisie par l appelant** : un quota par IP n aurait donc
+protege de rien contre un attaquant, tout en risquant de bloquer les
+depots. Ne pas ajouter de quota ici sans avoir d abord resolu la cle de
+seau. La decision est desormais documentee dans le fichier.
+
+### Ce qui a ete verifie et trouve sain
+
+| module | conclusion |
+|---|---|
+| `wallet-engine.mjs` | **sain.** Toutes les mutations passent par `updateWalletSnapshot` ; le solde est verifie AVANT le plafond journalier (sinon `INSUFFICIENT_FUNDS` devient inatteignable) ; le remboursement prend la valeur absolue du montant negatif de l historique ; `releaseWalletWinnings` fige sa decision « deja verse » au premier passage, donc l OCC ne peut pas le faire taire. |
+| `routes/wallet.mjs` | **sain.** Le debit est SOUS verrou, l appel FedaPay HORS verrou ; la cle d idempotence est obligatoire ; la branche 409 (payout ambigu) sort du flux avant le second transfert ; le remboursement n a lieu que sur une certitude d absence d envoi, sinon le retrait est marque `pending_review` et repris par la reconciliation. |
+| `routes/webhook.mjs` | **sain.** La verite est RELUE chez FedaPay (jamais le corps du webhook), la signature est obligatoire et fail-closed, et un retrait `pending_review` n est jamais rembourse sur la seule parole du webhook. |
+| `payout-countries.mjs` | **sain.** Les regles vivent dans un module FEUILLE (pour eviter un cycle d imports) ; le Benin est a 10 chiffres (migration ARCEP) avec le format 8 en legacy ; un numero invalide renvoie un `number` vide, sans lever. |
+
+---
+
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
 Honnêteté sur la portée :

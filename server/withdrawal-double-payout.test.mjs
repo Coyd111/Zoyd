@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 /**
  * Le P0 du chemin de retrait.
@@ -106,13 +108,13 @@ const resFactice = () => ({
   json(payload) { this.corps = payload; this.ended = true; },
 });
 
-const retirer = async (token, cle) => {
+const retirer = async (token, cle, phone = '+22997000000') => {
   const res = resFactice();
   const corps = JSON.stringify({
     amount: 200,
     method: 'Moov Money',
     country: 'BJ',
-    phone: '+22997000000',
+    phone,
     idempotencyKey: cle,
   });
   // `parseRequestBody` itere sur la requete comme sur un flux : une `req`
@@ -263,5 +265,47 @@ describe('Retrait : un remboursement ECHOUE ne doit pas clore la dette', () => {
       res.corps.code,
       'un remboursement reussi justifie PAYOUT_FAILED (le solde est restaure)',
     ).toBe('PAYOUT_FAILED');
+  });
+});
+
+/**
+ * Le numero de DEMONSTRATION est PUBLIC.
+ *
+ * Le depot est public : le numero pose par defaut sur le compte admin de
+ * controle est donc connu de quiconque. Virer de l argent vers ce numero
+ * revient a envoyer l argent a un inconnu - et c est precisement le numero
+ * du compte admin tant que `ZOYD_ADMIN_PHONE` n est pas renseigne.
+ */
+describe('Retrait : le numero de demonstration est public, on refuse d y virer', () => {
+  it('un retrait vers le numero de demonstration est refuse, sans transfert', async () => {
+    const { token } = await nouveauJoueur();
+
+    const res = await retirer(token, 'cle-placeholder', '+2290161000001');
+
+    expect(res.statusCode, `code recu : ${res.corps?.code} / ${res.corps?.error}`).toBe(400);
+    expect(res.corps.code).toBe('PLACEHOLDER_PHONE');
+    expect(
+      initiateFedaPayPayout,
+      "AUCUN transfert ne doit partir vers un numero public",
+    ).not.toHaveBeenCalled();
+  });
+
+  it('temoin : un retrait vers un numero normal passe', async () => {
+    // Sans ce temoin, le test ci-dessus pourrait passer pour une raison
+    // orthographique (une route qui refuserait tout).
+    const { token } = await nouveauJoueur();
+    const res = await retirer(token, 'cle-numero-normal', '+22997000000');
+    expect(res.statusCode, `code recu : ${res.corps?.code} / ${res.corps?.error}`).toBe(200);
+    expect(initiateFedaPayPayout).toHaveBeenCalledTimes(1);
+  });
+
+  it('le blueprint de production declare le telephone du compte admin', () => {
+    // Sans cette variable, le compte admin est cree avec le numero de
+    // demonstration : le serveur refuse bien les retraits vers ce numero,
+    // mais l operateur n est meme pas prevenu.
+    const blueprint = readFileSync(resolve('render.yaml'), 'utf8');
+    expect(blueprint, 'ZOYD_ADMIN_PHONE doit etre declare dans render.yaml').toMatch(
+      /- key:\s*ZOYD_ADMIN_PHONE/,
+    );
   });
 });

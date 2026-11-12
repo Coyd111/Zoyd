@@ -61,6 +61,7 @@ import {
   hasActiveWithdrawalKey,
   tagWalletTransaction,
   trackWithdrawalKey,
+  DEFAULT_ADMIN_PHONE,
 } from '../persistence.mjs';
 import {
   MIN_WITHDRAWAL_ZC,
@@ -228,6 +229,19 @@ if (req.method === 'POST' && pathname === '/api/wallet/withdraw') {
   const phoneInfo = parsePhoneForFedaPay(typeof body.phone === 'string' ? body.phone : '', countryIso);
   if (!phoneInfo.number) {
     respondJson(res, 400, { ok: false, error: `Numéro de téléphone invalide (format ${countryCfg.label} : +${countryCfg.prefix}...).`, code: 'INVALID_PHONE' });
+    return true;
+  }
+  // PIEGE : le numero de DEMONSTRATION est PUBLIC (le depot est public).
+  // Virer de l argent vers ce numero, ce serait l envoyer a un inconnu -
+  // et c est precisement le numero du compte admin tant que
+  // `ZOYD_ADMIN_PHONE` n est pas renseigne. On refuse donc LE RETRAIT, pas
+  // le compte : le joueur peut changer son numero dans ses parametres.
+  if (phoneInfo.number === DEFAULT_ADMIN_PHONE.replace(/\D/g, '').slice(-10)) {
+    respondJson(res, 400, {
+      ok: false,
+      error: "Ce numero est un numero de demonstration : l'argent ne peut pas y etre envoye. Change de numero dans tes parametres.",
+      code: 'PLACEHOLDER_PHONE',
+    });
     return true;
   }
   // Idempotence : OBLIGATOIRE. Sans clé, un double-clic ou un retry réseau

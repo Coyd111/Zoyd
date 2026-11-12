@@ -55,6 +55,15 @@ services:
         sync: false
       - key: ZOYD_ADMIN_ID
         sync: false
+      # Telephone du compte admin de controle.
+      #
+      # SANS cette variable, le compte est cree avec un numero de
+      # DEMONSTRATION - qui est PUBLIC (le depot est public). Un retrait
+      # partirait alors vers un inconnu. Le serveur refuse explicitement de
+      # virer de l argent vers ce numero (code PLACEHOLDER_PHONE), mais le
+      # mieux est de le poser des le depart.
+      - key: ZOYD_ADMIN_PHONE
+        sync: false
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY

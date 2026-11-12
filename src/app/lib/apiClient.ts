@@ -143,6 +143,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   RESULT_ALREADY_EXISTS: 'Un résultat a déjà été soumis.',
   WITHDRAWAL_MIN: 'Retrait : le montant est en dessous du minimum requis.',
   INVALID_PHONE: 'Numéro de téléphone invalide.',
+  // Numéro de DÉMONSTRATION (public : le dépôt est public). L'argent ne peut
+  // pas y être envoyé : le joueur doit changer de numéro.
+  PLACEHOLDER_PHONE: "Ce numéro est un numéro de démonstration : l'argent ne peut pas y être envoyé. Change de numéro dans tes paramètres.",
   INVALID_CREDENTIALS: 'Identifiants invalides. Vérifie ton pseudo/email et ton mot de passe.',
   LEGAL_NOT_ACCEPTED: 'Confirme avoir 18 ans ou plus et accepter les Conditions pour créer un compte.',
   CONFIRM_REQUIRED: 'Confirmation requise pour cette action définitive.',

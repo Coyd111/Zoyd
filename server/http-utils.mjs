@@ -488,6 +488,7 @@ export const mapPersistenceError = (error) => {
     case 'INVALID_EMAIL':
     case 'INVALID_OPERATOR':
     case 'INVALID_PHONE':
+    case 'PLACEHOLDER_PHONE':
     case 'INVALID_COUNTRY':
     case 'LEGAL_NOT_ACCEPTED':
     case 'INVALID_FORMAT':

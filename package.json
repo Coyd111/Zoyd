@@ -11,7 +11,7 @@
     "dev:realtime": "node server/realtime-server.mjs",
     "start": "node server/realtime-server.mjs",
     "typecheck": "node node_modules/typescript7/bin/tsc --noEmit -p tsconfig.app.json",
-    "lint": "eslint src server e2e --max-warnings 0",
+    "lint": "eslint src server e2e scripts --max-warnings 0",
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e": "playwright test --config=playwright.config.ts",

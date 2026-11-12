@@ -5168,6 +5168,17 @@ export const exportMatchHistory = async ({ from, to } = {}) => {
 };
 
 // ─── Seed data ──────────────────────────────────────────────────────────────
+
+/**
+ * Le telephone de DEMONSTRATION du compte admin de controle.
+ *
+ * PIEGE : ce numero est PUBLIC — le depot est public. Il ne doit donc
+ * JAMAIS recevoir d argent : tant qu il est pose sur le compte admin, un
+ * retrait partirait vers un inconnu. `routes/wallet.mjs` refuse explicitement
+ * de virer de l argent vers ce numero.
+ */
+export const DEFAULT_ADMIN_PHONE = '+2290161000001';
+
 /**
  * Créer le compte admin de contrôle s'il n'existe pas.
  *
@@ -5188,16 +5199,29 @@ export const ensureSeedAdmin = async () => {
   const seedEmail = process.env.ZOYD_ADMIN_EMAIL || 'admin@zoyd.com';
   const seedPseudo = process.env.ZOYD_ADMIN_PSEUDO || 'ZOYD Control';
   const seedId = process.env.ZOYD_ADMIN_ID || 'admin-zoyd-control';
+  // Le telephone de defaut est un NUMERO PUBLIC : le depot est public, donc
+  // ce numero est lisible par quiconque. S il reste pose, les retraits du
+  // compte admin partiraient vers un inconnu. `routes/wallet.mjs` refuse
+  // explicitement de virer de l argent vers ce numero ; l avertissement
+  // ci-dessous previent l operateur de le changer.
+  const seedPhone = process.env.ZOYD_ADMIN_PHONE || DEFAULT_ADMIN_PHONE;
   const usesDefaultIdentity = !process.env.ZOYD_ADMIN_EMAIL
     && !process.env.ZOYD_ADMIN_PSEUDO
     && !process.env.ZOYD_ADMIN_ID;
+  const usesDefaultPhone = !process.env.ZOYD_ADMIN_PHONE;
 
   const adminEmail = normalizeEmailKey(seedEmail);
   for (const user of memoryUsers.values()) {
     if (normalizeEmailKey(user.email) === adminEmail) {
-      if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
+    if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
         log.warn('[SECURITY] Le compte admin utilise l identite PAR DEFAUT (connue : depot public).', {
           hint: 'Renseigne ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID sur ton hebergeur.',
+        });
+      }
+      if (usesDefaultPhone && process.env.NODE_ENV === 'production') {
+        log.warn('[SECURITY] Le compte admin utilise le telephone PAR DEFAUT (numero public : depot public).', {
+          hint: 'Renseigne ZOYD_ADMIN_PHONE sur ton hebergeur. Aucun retrait ne partira vers ce numero tant qu il n est pas change.',
+          defaultPhone: DEFAULT_ADMIN_PHONE,
         });
       }
       return;
@@ -5230,7 +5254,7 @@ export const ensureSeedAdmin = async () => {
   try {
     await insertUser({
       id: seedId, role: 'admin',
-      pseudo: seedPseudo, email: seedEmail, phone: process.env.ZOYD_ADMIN_PHONE || '+2290161000001',
+      pseudo: seedPseudo, email: seedEmail, phone: seedPhone,
       password,
       gameId: 'ADMIN-ZOYD-0001', controllerType: 'touch', device: 'pc',
       levelCODM: 150, rankMJ: 'Legendary', rankBR: 'Legendary', country: 'Benin',

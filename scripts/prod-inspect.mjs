@@ -205,6 +205,17 @@ const inspecterSante = async () => {
         console.log('      !! ALERTE : des jobs se sont executes SANS protection multi-instance.');
         console.log('         Les compteurs restent a zero apres un redemarrage de l instance.');
       }
+      // L historique durable des bails, et surtout l etat de SA purge.
+      // PIEGE : la purge a deja echoue EN SILENCE (un `limit()` invalide sur
+      // le DELETE). Sans ce signal, l historique grossissait sans borne et
+      // rien ne le disait. Un operateur doit le voir ici, sans SQL.
+      console.log(`      historique actif   : ${persistance.cronLeaseAuditAvailable}`);
+      console.log(`      purge historique   : ${persistance.cronLeaseAuditPurgedAt || 'jamais'}`);
+      if (persistance.cronLeaseAuditPurgeError) {
+        console.log('      !! ALERTE : la purge de l historique ECHOUE.');
+        console.log(`         ${persistance.cronLeaseAuditPurgeError}`);
+        console.log('         La retention ne s applique plus : l historique grossit sans borne.');
+      }
       console.log(`      integrite         : ${persistance.integrityOk}`);
     } catch (err) {
       console.log(`  ${cible} : injoignable (${err?.message})`);

@@ -10,6 +10,11 @@
  *   contournant les RLS : avec une cle anon, chaque ecriture echouerait
  *   derriere un client qui se dit pourtant actif, et l'argent cesserait d'etre
  *   persiste sans la moindre alerte.
+ *   Le role est donc VERIFIE (`lireRoleCle`) : une cle dont la revendication
+ *   dit un autre role que `service_role` est REFUSEE, et le serveur passe en
+ *   mode degrade - donc `/api/health` repond 503. Sans cette verification,
+ *   l invariant etait annonce mais non applique : la cle service_role
+ *   etait acceptee PAR CONVENTION, pas par controle.
  * INVARIANT : `supabase` vaut `null` - et ne leve jamais - quand la base est
  *   indisponible : `persistence.mjs` bascule alors en mode memoire.
  * INVARIANT : `ZOYD_DISABLE_SUPABASE=true` l'emporte sur la presence des
@@ -63,20 +68,60 @@ const supabaseKey =
 // SUPABASE_URL ne suffisait pas à isoler les tests.
 const supabaseDisabled = process.env.ZOYD_DISABLE_SUPABASE === 'true';
 
+/**
+ * Le role revendique par une cle Supabase, si elle est verifiable.
+ *
+ * Les clees legacy sont des JWT : le payload (2e partie) porte le role.
+ * Les nouvelles cles `sb_secret_...` ne sont PAS des JWT : elles ne sont
+ * pas verifiables, et on ne les refuse pas pour autant.
+ *
+ * @param {string} cle
+ * @returns {string|null} le role, ou null si la cle n est pas verifiable
+ */
+export const lireRoleCle = (cle) => {
+  const parties = String(cle || '').split('.');
+  if (parties.length !== 3) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(parties[1], 'base64url').toString('utf8'));
+    return typeof payload?.role === 'string' ? payload.role : null;
+  } catch {
+    return null;
+  }
+};
+
+/** La fabrique du client. Ne leve jamais : un echec donne `null`. */
+const creerClient = async (url, key) => {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    return createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  } catch (err) {
+    log.error('Erreur creation client', err);
+    return null;
+  }
+};
+
 let supabase = null;
 
 if (supabaseDisabled) {
   log.warn('ZOYD_DISABLE_SUPABASE=true — mode memoire (tests E2E)');
 } else if (supabaseUrl && supabaseKey) {
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    log.info('Client actif');
-  } catch (err) {
-    log.error('Erreur creation client', err);
-    supabase = null;
+  const roleCle = lireRoleCle(supabaseKey);
+  if (roleCle && roleCle !== 'service_role') {
+    // La cle ne porte pas le role service_role : chaque ecriture echouerait
+    // derriere le RLS, et l argent cesserait d etre persiste SANS ALERTE.
+    // On refuse le client : le serveur passe en mode degrade, donc
+    // /api/health repond 503 et l operateur voit le defaut.
+    log.error('Cle Supabase de role inattendu : client refuse, mode degrade', { role: roleCle });
+  } else {
+    if (roleCle === null) {
+      // Cle non verifiable (format `sb_secret_...`) : on ne peut pas
+      // controler son role. On l accepte, mais on le dit.
+      log.warn('Role de la cle Supabase non verifiable : format non-JWT', {});
+    }
+    supabase = await creerClient(supabaseUrl, supabaseKey);
+    if (supabase) log.info('Client actif');
   }
 } else {
   log.warn('Variables SUPABASE_URL/SUPABASE_SERVICE_KEY absentes — mode degrade');

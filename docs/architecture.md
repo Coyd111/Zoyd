@@ -249,22 +249,79 @@ Chaque passe = une lecture complète du domaine, une **matrice**
 les corrections, chacune avec son test de non-régression **vérifié
 échouant avant**.
 
-| # | Domaine | Volume | Enjeu |
-|---|---|---|---|
-| 0 | **Cette carte** | — | fait |
-| 1 | Socle (`http-utils`, `rate-limiter`, `mutex`, `logger`, `utils`, `supabase`) | ~1 900 l. | Une erreur ici se propage partout |
-| 2 | Argent (`wallet-engine`, `payment-engine`, `webhook`, `payout-countries`) | ~2 400 l. | Le plus fort enjeu |
-| 3 | Persistance & concurrence (`persistence`, `state-helpers`, `cron`, `cron-lease`) | ~7 600 l. | Le monolithe de 5 221 lignes |
-| 4 | Moteurs (`match`, `tournament`, `br`, `league`) | ~6 700 l. | Logique métier, règles de règlement |
-| 5 | Routes & API (12 fichiers) | ~6 200 l. | Cohérence des gardes entre fichiers |
-| 6 | Temps réel & chat (`realtime-server`, `channel-presence`, `chat`) | ~1 300 l. | Diffusion, présence |
-| 7 | Front (`src/`, 192 fichiers) | 37 600 l. | Stores, abonnements, rendu |
-| 8 | Exploitabilité (`render.yaml`, CI, observabilité) | — | Déploiement et alerte |
+| # | Domaine | Volume | Enjeu | Etat |
+|---|---|---|---|---|
+| 0 | **Cette carte** | — | — | fait |
+| 1 | Socle (`http-utils`, `rate-limiter`, `mutex`, `logger`, `utils`, `supabase`) | ~1 900 | une erreur ici se multiplie | **en cours** |
+| 2 | Argent (`wallet-engine`, `payment-engine`, `webhook`, `payout-countries`) | ~2 400 | le plus fort enjeu | a faire |
+| 3 | Persistance & concurrence (`persistence`, `state-helpers`, `cron`, `cron-lease`) | ~7 600 | le monolithe | a faire |
+| 4 | Moteurs (`match`, `tournament`, `br`, `league`) | ~6 700 | regles de reglement | a faire |
+| 5 | Routes & API (12 fichiers) | ~6 200 | coherence des gardes | a faire |
+| 6 | Temps reel & chat | ~1 300 | diffusion, presence | a faire |
+| 7 | Front (192 fichiers) | 37 600 | stores, abonnements | a faire |
+| 8 | Exploitabilite (`render.yaml`, CI, observabilite) | — | deploiement et alerte | a faire |
 
 Ordre choisi : le **socle** d'abord parce que ses erreurs se multiplient,
 l'**argent** ensuite parce que c'est le plus fort enjeu, la
 **persistance** ensuite parce qu'elle porte l'**état** (et le monolithe),
 puis les moteurs, les routes, le temps réel, le front.
+
+---
+
+## 7 bis. Passe 1 — le socle : ce que la lecture a donne
+
+La passe 1 a lu les 6 modules du socle (1 479 lignes) en entier. Bilan :
+
+### Defaut 1 — le quota anti-bruteforce etait contournable (MAJEUR)
+
+**Mesure en production**, sur `zoyd.onrender.com` :
+
+| experience | resultat |
+|---|---|
+| 70 requetes sequentielles, **avec** un `X-Forwarded-For` constant | **0 refus** |
+| 70 requetes sequentielles, **sans** l en-tete | refus des la #45, corps `{ code: "RATE_LIMITED" }` |
+
+Ajouter un en-tete suffisait a sortir du quota : les 50 tentatives / 15 min
+de la connexion et les 20 / 10 min des retraits etaient neutralisables en
+changeant d en-tete a chaque requete.
+
+**Cause** : la cle de seau est `${ip}|${groupe}`, et `ip` vient de
+`getClientIp` — donc de l en-tete que l appelant controle. La regle
+« dernier saut » ne protege que si la plateforme AJOUTE son saut, ce qui
+n est pas le cas ici. Le test unitaire existant (`rate-limiter.test.mjs`)
+verifiait cette regle en SIMULANT un proxy qui ajoute : il prouvait ce que
+le code fait, pas ce que la plateforme fait. L hypothese n avait jamais
+ete verifiee contre la realite.
+
+**Correctif** : chaque requete compte dans DEUX seaux — le sien (fin, par
+IP) et celui de son **pair TCP** (grossier, non falsifiable, plafonne a
+`ZOYD_RATE_LIMIT_PEER_MULTIPLIER` fois le quota fin, 20 par defaut). 104
+points d appel sont cables ; un test de **source** exige que chacun
+transmette le pair (un point d appel oublie est un trou, invisible pour
+un test comportemental).
+
+### Defaut 2 — la cle Supabase n etait pas verifiee (MAJEUR)
+
+`supabase.mjs` declarait « seule une cle `service_role` est acceptee » —
+mais le code n acceptait n importe quelle valeur de `SUPABASE_SERVICE_KEY`.
+Une cle `anon` posee par erreur faisait echouer chaque ecriture derriere
+le RLS : le serveur annoncait un client actif et **l argent cessait d etre
+persiste sans la moindre alerte**.
+
+**Correctif** : le role est lu dans le JWT de la cle (`lireRoleCle`). Un
+role autre que `service_role` -> le client n est pas cree -> mode degrade
+-> `/api/health` repond `503`. Une cle au format `sb_secret_...` (non
+verifiable) est acceptee mais signalee : on ne refuse pas ce qu on ne peut
+pas controler.
+
+### Ce qui a ete verifie et trouve sain
+
+| module | conclusion |
+|---|---|
+| `mutex.mjs` | **sain.** Un mutex en cours d acquisition n est jamais evince : `async-mutex` decremente son compteur de facon **synchrone** dans `acquire()`, donc `isLocked()` est vrai avant le premier `await`. Pas de course. |
+| `logger.mjs` | **sain.** Les cles reservees ne sont pas ecrasables ; la sortie part de stdout. |
+| `http-utils.mjs` | **sain.** Les deux resolutions de token ont des priorites volontairement inversees, et la raison est ecrite. Le corps de requete est plafonne a 1 Mo et le socket detruit au-dela. |
+| `utils.mjs` | Un ecart avec le front : `formatZcForNotification` (serveur) renvoie `0 ZC` pour un montant non fini, `formatZC` (front) renvoie `NaN ZC`. L invariant « les deux formats doivent rester identiques » est donc viole d un cote. |
 
 ---
 

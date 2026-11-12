@@ -497,6 +497,48 @@ exemption non ecrite est un trou.
 
 ---
 
+## 7 septies. Passe 6 - temps reel & chat : ce que la lecture a donne
+
+Modules lus : `realtime-server.mjs` (756), `routes/realtime.mjs` (214),
+`routes/chat.mjs` (287), `channel-presence.mjs` (310), `chat-helpers.mjs`
+(168), `push-notifications.mjs` (129) - environ 1 900 lignes.
+
+### Defaut 9 - les privileges d un socket OUVERT n etaient pas revocables (MAJEUR)
+
+`getRealtimeSession` relit bien le role courant, et le test
+`realtime-privilege-revocation.test.mjs` le verifie depuis longtemps. Mais
+le handler socket `notification:push` n appelait PAS cette fonction : il
+lisait `session.role`, la variable de la CONNEXION, figee pour toute la
+duree de la session temps reel (6 h).
+
+Concretement : un administrateur retrograde continuait d ecrire dans le
+telephone de n IMPORTE QUEL joueur pendant des heures apres sa
+retrogradation - un vecteur de phishing deguise en notification
+officielle. Le compte etait `player` partout ailleurs (API HTTP, ecran
+admin) : il ne l etait plus que sur cette decision.
+
+C est exactement le defaut deja corrige pour le bannissement : le controle
+portait sur l evenement declencheur (la connexion) et non sur l etat
+courant. Interdire une connexion ne dit rien d un socket deja ouvert.
+
+**Correctif** : le handler utilise `resolveRealtimeRole`, qui EXISTAIT
+deja dans `http-utils.mjs`, documente precisement pour ce cas - et qui
+n etait utilise NULLE PART. Il relit la session temps reel : il rend
+l etat courant, et il coupe tout privilege si la session a ete revoquee,
+si le compte est banni, ou s il a disparu.
+
+### Ce qui a ete verifie et trouve sain
+
+| point | conclusion |
+|---|---|
+| Identite des payloads socket | **sain.** `safePayload = { ...payload, userId: session.userId, pseudo: session.pseudo }` : l identite est IMPOSEE par la session, le client ne peut pas l usurper. |
+| Controle d acces aux canaux | **sain.** `canAccessChatChannel` est appele sur CHAQUE evenement de presence, de saisie et d accuse de lecture. |
+| Quota socket | **sain.** Les handlers socket passent par `checkRateLimitComplet` (avec la dimension pair), et la connexion elle-meme est plafonnee par IP - resolue avec les MEMES regles que le HTTP. |
+| Diffusion d etat | **sain.** `broadcastStateSnapshot` emet a tout le monde et ne porte jamais de donnee dependante du destinataire : son seul appelant diffuse la projection publique (`toPublicBrLobby`). |
+| Presence | **sain.** La cle d un membre est le `userId` (plusieurs onglets = un seul membre) ; un ROOM NAME et un MOT DE PASSE ne sortent jamais de la diffusion (`publicMember` est le seul filtre). |
+
+---
+
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
 Honnêteté sur la portée :

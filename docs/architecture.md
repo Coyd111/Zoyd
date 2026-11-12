@@ -450,6 +450,53 @@ classe (BR). La ligue etait le seul des quatre a ne pas le faire.
 
 ---
 
+## 7 sexies. Passe 5 - les routes & l API : ce que la lecture a donne
+
+Modules lus : les 12 fichiers de `server/routes` - environ 6 200 lignes.
+
+### Defaut 8 - sept routes n avaient AUCUN quota (MAJEUR)
+
+Analyse structurelle des 62 routes declarees (`if (req.method === ... &&
+pathname === ...)`) : 7 n avaient pas de `rateLimitGuard` - alors que
+les en-tetes de LEURS MODULES en annoncent un.
+
+| Route | Module | Pourquoi c etait grave |
+|---|---|---|
+| `GET /api/social/friends` | social (« rate limit (social) ») | relit la liste COMPLETE a chaque appel |
+| `GET /api/social/pending` | social (idem) | idem |
+| `GET /api/notifications` | social (« default pour les notifications ») | idem |
+| `GET /api/auth/me` | auth (l ordre des gardes commence par le quota) | lecture de session |
+| `POST /api/realtime/push/subscribe` | realtime | **ECRIT** en base |
+| `POST /api/realtime/push/unsubscribe` | realtime | **ECRIT** en base |
+| `POST /api/realtime/push/test` | realtime | **ECRIT** + push |
+
+Les trois routes sociales sérialisaient des lectures de liste ; les trois
+routes de push epuisaient le budget d ecritures. C est exactement le
+defaut que l audit-3 (P9 C4) avait corrige sur les routes de match et de
+tournoi - et laissait dans les memes fichiers, sans que rien ne le
+signale.
+
+**Correctif** : un `rateLimitGuard` avant la lecture du corps, partout.
+
+**Le verrou** : un test STRUCTUREL (`server/routes-rate-limit-invariant.
+test.mjs`) verifie desormais que TOUTE route a un quota. Un test qui
+verifie une route a la fois ne verifie que les routes qu on a pense a
+lister : la couverture etait une liste, donc elle ne pouvait pas
+couvrir ce qui n etait pas liste. Le test verifie aussi que le quota est
+pose AVANT la lecture du corps (apres, le corps est deja en memoire)
+et que les trois exemptions sont explicites et documentees - une
+exemption non ecrite est un trou.
+
+### Ce qui a ete verifie et trouve sain
+
+| point | conclusion |
+|---|---|
+| Contrat des modules de routes | **sain.** Chacun renvoie `true` des qu il a repondu, et le dispatcheur s arrete au premier `true`. |
+| Ordre des gardes | **sain.** Le rate limit passe AVANT le garde 2FA sur le domaine admin (le quota doit proteger le garde, pas l inverse), et le `return true` est immediat apres un refus de garde : une reponse ne peut pas etre ecrite deux fois. |
+| Verrous | **sain.** Le verrou GLOBAL est pris avant le verrou par entite (l inverse ouvre un deadlock), et le verrou est relache dans un `finally`. |
+
+---
+
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
 Honnêteté sur la portée :

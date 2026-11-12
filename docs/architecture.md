@@ -539,6 +539,56 @@ si le compte est banni, ou s il a disparu.
 
 ---
 
+## 7 octies. Passe 7 - le front : ce que la lecture a donne
+
+Le front fait 192 fichiers et 37 600 lignes. La lecture y a privilege les
+CLASSES de defauts (ce qui se reproduit partout) plutot que les cas
+particuliers : une regle structurelle couvre ce qu un test par fichier
+ne couvrirait jamais.
+
+### Defaut 10 - le joueur etait told que son solde etait restaure quand il ne l etait pas (MAJEUR)
+
+`PAYOUT_FAILED` signifie « le transfert a echoue ET le solde a ete
+restaure » : c est le message que le front affiche au joueur.
+
+Mais quand le REMBOURSEMENT echoue lui aussi (base indisponible,
+contention), l argent est ENCORE RETENU : le retrait reste
+`pending_review`, et le cron le reconciliera. Le serveur repondait
+malgre tout `PAYOUT_FAILED`.
+
+Le test existant (`withdrawal-double-payout.test.mjs`) PROUVAIT deja que
+l argent reste retenu dans ce cas (`pending_review`) : il contredisait donc
+la reponse envoyee au joueur - « Ton solde a ete restaure » pendant que
+les ZC etaient bloques.
+
+**Correctif** : le serveur repond `REFUND_FAILED` (code deja existant,
+ deja mappe en 502) quand le remboursement echoue, et le front a un message
+distinct : « ton solde n est pas encore restaure, l equipe support revient
+vers toi ».
+
+### Le verrou : le contrat d API front <-> serveur
+
+Le front et le serveur sont deux depots, deux langages, et AUCUN contrat
+genere. Un chemin renomme d un cote et oublie de l autre ne casse AUCUN
+test : les tests du front mockent le reseau, les tests du serveur ne
+savent pas qui les appelle. Le resultat est un 404 chez le joueur.
+
+`src/app/lib/api-contract.test.ts` lit les DEUX cotes et les compare :
+**82 appels** du front, **66 routes** du serveur, **aucun ecart**
+aujourd hui - mais rien ne le garantissait. Le test verifie aussi que
+les messages d erreur du front ne promettent pas plus que le serveur ne
+garantit (le cas `PAYOUT_FAILED` / `REFUND_FAILED`).
+
+### Ce qui etait deja verifie, et reste verifie
+
+| point | conclusion |
+|---|---|
+| Selecteurs zustand | **sain, et structurellement garanti.** La regle « jamais d accesseur de LECTURE hors d un hook » est verifiee par un test qui scanne TOUS les `.tsx` du projet : le defaut qui rendait `DashboardPage` inutilisable ne peut pas revenir. |
+| Cycle de rendu des listes | **sain.** Les selecteurs qui construisent un tableau passent par `useShallow` (comparaison element par element) ; le test verifie a la fois la stabilite de la reference ET la detection du changement de contenu. |
+| Client HTTP | **sain.** Un seul point d entree (`apiClient`), timeout de 30 s, credentials cross-origine, et surtout : un 401 metier (`INVALID_CREDENTIALS`) ne purge PAS la session — taper un mauvais mot de passe ne deconnectait plus le joueur. |
+
+---
+
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
 Honnêteté sur la portée :

@@ -31,7 +31,7 @@
  *   c'est le RECIPIENT qui l'accepte (`requestId` + `session.user.id`).
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 // P9 C5 (audit-3) : import EXPLICITE de randomUUID - le suffixe aleatoire
 // de l'identifiant de signalement ferme la collision de milliseconde.
 import { randomUUID } from 'node:crypto';
@@ -102,7 +102,7 @@ if (req.method === 'GET' && pathname === '/api/social/pending') {
 if (req.method === 'POST' && pathname === '/api/social/request') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     const request = await withUserMutex(session.user.id, async () =>
@@ -127,7 +127,7 @@ if (req.method === 'POST' && pathname === '/api/social/request') {
 if (req.method === 'POST' && pathname === '/api/social/accept') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     const friend = await withUserMutex(session.user.id, async () =>
@@ -152,7 +152,7 @@ if (req.method === 'POST' && pathname === '/api/social/accept') {
 if (req.method === 'POST' && pathname === '/api/social/decline') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     await withUserMutex(session.user.id, async () =>
@@ -169,7 +169,7 @@ const socialFriendMatch = pathname.match(/^\/api\/social\/friends\/(.+)$/);
 if (req.method === 'DELETE' && socialFriendMatch) {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     await withUserMutex(session.user.id, async () => {
       removeFriend(session.user.id, socialFriendMatch[1]);
@@ -184,7 +184,7 @@ if (req.method === 'DELETE' && socialFriendMatch) {
 if (req.method === 'POST' && pathname === '/api/social/block') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     await withUserMutex(session.user.id, async () => {
@@ -200,7 +200,7 @@ if (req.method === 'POST' && pathname === '/api/social/block') {
 if (req.method === 'POST' && pathname === '/api/social/unblock') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     await withUserMutex(session.user.id, async () => {
@@ -216,7 +216,7 @@ if (req.method === 'POST' && pathname === '/api/social/unblock') {
 if (req.method === 'POST' && pathname === '/api/social/report') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     if (!body.targetId || !body.reason) {
@@ -298,7 +298,7 @@ if (req.method === 'POST' && pathname === '/api/social/report') {
 if (req.method === 'POST' && pathname === '/api/notifications/read') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     const success = markNotificationAsRead(session.user.id, body.notificationId);
@@ -312,7 +312,7 @@ if (req.method === 'POST' && pathname === '/api/notifications/read') {
 if (req.method === 'POST' && pathname === '/api/notifications/read-all') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const changes = markAllNotificationsAsRead(session.user.id);
     respondJson(res, 200, { ok: true, changes });

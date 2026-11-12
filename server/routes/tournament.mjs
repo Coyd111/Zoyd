@@ -47,7 +47,7 @@
  *   de la cagnotte change avec la taille du tournoi.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 import { roundAmount } from '../utils.mjs';
 import {
   getAuthenticatedAppSession,
@@ -86,7 +86,7 @@ export const handleTournamentRoutes = async ({ req, res, pathname, io }) => {
 const tournamentDetail = pathname.match(/^\/api\/tournaments\/([^/]+)$/);
 
 if (req.method === 'GET' && tournamentDetail) {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const tournament = getStoredTournaments().find((entry) => entry.id === tournamentDetail[1]);
     if (!tournament) {
@@ -104,7 +104,7 @@ if (req.method === 'POST' && pathname === '/api/tournaments') {
   // Le mutex serialise les tournois entre eux mais ne limite rien dans le
   // temps : sans ce garde, un joueur authentifie cree des tournois en boucle
   // et chaque creation immobilise le mutex pour tous les autres.
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -154,7 +154,7 @@ if (req.method === 'POST' && pathname === '/api/tournaments') {
 
 const tournamentRegister = pathname.match(/^\/api\/tournaments\/([^/]+)\/register$/);
 if (req.method === 'POST' && tournamentRegister) {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -195,7 +195,7 @@ const tournamentJoin = pathname.match(/^\/api\/tournaments\/([^/]+)\/join\/([^/]
 if (req.method === 'POST' && tournamentJoin) {
   // Rejoindre une squad = verrouiller SON PROPRE pass. Mesure au meme garde
   // que l'inscription (quasi equivalent financier : un lock de fee ici aussi).
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -231,7 +231,7 @@ if (req.method === 'POST' && tournamentJoin) {
 
 const tournamentLeave = pathname.match(/^\/api\/tournaments\/([^/]+)\/leave$/);
 if (req.method === 'POST' && tournamentLeave) {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -255,7 +255,7 @@ if (req.method === 'POST' && tournamentArbiter) {
   // intensif (une nomination par tournoi, un compte humain), mais une
   // proie pour le scripting anonyme. Groupe `social`, comme le jumeau
   // match (POST /api/matches/:id/arbiter).
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -278,7 +278,7 @@ if (req.method === 'POST' && tournamentStart) {
   // en base et notifie TOUS les participants. Le rate limit passe AVANT la
   // session (convention du fichier) : le quota protege le mutex, pas
   // l'inverse.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -318,7 +318,7 @@ const tournamentRoom = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([
 if (req.method === 'POST' && tournamentRoom) {
   // Garde de debit : la route prend le mutex GLOBAL des tournois et ecrit en
   // base a chaque appel (idem `start` ci-dessus).
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -347,7 +347,7 @@ const tournamentLive = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([
 if (req.method === 'POST' && tournamentLive) {
   // Garde de debit : la mise en direct prend le mutex GLOBAL des tournois et
   // ecrit en base a chaque appel (idem `start` ci-dessus).
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -371,7 +371,7 @@ if (req.method === 'POST' && tournamentLive) {
 
 const tournamentResult = pathname.match(/^\/api\/tournaments\/([^/]+)\/matches\/([^/]+)\/result$/);
 if (req.method === 'POST' && tournamentResult) {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   // L'override admin passe la garde du moteur sans etre l'arbitre du duel :
   // un tournoi solde par la peut verser la cagnotte aux finalistes. L'admin
   // doit donc avoir une 2FA fraiche, comme sur /api/admin/* (audit-2 S3).

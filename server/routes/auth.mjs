@@ -43,7 +43,7 @@
  *   la confirmation n'est pas une formalite.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 import { isAnySupportedPhone, phoneFormatErrorAll } from '../payout-countries.mjs';
 import {
   ALLOW_DEBUG_CODES,
@@ -156,7 +156,7 @@ const validerChampProfil = (field, value) => {
 export const handleAuthRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'POST' && pathname === '/api/auth/register') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -217,7 +217,7 @@ if (req.method === 'POST' && pathname === '/api/auth/register') {
 
 if (req.method === 'POST' && pathname === '/api/auth/login') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -275,7 +275,7 @@ if (req.method === 'POST' && pathname === '/api/auth/login') {
 
 if (req.method === 'POST' && pathname === '/api/auth/activate') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -308,7 +308,7 @@ if (req.method === 'POST' && pathname === '/api/auth/activate') {
 
 if (req.method === 'POST' && pathname === '/api/auth/resend-code') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -349,7 +349,7 @@ if (req.method === 'POST' && pathname === '/api/auth/resend-code') {
 
 if (req.method === 'POST' && pathname === '/api/auth/activation-email') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -400,7 +400,7 @@ if (req.method === 'POST' && pathname === '/api/auth/activation-email') {
 
 if (req.method === 'POST' && pathname === '/api/auth/forgot-password') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -449,7 +449,7 @@ if (req.method === 'POST' && pathname === '/api/auth/forgot-password') {
 
 if (req.method === 'POST' && pathname === '/api/auth/reset-password') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -512,7 +512,7 @@ if (req.method === 'POST' && pathname === '/api/auth/covenant') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'auth')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -596,7 +596,7 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'auth')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'auth', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -731,7 +731,7 @@ if (req.method === 'POST' && pathname === '/api/auth/logout') {
     //
     // `logout` n'a aucun cout serveur notable, donc son propre quota suffit a
     // le contenir.
-    if (!rateLimitGuard(res, getClientIp(req), 'auth_logout')) { return true; }
+    if (!rateLimitGuard(res, getClientIp(req), 'auth_logout', getPeerAddress(req))) { return true; }
   const token = readBearerToken(req);
   // skipRotation: sans ça, getAuthSession déclenche une rotation
   // fire-and-forget qui INSÈRE le nouveau token en mémoire de façon
@@ -754,7 +754,7 @@ if (req.method === 'POST' && pathname === '/api/auth/logout') {
 
 if (req.method === 'POST' && pathname === '/api/auth/change-password') {
   const clientIp = getClientIp(req);
-  if (!rateLimitGuard(res, clientIp, 'auth')) { return true; }
+  if (!rateLimitGuard(res, clientIp, 'auth', getPeerAddress(req))) { return true; }
   const token = readBearerToken(req);
   const session = token ? getAuthSession(token, { skipRotation: true }) : null;
   if (!session) {
@@ -797,7 +797,7 @@ if (req.method === 'POST' && pathname === '/api/auth/change-password') {
 }
 
 if (req.method === 'DELETE' && pathname === '/api/auth/me') {
-  if (!rateLimitGuard(res, getClientIp(req), 'auth')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'auth', getPeerAddress(req))) { return true; }
   const token = readBearerToken(req);
   const session = token ? getAuthSession(token, { skipRotation: true }) : null;
   if (!session) {

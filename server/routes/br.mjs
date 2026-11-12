@@ -46,7 +46,7 @@
  *   `userId` n'y sont jamais.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,
   parseRequestBody,
@@ -116,7 +116,7 @@ if (req.method === 'GET' && pathname === '/api/br/config') {
 }
 
 if (req.method === 'GET' && pathname === '/api/br/lobbies') {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const lobbies = getStoredBrLobbies();
   // Les joueurs sont visibles (pseudo, presence) mais jamais les userId :
   // le BR affiche le roster, comme un lobby de jeu.
@@ -135,7 +135,7 @@ if (req.method === 'POST' && pathname === '/api/br/lobbies') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'match')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'match', getPeerAddress(req))) { return true; }
   try {
     const body = await parseRequestBody(req);
     // C1 (audit-3, remonter du C5 audit-2 encore ouvert) : la creation
@@ -199,7 +199,7 @@ if (brLobbyAction && req.method === 'POST') {
   // `finish` est reserve a l'arbitre du salon (voie volontariat A7) et tire
   // de l'argent : group `admin`, le quota le plus genereux.
   const rateGroup = action === 'finish' ? 'admin' : 'default';
-  if (!rateLimitGuard(res, getClientIp(req), rateGroup)) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), rateGroup, getPeerAddress(req))) { return true; }
 
   // Toute action de salon est serialisee PAR SALON.
   //
@@ -330,7 +330,7 @@ if (brLobbyAction && req.method === 'POST') {
 
 const brLobbyDetail = pathname.match(/^\/api\/br\/lobbies\/([^/]+)$/);
 if (brLobbyDetail && req.method === 'GET') {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const lobby = getStoredBrLobbies().find((l) => l.id === brLobbyDetail[1]);
   if (!lobby) {
     respondJson(res, 404, { ok: false, error: 'Salon introuvable.', code: 'LOBBY_NOT_FOUND' }, req);
@@ -362,7 +362,7 @@ if (brLobbyDetail && req.method === 'GET') {
  */
 const brLobbyArbiterView = pathname.match(/^\/api\/br\/lobbies\/([^/]+)\/arbiter$/);
 if (brLobbyArbiterView && req.method === 'GET') {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);

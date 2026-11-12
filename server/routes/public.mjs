@@ -45,7 +45,7 @@
  *   renvoie pas plus.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 // P9 C3 (audit-3) : import EXPLICITE - `crypto.randomUUID()` marchait par
 // le global WebCrypto de Node >= 19 (engines : 22.13, verifie), mais la
 // dependance n'etait declaree nulle part : un downgrade de runtime aurait
@@ -122,7 +122,7 @@ if (req.method === 'GET' && pathname === '/api/health') {
   // Maintenant : lectures mémoire pures (tailles de Maps via getHealthInfo)
   // + rate-limit `default`. Les agrégats finance vivent derrière
   // `/api/admin/finance/debts` (requireAdmin2fa) et `/metrics` (jeton).
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const health = getHealthInfo();
   respondJson(res, health.stateTrusted ? 200 : 503, {
     ok: health.stateTrusted,
@@ -240,7 +240,7 @@ if (req.method === 'GET' && pathname === '/api/codm/store') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const storeUrl = new URL(req.url, 'http://localhost');
     const rawCountry = (storeUrl.searchParams.get('country') || '').toUpperCase();
@@ -353,7 +353,7 @@ if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const userId = pathname.split('/api/codm/player/')[1];
     if (!userId || !/^\d{1,20}$/.test(userId)) {
@@ -520,7 +520,7 @@ if (req.method === 'GET' && userProfileMatch && pathname !== '/api/users/search'
   return true;
 }
 
-if (req.method === 'GET' && pathname === '/api/leaderboard') {    if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+if (req.method === 'GET' && pathname === '/api/leaderboard') {    if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const leaderboard = getLeaderboard();
     const { limit, offset } = parseQueryParams(req.url);
@@ -533,7 +533,7 @@ if (req.method === 'GET' && pathname === '/api/leaderboard') {    if (!rateLimit
 }
 
 if (req.method === 'GET' && pathname === '/api/stats') {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     respondJson(res, 200, { ok: true, stats: getPublicStats() });
   } catch (error) {
@@ -543,7 +543,7 @@ if (req.method === 'GET' && pathname === '/api/stats') {
 }
 
 if (req.method === 'GET' && pathname === '/api/matches') {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const token = readBearerToken(req);
     const matchSession = token ? getAuthSession(token) : null;
@@ -566,7 +566,7 @@ if (req.method === 'GET' && pathname === '/api/matches') {
 }
 
 if (req.method === 'GET' && pathname === '/api/tournaments') {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const { limit, offset } = parseQueryParams(req.url);
     const all = getStoredTournaments();
@@ -587,7 +587,7 @@ if (req.method === 'GET' && pathname === '/api/tournaments') {
 if (req.method === 'GET' && pathname === '/api/users/search') {
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const q = url.searchParams.get('q') || '';

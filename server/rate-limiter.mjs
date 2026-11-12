@@ -24,6 +24,34 @@
  *   la resolution est faite AVANT la construction de la cle de bucket, donc
  *   `${ip}|${groupe canonique}` - deux alias d'un meme groupe partagent
  *   forcement le meme compteur.
+ * INVARIANT : chaque requete compte DANS DEUX SEAUX - le seau de son IP
+ *   (fine) ET le seau de son PAIR TCP (grossier). Le second n'est pas
+ *   forgeable : voir le PIEGE majeur ci-dessous.
+ * PIEGE (MAJEUR, mesure en production le 2026-11-12) : l IP de seau ne
+ *   doit JAMAIS etre choisie par l appelant.
+ *
+ *   Mesure : 70 requetes SEQUENTIELLES sur une seule connexion, avec un
+ *   `X-Forwarded-For` constant -> ZERO refus. La meme salve SANS
+ *   l en-tete -> refus des la requete #45, avec le corps
+ *   `{ code: "RATE_LIMITED" }` (celui de l application). Autrement dit :
+ *   ajouter un en-tete suffisait a sortir du quota.
+ *
+ *   La cle de seau est `${ip}|${groupe}`, et `ip` vient de
+ *   `getClientIp` - donc de l en-tete que l appelant controle. Or la
+ *   convention de la plateforme (le nombre de sauts qu elle ajoute, et
+ *   leur position) n est pas garantie : selon elle, le dernier saut peut
+ *   etre la valeur du client. La regle « dernier saut » du code ne
+ *   protege donc QUE si la plateforme AJOUTE son saut - ce qui n est pas
+ *   le cas ici.
+ *
+ *   Consequence : le plafond anti-bruteforce (auth 50/15 min, retraits
+ *   20/10 min) etait neutralisable en changeant d en-tete a chaque
+ *   requete. La correction n est pas de deviner quelle convention
+ *   s applique, mais d ajouter une dimension que l appelant ne peut PAS
+ *   controler : le PAIR TCP, c est a dire l adresse reelle de la
+ *   connexion. Le seau du pair est plafonne a `PEER_MULTIPLIER` fois le
+ *   quota fin : il borne la multiplication (par le nombre de proxys de la
+ *   plateforme) au lieu de la laisser sans borne.
  * PIEGE : un groupe absent de `RATE_LIMIT_CONFIG` retombe sur `default` avec
  *   UN warn par nom de groupe inconnu (pas par appel : les handlers socket
  *   appellent `checkRateLimit` en boucle, un warn/appel serait du spam). Le
@@ -184,6 +212,37 @@ if (TEST_ONLY_RELAXATION) {
 }
 
 /**
+ * Facteur applique au quota du seau de PAIR par rapport au quota fin.
+ *
+ * Le seau du pair est partage par tous les clients qui passent par le
+ * meme proxy : son plafond doit donc laisser passer la plateforme
+ * entiere. 20 correspond a une vingtaine de joueurs reels derriere un
+ * meme proxy - c est un COMPROMIS, et c est pourquoi la valeur est
+ * exposed par une variable d'environnement
+ * (`ZOYD_RATE_LIMIT_PEER_MULTIPLIER`) plutot que d etre figee dans le
+ * code : elle se regle quand la plateforme grandit, sans redemarrage.
+ */
+const PEER_MULTIPLIER = Math.max(
+  1,
+  Number(process.env.ZOYD_RATE_LIMIT_PEER_MULTIPLIER || 20) || 20,
+);
+
+/**
+ * L adresse du PAIR TCP : la seule chose que l appelant ne peut pas
+ * choisir.
+ *
+ * C est l adresse reelle de la connexion. Elle ne change pas d une
+ * requete a l autre sur une meme connexion, et l appelant ne peut pas la
+ * choisir : il ne peut que demander une AUTRE connexion - donc un
+ * nombre de seaux borne par le nombre de proxys de la plateforme, et
+ * non par le nombre d en-tetes qu il invente.
+ */
+export const getPeerAddress = (req) => {
+  const peer = req?.socket?.remoteAddress || '';
+  return String(peer).replace(/^::ffff:/, '') || 'inconnu';
+};
+
+/**
  * Check whether the given IP has exceeded the rate limit for a group.
  * @param {string} ip
  * @param {string} [group='default']
@@ -227,6 +286,61 @@ const checkRateLimit = (ip, group = 'default') => {
   const allowed = record.attempts <= config.max;
   const retryAfter = allowed ? 0 : Math.ceil((record.windowStart + config.windowMs - now) / 1000);
   return { allowed, remaining: Math.max(0, config.max - record.attempts), retryAfter };
+};
+
+/**
+ * Le seau du PAIR : plafond grossier, non forgeable.
+ *
+ * Distinct du seau fin pour deux raisons :
+ *   - le multiplicateur est propre (le quota fin ne bouge pas) ;
+ *   - le plafond est independant de la fenetre du quota fin, sinon un
+ *     attaquant pourrait attendre la fin de fenetre pour repasser.
+ */
+const checkPeerRateLimit = (peer, group = 'default') => {
+  const canonicalGroup = resolveRateLimitGroup(group);
+  const config = RATE_LIMIT_CONFIG[canonicalGroup] || RATE_LIMIT_CONFIG.default;
+  const max = config.max * PEER_MULTIPLIER;
+  const windowMs = config.windowMs;
+  const key = `peer|${peer}|${canonicalGroup}`;
+  const now = Date.now();
+  const record = rateLimitBuckets.get(key);
+  if (!record || now - record.windowStart > windowMs) {
+    if (rateLimitBuckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+      const oldest = rateLimitBuckets.keys().next().value;
+      rateLimitBuckets.delete(oldest);
+    }
+    rateLimitBuckets.set(key, { windowStart: now, attempts: 1, group: canonicalGroup });
+    return { allowed: true, remaining: max - 1, retryAfter: 0 };
+  }
+  record.attempts += 1;
+  const allowed = record.attempts <= max;
+  const retryAfter = allowed ? 0 : Math.ceil((record.windowStart + windowMs - now) / 1000);
+  return { allowed, remaining: Math.max(0, max - record.attempts), retryAfter };
+};
+
+/**
+ * Verifie les DEUX seaux : le fin (par IP) et le grossier (par pair).
+ *
+ * Les deux doivent autoriser. Le seau fin seul ne protege de rien si
+ * l appelant peut choisir son IP ; le seau grossier seul serait trop
+ * severe pour une plateforme entiere.
+ */
+const checkRateLimitComplet = (ip, group, peer) => {
+  const fin = checkRateLimit(ip, group);
+  if (!peer) return fin;
+  const grossier = checkPeerRateLimit(peer, group);
+  if (!fin.allowed || !grossier.allowed) {
+    return {
+      allowed: false,
+      remaining: Math.min(fin.remaining, grossier.remaining),
+      retryAfter: Math.max(fin.retryAfter, grossier.retryAfter),
+    };
+  }
+  return {
+    allowed: true,
+    remaining: Math.min(fin.remaining, grossier.remaining),
+    retryAfter: 0,
+  };
 };
 
 /** Remove expired entries from the rate-limit buckets. */
@@ -341,8 +455,8 @@ const getClientIp = (req) => {
  * @param {string} group
  * @returns {boolean} true if the request is allowed, false if rate-limited
  */
-const rateLimitGuard = (res, ip, group) => {
-  const { allowed, retryAfter } = checkRateLimit(ip, group);
+const rateLimitGuard = (res, ip, group, peer = null) => {
+  const { allowed, retryAfter } = checkRateLimitComplet(ip, group, peer);
   if (!allowed) {
     res.setHeader('Retry-After', String(retryAfter));
     respondJson(res, 429, { ok: false, error: 'Trop de requetes. Reessayez plus tard.', code: 'RATE_LIMITED' });
@@ -353,10 +467,13 @@ const rateLimitGuard = (res, ip, group) => {
 
 export {
   rateLimitBuckets,
+  PEER_MULTIPLIER,
   RATE_LIMIT_CONFIG,
   RATE_LIMIT_GROUP_ALIASES,
   resolveRateLimitGroup,
   checkRateLimit,
+  checkPeerRateLimit,
+  checkRateLimitComplet,
   cleanupRateLimits,
   isValidIp,
   getClientIp,

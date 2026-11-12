@@ -42,7 +42,7 @@
  *   classement, pas les identifiants.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,
   paginate,
@@ -93,7 +93,7 @@ if (req.method === 'GET' && pathname === '/api/leagues') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const { limit, offset } = parseQueryParams(req.url);
     const all = getStoredLeagues();
@@ -115,7 +115,7 @@ if (req.method === 'GET' && leagueGetOne) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }, req);
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const seasons = getStoredLeagues();
     const season = seasons.find((s) => s.id === leagueGetOne[1]);
@@ -139,7 +139,7 @@ if (req.method === 'POST' && pathname === '/api/leagues') {
   // Garde de debit : la creation prend le mutex GLOBAL des ligues et ecrit
   // en base. Le moteur exige le role admin : le quota `admin` est le bon
   // groupe (20/5 min, comme les autres routes d'administration).
-  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     // `name` et `format` sont OPTIONNELS : la route les exigeait (>= 3
@@ -182,7 +182,7 @@ if (req.method === 'POST' && leagueJoin) {
   // ecrit en base sous le mutex GLOBAL. Groupe `social` : meme nature que
   // l'inscription a un match (le meme joueur peut s'inscrire a plusieurs
   // ligues et a plusieurs matchs).
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try { await withLeagueMutex(async () => {
     const seasonId = leagueJoin[1];
     const outcome = await joinLeagueSeasonOnServer(getStoredLeagues(), session.user, seasonId);
@@ -229,7 +229,7 @@ if (req.method === 'POST' && leagueLeave) {
   // ecrit en base sous le mutex GLOBAL. Groupe `social`, comme `join` : les
   // deux doivent se borner mutuellement (un aller-retour inscription /
   // retrait ne doit pas pouvoir vider le seau).
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try { await withLeagueMutex(async () => {
     const outcome = await leaveLeagueSeasonOnServer(getStoredLeagues(), session.user, leagueLeave[1]);
     await saveLeagues(io, outcome.seasons);
@@ -250,7 +250,7 @@ if (req.method === 'POST' && leagueStartQualification) {
   // Garde de debit : le lancement de la qualification prend le mutex GLOBAL
   // des ligues et ecrit en base. Le moteur exige le role admin -> groupe
   // `admin`.
-  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) { return true; }
   try { await withLeagueMutex(async () => {
     const outcome = startLeagueQualificationOnServer(getStoredLeagues(), session.user, leagueStartQualification[1]);
     await saveLeagues(io, outcome.seasons);
@@ -271,7 +271,7 @@ if (req.method === 'POST' && leagueStartDay) {
   // Garde de debit : le lancement d'une journee prend le mutex GLOBAL des
   // ligues, ecrit en base et notifie tous les inscrits. Role admin exige
   // par le moteur -> groupe `admin`.
-  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) { return true; }
   try { await withLeagueMutex(async () => {
     const outcome = startLeagueDayOnServer(getStoredLeagues(), session.user, leagueStartDay[1], leagueStartDay[2]);
     await saveLeagues(io, outcome.seasons);
@@ -364,7 +364,7 @@ if (req.method === 'POST' && leagueFinalResults) {
 
 const leagueLeaderboard = pathname.match(/^\/api\/leagues\/([^/]+)\/leaderboard$/);
 if (req.method === 'GET' && leagueLeaderboard) {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const standings = getLeagueLeaderboard(getStoredLeagues(), leagueLeaderboard[1]);
     respondJson(res, 200, { ok: true, standings });
@@ -384,7 +384,7 @@ if (req.method === 'PATCH' && leagueUpdateSettings) {
   // Garde de debit : les reglages (droit d'entree, nombre de places, ...)
   // pretent de l'argent : ils modifient le montant que les joueurs vont
   // bloquer. Le moteur exige le role admin -> groupe `admin`.
-  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     const outcome = updateLeagueSettingsOnServer(getStoredLeagues(), session.user, leagueUpdateSettings[1], body);
@@ -406,7 +406,7 @@ if (req.method === 'POST' && leagueReassign) {
   // Garde de debit : le reassignment deplace un joueur entre journees, donc
   // de l'argent (passes differentes). Le moteur exige le role admin ->
   // groupe `admin`.
-  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) { return true; }
   try { await withLeagueMutex(async () => {
     const body = await parseRequestBody(req);
     const outcome = reassignPlayerOnServer(
@@ -450,7 +450,7 @@ if (req.method === 'POST' && leagueRefund) {
 
 const leaguePayments = pathname.match(/^\/api\/leagues\/([^/]+)\/payments$/);
 if (req.method === 'GET' && leaguePayments) {
-  if (!rateLimitGuard(res, getClientIp(req), 'admin')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) { return true; }
   const session = requireAdmin2fa(req, res);
   if (!session) { return true; }
   try {

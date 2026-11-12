@@ -41,7 +41,7 @@
  *   credite, son echec ne doit pas faire echouer la requete.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,
   paginate,
@@ -99,7 +99,7 @@ const log = createLogger('wallet-routes');
 
 export const handleWalletRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'GET' && pathname === '/api/wallet/history') {
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) { respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' }); return true; }
   try {
@@ -120,7 +120,7 @@ if (req.method === 'GET' && pathname === '/api/wallet/me') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
   try {
     const user = getUserById(session.user.id);
     const wallet = user?.wallet || getServerWallet(session.user.id);
@@ -163,7 +163,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/deposit') {
   // derriere, sinon double ecriture d'en-tetes, avalee en ERR_HTTP_HEADERS_SENT.
   const adminSession = requireAdmin2fa(req, res);
   if (!adminSession) { return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'wallet')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'wallet', getPeerAddress(req))) { return true; }
   let body;
   try {
     body = await parseRequestBody(req);
@@ -196,7 +196,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/withdraw') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'wallet')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'wallet', getPeerAddress(req))) { return true; }
   let body;
   try {
     body = await parseRequestBody(req);
@@ -471,7 +471,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'wallet')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'wallet', getPeerAddress(req))) { return true; }
 
   // Le corps est lu HORS du verrou : le verrou doit couvrir la MUTATION,
   // pas le parsing (meme regle que sur les routes de match).

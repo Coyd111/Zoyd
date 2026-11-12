@@ -44,7 +44,7 @@ import { assertSingleProcess } from './single-process-guard.mjs';
 import { createLogger } from './logger.mjs';
 import { metricsToPrometheus, incCounter, startTimer, endTimer, setGauge } from './metrics.mjs';
 import { serializeAuthCookie, ALLOWED_ORIGINS, ALLOW_DEBUG_CODES, getCorsOrigin, respondJson, parseQueryParams, paginate, parseRequestBody, readBearerToken, getAuthenticatedAppSession, getAuthenticatedRealtimeSession, getPathname, normalizePathForMetrics, mapPersistenceError, respondMappedError } from './http-utils.mjs';
-import { checkRateLimit, getClientIp, rateLimitGuard } from './rate-limiter.mjs';
+import { checkRateLimit, getClientIp, rateLimitGuard, getPeerAddress, checkRateLimitComplet } from './rate-limiter.mjs';
 import { sendPushToUser, deliverNotification, broadcastStateSnapshot, notifyAllAdmins } from './push-notifications.mjs';
 import { channels, channelsBySocket, seenByChannel, typingByChannel, cleanupChannelMaps, getChannelMemberMap, getSeenMap, getTypingMap, publicMember, emitChannelSnapshots, trackSocketChannel, untrackSocketChannel, upsertChannelMember, removeSocketFromChannel, startChannelPresenceCleanupTimer, PRESENCE_ROLES, presenceTeamOf } from './channel-presence.mjs';
 import { buildMatchChatChannel, syncMatchChatChannels, canAccessChatChannel, buildChatBootstrapPayload, broadcastChatChannel, broadcastChatMessage, broadcastChatRead } from './chat-helpers.mjs';
@@ -376,6 +376,16 @@ const getClientIpFromHandshake = (handshake) =>
     socket: { remoteAddress: handshake?.address },
     headers: handshake?.headers || {},
   });
+
+/**
+ * Le PAIR TCP d'une connexion socket.
+ *
+ * Meme raison que pour le HTTP : l IP client peut etre choisie par
+ * l appelant, le pair non. Sans ce seau grossier, un client qui change
+ * d en-tete a chaque evenement sort du quota de presence/saisie.
+ */
+const getPeerAddressFromHandshake = (handshake) =>
+  getPeerAddress({ socket: { remoteAddress: handshake?.address } });
 const MAX_SOCKET_CONNECTION_ENTRIES = 10000;
 
 const cleanupSocketConnectionCounts = () => {
@@ -404,6 +414,7 @@ io.use(async (socket, next) => {
   // faisait partager UN SEUL compteur à toute la plateforme (10 connexions
   // / min au total), et le 11e visiteur se faisait refuser.
   const ip = getClientIpFromHandshake(socket.handshake);
+  const peer = getPeerAddressFromHandshake(socket.handshake);
   const now = Date.now();
   const entry = socketConnectionCounts.get(ip);
   if (!entry || now - entry.start > SOCKET_CONNECTION_WINDOW) {
@@ -452,7 +463,8 @@ io.on('connection', (socket) => {
 
   socket.on('presence:join', (payload = {}) => {
     const ip = getClientIpFromHandshake(socket.handshake);
-    const { allowed } = checkRateLimit(ip, 'chat');
+  const peer = getPeerAddressFromHandshake(socket.handshake);
+    const { allowed } = checkRateLimitComplet(ip, 'chat', peer);
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
       return;
@@ -480,7 +492,8 @@ io.on('connection', (socket) => {
 
   socket.on('presence:update', (payload = {}) => {
     const ip = getClientIpFromHandshake(socket.handshake);
-    const { allowed } = checkRateLimit(ip, 'chat');
+  const peer = getPeerAddressFromHandshake(socket.handshake);
+    const { allowed } = checkRateLimitComplet(ip, 'chat', peer);
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
       return;
@@ -528,7 +541,8 @@ io.on('connection', (socket) => {
 
   socket.on('presence:leave', (payload = {}) => {
     const ip = getClientIpFromHandshake(socket.handshake);
-    const { allowed } = checkRateLimit(ip, 'chat');
+  const peer = getPeerAddressFromHandshake(socket.handshake);
+    const { allowed } = checkRateLimitComplet(ip, 'chat', peer);
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
       return;
@@ -540,7 +554,8 @@ io.on('connection', (socket) => {
 
   socket.on('channel:seen', (payload = {}) => {
     const ip = getClientIpFromHandshake(socket.handshake);
-    const { allowed } = checkRateLimit(ip, 'chat');
+  const peer = getPeerAddressFromHandshake(socket.handshake);
+    const { allowed } = checkRateLimitComplet(ip, 'chat', peer);
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
       return;
@@ -560,7 +575,8 @@ io.on('connection', (socket) => {
 
   socket.on('typing:update', (payload = {}) => {
     const ip = getClientIpFromHandshake(socket.handshake);
-    const { allowed } = checkRateLimit(ip, 'chat');
+  const peer = getPeerAddressFromHandshake(socket.handshake);
+    const { allowed } = checkRateLimitComplet(ip, 'chat', peer);
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
       return;
@@ -590,7 +606,8 @@ io.on('connection', (socket) => {
 
   socket.on('notification:push', async (payload = {}) => {
     const ip = getClientIpFromHandshake(socket.handshake);
-    const { allowed } = checkRateLimit(ip, 'default');
+  const peer = getPeerAddressFromHandshake(socket.handshake);
+    const { allowed } = checkRateLimitComplet(ip, 'default', peer);
     if (!allowed) {
       socket.emit('error', { message: 'Rate limit exceeded' });
       return;

@@ -25,6 +25,8 @@ vi.mock('./http-utils.mjs', () => ({
 }));
 vi.mock('./rate-limiter.mjs', () => ({
   getClientIp: vi.fn(() => '1.2.3.4'),
+  // Le pair TCP : nouveau parametre du garde, non forgeable.
+  getPeerAddress: vi.fn(() => '10.0.0.1'),
   rateLimitGuard: vi.fn(() => true),
 }));
 vi.mock('./mutex.mjs', () => ({

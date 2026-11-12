@@ -54,7 +54,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import crypto from 'node:crypto';
 
-import { rateLimitGuard, getClientIp } from '../rate-limiter.mjs';
+import { rateLimitGuard, getClientIp, getPeerAddress } from '../rate-limiter.mjs';
 import { verifyTotp, toBase32, adminTotpSecrets, requireAdmin, requireAdmin2fa, TOTP_PERIOD } from '../admin-totp.mjs';
 import {
   respondJson,
@@ -329,7 +329,7 @@ export const auditAdmin2faStore = async ({ loadedCount }) => {
 export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // Admin: force reload all data from Supabase
   if (req.method === 'POST' && pathname === '/api/admin/reload') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     log.info('Admin force reload from Supabase', { adminId: session.user.id });
@@ -348,7 +348,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // Donnee financiere sensible -> 2FA obligatoire, comme les autres operations
   // financieres. `/api/stats` reste public et ne l'expose PAS.
   if (req.method === 'GET' && pathname === '/api/admin/commissions') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     try {
@@ -392,7 +392,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       }, req);
       return true;
     }
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     try {
@@ -447,7 +447,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // Donnee financiere sensible -> 2FA obligatoire. Trie par anciennete
   // decroissante : la plus vieille dette premier. `type` filtre en query.
   if (req.method === 'GET' && pathname === '/api/admin/finance/debts') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     try {
@@ -495,7 +495,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // 2FA obligatoire, comme `/api/admin/commissions` : un signalement accuse
   // une personne, et le contenu releve des identites de joueurs.
   if (req.method === 'GET' && pathname === '/api/admin/reports') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     try {
@@ -550,7 +550,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // l admin, pas declenchee automatiquement. Bannir sur un signalement unique
   // reviendrait a laisser n'importe quel joueur faire bannir un rival.
   if (req.method === 'POST' && pathname.match(/^\/api\/admin\/reports\/([^/]+)\/resolve$/)) {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     const reportId = decodeURIComponent(pathname.match(/^\/api\/admin\/reports\/([^/]+)\/resolve$/)[1]);
@@ -615,7 +615,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // moderation enfermerait un joueur sans recours, et l admin n'aurait qu'une
   // requete SQL manuelle pour y remedier.
   if (req.method === 'GET' && pathname === '/api/admin/sanctions') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     try {
@@ -649,7 +649,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // redonne immediateMENT la main au joueur : sa prochaine requete
   // authentifiee repartira, sans attendre une reconnexion.
   if (req.method === 'POST' && pathname.match(/^\/api\/admin\/sanctions\/([^/]+)\/revoke$/)) {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     const sanctionId = decodeURIComponent(pathname.match(/^\/api\/admin\/sanctions\/([^/]+)\/revoke$/)[1]);
@@ -686,7 +686,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
   // CSV par defaut (ouvrable dans un tableur), JSON si `format=json` — le
   // JSON preserve la structure complete, le CSV se lit sans outil.
   if (req.method === 'GET' && pathname === '/api/admin/matches/export') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
     try {
@@ -747,7 +747,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
 
   // SEC-R4: Admin 2FA status — whether TOTP is enabled for this admin
   if (req.method === 'GET' && pathname === '/api/admin/2fa/status') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin(req, res);
     if (!session) return true;
     const entry = adminTotpSecrets.get(session.user.id);
@@ -757,7 +757,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
 
   // SEC-R4: Admin 2FA setup — generate TOTP secret for admin
 if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
-      if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+      if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
       const session = requireAdmin(req, res);
       if (!session) return true;
 
@@ -852,7 +852,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
 
   // SEC-R4: Admin 2FA enable — verify code and activate 2FA
   if (req.method === 'POST' && pathname === '/api/admin/2fa/enable') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin(req, res);
     if (!session) return true;
     const body = await parseRequestBody(req).catch(() => ({}));
@@ -900,7 +900,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
 
   // SEC-R4: Admin 2FA verify — verify TOTP code for financial operations
   if (req.method === 'POST' && pathname === '/api/admin/2fa/verify') {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin(req, res);
     if (!session) return true;
     // Verrouillage PAR COMPTE ADMIN (audit sécurité) : le rate-limit par IP
@@ -943,7 +943,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
 
   const adminMatchAward = pathname.match(/^\/api\/admin\/matches\/([^/]+)\/award$/);
   if (req.method === 'POST' && adminMatchAward) {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
 
@@ -1005,7 +1005,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
 
   const adminMatchResolve = pathname.match(/^\/api\/admin\/matches\/([^/]+)\/resolve-dispute$/);
   if (req.method === 'POST' && adminMatchResolve) {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
 
@@ -1042,7 +1042,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
 
   const adminMatchCancel = pathname.match(/^\/api\/admin\/matches\/([^/]+)\/cancel$/);
   if (req.method === 'POST' && adminMatchCancel) {
-    if (!rateLimitGuard(res, getClientIp(req), 'admin')) return true;
+    if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
 

@@ -34,7 +34,7 @@
  *   `user:<userId>`, pas dans la room du canal.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 // P9 C3 (audit-3) : import EXPLICITE de randomUUID - `crypto.randomUUID()`
 // marchait par le global WebCrypto de Node >= 19, dependance non declaree
 // (un downgrade de runtime aurait leve un ReferenceError par message).
@@ -76,7 +76,7 @@ if (req.method === 'GET' && pathname === '/api/chat/bootstrap') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'chat')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'chat', getPeerAddress(req))) { return true; }
   try {
     respondJson(res, 200, { ok: true, ...buildChatBootstrapPayload(session.user.id) });
   } catch (error) {
@@ -95,7 +95,7 @@ if (req.method === 'GET' && chatChannelDetail) {
   // P9 C4 (audit-3) : la SEULE route du fichier sans rate limit alors que
   // l'en-tete laissait croire le contraire pour toutes. Groupe 'chat'
   // comme les 4 autres (60/min).
-  if (!rateLimitGuard(res, getClientIp(req), 'chat')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'chat', getPeerAddress(req))) { return true; }
 
   const channel = getChatChannelById(chatChannelDetail[1]);
   if (!channel || !canAccessChatChannel(channel, session.user)) {
@@ -124,7 +124,7 @@ if (req.method === 'POST' && pathname === '/api/chat/channels') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'chat')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'chat', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -201,7 +201,7 @@ if (req.method === 'POST' && chatChannelMessages) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'chat')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'chat', getPeerAddress(req))) { return true; }
 
   try {
     const body = await parseRequestBody(req);
@@ -262,7 +262,7 @@ if (req.method === 'POST' && chatChannelRead) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'chat')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'chat', getPeerAddress(req))) { return true; }
 
   const channel = getChatChannelById(chatChannelRead[1]);
   if (!channel || !canAccessChatChannel(channel, session.user)) {

@@ -28,7 +28,7 @@
  *   de la souscription, sans lui rien n'est enregistre.
  */
 
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 import {
   getAuthenticatedAppSession,
   getAuthenticatedRealtimeSession,
@@ -56,7 +56,7 @@ import { getNow } from '../utils.mjs';
 
 export const handleRealtimeRoutes = async ({ req, res, pathname, io }) => {
 if (req.method === 'POST' && pathname === '/api/realtime/auth/session') {
-  if (!rateLimitGuard(res, getClientIp(req), 'auth')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'auth', getPeerAddress(req))) { return true; }
   const session = getAuthenticatedAppSession(req);
   if (!session) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
@@ -95,7 +95,7 @@ if (req.method === 'GET' && pathname.startsWith('/api/realtime/state/bootstrap')
   // 50 tournois sanitises + 4 listes) appelable en boucle etait la SEULE
   // du fichier sans rate limit (le groupe 'default', 60/min, couvre le
   // rythme d'un client : 1 appel a la connexion et aux reconnexions).
-  if (!rateLimitGuard(res, getClientIp(req), 'default')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'default', getPeerAddress(req))) { return true; }
 
   try {
 const allMatches = getStateCollection('matches');

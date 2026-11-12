@@ -57,7 +57,7 @@ import {
   respondJson,
   respondMappedError,
 } from '../http-utils.mjs';
-import { getClientIp, rateLimitGuard } from '../rate-limiter.mjs';
+import { getClientIp, rateLimitGuard, getPeerAddress } from '../rate-limiter.mjs';
 import { roundAmount } from '../utils.mjs';
 import { withMatchMutex, withWalletMutex } from '../mutex.mjs';
 import {
@@ -94,7 +94,7 @@ if (req.method === 'POST' && pathname === '/api/matches') {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
@@ -171,7 +171,7 @@ if (req.method === 'POST' && matchJoin) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   let body;
   try {
@@ -221,7 +221,7 @@ if (req.method === 'POST' && matchLeave) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = await withWalletMutex(session.user.id, async () =>
@@ -247,7 +247,7 @@ if (req.method === 'POST' && matchCancelSelf) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   try { await withMatchMutex(async () => {
     // PAS de `withWalletMutex` autour de cet appel.
@@ -283,7 +283,7 @@ if (req.method === 'POST' && matchArbiter) {
   // que les routes /api/admin/* (audit-2 S1).
   const session = require2faIfAdmin(req, res);
   if (!session) { return true; }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = assignArbiterOnServer(getStateCollection('matches'), session.user, matchArbiter[1]);
@@ -312,7 +312,7 @@ if (req.method === 'POST' && matchCheckIn) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = checkInMatchOnServer(getStateCollection('matches'), session.user, matchCheckIn[1]);
@@ -332,7 +332,7 @@ if (req.method === 'POST' && matchReady) {
     respondJson(res, 401, { ok: false, error: 'Session joueur requise.', code: 'AUTH_REQUIRED' });
     return true;
   }
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = toggleReadyOnServer(getStateCollection('matches'), session.user, matchReady[1]);
@@ -355,7 +355,7 @@ if (req.method === 'POST' && matchSchedule) {
   // Garde de debit : la route prend le mutex GLOBAL des matchs et ecrit en
   // base a chaque appel. Sans quota, un compte authentifie sature le mutex
   // et le budget d'ecritures de toute la plateforme.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
@@ -385,7 +385,7 @@ if (req.method === 'POST' && matchRoom) {
   }
   // Garde de debit : meme raison que la programmation (ci-dessus) - mutex
   // GLOBAL + ecriture en base a chaque appel.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
@@ -421,7 +421,7 @@ if (req.method === 'POST' && matchLaunch) {
   }
   // Garde de debit : meme raison que la programmation - mutex GLOBAL +
   // ecriture en base a chaque appel.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = launchMatchOnServer(getStateCollection('matches'), session.user, matchLaunch[1]);
@@ -446,7 +446,7 @@ if (req.method === 'POST' && matchResult) {
   // Garde de debit : la soumission du resultat est la route la plus
   // convoitée du fichier (elle arme le reglement) et elle ecrit en base a
   // chaque appel, sous le mutex GLOBAL.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation —
   // c'est le pire cas : jusqu'1 Mo de JSON ou un client qui n'enverra
@@ -498,7 +498,7 @@ if (req.method === 'POST' && matchConfirm) {
   }
   // Garde de debit : la confirmation arme le reglement de la cagnotte et
   // ecrit en base sous le mutex GLOBAL.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   try { await withMatchMutex(async () => {
     const outcome = await confirmMatchResultOnServer(getStateCollection('matches'), session.user, matchConfirm[1]);
@@ -540,7 +540,7 @@ if (req.method === 'POST' && matchDisputes) {
   }
   // Garde de debit : l'ouverture d'un litige ecrit en base sous le mutex
   // GLOBAL et envoi une notification aux joueurs.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
 
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
@@ -582,7 +582,7 @@ if (req.method === 'POST' && matchDisputeEvidence) {
     return true;
   }
   // Garde de debit : l'ajout de preuves ecrit en base sous le mutex GLOBAL.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   // Parsing hors lock : le mutex global ne doit couvrir que la mutation.
   let body;
   try {
@@ -616,7 +616,7 @@ if (req.method === 'POST' && matchDisputeEscalate) {
   }
   // Garde de debit : l'escalade ecrit en base sous le mutex GLOBAL et
   // notifie TOUS les admins.
-  if (!rateLimitGuard(res, getClientIp(req), 'social')) { return true; }
+  if (!rateLimitGuard(res, getClientIp(req), 'social', getPeerAddress(req))) { return true; }
   try { await withMatchMutex(async () => {
     const outcome = escalateDisputeOnServer(
       getStateCollection('matches'),

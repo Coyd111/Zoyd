@@ -377,6 +377,45 @@ seau. La decision est desormais documentee dans le fichier.
 
 ---
 
+## 7 quater. Passe 3 - persistance & concurrence : ce que la lecture a donne
+
+Modules lus : `persistence.mjs` (5 221), `state-helpers.mjs` (670),
+`cron.mjs` (1 037), `cron-lease.mjs` (461) - environ 7 400 lignes.
+
+### Defaut 6 - le rejeu OCC ne resynchronisait pas les index d identite (MAJEUR)
+
+Un conflit OCC fait rejouer l updater sur l etat FRAIS relu en base. Le
+payload retenu peut alors porter une identite differente de celle que nous
+avions calculee : si l autre instance a RETROGRADE un administrateur (ou
+change le pseudo) entre notre lecture et notre ecriture, c est sa version
+qui est adoptee.
+
+Mais les index memoire restaient sur l ancien payload :
+
+- `memoryAdminIds` : un admin retrograde gardait ses droits depuis cette
+  instance, jusqu a la prochaine ecriture de ce compte (ou le redemarrage).
+  Le payload disait `player`, l index disait `admin` ;
+- `pseudoKeys` : un joueur change de pseudo n etait plus trouvable, donc
+  plus connectable ;
+- `memoryPasswordHashes` : meme symptome pour l email.
+
+**Correctif** : l indexation est centralisee dans
+`resynchroniserIndexesIdentite`, appelee au rejeu avec le payload RETENU,
+et au retour arriere (echec d ecriture) dans l autre sens.
+
+### Ce qui a ete verifie et trouve sain
+
+| module | conclusion |
+|---|---|
+| `persistence.mjs` — OCC | **sain** (sauf le defaut 6). La base de calcul est l instant RELU EN BASE, pas la copie memoire ; l OCC ferme donc la fenetre ET la peremption. Une ligne disparue est un refus, jamais une resurrection (une suppression d admin qui perd la course ne ressuscite pas un compte avec son solde). Le rejeu repart de l etat frais. |
+| `persistence.mjs` — registres | **sain.** La source de verite est le PORTEFEUILLE (`withdrawalKeys` / `winningsKeys`), pas l index memoire : l eviction du cache est donc SANS PERTE. Les registres sont bornes (5 000 joueurs, 500 cles), et une cle dont le paiement est en attente n est jamais evincee. |
+| `persistence.mjs` — ecriture d etat | **sain.** L eviction au plafond sort l entite de la MEMOIRE, pas de la base (une divergence visible vaut mieux qu une perte seche de donnees financieres), et l ecart est compte. Le conflit adopte l etat frais et rend l entite reecrivable. |
+| `state-helpers.mjs` | **sain.** La sanitisation est complete (UUID, mot de passe de salle, preuves, `confirmedByTeams`, `proofHash` retires) et elle est COUVERTE : `state-helpers.test.mjs` scanne le JSON brut de la diffusion pour y chercher un `userId`. |
+| `cron.mjs` | **sain.** Chaque job a sa garde anti-chevauchement, `finally` compris (un job qui echoue ne se desactive pas) ; chaque job prend le MEME verrou que sa route ; les jobs ne tranchent jamais seuls, ils appellent les moteurs. |
+| `cron-lease.mjs` | **sain.** Le bail est distribue et expire (10 min), donc une instance morte ne gele pas le job ; le resultat negatif est re-sonde. |
+
+---
+
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
 Honnêteté sur la portée :

@@ -31,6 +31,26 @@ const lireHealthInfo = () => {
   return source.slice(debut, source.indexOf('\n});', debut));
 };
 
+/** La route publique qui sert la sonde. */
+const lireRoute = () => readFileSync(resolve('server/routes/public.mjs'), 'utf8');
+
+/**
+ * Extrait la ROUTE `/api/health` de `public.mjs`.
+ *
+ * Meme raison que `lireHealthInfo` : une fenetre de caracteres fixe est
+ * un coupeur trop court (elle laisse passer ce qu elle ne couvre pas) et
+ * un coupeur trop fragile (elle casse des que la route s allonge). On lit
+ * donc la route entiere, depuis son debut jusqu a la route suivante.
+ */
+const lireRouteHealth = () => {
+  const source = lireRoute();
+  const debut = source.indexOf("pathname === '/api/health'");
+  const fin = source.indexOf("pathname === '/api/realtime/health'");
+  expect(debut, 'la route /api/health doit exister').toBeGreaterThan(-1);
+  expect(fin, 'la route /api/health doit etre suivie d une autre route').toBeGreaterThan(debut);
+  return source.slice(debut, fin);
+};
+
 describe('health — identification du deploiement', () => {
   it('expose le commit deploye', () => {
     const sante = lireHealthInfo();
@@ -119,8 +139,6 @@ describe('health — dettes de reglement', () => {
 // ils ne disent ni qui, ni quoi, ni combien d'argent.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('health — compteurs du bail de cron', () => {
-  const lireRoute = () => readFileSync(resolve('server/routes/public.mjs'), 'utf8');
-
   it('la sonde publie les quatre compteurs', () => {
     const source = lireRoute();
     for (const champ of [
@@ -150,11 +168,13 @@ describe('health — compteurs du bail de cron', () => {
   });
 
   it('la sonde ne divulgue ni le detenteur du bail ni un secret', () => {
-    const source = lireRoute();
-    const bloc = source.slice(
-      source.indexOf('cronLeaseAvailable'),
-      source.indexOf('cronLeaseAvailable') + 2000,
-    );
+    // PIEGE : la sonde est PUBLIQUE. Elle ne peut rien divulguer qui
+    // permette de monter une requete authentifiee.
+    //
+    // On verifie la ROUTE ENTIERE, et non une fenetre de caracteres autour
+    // d un champ : une fenetre (fixe) laissait passer ce qu elle ne
+    // couvrait pas, et cassait des que la route s allongeait.
+    const bloc = lireRouteHealth();
     // Le detenteur du bail est l identite de l instance : la publier
     // donnerait la topologie du deploiement. Le bloc des compteurs ne doit
     // donc contenir que des NOMBRES.
@@ -189,8 +209,6 @@ describe('health — compteurs du bail de cron', () => {
 // donc publie : `cronLeaseAuditPurgeError` non vide = la purge ECHOUE.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('health — etat de la purge de l historique des bails', () => {
-  const lireRoute = () => readFileSync(resolve('server/routes/public.mjs'), 'utf8');
-
   it('la sonde publie l erreur et l horodatage de purge', () => {
     const source = lireRoute();
     expect(source, 'cronLeaseAuditPurgeError doit etre publie').toContain('cronLeaseAuditPurgeError');

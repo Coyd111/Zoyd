@@ -161,6 +161,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   DELETE_FAILED: 'Suppression impossible pour le moment. Réessaie dans un instant.',
   TRANSACTION_IN_PROGRESS: 'Transaction en cours de traitement. Réessaie dans un instant.',
   PAYOUT_FAILED: 'Le transfert Mobile Money a échoué. Ton solde a été restauré.',
+  // Le transfert a échoué ET le remboursement n'a pas abouti : l'argent est
+  // ENCORE RETENU (le retrait reste à réconcilier). Dire « ton solde a été
+  // restauré » ici serait un mensonge : le serveur distingue les deux cas.
+  REFUND_FAILED: "Le transfert a échoué et ton solde n'est pas encore restauré. L'équipe support revient vers toi.",
   ACCOUNT_LOCKED: 'Compte verrouillé. Réessaie plus tard.',
   PAYMENT_NOT_CONFIGURED: 'Paiement temporairement indisponible.',
 };

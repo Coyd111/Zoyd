@@ -223,7 +223,17 @@ describe('Retrait : un remboursement ECHOUE ne doit pas clore la dette', () => {
       throw err;
     });
 
-    await retirer(token, cle);
+    const res = await retirer(token, cle);
+
+    // LE CODE REPONDU ne doit pas promettre un solde restaure qui ne l est
+    // pas : l argent est ENCORE RETENU (le test le prouve ci-dessous par
+    // le `pending_review`). `PAYOUT_FAILED` signifie « le transfert a echoue
+    // ET le solde a ete restaure » - c est ce que le front affiche au
+    // joueur. `REFUND_FAILED` dit la verite.
+    expect(
+      res.corps.code,
+      'le joueur ne doit pas croire son solde restaure quand le remboursement a echoue',
+    ).toBe('REFUND_FAILED');
 
     const wallet = getUserById(joueur.id).wallet;
     const tx = (wallet.transactions || []).find((t) => t?.metadata?.idempotencyKey === cle);
@@ -233,5 +243,25 @@ describe('Retrait : un remboursement ECHOUE ne doit pas clore la dette', () => {
       'la dette reste OUVERTE : un retrait echoue n est pas un retrait clos',
     ).toBe('pending_review');
     expect(tx.status).toBe('pending_review');
+  });
+
+  it('le code PAYOUT_FAILED n est repondu que si le remboursement a REUSSI', async () => {
+    // Le temoin du cas precedent : le transfert echoue, mais le
+    // remboursement PASSE. Le solde est alors reellement restaure, et
+    // `PAYOUT_FAILED` est le bon code : le front peut lannoncer au joueur.
+    const { token } = await nouveauJoueur();
+
+    initiateFedaPayPayout.mockImplementation(async () => {
+      const err = new Error('payout refuse par le prestataire');
+      err.code = 'PAYOUT_FAILED';
+      throw err;
+    });
+
+    const res = await retirer(token, 'cle-refund-reussi');
+
+    expect(
+      res.corps.code,
+      'un remboursement reussi justifie PAYOUT_FAILED (le solde est restaure)',
+    ).toBe('PAYOUT_FAILED');
   });
 });

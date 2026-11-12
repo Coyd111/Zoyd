@@ -91,7 +91,7 @@ import {
   sanitizeTournamentForBroadcast,
 } from '../state-helpers.mjs';
 import { buildMatchActionPayload, saveMatches } from '../state-helpers.mjs';
-import { formatZcForNotification, roundAmount } from '../utils.mjs';
+import { formatZcForNotification, roundAmount, makeError } from '../utils.mjs';
 import { deliverNotification } from '../push-notifications.mjs';
 import { createLogger } from '../logger.mjs';
 
@@ -441,6 +441,24 @@ if (withdrawTxId) {
           // un retry doit pouvoir relancer un vrai payout.
 if (refundReussi && cleanKey) forgetWithdrawalKey(session.user.id, cleanKey);
           }
+      }
+      // Le code repondu distingue les DEUX cas, et le joueur ne doit pas
+      // recevoir un message faux.
+      //
+      // `PAYOUT_FAILED` signifie « le transfert a echoue ET le solde a ete
+      // restaure » : c est ce que le front affiche au joueur.
+      // Mais si le REMBOURSEMENT a lui-meme echoue (base indisponible,
+      // contention), l argent est ENCORE RETENU : le retrait reste
+      // `pending_review`, et le cron le reconciliera.
+      //
+      // Repondre `PAYOUT_FAILED` dans ce cas promettait au joueur un solde
+      // restaure qui ne l etait pas. `REFUND_FAILED` dit la verite.
+      if (!refundReussi) {
+        respondMappedError(res, makeError(
+          'REFUND_FAILED',
+          "Le transfert a echoue et le remboursement n'a pas abouti : ton solde n'est pas encore restaure. L'equipe support revient vers toi.",
+        ));
+        return true;
       }
       respondMappedError(res, payoutError);
     return true;

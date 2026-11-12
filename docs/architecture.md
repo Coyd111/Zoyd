@@ -416,6 +416,40 @@ et au retour arriere (echec d ecriture) dans l autre sens.
 
 ---
 
+## 7 quinquies. Passe 4 - les moteurs : ce que la lecture a donne
+
+Modules lus : `match-engine.mjs` (2 199), `tournament-engine.mjs` (1 924),
+`br-engine.mjs` (1 301), `league-engine.mjs` (1 296) - environ 6 700 lignes.
+
+### Defaut 7 - le podium de la ligue NE CONSERVAIT PAS la cagnotte (MAJEUR)
+
+Les trois parts (60 / 25 / 15 %) etaient arrondies INDEPENDAMMENT. Leur
+somme pouvait alors DEPASSER le pot : de la monnaie creee.
+
+Mesure sur 200 000 pots : **18 % sur-distribues de 0,01 ZC**, 6 %
+sous-distribues du meme montant.
+
+Le cas est REEL : le tarif de la ligue est modifiable par l administration
+(jusqu a 500 ZC, centimes compris). Tarif 12,50 ZC sur 3 inscrits -> pot
+37,50 ZC -> reparti 22,50 + 9,38 + 5,63 = **37,51 ZC** : 0,01 ZC de plus
+que la cagnotte recue.
+
+**Correctif** : le tiers absorbe le reliquat, comme le font deja les trois
+autres moteurs - le premier gagnant (match), le 3e (tournoi), le dernier
+classe (BR). La ligue etait le seul des quatre a ne pas le faire.
+
+### Ce qui a ete verifie et trouve sain
+
+| module | conclusion |
+|---|---|
+| `match-engine.mjs` | **sain.** La cagnotte distribuee est le pot REELLEMENT VERROUILLE (`getLockedPot`), jamais le `prizePool` theorique. La base est FIGEE au premier essai (sinon le rejeu sous-payait les impayes). Le premier gagnant absorbe l arrondi, donc la somme des parts est exactement le pot. L echec de la commission d arbitre est TENU A PART de celui des joueurs : il cree une creance reprenable, il ne gele pas le match. |
+| `match-engine.mjs` — forge | **sain.** Le payload client n arrive QUE sur `match.result` ; la racine du match (ou vit `settlementBasis`, la base figee) n est pas accessible. Un client ne peut donc pas forger la cagnotte. |
+| `tournament-engine.mjs` | **sain.** Les dettes de versement (`pendingPayouts`) sont ecrites AU REGLEMENT (le declencheur `!wasCompleted` est a usage unique : une liste perdue = des ZC definitivement perdus). Les parts sont egales et le reliquat absorbé ; les parts des membres fantomes remontent au capitaine. |
+| `br-engine.mjs` | **sain.** Le statut `settling` est ecrit AVANT les versements (un arret laisse un salon reprenable, pas un double versement). La commission d arbitre est plafonnee a 5 %, et les six taux doivent sommer a 100 % - le serveur refuse la repartition sinon. Le dernier classe absorbe le reliquat. |
+| `league-engine.mjs` | **sain** (sauf le defaut 7). La cle de reservation du pass est `season.id` (une cle differente gelait le pass a vie). Le classement final doit classer TOUS les finalistes, et un joueur ne peut apparaitre deux fois. Le 3e absorbe le reliquat (corrige). |
+
+---
+
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
 Honnêteté sur la portée :

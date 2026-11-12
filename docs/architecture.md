@@ -712,6 +712,38 @@ Un test de non-regression ne l aurait pas vu non plus (le workflow est
 de la configuration, pas du code) : c est un controle de
 `deploy-contract.test.mjs` quiprotege desormais le keep-alive.
 
+#### Mesures
+
+| mesure | resultat |
+|---|---|
+| Job `cron` Supabase | 19 executions, la derniere **38 secondes** avant la lecture, **0 echec** |
+| Service Render | **22 minutes sans aucun trafic de ma part** : instance et processus **identiques** -> il ne s est pas endormi |
+| Planificateur GitHub | **tres irregulier** : l historique du workflow montre des ecarts de **3 a 7 heures** entre executions (le workflow d origine etait cale sur 10 min) |
+
+=> Le cron Supabase est **le mecanisme porteur** ; le workflow GitHub est le
+filet de securite, pas la cheville. C etait l inverse de ce que j avais
+suppose en installant les deux.
+
+#### Pourquoi pas de `healthCheckPath` dans le blueprint
+
+C etait l idee la plus simple — Render sonderait lui-meme la route. Elle
+est **dangereuse** ici : `/api/health` repond **503** quand l etat n est pas
+fiable (base injoignable). Render Considererait alors l instance comme
+**mauvaise** et lui retirerait du trafic : une incident de base deviendrait
+une panne de service, sur une route qui ne fait QUE constater la panne.
+Le keep-alive externe, lui, ne fait que du trafic.
+
+#### Ce que le keep-alive coute
+
+Le service Render du plan gratuit turned en continuite : **~730 heures
+par mois**, pour une enveloppe gratuite de **750 heures**. Cela passe, mais
+de justesse : **un second service maintenu en permanence ferait depasser la
+quota.**
+
+Si le trafic devient reel, la bonne solution n est pas de multiplier les
+pingers : c est de passer sur une instance payante (toujours allouee, sans
+ping, et avec des crons qui ne ratent jamais).
+
 Verification : le job `cron` a bien reussi a chaque minute (14:59, 15:00,
 15:01) et le service n a pas change d instance ni de processus.
 

@@ -611,16 +611,21 @@ export const initCronJobs = () => {
     }
   }, 60 * 60 * 1000);
 
-  // Purge de l'historique durable des bails — une fois par jour.
+  // Purge de l'historique durable des bails — une fois par heure.
   //
   // L'historique doit etre RETENTIONNE (c'est sa raison d'etre) mais pas
   // grossir sans borne : au-dela de la retention, il ne sert plus a rien.
   // La purge est ici plutot que dans le job de nettoyage MEMOIRE : elle
   // touche la BASE, pas la memoire, et elle doit etre isolee pour qu'un
   // echec de purge n empoisonne pas le nettoyage memoire.
-  setInterval(() => { void purgeLeaseAudit(); }, 24 * 60 * 60 * 1000);
+  //
+  // Horaire, et non quotidien : la purge doit pouvoir TENIR. Le volume
+  // produit par les jobs de fond se compte en milliers de lignes par jour ;
+  // une purge quotidienne n effacerait qu une fraction de ce qui est
+  // produit, et le retard grossirait sans fin.
+  setInterval(() => { void purgeLeaseAudit(); }, 60 * 60 * 1000);
   // Premier passage differe : une base deja chargee de lignes anciennes ne
-  // doit pas attendre 24 h.
+  // doit pas attendre une heure.
   setTimeout(() => { void purgeLeaseAudit(); }, 60 * 1000).unref?.();
 
   // Contrôle d'intégrité — toutes les heures.

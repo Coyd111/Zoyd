@@ -47,8 +47,46 @@ const log = createLogger('cron-lease-audit');
  */
 export const AUDIT_RETENTION_DAYS = 30;
 
-/** Nombre maximum de lignes purgees par passage (evite un DELETE enorme). */
-const PURGE_BATCH = 500;
+/**
+ * Intervalle minimum entre deux traces NORMALES d un meme job (ms).
+ *
+ * PIEGE : le volume. Un job de fond tourne toutes les minutes ; sans
+ * deduplication, l historique stockait ~4 300 lignes par JOUR (mesure en
+ * production : 47 lignes en 15 min 45 s). A 30 jours de retention, cela
+ * fait ~130 000 lignes, soit une centaine de mo sur le plan gratuit de
+ * Supabase (500 Mo au total) — pour une trace de diagnostic.
+ *
+ * On ne garde donc qu UNE trace normale par job et par heure. Ce qui est
+ * RARE reste conserve en totalite : un refus de bail (une autre instance
+ * detenait le job), une erreur de base, un job execute sans protection.
+ * Ce sont ces evenements-la qu on cherche en premier, et ils sont rares —
+ * donc peu volumineux.
+ */
+export const TRACE_INTERVAL_MS = 60 * 60 * 1000;
+
+
+/**
+ * Derniere trace NORMALE ecrite, par job (epoch ms).
+ *
+ * Sert a la deduplication : une trace normale n est ecrite qu une fois par
+ * heure et par job. Les evenements RARES (refus, erreur, job sans
+ * protection) ne passent pas par ici : ils sont TOUJOURS ecruits.
+ */
+const dernierTraceNormale = new Map();
+
+/**
+ * Un evenement est-il ANORMAL (donc toujours conserve) ?
+ *
+ * Anormal = le bail n a pas ete obtenu (`busy` : une autre instance
+ * detenait le job), la base a refuse (erreur), ou le job a ete execute sans
+ * protection (`table-absente`). Ce sont precisement les evenements qu on
+ * cherche quand on diagnostique : ils doivent etre exhaustifs.
+ */
+const estAnormal = (evenement) => {
+  if (!evenement.acquired) return true;
+  const raison = String(evenement.reason || '');
+  return !['acquis', 'repris', ''].includes(raison);
+};
 
 /**
  * Enregistre une prise de bail.
@@ -69,6 +107,15 @@ export const recordLeaseEvent = async (evenement = {}) => {
   const acquiredAt = Number.isFinite(evenement.acquiredAt)
     ? evenement.acquiredAt
     : Date.now();
+
+  // Deduplication : une trace NORMALE par job et par heure. Sans elle, la
+  // table poussait ~4 300 lignes par jour (mesure en production) — soit
+  // ~130 000 lignes a 30 jours de retention, pour une trace de diagnostic.
+  if (!estAnormal(evenement)) {
+    const precedente = dernierTraceNormale.get(jobName) || 0;
+    if (acquiredAt - precedente < TRACE_INTERVAL_MS) return false;
+    dernierTraceNormale.set(jobName, acquiredAt);
+  }
 
   try {
     const { error } = await supabase.from('cron_lease_audit').insert({
@@ -107,26 +154,60 @@ export const purgeLeaseAudit = async (retentionDays = AUDIT_RETENTION_DAYS) => {
   if (!supabase) return 0;
   const seuil = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
   try {
-    // On borne le nombre de lignes supprimees par passage : un DELETE massif
-    // sur une table deja grande bloquerait la base.
+    // PIEGE : pas de `limit()` ici. `DELETE ... RETURNING id LIMIT n` est
+    // INVALIDE en SQL (erreur 42601, « syntax error at or near "limit" »,
+    // reproduite en production) : la purge echouait donc SILENCIEUSEMENT,
+    // et la table grossissait de ~4 300 lignes par jour sans borne.
+    // Le DELETE reste un statement unique : PostgreSQL le fait en un scan,
+    // et il ne bloque pas les INSERT (verrou ROW EXCLUSIVE).
     const { data, error } = await supabase
       .from('cron_lease_audit')
       .delete()
       .lt('acquired_at', seuil)
-      .select('id')
-      .limit(PURGE_BATCH);
+      // `RETURNING id` : sans lui, PostgREST ne renvoie rien et le nombre de
+      // lignes purgees resterait a zero — donc invisible dans la sonde.
+      .select('id');
     if (error) {
       log.warn('Purge de l historique des bails impossible', { message: error.message });
+      etatPurge.derniereErreur = error.message;
+      etatPurge.derniereExecutionAt = new Date().toISOString();
       return 0;
     }
     const purgees = Array.isArray(data) ? data.length : 0;
+    etatPurge.dernierSuccesAt = new Date().toISOString();
+    etatPurge.derniereErreur = null;
+    etatPurge.lignesPurgees = purgees;
     if (purgees > 0) log.info('Historique des bails purge', { purgees, retentionDays });
     return purgees;
   } catch (err) {
     log.warn('Purge de l historique des bails impossible', { message: err?.message });
+    etatPurge.derniereErreur = err?.message || String(err);
+    etatPurge.derniereExecutionAt = new Date().toISOString();
     return 0;
   }
 };
+
+/**
+ * Etat de la purge, pour `/api/health`.
+ *
+ * PIEGE : une purge qui ECHOUE doit etre visible. C est exactement le piege
+ * qu on vient de corriger : le `limit()` invalide faisait echouer la purge
+ * silencieusement, et rien ne le signalait — la table grossissait sans que
+ * personne ne le voie. Le compteur de lignes purgees et la derniere erreur
+ * sont donc publies.
+ */
+const etatPurge = {
+  dernierSuccesAt: null,
+  derniereErreur: null,
+  derniereExecutionAt: null,
+  lignesPurgees: 0,
+};
+
+/** Etat de la purge de l historique, pour `/api/health`. */
+export const getCronLeaseAuditPurgeHealth = () => ({
+  ...etatPurge,
+  retentionDays: AUDIT_RETENTION_DAYS,
+});
 
 /**
  * La table d historique existe-t-elle ?
@@ -155,6 +236,11 @@ export const isCronLeaseAuditAvailable = () => auditAvailable === true;
 export const resetCronLeaseAuditStateForTests = () => {
   auditAvailable = null;
   lastAuditProbeAt = 0;
+  dernierTraceNormale.clear();
+  etatPurge.dernierSuccesAt = null;
+  etatPurge.derniereErreur = null;
+  etatPurge.derniereExecutionAt = null;
+  etatPurge.lignesPurgees = 0;
 };
 
 const probeAuditTable = async () => {

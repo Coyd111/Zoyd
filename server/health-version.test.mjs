@@ -17,27 +17,30 @@ import { resolve } from 'node:path';
 
 const readPersistence = () => readFileSync(resolve('server/persistence.mjs'), 'utf8');
 
+/**
+ * Extrait le CORPS de `getHealthInfo`.
+ *
+ * PIEGE : une fenetre de caracteres fixe casse des que le corps s allonge.
+ * L ajout honnete d un champ de sonde suffisait a faire echouer un test
+ * qui ne verifiait rien de faux : le test echouait sur la TAILLE, pas sur
+ * le fond. On lit donc la fonction jusqu a sa fermeture reelle.
+ */
+const lireHealthInfo = () => {
+  const source = readPersistence();
+  const debut = source.indexOf('export const getHealthInfo');
+  return source.slice(debut, source.indexOf('\n});', debut));
+};
+
 describe('health — identification du deploiement', () => {
   it('expose le commit deploye', () => {
-    const source = readPersistence();
-    // 4000 et non 2000 : les commentaires exposent des champs entre les deux ;
-    // un span fige au caractere ferait rater RENDER_GIT_COMMIT a la premiere
-    // insertion honnete dans getHealthInfo.
-    const sante = source.slice(
-      source.indexOf('export const getHealthInfo'),
-      source.indexOf('export const getHealthInfo') + 4000,
-    );
+    const sante = lireHealthInfo();
     // Render injecte ces variables automatiquement.
     expect(sante).toContain('RENDER_GIT_COMMIT');
     expect(sante).toContain('RENDER_GIT_BRANCH');
   });
 
   it('ne divulgue ni cle ni jeton par cette porte', () => {
-    const source = readPersistence();
-    const sante = source.slice(
-      source.indexOf('export const getHealthInfo'),
-      source.indexOf('export const getHealthInfo') + 4000,
-    );
+    const sante = lireHealthInfo();
     // /api/health est public : il ne doit rien renvoyer qui permette de
     // monter une requete authentifiee.
     expect(sante).not.toContain('METRICS_TOKEN');
@@ -49,13 +52,7 @@ describe('health — identification du deploiement', () => {
 
 describe('health — sonde secret 2FA admin', () => {
   it('expose adminTotpPersisted et sa cause d\'echec', () => {
-    const source = readPersistence();
-    // Le span des tests existants (2000 car.) s'arrete avant l'ajout ; on
-    // elargit pour que le test continue de tenir si l'ordre des champs bouge.
-    const sante = source.slice(
-      source.indexOf('export const getHealthInfo'),
-      source.indexOf('export const getHealthInfo') + 4000,
-    );
+    const sante = lireHealthInfo();
     expect(sante).toContain('adminTotpPersisted');
     expect(sante).toContain('adminTotpError');
   });
@@ -88,13 +85,7 @@ describe('health — dettes de reglement', () => {
   });
 
   it('publie la decomposition, pas une somme brute', () => {
-    const source = readPersistence();
-    // Fenetre large : le bloc dettes est plus loin dans l objet que les
-    // identifiants de deploiement testes plus haut.
-    const sante = source.slice(
-      source.indexOf('export const getHealthInfo'),
-      source.indexOf('export const getHealthInfo') + 6000,
-    );
+    const sante = lireHealthInfo();
     expect(sante).toContain('pendingSettlementDebts');
     for (const kind of ['matches', 'leagues', 'tournaments']) {
       expect(sante).toContain(`splitPendingDebts('${kind}')`);
@@ -181,5 +172,42 @@ describe('health — compteurs du bail de cron', () => {
     expect(source).toMatch(/compteurs\.refuses \+= 1;/);
     expect(source).toMatch(/compteurs\.erreurs \+= 1;/);
     expect(source).toMatch(/compteurs\.degrades \+= 1;/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L ETAT de la purge de l historique des bails, dans la sonde publique.
+//
+// Pourquoi c'est indispensable
+// -----------------------------
+// La purge echouait EN SILENCE : un `LIMIT` invalide sur le DELETE
+// (`DELETE ... RETURNING id LIMIT n` = erreur SQL 42601). La table
+// grossissait de ~4 300 lignes par jour sans borne, et AUCUN signal ne le
+// disait : ni les logs d operateur, ni la sonde.
+//
+// Un echec invisible est un echec qui se reproduit. L etat de purge est
+// donc publie : `cronLeaseAuditPurgeError` non vide = la purge ECHOUE.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('health — etat de la purge de l historique des bails', () => {
+  const lireRoute = () => readFileSync(resolve('server/routes/public.mjs'), 'utf8');
+
+  it('la sonde publie l erreur et l horodatage de purge', () => {
+    const source = lireRoute();
+    expect(source, 'cronLeaseAuditPurgeError doit etre publie').toContain('cronLeaseAuditPurgeError');
+    expect(source, 'cronLeaseAuditPurgedAt doit etre publie').toContain('cronLeaseAuditPurgedAt');
+  });
+
+  it('les valeurs viennent bien du module d historique', () => {
+    // Un `null` pose a la main dans la route serait toujours vide : l
+    // echec resterait invisible, exactement comme avant le correctif.
+    const source = lireRoute();
+    expect(source).toMatch(/health\.cronLeaseAuditPurge\s*\?\s*health\.cronLeaseAuditPurge\.derniereErreur\s*:\s*null/);
+    expect(source).toMatch(/health\.cronLeaseAuditPurge\s*\?\s*health\.cronLeaseAuditPurge\.dernierSuccesAt\s*:\s*null/);
+  });
+
+  it('la persistance publie l etat de purge', () => {
+    const source = readPersistence();
+    expect(source).toContain('cronLeaseAuditPurge');
+    expect(source).toContain('getCronLeaseAuditPurgeHealth');
   });
 });

@@ -98,3 +98,38 @@ describe('Câblage du bail distribue — cron.mjs', () => {
     expect(source).toMatch(/import \{ withCronLease \} from '\.\/cron-lease\.mjs'/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La purge de l'historique durable des bails : elle doit etre CAPABLE de
+// tenir.
+//
+// Pourquoi horaire
+// ---------------
+// Les jobs de fond produisent des milliers de traces par jour. Une purge
+// QUOTIDIENNE n'effacerait qu'une fraction de ce qui est produit : le
+// retard de purge grossirait sans fin, et la table finirait par manger la
+// base. La purge doit donc passer au moins aussi vite que la production.
+//
+// PIEGE : la purge n'est PAS un job qui ecrit un etat partage — elle
+// n'a pas besoin du bail. Mais elle ne doit pas non plus etre lancee par
+// un `setInterval` brut, sans quoi elle tournerait sur CHAQUE instance.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Purge de l historique des bails — planification', () => {
+  it('la purge est HORAIRE, et non quotidienne', () => {
+    expect(
+      source,
+      'la purge doit passer toutes les heures',
+    ).toMatch(/setInterval\(\(\) => \{ void purgeLeaseAudit\(\); \}, 60 \* 60 \* 1000\)/);
+    // Le rythme quotidien d avant : il ne pouvait pas tenir.
+    expect(
+      source,
+      'la purge ne doit plus etre quotidienne',
+    ).not.toMatch(/void purgeLeaseAudit\(\); \}, 24 \* 60 \* 60 \* 1000/);
+  });
+
+  it('un premier passage differe, pour ne pas attendre une heure', () => {
+    expect(source).toMatch(
+      /setTimeout\(\(\) => \{ void purgeLeaseAudit\(\); \}, 60 \* 1000\)/,
+    );
+  });
+});

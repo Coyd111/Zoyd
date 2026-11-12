@@ -204,6 +204,14 @@ if (req.method === 'GET' && pathname === '/api/health') {
       // baux fonctionnent, mais rien n est conserve — c est ce qui manquait
       // pour constater qu un job a tourne SANS protection.
       cronLeaseAuditAvailable: health.cronLeaseAudit ? health.cronLeaseAudit.available : null,
+      // Etat de la purge de l historique : `cronLeaseAuditPurgeError` non
+      // vide = la purge ECHOUE, et l historique grossit sans borne.
+      cronLeaseAuditPurgeError: health.cronLeaseAuditPurge
+        ? health.cronLeaseAuditPurge.derniereErreur
+        : null,
+      cronLeaseAuditPurgedAt: health.cronLeaseAuditPurge
+        ? health.cronLeaseAuditPurge.dernierSuccesAt
+        : null,
     },
     timestamp: getNow(),
   });

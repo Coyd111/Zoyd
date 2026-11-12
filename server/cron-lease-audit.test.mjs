@@ -42,7 +42,13 @@ vi.mock('./supabase.mjs', () => ({
       let filtre = {};
       const api = {
         select: vi.fn(() => api),
-        limit: vi.fn(() => api),
+        // PIEGE : PostgREST refuse un `LIMIT` sur un `DELETE ... RETURNING`.
+        // L'erreur est « syntax error at or near "limit" » (code 42601) :
+        // c'est elle qui faisait echouer la purge EN SILENCE, en production.
+        limit: vi.fn(() => {
+          if (api._supprime) api._limitApresDelete = true;
+          return api;
+        }),
         order: vi.fn(() => api),
         range: vi.fn(() => api),
         gte: vi.fn((col, val) => { filtre = { ...filtre, [`${col}>=`]: val }; return api; }),
@@ -58,7 +64,7 @@ vi.mock('./supabase.mjs', () => ({
           tableAudit.push({ id: tableAudit.length + 1, ...data });
           return Promise.resolve({ data, error: null });
         }),
-        delete: vi.fn(() => api),
+        delete: vi.fn(() => { api._supprime = true; return api; }),
         then: (onOk) => {
           if (name === 'cron_lease_audit' && !tableAuditVisible) {
             return Promise.resolve({
@@ -66,26 +72,39 @@ vi.mock('./supabase.mjs', () => ({
               error: { code: '42P01', message: 'relation "cron_lease_audit" does not exist' },
             }).then(onOk);
           }
-          // Purge : on ne supprime que les lignes older than le seuil, et la
-          // comparaison est NUMERIQUE (colonne BIGINT).
+          // Un `limit()` apres un `delete()` : la requete est invalide.
+          // PostgreSQL ne supprime RIEN et renvoie l'erreur 42601.
+          if (api._limitApresDelete) {
+            journal.push({ op: 'delete', erreur: '42601', purgees: 0 });
+            return Promise.resolve({
+              data: null,
+              error: { code: '42601', message: 'syntax error at or near "limit"' },
+            }).then(onOk);
+          }
+          // Purge : on ne supprime que les lignes ANCIENNES que le seuil,
+          // et la comparaison est NUMERIQUE (colonne BIGINT).
           const seuil = filtre['acquired_at<'];
-          let data = [...tableAudit];
           if (seuil !== undefined) {
-            const avant = data.length;
-            data = data.filter((l) => {
+            const avant = tableAudit.length;
+            const supprimees = [];
+            const restantes = [];
+            for (const l of tableAudit) {
               if (typeof seuil !== 'number') {
                 throw new Error(`invalid input syntax for type bigint: "${String(seuil)}"`);
               }
               if (typeof l.acquired_at !== 'number') {
                 throw new Error(`invalid input syntax for type bigint: "${String(l.acquired_at)}"`);
               }
-              return l.acquired_at >= seuil;
-            });
-            journal.push({ op: 'delete', purgees: avant - data.length });
+              if (l.acquired_at < seuil) supprimees.push(l);
+              else restantes.push(l);
+            }
+            journal.push({ op: 'delete', purgees: supprimees.length });
             tableAudit.length = 0;
-            tableAudit.push(...data);
+            tableAudit.push(...restantes);
+            // `RETURNING id` : PostgREST renvoie les lignes SUPPRIMEES.
+            return Promise.resolve({ data: supprimees, error: null }).then(onOk);
           }
-          return Promise.resolve({ data, error: null }).then(onOk);
+          return Promise.resolve({ data: [], error: null }).then(onOk);
         },
       };
       return api;
@@ -99,10 +118,16 @@ import {
   purgeLeaseAudit,
   isCronLeaseAuditAvailable,
   getCronLeaseAuditHealth,
+  getCronLeaseAuditPurgeHealth,
   resetCronLeaseAuditStateForTests,
   AUDIT_RETENTION_DAYS,
   AUDIT_PROBE_INTERVAL_MS,
+  TRACE_INTERVAL_MS,
 } from './cron-lease-audit.mjs';
+
+// Le faux client Supabase, pour verifier directement le comportement du
+// DELETE (et non seulement celui de la purge).
+import { supabase } from './supabase.mjs';
 
 beforeEach(() => {
   tableAudit.length = 0;
@@ -248,5 +273,135 @@ describe('Historique des bails — purge de retention', () => {
 
   it('la retention par defaut est de 30 jours', () => {
     expect(AUDIT_RETENTION_DAYS).toBe(30);
+  });
+});
+
+describe('Historique des bails — la purge est REELLEMENT operationnelle', () => {
+  it('la purge SUPPRIME les lignes anciennes (aucun LIMIT sur le DELETE)', async () => {
+    // Le defaut CORRIGE : `DELETE ... RETURNING id LIMIT n` est INVALIDE en
+    // SQL (erreur 42601, « syntax error at or near "limit" »). La purge
+    // echouait donc en silence, la table grossissait de ~4 300 lignes par
+    // jour sans borne, et RIEN ne le signalait.
+    const vieux = Date.now() - 40 * 24 * 60 * 60 * 1000;
+    await recordLeaseEvent({ jobName: 'vieux', acquired: true, acquiredAt: vieux });
+    expect(tableAudit).toHaveLength(1);
+
+    const purgees = await purgeLeaseAudit();
+
+    expect(purgees, 'la purge doit avoir supprime la ligne ancienne').toBe(1);
+    expect(tableAudit, 'la ligne ancienne doit etre partie de la base').toHaveLength(0);
+    expect(
+      journal.filter((e) => e.op === 'delete' && e.erreur),
+      'aucune requete DELETE invalide ne doit avoir ete envoyee',
+    ).toHaveLength(0);
+  });
+
+  it('un LIMIT sur le DELETE est refuse par PostgreSQL : le piege, reproduit', async () => {
+    // Ce test verrouille le FAUX CLIENT, pas le code de production : il
+    // documente la raison pour laquelle un `.limit()` ne doit jamais
+    // revenir sur ce DELETE. Si le faux client cessait de refuser, le test
+    // d au dessus ne protegerait plus de rien.
+    await recordLeaseEvent({
+      jobName: 'vieux',
+      acquired: true,
+      acquiredAt: Date.now() - 40 * 24 * 60 * 60 * 1000,
+    });
+
+    const { error, data } = await supabase
+      .from('cron_lease_audit')
+      .delete()
+      .lt('acquired_at', Date.now())
+      .select('id')
+      .limit(500);
+
+    expect(error, 'un LIMIT sur un DELETE doit etre refuse').not.toBeNull();
+    expect(error.code).toBe('42601');
+    expect(data).toBeNull();
+    expect(tableAudit, 'rien ne doit avoir ete supprime').toHaveLength(1);
+  });
+});
+
+describe('Historique des bails — le volume est dedplique', () => {
+  const T0 = 1_700_000_000_000;
+
+  it('une trace NORMALE par job et par heure', async () => {
+    // Sans deduplication, les jobs de fond (toutes les minutes) produisaient
+    // ~4 300 lignes par JOUR (mesure en production). A 30 jours de retention
+    // : ~130 000 lignes, pour une trace de diagnostic.
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'acquis', acquiredAt: T0 });
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'acquis', acquiredAt: T0 + 60_000 });
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'acquis', acquiredAt: T0 + 120_000 });
+
+    expect(tableAudit).toHaveLength(1);
+  });
+
+  it('au-dela d une heure, la trace normale est reecrite', async () => {
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'acquis', acquiredAt: T0 });
+    await recordLeaseEvent({
+      jobName: 'job-a',
+      acquired: true,
+      reason: 'acquis',
+      acquiredAt: T0 + TRACE_INTERVAL_MS + 1_000,
+    });
+
+    expect(tableAudit).toHaveLength(2);
+  });
+
+  it('chaque job a sa propre trace', async () => {
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'acquis', acquiredAt: T0 });
+    await recordLeaseEvent({ jobName: 'job-b', acquired: true, reason: 'acquis', acquiredAt: T0 });
+
+    expect(tableAudit).toHaveLength(2);
+  });
+
+  it('un REFUS de bail est TOUJOURS ecrit (c est l evenement qu on cherche)', async () => {
+    // Une autre instance detenait le job : c'est un evenement
+    // d'exploitation, pas du bruit. Il doit etre exhaustif.
+    await recordLeaseEvent({ jobName: 'job-a', acquired: false, reason: 'busy', acquiredAt: T0 });
+    await recordLeaseEvent({ jobName: 'job-a', acquired: false, reason: 'busy', acquiredAt: T0 + 60_000 });
+    await recordLeaseEvent({ jobName: 'job-a', acquired: false, reason: 'busy', acquiredAt: T0 + 120_000 });
+
+    expect(tableAudit).toHaveLength(3);
+  });
+
+  it('un job execute SANS protection est TOUJOURS trace', async () => {
+    // `table-absente` = le job a tourne sans bail multi-instance. C est
+    // exactement le defaut qu on veut voir dans l historique.
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'table-absente', acquiredAt: T0 });
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'table-absente', acquiredAt: T0 + 60_000 });
+
+    expect(tableAudit).toHaveLength(2);
+  });
+
+  it('une ERREUR de base est TOUJOURS tracee', async () => {
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'erreur-base', acquiredAt: T0 });
+    await recordLeaseEvent({ jobName: 'job-a', acquired: true, reason: 'erreur-base', acquiredAt: T0 + 60_000 });
+
+    expect(tableAudit).toHaveLength(2);
+  });
+});
+
+describe('Historique des bails — l etat de la purge est PUBLIE', () => {
+  it('une purge reussie est horodatee et sans erreur', async () => {
+    expect(getCronLeaseAuditPurgeHealth().dernierSuccesAt).toBeNull();
+
+    await purgeLeaseAudit();
+
+    const sante = getCronLeaseAuditPurgeHealth();
+    expect(sante.dernierSuccesAt, 'la purge doit etre horodatee').not.toBeNull();
+    expect(sante.derniereErreur).toBeNull();
+    expect(sante.retentionDays).toBe(AUDIT_RETENTION_DAYS);
+  });
+
+  it('une purge qui ECHOUE est VISIBLE (plus d echec silencieux)', async () => {
+    // Le defaut vecu : la purge echouait (LIMIT invalide) et rien ne le
+    // signalait. L operateur ne pouvait pas le voir. L etat de purge est
+    // expose dans `/api/health` pour que l echec soit visible.
+    tableAuditVisible = false;
+
+    await purgeLeaseAudit();
+
+    const sante = getCronLeaseAuditPurgeHealth();
+    expect(sante.derniereErreur, 'l echec de purge doit etre publie').toBeTruthy();
   });
 });

@@ -589,6 +589,98 @@ garantit (le cas `PAYOUT_FAILED` / `REFUND_FAILED`).
 
 ---
 
+## 7 nonies. Passe 8 - exploitabilite : ce que la lecture a donne
+
+Modules lus : `render.yaml` (89), `.github/workflows/ci.yml` (87),
+`package.json` (96), `.env.server.example`, plus le seed admin et les
+variables d environnement lus par tout le serveur.
+
+### Defaut 11 - l argent pouvait partir vers un numero PUBLIC (MAJEUR)
+
+Le telephone du compte admin de controle tombait sur un numero de
+DEMONSTRATION - `+2290161000001` - ecrit en clair dans le depot. Le
+depot est public : ce numero est connu de quiconque.
+
+Et `ZOYD_ADMIN_PHONE` n etait ni declaree dans le blueprint, ni
+documentee dans le gabarit local. L avertissement `[SECURITY]` du seed ne
+couvrait que l email, le pseudo et l id - pas le telephone.
+
+**Correctif** (trois angles) :
+1. le retrait vers ce numero est REFUSE (`PLACEHOLDER_PHONE`, 400) - on
+   refuse le TRANSFERT, pas le compte ;
+2. `ZOYD_ADMIN_PHONE` est declare dans `render.yaml` et documente dans
+   `.env.server.example` ;
+3. l avertissement `[SECURITY]` couvre desormais le telephone.
+
+### Deux ecarts de configuration
+
+| ecart | consequence |
+|---|---|
+| Le script `lint` ne couvrait pas `scripts/` | l outil d exploitation (`prod-inspect.mjs`) n etait pas controle par la CI |
+| La CI ne rejoue pas les tests `live` | **c est voulu** : ils inscrivent un vrai compte sur la production |
+
+### Le verrou : le contrat d exploitation
+
+`server/deploy-contract.test.mjs` lie les trois mondes qui ne se
+parlent que par des NOM DE CHAINE :
+
+- toute variable declaree dans le blueprint est **lue** par le serveur ;
+- toute variable lue est **declaree** ou explicitement facultative (avec sa
+  raison ecrite) ;
+- la CI rejoue les **memes** gates que le developpeur.
+
+Un detail non evident : `ZOYD_2FA_ENC_KEY` est lue via
+`readKey('...')` -> `process.env[nom]`. Un scan statique trop naif la
+conclurait morte - c est le genre de faux positif qui fait abandonner un
+controle.
+
+---
+
+## 8. Synthese des huit passes
+
+| # | Defaut | Gravite |
+|---|---|---|
+| 1 | Le quota anti-bruteforce etait contournable (en-tete choisi par l appelant) | MAJEUR |
+| 2 | La cle Supabase n etait pas verifiee (cle anon acceptee) | MAJEUR |
+| 3 | Le rejeu OCC ne resynchronisait pas les index d identite | MAJEUR |
+| 4 | Le podium de la ligue ne conservait pas la cagnotte | MAJEUR |
+| 5 | Sept routes n avaient aucun quota | MAJEUR |
+| 6 | Les privileges d un socket ouvert n etaient pas revocables | MAJEUR |
+| 7 | Le joueur etait told que son solde etait restaure quand il ne l etait pas | MAJEUR |
+| 8 | L argent pouvait partir vers un numero public | MAJEUR |
+| 9 | Le taux ZC -> FCFA etait reecrit de chaque cote | MAJEUR |
+| 10 | Le miroir de formatage des montants avait diverge | MINEUR |
+| 11 | La purge de retention echouait en silence (LIMIT invalide) | MAJEUR |
+
+**Huit defauts majeurs, deux mineurs.** Chacun est couvert par un test
+verifie ECHOUANT avant le correctif.
+
+### Les verrous structurels ajoutes
+
+Ce sont eux qui comptent : ils couvrent des CLASSES de defauts, pas des
+cas isoles.
+
+| verrou | ce qu il empeche |
+|---|---|
+| `routes-rate-limit-invariant.test.mjs` | une route sans quota (la coverage etait une LISTE) |
+| `league-payout-conservation.test.mjs` | une repartition qui cree ou detruit de la monnaie |
+| `realtime-socket-privilege.test.mjs` | un privilege fige a la connexion |
+| `api-contract.test.ts` | un chemin appele par le front qui n existe pas cote serveur |
+| `deploy-contract.test.mjs` | une variable d environnement declaree et non lue, ou lue et non declaree |
+| `selector-reference-stability.test.ts` (existant) | un accesseur de store appele hors d un hook |
+
+### Ce qui reste ouvert (decision humaine)
+
+**L hibernation du plan gratuit.** Le service Render dort apres ~15 min
+sans visite : les crons de fond ne tournent que service eveille. Aucun
+impact aujourd hui (0 transaction d argent, 3 matchs de test), mais au
+moment de l ouverture au public, un joueur qui gagne un match pendant
+que le dernier joueur a ferme l application attend le prochain visiteur.
+Le correctif le plus simple est un client externe qui pingue
+`/api/health` chaque minute.
+
+---
+
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
 Honnêteté sur la portée :

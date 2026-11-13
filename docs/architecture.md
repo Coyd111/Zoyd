@@ -803,7 +803,7 @@ un lecteur d ecran sait combien de notifications attendent.
 ### Ce qui n etait PAS un defaut (faux positifs ecartes, et pourquoi)
 
 Un audit qui ne sait pas reconnaitre un faux positif est un audit qui
-oblige a ignorer des signalements. Cinq classes ecartees, chacune avec sa
+oblige a ignorer des signalements. Six classes ecartees, chacune avec sa
 raison :
 
 | faux positif | pourquoi ce n est pas un defaut |
@@ -972,27 +972,38 @@ Verification : le job `cron` a bien reussi a chaque minute (14:59, 15:00,
 
 ### Ce qui reste ouvert (decision humaine)
 
-**L hibernation du plan gratuit.** Le service Render dort apres ~15 min
-sans visite : les crons de fond ne tournent que service eveille. Aucun
-impact aujourd hui (0 transaction d argent, 3 matchs de test), mais au
-moment de l ouverture au public, un joueur qui gagne un match pendant
-que le dernier joueur a ferme l application attend le prochain visiteur.
-Le correctif le plus simple est un client externe qui pingue
-`/api/health` chaque minute.
+**La marge de quota du plan gratuit.** Le keep-alive consomme ~730 h/mois
+sur une enveloppe de 750 h. Ca passe, mais de justesse : **un second
+service maintenu en permanence ferait depasser la quota.** Ce n est pas
+un defaut, c est un arbitrage : si le trafic devient reel, la bonne
+solution n est pas de multiplier les pingers, c est de passer sur une
+instance payante (toujours allouee, sans ping, et avec des crons qui ne
+ratent jamais). Le detail est dans la section keep-alive ci-dessus.
+
+**L ouverture au public.** C est une decision produit, pas un defaut :
+quels pays, quels moyens de paiement, quels contenus legaux. Le code ne
+decide pas de cela. Ce qui est verifie, c est que rien ne bloque le
+reglement une fois la decision prise : les regles de reglement, les
+quotas de debit et la conservation de la monnaie sont chacune couvertes
+par un test.
+
+Le reste de ce document decrit des etats **verifies** : chaque correctif
+cite a son test, chaque test a ete vu echouer avant le correctif.
 
 ---
 
 ## 8. Ce que ce document ne dit pas (et pourquoi)
 
-Honnêteté sur la portée :
+Honnetete sur la portee :
 
-- Il ne décrit **pas** le détail des règles métier (remparts, formats de
-  téléphone, barèmes de commission). Pour ça : les moteurs et leurs
+- Il ne decrit **pas** le detail des regles metier (remparts, formats de
+  telephone, baremes de commission). Pour ca : les moteurs et leurs
   tests.
-- Il ne décrit **pas** le front page par page (192 fichiers).
-- Il ne dit **pas** que le code est correct. Les audits précédents ont
-  trouvé 19 défauts majeurs et 34 mineurs ; d'autres restent possibles.
-  La carte décrit la **forme**, pas la **correction**.
+- Il ne decrit **pas** le front page par page (192 fichiers) - mais il
+  decrit ce que l audit UI a mesure dessus, ecran par ecran.
+- Il ne dit **pas** que le code est correct. Les neuf passes ont trouve
+  12 defauts majeurs et 2 mineurs ; d autres restent possibles. La carte
+  decrit la **forme**, pas la **correction**.
 
 Ce qui est vérifié à la date du document : l'inventaire (mesuré), la
 topologie d'exécution (lue dans `realtime-server.mjs`), le contrat des

@@ -14,8 +14,9 @@
  * Progression data (xp, level, trustScore) is reflected via updateUser() once
  * the server sends the updated user object.
  *
- * TODO: add integration tests covering the socketStore path — verify that a
- * server-pushed user update ends up calling updateUser() here.
+ * La chaine complete (snapshot serveur -> updateUser) est couverte par
+ * `user-update-propagation.test.ts` : progression poussee, snapshot sans
+ * utilisateur, garde multi-compte, et refus d attribut un privilege.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAuthStore, type User } from './authStore';

@@ -844,6 +844,16 @@ onglets non par defaut des parametres.
 L audit est un GATE BLOQUANT : la CI rejoue `pnpm test:e2e:ui`, donc
 chaque ecran, a chaque commit.
 
+Et il est rejoue **en production** : `e2e/live-ui/live-ui-audit.spec.ts`
+rejoue la meme sonde sur les quatorze ecrans publics de
+`zoyd.vercel.app`. Un audit vert en local ne dit rien du bundle DEPLOYE
+- celui-ci peut avoir ete construit avec un autre commit, ou servir un
+CSS different. Les ecrans authentifies en sont exclus : les creer en
+production polluerait la base.
+
+Verifie sur le deploiement du commit `365d1a0` : 14 ecrans verts, API en
+`commit=365d1a0` et `stateTrusted=true`.
+
 ---
 
 ## 8. Synthese des neuf passes

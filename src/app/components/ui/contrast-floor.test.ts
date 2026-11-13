@@ -7,15 +7,21 @@ import { join, resolve } from 'node:path';
  *
  * Le constat
  * ----------
- * L audit UI a trouve 19 textes a `text-white/40` ou `text-white/30`, sur
- * neuf fichiers. Sur les fonds de l application (`zoyd-black` #050505,
+ * L audit UI a trouve 19 textes a 40 % ou 30 % d opacite, sur neuf
+ * fichiers. Sur les fonds de l application (`zoyd-black` #050505,
  * `black` #000), le blanc a 40 % d opacite plafonne a ~3,6:1 et a 30 % a
  * ~2,5:1 : les deux sont SOUS le 4,5:1 qu exige WCAG 1.4.3 pour du texte
- * courant. Un seul ecran (la page de selection de mode) portait un
- * `text-white/46` : meme famille, memeInterpolation.
+ * courant. Un seul ecran (la page de selection de mode) portait 46 % :
+ * meme famille, meme interpolation.
  *
- * Coriger les cas laisse le piege : le prochain ecran introduit
- * `text-white/40` et rien ne le signale. D ou une REGLE.
+ * Corriger les cas laisse le piege : le prochain ecran introduit une
+ * opacite trop faible et rien ne le signale. D ou une REGLE.
+ *
+ * PIEGE : les noms de classe ne sont pas ecrits en clair dans ce
+ * fichier. Tailwind scanne TOUS les fichiers de `src/` - y compris les
+ * fichiers de test et leurs commentaires - et emet une utilitaire pour
+ * chaque classe qu il trouve. Un nom ecrit ici partirait en production
+ * dans le CSS, sans qu aucun element ne l utilise.
  *
  * La regle
  * --------
@@ -123,18 +129,24 @@ describe('Plancher de contraste du texte', () => {
   });
 
   it('la regle distingue bien une icone d un texte', () => {
-    expect(estIcone('<Bell className="w-8 h-8 text-white/40" />', 10)).toBe(true);
-    expect(estIcone('<div className="text-white/40">', 10)).toBe(false);
-    expect(estIcone('<button className="text-white/10">', 10)).toBe(false);
+    // PIEGE : les chaines de test sont ECLATEES. Tailwind scanne TOUS les
+    // fichiers de `src/` - y compris les fichiers de test et leurs
+    // commentaires - et emet une utilitaire pour chaque classe qu il
+    // trouve. Un nom de classe ecrit en clair ici partirait en
+    // production dans le CSS, sans qu aucun element ne l utilise.
+    const BLANC = 'text-white' + '/';
+    expect(estIcone(`<Bell className="w-8 h-8 ${BLANC}40" />`, 10)).toBe(true);
+    expect(estIcone(`<div className="${BLANC}40">`, 10)).toBe(false);
+    expect(estIcone(`<button className="${BLANC}10">`, 10)).toBe(false);
     // Multi-lignes : la balise ouvrante est plus haut.
-    expect(estIcone('    className="text-white/40 mx-auto"', 10)).toBe(false);
+    expect(estIcone(`    className="${BLANC}40 mx-auto"`, 10)).toBe(false);
   });
 
-  it('le cas reel est corrige (plus aucune occurrence de 40 % sur du texte)', () => {
-    // La page de selection de mode portait `text-white/46` : meme famille,
-    // meme interpolation, et l audit ne l avait PAS signalee (46 % n est
-    // pas un motif recherche par la sonde). C est precisement ce que la
-    // regle couvrant TOUT le source apporte.
+  it('le cas reel est corrige (plus aucune occurrence a 46 % sur du texte)', () => {
+    // La page de selection de mode portait une opacite de 46 % : meme
+    // famille, meme interpolation, et l audit ne l avait PAS signalee
+    // (46 % n est pas un motif recherche par la sonde). C est precisement
+    // ce que la regle couvrant TOUT le source apporte.
     const mode = readFileSync(resolve('src/app/pages/ModeSelectionPage.tsx'), 'utf8');
     expect(mode).not.toMatch(/text-white\/46/);
   });

@@ -252,19 +252,26 @@ les corrections, chacune avec son test de non-régression **vérifié
 | # | Domaine | Volume | Enjeu | Etat |
 |---|---|---|---|---|
 | 0 | **Cette carte** | — | — | fait |
-| 1 | Socle (`http-utils`, `rate-limiter`, `mutex`, `logger`, `utils`, `supabase`) | ~1 900 | une erreur ici se multiplie | **en cours** |
-| 2 | Argent (`wallet-engine`, `payment-engine`, `webhook`, `payout-countries`) | ~2 400 | le plus fort enjeu | a faire |
-| 3 | Persistance & concurrence (`persistence`, `state-helpers`, `cron`, `cron-lease`) | ~7 600 | le monolithe | a faire |
-| 4 | Moteurs (`match`, `tournament`, `br`, `league`) | ~6 700 | regles de reglement | a faire |
-| 5 | Routes & API (12 fichiers) | ~6 200 | coherence des gardes | a faire |
-| 6 | Temps reel & chat | ~1 300 | diffusion, presence | a faire |
-| 7 | Front (192 fichiers) | 37 600 | stores, abonnements | a faire |
-| 8 | Exploitabilite (`render.yaml`, CI, observabilite) | — | deploiement et alerte | a faire |
+| 1 | Socle (`http-utils`, `rate-limiter`, `mutex`, `logger`, `utils`, `supabase`) | ~1 900 | une erreur ici se multiplie | **fait** |
+| 2 | Argent (`wallet-engine`, `payment-engine`, `webhook`, `payout-countries`) | ~2 400 | le plus fort enjeu | **fait** |
+| 3 | Persistance & concurrence (`persistence`, `state-helpers`, `cron`, `cron-lease`) | ~7 600 | le monolithe | **fait** |
+| 4 | Moteurs (`match`, `tournament`, `br`, `league`) | ~6 700 | regles de reglement | **fait** |
+| 5 | Routes & API (12 fichiers) | ~6 200 | coherence des gardes | **fait** |
+| 6 | Temps reel & chat | ~1 300 | diffusion, presence | **fait** |
+| 7 | Front (192 fichiers) | 37 600 | stores, abonnements | **fait** |
+| 8 | Exploitabilite (`render.yaml`, CI, observabilite) | — | deploiement et alerte | **fait** |
+| 9 | **Audit UI** (33 ecrans mesures dans un navigateur) | — | ce que le joueur voit reellement | **fait** |
 
 Ordre choisi : le **socle** d'abord parce que ses erreurs se multiplient,
 l'**argent** ensuite parce que c'est le plus fort enjeu, la
 **persistance** ensuite parce qu'elle porte l'**état** (et le monolithe),
 puis les moteurs, les routes, le temps réel, le front.
+
+La passe 9 est venue **apres** les huit autres, et pour une raison
+precise : les passes 1 a 8 lisaient le CODE. Un code peut etre
+parfaitement lisible et produire un ecran mort - c'est exactement ce qui
+est arrive au detail d un match (boucle de rendu infinie). Mesurer
+l'ecran rendu est le seul controle qui voie ce genre de defaut.
 
 ---
 
@@ -636,7 +643,210 @@ controle.
 
 ---
 
-## 8. Synthese des huit passes
+## 7 decies. Passe 9 - l audit UI : ce que la MESURE a donne
+
+Les huit premieres passes lisaient le CODE. Cette passe mesure l ecran
+RENDU, dans un vrai navigateur, sur les 33 ecrans de l application.
+
+### La methode (et pourquoi elle est replicable)
+
+`e2e/ui/ui-audit-authenticated.spec.ts` (13 ecrans authentifies),
+`e2e/ui/ui-audit-public.spec.ts` (14 ecrans publics, le back-office, et 5
+ecrans de DETAIL a identifiant variable) et `e2e/ui/ui-audit-flows.spec.ts`
+(les parcours a etats) mesurent, sur chaque ecran :
+
+1. les violations **axe-core** bloquantes (serious / critical) ;
+2. les images sans `alt` ;
+3. les elements interactifs **sans nom accessible** ;
+4. les **cibles tactiles** sous 24 x 24 px (WCAG 2.5.8) ;
+5. les **erreurs JavaScript** de la console ;
+6. les **reponses HTTP en erreur** de l API, avec leur URL.
+
+La sonde elle-meme est partagee (`e2e/ui/support/audit.ts`) : deux copies
+divergeraient, et la seconde cesserait de couvrir un critere sans que
+personne ne s en apercoive. `scripts/audit-ui-aggregate.mjs` agrege les
+inventaires par **CLASSE** de defaut - c est la classe qui demande une
+correction, pas le cas isole.
+
+Chaque inventaire JSON porte le detail du contraste mesure (couleurs
+compositees, ratio obtenu, ratio exige) : un constat de contraste qui ne
+dit pas CE QUI est trop clair n est pas un constat.
+
+Ce que la passe a decouvert : **le detail d un match etait un ecran mort**.
+
+### Les etats qu une route ne dit pas
+
+Un audit par route visite des URL. Or plusieurs ecrans ne sont pas des
+pages mais des **etats** d une meme page :
+
+- `/mj/creer` est un assistant de **quatre** etats (format -> configuration
+  -> mise -> recapitulatif) ;
+- `/parametres` est un panneau de **quatre** onglets (compte -> securite ->
+  gaming -> notifications).
+
+L audit par route s arretait donc sur le premier etat : les saisies de
+formulaire, les boutons radio, le recapitulatif de cagnotte et le tableau
+de repartition du prize pool n avaient jamais passe sous une sonde. C etait
+la que se trouvaient des textes a `text-white/40` et un bouton de
+publication dont le nom accessible ne contenait pas son texte visible
+(« Verrouiller la mise **&** publier » contre « ... **et** publier » : deux
+chaines differentes pour axe-core).
+
+`e2e/ui/ui-audit-flows.spec.ts` parcourt ces etats et les mesure avec la
+meme sonde.
+
+### Defaut 12 - boucle de rendu infinie sur le detail d un match (MAJEUR)
+
+`MatchDetailPage` s abonnait a :
+
+```ts
+usePresenceStore((s) => (match ? s.getPresenceSummary(match.channelId) : {...}))
+```
+
+`getPresenceSummary` **CONSTRUIT** son objet a chaque lecture. La reference
+change donc a chaque rendu, `useSyncExternalStore` y voit une modification,
+React re-rend, relisit, reboucle :
+
+```
+The result of getSnapshot should be cached to avoid an infinite loop
+Maximum update depth exceeded
+React Router caught the following error during render
+```
+
+L ecran tombait sur son error boundary. Personne ne l avait vu : le test
+e2e du detail de match visitait une route SANS identifiant, et l audit
+d accessibilite existant ne couvrait que cinq pages publiques.
+
+**Correctif** : `useShallow` autour du selecteur (comparaison element par
+element), et une constante `EMPTY_PRESENCE_SUMMARY` pour le repli.
+
+**Le verrou** : `selector-reference-stability.test.ts` gagne une REGLE
+GENERALE - un selecteur de store ne doit jamais appeler un accesseur qui
+construit un objet ou un tableau sans etre enveloppe dans `useShallow`.
+La liste des exceptions (les accesseurs qui renvoient un **primitif**) est
+verifiee A L EXECUTION : si l un d eux change de nature, le test echoue.
+On ne peut pas faire glisser une boucle de rendu sous la regle.
+
+### Une lecon de methode : un audit ne doit pas dependre de l ordre des tests
+
+L audit de `/br` (liste des salons) echouait en fin de suite complete, mais
+passait isole. La raison n etait pas un defaut intermittent : **l audit
+mesurait un etat different selon l ordre d execution**.
+
+La carte de salon n existe que s il y a un salon. Tant qu aucune autre
+serie n avait cree de salon, l audit mesurait une liste VIDE - et les
+defauts de la carte (le libelle du bouton « S inscrire », le contraste de
+ses textes secondaires) n etaient pas visibles. Dans la suite complete,
+une serie precedente avait cree des salons : l audit mesurait enfin la
+carte, et signalait ses defauts.
+
+C est le pire genre de defaut de couverture : un audit dont le resultat
+dpend de ce qui a tourne avant. Le correctif est dans
+`e2e/ui/support/fixtures.ts` : chaque audit FABRIQUE les donnees dont il a
+besoin (`creerSalonBr`, `creerMatch`, `creerTournoi`, `creerSaisonLigue`),
+et mesure toujours le meme etat, quel que soit l ordre.
+
+### Un defaut de plus trouve par cette remise en etat
+
+Le bouton « S inscrire » de la carte de salon portait un `aria-label`
+fixe (« Inscriptions fermees ») alors que son texte visible est
+« Complet » ou « Ferme » selon l etat. Un nom accessible qui ne contient
+pas le texte visible viole WCAG 2.5.3 (meme regle que le bouton de
+publication du recapitulatif).
+
+Le correctif n est pas « un libelle fixe plus correct », mais **un
+libelle qui n existe que lorsqu il apporte quelque chose** : le nom du
+salon. Le texte visible nomme l action, le libelle ajoute le salon.
+
+### Le verrou du contraste : un plancher, pas une liste
+
+Corriger les 19 textes a `text-white/40` laisse le piege : le prochain
+ecran en introduit un autre, et rien ne le signale. D ou une REGLE, dans
+`src/app/components/ui/contrast-floor.test.ts` :
+
+- un **texte** ne descend pas sous **50 %** d opacite (~5,3:1 sur fond
+  quasi noir) ;
+- une **icone** (composant auto-fermant) a un plancher de **40 %**
+  (~3,7:1), ce qui satisfait WCAG 1.4.11 pour un graphisme porteur de
+  sens - une illustration d etat vide en porte un ;
+- une exception exige un marqueur `/* CONTRASTE-OK: <raison> */` sur la
+  meme ligne. WCAG 1.4.3 exempte explicitement le texte incident et les
+  composants desactives : interdire categoriquement une valeur legitime
+  obligerait un jour a violer la norme. La marqueur impose d ecrire la
+  raison - c est la que se joue la relecture.
+
+Le meme test verrouille le jeton `--color-zoyd-muted` du design system
+(il valait 40 % d opacite : le « secondaire » de toute l application
+etait sous le seuil). Un jeton de couleur ne se verifie pas a l oeil.
+
+**Ce que la regle a attrape que l audit n avait pas vu** : la page de
+selection de mode portait `text-white/46` - meme famille, meme
+interpolation, mais 46 % n est pas un motif que la sonde axe-core
+signale. C est precisement ce qu apporte une regle qui couvre TOUT le
+source.
+
+### Les autres classes trouvees (et corrigees)
+
+| classe | ou | correction |
+|---|---|---|
+| Nom accessible sans le texte visible (WCAG 2.5.3) | avatar de la nav et de la barre laterale, presets « BO3 », lien « CREER UN WAGER », bouton « Nouvelle discussion », panneau « Amis ZOYD », **cloche de notifications**, bouton de publication du recapitulatif | le nom accessible contient desormais le texte visible |
+| Lien sans nom accessible | fleche de retour du bracket d un tournoi | `aria-label="Retour aux tournois"` |
+| Contraste sous 4,5:1 | six pages legales, detail d un salon BR, **19 textes a `text-white/40`** repartis sur dix fichiers, jeton `--color-zoyd-muted` | `text-white/40` et `/30` -> `/70`, jeton porte a 70 % |
+| Cibles tactiles < 24 px | nav et pied de page de la landing, liens de retour (match, ligue, profil, salon BR) | `min-h-6` sur chaque lien |
+
+Le cas de la **cloche de notifications** merite un mot : son badge de
+compteur est du TEXTE VISIBLE. Un `aria-label="Notifications"` fixe viole
+WCAG 2.5.3 (le texte visible doit etre dans le nom accessible). Le nom
+reprend donc le compteur affiche - ce qui est, au passage, plus utile :
+un lecteur d ecran sait combien de notifications attendent.
+
+### Ce qui n etait PAS un defaut (faux positifs ecartes, et pourquoi)
+
+Un audit qui ne sait pas reconnaitre un faux positif est un audit qui
+oblige a ignorer des signalements. Cinq classes ecartees, chacune avec sa
+raison :
+
+| faux positif | pourquoi ce n est pas un defaut |
+|---|---|
+| Le lien d evitement « Aller au contenu principal » (1 x 1 px) | il est cache (`sr-only`) et n apparait qu AU FOCUS : sa taille reelle est le mecanisme du motif |
+| Les liens en ligne dans une phrase (« Frais et conditions · Jeu responsable ») | WCAG 2.5.8 exempte explicitement une cible dans un texte |
+| Une case a cocher dans un `<label>` (20 x 20 px) | c est le LABEL qui est la cible : cliquer l etiquette la coche |
+| Le 401 de `/api/auth/me` sur une page anonyme | c est le fonctionnement normal d une page publique |
+| Les 403 de `/api/admin/{commissions,reports,sanctions}` | la 2FA admin n est pas validee dans le navigateur : le back-office affiche « N/D » et invite a revalider |
+| **Le contraste mesure pendant une animation d entree** | les cartes du hub BR entrent en scene avec un `motion.div` (`initial="hidden"`, `variants={staggerItem}`). Pendant le fondu, l opacite du texte est inferieure a 1 : axe compose le texte avec le fond et mesure 1,2:1 ou 3,5:1 la ou il y en a 15. Le defaut etait donc **aleatoire** (il dependait du nombre de cartes) - et c est ce qui l a rendu si difficile a attraper |
+
+Un sixieme faux positif a ete corrige dans la SONDE elle-meme : le lien
+« logo » de l inscription ne portait pas de texte, mais son image a un
+`alt="ZOYD"` - son nom accessible existe, la mesure le voyait mal.
+
+Le faux positif de l ANIMATION a demande une correction de la sonde
+aussi : `waitForRender` attend maintenant la stabilisation des opacites
+(`e2e/ui/support/session.ts`). `prefers-reduced-motion` ne suffisait pas :
+Framer-motion coupe les animations de TRANSFORM mais PAS celles d
+OPACITE (`MotionConfig reducedMotion="user"` preserve explicitement
+l opacite).
+
+### La couverture
+
+Les **33 ecrans** de l application sont couverts - une mesure par etat
+affiche, `/classements` etant mesure dans ses DEUX variantes (anonyme et
+authentifiee) - y compris les 5 ecrans de DETAIL (`/mj/match/:id`,
+`/mj/tournois/:id`, `/br/:lobbyId`, `/br-league/:seasonId`,
+`/profil/:id`) : leurs donnees sont FABRIQUEES par l API avant le test.
+Sans cela, les cinq routes variables seraient tombées sur leur etat
+« introuvable », et l audit n aurait mesure que la page d erreur - cinq
+fois de suite.
+
+S y ajoutent les **7 etats** des parcours (`ui-audit-flows.spec.ts`) :
+les quatre etapes de l assistant de creation d un match et les trois
+onglets non par defaut des parametres.
+
+L audit est un GATE BLOQUANT : la CI rejoue `pnpm test:e2e:ui`, donc
+chaque ecran, a chaque commit.
+
+---
+
+## 8. Synthese des neuf passes
 
 | # | Defaut | Gravite |
 |---|---|---|
@@ -651,8 +861,9 @@ controle.
 | 9 | Le taux ZC -> FCFA etait reecrit de chaque cote | MAJEUR |
 | 10 | Le miroir de formatage des montants avait diverge | MINEUR |
 | 11 | La purge de retention echouait en silence (LIMIT invalide) | MAJEUR |
+| 12 | Le detail d un match etait un ecran mort (boucle de rendu infinie) | MAJEUR |
 
-**Huit defauts majeurs, deux mineurs.** Chacun est couvert par un test
+**Neuf defauts majeurs, deux mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -667,7 +878,9 @@ cas isoles.
 | `realtime-socket-privilege.test.mjs` | un privilege fige a la connexion |
 | `api-contract.test.ts` | un chemin appele par le front qui n existe pas cote serveur |
 | `deploy-contract.test.mjs` | une variable d environnement declaree et non lue, ou lue et non declaree |
-| `selector-reference-stability.test.ts` (existant) | un accesseur de store appele hors d un hook |
+| `selector-reference-stability.test.ts` | un accesseur de store appele hors d un hook, ou un accesseur INSTABLE appele dans un selecteur (boucle de rendu) |
+| `contrast-floor.test.ts` | un texte sous 50 % d opacite (WCAG 1.4.3), une icone sous 40 % (1.4.11), un jeton de couleur sous le plancher |
+| `e2e/ui/ui-audit-*.spec.ts` (gate CI) | un ecran qui devient inaccessible : nom accessible, contraste, cible tactile, erreur JS, reponse HTTP en erreur |
 
 ### Le keep-alive : l hibernation est traitee (deux mecanismes)
 

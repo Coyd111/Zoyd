@@ -397,9 +397,12 @@ export default function LandingPage() {
                     <Swords className="w-4 h-4 text-zoyd-blue" />
                     Entre dans l'arène
                   </div>
+                  {/* PIEGE (audit UI) : `min-h-6` (24 px) - meme regle que
+                      la nav et le pied de page : un lien de navigation
+                      doit etre atteignable au doigt. */}
                   <Link
                     to="/auth/register"
-                    className="inline-flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-blue hover:text-white transition-colors"
+                    className="inline-flex items-center gap-2 min-h-6 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-blue hover:text-white transition-colors"
                   >
                     Défier
                     <ArrowRight className="w-4 h-4" />
@@ -429,7 +432,7 @@ export default function LandingPage() {
                   </div>
                   <Link
                     to="/auth/register"
-                    className="inline-flex items-center gap-2 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-yellow hover:text-white transition-colors"
+                    className="inline-flex items-center gap-2 min-h-6 text-[10px] font-display font-black uppercase tracking-[0.22em] text-zoyd-yellow hover:text-white transition-colors"
                   >
                     Commencer
                     <ArrowRight className="w-4 h-4" />
@@ -513,19 +516,22 @@ export default function LandingPage() {
       <footer className="bg-black">
           <div className="max-w-[1600px] mx-auto px-5 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <ZoydLogo compact />
+          {/* PIEGE (audit UI) : les liens du pied de page sont des liens
+              AUTONOMES (pas dans une phrase) : leur cible doit faire au
+              moins 24 x 24 px (WCAG 2.5.8). D ou `min-h-6` sur chacun. */}
           <div className="flex flex-wrap gap-8 text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">
-            <Link to="/auth/register" className="hover:text-white/60 transition-colors">Inscription</Link>
-            <Link to="/auth/login" className="hover:text-white/60 transition-colors">Connexion</Link>
-            <Link to="/mode" className="hover:text-white/60 transition-colors">MJ + BR</Link>
-            <Link to="/classements" className="hover:text-white/60 transition-colors">Classements</Link>
+            <Link to="/auth/register" className="inline-flex items-center min-h-6 hover:text-white/60 transition-colors">Inscription</Link>
+            <Link to="/auth/login" className="inline-flex items-center min-h-6 hover:text-white/60 transition-colors">Connexion</Link>
+            <Link to="/mode" className="inline-flex items-center min-h-6 hover:text-white/60 transition-colors">MJ + BR</Link>
+            <Link to="/classements" className="inline-flex items-center min-h-6 hover:text-white/60 transition-colors">Classements</Link>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-mono uppercase tracking-[0.22em] text-white/40">
-            <Link to="/conditions" className="hover:text-white/70 transition-colors">Conditions</Link>
-            <Link to="/reglement-litiges" className="hover:text-white/70 transition-colors">Litiges</Link>
-            <Link to="/anti-fraude" className="hover:text-white/70 transition-colors">Anti-fraude</Link>
-            <Link to="/confidentialite" className="hover:text-white/70 transition-colors">Confidentialité</Link>
-            <Link to="/mentions" className="hover:text-white/70 transition-colors">Mentions & Assistance</Link>
-            <Link to="/jeu-responsable" className="hover:text-white/70 transition-colors">Jeu responsable</Link>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-mono uppercase tracking-[0.22em] text-white/70">
+            <Link to="/conditions" className="inline-flex items-center min-h-6 hover:text-white/70 transition-colors">Conditions</Link>
+            <Link to="/reglement-litiges" className="inline-flex items-center min-h-6 hover:text-white/70 transition-colors">Litiges</Link>
+            <Link to="/anti-fraude" className="inline-flex items-center min-h-6 hover:text-white/70 transition-colors">Anti-fraude</Link>
+            <Link to="/confidentialite" className="inline-flex items-center min-h-6 hover:text-white/70 transition-colors">Confidentialité</Link>
+            <Link to="/mentions" className="inline-flex items-center min-h-6 hover:text-white/70 transition-colors">Mentions & Assistance</Link>
+            <Link to="/jeu-responsable" className="inline-flex items-center min-h-6 hover:text-white/70 transition-colors">Jeu responsable</Link>
           </div>
           <div className="flex flex-wrap items-center gap-6">
             <SocialLinks />
@@ -559,13 +565,17 @@ function LandingNav() {
         </Link>
 
         <div className="hidden lg:flex items-center gap-10 text-[10px] font-mono uppercase tracking-[0.28em] text-white/70">
-          <a href="#platform" className="hover:text-white transition-colors">
+          {/* PIEGE (audit UI) : `min-h-6` (24 px) sur chaque lien. En
+              dessous, la cible tactile fait 15 px de haut : c est un
+              lien de NAVIGATION, pas un lien en ligne dans une phrase,
+              donc l exception WCAG 2.5.8 ne s applique pas. */}
+          <a href="#platform" className="inline-flex items-center min-h-6 hover:text-white transition-colors">
             Plateforme
           </a>
-          <a href="#dual-economy" className="hover:text-white transition-colors">
+          <a href="#dual-economy" className="inline-flex items-center min-h-6 hover:text-white transition-colors">
             Joueur / Arbitre
           </a>
-          <a href="#account" className="hover:text-white transition-colors">
+          <a href="#account" className="inline-flex items-center min-h-6 hover:text-white transition-colors">
             Compte
           </a>
         </div>
@@ -573,7 +583,7 @@ function LandingNav() {
         <div className="hidden lg:flex items-center gap-3 md:gap-4">
           <Link
             to="/auth/login"
-            className="text-[10px] md:text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/70 hover:text-white transition-colors italic"
+            className="inline-flex items-center min-h-6 text-[10px] md:text-[11px] font-display font-black uppercase tracking-[0.22em] text-white/70 hover:text-white transition-colors italic"
           >
             Connexion
           </Link>

@@ -122,9 +122,14 @@ const FriendsWidget: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
-        aria-label={isOpen ? 'Réduire le panneau amis' : 'Développer le panneau amis'}
         className="w-full flex items-center justify-between px-5 py-4 bg-zoyd-surface/20 hover:bg-zoyd-surface/40 transition-colors"
       >
+        {/* PIEGE (audit UI) : pas d `aria-label` ici. Le nom accessible
+            doit CONTENIR le texte visible (WCAG 2.5.3) ; or le texte
+            visible est dynamique (« Amis ZOYD 3/5 en ligne ») et aucun
+            libelle fixe ne pourrait le contenir. Le contenu nomme donc le
+            bouton, et `aria-expanded` porte l etat ouvert / ferme — ce qui
+            est le bon mecanisme. */}
         <div className="flex items-center gap-3">
           <Users className="w-4 h-4 text-zoyd-yellow" />
           <span className="font-display font-black text-xs tracking-widest uppercase italic text-white">

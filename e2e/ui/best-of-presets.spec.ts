@@ -18,29 +18,22 @@
  * (#picks-alternance) n'est rendue qu'en BO3+ (garde P3 reutilisee) ;
  * le champ bestOf reste libre, aucun couplage cache.
  *
- * PIEGE : les chips ont un aria-label ("Preset best of N") et un texte
- * visible "BO3" engendré par template - ne jamais cibler par le texte
+ * PIEGE : les chips ont un aria-label ("BO1 — best of 1") et un texte
+ * visible "BO1" engendré par template - ne jamais cibler par le texte
  * visible, toujours par l aria-label.
+ *
+ * PIEGE (audit UI) : l aria-label DOIT contenir le texte visible
+ * (WCAG 2.5.3). Il commence donc par "BON" (« BO1 — best of 1 ») et non
+ * par "Preset best of N" : l ancien nom accessible ne contenait pas le
+ * texte visible, ce que signale `label-content-name-mismatch` d axe-core.
+ * Les selecteurs ci-dessous suivent le nom accessible complet.
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { registerPlayer, disposeActors, openAdminSession, creditWallet, type Actor } from '../api/support/harness';
+import { openApp } from './support/session';
 
-// Pattern de connexion identique a layout.spec et mode-hierarchie.spec
-// (harness : session admin 2FA pour financer le joueur de test).
-const openApp = async (page: Page, pseudo: string, password: string) => {
-  await page.goto('/auth/login');
-  await page.getByPlaceholder(/ShadowX/).fill(pseudo);
-  await page.getByPlaceholder(/^\.*$/).fill(password);
-  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
-  await page.getByPlaceholder(/^\.*$/).press('Enter');
-  expect((await loginResponse).status()).toBe(200);
-  // Serment d'intégrité : tant que `covenant` est absente du compte,
-  // AppLayout rend le gate plein écran au lieu du chrome. On scelle par
-  // l'API (le cookie zoyd_auth du formulaire vit dans le jar partagé du
-  // contexte) ; le serveur ignore le corps et date lui-même. La navigation
-  // suivante hydrate alors un user scellé : pas de gate.
-  await page.request.post('/api/auth/covenant', { data: {} });
-};
+// Pattern de connexion : helper partage `support/session.ts` (harness :
+// session admin 2FA pour financer le joueur de test).
 
 test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
   test.describe.configure({ mode: 'serial' });
@@ -65,9 +58,9 @@ test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
     await openApp(page, pseudo, password);
     await page.goto('/mj/tournois/creer');
 
-    const bo1 = page.getByRole('button', { name: 'Preset best of 1' });
-    const bo3 = page.getByRole('button', { name: 'Preset best of 3' });
-    const bo5 = page.getByRole('button', { name: 'Preset best of 5' });
+    const bo1 = page.getByRole('button', { name: 'BO1 — best of 1' });
+    const bo3 = page.getByRole('button', { name: 'BO3 — best of 3' });
+    const bo5 = page.getByRole('button', { name: 'BO5 — best of 5' });
     await expect(bo1).toBeVisible();
     await expect(bo3).toBeVisible();
     await expect(bo5).toBeVisible();
@@ -95,7 +88,7 @@ test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
     // moins deux manches a choisir, garde P3 reutilisee).
     await expect(picks).toHaveCount(0);
 
-    const bo3 = page.getByRole('button', { name: 'Preset best of 3' });
+    const bo3 = page.getByRole('button', { name: 'BO3 — best of 3' });
     await bo3.click();
     await expect(picks).toBeVisible();
 
@@ -106,7 +99,7 @@ test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
     ).toBeVisible();
 
     // toujours presente en BO5 : la garde est "BO3+", pas "BO3".
-    const bo5 = page.getByRole('button', { name: 'Preset best of 5' });
+    const bo5 = page.getByRole('button', { name: 'BO5 — best of 5' });
     await bo5.click();
     await expect(picks).toBeVisible();
   });

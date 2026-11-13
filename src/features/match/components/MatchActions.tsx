@@ -85,9 +85,9 @@ const ConfirmationList = ({
             )}
             <span className="truncate">{player.pseudo}</span>
             {player.gameId ? (
-              <span className="text-white/30 font-mono tracking-wider">{player.gameId}</span>
+              <span className="text-white/70 font-mono tracking-wider">{player.gameId}</span>
             ) : null}
-            <span className="text-white/40 font-mono uppercase tracking-wider">{teamLabels[player.team]}</span>
+            <span className="text-white/70 font-mono uppercase tracking-wider">{teamLabels[player.team]}</span>
           </li>
         ))}
       </ul>
@@ -646,11 +646,15 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
 
             {(!!currentPlayer || isArbiter) && (
               <div className="border-t border-white/5 pt-4">
+                {/* PIEGE (audit UI) : `min-h-6` (24 px). En dessous, la
+                    cible fait 16 px : trop petit pour le doigt
+                    (WCAG 2.5.8). Ce bouton n apparait qu avec un litige
+                    ouvert - l audit de base ne le voyait pas. */}
                 <button
                   onClick={() => disputeState.setShowAddEvidenceForm((v) => !v)}
-                  className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/70 hover:text-zoyd-blue transition-colors"
+                  className="flex items-center gap-2 min-h-6 text-[10px] font-mono uppercase tracking-widest text-white/70 hover:text-zoyd-blue transition-colors"
                 >
-                  <PlusCircle className="w-3.5 h-3.5" />
+                  <PlusCircle className="w-3.5 h-3.5" aria-hidden="true" />
                   Ajouter une preuve au dossier
                   {disputeState.showAddEvidenceForm ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
@@ -816,7 +820,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
       ) : (
         <div className="p-6">
           <div className="flex items-center gap-3 mb-3">
-            <AlertTriangle className="w-4 h-4 text-white/40" />
+            <AlertTriangle className="w-4 h-4 text-white/70" />
             <h2 className="text-lg font-display font-black uppercase italic text-white/50">Match clos</h2>
           </div>
           <p className="text-sm text-white/50">

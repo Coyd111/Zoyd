@@ -148,7 +148,18 @@ const BrLobbyCard: React.FC<{
             onClick={() => onJoin(lobby)}
             disabled={!open || isLoading}
             className="flex-1 text-[10px] font-mono font-black uppercase tracking-widest bg-zoyd-yellow text-black px-3 py-2.5 hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed touch-target"
-            aria-label={open ? `S'inscrire a ${lobby.name}` : 'Inscriptions fermees'}
+            /* PIEGE (audit UI) : le nom accessible doit CONTENIR le texte
+               visible (WCAG 2.5.3). Un libelle fixe (« Inscriptions
+               fermees ») ne contient ni « Complet » ni « Ferme » : axe le
+               signale. On ne pose un libelle que lorsqu il APPORTE le
+               nom du salon - et il commence alors par le texte visible. */
+            aria-label={
+              isLoading || full
+                ? undefined
+                : open
+                  ? `S'inscrire a ${lobby.name}`
+                  : `Ferme - ${lobby.name}`
+            }
           >
             {isLoading ? '...' : full ? 'Complet' : open ? "S'inscrire" : 'Ferme'}
           </button>
@@ -280,7 +291,7 @@ const BrPage: React.FC = () => {
 
             {lobbies.length === 0 ? (
               <div className="text-center py-16 border border-white/10 bg-zoyd-surface/20">
-                <Calendar className="w-10 h-10 text-white/20 mx-auto mb-4" aria-hidden="true" />
+                <Calendar className="w-10 h-10 text-white/40 mx-auto mb-4" aria-hidden="true" />
                 <p className="text-white/70 text-sm">Aucun salon programme pour le moment.</p>
                 <p className="text-white/50 text-xs mt-2">Les salons sont ouverts 24 a 48 h a l'avance.</p>
               </div>
@@ -344,14 +355,14 @@ const BrPage: React.FC = () => {
                 );
               })}
             </div>
-            <p className="text-[10px] font-mono text-white/40 mt-4">
+            <p className="text-[10px] font-mono text-white/70 mt-4">
               Plafond effectif = minimum(mode, map). Rebirth Island limite donc
               les salons a {config.maps.rebirth_island?.maxPlayers ?? 40} joueurs.
             </p>
           </section>
         )}
 
-        <p className="text-[10px] font-mono text-white/40 mt-6">
+        <p className="text-[10px] font-mono text-white/70 mt-6">
             Les gains sont libelles en ZC (1 ZC = 10 FCFA). Les commissions et
             le classement de chaque salon sont fixes par l'organisateur et valides
             par le serveur.

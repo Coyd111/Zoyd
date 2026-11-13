@@ -238,7 +238,7 @@ const PublicProfilPage = () => {
       trustDescription="Cette fiche rassemble ce que ZOYD a déjà pu voir de ce joueur dans ses matchs, ses tournois et ses relations."
       codmTitle="Infos visibles"
       backLink={
-        <Link to="/profil" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
+        <Link to="/profil" className="inline-flex items-center gap-2 min-h-6 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest">
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           Retour profil
         </Link>

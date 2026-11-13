@@ -433,7 +433,7 @@ const LeaksPage: React.FC = () => {
                       {bundle.imageUrl && !imgErrors.has('bundle-' + bundle.id) ? (
                         <img src={bundle.imageUrl} alt={bundle.title} onError={() => markImgError('bundle-' + bundle.id)} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
                       ) : (
-                        <ShoppingBag className="w-8 h-8 text-white/10" />
+                        <ShoppingBag className="w-8 h-8 text-white/40" />
                       )}
                       <div className="absolute pointer-events-none">
                         {bundle.isFree && <div className="bg-green-500 text-black text-[10px] font-mono font-black px-1.5 py-0.5 uppercase">Gratuit</div>}
@@ -552,7 +552,7 @@ const LeaksPage: React.FC = () => {
                 <p className="text-sm text-white/70 mb-4 line-clamp-3">{featured.excerpt}</p>
                 {featured.source && <p className="text-[10px] font-mono text-white/60 mb-4">Source: {featured.source}</p>}
                 <button onClick={() => toggleArticle(featured.id)} aria-expanded={expandedArticles.has(featured.id)}
-                  className="flex items-center gap-2 text-zoyd-yellow font-display font-black text-xs tracking-widest uppercase italic hover:gap-4 transition-all">
+                  className="flex items-center gap-2 text-zoyd-yellow font-display font-black text-xs tracking-widest uppercase italic hover:gap-4 transition-all min-h-11 py-2">
                   {expandedArticles.has(featured.id) ? 'REVOIR' : 'LIRE LA SUITE'}<ChevronRight className="w-4 h-4" />
                 </button>
                 {expandedArticles.has(featured.id) && (
@@ -606,7 +606,7 @@ const LeaksPage: React.FC = () => {
                 <p className="text-xs text-white/60 line-clamp-2 mb-3">{article.excerpt}</p>
                 {article.source && <p className="text-[10px] font-mono text-white/60 mb-3">Source: {article.source}</p>}
                 <button onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
-                  className="flex items-center justify-between w-full">
+                  className="flex items-center justify-between w-full min-h-11 py-2">
                   <span className="text-[10px] font-mono text-white/60">{article.readTime}</span>
                   <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/60 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
                     {expandedArticles.has(article.id) ? 'Masquer' : 'Lire'}<ChevronRight className="w-3 h-3" />

@@ -540,7 +540,7 @@ const FinalStandings: React.FC<{ view: BrArbiterView }> = ({ view }) => (
         >
           <span className="truncate">
             {row.pseudo}
-            <span className="text-[10px] font-mono text-white/40 ml-2">
+            <span className="text-[10px] font-mono text-white/70 ml-2">
               {row.kills} kill{row.kills > 1 ? 's' : ''}
             </span>
           </span>

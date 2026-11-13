@@ -28,8 +28,10 @@ interface MatchHeaderProps {
 export const MatchHeader: React.FC<MatchHeaderProps> = ({ match, statusLabel }) => (
   <>
     <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-8">
-      <Link to="/mj" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest shrink-0">
-        <ArrowLeft className="w-4 h-4" />
+      {/* PIEGE (audit UI) : `min-h-6` (24 px). Ce lien de navigation
+          fait 20 px de haut : trop petit pour le doigt (WCAG 2.5.8). */}
+      <Link to="/mj" className="inline-flex items-center gap-2 min-h-6 text-white/70 hover:text-white transition-colors text-sm uppercase font-mono tracking-widest shrink-0">
+        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         Retour aux matchs
       </Link>
       <div className="inline-flex items-center gap-2 border border-white/10 px-3 sm:px-4 py-2 text-[10px] font-mono uppercase tracking-[0.15em] sm:tracking-[0.25em] text-white/75 min-w-0">

@@ -28,25 +28,14 @@
  * - la sidebar lie par aria-label « BR LEAGUE » (MAJUSCULES) : le regex
  *   /BR League/ du bandeau est case-sensitive et ne la touche pas.
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { registerPlayer, disposeActors, openAdminSession, creditWallet, type Actor } from '../api/support/harness';
+import { openApp } from './support/session';
 
-// Pattern de connexion identique a layout.spec (harness : session admin 2FA
-// pour financer le joueur de test, cookie jar isole par acteur).
-const openApp = async (page: Page, pseudo: string, password: string) => {
-  await page.goto('/auth/login');
-  await page.getByPlaceholder(/ShadowX/).fill(pseudo);
-  await page.getByPlaceholder(/^\.*$/).fill(password);
-  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
-  await page.getByPlaceholder(/^\.*$/).press('Enter');
-  expect((await loginResponse).status()).toBe(200);
-  // Serment d'intégrité : tant que `covenant` est absente du compte,
-  // AppLayout rend le gate plein écran au lieu du chrome. On scelle par
-  // l'API (le cookie zoyd_auth du formulaire vit dans le jar partagé du
-  // contexte) ; le serveur ignore le corps et date lui-même. La navigation
-  // suivante hydrate alors un user scellé : pas de gate.
-  await page.request.post('/api/auth/covenant', { data: {} });
-};
+// Pattern de connexion : helper partage `support/session.ts` (meme pattern
+// que layout.spec - harness : session admin 2FA pour financer le joueur de
+// test, cookie jar isole par acteur). Une seule implementation : une
+// divergence silencieuse entre specs est un faux vert possible.
 
 test.describe('/mode - hierarchie produit (arbitrage 2026-11-02)', () => {
   test('la grande carte BR vend les SALONS ; la ligue vit en bande evenement', async ({ page }) => {

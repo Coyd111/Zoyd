@@ -110,10 +110,14 @@ const Navbar: React.FC = React.memo(() => {
               sans bordure). */}
           <Link
             to="/profil"
-            aria-label="Mon profil"
+            aria-label={`${safeUser.pseudo.substring(0, 2).toUpperCase()} — Mon profil`}
             title="Mon Profil"
             className="touch-target flex items-center justify-center"
           >
+            {/* PIEGE (audit UI) : le nom accessible doit CONTENIR le texte
+                visible (WCAG 2.5.3). Les initiales sont donc dans le nom :
+                un lecteur d ecran annonce « CO — Mon profil » au lieu de
+                « CO », et la commande vocale « CO » atteint bien le lien. */}
             <span className="w-8 h-8 flex items-center justify-center border border-white/10 bg-white/5 hover:border-zoyd-yellow/40 hover:text-zoyd-yellow transition-colors font-display font-black text-[10px] text-white tracking-widest">
               {safeUser.pseudo.substring(0, 2).toUpperCase()}
             </span>

@@ -482,18 +482,18 @@ const CreateTournamentPage: React.FC = () => {
                           key={preset}
                           type="button"
                           onClick={() => setValue('bestOf', preset)}
-                          aria-label={`Preset best of ${preset}`}
+                          aria-label={`BO${preset} — best of ${preset}`}
                           className={`min-h-[44px] inline-flex items-center px-3 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
                             selectedBestOf === preset
                               ? 'border-white bg-white/10 text-white'
-                              : 'border-white/10 text-white/40 hover:border-white/30 hover:text-white/70'
+                              : 'border-white/10 text-white/70 hover:border-white/30 hover:text-white/70'
                           }`}
                         >
                           BO{preset}
                         </button>
                       ))}
                     </div>
-                    <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                    <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-2">
                       {MJ_BEST_OF_SCENE}
                     </p>
                   </div>
@@ -520,7 +520,7 @@ const CreateTournamentPage: React.FC = () => {
                         Picks en alternance par manche
                       </span>
                     </label>
-                    <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2 ml-15">
+                    <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-2 ml-15">
                       {MJ_PICKS_ALTERNANCE_BRACKET}
                     </p>
                   </div>

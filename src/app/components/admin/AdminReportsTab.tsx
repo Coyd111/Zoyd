@@ -177,7 +177,7 @@ const AdminReportsTab: React.FC<Props> = ({
                     {report.description}
                   </p>
                 ) : (
-                  <p className="text-xs text-white/40 mb-3">Sans description.</p>
+                  <p className="text-xs text-white/70 mb-3">Sans description.</p>
                 )}
 
                 <p className="text-xs text-zoyd-yellow mb-3 flex items-center gap-1.5">
@@ -313,7 +313,7 @@ const AdminReportsTab: React.FC<Props> = ({
                 {sanction.reason && (
                   <span className="text-xs text-white/50 italic">{sanction.reason}</span>
                 )}
-                <span className="text-xs text-white/40">{formatWhen(sanction.issuedAt)}</span>
+                <span className="text-xs text-white/70">{formatWhen(sanction.issuedAt)}</span>
                 <button
                   type="button"
                   disabled={revokingId === sanction.id}
@@ -339,7 +339,7 @@ const AdminReportsTab: React.FC<Props> = ({
                 <span className="text-white/80">{report.targetPseudo || report.targetId}</span>
                 <span className="uppercase tracking-widest text-white/50">{report.resolution || report.status}</span>
                 <span>{formatWhen(report.createdAt)}</span>
-                {report.reviewedAt && <span className="text-white/40">traité le {formatWhen(report.reviewedAt)}</span>}
+                {report.reviewedAt && <span className="text-white/70">traité le {formatWhen(report.reviewedAt)}</span>}
               </li>
             ))}
           </ul>

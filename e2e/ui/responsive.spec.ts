@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { registerPlayer, disposeActors, ADMIN_EMAIL, ADMIN_PASSWORD, type Actor } from '../api/support/harness';
+import { openApp } from './support/session';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Garde responsive mobile (audit UI : constats U-1..U-4).
@@ -67,23 +68,10 @@ const PAGES_PLAYER = [
 ];
 
 /**
- * Connexion par la page rejouant le flux reel (meme pattern que
- * layout.spec.ts) : placeholder pseudo, placeholder mot de passe, Enter.
+ * Connexion par la page rejouant le flux reel : helper partage
+ * `support/session.ts` (une seule implementation - une divergence
+ * silencieuse entre specs serait un faux vert possible).
  */
-const openApp = async (page: Page, identifiant: string, password: string) => {
-  await page.goto('/auth/login');
-  await page.getByPlaceholder(/ShadowX/).fill(identifiant);
-  await page.getByPlaceholder(/^\.*$/).fill(password);
-  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
-  await page.getByPlaceholder(/^\.*$/).press('Enter');
-  expect((await loginResponse).status()).toBe(200);
-  // Serment d'intégrité : tant que `covenant` est absente du compte,
-  // AppLayout rend le gate plein écran au lieu du chrome. On scelle par
-  // l'API (le cookie zoyd_auth du formulaire vit dans le jar partagé du
-  // contexte) ; le serveur ignore le corps et date lui-même. La navigation
-  // suivante hydrate alors un user scellé : pas de gate.
-  await page.request.post('/api/auth/covenant', { data: {} });
-};
 
 /**
  * Attend la stabilite du layout apres chargement. PAS de 'networkidle' :

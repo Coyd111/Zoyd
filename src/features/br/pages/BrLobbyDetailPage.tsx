@@ -192,7 +192,10 @@ const BrLobbyDetailPage: React.FC = () => {
       <SEOHead title={`${lobby.name} — BR ZOYD`} description="Detail du salon Battle Royale." path={`/br/${lobby.id}`} noindex />
 
       <div className="max-w-5xl mx-auto">
-        <Link to="/br" className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-white/60 hover:text-white transition-colors mb-6">
+        {/* PIEGE (audit UI) : `min-h-6` (24 px). Sans, ce lien de
+            navigation fait 15 px de haut : trop petit pour le doigt
+            (WCAG 2.5.8). */}
+        <Link to="/br" className="inline-flex items-center gap-1.5 min-h-6 text-[10px] font-mono uppercase tracking-widest text-white/60 hover:text-white transition-colors mb-6">
           <ArrowLeft className="w-3 h-3" aria-hidden="true" />
           Tous les salons
         </Link>
@@ -262,7 +265,7 @@ const BrLobbyDetailPage: React.FC = () => {
             <span className="text-xs text-white/60">Cagnotte actuelle</span>
             <span className="font-display font-black text-xl text-green-400">
               {formatZC(split.pot)}
-              <span className="text-[10px] font-mono text-white/40 ml-2">~ {formatFCFA(split.pot)}</span>
+              <span className="text-[10px] font-mono text-white/70 ml-2">~ {formatFCFA(split.pot)}</span>
             </span>
           </div>
           <div className="space-y-2">
@@ -270,7 +273,7 @@ const BrLobbyDetailPage: React.FC = () => {
               <div key={place.place} className="flex items-center justify-between text-xs">
                 <span className="text-white/70">
                   {place.place}<sup>e</sup> place
-                  <span className="text-[10px] font-mono text-white/40 ml-2">
+                  <span className="text-[10px] font-mono text-white/70 ml-2">
                     {Math.round(place.rate * 100)} %
                   </span>
                 </span>
@@ -281,7 +284,7 @@ const BrLobbyDetailPage: React.FC = () => {
               <span className="text-white/70 flex items-center gap-1.5">
                 <Shield className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
                 Arbitre
-                <span className="text-[10px] font-mono text-white/40 ml-2">
+                <span className="text-[10px] font-mono text-white/70 ml-2">
                   {Math.round(split.arbiterRate * 100)} % (max {Math.round((config?.arbiterMaxRate || 0.05) * 100)} %)
                 </span>
               </span>
@@ -341,7 +344,7 @@ const BrLobbyDetailPage: React.FC = () => {
                   <span className="flex items-center gap-2 min-w-0">
                     {player.checkedIn
                       ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" aria-hidden="true" />
-                      : <Clock className="w-3.5 h-3.5 text-white/30 shrink-0" aria-hidden="true" />}
+                      : <Clock className="w-3.5 h-3.5 text-white/70 shrink-0" aria-hidden="true" />}
                     <span className="truncate">{player.pseudo}</span>
                     {player.pseudo === user?.pseudo && (
                       <span className="text-[10px] font-mono text-zoyd-yellow shrink-0">TOI</span>

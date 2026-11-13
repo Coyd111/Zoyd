@@ -156,7 +156,7 @@ export const PlayerPill = ({ label, team, gameId }: { label: string; team: 0 | 1
   >
     {team === 0 ? 'A' : 'B'} / {label}
     {/* Repère stable : un joueur qui se renomme reste identifiable. */}
-    {gameId ? <span className="ml-2 text-white/35">{gameId}</span> : null}
+    {gameId ? <span className="ml-2 text-white/70">{gameId}</span> : null}
   </span>
 );
 
@@ -185,7 +185,7 @@ export const StatCard = ({ icon, label, value, hint }: { icon: React.ReactNode; 
       <div className="text-[10px] font-mono text-white/60 uppercase tracking-widest mb-1 break-words">{label}</div>
       <div className="text-2xl font-display font-black italic break-words [overflow-wrap:normal]">{value}</div>
       {/* Precision comptable : sans elle, un montant de sortie se lit comme un revenu. */}
-      {hint && <div className="text-[10px] font-mono text-white/40 mt-1 leading-snug">{hint}</div>}
+      {hint && <div className="text-[10px] font-mono text-white/70 mt-1 leading-snug">{hint}</div>}
     </div>
   </div>
 );

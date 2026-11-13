@@ -283,7 +283,7 @@ const TournamentGrid = ({
   if (tournaments.length === 0) {
     return (
         <div className="py-20 md:py-32 px-4 flex flex-col items-center justify-center text-center border-y border-dashed border-white/10 bg-zoyd-surface/20">
-          <div className="w-12 h-12 md:w-16 md:h-16 border border-white/10 flex items-center justify-center mb-6 md:mb-8 text-white/10">
+          <div className="w-12 h-12 md:w-16 md:h-16 border border-white/10 flex items-center justify-center mb-6 md:mb-8 text-white/50">
             <Trophy className="w-6 h-6 md:w-8 md:h-8" />
           </div>
         <h3 className="text-2xl sm:text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">

@@ -55,11 +55,15 @@ const BracketHeader: React.FC<{ tournament: Tournament }> = ({ tournament }) => 
     <header className="relative border-b border-white/5 bg-zoyd-surface/40">
       <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-6 md:py-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div className="flex items-center gap-6">
+          {/* PIEGE (audit UI) : le lien ne contient qu une icone. Sans
+              nom accessible, un lecteur d ecran annonce « lien » sans
+              destination (WCAG 4.1.2). */}
           <Link
             to="/mj/tournois"
+            aria-label="Retour aux tournois"
             className="w-10 h-10 border border-white/10 flex items-center justify-center hover:bg-white hover:text-black transition-all"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </Link>
           <div>
             <div className="flex items-center gap-3 mb-1">

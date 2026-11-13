@@ -108,6 +108,10 @@ const CreateMatchPage: React.FC = () => {
   // P3 : la convention "picks en alternance" ne concerne que les BO3+.
   const bestOfValue = Number(watch('bestOf') || 1);
   const availableSpend = getAvailableToSpend();
+  // Libelle du bouton de publication : une SEULE source pour l `aria-label`
+  // et pour le texte visible (WCAG 2.5.3 - voir le commentaire sur le
+  // bouton, plus bas).
+  const publishLabel = isArbiterCreator ? 'Publier le match' : 'Verrouiller la mise et publier';
 
   /**
    * Preset esports du mode choisi (S&D/HARDPOINT/CONTROL) : sinon `undefined`
@@ -342,7 +346,10 @@ const CreateMatchPage: React.FC = () => {
             { step: 4, name: 'Recap' },
           ].map(({ step, name }) => (
             <div key={step} className="flex-1 flex flex-col gap-2" aria-current={step === currentStep ? 'step' : undefined}>
-              <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} role="progressbar" aria-valuenow={step <= currentStep ? 100 : 0} aria-valuemin={0} aria-valuemax={100} />
+              {/* PIEGE (audit UI) : un `role="progressbar"` porte un NOM
+                  accessible obligatoire. Le `nav` parent ne le couvre pas :
+                  chaque barre doit pouvoir etre designee seule. */}
+              <div className={`h-1.5 transition-all duration-500 ${step <= currentStep ? (step === currentStep ? 'bg-zoyd-yellow' : 'bg-white') : 'bg-white/5'}`} role="progressbar" aria-label={`Étape ${step} sur 4 : ${name}`} aria-valuenow={step <= currentStep ? 100 : 0} aria-valuemin={0} aria-valuemax={100} />
               <span className={`text-[10px] font-mono font-black uppercase tracking-[0.2em] ${step === currentStep ? 'text-white' : 'text-white/70'}`}>
                 {`0${step} · ${name}`}
               </span>
@@ -530,7 +537,7 @@ const CreateMatchPage: React.FC = () => {
                           aria-label="Limite de temps en minutes"
                           className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue"
                         />
-                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                        <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-2">
                           Vide = libre. Un preset remplit ce champ.
                         </p>
                       </div>
@@ -548,18 +555,18 @@ const CreateMatchPage: React.FC = () => {
                               key={preset}
                               type="button"
                               onClick={() => setValue('bestOf', preset)}
-                              aria-label={`Preset best of ${preset}`}
+                              aria-label={`BO${preset} — best of ${preset}`}
                               className={`px-3 py-2 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
                                 bestOfValue === preset
                                   ? 'border-white bg-white/10 text-white'
-                                  : 'border-white/10 text-white/40 hover:border-white/30 hover:text-white/70'
+                                  : 'border-white/10 text-white/70 hover:border-white/30 hover:text-white/70'
                               }`}
                             >
                               BO{preset}
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                        <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-2">
                           {MJ_BEST_OF_SCENE}
                         </p>
                       </div>
@@ -580,7 +587,7 @@ const CreateMatchPage: React.FC = () => {
                             Picks en alternance par manche
                           </span>
                         </label>
-                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mt-2">
+                        <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-2">
                           Manche 1 : createur / Manche 2 : adversaire / Departage : accord (convention wager)
                         </p>
                       </div>
@@ -800,8 +807,13 @@ const CreateMatchPage: React.FC = () => {
                   <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                     <ChevronLeft className="w-4 h-4" /> Modifier
                   </button>
-                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label={isArbiterCreator ? 'Publier le match' : 'Verrouiller la mise et publier'} className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
-                    <span className="text-xs sm:text-sm">{isArbiterCreator ? 'Publier le match' : 'Verrouiller la mise & publier'}</span> <ShieldCheck className="w-6 h-6" />
+                  {/* PIEGE (audit UI) : le nom accessible doit CONTENIR le
+                      texte visible (WCAG 2.5.3). « & publier » et « et
+                      publier » ne sont PAS le meme texte aux yeux
+                      d axe-core : une seule source (`publishLabel`) evite
+                      la divergence. */}
+                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label={publishLabel} className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
+                    <span className="text-xs sm:text-sm">{publishLabel}</span> <ShieldCheck className="w-6 h-6" />
                   </button>
                 </div>
               </div>

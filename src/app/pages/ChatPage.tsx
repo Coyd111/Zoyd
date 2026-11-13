@@ -320,6 +320,11 @@ const ChatPage: React.FC = () => {
                 interlocuteur. Il ouvre maintenant un selecteur parmi les
                 amis : le canal a deux passe par openDm (find-or-create,
                 voir docstring). */}
+            {/* PIEGE (audit UI) : pas d `aria-label`. Le nom accessible doit
+                CONTENIR le texte visible (WCAG 2.5.3) : « Choisir un ami
+                pour demarrer une discussion » ne contient pas « Nouvelle
+                discussion ». Le texte visible nomme le bouton, et
+                `aria-expanded` porte l etat du selecteur. */}
             <button
               onClick={() => {
                 if (!user) {
@@ -330,7 +335,6 @@ const ChatPage: React.FC = () => {
               }}
               aria-expanded={showFriendPicker}
               className="w-full bg-white text-black py-3 min-h-[44px] font-display font-black text-[10px] tracking-[0.2em] uppercase italic hover:bg-zoyd-yellow transition-colors"
-              aria-label="Choisir un ami pour démarrer une discussion"
             >
               Nouvelle discussion
             </button>

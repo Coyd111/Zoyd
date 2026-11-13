@@ -55,7 +55,12 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({ title, description, pa
         </Link>
         <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zoyd-yellow mb-2">ZOYD — Informations légales</p>
         <h1 className="text-3xl sm:text-4xl font-display font-black text-white uppercase italic mb-2">{title}</h1>
-        <p className="text-white/40 text-xs font-mono mb-8">Dernière mise à jour : {updatedAt}</p>
+        {/* PIEGE (audit UI) : `/70` et non `/40`. Sur fond `zoyd-black`,
+            une opacite de 40 % plafonne a ~3,6:1 : en dessous du 4,5:1
+            exige par WCAG 1.4.3 pour du texte courant. Le contraste n est
+            pas un detail : ces deux lignes portent la date de mise a jour
+            et les horaires d assistance. */}
+        <p className="text-white/70 text-xs font-mono mb-8">Dernière mise à jour : {updatedAt}</p>
 
         <nav className="flex flex-wrap gap-2 mb-10" aria-label="Pages légales">
           {NAV.map((item) => (
@@ -86,7 +91,7 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({ title, description, pa
               WhatsApp {ASSISTANCE.whatsapp}
             </a>
           </p>
-          <p className="text-white/30 text-[11px] font-mono mt-2">{ASSISTANCE.hours}</p>
+          <p className="text-white/70 text-[11px] font-mono mt-2">{ASSISTANCE.hours}</p>
         </footer>
       </div>
     </div>

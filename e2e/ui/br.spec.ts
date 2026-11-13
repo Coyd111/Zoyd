@@ -3,6 +3,7 @@ import {
   registerPlayer, disposeActors, openAdminSession, creditWallet,
   call, ADMIN_EMAIL, ADMIN_PASSWORD, type Actor,
 } from '../api/support/harness';
+import { openApp } from './support/session';
 
 // UI Battle Royale : liste des salons, regle "pas de remboursement" visible,
 // detail d'un salon avec la repartition de cagnotte.
@@ -13,6 +14,10 @@ import {
 //
 // Chaque test cree SON PROPRE salon : un salon partage entre tests serie
 // accumule les inscriptions et rend les assertions dependantes de l'ordre.
+//
+// La connexion rejoue le flux REEL de la page de login (helper partage
+// `support/session.ts`) : c'est le chemin que chaque joueur emprunte, y
+// compris l admin (qui a son propre mot de passe).
 
 const newLobby = async (admin: Actor, overrides: Record<string, unknown> = {}) =>
   call(admin, 'POST', '/api/br/lobbies', {
@@ -22,21 +27,6 @@ const newLobby = async (admin: Actor, overrides: Record<string, unknown> = {}) =
     payout: { first: 0.4, second: 0.22, third: 0.15, fourth: 0.12, fifth: 0.08, arbiterRate: 0.03 },
     ...overrides,
   });
-
-const login = async (page: Page, pseudo: string, password: string) => {
-  await page.goto('/auth/login');
-  await page.getByPlaceholder(/ShadowX/).fill(pseudo);
-  await page.getByPlaceholder(/^\.*$/).fill(password);
-  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
-  await page.getByPlaceholder(/^\.*$/).press('Enter');
-  expect((await loginResponse).status()).toBe(200);
-  // Serment d'intégrité : tant que `covenant` est absente du compte,
-  // AppLayout rend le gate plein écran au lieu du chrome. On scelle par
-  // l'API (le cookie zoyd_auth du formulaire vit dans le jar partagé du
-  // contexte) ; le serveur ignore le corps et date lui-même. La navigation
-  // suivante hydrate alors un user scellé : pas de gate.
-  await page.request.post('/api/auth/covenant', { data: {} });
-};
 
 /** Date locale au format `datetime-local`, a J+32 h (dans la fenetre 24-48 h). */
 const toLocalInputPlus32h = () => {
@@ -52,17 +42,8 @@ const toLocalInputPlus32h = () => {
  * pas celui des joueurs : passer par le formulaire evite de bricoler le cookie
  * a la main et exerce le vrai chemin de l'utilisateur.
  */
-const loginAdminWithCookie = async (page: Page) => {
-  await page.goto('/auth/login');
-  await page.getByPlaceholder(/ShadowX/).fill(ADMIN_EMAIL);
-  await page.getByPlaceholder(/^\.*$/).fill(ADMIN_PASSWORD);
-  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
-  await page.getByPlaceholder(/^\.*$/).press('Enter');
-  expect((await loginResponse).status(), 'connexion admin').toBe(200);
-  // Serment d'intégrité : l'admin n'est pas exonéré du gate (un compte,
-  // une fois). On scelle par l'API comme pour les joueurs.
-  await page.request.post('/api/auth/covenant', { data: {} });
-};
+const loginAdminWithCookie = (page: Page) =>
+  openApp(page, ADMIN_EMAIL, ADMIN_PASSWORD);
 
 /**
  * Salon BR avec 5 joueurs presents, prêt a etre lance par l'arbitre.
@@ -106,7 +87,7 @@ test.describe('Battle Royale UI', () => {
     // pour un joueur (ancien contrat admin-only) : rouge depuis l'application
     // d'A7 des deux cotes (br-engine, BrLobbyCreatePanel).
     const player = await registerPlayer('BRUI7');
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
     await page.goto('/br');
     await expect(page.getByRole('heading', { name: /BR — UN SALON/i })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /Creer un salon BR/i })).toBeVisible();
@@ -177,7 +158,7 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
   test('la liste affiche le salon et la regle "pas de remboursement"', async ({ page }) => {
     await newLobby(admin);
     const player = await registerPlayer('BRUI1');
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
     await page.goto('/br');
 
     await expect(page.getByRole('heading', { name: /BR — UN SALON/i })).toBeVisible();
@@ -193,7 +174,7 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
   test('les maps affichees viennent du serveur et excluent Alcatraz', async ({ page }) => {
     await newLobby(admin);
     const player = await registerPlayer('BRUI2');
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
     await page.goto('/br');
 
     await expect(page.getByRole('heading', { name: /Maps et modes/i })).toBeVisible({ timeout: 15_000 });
@@ -223,7 +204,7 @@ const gotoDetail = async (page: Page, lobbyId: string) => {
 test('le detail affiche la repartition de cagnotte', async ({ page }) => {
     const created = await newLobby(admin);
     const player = await registerPlayer('BRUI3');
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
     await gotoDetail(page, created.body.lobby.id);
 
     await expect(page.getByRole('heading', { name: /Repartition de la cagnotte/i })).toBeVisible({ timeout: 15_000 });
@@ -238,7 +219,7 @@ test('le detail affiche la repartition de cagnotte', async ({ page }) => {
     const created = await newLobby(admin);
     const player = await registerPlayer('BRUI4');
     await creditWallet(admin, player.id, 500);
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
     await gotoDetail(page, created.body.lobby.id);
 
     // L'information doit etre lue AVANT de payer, donc presente pour tous.
@@ -251,7 +232,7 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     const created = await newLobby(admin);
     const player = await registerPlayer('BRUI5');
     await creditWallet(admin, player.id, 500);
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
 
     await gotoDetail(page, created.body.lobby.id);
     // La page detail charge son lobby en async : on attend le roster (le
@@ -278,7 +259,7 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     const created = await newLobby(admin);
     const player = await registerPlayer('BRUI6');
     await creditWallet(admin, player.id, 500);
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
 
     await gotoDetail(page, created.body.lobby.id);
     // L'inscription se fait depuis la page du salon : on cible CE salon, pas
@@ -315,7 +296,7 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     const player = await registerPlayer('BRUIVIEW');
     await creditWallet(admin, player.id, 500);
     await call(player, 'POST', `/api/br/lobbies/${lobbyId}/join`);
-    await login(page, player.pseudo, password);
+    await openApp(page, player.pseudo, password);
     await gotoDetail(page, lobbyId);
     await expect(page.getByRole('heading', { name: /^Joueurs \(\d+ \/ \d+\)$/ })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole('heading', { name: /^Arbitre$/ })).toHaveCount(0);

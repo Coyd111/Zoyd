@@ -159,9 +159,12 @@ const Sidebar: React.FC = React.memo(() => {
       <Link
         to="/profil"
         title={safeUser.pseudo}
-        aria-label={`Mon profil — ${safeUser.pseudo}`}
+        aria-label={`${safeUser.pseudo.slice(0, 2).toUpperCase()} — Mon profil`}
         className="w-full py-3 border-t border-white/5 flex items-center justify-center group"
       >
+        {/* PIEGE (audit UI) : le nom accessible doit CONTENIR le texte
+            visible (WCAG 2.5.3) - donc les initiales y sont. Voir le
+            commentaire equivalent dans `Navbar.tsx`. */}
         <div className="w-9 h-9 flex items-center justify-center font-display font-black text-white text-[10px] group-hover:text-zoyd-yellow transition-colors">
           {safeUser.pseudo.slice(0, 2).toUpperCase()}
         </div>

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { registerPlayer, disposeActors, openAdminSession, creditWallet, type Actor } from '../api/support/harness';
+import { openApp } from './support/session';
 
 // Sidebar compacte (icônes seules) + suppression du bouton déconnexion du
 // header.
@@ -7,21 +8,10 @@ import { registerPlayer, disposeActors, openAdminSession, creditWallet, type Act
 // Pourquoi : le header portait un bouton de déconnexion en doublon avec la
 // sidebar, ce qui mangeait de la largeur sur mobile. Et la sidebar en w-64 avec
 // des libelles en toutes capitales prenait un tiers de l'écran en 1280.
-
-const openApp = async (page: Page, pseudo: string, password: string) => {
-  await page.goto('/auth/login');
-  await page.getByPlaceholder(/ShadowX/).fill(pseudo);
-  await page.getByPlaceholder(/^\.*$/).fill(password);
-  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
-  await page.getByPlaceholder(/^\.*$/).press('Enter');
-  expect((await loginResponse).status()).toBe(200);
-  // Serment d'intégrité : tant que `covenant` est absente du compte,
-  // AppLayout rend le gate plein écran au lieu du chrome. On scelle par
-  // l'API (le cookie zoyd_auth du formulaire vit dans le jar partagé du
-  // contexte) ; le serveur ignore le corps et date lui-même. La navigation
-  // suivante hydrate alors un user scellé : pas de gate.
-  await page.request.post('/api/auth/covenant', { data: {} });
-};
+//
+// INVARIANT : la connexion rejoue le flux REEL de la page de login (helper
+// partage `support/session.ts`). Une seule implementation : une divergence
+// silencieuse entre specs est un faux vert possible.
 
 /**
  * Sélecteur de la sidebar applicative.

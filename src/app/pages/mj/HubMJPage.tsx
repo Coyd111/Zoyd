@@ -246,7 +246,11 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                   className="w-full bg-black border border-white/5 text-xs font-display font-bold uppercase tracking-widest py-4 pl-12 pr-4 focus:border-zoyd-blue transition-colors"
                 />
               </div>
-              <Link to="/mj/creer" aria-label="Créer un nouveau wager" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target w-full sm:w-auto">
+              <Link to="/mj/creer" className="bg-zoyd-yellow text-black px-4 sm:px-8 py-4 flex items-center justify-center gap-3 font-display font-black uppercase tracking-widest text-xs hover:bg-white transition-colors italic whitespace-nowrap touch-target w-full sm:w-auto">
+                {/* PIEGE (audit UI) : pas d `aria-label` ici. Le nom
+                    accessible doit CONTENIR le texte visible (WCAG 2.5.3) :
+                    « Creer un nouveau wager » ne contient pas « Creer un
+                    wager ». Le texte visible suffit, et il est plus clair. */}
                 <Activity className="w-4 h-4" /> CRÉER UN WAGER
               </Link>
             </div>
@@ -299,7 +303,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
             </div>
           ) : (
             <div className="py-20 md:py-40 flex flex-col items-center justify-center text-center border-y border-dashed border-white/10 group bg-zoyd-surface/20">
-              <div className="w-16 h-16 border border-white/10 flex items-center justify-center mb-8 text-white/10 group-hover:border-zoyd-yellow transition-colors">
+              <div className="w-16 h-16 border border-white/10 flex items-center justify-center mb-8 text-white/50 group-hover:border-zoyd-yellow transition-colors">
                 <Crosshair className="w-8 h-8" />
               </div>
               <h3 className="text-xl sm:text-3xl font-display font-black text-white italic mb-4 uppercase tracking-tighter">L'arène est calme.</h3>
@@ -353,7 +357,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               </Link>
               <Link
                 to="/br-league"
-                className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1 text-center sm:text-right"
+                className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1 text-center sm:text-right min-h-6"
               >
                 BR League — événement hebdo
               </Link>

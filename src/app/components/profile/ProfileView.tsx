@@ -328,7 +328,7 @@ export default function ProfileView({
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-display font-black uppercase tracking-tighter italic">Matchs récents</h2>
               {matchesLink ? (
-                <Link to={matchesLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline">
+                <Link to={matchesLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline min-h-6 py-0.5">
                   {matchesLink.label} <ChevronRight className="w-3 h-3" />
                 </Link>
               ) : null}
@@ -336,7 +336,7 @@ export default function ProfileView({
 
             {summary.recentMatches.length === 0 ? (
               <EmptyPanel
-                icon={<Swords className="w-8 h-8 text-white/10" />}
+                icon={<Swords className="w-8 h-8 text-white/40" />}
                 image={emptyMatchesImage || '/assets/images/codm-8.jpg'}
                 title="Aucun match récent"
                 body="Les matchs terminés apparaîtront ici, avec leur résultat et ce qu'ils ont rapporté."
@@ -395,7 +395,7 @@ export default function ProfileView({
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-display font-black uppercase tracking-tighter italic">Tournois récents</h2>
               {tournamentsLink ? (
-                <Link to={tournamentsLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline">
+                <Link to={tournamentsLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline min-h-6 py-0.5">
                   {tournamentsLink.label} <ChevronRight className="w-3 h-3" />
                 </Link>
               ) : null}
@@ -403,7 +403,7 @@ export default function ProfileView({
 
             {summary.tournamentPlacements.length === 0 ? (
               <EmptyPanel
-                icon={<Trophy className="w-8 h-8 text-white/10" />}
+                icon={<Trophy className="w-8 h-8 text-white/40" />}
                 image={emptyTournamentsImage || '/assets/images/codm-1.jpg'}
                 title="Aucun tournoi récent"
                 body="Les participations et podiums apparaîtront ici dès que les tournois seront terminés."

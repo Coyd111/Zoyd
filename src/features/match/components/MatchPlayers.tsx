@@ -62,7 +62,7 @@ const TeamCard = ({
               </div>
               {/* Repère stable : le pseudo bouge, ce numéro reste le même. */}
               {player.gameId ? (
-                <div className="text-[10px] font-mono tracking-widest text-white/40">
+                <div className="text-[10px] font-mono tracking-widest text-white/70">
                   ID {player.gameId}
                 </div>
               ) : null}

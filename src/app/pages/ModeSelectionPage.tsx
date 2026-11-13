@@ -89,7 +89,7 @@ const ModeSelectionPage: React.FC = () => {
             <br />
             <span className="text-zoyd-yellow">terrain de jeu.</span>
           </h1>
-          <p className="text-white/46 text-base sm:text-lg md:text-xl leading-relaxed max-w-3xl">
+          <p className="text-white/70 text-base sm:text-lg md:text-xl leading-relaxed max-w-3xl">
             Ton profil, ton portefeuille et ta progression restent dans le même espace. Tu entres dans le mode que tu
             veux suivre maintenant, puis ZOYD garde tout relié autour de ton compte.
           </p>

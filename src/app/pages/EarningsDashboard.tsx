@@ -367,7 +367,7 @@ const EarningsDashboard: React.FC = () => {
               {walletInsights.recentTransactions.length === 0 ? (
                 <div className="py-12 text-center">
                   <div className="w-12 h-12 border border-white/10 flex items-center justify-center mx-auto mb-4">
-                    <Clock className="w-6 h-6 text-white/10" />
+                    <Clock className="w-6 h-6 text-white/40" />
                   </div>
                   <p className="text-white/70 font-mono text-[10px] uppercase tracking-widest">
                     Aucun mouvement récent enregistré

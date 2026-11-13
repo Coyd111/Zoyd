@@ -289,8 +289,11 @@ const LeagueSeasonPage = () => {
       <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
         <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
-          <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/70 hover:text-white mb-6">
-            <ArrowLeft className="w-4 h-4" />
+          {/* PIEGE (audit UI) : `min-h-6` (24 px). Ce lien est en
+              `flex` : il occupe toute la largeur mais ne fait que 20 px
+              de haut — la largeur ne compense pas la hauteur (WCAG 2.5.8). */}
+          <Link to="/br-league" className="flex items-center gap-2 min-h-6 text-sm text-white/70 hover:text-white mb-6">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             Retour aux ligues
           </Link>
           <div className="border border-red-500/30 bg-red-500/10 px-6 py-5 text-sm text-red-400">
@@ -317,8 +320,8 @@ const LeagueSeasonPage = () => {
 
       <div className="max-w-[1500px] mx-auto px-4 md:px-8 relative z-10">
         <div className="pt-8">
-          <Link to="/br-league" className="flex items-center gap-2 text-sm text-white/70 hover:text-white mb-6">
-            <ArrowLeft className="w-4 h-4" />
+          <Link to="/br-league" className="flex items-center gap-2 min-h-6 text-sm text-white/70 hover:text-white mb-6">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             Retour aux ligues
           </Link>
         </div>

@@ -76,6 +76,21 @@ import { getArbiterFee, getWinnerPayout } from '../../../lib/matchPayout';
 // ajouter un statut sans libelle joueur fait echouer TypeScript.
 import { CLOSED_STATUSES, MATCH_STATUS_COPY } from '../../../app/lib/matchStatus';
 
+/**
+ * Resume de presence VIDE, partage.
+ *
+ * PIEGE : un objet litteral cree dans le selecteur zustand serait une
+ * NOUVELLE reference a chaque rendu. `useShallow` le tolererait, mais la
+ * constante evite l allocation et rend l intention explicite.
+ */
+const EMPTY_PRESENCE_SUMMARY = {
+  onlineCount: 0,
+  checkedInCount: 0,
+  readyCount: 0,
+  arbiterOnline: false,
+  total: 0,
+};
+
 const parseRefs = (value: string) =>
   value
     .split(',')
@@ -229,9 +244,14 @@ const MatchDetailPage: React.FC = () => {
     (dispute) => dispute.status === 'open' || dispute.status === 'under_review'
   );
   const availableSpend = getAvailableToSpend();
-  const presenceSummary = usePresenceStore((s) => (match
-    ? s.getPresenceSummary(match.channelId)
-    : { onlineCount: 0, checkedInCount: 0, readyCount: 0, arbiterOnline: false, total: 0 }));
+  // PIEGE (audit UI) : `getPresenceSummary` CONSTRUIT un objet a chaque
+  // lecture. Sans `useShallow`, `useSyncExternalStore` voit un snapshot
+  // different a chaque rendu -> boucle de rendu infinie (« Maximum
+  // update depth exceeded ») et ecran mort. `useShallow` compare element
+  // par element : la reference ne change que si un compteur change.
+  const presenceSummary = usePresenceStore(
+    useShallow((s) => (match ? s.getPresenceSummary(match.channelId) : EMPTY_PRESENCE_SUMMARY)),
+  );
   const readCount = match ? Object.keys(seenByChannel[match.channelId] || {}).length : 0;
   const channelConnected = !!user && socketConnected && match ? isChannelLive(match.channelId) : false;
 

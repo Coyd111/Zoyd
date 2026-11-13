@@ -3,6 +3,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useFriendsStore } from '../stores/friendsStore';
+import { useWalletStore } from '../stores/walletStore';
+import { useChatStore } from '../stores/chatStore';
 
 /**
  * Les selecteurs zustand qui CONSTRUISENT un tableau (audit front).
@@ -234,5 +236,160 @@ describe('Selecteurs de store — regle : jamais appeles hors d un hook', () => 
     // Avant : `const onlineFriends = getOnlineFriends();` — appel dans le corps.
     expect(source).not.toMatch(/const\s+onlineFriends\s*=\s*getOnlineFriends\(\)/);
     expect(source).toMatch(/useShallow\(\(s\)\s*=>\s*s\.getOnlineFriends\(\)\)/);
+  });
+});
+
+/**
+ * REGLE GENERALE (2) : un selecteur de store ne doit jamais APPELER un
+ * accesseur qui CONSTRUIT un objet ou un tableau.
+ *
+ * Le defaut, reproduit par l audit UI
+ * -----------------------------------
+ * `MatchDetailPage` s abonnait a `usePresenceStore((s) => s.getPresenceSummary(...))`.
+ * `getPresenceSummary` CONSTRUIT son objet a chaque lecture : la reference
+ * change a chaque rendu, `useSyncExternalStore` y voit une modification, et
+ * React re-rend, relisit, reboucle — « Maximum update depth exceeded » puis
+ * « React Router caught the following error during render ». Le detail d un
+ * match etait un ecran MORT, et personne ne l avait vu : le test e2e de
+ * l ecran ne visitait que des routes sans identifiant.
+ *
+ * La regle precedente (jamais appeler un accesseur hors d un hook) ne
+ * voyait PAS ce cas : l appel est bien dans le selecteur, c'est le
+ * selecteur qui renvoie une valeur instable.
+ *
+ * Le correctif : `useShallow` compare element par element, la reference ne
+ * change que si un compteur change reellement.
+ *
+ * Ce que la regle autorise
+ * -----------------------
+ * 1. `useShallow((s) => s.getX(...))` : le mecanisme correct.
+ * 2. Prendre l ACCESSEUR (`const get = useStore((s) => s.getX)`) puis
+ *    l appeler dans un `useMemo` : la reference est stable.
+ * 3. Un accesseur qui renvoie un PRIMITIF (`number`, `boolean`, `string`) :
+ *    la reference d'un nombre ne change pas de valeur, donc pas de boucle.
+ *    La liste est VERIFIEE A L EXECUTION (voir `describe` suivant) : si un
+ *    accesseur listé change de nature, le test echoue.
+ */
+describe('Selecteurs de store — regle : jamais d accesseur instable dans le selecteur', () => {
+  const racine = resolve('src');
+  const fichiersComposants: string[] = [];
+
+  const parcourir = (dossier: string) => {
+    for (const entree of readdirSync(dossier, { withFileTypes: true })) {
+      const chemin = join(dossier, entree.name);
+      if (entree.isDirectory()) {
+        parcourir(chemin);
+        continue;
+      }
+      if (!entree.name.endsWith('.tsx')) continue;
+      if (entree.name.endsWith('.test.tsx')) continue;
+      fichiersComposants.push(chemin);
+    }
+  };
+  parcourir(racine);
+
+  /**
+   * Accesseurs dont le retour est un PRIMITIF : les appeler dans un
+   * selecteur est sans risque (la reference d un nombre est stable).
+   *
+   * PIEGE : cette liste n est pas une convention mais un CONTRAT. Le test
+   * suivant verifie a l execution que chacun renvoie bien un primitif. Si
+   * l un d eux change de nature, le test echoue — on ne peut pas glisser
+   * une boucle de rendu sous la regle.
+   */
+  const ACCESSEURS_PRIMITIFS = [
+    'getTotalBalance',
+    'getAvailableCash',
+    'getAvailableToSpend',
+    'getUnreadCount',
+    'getUnreadTotal',
+  ];
+
+  /** Extrait l argument d un appel `use<Store>(...)`, parentheses equilibrees. */
+  const argumentDe = (source: string, ouverture: number): string | null => {
+    let profondeur = 0;
+    for (let i = ouverture; i < source.length; i += 1) {
+      const c = source[i];
+      if (c === '(') profondeur += 1;
+      else if (c === ')') {
+        profondeur -= 1;
+        if (profondeur === 0) return source.slice(ouverture + 1, i);
+      }
+    }
+    return null;
+  };
+
+  it('la regle a des fichiers a inspecter (sinon elle ne verifierait rien)', () => {
+    expect(fichiersComposants.length).toBeGreaterThan(10);
+  });
+
+  it('aucun selecteur n appelle un accesseur instable sans `useShallow`', () => {
+    const coupables: string[] = [];
+
+    for (const fichier of fichiersComposants) {
+      const source = readFileSync(fichier, 'utf8');
+
+      // `matchAll` et non une boucle caractere par caractere : la version
+      // naive copiait le fichier a chaque position (O(n^2)) et le test
+      // depassait le budget de 20 s.
+      for (const occurrence of source.matchAll(/use\w+Store\(/g)) {
+        const ouverture = occurrence.index + occurrence[0].length - 1;
+        const argument = argumentDe(source, ouverture);
+        if (argument === null) continue;
+
+        // Le selecteur appelle-t-il un accesseur du store ?
+        const appel = /\.get(\w+)\s*\(/.exec(argument);
+        if (!appel) continue;
+        const nom = `get${appel[1]}`;
+
+        // `useShallow` autour du selecteur : le mecanisme correct.
+        const entoure = /^\s*useShallow\s*\(/.test(argument);
+
+        if (entoure || ACCESSEURS_PRIMITIFS.includes(nom)) continue;
+
+        const ligne = source.slice(0, ouverture).split(/\r?\n/).length;
+        coupables.push(`${fichier}:${ligne}  ${nom} — reference instable`);
+      }
+    }
+
+    expect(
+      coupables.length,
+      'accesseur instable appele DIRECTEMENT dans un selecteur de store '
+      + '(reference instable -> boucle de rendu) :\n  ' + coupables.join('\n  '),
+    ).toBe(0);
+  });
+
+  it('les accesseurs autorises renvoient bien un PRIMITIF (le contrat tient)', () => {
+    // La liste `ACCESSEURS_PRIMITIFS` n a de sens que si ces accesseurs
+    // renvoient un nombre (ou un booleen / une chaine). On le VERIFIE.
+    const releves: Array<{ nom: string; type: string }> = [];
+
+    for (const [store, getters] of [
+      [useWalletStore, ['getTotalBalance', 'getAvailableCash', 'getAvailableToSpend']],
+      [useNotificationStore, ['getUnreadCount']],
+      [useChatStore, ['getUnreadTotal']],
+    ] as const) {
+      for (const nom of getters) {
+        const valeur = (store.getState() as unknown as Record<string, () => unknown>)[nom]();
+        releves.push({ nom, type: typeof valeur });
+      }
+    }
+
+    for (const { nom, type } of releves) {
+      expect(
+        ['number', 'boolean', 'string'],
+        `l accesseur autorise « ${nom} » renvoie un ${type} : il doit sortir de la `
+        + 'liste des primitifs, et ses usages doivent passer par `useShallow`',
+      ).toContain(type);
+    }
+  });
+
+  it('le cas reel est corrige (MatchDetailPage)', () => {
+    const source = readFileSync(
+      resolve('src/features/match/pages/MatchDetailPage.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/usePresenceStore\(\(s\) => \(match\s*\?\s*s\.getPresenceSummary/);
+    expect(source).toMatch(/useShallow\(\(s\) => \(match \? s\.getPresenceSummary/);
   });
 });

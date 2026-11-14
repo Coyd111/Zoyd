@@ -295,7 +295,7 @@ export const handleWebhookRoutes = async ({ req, res, pathname, io }) => {
   const secret = process.env.FEDAPAY_WEBHOOK_SECRET;
   if (!secret) {
     log.error('Webhook FedaPay sans secret configure — refuse (fail-closed)');
-    respondJson(res, 503, { ok: false, error: 'Webhook non configure.', code: 'WEBHOOK_NOT_CONFIGURED' }, req);
+    respondJson(res, 503, { ok: false, error: 'Webhook non configuré.', code: 'WEBHOOK_NOT_CONFIGURED' }, req);
     return true;
   }
   const sig = req.headers['x-fedapay-signature'] || '';
@@ -325,7 +325,7 @@ export const handleWebhookRoutes = async ({ req, res, pathname, io }) => {
   } catch (error) {
     if (isTransientError(error)) {
       log.error('Webhook FedaPay transitoire (retry)', { error: error?.message, code: error?.code });
-      respondJson(res, 503, { ok: false, error: 'Traitement transitoire, reessaye.', code: error.code || 'SERVER_BUSY' }, req);
+      respondJson(res, 503, { ok: false, error: 'Traitement transitoire, réessaie.', code: error.code || 'SERVER_BUSY' }, req);
       return true;
     }
     log.error('Webhook FedaPay erreur', { error: error?.message, code: error?.code });

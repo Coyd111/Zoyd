@@ -177,7 +177,7 @@ export const requireAdmin = (req, res) => {
   }
   if (session.user.role !== 'admin') {
     log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id });
-    respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.' }, req);
+    respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
     return null;
   }
   return session;
@@ -202,16 +202,16 @@ export const requireAdmin2fa = (req, res) => {
     log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id });
     // `code` obligatoire : sans lui, apiClient ne peut pas distinguer un 403
     // d'autorisation d'une session expiree, et deconnectait le joueur.
-    respondJson(res, 403, { ok: false, error: 'Acces reserve aux administrateurs.', code: 'ADMIN_REQUIRED' }, req);
+    respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.', code: 'ADMIN_REQUIRED' }, req);
     return null;
   }
   const totpEntry = adminTotpSecrets.get(session.user.id);
   if (!totpEntry?.enabled) {
-    respondJson(res, 403, { ok: false, error: 'Active la 2FA dans Paramètres > Sécurité pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
+    respondJson(res, 403, { ok: false, error: 'Vérification 2FA requise : active la 2FA dans Paramètres > Sécurité.', code: '2FA_REQUIRED', requires2fa: true });
     return null;
   }
   if (!session.admin2faVerified || session.admin2faExpires <= Date.now()) {
-    respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
+    respondJson(res, 403, { ok: false, error: 'Vérification 2FA requise pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
     return null;
   }
   return session;
@@ -246,11 +246,11 @@ export const require2faIfAdmin = (req, res) => {
   }
   const totpEntry = adminTotpSecrets.get(session.user.id);
   if (!totpEntry?.enabled) {
-    respondJson(res, 403, { ok: false, error: 'Active la 2FA dans Paramètres > Sécurité pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
+    respondJson(res, 403, { ok: false, error: 'Vérification 2FA requise : active la 2FA dans Paramètres > Sécurité.', code: '2FA_REQUIRED', requires2fa: true });
     return null;
   }
   if (!session.admin2faVerified || session.admin2faExpires <= Date.now()) {
-    respondJson(res, 403, { ok: false, error: 'Verification 2FA requise pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
+    respondJson(res, 403, { ok: false, error: 'Vérification 2FA requise pour cette action.', code: '2FA_REQUIRED', requires2fa: true });
     return null;
   }
   return session;

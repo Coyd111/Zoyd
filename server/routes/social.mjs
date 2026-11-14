@@ -229,7 +229,7 @@ if (req.method === 'POST' && pathname === '/api/social/report') {
     // distinguee du signaleur : l'admin recevait un signalement sans pseudo
     // cible (compte inexistant), et un joueur pouvait se signaler lui-meme.
     if (body.targetId === session.user.id) {
-      respondJson(res, 400, { ok: false, error: 'Vous ne pouvez pas vous signaler vous-meme.', code: 'SELF_REPORT' });
+      respondJson(res, 400, { ok: false, error: 'Vous ne pouvez pas vous signaler vous-même.', code: 'SELF_REPORT' });
       return true;
     }
     if (!getUserById(body.targetId)) {

@@ -196,7 +196,7 @@ describe('refundRejectedWithdrawal — idempotence du remboursement', () => {
   it('refuse un montant invalide et refuse sans cle', async () => {
     const joueur = await nouveauJoueur();
     await expect(refundRejectedWithdrawal(joueur.id, 0, 'refund:cle-3', {})).rejects.toThrow('Le montant du remboursement est invalide.');
-    await expect(refundRejectedWithdrawal(joueur.id, 200, null, {})).rejects.toThrow('Remboursement sans cle d idempotence');
+    await expect(refundRejectedWithdrawal(joueur.id, 200, null, {})).rejects.toThrow('Remboursement sans clé d\'idempotence');
   });
 
   it('une ecriture en echec ne laisse PAS de trace orpheline', async () => {

@@ -286,7 +286,7 @@ export const validateBrPayout = (payout) => {
   // Les places doivent etre decroissantes : payer plus le 5e que le 1er
   // pousserait le joueur a vouloir etre 5e.
   if (!(first >= second && second >= third && third >= fourth && fourth >= fifth)) {
-    throw makeError('INVALID_PAYOUT', 'Les parts doivent etre decroissantes du 1er au 5e.');
+    throw makeError('INVALID_PAYOUT', 'Les parts doivent être décroissantes du 1er au 5e.');
   }
   return { first, second, third, fourth, fifth, arbiterRate };
 };
@@ -329,19 +329,19 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
 
   const scheduledAtMs = Date.parse(input.scheduledAt || '');
   if (!Number.isFinite(scheduledAtMs)) {
-    throw makeError('INVALID_DATE', 'Date de debut invalide.');
+    throw makeError('INVALID_DATE', 'Date de début invalide.');
   }
   const delay = scheduledAtMs - getNowMs();
   if (delay < BR_MIN_DELAY_MS) {
     throw makeError(
       'INVALID_DATE',
-      'Le salon doit etre programme au moins 24 h a l avance.',
+      'Le salon doit être programmé au moins 24 h à l’avance.',
     );
   }
   if (delay > BR_MAX_DELAY_MS) {
     throw makeError(
       'INVALID_DATE',
-      'Le salon doit etre programme dans les 48 h (au-dela, les joueurs ne peuvent pas se preparer).',
+      'Le salon doit être programmé dans les 48 h (au-delà, les joueurs ne peuvent pas se préparer).',
     );
   }
 
@@ -389,7 +389,7 @@ export const createBrLobbyOnServer = (lobbies, actor, input = {}) => {
   if (!arbiter) {
     throw makeError(
       'INVALID_ARBITER',
-      'L\'arbitre doit etre un compte existant.',
+      'L\'arbitre doit être un compte existant.',
     );
   }
 
@@ -455,7 +455,7 @@ export const joinBrLobbyOnServer = async (lobbies, actor, lobbyId) => {
   // propre salon, et serait exclu du classement (statut d'arbitre) — pass
   // perdu sans jamais pouvoir gagner.
   if (lobby.players.some((p) => p.userId === actorUser.id)) {
-    throw makeError('ALREADY_JOINED', 'Tu es deja inscrit dans ce salon.');
+    throw makeError('ALREADY_JOINED', 'Tu es déjà inscrit dans ce salon.');
   }
   // audit-5 : l'arbitre (createur par defaut, ou tierce designe a la
   // creation) pouvait s'inscrire JOUEUR dans son propre salon : son pass
@@ -587,11 +587,11 @@ export const checkInBrLobbyOnServer = (lobbies, actor, lobbyId) => {
   const nextLobbies = cloneLobbies(lobbies);
   const lobby = findLobby(nextLobbies, lobbyId);
   if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
-  if (lobby.status === 'finished') throw makeError('LOBBY_CLOSED', 'Partie terminee.');
+  if (lobby.status === 'finished') throw makeError('LOBBY_CLOSED', 'Partie terminée.');
 
   const player = lobby.players.find((p) => p.userId === actorUser.id);
   if (!player) throw makeError('NOT_JOINED', 'Tu n\'es pas inscrit dans ce salon.');
-  if (player.checkedIn) throw makeError('ALREADY_CHECKED_IN', 'Tu as deja confirme ta presence.');
+  if (player.checkedIn) throw makeError('ALREADY_CHECKED_IN', 'Tu as déjà confirmé ta présence.');
 
   player.checkedIn = true;
   player.checkedInAt = getNow();
@@ -616,8 +616,8 @@ export const startBrLobbyOnServer = (lobbies, actor, lobbyId, { nowMs = getNowMs
   const nextLobbies = cloneLobbies(lobbies);
   const lobby = findLobby(nextLobbies, lobbyId);
   if (!lobby) throw makeError('LOBBY_NOT_FOUND', 'Salon introuvable.');
-  if (lobby.status === 'live') throw makeError('ALREADY_LIVE', 'Partie deja en cours.');
-  if (lobby.status === 'finished') throw makeError('LOBBY_CLOSED', 'Partie terminee.');
+  if (lobby.status === 'live') throw makeError('ALREADY_LIVE', 'Partie déjà en cours.');
+  if (lobby.status === 'finished') throw makeError('LOBBY_CLOSED', 'Partie terminée.');
 
   // Le lancement declenche la perte des absents (leur pass est consomme) :
   // seuls l'arbitre et le createur peuvent le faire, pas un inscrit lambda.
@@ -634,13 +634,13 @@ export const startBrLobbyOnServer = (lobbies, actor, lobbyId, { nowMs = getNowMs
   if (lobby.scheduledAt && nowMs < Date.parse(lobby.scheduledAt) - BR_START_EARLY_TOLERANCE_MS) {
     throw makeError(
       'TOO_EARLY',
-      'Le salon ne peut pas demarrer plus de 10 min avant l\'heure programmee.',
+      'Le salon ne peut pas démarrer plus de 10 min avant l\'heure programmée.',
     );
   }
 
   const present = lobby.players.filter((p) => p.checkedIn);
   if (present.length === 0) {
-    throw makeError('NO_PRESENT', 'Aucun joueur present : la partie ne peut pas demarrer.');
+    throw makeError('NO_PRESENT', 'Aucun joueur présent : la partie ne peut pas démarrer.');
   }
   if (present.length < BR_PRIZED_PLACES) {
     throw makeError(
@@ -689,13 +689,13 @@ const requireLobbyArbiter = (lobby, actorUser) => {
   if (!lobby.arbiterId) {
     throw makeError(
       'ARBITER_REQUIRED',
-      'Aucun arbitre designe pour ce salon : la saisie des resultats est impossible.',
+      'Aucun arbitre désigné pour ce salon : la saisie des résultats est impossible.',
     );
   }
   if (lobby.arbiterId !== actorUser.id) {
     throw makeError(
       'FORBIDDEN',
-      'Seul l\'arbitre de ce salon peut saisir les resultats ou le regler.',
+      'Seul l\'arbitre de ce salon peut saisir les résultats ou le regler.',
     );
   }
 };
@@ -726,11 +726,11 @@ export const eliminateBrPlayerOnServer = (
 
   const eliminated = lobby.players.find((p) => p.userId === eliminatedUserId);
   if (!eliminated) throw makeError('PLAYER_NOT_FOUND', 'Joueur introuvable dans ce salon.');
-  if (!eliminated.alive) throw makeError('ALREADY_ELIMINATED', 'Ce joueur est deja elimine.');
+  if (!eliminated.alive) throw makeError('ALREADY_ELIMINATED', 'Ce joueur est déjà éliminé.');
 
   const livePlayers = lobby.players.filter((p) => p.alive);
   if (livePlayers.length <= 1) {
-    throw makeError('ALREADY_FINISHED', 'Il ne reste qu\'un joueur : la partie est terminee.');
+    throw makeError('ALREADY_FINISHED', 'Il ne reste qu\'un joueur : la partie est terminée.');
   }
 
   eliminated.alive = false;
@@ -747,10 +747,10 @@ export const eliminateBrPlayerOnServer = (
     const killer = lobby.players.find((p) => p.userId === killerUserId);
     if (!killer) throw makeError('PLAYER_NOT_FOUND', 'Tueur introuvable dans ce salon.');
     if (killer.absent) {
-      throw makeError('PLAYER_ABSENT', 'Un joueur absent ne peut pas eliminer.');
+      throw makeError('PLAYER_ABSENT', 'Un joueur absent ne peut pas éliminer.');
     }
     if (!killer.alive) {
-      throw makeError('PLAYER_DEAD', 'Un joueur elimine ne peut pas eliminer.');
+      throw makeError('PLAYER_DEAD', 'Un joueur éliminé ne peut pas éliminer.');
     }
     killer.kills = (killer.kills || 0) + 1;
     eliminated.killedBy = killerUserId;
@@ -846,7 +846,7 @@ export const settleBrLobbyOnServer = async (lobbies, actor, lobbyId, options = {
   // rendrait definitivement les joueurs non payes ; l'accepter, avec les
   // drapeaux `settled` deja persistes, les repai sans double credit.
   if (lobby.status === 'finished') {
-    throw makeError('LOBBY_CLOSED', 'Partie deja reglee.');
+    throw makeError('LOBBY_CLOSED', 'Partie déjà réglée.');
   }
   if (lobby.status !== 'live' && lobby.status !== 'settling') {
     throw makeError('LOBBY_NOT_LIVE', 'La partie n\'est pas en cours.');

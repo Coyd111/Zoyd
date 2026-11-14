@@ -654,7 +654,7 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
         // `checkProfileUniqueness` ignoreait justement les valeurs vides, le
         // compte restait donc « valide »… sans nom.
         if (field === 'pseudo' && !String(value || '').trim()) {
-          respondJson(res, 400, { ok: false, error: 'Le pseudo ne peut pas etre vide.', code: 'PSEUDO_REQUIRED' });
+          respondJson(res, 400, { ok: false, error: 'Le pseudo ne peut pas être vide.', code: 'PSEUDO_REQUIRED' });
           return true;
         }
         safeUpdate[field] = value;
@@ -672,11 +672,11 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
       const currentEmail = normalizeEmailKey(getUserById(session.user.id)?.email || '');
       if (nextEmail !== currentEmail) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(nextEmail) || nextEmail.length > 120) {
-          respondJson(res, 400, { ok: false, error: 'Email invalide.', code: 'INVALID_EMAIL' });
+          respondJson(res, 400, { ok: false, error: 'Adresse email invalide.', code: 'INVALID_EMAIL' });
           return true;
         }
         if (!isEmailAvailable(nextEmail, session.user.id)) {
-          respondJson(res, 409, { ok: false, error: 'Cet email est deja rattache a un compte ZOYD.', code: 'DUPLICATE_EMAIL' });
+          respondJson(res, 409, { ok: false, error: 'Cet email est déjà rattaché à un compte ZOYD.', code: 'DUPLICATE_EMAIL' });
           return true;
         }
         // `verifyPassword` part dans scrypt : un `undefined` le ferait

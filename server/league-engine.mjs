@@ -323,7 +323,7 @@ export const assignPlayersToDays = (playerIds) => {
 
 export const createLeagueSeasonOnServer = (seasons, actor, input = {}) => {
   const actorUser = requireActorUser(actor);
-  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut creer une ligue.');
+  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut créer une ligue.');
 
   const nextSeasons = cloneLeagues(seasons);
   const cycleNumber = getNextCycleNumber(nextSeasons);
@@ -371,12 +371,12 @@ export const joinLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'registering') throw makeError('REGISTRATION_CLOSED', 'Les inscriptions sont fermees.');
+  if (season.status !== 'registering') throw makeError('REGISTRATION_CLOSED', 'Les inscriptions sont fermées.');
   if (season.registeredPlayers.length >= season.maxPlayers) {
     throw makeError('NO_SLOT_AVAILABLE', 'La ligue est pleine (500/500).');
   }
   if (season.registeredPlayers.some((p) => p.userId === actorUser.id)) {
-    throw makeError('ALREADY_JOINED', 'Tu es deja inscrit a cette ligue.');
+    throw makeError('ALREADY_JOINED', 'Tu es déjà inscrit à cette ligue.');
   }
 
 await withWalletMutex(actorUser.id, async () => {
@@ -432,10 +432,10 @@ export const leaveLeagueSeasonOnServer = async (seasons, actor, seasonId) => {
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'registering') throw makeError('REGISTRATION_CLOSED', 'Les inscriptions sont fermees.');
+  if (season.status !== 'registering') throw makeError('REGISTRATION_CLOSED', 'Les inscriptions sont fermées.');
 
   const playerIndex = season.registeredPlayers.findIndex((p) => p.userId === actorUser.id);
-  if (playerIndex === -1) throw makeError('NOT_JOINED', 'Tu n es pas inscrit a cette ligue.');
+  if (playerIndex === -1) throw makeError('NOT_JOINED', 'Tu n’est pas inscrit à cette ligue.');
 
   await withWalletMutex(actorUser.id, async () => {
     await refundLockedEntry(actorUser.id, seasonId, 'Remboursement inscription ligue');
@@ -459,7 +459,7 @@ export const startLeagueQualificationOnServer = (seasons, actor, seasonId) => {
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'registering') throw makeError('MATCH_CLOSED', 'La ligue n est plus en phase d inscription.');
+  if (season.status !== 'registering') throw makeError('MATCH_CLOSED', 'La ligue n’est plus en phase d’inscription.');
   if (season.registeredPlayers.length < 10) {
     throw makeError('NOT_ENOUGH_PLAYERS', 'Il faut au moins 10 joueurs inscrits pour lancer.');
   }
@@ -499,24 +499,24 @@ export const startLeagueQualificationOnServer = (seasons, actor, seasonId) => {
 
 export const startLeagueDayOnServer = (seasons, actor, seasonId, dayKey) => {
   const actorUser = requireActorUser(actor);
-  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut demarrer une journee.');
+  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut démarrer une journée.');
   const nextSeasons = cloneLeagues(seasons);
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n est pas en phase de qualification.');
+  if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n’est pas en phase de qualification.');
   // Anti-pollution de prototype : '__proto__'/'constructor' en dayKeyDonne
   // `qualificationGroups['__proto__']` = Object.prototype (truthy) et l'écriture
   // suivante contaminait TOUT le process Node.
-  if (!DAY_KEYS.includes(dayKey)) throw makeError('INVALID_DAY', 'Journee invalide.');
+  if (!DAY_KEYS.includes(dayKey)) throw makeError('INVALID_DAY', 'Journée invalide.');
   if (!Object.prototype.hasOwnProperty.call(season.qualificationGroups, dayKey) || !season.qualificationGroups[dayKey]) {
-    throw makeError('INVALID_DAY', 'Journee invalide.');
+    throw makeError('INVALID_DAY', 'Journée invalide.');
   }
 
   const daySlot = season.qualificationGroups[dayKey];
-  if (daySlot.status === 'live') throw makeError('MATCH_ALREADY_LIVE', 'Cette journee est deja en cours.');
-  if (daySlot.status === 'finished') throw makeError('MATCH_CLOSED', 'Cette journee est deja terminee.');
-  if (!daySlot.players.length) throw makeError('NO_PLAYERS', 'Aucun joueur assigne a cette journee.');
+  if (daySlot.status === 'live') throw makeError('MATCH_ALREADY_LIVE', 'Cette journée est déjà en cours.');
+  if (daySlot.status === 'finished') throw makeError('MATCH_CLOSED', 'Cette journée est déjà terminée.');
+  if (!daySlot.players.length) throw makeError('NO_PLAYERS', 'Aucun joueur assigné à cette journée.');
 
   daySlot.status = 'live';
   daySlot.matchId = `LM-${seasonId}-${dayKey.toUpperCase()}`;
@@ -532,19 +532,19 @@ export const startLeagueDayOnServer = (seasons, actor, seasonId, dayKey) => {
 
 export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey, results, proofs = undefined) => {
   const actorUser = requireActorUser(actor);
-  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut soumettre les resultats.');
+  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut soumettre les résultats.');
   const nextSeasons = cloneLeagues(seasons);
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n est pas en phase de qualification.');
-  if (!DAY_KEYS.includes(dayKey)) throw makeError('INVALID_DAY', 'Journee invalide.');
+  if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n’est pas en phase de qualification.');
+  if (!DAY_KEYS.includes(dayKey)) throw makeError('INVALID_DAY', 'Journée invalide.');
 
   const daySlot = season.qualificationGroups[dayKey];
-  if (!daySlot) throw makeError('INVALID_DAY', 'Journee invalide.');
-  if (daySlot.status !== 'live') throw makeError('MATCH_CLOSED', 'Cette journee n est pas en cours.');
+  if (!daySlot) throw makeError('INVALID_DAY', 'Journée invalide.');
+  if (daySlot.status !== 'live') throw makeError('MATCH_CLOSED', 'Cette journée n’est pas en cours.');
   if (!Array.isArray(results) || results.length === 0) {
-    throw makeError('INVALID_RESULTS', 'Les resultats sont invalides.');
+    throw makeError('INVALID_RESULTS', 'Les résultats sont invalides.');
   }
 
   const registeredIds = new Set(daySlot.players);
@@ -554,10 +554,10 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
   const seenDayPlacements = new Set();
   for (const r of results) {
     if (!r.userId || !registeredIds.has(r.userId)) {
-      throw makeError('INVALID_RESULTS', 'Un resultats reference un joueur non inscrit a cette journee.');
+      throw makeError('INVALID_RESULTS', 'Un résultat référence un joueur non inscrit à cette journée.');
     }
     if (seenDayUserIds.has(r.userId)) {
-      throw makeError('INVALID_RESULTS', 'Ce joueur apparait plusieurs fois dans les resultats de la journee.');
+      throw makeError('INVALID_RESULTS', 'Ce joueur apparaît plusieurs fois dans les résultats de la journée.');
     }
     seenDayUserIds.add(r.userId);
     // P6 C1 (audit-3) : garde NaN fail-open. `Number('abc') < 1` ET
@@ -568,20 +568,20 @@ export const submitLeagueDayResultsOnServer = (seasons, actor, seasonId, dayKey,
     // finale (:641), ou que les reglages (:1091).
     const placement = Number(r.placement);
     if (!Number.isInteger(placement) || placement < 1 || placement > 100) {
-      throw makeError('INVALID_RESULTS', 'Le classement doit etre un entier entre 1 et 100.');
+      throw makeError('INVALID_RESULTS', 'Le classement doit être un entier entre 1 et 100.');
     }
     // Meme piege sur `kills` : sans garde finie, `kills: "abc"` donnait
     // `points: NaN` -> le classement triait sur un NaN ; sans borne
     // inferieure, `kills: -100` sabotait le total d'un joueur.
     const kills = Number(r.kills || 0);
     if (!Number.isInteger(kills) || kills < 0) {
-      throw makeError('INVALID_RESULTS', 'Les eliminations doivent etre un entier positif ou nul.');
+      throw makeError('INVALID_RESULTS', 'Les éliminations doivent être un entier positif ou nul.');
     }
     // Deux joueurs a la meme place de journee cumulaient les memes points de
     // survie : le classement devenait incoherent. La finale refuse deja cet
     // etat (unicite des places).
     if (seenDayPlacements.has(placement)) {
-      throw makeError('INVALID_RESULTS', 'Deux joueurs ne peuvent pas partager la meme place.');
+      throw makeError('INVALID_RESULTS', 'Deux joueurs ne peuvent pas partager la même place.');
     }
     seenDayPlacements.add(placement);
   }
@@ -643,11 +643,11 @@ export const advanceToFinalOnServer = (seasons, actor, seasonId) => {
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n est pas en phase de qualification.');
+  if (season.status !== 'qualifying') throw makeError('MATCH_CLOSED', 'La ligue n’est pas en phase de qualification.');
 
   const allDaysFinished = DAY_KEYS.every((day) => season.qualificationGroups[day]?.status === 'finished');
   if (!allDaysFinished) {
-    throw makeError('QUALIFICATION_INCOMPLETE', 'Toutes les journees de qualification ne sont pas terminees.');
+    throw makeError('QUALIFICATION_INCOMPLETE', 'Toutes les journées de qualification ne sont pas terminées.');
   }
 
   const topPlayers = season.standings.slice(0, LEAGUE_FINALISTS_COUNT);
@@ -671,14 +671,14 @@ export const advanceToFinalOnServer = (seasons, actor, seasonId) => {
 
 export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId, finalResults, proofs = undefined) => {
   const actorUser = requireActorUser(actor);
-  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut soumettre les resultats de la finale.');
+  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut soumettre les résultats de la finale.');
   const nextSeasons = cloneLeagues(seasons);
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
-  if (season.status !== 'final') throw makeError('MATCH_CLOSED', 'La ligue n est pas en phase de finale.');
+  if (season.status !== 'final') throw makeError('MATCH_CLOSED', 'La ligue n’est pas en phase de finale.');
   if (!Array.isArray(finalResults) || finalResults.length === 0) {
-    throw makeError('INVALID_RESULTS', 'Les resultats de la finale sont invalides.');
+    throw makeError('INVALID_RESULTS', 'Les résultats de la finale sont invalides.');
   }
 
   const finalistIds = new Set(season.finalists.map((f) => f.userId));
@@ -686,12 +686,12 @@ export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId,
   const seenPlacements = new Set();
   for (const r of finalResults) {
     if (!r.userId || !finalistIds.has(r.userId)) {
-      throw makeError('INVALID_RESULTS', 'Un resultats reference un joueur non qualifie pour la finale.');
+      throw makeError('INVALID_RESULTS', 'Un résultat référence un joueur non qualifié pour la finale.');
     }
     // Un même joueur listé deux fois (ex. 1er ET 2e) touchait deux fois le
     // podium = pot sur-distribué. Idem pour deux joueurs à la même place.
     if (seenUserIds.has(r.userId)) {
-      throw makeError('INVALID_RESULTS', 'Ce joueur apparait plusieurs fois dans le classement final.');
+      throw makeError('INVALID_RESULTS', 'Ce joueur apparaît plusieurs fois dans le classement final.');
     }
     seenUserIds.add(r.userId);
     const placement = Number(r.placement);
@@ -699,7 +699,7 @@ export const submitLeagueFinalResultsOnServer = async (seasons, actor, seasonId,
       throw makeError('INVALID_RESULTS', `Le classement doit etre un entier entre 1 et ${LEAGUE_FINAL_TABLE_SIZE}.`);
     }
     if (seenPlacements.has(placement)) {
-      throw makeError('INVALID_RESULTS', 'Deux joueurs ne peuvent pas partager la meme place.');
+      throw makeError('INVALID_RESULTS', 'Deux joueurs ne peuvent pas partager la même place.');
     }
     seenPlacements.add(placement);
   }
@@ -1025,7 +1025,7 @@ export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason 
   const season = findSeason(nextSeasons, seasonId);
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
   if (season.status !== 'registering' && season.status !== 'qualifying') {
-    throw makeError('MATCH_CLOSED', 'Seule une saison pas encore soldee peut etre annulee ainsi.');
+    throw makeError('MATCH_CLOSED', 'Seule une saison pas encore soldée peut être annulée ainsi.');
   }
 
   let refunded = 0;
@@ -1147,19 +1147,19 @@ export const getLeagueLeaderboard = (seasons, seasonId) => {
 
 export const updateLeagueSettingsOnServer = (seasons, actor, seasonId, settings) => {
   const actorUser = requireActorUser(actor);
-  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut modifier les parametres.');
+  if (actorUser.role !== 'admin') throw makeError('FORBIDDEN', 'Seul un administrateur peut modifier les paramètres.');
   const nextSeasons = cloneLeagues(seasons);
   const season = findSeason(nextSeasons, seasonId);
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
   if (season.status !== 'registering') {
-    throw makeError('MATCH_CLOSED', 'On ne peut modifier les parametres qu avant le lancement.');
+    throw makeError('MATCH_CLOSED', 'On ne peut modifier les paramètres qu’avant le lancement.');
   }
 
   if (settings.maxPlayers !== undefined) {
     const newMax = Number(settings.maxPlayers);
     if (newMax < 10 || newMax > 1000) {
-      throw makeError('INVALID_REGISTRATION', 'Le nombre max de joueurs doit etre entre 10 et 1000.');
+      throw makeError('INVALID_REGISTRATION', 'Le nombre max de joueurs doit être entre 10 et 1000.');
     }
     if (newMax < season.registeredPlayers.length) {
       throw makeError('INVALID_REGISTRATION', `Il y a deja ${season.registeredPlayers.length} inscrits. Le max ne peut pas etre inferieur.`);
@@ -1173,7 +1173,7 @@ export const updateLeagueSettingsOnServer = (seasons, actor, seasonId, settings)
     // passait la validation et posait `season.entryFee = NaN`. Le pot comme
     // tous les calculs deversaient alors `NaN` en silence.
     if (!Number.isFinite(newFee) || newFee < 0 || newFee > 500) {
-      throw makeError('INVALID_REGISTRATION', 'Le pass d entree doit etre un nombre entre 0 et 500 ZC.');
+      throw makeError('INVALID_REGISTRATION', 'Le pass d’entrée doit être un nombre entre 0 et 500 ZC.');
     }
     // Le tarif est arrondi a 2 decimales : la cagnotte est un produit
     // (inscrits x tarif) alors que l argent bloque est une somme d arrondis par
@@ -1213,23 +1213,23 @@ export const reassignPlayerOnServer = (seasons, actor, seasonId, userId, fromDay
 
   if (!season) throw makeError('LEAGUE_NOT_FOUND', 'Ligue introuvable.');
   if (season.status !== 'qualifying') {
-    throw makeError('MATCH_CLOSED', 'La reassignment n est possible que pendant la qualification.');
+    throw makeError('MATCH_CLOSED', 'La réassignation n’est possible que pendant la qualification.');
   }
   if (!DAY_KEYS.includes(fromDay) || !DAY_KEYS.includes(toDay)) {
-    throw makeError('INVALID_DAY', 'Journee invalide.');
+    throw makeError('INVALID_DAY', 'Journée invalide.');
   }
   if (fromDay === toDay) throw makeError('INVALID_DAY', 'Les jours source et cible sont identiques.');
 
   const fromSlot = season.qualificationGroups[fromDay];
   const toSlot = season.qualificationGroups[toDay];
-  if (!fromSlot || !toSlot) throw makeError('INVALID_DAY', 'Journee introuvable.');
+  if (!fromSlot || !toSlot) throw makeError('INVALID_DAY', 'Journée introuvable.');
   if (fromSlot.status === 'finished' || toSlot.status === 'finished') {
-    throw makeError('MATCH_CLOSED', 'On ne peut pas reassigner apres la fin d une journee.');
+    throw makeError('MATCH_CLOSED', 'On ne peut pas reassigner après la fin d\'une journée.');
   }
 
   const playerIndex = fromSlot.players.indexOf(userId);
   if (playerIndex === -1) {
-    throw makeError('NOT_JOINED', 'Ce joueur n est pas assigne a cette journee.');
+    throw makeError('NOT_JOINED', 'Ce joueur n’est pas assigné à cette journée.');
   }
 
   fromSlot.players.splice(playerIndex, 1);
@@ -1269,11 +1269,11 @@ export const refundLeaguePlayerOnServer = async (seasons, actor, seasonId, userI
   // traite par `retryPendingLeagueRefunds`. Un remboursement ponctuel ici
   // recalculerait le pot d une saison cloturee, pour rien.
   if (season.status === 'completed' || season.status === 'cancelled') {
-    throw makeError('MATCH_CLOSED', 'Saison deja soldee ou annulee : un remboursement manuel n est pas possible.');
+    throw makeError('MATCH_CLOSED', 'Saison déjà soldée ou annulée : un remboursement manuel n\'est pas possible.');
   }
 
   const playerIndex = season.registeredPlayers.findIndex((p) => p.userId === userId);
-  if (playerIndex === -1) throw makeError('NOT_JOINED', 'Ce joueur n est pas inscrit a cette ligue.');
+  if (playerIndex === -1) throw makeError('NOT_JOINED', 'Ce joueur n’est pas inscrit à cette ligue.');
 
   await withWalletMutex(userId, async () => {
     await refundLockedEntry(userId, seasonId, `Remboursement admin ligue cycle ${season.cycleNumber}`);

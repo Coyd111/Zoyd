@@ -295,7 +295,7 @@ export const refundRejectedWithdrawal = async (userId, montant, refundKey, conte
     throw makeError('INVALID_AMOUNT', 'Le montant du remboursement est invalide.');
   }
   if (!refundKey) {
-    throw makeError('REFUND_KEY_REQUIRED', 'Remboursement sans cle d idempotence : refuse pour eviter un double credit.');
+    throw makeError('REFUND_KEY_REQUIRED', 'Remboursement sans clé d\'idempotence : refusé pour éviter un double crédit.');
   }
 
   const description = context.description || 'Remboursement - retrait rejete par le prestataire';
@@ -446,12 +446,12 @@ export const withdrawFromWallet = async (userId, amount, method = 'Mobile Money'
 export const lockEntryFee = async (userId, amount, matchId) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
-    throw makeError('INVALID_AMOUNT', 'Le montant du pass doit etre superieur a zero.');
+    throw makeError('INVALID_AMOUNT', 'Le montant du pass doit être superieur a zero.');
   }
 
   return (await updateWalletSnapshot(userId, (wallet) => {
     if (wallet.lockedEntries?.[matchId]) {
-      throw makeError('ALREADY_LOCKED', 'Un pass est deja bloque pour ce match.');
+      throw makeError('ALREADY_LOCKED', 'Un pass est déjà bloqué pour ce match.');
     }
 
     const available = roundAmount(wallet.cashBalance + wallet.bonusBalance);
@@ -602,7 +602,7 @@ export const settleMatchLossWallet = async (userId, matchId, description) =>
 export const releaseWalletWinnings = async (userId, amount, matchId, type = 'prize_win', description, options = {}) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount < 0) {
-    throw makeError('INVALID_AMOUNT', 'Le montant des gains ne peut pas etre negatif.');
+    throw makeError('INVALID_AMOUNT', 'Le montant des gains ne peut pas être negatif.');
   }
   // Cle d'idempotence.
   //
@@ -711,7 +711,7 @@ export const debitFromWallet = async (userId, amount, description = 'Debit') => 
 
   return (await updateWalletSnapshot(userId, (wallet) => {
     if (safeAmount > wallet.cashBalance) {
-      throw makeError('INSUFFICIENT_FUNDS', 'Solde insuffisant pour ce debit.');
+      throw makeError('INSUFFICIENT_FUNDS', 'Solde insuffisant pour ce débit.');
     }
     return withTransaction(
       {

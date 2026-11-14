@@ -471,7 +471,7 @@ const applyResultSettlement = async (match, result) => {
     // En l absence d arbitre, le match doit etre REMBOURSE, pas bloque : voir
     // `sweepMatchesWithoutArbiter`.
     if (!match.arbiter?.userId) {
-      throw makeError('ARBITER_REQUIRED', 'Aucun arbitre : le match ne peut pas etre regle.');
+      throw makeError('ARBITER_REQUIRED', 'Aucun arbitre : le match ne peut pas être réglé.');
     }
     //
     // Un match ANNULE ne se solde JAMAIS.
@@ -486,7 +486,7 @@ const applyResultSettlement = async (match, result) => {
     // la soumission directe(reglee immediatement) posent leur statut terminal
     // AVANT d appeler cette fonction, et un garde plus large les casserait.
     if (match.status === 'cancelled') {
-      throw makeError('MATCH_CLOSED', 'Match annule : les mises ont ete rendues, aucun reglement ne peut etre applique.');
+      throw makeError('MATCH_CLOSED', 'Match annulé : les mises ont été rendues, aucun règlement ne peut être appliqué.');
     }
   // Anti-mint : on ne distribue QUE l'argent réellement verrouillé.
   // match.prizePool est calculé sur maxPlayers à la création ; s'il servait de
@@ -757,7 +757,7 @@ export const createMatchOnServer = async (matches, actor, input) => {
     throw makeError('INVALID_MATCH', 'Format invalide : de 1VS1 a 5VS5.');
   }
   if (input.entryFee === undefined || input.entryFee === null || Number(input.entryFee) < 0) {
-    throw makeError('INVALID_AMOUNT', 'Le droit dentree est requis et doit etre positif.');
+    throw makeError('INVALID_AMOUNT', 'Le droit d’entrée est requis et doit être positif.');
   }
   // audit-5 (B-1) : creatorTeam atterrissait TEL QUEL dans players[].team.
   // Au reglement, teamElos[player.team].push crashait sur une valeur hors
@@ -766,7 +766,7 @@ export const createMatchOnServer = async (matches, actor, input) => {
   // legal n'envoie que 0/1 (CreateMatchPage normalise deja).
   const creatorTeam = input.creatorTeam ?? 0;
   if (creatorTeam !== 0 && creatorTeam !== 1) {
-    throw makeError('INVALID_TEAM', 'L\'equipe du createur est limitee a 0 ou 1.');
+    throw makeError('INVALID_TEAM', 'L\'équipe du créateur est limitée à 0 ou 1.');
   }
   // Role du createur (2026-11-09) : `player` (defaut, pass bloque) ou
   // `arbiter` (ne paie aucun pass, occupe la place d'arbitre des la
@@ -864,8 +864,8 @@ export const joinMatchOnServer = async (matches, actor, matchId, preferredTeam) 
   const match = findMatch(nextMatches, matchId);
 
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
-  if (CLOSED_STATUSES.includes(match.status)) throw makeError('MATCH_CLOSED', 'Ce match est deja clos.');
-  if (match.players.some((player) => player.userId === actorUser.id)) throw makeError('ALREADY_JOINED', 'Tu es deja dans ce match.');
+  if (CLOSED_STATUSES.includes(match.status)) throw makeError('MATCH_CLOSED', 'Ce match est déjà clos.');
+  if (match.players.some((player) => player.userId === actorUser.id)) throw makeError('ALREADY_JOINED', 'Tu es déjà dans ce match.');
   if (match.arbiter?.userId === actorUser.id) throw makeError('ROLE_CONFLICT', "Tu occupes deja la place d'arbitre.");
   if ((match.trustScoreMin || 0) > actorUser.trustScore) throw makeError('TRUST_REQUIRED', 'Trust score insuffisant pour ce match.');
 
@@ -873,11 +873,11 @@ export const joinMatchOnServer = async (matches, actor, matchId, preferredTeam) 
   const controllerMismatch =
     match.controllerRestriction !== 'open' && actorUser.controllerType !== match.controllerRestriction;
   if (deviceMismatch || controllerMismatch) {
-    throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton controle ne correspond pas a cette publication.');
+    throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton contrôle ne correspond pas à cette publication.');
   }
 
   const assignedTeam = getPreferredTeam(match, preferredTeam);
-  if (assignedTeam === null) throw makeError('NO_SLOT_AVAILABLE', 'Les deux squads sont deja complets.');
+  if (assignedTeam === null) throw makeError('NO_SLOT_AVAILABLE', 'Les deux squads sont déjà complets.');
 
   await lockEntryFee(actorUser.id, match.entryFee, match.id);
 
@@ -953,11 +953,11 @@ export const checkInMatchOnServer = (matches, actor, matchId) => {
   // ACTIF mais deja arbitre. Un re-check-in ne doit ni muter le match, ni
   // rouvrir la derive de statut vers un etat clos.
   if (CLOSED_STATUSES.includes(match.status) || match.status === 'awaiting_confirmation') {
-    throw makeError('MATCH_CLOSED', 'Ce match est clos ou attend une confirmation de resultat.');
+    throw makeError('MATCH_CLOSED', 'Ce match est clos ou attend une confirmation de résultat.');
   }
 
   const player = match.players.find((entry) => entry.userId === actorUser.id);
-  if (!player) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas a ce match.');
+  if (!player) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas à ce match.');
 
   player.isCheckedIn = true;
   player.checkedInAt = getNow();
@@ -984,12 +984,12 @@ export const toggleReadyOnServer = (matches, actor, matchId) => {
   // DIRECT (hors derive) : sur un match en attente de confirmation, il
   // fabriquait un etat impossible.
   if (CLOSED_STATUSES.includes(match.status) || match.status === 'awaiting_confirmation') {
-    throw makeError('MATCH_CLOSED', 'Ce match est clos ou attend une confirmation de resultat.');
+    throw makeError('MATCH_CLOSED', 'Ce match est clos ou attend une confirmation de résultat.');
   }
 
   const player = match.players.find((entry) => entry.userId === actorUser.id);
-  if (!player) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas a ce match.');
-  if (!player.isCheckedIn) throw makeError('CHECKIN_REQUIRED', "Confirme d'abord ta presence.");
+  if (!player) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas à ce match.');
+  if (!player.isCheckedIn) throw makeError('CHECKIN_REQUIRED', "Confirme d'abord ta présence.");
 
   player.isReady = !player.isReady;
 
@@ -1049,7 +1049,7 @@ export const setRoomDetailsOnServer = (matches, actor, matchId, roomName, roomPa
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
   if (match.arbiter?.userId !== actorUser.id && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', "Seul l'arbitre confirme peut publier la salle.");
+    throw makeError('FORBIDDEN', "Seul l'arbitre confirmé peut publier la salle.");
   }
 
   const safeRoomName = sanitizeText(`${roomName}`.trim().slice(0, 100));
@@ -1061,7 +1061,7 @@ export const setRoomDetailsOnServer = (matches, actor, matchId, roomName, roomPa
 
   const minutesUntilMatch = (scheduledAt - Date.now()) / 60000;
   if (minutesUntilMatch > 10) {
-    throw makeError('ROOM_TOO_EARLY', 'La salle ne peut etre partagee que 10 minutes avant le match.');
+    throw makeError('ROOM_TOO_EARLY', 'La salle ne peut être partagée que 10 minutes avant le match.');
   }
 
   match.roomName = safeRoomName;
@@ -1090,7 +1090,7 @@ export const launchMatchOnServer = (matches, actor, matchId) => {
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
   if (match.arbiter?.userId !== actorUser.id && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul l arbitre peut lancer ce match.');
+    throw makeError('FORBIDDEN', 'Seul l\'arbitre peut lancer ce match.');
   }
 
   const canLaunch =
@@ -1101,7 +1101,7 @@ export const launchMatchOnServer = (matches, actor, matchId) => {
     match.players.every((player) => player.isCheckedIn && player.isReady);
 
   if (!canLaunch) {
-    throw makeError('MATCH_NOT_READY', 'Tous les joueurs doivent etre prets avant le lancement.');
+    throw makeError('MATCH_NOT_READY', 'Tous les joueurs doivent être prets avant le lancement.');
   }
 
   match.status = 'in_progress';
@@ -1129,7 +1129,7 @@ export const submitMatchResultOnServer = async (matches, actor, matchId, resultP
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
 const isArbiter = match.arbiter?.userId === actorUser.id;
 
-  if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a deja un resultat valide.');
+  if (match.result) throw makeError('RESULT_ALREADY_EXISTS', 'Ce match a déjà un résultat valide.');
   // Pas de résultat sur un match clôturé : les mises ont déjà été remboursées
   // (cancel) ou consommées — en créer un ici minterait des ZC sans cagnotte.
   if (CLOSED_STATUSES.includes(match.status)) {
@@ -1151,11 +1151,11 @@ const isArbiter = match.arbiter?.userId === actorUser.id;
 //
 // Seule condition pour valider : etre l arbitre, ou etre admin en recours.
 if (!isArbiter && actorUser.role !== 'admin') {
-  throw makeError('ARBITER_REQUIRED', 'Seul l arbitre peut valider le score.');
+  throw makeError('ARBITER_REQUIRED', 'Seul l\'arbitre peut valider le score.');
 }
 
 if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
-    throw makeError('INVALID_RESULTS', 'Equipe gagnante invalide.');
+    throw makeError('INVALID_RESULTS', 'Équipe gagnante invalide.');
   }
   // Roster complet + match lancé, sauf override admin (award/moderation).
   // Source de vérité = le rôle RÉEL de l'acteur. `resultPayload.submittedBy`
@@ -1165,7 +1165,7 @@ if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
   const isAdminOverride = actorUser.role === 'admin';
   if (!isAdminOverride) {
     if (match.status !== 'in_progress') {
-      throw makeError('MATCH_NOT_LIVE', 'Le match doit etre lance avant de valider un score.');
+      throw makeError('MATCH_NOT_LIVE', 'Le match doit être lancé avant de valider un score.');
     }
     if (match.players.length !== match.maxPlayers) {
       throw makeError('NOT_ENOUGH_PLAYERS', `Match incomplet (${match.players.length}/${match.maxPlayers} joueurs).`);
@@ -1193,13 +1193,13 @@ if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
   if (requiresMandatoryProofs &&
     (!normalizedProofs || normalizedProofs.scoreboard.length === 0 || normalizedProofs.finalResult.length === 0)
   ) {
-    throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un ecran final avant de valider le score.');
+    throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un écran final avant de valider le score.');
   }
   // Une seule image ne peut pas servir de scoreboard ET d ecran final :
   // sans distinctness, une capture unique (ou ses doublons, deja
   // dedupliques) validait les deux preuves.
   if (requiresMandatoryProofs && !hasDistinctProofs(normalizedProofs)) {
-    throw makeError('PROOFS_REQUIRED', 'Le scoreboard et l ecran final doivent etre deux preuves distinctes.');
+    throw makeError('PROOFS_REQUIRED', 'Le scoreboard et l’écran final doivent être deux preuves distinctes.');
   }
 
   const fullResult = {
@@ -1318,18 +1318,18 @@ export const confirmMatchResultOnServer = async (matches, actor, matchId) => {
   const nextMatches = cloneMatches(matches);
   const match = findMatch(nextMatches, matchId);
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
-  if (!match.result) throw makeError('RESULT_NOT_FOUND', 'Aucun resultat a confirmer.');
+  if (!match.result) throw makeError('RESULT_NOT_FOUND', 'Aucun résultat à confirmer.');
   if (!match.players.some((player) => player.userId === actorUser.id)) {
-    throw makeError('FORBIDDEN', 'Seuls les joueurs du match peuvent confirmer ce resultat.');
+    throw makeError('FORBIDDEN', 'Seuls les joueurs du match peuvent confirmer ce résultat.');
   }
   if (match.status !== 'awaiting_confirmation') {
     throw makeError('ALREADY_CONFIRMED', 'Ce match n attend plus de confirmation.');
   }
   if (match.result.confirmedByTeams.includes(actorUser.id)) {
-    throw makeError('ALREADY_CONFIRMED', 'Tu as deja confirme ce resultat.');
+    throw makeError('ALREADY_CONFIRMED', 'Tu as déjà confirmé ce résultat.');
   }
   if (match.result.payoutDistributed !== 'pending') {
-    throw makeError('ALREADY_CONFIRMED', 'Ce resultat est deja regle.');
+    throw makeError('ALREADY_CONFIRMED', 'Ce résultat est déjà réglé.');
   }
 
   match.result.confirmedByTeams.push(actorUser.id);
@@ -1466,7 +1466,7 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
     throw makeError('DISPUTE_INCOMPLETE', 'Ajoute une raison claire et au moins une preuve.');
   }
   if (match.disputes.some((dispute) => dispute.status === 'open' || dispute.status === 'under_review')) {
-    throw makeError('DISPUTE_ALREADY_OPEN', 'Un litige est deja actif sur ce match.');
+    throw makeError('DISPUTE_ALREADY_OPEN', 'Un litige est déjà actif sur ce match.');
   }
 
   const dispute = {
@@ -1519,7 +1519,7 @@ export const openDisputeOnServer = (matches, actor, matchId, payload) => {
 export const resolveDisputeOnServer = async (matches, actor, matchId, resolution, options = {}) => {
   const actorUser = requireActorUser(actor);
   if (actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul un admin peut cloturer un litige.');
+    throw makeError('FORBIDDEN', 'Seul un admin peut clôturer un litige.');
   }
 
   const nextMatches = cloneMatches(matches);
@@ -1534,10 +1534,10 @@ export const resolveDisputeOnServer = async (matches, actor, matchId, resolution
   const hasUnpaidResult = !!match.result && match.result.payoutDistributed !== true;
   const action = options.action || (hasUnpaidResult ? 'settle' : 'none');
   if (action !== 'none' && action !== 'settle' && action !== 'refund') {
-    throw makeError('INVALID_RESULTS', 'Action de resolution invalide (settle ou refund).');
+    throw makeError('INVALID_RESULTS', 'Action de résolution invalide (settle ou refund).');
   }
   if ((action === 'settle' || action === 'refund') && match.result?.payoutDistributed === true) {
-    throw makeError('MATCH_CLOSED', 'Gains deja distribues : rectification manuelle necessaire.');
+    throw makeError('MATCH_CLOSED', 'Gains déjà distribués : rectification manuelle nécessaire.');
   }
 
   if (action === 'settle' && match.result) {
@@ -1677,12 +1677,12 @@ export const leaveMatchOnServer = async (matches, actor, matchId) => {
   const match = findMatch(nextMatches, matchId);
 
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
-  if (CLOSED_STATUSES.includes(match.status)) throw makeError('MATCH_CLOSED', 'Ce match est deja clos.');
+  if (CLOSED_STATUSES.includes(match.status)) throw makeError('MATCH_CLOSED', 'Ce match est déjà clos.');
   // Verrou de sortie : un resultat pose ou un lancement engage les mises,
   // aucun joueur ne peut se retirer apres coup. `in_progress` porte toujours
   // un `startedAt` : couvert par la meme garde.
   if (match.result || match.startedAt) {
-    throw makeError('MATCH_LAUNCHED', 'Le match est lance : la sortie volontaire n est plus possible.');
+    throw makeError('MATCH_LAUNCHED', 'Le match est lancé : la sortie volontaire n’est plus possible.');
   }
   // Un litige ouvert appartient a l admin : pas de sortie en pietinant son
   // traitement.
@@ -1690,9 +1690,9 @@ export const leaveMatchOnServer = async (matches, actor, matchId) => {
     throw makeError('MATCH_DISPUTED', 'Un litige est ouvert : la sortie volontaire passe par son arbitrage.');
   }
   const playerIndex = match.players.findIndex((player) => player.userId === actorUser.id);
-  if (playerIndex === -1) throw makeError('NOT_IN_MATCH', 'Tu n es pas inscrit dans ce match.');
+  if (playerIndex === -1) throw makeError('NOT_IN_MATCH', 'Tu n\'es pas inscrit dans ce match.');
   if (match.creatorId === actorUser.id) {
-    throw makeError('CREATOR_CANNOT_LEAVE', 'Tu es le createur : annule le match plutot que de le quitter.');
+    throw makeError('CREATOR_CANNOT_LEAVE', 'Tu es le créateur : annule le match plutôt que de le quitter.');
   }
 
   await refundLockedEntry(actorUser.id, match.id, `Sortie volontaire du match ${match.id}`);
@@ -1726,14 +1726,14 @@ export const cancelMatchSelfOnServer = async (matches, actor, matchId) => {
 
   if (!match) throw makeError('MATCH_NOT_FOUND', 'Match introuvable.');
   if (match.creatorId !== actorUser.id) {
-    throw makeError('FORBIDDEN', 'Seul le createur du match peut l annuler de cette facon.');
+    throw makeError('FORBIDDEN', 'Seul le créateur du match peut l\'annuler de cette façon.');
   }
   // Anti-double-remboursement : un match deja solde ne se recancel pas.
   if (match.result?.payoutDistributed || CLOSED_STATUSES.includes(match.status)) {
-    throw makeError('MATCH_CLOSED', 'Match deja clos : plus rien a annuler.');
+    throw makeError('MATCH_CLOSED', 'Match déjà clos : plus rien à annuler.');
   }
   if ((match.disputes || []).some((dispute) => dispute.status === 'open' || dispute.status === 'under_review')) {
-    throw makeError('MATCH_DISPUTED', 'Un litige est ouvert : seule l administration peut trancher.');
+    throw makeError('MATCH_DISPUTED', 'Un litige est ouvert : seule l\'administration peut trancher.');
   }
   // Annulation createur ETENDUE (2026-11-09) : tant que le match n'est
   // pas lance et sans resultat, le createur peut annuler MEME si des
@@ -1744,11 +1744,11 @@ export const cancelMatchSelfOnServer = async (matches, actor, matchId) => {
   // Garde conservee : lance / resultat / litige ouvert restent associes a
   // la moderation (le coté money a deja tourne ou est conteste).
   if (match.startedAt) {
-    throw makeError('MATCH_ALREADY_STARTED', 'Le match est deja lance : l annulation n est plus possible.');
+    throw makeError('MATCH_ALREADY_STARTED', 'Le match est déjà lancé : l’annulation n’est plus possible.');
   }
   const echecs = await refundMatchPlayers(match, 'Annulation volontaire du match');
   if (echecs.length > 0) {
-    throw makeError('REFUND_FAILED', `Remboursement incomplet (${echecs.length} joueur(s) en echec) : le match reste ouvert.`);
+    throw makeError('REFUND_FAILED', `Remboursement incomplet (${echecs.length} joueur(s) en échec) : le match reste ouvert.`);
   }
 
   match.status = 'cancelled';
@@ -1790,7 +1790,7 @@ export const cancelMatchOnServer = async (matches, actor, matchId, reason = 'Mat
   // passes sont idempotents (rejoues sans double-credit).
   const echecs = await refundMatchPlayers(match, 'Remboursement moderation');
   if (echecs.length > 0) {
-    throw makeError('REFUND_FAILED', `Remboursement incomplet (${echecs.length} joueur(s) en echec) : le match reste ouvert.`);
+    throw makeError('REFUND_FAILED', `Remboursement incomplet (${echecs.length} joueur(s) en échec) : le match reste ouvert.`);
   }
 
   match.disputes = resolveOpenDisputes(match, reason);
@@ -2125,7 +2125,7 @@ export const addEvidenceToDisputeOnServer = (matches, actor, matchId, newEvidenc
     match.arbiter?.userId === actorUser.id;
 
   if (!isParticipant && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul un joueur ou l arbitre peut ajouter des preuves.');
+    throw makeError('FORBIDDEN', 'Seul un joueur ou l\'arbitre peut ajouter des preuves.');
   }
 
   const activeDispute =
@@ -2169,7 +2169,7 @@ export const escalateDisputeOnServer = (matches, actor, matchId) => {
 
   const isArbiter = match.arbiter?.userId === actorUser.id;
   if (!isArbiter && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul l arbitre peut escalader un litige.');
+    throw makeError('FORBIDDEN', 'Seul l\'arbitre peut escalader un litige.');
   }
 
   const activeDispute =
@@ -2181,7 +2181,7 @@ export const escalateDisputeOnServer = (matches, actor, matchId) => {
   }
 
   if ((activeDispute.level || 1) >= 2) {
-    throw makeError('DISPUTE_ALREADY_ESCALATED', 'Ce litige est deja au niveau admin.');
+    throw makeError('DISPUTE_ALREADY_ESCALATED', 'Ce litige est déjà au niveau admin.');
   }
 
   activeDispute.level = 2;

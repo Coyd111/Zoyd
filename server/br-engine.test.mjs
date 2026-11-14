@@ -120,7 +120,7 @@ describe('br-engine - validateBrPayout', () => {
   it('refuse des parts croissantes (5e paye plus que le 1er)', () => {
     expect(() => brEngine.validateBrPayout({
       first: 0.1, second: 0.15, third: 0.2, fourth: 0.25, fifth: 0.27, arbiterRate: 0.03,
-    })).toThrow(/decroissantes/);
+    })).toThrow(/décroissantes/);
   });
 
   it('refuse une part negative', () => {
@@ -402,7 +402,7 @@ describe('br-engine - joinBrLobbyOnServer', () => {
   it('refuse une double inscription', async () => {
     const { lobbies } = await brEngine.joinBrLobbyOnServer([lobby], player('p1'), lobby.id);
     await expect(brEngine.joinBrLobbyOnServer(lobbies, player('p1'), lobby.id))
-      .rejects.toThrow(/deja inscrit/);
+      .rejects.toThrow(/déjà inscrit/);
   });
 
   it('refuse un salon plein', async () => {
@@ -591,7 +591,7 @@ describe('br-engine - startBrLobbyOnServer', () => {
 
   it('refuse de demarrer sans aucun present', () => {
     const lobby = lobbyWith(10, 0);
-    expect(() => brEngine.startBrLobbyOnServer([lobby], admin, lobby.id)).toThrow(/Aucun joueur present/);
+    expect(() => brEngine.startBrLobbyOnServer([lobby], admin, lobby.id)).toThrow(/Aucun joueur présent/);
   });
 
   it('refuse de demarrer avec moins de 5 presents (podium incomplet)', () => {
@@ -665,14 +665,14 @@ describe('br-engine - eliminateBrPlayerOnServer', () => {
     let lobby = liveLobby();
     lobby = brEngine.eliminateBrPlayerOnServer([lobby], admin, lobby.id, 'p1').lobby;
     expect(() => brEngine.eliminateBrPlayerOnServer([lobby], admin, lobby.id, 'p0', { killerUserId: 'p1' }))
-      .toThrow(/elimine ne peut pas eliminer/);
+      .toThrow(/éliminé ne peut pas éliminer/);
   });
 
   it('refuse une double elimination', () => {
     let lobby = liveLobby();
     lobby = brEngine.eliminateBrPlayerOnServer([lobby], admin, lobby.id, 'p0').lobby;
     expect(() => brEngine.eliminateBrPlayerOnServer([lobby], admin, lobby.id, 'p0'))
-      .toThrow(/deja elimine/);
+      .toThrow(/déjà éliminé/);
   });
 
   it('refuse d\'eliminer le dernier survivant', () => {
@@ -681,7 +681,7 @@ describe('br-engine - eliminateBrPlayerOnServer', () => {
       lobby = brEngine.eliminateBrPlayerOnServer([lobby], admin, lobby.id, id).lobby;
     }
     expect(() => brEngine.eliminateBrPlayerOnServer([lobby], admin, lobby.id, 'p4'))
-      .toThrow(/terminee/);
+      .toThrow(/terminée/);
   });
 });
 
@@ -964,7 +964,7 @@ describe('br-engine - settleBrLobbyOnServer (reglement)', () => {
     // Relancer le reglement doit echouer : pas de second versement.
     await expect(
       brEngine.settleBrLobbyOnServer(res.lobbies, admin, lobby.id),
-    ).rejects.toThrow(/deja reglee/);
+    ).rejects.toThrow(/déjà réglée/);
   });
 
   it('ne paie pas un joueur deja servi (retry partiel)', async () => {

@@ -339,7 +339,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       respondJson(res, 200, { ok, persistence: health });
     } catch (err) {
       log.error('Admin reload failed', { adminId: session.user.id, error: err.message });
-      respondJson(res, 500, { ok: false, error: 'Erreur lors du rechargement des donnees.', code: 'RELOAD_ERROR' });
+      respondJson(res, 500, { ok: false, error: 'Erreur lors du rechargement des données.', code: 'RELOAD_ERROR' });
     }
     return true;
   }
@@ -387,7 +387,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     if (req.method !== 'GET') {
       respondJson(res, 405, {
         ok: false,
-        error: 'Methode non autorisee : cet historique est en lecture seule.',
+        error: 'Méthode non autorisée : cet historique est en lecture seule.',
         code: 'METHOD_NOT_ALLOWED',
       }, req);
       return true;
@@ -438,7 +438,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       }, req);
     } catch (err) {
       log.error('Admin cron leases failed', { adminId: session.user.id, error: err.message });
-      respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture de l historique des bails.', code: 'CRON_LEASES_ERROR' }, req);
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture de l’historique des bails.', code: 'CRON_LEASES_ERROR' }, req);
     }
     return true;
   }
@@ -516,7 +516,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       if (!result.ok) {
         respondJson(res, 503, {
           ok: false,
-          error: 'Signalements indisponibles, reessaie dans un instant.',
+          error: 'Signalements indisponibles, réessaie dans un instant.',
           code: 'SERVER_BUSY',
         }, req);
         return true;
@@ -560,7 +560,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       if (!isSanctionKind(resolution)) {
         respondJson(res, 400, {
           ok: false,
-          error: 'Resolution inconnue.',
+          error: 'Résolution inconnue.',
           code: 'INVALID_RESOLUTION',
         }, req);
         return true;
@@ -660,7 +660,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         // reecrire une trace de levee qui n existe pas.
         respondJson(res, 404, {
           ok: false,
-          error: 'Sanction introuvable ou deja levee.',
+          error: 'Sanction introuvable ou déjà levée.',
           code: 'SANCTION_NOT_FOUND',
         }, req);
         return true;
@@ -669,7 +669,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       respondJson(res, 200, { ok: true, sanctionId, revokedBy: session.user.id, revokedAt: getNow() }, req);
     } catch (err) {
       log.error('Admin revoke sanction failed', { adminId: session.user.id, error: err.message });
-      respondJson(res, 500, { ok: false, error: 'Erreur lors de la levee de la sanction.', code: 'REVOKE_ERROR' }, req);
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de la levée de la sanction.', code: 'REVOKE_ERROR' }, req);
     }
     return true;
   }
@@ -700,7 +700,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       if (!result.ok) {
         respondJson(res, 503, {
           ok: false,
-          error: 'Export indisponible, reessaie dans un instant.',
+          error: 'Export indisponible, réessaie dans un instant.',
           code: 'SERVER_BUSY',
         }, req);
         return true;
@@ -710,7 +710,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         // Base absente : le CSV serait vide et se lirait comme « aucun match ».
         respondJson(res, 503, {
           ok: false,
-          error: 'Aucune base configuree : rien a exporter. Historique indisponible, pas vide.',
+          error: 'Aucune base configurée : rien à exporter. Historique indisponible, pas vide.',
           code: 'SERVER_BUSY',
         }, req);
         return true;
@@ -740,7 +740,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       log.info('Admin export historique matchs', { adminId: session.user.id, total: result.total, format });
     } catch (err) {
       log.error('Admin export matches failed', { adminId: session.user.id, error: err.message });
-      respondJson(res, 500, { ok: false, error: 'Erreur lors de l export.', code: 'EXPORT_ERROR' }, req);
+      respondJson(res, 500, { ok: false, error: 'Erreur lors de l’export.', code: 'EXPORT_ERROR' }, req);
     }
     return true;
   }
@@ -795,7 +795,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     if (existing?.enabled) {
       respondJson(res, 409, {
         ok: false,
-        error: '2FA deja activee. Verifie un code TOTP pour la re-enroller.',
+        error: '2FA déjà activée. Vérifie un code TOTP pour la re-enroller.',
         code: '2FA_ALREADY_ENABLED',
       });
       return true;
@@ -824,7 +824,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
         });
         respondJson(res, 503, {
           ok: false,
-          error: 'Configuration 2FA indisponible : reessaie dans un instant.',
+          error: 'Configuration 2FA indisponible : réessaie dans un instant.',
           code: '2FA_STORE_UNAVAILABLE',
         }, req);
         return true;
@@ -832,7 +832,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
       if (persisted.status === 'present' && persisted.enabled) {
         respondJson(res, 409, {
           ok: false,
-          error: '2FA deja activee. Verifie un code TOTP pour la re-enroller.',
+          error: '2FA déjà activée. Vérifie un code TOTP pour la re-enroller.',
           code: '2FA_ALREADY_ENABLED',
         }, req);
         return true;
@@ -867,7 +867,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
       return true;
     }
     if (totpEntry.enabled) {
-      respondJson(res, 400, { ok: false, error: '2FA deja activee.', code: 'MFA_ALREADY_ACTIVE' });
+      respondJson(res, 400, { ok: false, error: '2FA déjà activée.', code: 'MFA_ALREADY_ACTIVE' });
       return true;
     }
     if (!verifyTotp(totpEntry.secret, code)) {
@@ -909,7 +909,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     const lockKey = session.user.id;
     const lock = await getMfaLockState(lockKey);
     if (lock.lockedUntil && Date.now() < lock.lockedUntil) {
-      respondJson(res, 429, { ok: false, error: 'Trop d\'essais 2FA. Reessayez dans 5 minutes.', code: 'ACCOUNT_LOCKED' });
+      respondJson(res, 429, { ok: false, error: 'Trop d\'essais 2FA. Réessayez dans 5 minutes.', code: 'ACCOUNT_LOCKED' });
       return true;
     }
     const body = await parseRequestBody(req).catch(() => ({}));
@@ -920,7 +920,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     }
     const totpEntry = adminTotpSecrets.get(session.user.id);
     if (!totpEntry?.enabled) {
-      respondJson(res, 400, { ok: false, error: '2FA non active pour ce compte admin.', code: 'MFA_NOT_ACTIVE' });
+      respondJson(res, 400, { ok: false, error: '2FA non activée pour ce compte admin.', code: 'MFA_NOT_ACTIVE' });
       return true;
     }
     if (!verifyTotp(totpEntry.secret, code)) {

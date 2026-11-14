@@ -169,7 +169,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/deposit') {
   try {
     body = await parseRequestBody(req);
   } catch {
-    respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
+    respondJson(res, 400, { ok: false, error: 'Corps de requête invalide.', code: 'INVALID_JSON' });
     return true;
   }
   if (typeof body.amount !== 'number' || !Number.isFinite(body.amount) || body.amount <= 0 || body.amount > 5_000_000) {
@@ -202,7 +202,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/withdraw') {
   try {
     body = await parseRequestBody(req);
   } catch {
-    respondJson(res, 400, { ok: false, error: 'Corps de requete invalide.', code: 'INVALID_JSON' });
+    respondJson(res, 400, { ok: false, error: 'Corps de requête invalide.', code: 'INVALID_JSON' });
     return true;
   }
   // Montants en ZC : le minimum, et le plafond REEL d'un retrait unique
@@ -294,7 +294,7 @@ await withWalletMutex(session.user.id, async () => {
           if (priorTx && !priorTx.metadata?.payoutId && priorTx.metadata?.payoutStatus !== 'failed') {
             respondJson(res, 409, {
               ok: false,
-              error: 'Un retrait avec cette cle est deja engage et son transfert n\'est pas confirme. Contacte le support avant de reessayer.',
+              error: 'Un retrait avec cette clé est déjà engage et son transfert n\'est pas confirmé. Contacte le support avant de reessayer.',
               code: 'PAYOUT_PENDING_REVIEW',
               idempotencyKey: cleanKey,
             }, req);
@@ -566,7 +566,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
     if (error && typeof error.code === 'string' && error.code !== 'UNKNOWN_ERROR') {
       respondMappedError(res, error);
     } else {
-      respondJson(res, 400, { ok: false, error: 'Verification du paiement echouee.', code: 'PAYMENT_FAILED' });
+      respondJson(res, 400, { ok: false, error: 'Vérification du paiement échouée.', code: 'PAYMENT_FAILED' });
     }
   }
   return true;

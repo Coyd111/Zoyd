@@ -246,7 +246,7 @@ if (vapidKeys) {
 
 const handleRequest = async (req, res) => {
   if (!req.url) {
-    respondJson(res, 404, { ok: false, error: 'Not found', code: 'NOT_FOUND' });
+    respondJson(res, 404, { ok: false, error: 'Introuvable', code: 'NOT_FOUND' });
     return;
   }
 
@@ -276,7 +276,7 @@ const handleRequest = async (req, res) => {
     const origin = req.headers.origin;
     if (origin && !ALLOWED_ORIGINS.includes(origin)) {
       log.warn('CSRF origin rejected', { origin, path: pathname });
-      respondJson(res, 403, { ok: false, error: 'Origine non autorisee.', code: 'CSRF_ORIGIN_REJECTED' }, req);
+      respondJson(res, 403, { ok: false, error: 'Origine non autorisée.', code: 'CSRF_ORIGIN_REJECTED' }, req);
       return;
     }
     // text/plain échoue ici : c'est ce qui bloque le CSRF "simple request".
@@ -476,7 +476,7 @@ io.on('connection', (socket) => {
     const channel = getChatChannelById(channelId);
     const user = getUserById(session.userId);
     if (!canAccessChatChannel(channel, user)) {
-      socket.emit('server:error', { error: 'Access denied to this channel.' });
+      socket.emit('server:error', { error: 'Accès refusé à ce canal.' });
       return;
     }
 
@@ -505,7 +505,7 @@ io.on('connection', (socket) => {
     const channel = getChatChannelById(channelId);
     const user = getUserById(session.userId);
     if (!canAccessChatChannel(channel, user)) {
-      socket.emit('server:error', { error: 'Access denied to this channel.' });
+      socket.emit('server:error', { error: 'Accès refusé à ce canal.' });
       return;
     }
 

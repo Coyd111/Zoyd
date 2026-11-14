@@ -295,7 +295,7 @@ getDynamicSkuInfo(shopLang: $shopLang, serverId: $serverId, lvtId: $lvtId, userI
     });
 
     if (!upstream.ok) {
-      respondJson(res, 502, { ok: false, error: 'Upstream API error.', code: 'UPSTREAM_ERROR' }, req);
+      respondJson(res, 502, { ok: false, error: 'Erreur de l’API externe.', code: 'UPSTREAM_ERROR' }, req);
       return true;
     }
 
@@ -338,7 +338,7 @@ getDynamicSkuInfo(shopLang: $shopLang, serverId: $serverId, lvtId: $lvtId, userI
     }, req);
   } catch (err) {
     log.error('codm store proxy error', { message: err.message });
-    respondJson(res, 500, { ok: false, error: 'Failed to fetch store data.', code: 'STORE_PROXY_ERROR' }, req);
+    respondJson(res, 500, { ok: false, error: 'Impossible de récupérer les données de la boutique.', code: 'STORE_PROXY_ERROR' }, req);
   }
   return true;
 }
@@ -378,7 +378,7 @@ if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
     });
 
     if (!upstream.ok) {
-      respondJson(res, 502, { ok: false, error: 'Upstream API error.', code: 'UPSTREAM_ERROR' }, req);
+      respondJson(res, 502, { ok: false, error: 'Erreur de l’API externe.', code: 'UPSTREAM_ERROR' }, req);
       return true;
     }
 
@@ -446,7 +446,7 @@ if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
     }, req);
   } catch (err) {
     log.error('codm player proxy error', { message: err.message });
-    respondJson(res, 500, { ok: false, error: 'Failed to fetch player data.', code: 'PLAYER_PROXY_ERROR' }, req);
+    respondJson(res, 500, { ok: false, error: 'Impossible de récupérer les données du joueur.', code: 'PLAYER_PROXY_ERROR' }, req);
   }
   return true;
 }
@@ -460,7 +460,7 @@ if (req.method === 'GET' && pathname === '/metrics') {
   const authHeader = req.headers.authorization || '';
   const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!secretsEqual(provided, metricsToken)) {
-    respondJson(res, 401, { ok: false, error: 'Unauthorized.', code: 'UNAUTHORIZED' });
+    respondJson(res, 401, { ok: false, error: 'Non autorisé.', code: 'UNAUTHORIZED' });
     return true;
   }
   setGauge('zoyd_channels', channels.size);

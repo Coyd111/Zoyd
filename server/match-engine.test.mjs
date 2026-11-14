@@ -669,7 +669,7 @@ describe('match-engine - submitMatchResultOnServer idempotency', () => {
         scores: { team0: 1, team1: 0 },
         submittedBy: 'admin-dashboard',
       })
-    ).rejects.toThrow(/lance avant de valider/i);
+    ).rejects.toThrow(/lancé avant de valider/i);
 
     // Le role admin RÉEL débloque bien l'override (command center).
     const ok = await matchEngine.submitMatchResultOnServer([match], { id: 'root' }, 'M-FORGE', {
@@ -920,7 +920,7 @@ describe('match-engine - confirmation obligatoire des deux equipes', () => {
     const submitted = await submit(makeMatch());
     const first = await matchEngine.confirmMatchResultOnServer(submitted.matches, { id: 'a' }, 'M-C');
     await expect(matchEngine.confirmMatchResultOnServer(first.matches, { id: 'a' }, 'M-C'))
-      .rejects.toThrow(/deja confirme/);
+      .rejects.toThrow(/déjà confirmé/);
   });
 
   it('le perdant peut ouvrir un litige PENDANT la fenetre de confirmation', async () => {
@@ -1075,7 +1075,7 @@ describe('match-engine - confirmation obligatoire des deux equipes', () => {
     const done = await matchEngine.confirmMatchResultOnServer(first.matches, { id: 'b' }, 'M-C');
     await expect(matchEngine.resolveDisputeOnServer(
       done.matches, { id: 'root' }, 'M-C', 'trop tard', { action: 'refund' },
-    )).rejects.toThrow(/deja distribues/);
+    )).rejects.toThrow(/déjà distribués/);
   });
 
   // P3 C1 (audit-3) : la derive de statut. Une action de jeu ordinaire

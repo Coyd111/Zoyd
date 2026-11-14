@@ -1590,12 +1590,12 @@ const ensureUniqueRegistration = ({ pseudo, email, phone, gameId }) => {
   const gk = normalizeGameIdKey(gameId);
 
   // O(1) lookups via password hash index (keys are normalized identifiers)
-  if (memoryPasswordHashes.has(pk)) throw makeError('DUPLICATE_PSEUDO', 'Ce pseudo CODM est deja utilise sur ZOYD.');
-  if (memoryPasswordHashes.has(ek)) throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
-  if (memoryPasswordHashes.has(phk)) throw makeError('DUPLICATE_PHONE', 'Ce numero est deja rattache a un compte ZOYD.');
+  if (memoryPasswordHashes.has(pk)) throw makeError('DUPLICATE_PSEUDO', 'Ce pseudo CODM est déjà utilisé sur ZOYD.');
+  if (memoryPasswordHashes.has(ek)) throw makeError('DUPLICATE_EMAIL', 'Cet email est déjà rattaché à un compte ZOYD.');
+  if (memoryPasswordHashes.has(phk)) throw makeError('DUPLICATE_PHONE', 'Ce numéro est déjà rattaché à un compte ZOYD.');
 
   // gameId check via O(1) index
-  if (gameIdKeys.has(gk)) throw makeError('DUPLICATE_GAME_ID', 'Cet UID CODM est deja verifie sur la plateforme.');
+  if (gameIdKeys.has(gk)) throw makeError('DUPLICATE_GAME_ID', 'Cet UID CODM est déjà vérifié sur la plateforme.');
 };
 
 /**
@@ -1610,19 +1610,19 @@ export const checkProfileUniqueness = (userId, { pseudo, email, phone } = {}) =>
     return entry && entry[0] !== userId;
   };
   if (typeof pseudo === 'string' && pseudo.trim() && ownedByOther(normalizePseudoKey(pseudo))) {
-    throw makeError('DUPLICATE_PSEUDO', 'Ce pseudo est deja utilise sur ZOYD.');
+    throw makeError('DUPLICATE_PSEUDO', 'Ce pseudo est déjà utilisé sur ZOYD.');
   }
   if (typeof email === 'string' && email.trim() && ownedByOther(normalizeEmailKey(email))) {
-    throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
+    throw makeError('DUPLICATE_EMAIL', 'Cet email est déjà rattaché à un compte ZOYD.');
   }
   if (typeof phone === 'string' && phone.trim() && ownedByOther(normalizePhoneKey(phone))) {
-    throw makeError('DUPLICATE_PHONE', 'Ce numero est deja rattache a un compte ZOYD.');
+    throw makeError('DUPLICATE_PHONE', 'Ce numéro est déjà rattaché à un compte ZOYD.');
   }
 };
 
 const insertUser = async ({ password, role = 'player', ...input }) => {
   if (!input.pseudo?.trim() || !input.email?.trim() || !input.phone?.trim() || !input.gameId?.trim()) {
-    throw makeError('INVALID_REGISTRATION', 'Informations joueur incompletes.');
+    throw makeError('INVALID_REGISTRATION', 'Informations joueur incomplètes.');
   }
   // Le telephone doit etre un numero que ZOYD pourra PAYER un jour.
   // Avant, seule la non-vacuite etait verifiee : `+2290165240654` (dix
@@ -1985,7 +1985,7 @@ export const updateUserAccount = async (userId, updater) => {
       if (!frais) {
         // Ligne absente : le compte a ete supprime. Refuser, comme toujours —
         // voir `ecrireUserRow`.
-        throw makeError('SERVER_BUSY', 'Compte introuvable ou supprime.');
+        throw makeError('SERVER_BUSY', 'Compte introuvable ou supprimé.');
       }
       revisionObservee = frais.revision;
       const empreinte = JSON.stringify(sanitizeUserPayload(frais.payload));
@@ -2064,7 +2064,7 @@ export const updateUserAccount = async (userId, updater) => {
       memoryUsers.set(userId, current);
       // Les index reviennent a l etat d avant : sens inverse du rejeu.
       resynchroniserIndexesIdentite(userId, next, current, passwordHash);
-      throw makeError('SERVER_BUSY', 'Sauvegarde du profil impossible, reessaie dans un instant.');
+      throw makeError('SERVER_BUSY', 'Sauvegarde du profil impossible, réessaie dans un instant.');
     }
 
     return next;
@@ -2657,7 +2657,7 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
 
   // Verrouillage de compte : lu en base pour survivre a un redemarrage.
   if (attempt?.lockedUntil && Date.now() < attempt.lockedUntil) {
-    throw makeError('ACCOUNT_LOCKED', 'Compte temporairement bloque. Reessayez dans 15 minutes.');
+    throw makeError('ACCOUNT_LOCKED', 'Compte temporairement bloqué. Réessayez dans 15 minutes.');
   }
 
   if (!motDePasseValide) {
@@ -2678,7 +2678,7 @@ export const authenticateUserAccount = async ({ identifier, password }) => {
   const user = memoryUsers.get(userId);
   if (!user) throw makeError('INVALID_CREDENTIALS', 'Identifiants invalides.');
   if (user.isActive === false) {
-    throw makeError('ACCOUNT_NOT_ACTIVATED', 'Activez votre compte via le code envoye par email.');
+    throw makeError('ACCOUNT_NOT_ACTIVATED', 'Activez votre compte via le code envoyé par email.');
   }
 
   return sanitizeUserPayload(user);
@@ -2911,7 +2911,7 @@ export const updatePasswordHash = async (userId, newHash) => {
           });
           throw makeError(
             'SERVER_BUSY',
-            'Mot de passe modifie mais non enregistre. Reessaie dans un instant.',
+            'Mot de passe modifie mais non enregistré. Réessaie dans un instant.',
           );
         }
 };
@@ -2945,7 +2945,7 @@ export const generateActivationCode = (email, userId) => {
  */
 export const verifyActivationCode = (email, code) => {
   const record = memoryActivationCodes.get(email);
-  if (!record) return { valid: false, error: 'Code invalide ou expire.' };
+  if (!record) return { valid: false, error: 'Code invalide ou expiré.' };
 
   const expected = Buffer.from(record.code, 'utf-8');
   const actual = Buffer.from(code, 'utf-8');
@@ -2960,7 +2960,7 @@ export const verifyActivationCode = (email, code) => {
 
   if (new Date(record.expiresAt) < new Date()) {
     memoryActivationCodes.delete(email);
-    return { valid: false, error: 'Code expire.' };
+    return { valid: false, error: 'Code expiré.' };
   }
 
   // Atomic: delete immediately after successful verification
@@ -3016,9 +3016,9 @@ export const getUserIdByIdentifier = (identifier) => {
 export const resendActivationCode = (email) => {
   const userId = getUserIdByEmail(email);
   const user = userId ? memoryUsers.get(userId) : null;
-  if (!user) throw makeError('USER_NOT_FOUND', 'Aucun compte rattache a cet email.');
+  if (!user) throw makeError('USER_NOT_FOUND', 'Aucun compte rattaché à cet email.');
   if (user.isActive !== false) {
-    throw makeError('ACCOUNT_ALREADY_ACTIVE', 'Ce compte est deja actif. Connecte-toi directement.');
+    throw makeError('ACCOUNT_ALREADY_ACTIVE', 'Ce compte est déjà actif. Connecte-toi directement.');
   }
   return { userId, code: generateActivationCode(user.email, userId) };
 };
@@ -3036,9 +3036,9 @@ export const changeActivationEmail = async (oldEmail, newEmail, password) => {
   }
   const userId = getUserIdByEmail(oldEmail);
   const user = userId ? memoryUsers.get(userId) : null;
-  if (!user) throw makeError('USER_NOT_FOUND', 'Aucun compte rattache a cet email.');
+  if (!user) throw makeError('USER_NOT_FOUND', 'Aucun compte rattaché à cet email.');
   if (user.isActive !== false) {
-    throw makeError('ACCOUNT_ALREADY_ACTIVE', 'Ce compte est deja actif. Modifie ton email depuis les parametres.');
+    throw makeError('ACCOUNT_ALREADY_ACTIVE', 'Ce compte est déjà actif. Modifie ton email depuis les paramètres.');
   }
   const newKey = normalizeEmailKey(newEmail);
   // A-3 (audit-5) : preuve de possession. L'ancien email n'est pas un
@@ -3055,11 +3055,11 @@ export const changeActivationEmail = async (oldEmail, newEmail, password) => {
   }
   const takenBy = memoryPasswordHashes.get(newKey);
   if (takenBy && takenBy[0] !== userId) {
-    throw makeError('DUPLICATE_EMAIL', 'Cet email est deja rattache a un compte ZOYD.');
+    throw makeError('DUPLICATE_EMAIL', 'Cet email est déjà rattaché à un compte ZOYD.');
   }
   return withUserMutex(userId, async () => {
     const current = memoryUsers.get(userId);
-    if (!current) throw makeError('USER_NOT_FOUND', 'Aucun compte rattache a cet email.');
+    if (!current) throw makeError('USER_NOT_FOUND', 'Aucun compte rattaché à cet email.');
     const hashEntry = memoryPasswordHashes.get(userId);
     const passwordHash = hashEntry ? hashEntry[1] : '';
     memoryPasswordHashes.delete(normalizeEmailKey(current.email));
@@ -3089,7 +3089,7 @@ export const changeActivationEmail = async (oldEmail, newEmail, password) => {
           if (frais?.isActive !== false) {
             throw makeError(
               'ACCOUNT_ALREADY_ACTIVE',
-              'Ce compte vient d etre active. Modifie ton email depuis les parametres.',
+              'Ce compte vient d’être activé. Modifie ton email depuis les paramètres.',
             );
           }
           const rafraichi = { ...frais, email: newEmail.trim() };
@@ -3111,7 +3111,7 @@ export const changeActivationEmail = async (oldEmail, newEmail, password) => {
           // Le code vient d etre emis ET l'ancien email detruit en memoire.
           // Rendre un succes laisserait un joueur sans aucun moyen de finir son
           // inscription, et sans le moindre signe que cela a echoue.
-          throw makeError('SERVER_BUSY', 'Changement d email non enregistre. Reessaie dans un instant.');
+          throw makeError('SERVER_BUSY', 'Changement d email non enregistré. Réessaie dans un instant.');
         }
     return { userId, code };
   });
@@ -3165,7 +3165,7 @@ export const requestPasswordReset = (identifier) => {
  * @returns {Promise<{ userId: string }>}
  */
 export const resetPasswordWithCode = async (identifier, code, newPassword) => {
-  const generic = () => makeError('RESET_FAILED', 'Code invalide ou expire. Demande un nouveau code.');
+  const generic = () => makeError('RESET_FAILED', 'Code invalide ou expiré. Demande un nouveau code.');
   const userId = getUserIdByIdentifier(identifier);
   const record = userId ? memoryPasswordResetCodes.get(userId) : null;
   if (!userId || !record) throw generic();
@@ -3399,7 +3399,7 @@ export const activateUserAccount = async (userId) => {
           // Meme raison que pour le mot de passe : l'utilisateur a clique sur son
           // lien. Rendre un succes alors que rien n'a ete ecrit le laisse devant
           // un compte inactif, sans explication.
-          throw makeError('SERVER_BUSY', 'Activation non enregistree. Reessaie dans un instant.');
+          throw makeError('SERVER_BUSY', 'Activation non enregistrée. Réessaie dans un instant.');
         }
 
     return user;
@@ -4067,7 +4067,7 @@ export const replaceStateCollection = async (kind, items) => {
   if (!stateTrusted) {
     throw makeError(
       'SERVER_BUSY',
-      'Base de donnees indisponible, ecriture refusee pour eviter une perte de donnees.',
+      'Base de données indisponible, écriture refusée pour eviter une perte de données.',
     );
   }
 
@@ -4167,7 +4167,7 @@ export const replaceStateCollection = async (kind, items) => {
       // règlement était rejoué et créditait deux fois.
       rollbackMemory();
       markStateWriteFailure('ecriture d etat impossible');
-      throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+      throw makeError('SERVER_BUSY', 'Écriture en base impossible, réessaie dans un instant.');
     }
   }
   for (const item of items) {
@@ -4243,12 +4243,12 @@ export const upsertStateEntity = async (kind, entity) => {
   // Mêmes verrous que `replaceStateCollection` : écrire pendant un rechargement
   // ou sur un état non fiable produirait une divergence invisible.
   if (reloadInProgress) {
-    throw makeError('SERVER_BUSY', 'Rechargement en cours, reessaie dans un instant.');
+    throw makeError('SERVER_BUSY', 'Rechargement en cours, réessaie dans un instant.');
   }
   if (!stateTrusted) {
     throw makeError(
       'SERVER_BUSY',
-      'Base de donnees indisponible, ecriture refusee pour eviter une perte de donnees.',
+      'Base de données indisponible, écriture refusée pour eviter une perte de données.',
     );
   }
 
@@ -4323,13 +4323,13 @@ export const upsertStateEntity = async (kind, entity) => {
             memoryStateSnapshots.delete(key);
             memoryStateRevisions.delete(key);
           }
-          throw makeError('STATE_CONFLICT', 'Une autre instance a modifie cette entite. Reessaie.');
+          throw makeError('STATE_CONFLICT', 'Une autre instance a modifié cette entité. Réessaie.');
         }
         if (resultat === OCC_ECHEC) {
           kindMap.set(entity.id, ancien);
           memoryStateSnapshots.set(key, ancien);
           markStateWriteFailure('ecriture d etat impossible');
-          throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+          throw makeError('SERVER_BUSY', 'Écriture en base impossible, réessaie dans un instant.');
         }
         // Succès : révision locale = observee + 1.
         memoryStateRevisions.set(key, observee + 1);
@@ -4355,12 +4355,12 @@ export const upsertStateEntity = async (kind, entity) => {
             kindMap.set(entity.id, frais.payload);
             memoryStateSnapshots.set(key, frais.payload);
             memoryStateRevisions.set(key, frais.revision);
-            throw makeError('STATE_CONFLICT', 'Une autre instance a cree cette entite. Reessaie.');
+            throw makeError('STATE_CONFLICT', 'Une autre instance a créé cette entité. Réessaie.');
           }
           kindMap.delete(entity.id);
           memoryStateSnapshots.delete(key);
           markStateWriteFailure('ecriture d etat impossible');
-          throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+          throw makeError('SERVER_BUSY', 'Écriture en base impossible, réessaie dans un instant.');
         }
         memoryStateRevisions.set(key, 1);
       }
@@ -4378,7 +4378,7 @@ export const upsertStateEntity = async (kind, entity) => {
           memoryStateSnapshots.delete(key);
         }
         markStateWriteFailure('ecriture d etat impossible');
-        throw makeError('SERVER_BUSY', 'Ecriture en base impossible, reessaie dans un instant.');
+        throw makeError('SERVER_BUSY', 'Écriture en base impossible, réessaie dans un instant.');
       }
       // Sans colonne, la révision mémoire ne porte pas de garantie : on
       // l'incrémente quand même pour garder la structure cohérente.
@@ -4448,14 +4448,14 @@ export const getBlockedUsers = (userId) => {
 };
 
 export const sendFriendRequest = (senderId, targetId, message) => {
-  if (senderId === targetId) throw makeError('INVALID_REQUEST', 'Cannot add yourself.');
+  if (senderId === targetId) throw makeError('INVALID_REQUEST', 'Impossible de s’ajouter soi-même.');
   const target = getUserById(targetId);
   if (!target) throw makeError('USER_NOT_FOUND', 'Utilisateur introuvable.');
 
   for (const fr of memoryFriendRequests.values()) {
     if ((fr.sender_id === senderId && fr.target_id === targetId) || (fr.sender_id === targetId && fr.target_id === senderId)) {
-      if (fr.status === 'accepted') throw makeError('ALREADY_FRIENDS', 'Vous etes deja amis.');
-      if (fr.status === 'pending') throw makeError('REQUEST_PENDING', 'Une demande est deja en attente.');
+      if (fr.status === 'accepted') throw makeError('ALREADY_FRIENDS', 'Vous êtes déjà amis.');
+      if (fr.status === 'pending') throw makeError('REQUEST_PENDING', 'Une demande est déjà en attente.');
     }
   }
 
@@ -4472,7 +4472,7 @@ export const sendFriendRequest = (senderId, targetId, message) => {
 export const acceptFriendRequest = (requestId, userId) => {
   const req = memoryFriendRequests.get(requestId);
   if (!req) throw makeError('NOT_FOUND', 'Demande introuvable.');
-  if (req.target_id !== userId) throw makeError('UNAUTHORIZED', 'Non autorise.');
+  if (req.target_id !== userId) throw makeError('UNAUTHORIZED', 'Non autorisé.');
 
   req.status = 'accepted';
   req.updated_at = getNow();
@@ -4505,7 +4505,7 @@ export const acceptFriendRequest = (requestId, userId) => {
 export const declineFriendRequest = (requestId, userId) => {
   const req = memoryFriendRequests.get(requestId);
   if (!req) throw makeError('NOT_FOUND', 'Demande introuvable.');
-  if (req.target_id !== userId) throw makeError('UNAUTHORIZED', 'Non autorise.');
+  if (req.target_id !== userId) throw makeError('UNAUTHORIZED', 'Non autorisé.');
   req.status = 'declined';
   req.updated_at = getNow();
   memoryFriendRequests.set(requestId, req);
@@ -4529,7 +4529,7 @@ export const removeFriend = (userId, friendId) => {
 };
 
 export const blockUser = (blockerId, blockedId) => {
-  if (blockerId === blockedId) throw makeError('SELF_BLOCK', 'Impossible de se bloquer soi-meme.');
+  if (blockerId === blockedId) throw makeError('SELF_BLOCK', 'Impossible de se bloquer soi-même.');
   removeFriend(blockerId, blockedId);
   memoryUserBlocks.add(`${blockerId}:${blockedId}`);
   // Update per-user block index
@@ -4682,7 +4682,7 @@ export const claimTransaction = async (transactionId, userId, amountZC) => {
   const claimed = await sbInsert('processed_transactions', { transaction_id: transactionId, user_id: userId, amount_zc: amountZC });
   if (supabase && !claimed) {
     memoryProcessedTransactions.delete(transactionId);
-    throw makeError('SERVER_BUSY', 'Verification du paiement impossible, reessaie.');
+    throw makeError('SERVER_BUSY', 'Vérification du paiement impossible, réessaie.');
   }
   return true;
 };
@@ -4729,7 +4729,7 @@ export const saveAdminTotpSecret = async (userId, secret, enabled = false) => {
   const { value } = encryptSecret(secret);
   const saved = await sbUpsert('admin_2fa_secrets', { user_id: userId, secret: value, enabled });
   if (supabase && !saved) {
-    throw makeError('SERVER_BUSY', 'Sauvegarde 2FA impossible, reessaie dans un instant.');
+    throw makeError('SERVER_BUSY', 'Sauvegarde 2FA impossible, réessaie dans un instant.');
   }
 };
 

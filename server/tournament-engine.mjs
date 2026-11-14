@@ -1038,7 +1038,7 @@ export const createTournamentOnServer = (tournaments, actor, input) => {
   // haute passe par la route (montant arrondi 2 decimales avant).
   const entryFeeCandidate = roundAmount(Number(input.entryFee));
   if (!Number.isFinite(entryFeeCandidate) || entryFeeCandidate <= 0) {
-    throw makeError('INVALID_ENTRY_FEE', 'Le droit d entree doit etre un nombre strictement positif.');
+    throw makeError('INVALID_ENTRY_FEE', 'Le droit d entrée doit être un nombre strictement positif.');
   }
   const tournamentId = `T-MJ-${Date.now().toString(36).toUpperCase()}`;
   const reserveCreatorAsArbiter = input.reserveCreatorAsArbiter !== false;
@@ -1097,13 +1097,13 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   const tournament = findTournament(nextTournaments, tournamentId);
 
   if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
-  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Les inscriptions sont deja fermees.');
-  if (tournament.entries.length >= tournament.maxEntries) throw makeError('NO_SLOT_AVAILABLE', 'Le tableau est deja complet.');
+  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Les inscriptions sont déjà fermées.');
+  if (tournament.entries.length >= tournament.maxEntries) throw makeError('NO_SLOT_AVAILABLE', 'Le tableau est déjà complet.');
   if (tournament.entries.some((entry) => entry.members.some((member) => member.userId === actorUser.id))) {
-    throw makeError('ALREADY_JOINED', 'Tu es deja inscrit a ce tournoi.');
+    throw makeError('ALREADY_JOINED', 'Tu es déjà inscrit à ce tournoi.');
   }
   if (tournament.arbiters.some((arbiter) => arbiter.userId === actorUser.id)) {
-    throw makeError('ROLE_CONFLICT', 'Un arbitre ne peut pas participer a son propre tournoi.');
+    throw makeError('ROLE_CONFLICT', 'Un arbitre ne peut pas participer à son propre tournoi.');
   }
 
   const deviceMismatch =
@@ -1111,7 +1111,7 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   const controllerMismatch =
     tournament.controllerRestriction !== 'open' && actorUser.controllerType !== tournament.controllerRestriction;
   if (deviceMismatch || controllerMismatch) {
-    throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton controle ne correspond pas a ce tournoi.');
+    throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton contrôle ne correspond pas à ce tournoi.');
   }
 
   // Le capitaine ne peut pas usurper le pseudo d'un autre : on force son
@@ -1130,7 +1130,7 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
     .map((pseudo) => normalizeLabel(pseudo))
     .filter(Boolean);
   if (requestedAccess === 'open' && invitedPseudos.length > 0) {
-    throw makeError('INVALID_REGISTRATION', 'Une squad ouverte ne porte pas de liste d invites.');
+    throw makeError('INVALID_REGISTRATION', 'Une squad ouverte ne porte pas de liste d’invites.');
   }
 
   const existingPseudoKeys = new Set(
@@ -1140,14 +1140,14 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   const invitedKeys = new Set();
   for (const pseudo of invitedPseudos) {
     if (pseudo.length < 2) {
-      throw makeError('INVALID_REGISTRATION', 'Chaque pseudo invite doit avoir un nom valide.');
+      throw makeError('INVALID_REGISTRATION', 'Chaque pseudo invité doit avoir un nom valide.');
     }
     const key = pseudo.toLowerCase();
     if (key === normalizedCaptainPseudo.toLowerCase() || existingPseudoKeys.has(key)) {
-      throw makeError('INVALID_REGISTRATION', 'Un pseudo invite est deja pris sur ce tournoi.');
+      throw makeError('INVALID_REGISTRATION', 'Un pseudo invité est déjà pris sur ce tournoi.');
     }
     if (invitedKeys.has(key)) {
-      throw makeError('INVALID_REGISTRATION', 'Chaque pseudo invite doit etre unique.');
+      throw makeError('INVALID_REGISTRATION', 'Chaque pseudo invite doit être unique.');
     }
     invitedKeys.add(key);
   }
@@ -1156,7 +1156,7 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
   // Elle immobiliserait une place du tableau pour personne : le front
   // l'interdit deja, le moteur le refuse aussi pour ne pas dependre de l'UI.
   if (requestedAccess === 'private' && invitedPseudos.length === 0) {
-    throw makeError('INVALID_REGISTRATION', 'Une squad privee doit inviter au moins un pseudo.');
+    throw makeError('INVALID_REGISTRATION', 'Une squad privée doit inviter au moins un pseudo.');
   }
 
   const squadName =
@@ -1167,7 +1167,7 @@ export const registerForTournamentOnServer = async (tournaments, actor, tourname
     throw makeError('INVALID_REGISTRATION', 'Le nom de squad est trop court.');
   }
   if (tournament.entries.some((entry) => entry.squadName.toLowerCase() === squadName.toLowerCase())) {
-    throw makeError('INVALID_REGISTRATION', 'Ce nom de squad est deja pris.');
+    throw makeError('INVALID_REGISTRATION', 'Ce nom de squad est déjà pris.');
   }
 
   await withWalletMutex(actorUser.id, async () => {
@@ -1220,12 +1220,12 @@ export const joinTournamentOnServer = async (tournaments, actor, tournamentId, e
   const tournament = findTournament(nextTournaments, tournamentId);
 
   if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
-  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Les inscriptions sont deja fermees.');
+  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Les inscriptions sont déjà fermées.');
   if (tournament.entries.some((entry) => entry.members.some((member) => member.userId === actorUser.id))) {
-    throw makeError('ALREADY_JOINED', 'Tu es deja inscrit a ce tournoi.');
+    throw makeError('ALREADY_JOINED', 'Tu es déjà inscrit à ce tournoi.');
   }
   if (tournament.arbiters.some((arbiter) => arbiter.userId === actorUser.id)) {
-    throw makeError('ROLE_CONFLICT', 'Un arbitre ne peut pas participer a son propre tournoi.');
+    throw makeError('ROLE_CONFLICT', 'Un arbitre ne peut pas participer à son propre tournoi.');
   }
 
   const deviceMismatch =
@@ -1233,7 +1233,7 @@ export const joinTournamentOnServer = async (tournaments, actor, tournamentId, e
   const controllerMismatch =
     tournament.controllerRestriction !== 'open' && actorUser.controllerType !== tournament.controllerRestriction;
   if (deviceMismatch || controllerMismatch) {
-    throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton controle ne correspond pas a ce tournoi.');
+    throw makeError('MATCH_SEGMENT_MISMATCH', 'Ton appareil ou ton contrôle ne correspond pas à ce tournoi.');
   }
 
   const entry = (tournament.entries || []).find((item) => item.id === entryId);
@@ -1249,7 +1249,7 @@ export const joinTournamentOnServer = async (tournaments, actor, tournamentId, e
     throw makeError('FORBIDDEN', 'Cette squad est sur invitation. Demande au capitaine de t inviter.');
   }
   if ((entry.members || []).some((member) => `${member.pseudo || ''}`.toLowerCase() === memberKey)) {
-    throw makeError('INVALID_REGISTRATION', 'Un joueur ne peut pas etre deux fois dans la meme squad.');
+    throw makeError('INVALID_REGISTRATION', 'Un joueur ne peut pas être deux fois dans la même squad.');
   }
 
   await withWalletMutex(actorUser.id, async () => {
@@ -1296,12 +1296,12 @@ export const leaveTournamentOnServer = async (tournaments, actor, tournamentId) 
   const tournament = findTournament(nextTournaments, tournamentId);
 
   if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
-  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Le tournoi a deja demarre.');
+  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Le tournoi a déjà démarré.');
 
   const entry = tournament.entries.find((item) =>
     (item.members || []).some((member) => member.userId === actorUser.id)
   );
-  if (!entry) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas a ce tournoi.');
+  if (!entry) throw makeError('PLAYER_NOT_FOUND', 'Tu ne participes pas à ce tournoi.');
 
   // Remboursement du SEUL pass du partant, depuis SON portefeuille : jamais
   // le pass d'un autre membre (chacun a verrouille le sien a son adhesion).
@@ -1361,7 +1361,7 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
   // aucun gain (`applyTournamentSettlement` ne s'execute qu'en `completed`) :
   // rembourser toutes les entrees est donc sans double paiement possible.
   if (tournament.status !== 'recruiting' && tournament.status !== 'live') {
-    throw makeError('MATCH_CLOSED', 'Seul un tournoi non termine peut etre annule ainsi.');
+    throw makeError('MATCH_CLOSED', 'Seul un tournoi non terminé peut être annulé ainsi.');
   }
 
   // Squads libres (2026-11-05) : chaque membre a verrouille SON pass depuis
@@ -1633,13 +1633,13 @@ export const assignTournamentArbiterOnServer = (tournaments, actor, tournamentId
   // En live la garde ne change rien : tous les slots sont couverts avant le
   // lancement, donc aucun cas légitime n est refusé.
   if (tournament.status !== 'recruiting') {
-    throw makeError('MATCH_CLOSED', 'La designation des arbitres se fait seulement pendant le recrutement.');
+    throw makeError('MATCH_CLOSED', 'La désignation des arbitres se fait seulement pendant le recrutement.');
   }
   if (tournament.entries.some((entry) => entry.members.some((member) => member.userId === actorUser.id))) {
     throw makeError('ROLE_CONFLICT', 'Un joueur ne peut pas arbitrer son propre tournoi.');
   }
   if (tournament.arbiters.some((arbiter) => arbiter.userId === actorUser.id)) {
-    throw makeError('ALREADY_JOINED', 'Tu occupes deja une place d arbitre sur ce tournoi.');
+    throw makeError('ALREADY_JOINED', 'Tu occupés déjà une place d’arbitre sur ce tournoi.');
   }
 
   const emptySlot = tournament.arbiters.find((arbiter) => !arbiter.userId);
@@ -1678,11 +1678,11 @@ export const startTournamentOnServer = async (tournaments, actor, tournamentId) 
   if (!tournament) throw makeError('TOURNAMENT_NOT_FOUND', 'Tournoi introuvable.');
   const isAssignedArbiter = tournament.arbiters.some((arbiter) => arbiter.userId === actorUser.id);
   if (!isAssignedArbiter && actorUser.role !== 'admin') {
-    throw makeError('FORBIDDEN', 'Seul un arbitre assigne peut lancer ce tournoi.');
+    throw makeError('FORBIDDEN', 'Seul un arbitre assigné peut lancer ce tournoi.');
   }
-  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Le tournoi est deja en cours ou termine.');
+  if (tournament.status !== 'recruiting') throw makeError('MATCH_CLOSED', 'Le tournoi est déjà en cours ou terminé.');
   if (tournament.arbiters.some((arbiter) => !arbiter.userId)) {
-    throw makeError('MATCH_NOT_READY', 'Tous les slots arbitres doivent etre couverts avant le lancement.');
+    throw makeError('MATCH_NOT_READY', 'Tous les slots arbitres doivent être couverts avant le lancement.');
   }
 
   // Squads libres (2026-11-05) : une squad incomplète au lancement est
@@ -1701,7 +1701,7 @@ export const startTournamentOnServer = async (tournaments, actor, tournamentId) 
     (entry) => (entry.members || []).length < entry.teamSize
   );
   if (completeEntries.length < tournament.minEntries) {
-    throw makeError('MATCH_NOT_READY', 'Le nombre minimum de participants n est pas atteint.');
+    throw makeError('MATCH_NOT_READY', 'Le nombre minimum de participants n’est pas atteint.');
   }
 
   if (incompleteEntries.length > 0) {
@@ -1767,7 +1767,7 @@ const requireTournamentMatchAction = (tournaments, actor, tournamentId, matchId)
 
   const assignedSlot = tournament.arbiters.find((arbiter) => arbiter.userId === actorUser.id);
   if (actorUser.role !== 'admin' && assignedSlot?.slot !== match.arbiterSlot) {
-    throw makeError('FORBIDDEN', 'Seul l arbitre du poste assigne peut agir sur ce duel.');
+    throw makeError('FORBIDDEN', 'Seul l\'arbitre du poste assigné peut agir sur ce duel.');
   }
 
   return { actorUser, nextTournaments, tournament, match, assignedSlot };
@@ -1797,7 +1797,7 @@ export const setTournamentMatchRoomDetailsOnServer = (tournaments, actor, tourna
     throw makeError('ROOM_INCOMPLETE', 'Entre un nom de salle et un mot de passe valides.');
   }
   if (!match.entryAId || !match.entryBId) {
-    throw makeError('MATCH_NOT_READY', 'Ce duel n a pas encore ses deux participants.');
+    throw makeError('MATCH_NOT_READY', 'Ce duel n’a pas encore ses deux participants.');
   }
 
   match.roomName = safeRoomName;
@@ -1831,10 +1831,10 @@ export const setTournamentMatchLiveOnServer = (tournaments, actor, tournamentId,
   );
 
   if (match.status !== 'ready') {
-    throw makeError('MATCH_NOT_READY', 'Ce duel doit etre pret avant de passer en direct.');
+    throw makeError('MATCH_NOT_READY', 'Ce duel doit être prêt avant de passer en direct.');
   }
   if (!match.roomName || !match.roomPassword) {
-    throw makeError('ROOM_INCOMPLETE', 'Publie d abord la salle privee.');
+    throw makeError('ROOM_INCOMPLETE', 'Publie d\'abord la salle privée.');
   }
 
   match.status = 'live';
@@ -1871,10 +1871,10 @@ export const submitTournamentMatchResultOnServer = async (tournaments, actor, to
 
   if (!targetMatch) throw makeError('MATCH_NOT_FOUND', 'Duel de tournoi introuvable.');
   if (!targetMatch.entryAId || !targetMatch.entryBId) {
-    throw makeError('MATCH_NOT_READY', 'Ce duel n a pas encore ses deux participants.');
+    throw makeError('MATCH_NOT_READY', 'Ce duel n’a pas encore ses deux participants.');
   }
   if (!['ready', 'live'].includes(targetMatch.status)) {
-    throw makeError('MATCH_CLOSED', 'Ce duel a deja ete valide.');
+    throw makeError('MATCH_CLOSED', 'Ce duel a déjà été validé.');
   }
 
   const winnerEntryId = payload?.winnerEntryId;
@@ -1884,7 +1884,7 @@ export const submitTournamentMatchResultOnServer = async (tournaments, actor, to
     throw makeError('INVALID_REGISTRATION', 'Le vainqueur choisi est invalide pour ce duel.');
   }
   if (!Number.isFinite(scoreA) || !Number.isFinite(scoreB) || scoreA < 0 || scoreB < 0 || scoreA === scoreB) {
-    throw makeError('INVALID_REGISTRATION', 'Le score final doit designer un vainqueur clair.');
+    throw makeError('INVALID_REGISTRATION', 'Le score final doit désigner un vainqueur clair.');
   }
 
   const wasCompleted = tournament.status === 'completed';

@@ -241,7 +241,7 @@ if (brLobbyAction && req.method === 'POST') {
       } else if (action === 'eliminate') {
         const body = await parseRequestBody(req);
         if (!body.userId || typeof body.userId !== 'string') {
-          respondJson(res, 400, { ok: false, error: 'userId du joueur elimine requis.', code: 'INVALID_JSON' }, req);
+          respondJson(res, 400, { ok: false, error: 'userId du joueur éliminé requis.', code: 'INVALID_JSON' }, req);
           return { aborted: true };
         }
         result = eliminateBrPlayerOnServer(cibleOuRien, actor, lobbyId, body.userId, {
@@ -380,7 +380,7 @@ if (brLobbyArbiterView && req.method === 'GET') {
   if (!lobby.arbiterId || (lobby.arbiterId !== actorUser.id && lobby.creatorId !== actorUser.id)) {
     respondJson(res, 403, {
       ok: false,
-      error: 'Vue reservee a l\'arbitre du salon.',
+      error: 'Vue réservée à l\'arbitre du salon.',
       code: 'ARBITER_REQUIRED',
     }, req);
     return true;

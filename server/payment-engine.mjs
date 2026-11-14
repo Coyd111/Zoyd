@@ -400,7 +400,7 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
 export const retrieveFedaPayPayout = async (payoutId) => {
   const FEDAPAY_SECRET_KEY = getFedaPayConfig();
   if (!FEDAPAY_SECRET_KEY) {
-    throw makeError('PAYMENT_NOT_CONFIGURED', "FedaPay n'est pas configure pour les retraits.");
+    throw makeError('PAYMENT_NOT_CONFIGURED', "FedaPay n'est pas configuré pour les retraits.");
   }
   const id = Number(payoutId);
   if (!Number.isInteger(id) || id <= 0) {

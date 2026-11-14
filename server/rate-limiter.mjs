@@ -459,7 +459,7 @@ const rateLimitGuard = (res, ip, group, peer = null) => {
   const { allowed, retryAfter } = checkRateLimitComplet(ip, group, peer);
   if (!allowed) {
     res.setHeader('Retry-After', String(retryAfter));
-    respondJson(res, 429, { ok: false, error: 'Trop de requetes. Reessayez plus tard.', code: 'RATE_LIMITED' });
+    respondJson(res, 429, { ok: false, error: 'Trop de requêtes. Réessayez plus tard.', code: 'RATE_LIMITED' });
     return false;
   }
   return true;

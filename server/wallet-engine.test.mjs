@@ -471,7 +471,7 @@ describe('wallet-engine - lockEntryFee double-lock guard', () => {
       return { wallet: updater(mockWallet) };
     });
 
-    await expect(walletEngine.lockEntryFee('user1', 50, 'match-1')).rejects.toThrow('deja bloque');
+    await expect(walletEngine.lockEntryFee('user1', 50, 'match-1')).rejects.toThrow('déjà bloqué');
   });
 });
 

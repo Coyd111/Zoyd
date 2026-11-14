@@ -328,7 +328,7 @@ const AdminDashboardPage: React.FC = () => {
       await verifyAdmin2fa(stripped);
       verified = true;
     } catch (error) {
-      setTwofaError(error instanceof Error ? error.message : 'Verification impossible.');
+      setTwofaError(error instanceof Error ? error.message : 'Vérification impossible.');
     } finally {
       setTwofaSubmitting(false);
     }
@@ -379,7 +379,7 @@ const AdminDashboardPage: React.FC = () => {
       if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
         openTwofaPrompt(() => handleResolveDisputeOnly(matchId));
       } else {
-        toast.error(error instanceof Error ? error.message : 'Cloture du litige impossible.');
+        toast.error(error instanceof Error ? error.message : 'Clôture du litige impossible.');
       }
     } finally {
       setLoadingAction(false);
@@ -462,7 +462,7 @@ const AdminDashboardPage: React.FC = () => {
           />
           <StatCard
             icon={<Scale className="w-5 h-5 text-white/60" aria-hidden="true" />}
-            label="SORTIES ARBITRES"
+            label="SORTIES ARBITRÉS"
             value={commissionsUnavailable ? 'N/D' : formatZC(commissions.arbiterPayouts)}
             hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau) — vérifie la 2FA pour recharger' : 'Part de cagnotte versée aux arbitres (sortie, pas revenu)'}
           />

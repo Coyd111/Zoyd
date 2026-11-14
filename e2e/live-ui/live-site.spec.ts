@@ -58,7 +58,10 @@ test.describe('LIVE — Login Page', () => {
     await page.goto('/auth/login');
     await page.locator('input[name="emailOrPseudo"]').fill('FakeUser999');
     await page.locator('input[name="password"]').fill('WrongPass123!');
-    await page.locator('button[type="submit"]:has-text("CONNEXION")').click();
+    // PIEGE : le libelle du bouton est « SE CONNECTER » (un VERBE : un
+    // bouton porte une action). « CONNEXION » designait la PAGE, et le
+    // joueur ne savait pas s'il cliquait ou non.
+    await page.locator('button[type="submit"]:has-text("SE CONNECTER")').click();
     await page.waitForTimeout(5000);
     const url = page.url();
     expect(url).toContain('/auth/login');

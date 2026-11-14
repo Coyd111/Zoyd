@@ -300,7 +300,7 @@ cancelled = true;
                 <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
-                  CONNEXION <ChevronRight className="w-6 h-6 ml-2 group-hover:translate-x-1 transition-transform" />
+                  SE CONNECTER <ChevronRight className="w-6 h-6 ml-2 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </Button>
@@ -319,7 +319,7 @@ cancelled = true;
             <div className="grid grid-cols-1 gap-3">
               <div className="border border-white/5 px-4 py-3 text-center">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-white/50">
-                  Connexion par Google ou numéro : bientôt disponible — email + mot de passe pour l&apos;instant
+                  Connexion par Google ou numéro de téléphone : bientôt disponible — email + mot de passe pour l&apos;instant
                 </span>
               </div>
             </div>

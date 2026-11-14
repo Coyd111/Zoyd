@@ -36,6 +36,13 @@ import {
   getMapImage,
 } from '../../../lib/competition';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
+// PIEGE : le taux ZC -> FCFA ne s ecrit JAMAIS en clair ni ne se
+// recalcule a la main. Ici, la cagnotte etait convertie par
+// `livePot * 10` et le taux affiche en dur (« x 10 FCFA ») : deux
+// copies de plus, que le test miroir (qui ne controle que la
+// constante) ne pouvait pas voir. Un jour le taux change, cet ecran
+// affichait un montant different de tout le reste de l application.
+import { formatFCFA, ZC_TO_FCFA } from '../../../lib/utils';
 import { createServerMatch } from '../../lib/matchApi';
 import { applyServerAccountState } from '../../lib/serverSync';
 import { useAuthStore } from '../../stores/authStore';
@@ -653,7 +660,7 @@ const CreateMatchPage: React.FC = () => {
                         <div className="space-y-4 relative z-10">
                           <div className="flex justify-between border-b border-white/10 pb-4">
                             <span className="text-xs font-display font-black text-white/70 italic">Pot Total (Cagnotte)</span>
-                            <span className="font-display font-black text-2xl text-zoyd-yellow">{livePot.toLocaleString()} ZC <span className="text-sm text-white/60">({livePot.toLocaleString()} × 10 FCFA = {(livePot * 10).toLocaleString()} FCFA)</span></span>
+                            <span className="font-display font-black text-2xl text-zoyd-yellow">{livePot.toLocaleString()} ZC <span className="text-sm text-white/60">({livePot.toLocaleString()} × {ZC_TO_FCFA} FCFA = {formatFCFA(livePot)})</span></span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-xs font-display font-black text-white/70 italic">Pour le gagnant</span>
@@ -839,7 +846,7 @@ const CreateMatchPage: React.FC = () => {
               </div>
               <div className="flex items-center justify-between px-4 py-3">
                 <dt className="text-white/75">Cagnotte totale ({playerSlots} joueurs, réelle {realPot.toFixed(1)} ZC pour l'instant)</dt>
-                <dd className="font-display font-black text-white">{livePot.toFixed(1)} ZC <span className="text-xs text-white/50">({(livePot * 10).toLocaleString()} FCFA)</span></dd>
+                <dd className="font-display font-black text-white">{livePot.toFixed(1)} ZC <span className="text-xs text-white/50">({formatFCFA(livePot)})</span></dd>
               </div>
               <div className="flex items-center justify-between px-4 py-3">
                 <dt className="text-white/75">Part arbitre (2 %)</dt>

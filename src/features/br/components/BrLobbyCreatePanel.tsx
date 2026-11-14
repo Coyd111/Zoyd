@@ -404,7 +404,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             className="w-full bg-black/40 border border-white/10 px-3 py-2.5 text-sm text-white focus:border-zoyd-yellow/50 touch-target"
-            placeholder="Ex. : debut a l'heure exacte,CODE salon commun, capture ecran obligatoire..."
+            placeholder="Ex. : début à l'heure exacte, CODE salon commun, capture d'écran obligatoire..."
           />
         </div>
 

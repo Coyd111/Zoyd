@@ -56,7 +56,10 @@ const ProfilPage = () => {
         <div className="text-center">
           <h2 className="text-xl font-display font-black uppercase mb-4">Profil non disponible</h2>
           <Link to="/auth/login">
-            <Button variant="primary">Connexion</Button>
+            {/* PIEGE (redaction) : un bouton porte une ACTION, donc un
+                VERBE. « Connexion » est le nom de la page ; « Se
+                connecter » est ce que fait le bouton. */}
+            <Button variant="primary">Se connecter</Button>
           </Link>
         </div>
       </div>

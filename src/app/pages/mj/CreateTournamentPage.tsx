@@ -691,11 +691,11 @@ const CreateTournamentPage: React.FC = () => {
               <div className="space-y-4">
                 <ProjectionRow label="Places ouvertes" value={`${selectedMaxEntries} ${teamSize > 1 ? 'équipes' : 'joueurs'}`} />
                 <ProjectionRow label="Joueurs au complet" value={`${projections.totalPlayers}`} />
-                <ProjectionRow label="Arbitres necessaires" value={`${projections.arbitersNeeded}`} />
+                <ProjectionRow label="Arbitres nécessaires" value={`${projections.arbitersNeeded}`} />
                 <ProjectionRow label={teamSize > 1 ? 'Pass par joueur' : 'Coût pour un joueur'} value={formatZC(projections.passCost)} />
                 <ProjectionRow label="Cagnotte totale" value={formatZC(projections.grossPool)} accent="text-zoyd-yellow" />
                 <ProjectionRow label="A gagner" value={formatZC(projections.playerPool)} />
-                <ProjectionRow label="Part arbitres" value={formatZC(projections.arbiterPool)} />
+                <ProjectionRow label="Part d'arbitres" value={formatZC(projections.arbiterPool)} />
                 <ProjectionRow label="Top 1" value={formatZC(projections.first)} accent="text-zoyd-yellow" />
                 <ProjectionRow label="Top 2" value={formatZC(projections.second)} />
                 <ProjectionRow label="Top 3" value={formatZC(projections.third)} />

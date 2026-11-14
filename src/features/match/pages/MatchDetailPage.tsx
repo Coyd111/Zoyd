@@ -550,7 +550,7 @@ const MatchDetailPage: React.FC = () => {
       setFinalResultProofs('');
       setRoomCaptureProofs('');
       setExtraResultProofs('');
-      toast.success('Score soumis. Les deux equipes doivent confirmer avant le versement.');
+      toast.success('Score soumis. Les deux équipes doivent confirmer avant le versement.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ajouté au moins une capture de scoreboard et un écran final avant de valider le score.");
     } finally {
@@ -647,7 +647,7 @@ const MatchDetailPage: React.FC = () => {
       // sont immédiatement reflétés.
       applyMatchResponse(response);
       if (response.settled) {
-        toast.success('Les deux equipes ont confirme : la cagnotte est versee.');
+        toast.success('Les deux équipes ont confirmé : la cagnotte est versée.');
         return;
       }
       // `waitingFor` contient des userId et le payload de match n'expose plus

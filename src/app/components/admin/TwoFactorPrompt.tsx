@@ -57,7 +57,7 @@ const TwoFactorPrompt: React.FC<TwoFactorPromptProps> = ({
   }, [open]);
 
   return (
-    <Modal isOpen={open} onClose={onCancel} title="Verification 2FA requise" size="sm">
+    <Modal isOpen={open} onClose={onCancel} title="Vérification 2FA requise" size="sm">
       <form
         onSubmit={(event) => {
           event.preventDefault();

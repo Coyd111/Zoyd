@@ -290,7 +290,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             Connecte-toi pour rejoindre une équipe, suivre la salle et discuter avec les autres joueurs.
           </p>
           <Link to="/auth/login" className="inline-flex items-center gap-2 bg-white text-black px-5 py-3 font-display font-black uppercase tracking-widest text-xs italic">
-            Connexion joueur
+            Se connecter
           </Link>
         </div>
       )}
@@ -532,7 +532,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Hourglass className="w-4 h-4 text-zoyd-yellow shrink-0" />
-            <h2 className="text-lg font-display font-black uppercase italic">Confirmation des equipes</h2>
+            <h2 className="text-lg font-display font-black uppercase italic">Confirmation des équipes</h2>
           </div>
           {confirmation.countdown ? (
             <div className="text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow border border-zoyd-yellow/30 bg-zoyd-yellow/5 px-3 py-1 shrink-0">

@@ -288,7 +288,7 @@ const LeaksPage: React.FC = () => {
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24">
       <SEOHead
         title="Leaks &amp; Infos CODM — ZOYD"
-        description="Les dernieres leaks, nouveautes et infos de Call of Duty Mobile 2026. Saison Twilight Heist, RAM-7 Mythic, balance changes."
+        description="Les dernières leaks, nouveautes et infos de Call of Duty Mobile 2026. Saison Twilight Heist, RAM-7 Mythic, balance changes."
         path="/infos"
       />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
@@ -458,7 +458,7 @@ const LeaksPage: React.FC = () => {
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
                 <div className="flex-1">
                   <h3 className="font-display font-black text-sm uppercase tracking-tighter italic text-white">{TOTAL_WEAPONS} armes — S5 2026</h3>
-                  <p className="text-[10px] font-mono text-white/60 mt-1">Base de donnees complete avec categories</p>
+                  <p className="text-[10px] font-mono text-white/60 mt-1">Base de données complète avec catégories</p>
                 </div>
                 <div className="relative w-full md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
@@ -498,7 +498,7 @@ const LeaksPage: React.FC = () => {
         </div>
 
         {/* Category Filters */}
-        <div role="tablist" aria-label="Categories" className="relative mb-12 border-b border-white/5 pb-4">
+        <div role="tablist" aria-label="Catégories" className="relative mb-12 border-b border-white/5 pb-4">
           <div className="pointer-events-none absolute left-0 top-0 bottom-4 w-12 bg-gradient-to-r from-zoyd-black to-transparent pointer-events-none z-10" />
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
             {categories.map((cat) => {
@@ -626,7 +626,7 @@ const LeaksPage: React.FC = () => {
           <div className="border border-white/5 bg-zoyd-surface/10 p-6 md:p-10 text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center border border-white/10 text-white/70"><Newspaper className="w-6 h-6" /></div>
             <h2 className="font-display font-black text-xl uppercase italic text-white mb-2">Aucun article</h2>
-            <p className="text-sm text-white/70 max-w-xl mx-auto">Aucun article dans cette categorie.</p>
+            <p className="text-sm text-white/70 max-w-xl mx-auto">Aucun article dans cette catégorie.</p>
           </div>
         )}
 

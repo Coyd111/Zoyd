@@ -104,7 +104,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
           to="/auth/login"
           className="inline-flex items-center gap-2 bg-white text-black px-5 py-3 font-display font-black uppercase tracking-widest text-xs italic"
         >
-          Connexion joueur
+          Se connecter
         </Link>
       </div>
     ) : (

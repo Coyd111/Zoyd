@@ -15,6 +15,17 @@
  */
 import React from 'react';
 import { LegalLayout, LegalSection, ASSISTANCE } from './LegalLayout';
+// PIEGE : le taux ZC -> FCFA n est PAS ecrit en clair dans ce texte.
+// Il vient de la constante unique du front (`ZC_TO_FCFA`), elle-meme
+// miroir verifie du serveur (`src/lib/format-mirror.test.ts`). Ecrire
+// « 1 ZC = 10 FCFA » ici creerait une TROISIEME copie du taux, que
+// personne ne mettrait a jour : les CGU finiraient par contredire la
+// conversion reelle.
+//
+// La date de mise a jour ne bouge PAS : le texte AFFICHE est identique
+// au caractere pres (« 1 ZC = 10 FCFA »), seule sa source change. La
+// date versionne le CONTENU JURIDIQUE, pas le code qui l'ecrit.
+import { ZC_TO_FCFA } from '../../../lib/utils';
 
 const ConditionsPage: React.FC = () => (
   <LegalLayout
@@ -49,7 +60,7 @@ const ConditionsPage: React.FC = () => (
 
     <LegalSection n="3" title="Monnaie et dépôts">
       <p>
-        La monnaie de la plateforme est le <strong className="text-white">ZC : 1 ZC = 10 FCFA</strong>. Les dépôts se
+        La monnaie de la plateforme est le <strong className="text-white">ZC : 1 ZC = {ZC_TO_FCFA} FCFA</strong>. Les dépôts se
         font via FedaPay et les opérateurs Mobile Money selon ton pays : MTN, Moov, Celtiis (Bénin) ; MTN, Moov,
         Orange, Wave (Côte d'Ivoire) ; Orange, Wave (Sénégal) ; Moov, Togocel (Togo).
       </p>

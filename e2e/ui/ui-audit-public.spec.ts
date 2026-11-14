@@ -182,7 +182,7 @@ test.describe('Audit UI - back-office et ecrans de detail', () => {
     await waitForRender(page);
     // La grille KPI se remplit apres coup : on attend son contenu, sinon
     // la sonde validerait un DOM encore vide.
-    await expect(page.getByText('SORTIES ARBITRES')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('SORTIES ARBITRÉS')).toBeVisible({ timeout: 30_000 });
 
     const { rapport } = await auditerEcran(page, { nom: 'Administration', chemin: '/admin' }, collecte);
 

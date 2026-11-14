@@ -260,7 +260,7 @@ const LeagueSeasonPage = () => {
       await verifyAdmin2fa(stripped);
       verified = true;
     } catch (error) {
-      setTwofaError(error instanceof Error ? error.message : 'Verification impossible.');
+      setTwofaError(error instanceof Error ? error.message : 'Vérification impossible.');
     } finally {
       setTwofaSubmitting(false);
     }

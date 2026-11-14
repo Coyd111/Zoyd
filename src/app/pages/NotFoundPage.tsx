@@ -41,11 +41,11 @@ const NotFoundPage: React.FC = () => {
           Cette page n'existe pas ou a été déplacée.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link to="/" className="inline-block bg-zoyd-yellow text-black px-8 py-4 touch-target font-display font-black text-[11px] tracking-[0.2em] uppercase italic hover:bg-white transition-colors" aria-label="Retourner à l'accueil">
+          <Link to="/" className="inline-block bg-zoyd-yellow text-black px-8 py-4 touch-target font-display font-black text-[11px] tracking-[0.2em] uppercase italic hover:bg-white transition-colors" aria-label="Accueil — retour à la page d'accueil">
             ACCUEIL
           </Link>
-          <Link to="/auth/login" className="inline-block border border-white/20 text-white px-8 py-4 touch-target font-display font-black text-[11px] tracking-[0.2em] uppercase italic hover:border-white transition-colors" aria-label="Aller à la connexion">
-            CONNEXION
+          <Link to="/auth/login" className="inline-block border border-white/20 text-white px-8 py-4 touch-target font-display font-black text-[11px] tracking-[0.2em] uppercase italic hover:border-white transition-colors" aria-label="Se connecter — aller à la page de connexion">
+            SE CONNECTER
           </Link>
         </div>
       </motion.div>

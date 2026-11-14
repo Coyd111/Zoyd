@@ -177,7 +177,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
       setAssists('0');
       await refreshAll();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Elimination impossible.');
+      toast.error(error instanceof Error ? error.message : 'Élimination impossible.');
     } finally {
       setActing(false);
     }
@@ -210,7 +210,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
       if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
         setTwofaOpen(true);
       } else {
-        toast.error(error instanceof Error ? error.message : 'Cloture impossible.');
+        toast.error(error instanceof Error ? error.message : 'Clôture impossible.');
       }
     } finally {
       setActing(false);
@@ -233,7 +233,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
       setTotpCode('');
       toast.success('Session reglee : la cagnotte est versee.');
     } catch (error) {
-      setTwofaError(error instanceof Error ? error.message : 'Verification impossible.');
+      setTwofaError(error instanceof Error ? error.message : 'Vérification impossible.');
     } finally {
       setActing(false);
     }

@@ -229,7 +229,7 @@ test.describe('Responsive mobile (sondes geometriques)', () => {
       await stable(page);
       // La grille KPI est rendue a la monte : on l'attend explicitement
       // avant de scanner (sinon le scan valide un DOM encore vide).
-      await expect(page.getByText('SORTIES ARBITRES')).toBeVisible();
+      await expect(page.getByText('SORTIES ARBITRÉS')).toBeVisible();
       const offenders = await page.evaluate(scanOffenders);
       // constat U-1 (pre-fix) : SORTIES ARBITRES rendait a right=380/395,
       // rogie par le masque horizontal, avec son hint coupe.
@@ -248,7 +248,7 @@ test.describe('Responsive mobile (sondes geometriques)', () => {
     await stable(page);
     // Meme garde que B : le commentaire technique vit dans la grille KPI, on
     // attends qu'elle soit la pour capturer le texte.
-    await expect(page.getByText('SORTIES ARBITRES')).toBeVisible();
+    await expect(page.getByText('SORTIES ARBITRÉS')).toBeVisible();
     const bodyText = (await page.locator('body').textContent()) || '';
     expect(
       bodyText,

@@ -30,7 +30,7 @@ import {
   type BrConfig,
   type BrLobby,
 } from '../../../app/lib/brApi';
-import { formatZC } from '../../../lib/utils';
+import { formatZC, ZC_TO_FCFA } from '../../../lib/utils';
 import { BrLobbyCreatePanel } from '../components/BrLobbyCreatePanel';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { toast } from '../../../app/lib/toast';
@@ -38,9 +38,9 @@ import { toast } from '../../../app/lib/toast';
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'INSCRIPTIONS', className: 'text-green-400 border-green-400/30 bg-green-400/10' },
   live: { label: 'EN COURS', className: 'text-zoyd-yellow border-zoyd-yellow/30 bg-zoyd-yellow/10' },
-  settling: { label: 'REGLEMENT', className: 'text-orange-400 border-orange-400/30 bg-orange-400/10' },
-  finished: { label: 'TERMINE', className: 'text-white/60 border-white/10 bg-white/5' },
-  cancelled: { label: 'ANNULE', className: 'text-red-400 border-red-400/30 bg-red-400/10' },
+  settling: { label: 'RÈGLEMENT', className: 'text-orange-400 border-orange-400/30 bg-orange-400/10' },
+  finished: { label: 'TERMINÉ', className: 'text-white/60 border-white/10 bg-white/5' },
+  cancelled: { label: 'ANNULÉ', className: 'text-red-400 border-red-400/30 bg-red-400/10' },
 };
 
 const countDown = (target: string | null): string => {
@@ -363,7 +363,7 @@ const BrPage: React.FC = () => {
         )}
 
         <p className="text-[10px] font-mono text-white/70 mt-6">
-            Les gains sont libelles en ZC (1 ZC = 10 FCFA). Les commissions et
+            Les gains sont libelles en ZC (1 ZC = {ZC_TO_FCFA} FCFA). Les commissions et
             le classement de chaque salon sont fixes par l'organisateur et valides
             par le serveur.
         </p>

@@ -135,7 +135,7 @@ const BrLobbyDetailPage: React.FC = () => {
     setActing(true);
     try {
       await leaveBrLobby(lobby.id);
-      toast.success('Desinscription effectuee, ton pass a ete rembourse.');
+      toast.success('Désinscription effectuée, ton pass a été remboursé.');
       await useWalletStore.getState().refreshFromServer(user?.id);
       await load();
     } catch (error) {
@@ -159,7 +159,7 @@ const BrLobbyDetailPage: React.FC = () => {
         <div className="max-w-2xl mx-auto text-center py-20">
           <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-4" aria-hidden="true" />
           <h1 className="font-display font-black text-xl uppercase italic mb-2">Salon introuvable</h1>
-          <p className="text-white/60 text-sm mb-6">Ce salon n'existe pas ou a ete supprime.</p>
+          <p className="text-white/60 text-sm mb-6">Ce salon n'existe pas ou a été supprimé.</p>
           <Link to="/br" className="inline-block text-[10px] font-mono font-black uppercase tracking-widest border border-white/20 px-4 py-2.5 hover:border-white/40 transition-colors">
             Retour aux salons
           </Link>
@@ -189,7 +189,7 @@ const BrLobbyDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui p-4 md:p-8 safe-top safe-bottom">
-      <SEOHead title={`${lobby.name} — BR ZOYD`} description="Detail du salon Battle Royale." path={`/br/${lobby.id}`} noindex />
+      <SEOHead title={`${lobby.name} — BR ZOYD`} description="Détail du salon Battle Royale." path={`/br/${lobby.id}`} noindex />
 
       <div className="max-w-5xl mx-auto">
         {/* PIEGE (audit UI) : `min-h-6` (24 px). Sans, ce lien de

@@ -261,6 +261,7 @@ les corrections, chacune avec son test de non-régression **vérifié
 | 7 | Front (192 fichiers) | 37 600 | stores, abonnements | **fait** |
 | 8 | Exploitabilite (`render.yaml`, CI, observabilite) | — | deploiement et alerte | **fait** |
 | 9 | **Audit UI** (33 ecrans mesures dans un navigateur) | — | ce que le joueur voit reellement | **fait** |
+| 10 | **Redaction** (textes visibles du front) | — | ce que l application DIT | **fait** |
 
 Ordre choisi : le **socle** d'abord parce que ses erreurs se multiplient,
 l'**argent** ensuite parce que c'est le plus fort enjeu, la
@@ -272,6 +273,12 @@ precise : les passes 1 a 8 lisaient le CODE. Un code peut etre
 parfaitement lisible et produire un ecran mort - c'est exactement ce qui
 est arrive au detail d un match (boucle de rendu infinie). Mesurer
 l'ecran rendu est le seul controle qui voie ce genre de defaut.
+
+La passe 10 est venue **apres** la neuvieme, pour une raison voisine :
+l audit UI mesure la FORME de l ecran (noms accessibles, contraste,
+cibles tactiles), pas ce que l ecran DIT. Un ecran parfaitement
+accessible peut dire « Arbitres necessaires » et un bouton peut
+s appeler « CONNEXION » : le joueur, lui, lit d abord les MOTS.
 
 ---
 
@@ -856,7 +863,102 @@ Verifie sur le deploiement du commit `365d1a0` : 14 ecrans verts, API en
 
 ---
 
-## 8. Synthese des neuf passes
+## 7 undecies. Passe 10 - la REDACTION : coquilles, libelles, incoherences
+
+Les neuf premieres passes regardaient ce que l application **FAIT**. Celle-ci
+regarde ce qu elle **DIT**.
+
+### La methode
+
+Trois extractions de chaines (le texte JSX, les attributs de texte, les
+messages de toast), relues a la main, puis regoupees par **classe**. Un
+audit de redaction qui ne garde que les cas ne sert a rien : « Arbitres
+necessaires » et « Base de donnees complete » demandent la meme correction
+de processus.
+
+### Ce que la passe a trouve
+
+| classe | nombre | exemples |
+|---|---|---|
+| Accent manquant dans un texte visible | 25 | « Arbitres necessaires », « Base de donnees complete », « Verification impossible. », « Detail du salon », « Les dernieres leaks » (meta description SEO) |
+| Libelle d action au NOM | 5 | le bouton de connexion disait « CONNEXION » (le nom de la page) ; « Connexion joueur » comme appel a l action |
+| Taux ZC -> FCFA ecrit en dur | 3 | les CGU affirmaient « 1 ZC = 10 FCFA » ; l assistant de creation recalculait `livePot * 10` a la main |
+| Ponctuation collee, mot manquant | 2 | « l'heure exacte,CODE salon commun » ; « Connexion par Google ou numero : » (sans « de telephone ») |
+
+Le cas du **taux** est le plus serieux, et il ne se voyait pas : le test
+miroir (`format-mirror.test.ts`) verifie que la constante du front vaut
+celle du serveur - mais il ne controle pas ses **usages**. L assistant de
+creation faisait donc sa PROPRE conversion, dans un ecran ou le reste de
+l application affichait la bonne. Les CGU, elles, affirmaient un taux ecrit
+a la main : une **troisieme** copie, que rien ne surveillait.
+
+### Les trois verrous
+
+`src/lib/copy-rules.test.ts` couvre des CLASSES entieres :
+
+1. **Les accents.** Une liste de mots francais qui portent un accent,
+   verifiee sur tous les textes visibles. La liste est courte et
+   VERIFIEE : chaque entree correspond a une coquille reellement trouvee.
+2. **Le libelle d action.** Un bouton porte une ACTION, donc un verbe.
+   La regle ne regarde que les elements d action (boutons, et liens qui
+   ont l aspect d un bouton) : « Connexion » reste valide pour un lien de
+   navigation vers la page de connexion.
+3. **Le taux.** Aucun ecran ne peut ecrire le taux en clair ni recalculer
+   la conversion a la main.
+
+### Les faux positifs (et pourquoi on ne les corrige pas)
+
+Une regle de redaction qui ne sait pas reconnaitre un faux positif oblige a
+ignorer des signalements. Cinq cas ecartes, chacun avec sa raison :
+
+| faux positif | pourquoi |
+|---|---|
+| « Termine tes matchs » | IMPERATIF de « terminer » : pas d accent. « un match termine » (participe) en prend un. Meme orthographe : seule la regle generale ne peut pas trancher - les cas ambigus sont verrouilles nominativement |
+| « Arbitres necessaires » | « arbitres » est un NOM (les arbitres du tournoi), pas un participe. Seul « necessaires » porte un accent |
+| « Joueurs au complet » | « complet » = plein. « complete » = acheve. Deux mots, deux orthographes |
+| « Connexion » en lien de navigation | c est le NOM de la page. Un lien de navigation porte un nom, un bouton un verbe |
+| « Retrait minimum : 150 ZC » | « retrait » est un mot de CONTENU legitime. Interdire ce mot produirait des faux positifs |
+
+Les cas ambigus sont verrouilles par des assertions nominatives (les
+badges de statut du hub BR, le libelle admin « SORTIES ARBITRES », la
+« Part d'arbitres ») : c'est plus long, mais c'est exact.
+
+### Le code mort : une bibliotheque de design jamais adoptee
+
+Le meme balayage a cherche les **exports jamais cites ailleurs** (56
+trouvailles). Presque toutes sont benignes : un `export` de trop, ou un
+composant de bibliotheque prevu pour plus tard.
+
+Une seule famille merite un arbitrage humain, parce qu elle mesure une
+**incoherence structurelle** : le dossier `src/app/components/ui/` contient
+un design system (Button, Input, Modal, Badge, Tabs, Card, Skeleton,
+AnimatedNumber... et 9 composants jamais utilises : Label, ProgressBar,
+Separator, Alert, Form, Sheet, Table, Toggle, Tooltip, soit ~700 lignes).
+Et l application l utilise **parcimonieusement** :
+
+| | brut | design system |
+|---|---|---|
+| boutons | 219 `<button>` | 35 `<Button>` (10 fichiers) |
+| champs | 65 `<input>` | 35 `<Input>` (6 fichiers) |
+
+Autrement dit : **l application a deux langages de bouton**, et le design
+system n est employe que dans 14 % des cas. La consequence est
+concrete, et l audit UI l a montre : la hauteur, l anneau de focus, l etat
+desactive et la typo d un bouton dependent du fichier ou l on se trouve.
+C est exactement pour cela que la passe 9 a dut corriger les cibles
+tactiles **une par une** (`min-h-6`, `min-h-11`, `touch-target`).
+
+Ce n est pas un defaut qu une relecture de code rattrape : c est une dette
+de structure. La corriger est un chantier (219 boutons), pas une
+correction. Le chemin qui ne casse rien : adopter le design system
+**ecran par ecran**, en commençant par les ecrans les plus vus (hub,
+portefeuille, chat). Tant que ce n est pas fait, la regle « une cible
+tactile fait 24 px » doit continuer d etre verifiee par la SONDE
+(`e2e/ui/support/audit.ts`) - c est elle qui tient la ligne entre-temps.
+
+---
+
+## 8. Synthese des dix passes
 
 | # | Defaut | Gravite |
 |---|---|---|
@@ -872,8 +974,11 @@ Verifie sur le deploiement du commit `365d1a0` : 14 ecrans verts, API en
 | 10 | Le miroir de formatage des montants avait diverge | MINEUR |
 | 11 | La purge de retention echouait en silence (LIMIT invalide) | MAJEUR |
 | 12 | Le detail d un match etait un ecran mort (boucle de rendu infinie) | MAJEUR |
+| 13 | Le taux ZC -> FCFA etait reecrit dans des textes et des calculs (troisieme copie) | MAJEUR |
+| 14 | Un bouton d action portait un nom (« CONNEXION ») | MINEUR |
+| 15 | 25 textes visibles perdaient leur accent | MINEUR |
 
-**Neuf defauts majeurs, deux mineurs.** Chacun est couvert par un test
+**Onze defauts majeurs, quatre mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -890,6 +995,7 @@ cas isoles.
 | `deploy-contract.test.mjs` | une variable d environnement declaree et non lue, ou lue et non declaree |
 | `selector-reference-stability.test.ts` | un accesseur de store appele hors d un hook, ou un accesseur INSTABLE appele dans un selecteur (boucle de rendu) |
 | `contrast-floor.test.ts` | un texte sous 50 % d opacite (WCAG 1.4.3), une icone sous 40 % (1.4.11), un jeton de couleur sous le plancher |
+| `copy-rules.test.ts` | un accent perdu, un libelle d action au nom, un taux monetaire ecrit en dur |
 | `e2e/ui/ui-audit-*.spec.ts` (gate CI) | un ecran qui devient inaccessible : nom accessible, contraste, cible tactile, erreur JS, reponse HTTP en erreur |
 
 ### Le keep-alive : l hibernation est traitee (deux mecanismes)
@@ -1001,7 +1107,7 @@ Honnetete sur la portee :
   tests.
 - Il ne decrit **pas** le front page par page (192 fichiers) - mais il
   decrit ce que l audit UI a mesure dessus, ecran par ecran.
-- Il ne dit **pas** que le code est correct. Les neuf passes ont trouve
+- Il ne dit **pas** que le code est correct. Les dix passes ont trouve
   12 defauts majeurs et 2 mineurs ; d autres restent possibles. La carte
   decrit la **forme**, pas la **correction**.
 

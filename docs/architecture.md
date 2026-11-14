@@ -261,7 +261,8 @@ les corrections, chacune avec son test de non-régression **vérifié
 | 7 | Front (192 fichiers) | 37 600 | stores, abonnements | **fait** |
 | 8 | Exploitabilite (`render.yaml`, CI, observabilite) | — | deploiement et alerte | **fait** |
 | 9 | **Audit UI** (33 ecrans mesures dans un navigateur) | — | ce que le joueur voit reellement | **fait** |
-| 10 | **Redaction** (textes visibles du front) | — | ce que l application DIT | **fait** |
+| 10 | **Redaction** (textes visibles du front) | — | ce que le front DIT | **fait** |
+| 11 | **Redaction** (508 messages du serveur) | — | ce que le serveur DIT | **fait** |
 
 Ordre choisi : le **socle** d'abord parce que ses erreurs se multiplient,
 l'**argent** ensuite parce que c'est le plus fort enjeu, la
@@ -958,7 +959,74 @@ tactile fait 24 px » doit continuer d etre verifiee par la SONDE
 
 ---
 
-## 8. Synthese des dix passes
+## 7 douzieme. Passe 11 - la REDACTION du backend : ce que le serveur dit
+
+Les dix premieres passes regardaient le CODE. Les deux dernieres regardent
+ce que l application **DIT** - d'abord le front (passe 10), puis le
+serveur (passe 11).
+
+### Pourquoi le serveur compte
+
+Les messages du serveur sont affiches au joueur : le front ne traduit
+que les codes qu il connait (`ERROR_MESSAGES`) et retombe SINON sur le
+message du serveur. Un message serveur mal ecrit est donc devant les yeux
+du joueur, dans TOUTES les erreurs de l application.
+
+### Ce que la passe a trouve
+
+| classe | nombre | exemple |
+|---|---|---|
+| **Apostrophe elidee** | ~60 | « Tu n es pas inscrit », « l historique des bails », « d un compte ZOYD » |
+| Accent manquant | ~150 | « 2FA deja activee », « Verification 2FA requise », « Corps de requete invalide » |
+| Message en anglais | 7 | « Upstream API error. », « Failed to fetch store data. », « Access denied to this channel. » |
+| Preposition « a » sans accent | ~25 | « rattache a un compte », « inscrit a cette ligue », « limitee a 0 ou 1 » |
+| Meme code, deux libelles | 3 | `2FA_REQUIRED`, `INVALID_ENTRY_FEE` (« positif » vs « strictement positif »), `INVALID_EMAIL` |
+
+**L apostrophe elidee avait une cause**, et elle est instructive : les
+messages sont des chaines entre apostrophes simples, et ecrire une
+apostrophe demanderait un echappement (`\'`). L auteur SUPPRIMAIT
+l apostrophe plutot que de l echapper. Le resultat etait une phrase
+grammaticalement fausse, sur les 508 messages du serveur.
+
+Le resultat visible : **le serveur etait a deux langues** - les
+COMMENTAIRES accentues, les MESSAGES non accentues.
+
+### Les verrous
+
+`server/copy-rules.test.mjs` (4 tests) verifie sur les 508 messages :
+
+1. aucune apostrophe elidee ;
+2. aucun message en anglais ;
+3. aucun accent perdu (liste de mots dont l accent est obligatoire -
+   les homographes comme « confirme » (imperatif) ou « annuler » (infinitif)
+   sont exclus : meme orthographe, sens oppose) ;
+4. l existence meme des messages (une regle qui ne verifie rien ne
+   verifie rien).
+
+`src/lib/legal-mirror.test.ts` (7 tests) lie les **CGU aux
+constantes du serveur** : le retrait minimum, la commission ZOYD, le
+plafond quotidien, le maximum par retrait, la commission d arbitrage
+(tournoi et match) et le taux ZC -> FCFA. Les CGU etaient un document
+JURIDIQUE fige dans un composant React, sans lien avec les seuils
+reellement appliques : les changer un jour n'aurait rien mis a jour.
+Le test lit les constantes du serveur et verifie que les CGU les
+reprennent.
+
+### Les faux positifs (et pourquoi on ne les corrige pas)
+
+| faux positif | pourquoi |
+|---|---|
+| « Confirme la perte du solde » | IMPERATIF de « confirmer » : pas d accent. « confirmé » (participe) en prend un |
+| « un mot de passe valides » | adjectif : pas d accent. « validés » (participe) en prend un |
+| « Annule le match plutot » | infinitif : pas d accent |
+
+Meme orthographe, sens oppose : c est le contexte qui tranche, pas une
+regle de dictionnaire. Les cas nominatifs sont donc traites par des
+corrections ciblees, avec leur phrase entiere.
+
+---
+
+## 8. Synthese des onze passes
 
 | # | Defaut | Gravite |
 |---|---|---|
@@ -976,9 +1044,12 @@ tactile fait 24 px » doit continuer d etre verifiee par la SONDE
 | 12 | Le detail d un match etait un ecran mort (boucle de rendu infinie) | MAJEUR |
 | 13 | Le taux ZC -> FCFA etait reecrit dans des textes et des calculs (troisieme copie) | MAJEUR |
 | 14 | Un bouton d action portait un nom (« CONNEXION ») | MINEUR |
-| 15 | 25 textes visibles perdaient leur accent | MINEUR |
+| 15 | 25 textes visibles du front perdaient leur accent | MINEUR |
+| 16 | ~60 messages serveur avaient l apostrophe ELIDEE (« n es ») | MAJEUR |
+| 17 | 7 messages serveur etaient en anglais | MINEUR |
+| 18 | Les CGU ne tenaient pas compte des seuils reels du serveur | MAJEUR |
 
-**Onze defauts majeurs, quatre mineurs.** Chacun est couvert par un test
+**Treize defauts majeurs, six mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -996,6 +1067,8 @@ cas isoles.
 | `selector-reference-stability.test.ts` | un accesseur de store appele hors d un hook, ou un accesseur INSTABLE appele dans un selecteur (boucle de rendu) |
 | `contrast-floor.test.ts` | un texte sous 50 % d opacite (WCAG 1.4.3), une icone sous 40 % (1.4.11), un jeton de couleur sous le plancher |
 | `copy-rules.test.ts` | un accent perdu, un libelle d action au nom, un taux monetaire ecrit en dur |
+| `server/copy-rules.test.mjs` | une apostrophe elidee, un accent perdu, un message en anglais (cote serveur) |
+| `legal-mirror.test.ts` | des CGU qui ne disent plus les seuils reellement appliques |
 | `e2e/ui/ui-audit-*.spec.ts` (gate CI) | un ecran qui devient inaccessible : nom accessible, contraste, cible tactile, erreur JS, reponse HTTP en erreur |
 
 ### Le keep-alive : l hibernation est traitee (deux mecanismes)
@@ -1107,7 +1180,7 @@ Honnetete sur la portee :
   tests.
 - Il ne decrit **pas** le front page par page (192 fichiers) - mais il
   decrit ce que l audit UI a mesure dessus, ecran par ecran.
-- Il ne dit **pas** que le code est correct. Les dix passes ont trouve
+- Il ne dit **pas** que le code est correct. Les onze passes ont trouve
   12 defauts majeurs et 2 mineurs ; d autres restent possibles. La carte
   decrit la **forme**, pas la **correction**.
 

@@ -275,7 +275,7 @@ const handleRequest = async (req, res) => {
   if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
     const origin = req.headers.origin;
     if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-      log.warn('CSRF origin rejected', { origin, path: pathname });
+      log.warn('Origine CSRF rejetee', { origin, path: pathname });
       respondJson(res, 403, { ok: false, error: 'Origine non autorisée.', code: 'CSRF_ORIGIN_REJECTED' }, req);
       return;
     }
@@ -310,7 +310,7 @@ const handleRequest = async (req, res) => {
 // route laisse la requête pendre indéfiniment (client en timeout au lieu d'une 500).
 const server = http.createServer((req, res) => {
   handleRequest(req, res).catch((err) => {
-    log.error('Unhandled route error', { message: err?.message, path: req?.url });
+    log.error('Erreur de route non geree', { message: err?.message, path: req?.url });
     try {
       respondJson(res, 500, { ok: false, error: 'Erreur serveur inattendue.', code: 'INTERNAL_ERROR' });
     } catch { /* socket déjà fermée */ }
@@ -332,7 +332,7 @@ const io = new SocketIOServer(server, {
       callback(null, true);
       return;
     }
-    log.warn('Socket WS refuse : origine non autorisee', { origin });
+    log.warn('Socket WS refusé : origine non autorisee', { origin });
     callback(null, false);
   },
   cors: {
@@ -645,7 +645,7 @@ io.on('connection', (socket) => {
         requireInteraction: Boolean(requireInteraction),
       });
     } catch (err) {
-      log.warn('notification:push delivery failed', { targetUserId, error: err.message });
+      log.warn('Échec de l\'envoi de la notification push', { targetUserId, error: err.message });
     }
   });
 
@@ -679,7 +679,7 @@ const start = async () => {
     // TOUTE écriture d'état est refusée tant que l'état n'est pas complet
     // (isStateTrusted() === false). C'est volontaire : démarrer avec un état
     // partiel faisait purger la base au premier match créé.
-    log.error('CRITICAL: Failed to load data from Supabase after 3 attempts — ecritures desactivees', {
+    log.error('CRITIQUE : échec du chargement des données depuis Supabase après 3 tentatives — écritures desactivees', {
       stateTrusted: isStateTrusted(),
       error: getStateLoadError(),
     });
@@ -696,7 +696,7 @@ const start = async () => {
   // rejoué toutes les heures par le cron.
   const integrity = await verifyDataIntegrity();
   if (!integrity.ok) {
-    log.error('DATA INTEGRITY CHECK FAILED at startup', integrity);
+    log.error('CONTRÔLE D\'INTÉGRITÉ DES DONNÉES EN ÉCHEC au demarrage', integrity);
   }
 
   ensureGlobalChatChannel();
@@ -725,7 +725,7 @@ const start = async () => {
 
   matchAutomationIntervalId = setInterval(async () => {
     if (matchAutomationRunning) {
-      log.warn('Match automation skipped: previous tick still running.');
+      log.warn('Automatisation des matchs sautee : le tick précédent tourne encore.');
       return;
     }
     matchAutomationRunning = true;
@@ -740,7 +740,7 @@ const start = async () => {
       // par celui-la. `runMatchAutomationOnServer` fait cet enchainement.
       const outcome = await runMatchAutomationOnServer(getStateCollection('matches'));
       if (outcome.refunded.length > 0) {
-        log.warn('Arbiter sweep refunded matches', {
+        log.warn('Balayage des arbitres : matchs rembourses', {
           count: outcome.refunded.length,
           matches: outcome.refunded.map((r) => `${r.matchId}:${r.reason}`).slice(0, 20),
         });
@@ -750,7 +750,7 @@ const start = async () => {
       }
     });
     } catch (error) {
-      log.error('Match automation error', error);
+      log.error('Erreur d\'automatisation des matchs', error);
     } finally {
       matchAutomationRunning = false;
     }
@@ -765,7 +765,7 @@ process.on('unhandledRejection', (err) => {
   log.fatal('Unhandled promise rejection', err);
 });
 process.on('uncaughtException', (err) => {
-  log.fatal('Uncaught exception — exiting to prevent corrupted state', err);
+  log.fatal('Exception non capturee — arret pour eviter un état corrompu', err);
   process.exit(1);
 });
 

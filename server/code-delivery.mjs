@@ -200,7 +200,7 @@ const sendViaSmtp = async ({ to, code, purpose }) => {
   try {
     nodemailer = await import('nodemailer');
   } catch (error) {
-    log.error('smtp module missing (nodemailer not installed)', { message: error.message });
+    log.error('Module smtp absent (nodemailer non installé)', { message: error.message });
     return false;
   }
   const transporter = (nodemailer.default || nodemailer).createTransport({
@@ -237,7 +237,7 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
       return { delivered: true, channel: 'resend' };
     }
   } catch (error) {
-    log.error('resend delivery failed', { purpose, to: maskDestination(to), message: error.message });
+    log.error('Échec de l\'envoi (resend)', { purpose, to: maskDestination(to), message: error.message });
   }
 
   // 2. Brevo API (HTTPS — compatible Render gratuit)
@@ -246,7 +246,7 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
       return { delivered: true, channel: 'brevo' };
     }
   } catch (error) {
-    log.error('brevo delivery failed', { purpose, to: maskDestination(to), message: error.message });
+    log.error('Échec de l\'envoi (brevo)', { purpose, to: maskDestination(to), message: error.message });
   }
 
   // 3. SMTP (local / instance payante uniquement — bloqué sur Render gratuit)
@@ -255,7 +255,7 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
       return { delivered: true, channel: 'smtp' };
     }
   } catch (error) {
-    log.error('smtp delivery failed', { purpose, to: maskDestination(to), message: error.message });
+    log.error('Échec de l\'envoi (smtp)', { purpose, to: maskDestination(to), message: error.message });
     // Conseil actionnable : Render gratuit ferme les ports SMTP.
     if (/timeout|ETIMEDOUT|ENOTFOUND|ECONN/i.test(error.message || '')) {
       log.warn('smtp blocked? use RESEND_API_KEY or BREVO_API_KEY (HTTPS port 443)', {
@@ -299,7 +299,7 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return { delivered: true, channel: 'webhook' };
     } catch (error) {
-      log.error('auth code delivery failed', { purpose, to: maskDestination(to), message: error.message });
+      log.error('Échec de l\'envoi du code d\'authentification', { purpose, to: maskDestination(to), message: error.message });
       return { delivered: false, channel: 'webhook' };
     }
   }
@@ -308,9 +308,9 @@ export const deliverAuthCode = async ({ to, code, purpose }) => {
   // Fail-closed : le code n'est loggé qu'avec ALLOW_DEBUG_CODES=true explicite.
   if (process.env.ALLOW_DEBUG_CODES === 'true') {
     // Local testing only: never log codes in production.
-    log.info('dev auth code', { purpose, to: maskDestination(to), code });
+    log.info('Code d\'authentification (développement)', { purpose, to: maskDestination(to), code });
   } else if (isProd || !process.env.NODE_ENV) {
-    log.warn('auth code delivery pending (no provider)', { purpose, to: maskDestination(to) });
+    log.warn('Envoi du code d\'authentification en attente (aucun fournisseur)', { purpose, to: maskDestination(to) });
   }
   return { delivered: false, channel: 'none' };
 };

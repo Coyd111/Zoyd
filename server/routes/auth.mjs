@@ -209,7 +209,7 @@ if (req.method === 'POST' && pathname === '/api/auth/register') {
       message: 'Compte cree avec succes. Bienvenue sur ZOYD !',
     });
   } catch (error) {
-    log.error('register error', { message: error.message, code: error.code });
+    log.error('Erreur d\'inscription', { message: error.message, code: error.code });
     respondMappedError(res, error);
   }
   return true;
@@ -707,7 +707,7 @@ if (req.method === 'PATCH' && pathname === '/api/auth/me') {
         // Le renregistrement est déjà écrit : un échec de diffusion ne doit
         // pas faire répondre 500 au client (le rattrapageira au prochain
         // broadcast de match).
-        log.warn('Renvoi des matchs apres changement de pseudo impossible', { error: String(broadcastError?.message || broadcastError) });
+        log.warn('Renvoi des matchs après changement de pseudo impossible', { error: String(broadcastError?.message || broadcastError) });
       }
     }
     respondJson(res, 200, { ok: true, user: updatedUser }, req);

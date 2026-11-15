@@ -902,7 +902,7 @@ export const applyTournamentSettlement = async (tournament) => {
             });
           });
         } catch (err) {
-          log.error('Tournament settlement failed (recours legacy capitaine)', {
+          log.error('Échec du règlement de tournoi (recours legacy capitaine)', {
             tournamentId: tournament.id, captainId: entry.captainId, entryId: entry.id, placement: entry.finalPlacement, error: err.message,
           });
           // Dette en forme historique (captainId) : les retries la rejouent
@@ -945,7 +945,7 @@ export const applyTournamentSettlement = async (tournament) => {
             });
           });
         } catch (err) {
-          log.error('Tournament settlement failed for member', { tournamentId: tournament.id, userId: member.userId, entryId: entry.id, placement: entry.finalPlacement, error: err.message });
+          log.error('Échec du règlement de tournoi pour un membre', { tournamentId: tournament.id, userId: member.userId, entryId: entry.id, placement: entry.finalPlacement, error: err.message });
           pendingPayouts.push({
             kind: placePayout > 0 ? 'prize' : 'forfeit',
             userId: member.userId,
@@ -984,7 +984,7 @@ export const applyTournamentSettlement = async (tournament) => {
             );
           });
         } catch (err) {
-          log.error('Tournament arbiter settlement failed', {
+          log.error('Échec du règlement d\'arbitre de tournoi', {
             tournamentId: tournament.id,
             arbiterId: arbiter.userId,
             slot: arbiter.slot,
@@ -1391,7 +1391,7 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
       // amount|amountZC|value : sans lui la dette valait 0 ZC).
       const fee = roundAmount(Number(tournament.entryFee || 0));
       if (isUnrecoverableRefundError(error)) {
-        log.error('Tournament refund impossible: compte supprime, dette close', { tournamentId, userId: target.userId });
+        log.error('Tournament refund impossible: compte supprimé, dette close', { tournamentId, userId: target.userId });
         uncollectable.push({ userId: target.userId, entryId: target.entryId, amount: fee, reason: 'ACCOUNT_DELETED', at: getNow() });
         continue;
       }
@@ -1399,7 +1399,7 @@ export const cancelStaleTournamentOnServer = async (tournaments, tournamentId, r
       // cron de reprise la réessaie. Avant, l'erreur était loguée puis
       // `entries = []` détruisait la preuve de la dette : les ZC restaient
       // bloqués dans lockedEntries sans aucun chemin pour les libérer.
-      log.error('Tournament refund failed', { tournamentId, userId: target.userId, error: error.message });
+      log.error('Échec du remboursement de tournoi', { tournamentId, userId: target.userId, error: error.message });
       failedRefunds.push({ userId: target.userId, entryId: target.entryId, amount: fee, lastError: error.message, at: getNow() });
     }
   }
@@ -1458,12 +1458,12 @@ export const retryPendingTournamentRefunds = async (tournaments) => {
         // Compte supprime : dette impossible a honorer. La remettre dans
         // `pendingRefunds` la rejouerait a chaque cycle, pour toujours.
         if (isUnrecoverableRefundError(error)) {
-          log.error('Tournament refund abandon: compte supprime, dette close', { tournamentId: tournament.id, userId: targetUserId });
+          log.error('Remboursement de tournoi abandonne : compte supprimé, dette close', { tournamentId: tournament.id, userId: targetUserId });
           uncollectable.push({ userId: targetUserId, entryId: item.entryId, amount: roundAmount(Number(item.amount ?? tournament.entryFee ?? 0)), reason: 'ACCOUNT_DELETED', at: getNow() });
           abandoned += 1;
           continue;
         }
-        log.warn('Tournament refund retry failed', {
+        log.warn('Échec de la nouvelle tentative de remboursement de tournoi', {
           tournamentId: tournament.id, userId: targetUserId, error: error.message,
         });
         stillFailing.push({ ...item, lastError: error.message });
@@ -1535,7 +1535,7 @@ export const retryPendingTournamentPayouts = async (tournaments) => {
         }
         retried += 1;
       } catch (error) {
-        log.warn('Tournament payout retry failed', {
+        log.warn('Échec de la nouvelle tentative de versement de tournoi', {
           tournamentId: tournament.id,
           userId: item.userId || item.captainId || item.arbiterUserId,
           error: error.message,
@@ -1551,7 +1551,7 @@ export const retryPendingTournamentPayouts = async (tournaments) => {
   }
 
   if (retried > 0) {
-    log.warn('Gains de tournoi rejoues', { retried, remaining });
+    log.warn('Gains de tournoi rejoués', { retried, remaining });
   }
   return { tournaments: nextTournaments, retried, remaining };
 };
@@ -1718,13 +1718,13 @@ export const startTournamentOnServer = async (tournaments, actor, tournamentId) 
           });
         } catch (error) {
           if (isUnrecoverableRefundError(error)) {
-            log.error('Tournament sweep refund impossible: compte supprime, dette close', {
+            log.error('Tournament sweep refund impossible: compte supprimé, dette close', {
               tournamentId: tournament.id, userId: member.userId,
             });
             uncollectable.push({ userId: member.userId, entryId: entry.id, reason: 'ACCOUNT_DELETED', at: getNow() });
             continue;
           }
-          log.error('Tournament sweep refund failed', {
+          log.error('Échec du remboursement lors du balayage des tournois', {
             tournamentId: tournament.id, userId: member.userId, entryId: entry.id, error: error.message,
           });
           pendingRefunds.push({ userId: member.userId, entryId: entry.id, lastError: error.message, at: getNow() });

@@ -242,7 +242,7 @@ export const handleVerifiedWebhookEvent = async (event, ctx = {}) => {
           type: 'wallet_update',
           requireInteraction: false,
         }).catch((notifyError) => {
-          log.error('Deposit notification failed (webhook)', {
+          log.error('Échec de la notification de depot (webhook)', {
             userId: depositUser.id, transactionId, error: notifyError.message,
           });
         });
@@ -254,7 +254,7 @@ export const handleVerifiedWebhookEvent = async (event, ctx = {}) => {
       }
       if (error?.code === 'TRANSACTION_NOT_OWNED' || error?.code === 'TRANSACTION_NOT_APPROVED'
         || error?.code === 'INVALID_AMOUNT' || error?.code === 'PAYMENT_NOT_CONFIGURED') {
-        log.warn('Webhook depot ignore (etat definitif)', {
+        log.warn('Webhook depot ignoré (état definitif)', {
           transactionId, code: error.code,
         });
         return { received: true, action: 'ignored_definitif' };
@@ -294,7 +294,7 @@ export const handleWebhookRoutes = async ({ req, res, pathname, io }) => {
 
   const secret = process.env.FEDAPAY_WEBHOOK_SECRET;
   if (!secret) {
-    log.error('Webhook FedaPay sans secret configure — refuse (fail-closed)');
+    log.error('Webhook FedaPay sans secret configure — refusé (fail-closed)');
     respondJson(res, 503, { ok: false, error: 'Webhook non configuré.', code: 'WEBHOOK_NOT_CONFIGURED' }, req);
     return true;
   }
@@ -324,7 +324,7 @@ export const handleWebhookRoutes = async ({ req, res, pathname, io }) => {
     return true;
   } catch (error) {
     if (isTransientError(error)) {
-      log.error('Webhook FedaPay transitoire (retry)', { error: error?.message, code: error?.code });
+      log.error('Webhook FedaPay transitoire (nouvelle tentative)', { error: error?.message, code: error?.code });
       respondJson(res, 503, { ok: false, error: 'Traitement transitoire, réessaie.', code: error.code || 'SERVER_BUSY' }, req);
       return true;
     }

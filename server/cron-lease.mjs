@@ -176,12 +176,12 @@ const probeTable = async () => {
     // On ne journalise le passage a « disponible » que lors du CHANGEMENT :
     // sinon la sonde rejouerait le meme warn a chaque minute.
     if (nouveau && tableAvailable === false) {
-      log.info('Table cron_leases presente : les jobs de fond sont proteges contre l execution en double.');
+      log.info('Table cron_leases présente : les jobs de fond sont protégés contre l\'exécution en double.');
     }
     tableAvailable = nouveau;
     tableError = error?.message || null;
     if (error) {
-      log.warn('Table cron_leases absente : les jobs de fond ne sont PAS proteges contre l execution en double (migration en attente).', { message: error.message });
+      log.warn('Table cron_leases absente : les jobs de fond ne sont PAS protégés contre l\'exécution en double (migration en attente).', { message: error.message });
     }
   } catch (err) {
     tableAvailable = false;
@@ -306,7 +306,7 @@ export const acquireCronLease = async (jobName, options = {}) => {
     // tourne pas, c'est de l'argent qui ne bouge pas ; un job qui tourne en
     // double, c'est de l'argent qui bouge deux fois. Le second risque est
     // borne (cles d'idempotence), le premier ne l'est pas.
-    log.error('Bail de cron indisponible : le job s execute sans protection multi-instance', {
+    log.error('Bail de cron indisponible : le job s exécuté sans protection multi-instance', {
       job: jobName, message: erreurInsert.message,
     });
     compteurs.erreurs += 1;
@@ -367,7 +367,7 @@ export const acquireCronLease = async (jobName, options = {}) => {
     return { acquired: true, reason: 'erreur-base' };
   }
   if (Array.isArray(touches) && touches.length === 1) {
-    log.info('Bail de cron repris (expire)', { job: jobName, ancienHolder: row?.holder || null });
+    log.info('Bail de cron repris (expiré)', { job: jobName, ancienHolder: row?.holder || null });
     compteurs.acquis += 1;
     return { acquired: true, reason: 'repris' };
   }
@@ -398,11 +398,11 @@ export const releaseCronLease = async (jobName, options = {}) => {
   try {
     const { error } = await requete;
     if (error) {
-      log.error('Liberation du bail de cron impossible', { job: jobName, message: error.message });
+      log.error('Libération du bail de cron impossible', { job: jobName, message: error.message });
       return false;
     }
   } catch (err) {
-    log.error('Liberation du bail de cron impossible', { job: jobName, message: err?.message });
+    log.error('Libération du bail de cron impossible', { job: jobName, message: err?.message });
     return false;
   }
   return true;
@@ -424,7 +424,7 @@ export const withCronLease = async (jobName, fn, options = {}) => {
   const debut = Date.now();
   const bail = await acquireCronLease(jobName, options);
   if (!bail.acquired) {
-    log.info('Job de fond ignore : une autre instance le traite', { job: jobName, raison: bail.reason });
+    log.info('Job de fond ignoré : une autre instance le traite', { job: jobName, raison: bail.reason });
     // Trace durable : « une autre instance detient ce job » est un evenement
     // d'exploitation (deux instances actives en permanence), pas un bruit.
     await recordLeaseEventIfAvailable({

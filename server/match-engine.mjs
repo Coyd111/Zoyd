@@ -633,7 +633,7 @@ const applyResultSettlement = async (match, result) => {
         }
       });
     } catch (err) {
-      log.error('Settlement error for player', { matchId: match.id, playerId: player.userId, error: err.message });
+      log.error('Erreur de règlement pour un joueur', { matchId: match.id, playerId: player.userId, error: err.message });
       settlementErrors.push({ playerId: player.userId, error: err.message });
     }
   }
@@ -661,7 +661,7 @@ const applyResultSettlement = async (match, result) => {
         );
       });
     } catch (err) {
-      log.error('Arbiter payout error', { matchId: match.id, arbiterId: match.arbiter.userId, error: err.message });
+      log.error('Erreur de versement à l\'arbitre', { matchId: match.id, arbiterId: match.arbiter.userId, error: err.message });
       arbiterErrors.push({ playerId: match.arbiter.userId, role: 'arbiter', error: err.message });
     }
     // La creance sur la commission est COMPENSEE, pas perdue.
@@ -1407,7 +1407,7 @@ export const expireConfirmationsOnServer = async (matches, now = Date.now()) => 
       // d'arbitrage (`sweepMatchesWithoutArbiter`) le REMBOURSE, puisque sans
       // arbitre le match ne peut pas etre regle. C'est la decision deja
       // ecrite dans le code, pas une invention d'ici.
-      log.error('Reglement refuse a l expiration des confirmations', {
+      log.error('Règlement refusé à l expiration des confirmations', {
         matchId: match.id,
         code: error.code,
         error: error.message,
@@ -1941,7 +1941,7 @@ export const processMatchAutomationOnServer = async (matches, nowMs = Date.now()
       );
       changed = true;
     } catch (err) {
-      log.error('Automation error for match', { matchId: match.id, error: err.message });
+      log.error('Erreur d\'automatisation pour un match', { matchId: match.id, error: err.message });
     }
   }
 
@@ -1985,7 +1985,7 @@ export const runMatchAutomationOnServer = async (matches, nowMs = Date.now()) =>
   } catch (error) {
     // Le balayage ne doit JAMAIS empecher l'automatisation de tourner : une
     // donnee corrompue sur un match ne doit pas geler tous les autres.
-    log.error('Arbiter sweep failed', { error: error.message });
+    log.error('Échec du balayage des arbitres', { error: error.message });
   }
 
   return {
@@ -2046,7 +2046,7 @@ export const retryPendingArbiterFees = async (matches) => {
       // L'arbitre n'est plus identifiable : la creance ne peut pas etre versee
       // telle quelle. On la garde visible plutot que de l effacer — une
       // dette qu on ne voit pas est une dette qu on ne rembourse pas.
-      log.error('Commission d arbitre non versable : arbitre inconnu', {
+      log.error('Commission d\'arbitre non versable : arbitre inconnu', {
         matchId: match.id,
         amount: due,
       });
@@ -2079,7 +2079,7 @@ export const retryPendingArbiterFees = async (matches) => {
       );
       retried += 1;
     } catch (error) {
-      log.warn('Commission d arbitre : reprise echouee', {
+      log.warn('Commission d\'arbitre : reprise échouée', {
         matchId: match.id,
         arbiterId,
         amount: due,

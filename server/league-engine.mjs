@@ -410,7 +410,7 @@ await withWalletMutex(actorUser.id, async () => {
     await withWalletMutex(actorUser.id, async () => {
       await refundLockedEntry(actorUser.id, seasonId, `Inscription ligue annulee ${season.name || ''}`.trim());
     }).catch((remboursementError) => {
-      log.error('Libération du pass après échec d inscription impossible', {
+      log.error('Libération du pass après échec d\'inscription impossible', {
         seasonId,
         userId: actorUser.id,
         error: String(remboursementError?.message || remboursementError),
@@ -818,7 +818,7 @@ export const applyLeagueSettlement = async (season) => {
         });
       });
     } catch (err) {
-      log.error('League settlement error for 1st place', { seasonId: season.id, userId: podium.first, error: err.message });
+      log.error('Erreur de règlement de ligue pour la 1re place', { seasonId: season.id, userId: podium.first, error: err.message });
       consigner({ kind: 'prize', place: 1, userId: podium.first, amount: payout.first });
     }
   }
@@ -838,7 +838,7 @@ export const applyLeagueSettlement = async (season) => {
         });
       });
     } catch (err) {
-      log.error('League settlement error for 2nd place', { seasonId: season.id, userId: podium.second, error: err.message });
+      log.error('Erreur de règlement de ligue pour la 2e place', { seasonId: season.id, userId: podium.second, error: err.message });
       consigner({ kind: 'prize', place: 2, userId: podium.second, amount: payout.second });
     }
   }
@@ -858,7 +858,7 @@ export const applyLeagueSettlement = async (season) => {
         });
       });
     } catch (err) {
-      log.error('League settlement error for 3rd place', { seasonId: season.id, userId: podium.third, error: err.message });
+      log.error('Erreur de règlement de ligue pour la 3e place', { seasonId: season.id, userId: podium.third, error: err.message });
       consigner({ kind: 'prize', place: 3, userId: podium.third, amount: payout.third });
     }
   }
@@ -880,7 +880,7 @@ export const applyLeagueSettlement = async (season) => {
         });
       }
 } catch (err) {
-      log.error('League settlement error for player', { seasonId: season.id, playerId: player.userId, error: err.message });
+      log.error('Erreur de règlement de ligue pour un joueur', { seasonId: season.id, playerId: player.userId, error: err.message });
       consigner({ kind: 'forfeit', userId: player.userId, amount: 0 });
     }
   }
@@ -927,7 +927,7 @@ export const retryPendingLeaguePayouts = async (leagues) => {
         });
         retried += 1;
       } catch (error) {
-        log.warn('League payout retry failed', { seasonId: season.id, userId: item.userId, error: error.message });
+        log.warn('Échec de la nouvelle tentative de versement (ligue)', { seasonId: season.id, userId: item.userId, error: error.message });
         stillFailing.push({ ...item, lastError: error.message });
       }
     }
@@ -936,7 +936,7 @@ export const retryPendingLeaguePayouts = async (leagues) => {
     season.updatedAt = getNow();
   }
 
-  if (retried > 0) log.warn('Gains de ligue rejoues', { retried, remaining });
+  if (retried > 0) log.warn('Gains de ligue rejoués', { retried, remaining });
   return { leagues: nextLeagues, retried, remaining };
 };
 
@@ -1048,11 +1048,11 @@ export const cancelStaleLeagueSeasonOnServer = async (seasons, seasonId, reason 
       // `amount|amountZC|value`).
       const fee = roundAmount(Number(player?.entryFee ?? season?.entryFee ?? LEAGUE_ENTRY_FEE) || 0);
       if (isUnrecoverableRefundError(error)) {
-        log.error('League refund impossible: compte supprime, dette close', { seasonId, userId, pseudo: player?.pseudo });
+        log.error('League refund impossible: compte supprimé, dette close', { seasonId, userId, pseudo: player?.pseudo });
         uncollectable.push({ userId, pseudo: player?.pseudo, amount: fee, reason: 'ACCOUNT_DELETED', at: getNow() });
         continue;
       }
-      log.error('League refund failed', { seasonId, userId, error: error.message });
+      log.error('Échec du remboursement (ligue)', { seasonId, userId, error: error.message });
       failed.push({ userId, pseudo: player?.pseudo, amount: fee, lastError: error.message, at: getNow() });
     }
   }
@@ -1106,12 +1106,12 @@ export const retryPendingLeagueRefunds = async (seasons) => {
         // remboursement mais une dette impossible a honorer. La remettre dans
         // `pendingRefunds` la rejouerait a chaque cycle, pour toujours.
         if (isUnrecoverableRefundError(error)) {
-          log.error('League refund abandon: compte supprime, dette close', { seasonId: season.id, userId: item.userId });
+          log.error('League refund abandon: compte supprimé, dette close', { seasonId: season.id, userId: item.userId });
           uncollectable.push({ userId: item.userId, pseudo: item.pseudo, amount: roundAmount(Number(item.amount ?? season.entryFee ?? LEAGUE_ENTRY_FEE) || 0), reason: 'ACCOUNT_DELETED', at: getNow() });
           abandoned += 1;
           continue;
         }
-        log.warn('League refund retry failed', { seasonId: season.id, userId: item.userId, error: error.message });
+        log.warn('Échec de la nouvelle tentative de remboursement (ligue)', { seasonId: season.id, userId: item.userId, error: error.message });
         stillFailing.push({ ...item, lastError: error.message });
       }
     }

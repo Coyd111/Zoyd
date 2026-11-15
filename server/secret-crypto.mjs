@@ -129,6 +129,6 @@ export const decryptSecret = (stored) => {
       // mauvaise cle ou donnees altérées : essayer la cle suivante
     }
   }
-  log.error('Secret 2FA indechiffrable (cle manquante ou donnees alterees).');
+  log.error('Secret 2FA indéchiffrable (clé manquante ou données altérées).');
   return { plaintext: null, wasEncrypted: true, error: 'decrypt' };
 };

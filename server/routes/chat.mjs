@@ -275,7 +275,7 @@ if (req.method === 'POST' && chatChannelRead) {
     broadcastChatRead(io, receipt.channelId, receipt.userId, receipt.readAt);
     respondJson(res, 200, { ok: true, ...receipt });
   } catch (err) {
-    log.error('chat/channel read failed', { channelId: channel.id, userId: session.user.id, error: err.message });
+    log.error('Échec du marquage de lecture du canal', { channelId: channel.id, userId: session.user.id, error: err.message });
     respondJson(res, 500, { ok: false, error: 'Erreur lors de la marque de lecture.', code: 'READ_ERROR' });
   }
   return true;

@@ -105,7 +105,7 @@ const creerClient = async (url, key) => {
 let supabase = null;
 
 if (supabaseDisabled) {
-  log.warn('ZOYD_DISABLE_SUPABASE=true — mode memoire (tests E2E)');
+  log.warn('ZOYD_DISABLE_SUPABASE=true — mode mémoire (tests E2E)');
 } else if (supabaseUrl && supabaseKey) {
   const roleCle = lireRoleCle(supabaseKey);
   if (roleCle && roleCle !== 'service_role') {
@@ -113,12 +113,12 @@ if (supabaseDisabled) {
     // derriere le RLS, et l argent cesserait d etre persiste SANS ALERTE.
     // On refuse le client : le serveur passe en mode degrade, donc
     // /api/health repond 503 et l operateur voit le defaut.
-    log.error('Cle Supabase de role inattendu : client refuse, mode degrade', { role: roleCle });
+    log.error('Clé Supabase de rôle inattendu : client refusé, mode dégradé', { role: roleCle });
   } else {
     if (roleCle === null) {
       // Cle non verifiable (format `sb_secret_...`) : on ne peut pas
       // controler son role. On l accepte, mais on le dit.
-      log.warn('Role de la cle Supabase non verifiable : format non-JWT', {});
+      log.warn('Rôle de la clé Supabase non vérifiable : format non-JWT', {});
     }
     supabase = await creerClient(supabaseUrl, supabaseKey);
     if (supabase) log.info('Client actif');

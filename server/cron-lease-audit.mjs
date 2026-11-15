@@ -129,12 +129,12 @@ export const recordLeaseEvent = async (evenement = {}) => {
     if (error) {
       // Un echec ici est sans consequence sur le job : on le signale, mais
       // on ne leve rien.
-      log.warn('Historique du bail non ecrit', { job: jobName, message: error.message });
+      log.warn('Historique du bail non écrit', { job: jobName, message: error.message });
       return false;
     }
     return true;
   } catch (err) {
-    log.warn('Historique du bail non ecrit', { job: jobName, message: err?.message });
+    log.warn('Historique du bail non écrit', { job: jobName, message: err?.message });
     return false;
   }
 };
@@ -168,7 +168,7 @@ export const purgeLeaseAudit = async (retentionDays = AUDIT_RETENTION_DAYS) => {
       // lignes purgees resterait a zero — donc invisible dans la sonde.
       .select('id');
     if (error) {
-      log.warn('Purge de l historique des bails impossible', { message: error.message });
+      log.warn('Purge de l\'historique des bails impossible', { message: error.message });
       etatPurge.derniereErreur = error.message;
       etatPurge.derniereExecutionAt = new Date().toISOString();
       return 0;
@@ -180,7 +180,7 @@ export const purgeLeaseAudit = async (retentionDays = AUDIT_RETENTION_DAYS) => {
     if (purgees > 0) log.info('Historique des bails purge', { purgees, retentionDays });
     return purgees;
   } catch (err) {
-    log.warn('Purge de l historique des bails impossible', { message: err?.message });
+    log.warn('Purge de l\'historique des bails impossible', { message: err?.message });
     etatPurge.derniereErreur = err?.message || String(err);
     etatPurge.derniereExecutionAt = new Date().toISOString();
     return 0;
@@ -259,11 +259,11 @@ const probeAuditTable = async () => {
     const { error } = await supabase.from('cron_lease_audit').select('id').limit(1);
     const nouveau = !error;
     if (nouveau && auditAvailable === false) {
-      log.info('Table cron_lease_audit presente : l historique durable des bails est actif.');
+      log.info('Table cron_lease_audit présente : l\'historique durable des bails est actif.');
     }
     auditAvailable = nouveau;
     if (error) {
-      log.warn('Table cron_lease_audit absente : pas d historique durable des bails (migration en attente).', {
+      log.warn('Table cron_lease_audit absente : pas d\'historique durable des bails (migration en attente).', {
         message: error.message,
       });
     }

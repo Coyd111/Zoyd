@@ -120,7 +120,7 @@ const notifyAllAdmins = async (io, payload) => {
     try {
       await deliverNotification(io, adminId, payload);
     } catch (err) {
-      log.warn('Failed to notify admin', { adminId, error: err.message });
+      log.warn('Échec de la notification de l\'admin', { adminId, error: err.message });
     }
   }
 };

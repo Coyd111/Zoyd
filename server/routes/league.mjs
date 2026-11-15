@@ -285,7 +285,7 @@ if (req.method === 'POST' && leagueStartDay) {
         body: `La journee ${leagueStartDay[2]} de la ligue "${season.name}" est en cours !`,
         url: `/br-league/${season.id}`,
         requireInteraction: false
-      }).catch(err => log.error('Notification delivery failed', err));
+      }).catch(err => log.error('Échec de l\'envoi de la notification', err));
     }
 
     respondJson(res, 200, buildLeagueActionPayload(outcome.season, session.user.id));

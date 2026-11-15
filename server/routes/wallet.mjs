@@ -365,7 +365,7 @@ await withWalletMutex(session.user.id, async () => {
       // Aucune restitution automatique. Le retrait est marque pour
       // reconciliation : l'identifiant du payout est conserve, ce qui rend la
       // verification possible aupres de FedaPay.
-      log.error('Payout uncertain — pas de remboursement automatique, reconciliation requise', {
+      log.error('Payout uncertain — pas de remboursement automatique, réconciliation requise', {
         userId: session.user.id,
         payoutId: payoutError?.payoutId || null,
         idempotencyKey: cleanKey,
@@ -385,7 +385,7 @@ await withWalletMutex(session.user.id, async () => {
       return true;
     }
 
-    log.error('Payout failed, refunding wallet', { userId: session.user.id, error: payoutError.message });
+    log.error('Échec du transfert, remboursement du portefeuille', { userId: session.user.id, error: payoutError.message });
     // Le remboursement passe par `refundRejectedWithdrawal` : le credit ET la
     // trace d idempotence sont ecrits DANS LA MEME operation. Un
     // `depositToWallet` nu laissait le credit sans trace - une reecriture
@@ -421,7 +421,7 @@ await withWalletMutex(session.user.id, async () => {
     } catch (refundError) {
       // Perte sèche : l'argent est parti sans que le remboursement passe.
       // On le laisse CRISSER dans les logs plutôt que de l'avaler.
-      log.error('CRITICAL: Refund also failed — balance to reconcile manually', {
+      log.error('CRITIQUE : le remboursement a aussi echoue — solde a reconcilier manuellement', {
         userId: session.user.id,
         amount: body.amount,
         idempotencyKey: cleanKey,
@@ -447,7 +447,7 @@ if (withdrawTxId) {
           // sans que le joueur puisse plus jamais retirer. Le remboursement,
           // lui, porte desormais la meme cle, ce que `hasActiveWithdrawalKey`
           // reconnait : le joueur n'est donc plus bloque meme si le tag a echoue.
-          log.error('CRITICAL: payoutStatus not tagged — commission may be over-counted', {
+          log.error('CRITIQUE : le payoutStatus n\'est pas étiqueté — la commission peut être surcomptée', {
             userId: session.user.id, txId: withdrawTxId, error: tagError.message,
           });
         } finally {
@@ -482,7 +482,7 @@ if (refundReussi && cleanKey) forgetWithdrawalKey(session.user.id, cleanKey);
     try {
       await tagWalletTransaction(session.user.id, withdrawTxId, { payoutId: payoutResult.payoutId, payoutStatus: payoutResult.status });
     } catch (tagError) {
-      log.error('Failed to tag payout metadata', { userId: session.user.id, txId: withdrawTxId, error: tagError.message });
+      log.error('Échec de l\'etiquetage des metadonnees du transfert', { userId: session.user.id, txId: withdrawTxId, error: tagError.message });
     }
   }
   respondJson(res, 200, {
@@ -550,7 +550,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
     }).catch((notifyError) => {
       // Une notification ratée ne doit jamais faire échouer le crédit :
       // l'argent est déjà dans le portefeuille à ce stade.
-      log.error('Deposit notification failed', { userId: session.user.id, error: notifyError.message });
+      log.error('Échec de la notification de depot', { userId: session.user.id, error: notifyError.message });
     });
 
     respondJson(res, 200, { 
@@ -562,7 +562,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
   }); } catch (error) {
     // Préserve les codes métier (ALREADY_PROCESSED → 409, IN_PROGRESS → 409, etc.)
     // au lieu de tout écraser en 400 générique
-    log.error('Payment verification failed', { message: error.message, code: error.code });
+    log.error('Échec de la vérification du paiement', { message: error.message, code: error.code });
     if (error && typeof error.code === 'string' && error.code !== 'UNKNOWN_ERROR') {
       respondMappedError(res, error);
     } else {

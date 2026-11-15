@@ -332,13 +332,13 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     if (!rateLimitGuard(res, getClientIp(req), 'admin', getPeerAddress(req))) return true;
     const session = requireAdmin2fa(req, res);
     if (!session) return true;
-    log.info('Admin force reload from Supabase', { adminId: session.user.id });
+    log.info('Rechargement force par l\'admin depuis Supabase', { adminId: session.user.id });
     try {
       const ok = await forceReloadFromSupabase();
       const health = getHealthInfo();
       respondJson(res, 200, { ok, persistence: health });
     } catch (err) {
-      log.error('Admin reload failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec du rechargement par l\'admin', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du rechargement des données.', code: 'RELOAD_ERROR' });
     }
     return true;
@@ -354,7 +354,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
     try {
       respondJson(res, 200, { ok: true, commissions: getCommissionStats() }, req);
     } catch (err) {
-      log.error('Admin commissions failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec de lecture des commissions (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du calcul des commissions.', code: 'COMMISSIONS_ERROR' }, req);
     }
     return true;
@@ -437,7 +437,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         bailTableAvailable: isCronLeaseTableAvailable(),
       }, req);
     } catch (err) {
-      log.error('Admin cron leases failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec de lecture des baux de cron (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture de l’historique des bails.', code: 'CRON_LEASES_ERROR' }, req);
     }
     return true;
@@ -479,7 +479,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         generatedAt: getNow(),
       }, req);
     } catch (err) {
-      log.error('Admin finance debts failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec de calcul des dettes (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du calcul des dettes.', code: 'FINANCE_DEBTS_ERROR' }, req);
     }
     return true;
@@ -533,7 +533,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         degraded: result.degraded === true,
       }, req);
     } catch (err) {
-      log.error('Admin reports failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec de lecture des signalements (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture des signalements.', code: 'REPORTS_ERROR' }, req);
     }
     return true;
@@ -602,7 +602,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         reviewedAt: getNow(),
       }, req);
     } catch (err) {
-      log.error('Admin resolve report failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec du traitement d\'un signalement (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors du traitement du signalement.', code: 'RESOLVE_ERROR' }, req);
     }
     return true;
@@ -637,7 +637,7 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         limit,
       }, req);
     } catch (err) {
-      log.error('Admin sanctions list failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec de lecture des sanctions (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors de la lecture des sanctions.', code: 'SANCTIONS_ERROR' }, req);
     }
     return true;
@@ -665,10 +665,10 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
         }, req);
         return true;
       }
-      log.warn('Admin sanction levee', { adminId: session.user.id, sanctionId });
+      log.warn('Sanction levée (admin)', { adminId: session.user.id, sanctionId });
       respondJson(res, 200, { ok: true, sanctionId, revokedBy: session.user.id, revokedAt: getNow() }, req);
     } catch (err) {
-      log.error('Admin revoke sanction failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec de la levée de sanction (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors de la levée de la sanction.', code: 'REVOKE_ERROR' }, req);
     }
     return true;
@@ -737,9 +737,9 @@ export const handleAdminRoutes = async ({ req, res, pathname, io }) => {
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.end(csv);
-      log.info('Admin export historique matchs', { adminId: session.user.id, total: result.total, format });
+      log.info('Export de l\'historique des matchs (admin)', { adminId: session.user.id, total: result.total, format });
     } catch (err) {
-      log.error('Admin export matches failed', { adminId: session.user.id, error: err.message });
+      log.error('Échec de l\'export des matchs (admin)', { adminId: session.user.id, error: err.message });
       respondJson(res, 500, { ok: false, error: 'Erreur lors de l’export.', code: 'EXPORT_ERROR' }, req);
     }
     return true;
@@ -818,7 +818,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
         // Etat 2FA ILLISIBLE : on ne peut pas prouver que ce compte n'a pas
         // deja une 2FA active. Re-enroller serait laisser un mot de passe
         // vole remplacer un secret existant. On refuse — fail-closed.
-        log.error('2FA setup refuse : etat 2FA admin illisible', {
+        log.error('2FA setup refusé : état 2FA admin illisible', {
           adminId: session.user.id,
           error: persisted.error,
         });
@@ -842,10 +842,10 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     try {
       await saveAdminTotpSecret(session.user.id, secret, false);
     } catch (dbErr) {
-      log.error('2FA setup: failed to persist secret', { adminId: session.user.id, error: dbErr.message });
+      log.error('Enrollement 2FA : échec de la sauvegarde du secret', { adminId: session.user.id, error: dbErr.message });
     }
     const otpauthUrl = `otpauth://totp/ZOYD:${encodeURIComponent(session.user.email || session.user.pseudo)}?secret=${secret}&issuer=ZOYD`;
-    log.info('Admin 2FA setup initiated', { adminId: session.user.id });
+    log.info('Enrollement 2FA lance (admin)', { adminId: session.user.id });
     respondJson(res, 200, { ok: true, otpauthUrl });
     return true;
   }
@@ -871,7 +871,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
       return true;
     }
     if (!verifyTotp(totpEntry.secret, code)) {
-      log.warn('Admin 2FA enable failed — invalid code', { adminId: session.user.id });
+      log.warn('Activation 2FA impossible (admin) : code invalide', { adminId: session.user.id });
       respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.', code: 'MFA_INVALID' });
       return true;
     }
@@ -881,7 +881,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     try {
       await saveAdminTotpSecret(session.user.id, totpEntry.secret, true);
     } catch (dbErr) {
-      log.error('2FA enable: failed to persist secret', { adminId: session.user.id, error: dbErr.message });
+      log.error('Activation 2FA : échec de la sauvegarde du secret', { adminId: session.user.id, error: dbErr.message });
     }
     // Persiste sur la session STOCKÉE (getAuthSession renvoie une copie — muter `session` ne suffit pas)
     //
@@ -893,7 +893,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     // `admin2faVerified = true` pendant cinq minutes, avec le droit de
     // deplacer l'argent.
     markAdmin2faVerified(readSessionToken(req));
-    log.info('Admin 2FA enabled', { adminId: session.user.id });
+    log.info('2FA activée (admin)', { adminId: session.user.id });
     respondJson(res, 200, { ok: true });
     return true;
   }
@@ -925,7 +925,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     }
     if (!verifyTotp(totpEntry.secret, code)) {
       const next = await recordMfaFailure(lockKey);
-      log.warn('Admin 2FA verify failed — invalid code', { adminId: session.user.id, failures: next.count, locked: Boolean(next.lockedUntil) });
+      log.warn('Vérification 2FA impossible (admin) : code invalide', { adminId: session.user.id, failures: next.count, locked: Boolean(next.lockedUntil) });
       respondJson(res, 400, { ok: false, error: 'Code 2FA invalide.', code: 'MFA_INVALID' });
       return true;
     }
@@ -936,7 +936,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
     // `Authorization` d'abord) : marquer une AUTRE session que celle
     // authentifiee laisserait une session volee avec la fenetre 2FA ouverte.
     markAdmin2faVerified(readSessionToken(req));
-    log.info('Admin 2FA verified', { adminId: session.user.id });
+    log.info('2FA vérifiée (admin)', { adminId: session.user.id });
     respondJson(res, 200, { ok: true });
     return true;
   }
@@ -989,9 +989,9 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
       await saveMatches(io, settled.matches, settled.match);
 
       if (settled.match?.result?.payoutDistributed !== true) {
-        log.error('Admin award settlement incomplete', { matchId: adminMatchAward[1] });
+        log.error('Attribution du règlement incomplète (admin)', { matchId: adminMatchAward[1] });
       }
-      log.info('Admin action: award match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
+      log.info('Action admin : attribution du match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchAward[1], winnerTeam: body.winnerTeam });
       // `settled` n'existait pas ici (oublie lors du refactor du reglement) :
       // le payload renvoye a l'admin etait donc vide apres une attribution
       // reussie, et l'UI ne rafraichissait pas le match.
@@ -1031,7 +1031,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
         { action: body.action }
       );
       await saveMatches(io, outcome.matches, outcome.match);
-      log.info('Admin action: resolve dispute', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchResolve[1], resolution: body.resolution });
+      log.info('Action admin : traitement du litige', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchResolve[1], resolution: body.resolution });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {
@@ -1064,7 +1064,7 @@ if (req.method === 'POST' && pathname === '/api/admin/2fa/setup') {
         sanitizeText(body.reason || '') || 'Match annule par moderation.'
       );
       await saveMatches(io, outcome.matches, outcome.match);
-      log.info('Admin action: cancel match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchCancel[1], reason: body.reason });
+      log.info('Action admin : annulation du match', { adminId: session.user.id, adminPseudo: session.user.pseudo, matchId: adminMatchCancel[1], reason: body.reason });
       respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
     });
     } catch (error) {

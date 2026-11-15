@@ -117,7 +117,7 @@ if (req.method === 'POST' && pathname === '/api/social/request') {
       body: `${session.user.pseudo} t'a envoyé une demande d'ami.`,
       url: `/profil`,
       requireInteraction: false
-    }).catch(err => log.error('Notification delivery failed', err));
+    }).catch(err => log.error('Échec de l\'envoi de la notification', err));
 
     respondJson(res, 200, { ok: true, request });
   } catch (error) {
@@ -142,7 +142,7 @@ if (req.method === 'POST' && pathname === '/api/social/accept') {
       body: `${session.user.pseudo} a accepté ta demande d'ami.`,
       url: `/profil/${session.user.id}`,
       requireInteraction: false
-    }).catch(err => log.error('Notification delivery failed', err));
+    }).catch(err => log.error('Échec de l\'envoi de la notification', err));
 
     respondJson(res, 200, { ok: true, friend });
   } catch (error) {

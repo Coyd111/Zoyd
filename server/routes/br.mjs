@@ -169,7 +169,7 @@ if (req.method === 'POST' && pathname === '/api/br/lobbies') {
       await saveBrLobbies(io, [resultat.lobby]);
       return resultat;
     });
-    log.info('BR lobby created', { lobbyId: created.lobby.id, by: session.user.id });
+    log.info('Salon BR cree', { lobbyId: created.lobby.id, by: session.user.id });
     respondJson(res, 201, {
       ok: true,
       // L'appelant est l'arbitre : il peut donc recevoir la vue complete.
@@ -280,7 +280,7 @@ if (brLobbyAction && req.method === 'POST') {
           await withWalletMutex(actor.user.id, async () => {
             await refundLockedEntry(actor.user.id, lobbyId, 'Inscription salon BR non enregistree');
           }).catch((remboursementError) => {
-            log.error('Restitution du pass BR apres echec de sauvegarde impossible', {
+            log.error('Restitution du pass BR après échec de sauvegarde impossible', {
               lobbyId,
               userId: actor.user.id,
               error: String(remboursementError?.message || remboursementError),

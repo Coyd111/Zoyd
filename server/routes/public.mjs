@@ -337,7 +337,7 @@ getDynamicSkuInfo(shopLang: $shopLang, serverId: $serverId, lvtId: $lvtId, userI
       requestedCountry: country,
     }, req);
   } catch (err) {
-    log.error('codm store proxy error', { message: err.message });
+    log.error('Erreur du proxy de la boutique COD', { message: err.message });
     respondJson(res, 500, { ok: false, error: 'Impossible de récupérer les données de la boutique.', code: 'STORE_PROXY_ERROR' }, req);
   }
   return true;
@@ -445,7 +445,7 @@ if (req.method === 'GET' && pathname.startsWith('/api/codm/player/')) {
       },
     }, req);
   } catch (err) {
-    log.error('codm player proxy error', { message: err.message });
+    log.error('Erreur du proxy du joueur COD', { message: err.message });
     respondJson(res, 500, { ok: false, error: 'Impossible de récupérer les données du joueur.', code: 'PLAYER_PROXY_ERROR' }, req);
   }
   return true;

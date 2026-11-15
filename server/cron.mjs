@@ -133,14 +133,14 @@ export const sweepPendingArbiterFees = async () => {
         await saveMatches(null, outcome.matches);
       }
       if (outcome.retried > 0) {
-        log.warn('Commissions d arbitre rejouees', { retried: outcome.retried });
+        log.warn('Commissions d\'arbitre rejouées', { retried: outcome.retried });
       }
       if (outcome.remaining > 0) {
-        log.error('Commissions d arbitre toujours en echec', { remaining: outcome.remaining });
+        log.error('Commissions d\'arbitre toujours en échec', { remaining: outcome.remaining });
       }
     });
   } catch (error) {
-    log.error('Erreur reprise des commissions d arbitre', error);
+    log.error('Erreur de reprise des commissions d\'arbitre', error);
   } finally {
     arbiterFeeRetryRunning = false;
   }
@@ -189,19 +189,19 @@ export const sweepPendingSettlements = async () => {
           && (!m.confirmationDeadline || m.status === 'disputed'),
       );
       if (pending.length === 0) return;
-      log.warn('Reglements de match interrompus : reprise.', { count: pending.length });
+      log.warn('Règlements de match interrompus : reprise.', { count: pending.length });
       for (const match of pending) {
         try {
           const settled = await settlePendingMatchResult(list, match.id);
           if (settled.match) list = settled.matches;
         } catch (error) {
-          log.error('Reprise de reglement echouee', { matchId: match.id, error: error.message });
+          log.error('Reprise de règlement échouée', { matchId: match.id, error: error.message });
         }
       }
       await saveMatches(null, list);
     });
   } catch (error) {
-    log.error('Erreur reprise des reglements', error);
+    log.error('Erreur reprise des règlements', error);
   } finally {
     pendingSettlementRunning = false;
   }
@@ -229,7 +229,7 @@ export const sweepExpiredConfirmations = async () => {
       const outcome = await expireConfirmationsOnServer(matches);
       if (outcome.settled.length > 0) {
         await saveMatches(null, outcome.matches);
-        log.warn('Fenetres de confirmation expirees : gains liberes', {
+        log.warn('Fenêtres de confirmation expirées : gains libérés', {
           count: outcome.settled.length,
           failed: outcome.settled.filter((s) => !s.success).map((s) => s.id),
         });
@@ -240,7 +240,7 @@ export const sweepExpiredConfirmations = async () => {
       // cagnotte qui reste gelee, et personne ne doit decouvrir cela en
       // attendant un retrait.
       if (outcome.failed.length > 0) {
-        log.error('Reglements refuses a l expiration des confirmations', {
+        log.error('Règlements refusés à l expiration des confirmations', {
           count: outcome.failed.length,
           matches: outcome.failed.map((f) => `${f.id}:${f.code}`),
         });
@@ -277,7 +277,7 @@ let brSettlementRetryRunning = false;
  */
 export const sweepPendingBrSettlements = async () => {
   if (brSettlementRetryRunning) {
-    log.warn('Job reprise reglements BR deja en cours : tick saute.');
+    log.warn('Job reprise règlements BR déjà en cours : tick saute.');
     return;
   }
   brSettlementRetryRunning = true;
@@ -298,7 +298,7 @@ export const sweepPendingBrSettlements = async () => {
         if (!cible) return { retried: false, remaining: false };
         const actor = cible.arbiterId ? getUserById(cible.arbiterId) : null;
         if (!actor) {
-          log.error('Reglement BR non reprenable : arbitre introuvable', { lobbyId });
+          log.error('Règlement BR non reprenable : arbitre introuvable', { lobbyId });
           return { retried: false, remaining: true };
         }
         try {
@@ -313,7 +313,7 @@ export const sweepPendingBrSettlements = async () => {
           await saveBrLobbies(null, outcome.lobbies);
           return { retried: outcome.retried > 0, remaining: outcome.remaining > 0 };
         } catch (error) {
-          log.error('Reprise du reglement BR echouee', { lobbyId, error: error?.message });
+          log.error('Reprise du règlement BR échouée', { lobbyId, error: error?.message });
           return { retried: false, remaining: true };
         }
       });
@@ -322,13 +322,13 @@ export const sweepPendingBrSettlements = async () => {
     }
 
     if (retried > 0) {
-      log.warn('Reglements BR interrompus repris', { retried });
+      log.warn('Règlements BR interrompus repris', { retried });
     }
     if (remaining > 0) {
-      log.error('Reglements BR toujours en echec', { remaining });
+      log.error('Règlements BR toujours en échec', { remaining });
     }
   } catch (error) {
-    log.error('Erreur reprise des reglements BR', error);
+    log.error('Erreur reprise des règlements BR', error);
   } finally {
     brSettlementRetryRunning = false;
   }
@@ -348,7 +348,7 @@ let staleBrLobbyRunning = false;
  */
 export const sweepStaleBrLobbies = async () => {
   if (staleBrLobbyRunning) {
-    log.warn('Job salons BR perimes deja en cours : tick saute.');
+    log.warn('Job salons BR périmés déjà en cours : tick saute.');
     return;
   }
   staleBrLobbyRunning = true;
@@ -372,7 +372,7 @@ export const sweepStaleBrLobbies = async () => {
         const cible = fresh.find((l) => l && l.id === lobbyId);
         if (!cible) {
           // Annule ou change entre-temps : plus rien a faire pour ce salon.
-          log.warn('Salon BR perime deja traite entre-temps', { lobbyId });
+          log.warn('Salon BR périmé déjà traite entre-temps', { lobbyId });
           return null;
         }
         const res = await cancelStaleBrLobbyOnServer([cible], lobbyId);
@@ -386,7 +386,7 @@ export const sweepStaleBrLobbies = async () => {
       if (outcome.cancelled) cancelled += 1;
       refunded += outcome.refunded;
       if (outcome.errors.length > 0) {
-        log.error('Annulation de salon BR incomplete', {
+        log.error('Annulation de salon BR incomplète', {
           lobbyId,
           errors: outcome.errors.length,
         });
@@ -394,14 +394,14 @@ export const sweepStaleBrLobbies = async () => {
     }
 
     if (cancelled > 0) {
-      log.warn('Salons BR annules (jamais lances)', { cancelled, refunded });
+      log.warn('Salons BR annulés (jamais lances)', { cancelled, refunded });
     }
     const remaining = countStaleBrLobbies(getStateCollection('brLobbies'));
     if (remaining > 0) {
-      log.error('Salons BR perimes toujours en echec', { remaining });
+      log.error('Salons BR périmés toujours en échec', { remaining });
     }
   } catch (error) {
-    log.error('Erreur balayage des salons BR perimes', error);
+    log.error('Erreur balayage des salons BR périmés', error);
   } finally {
     staleBrLobbyRunning = false;
   }
@@ -457,7 +457,7 @@ export const runMatchCleanupOnServer = async (matches, fourteenDaysAgo) => {
         });
       } catch (error) {
         refundFailed = true;
-        log.warn('Remboursement en echec avant archivage, match repris au prochain tick', {
+        log.warn('Remboursement en échec avant archivage, match repris au prochain tick', {
           matchId: match.id, userId: player.userId, error: error.message,
         });
       }
@@ -651,7 +651,7 @@ export const initCronJobs = () => {
         // divergents, snapshots divergents, portefeuille incoherent) n'a
         // elle pas de `reason` : c'est elle qui doit rester en error.
         if (integrity.reason) {
-          log.warn('Controle d integrite impossible', {
+          log.warn('Contrôle d intégrité impossible', {
             reason: integrity.reason,
             memoryUsers: integrity.memoryUsers,
             dbUsers: integrity.dbUsers,
@@ -683,7 +683,7 @@ export const initCronJobs = () => {
   let tournamentSweepRunning = false;
   setInterval(async () => {
     if (tournamentSweepRunning) {
-      log.warn('Sweep tournois saute : tick precedent encore en cours.');
+      log.warn('Balayage des tournois saute : tick précédent encore en cours.');
       return;
     }
     tournamentSweepRunning = true;
@@ -706,12 +706,12 @@ export const initCronJobs = () => {
             updated = outcome.tournaments;
             totalRefunded += outcome.refunded;
           } catch (error) {
-            log.error('Annulation tournoi expiree echouee', { tournamentId: id, error: error.message });
+            log.error('Annulation tournoi expirée échouée', { tournamentId: id, error: error.message });
           }
         }
         if (updated !== tournaments) {
           await saveTournaments(null, updated);
-          log.warn('Tournois expires annules', { count: expiredIds.length, refunds: totalRefunded });
+          log.warn('Tournois expirés annulés', { count: expiredIds.length, refunds: totalRefunded });
         }
       });
     } catch (error) {
@@ -794,19 +794,19 @@ export const initCronJobs = () => {
           await saveTournaments(null, outcome.tournaments);
         }
         if (outcome.retried > 0) {
-          log.warn('Remboursements de tournoi rejoues', { retried: outcome.retried, remaining: outcome.remaining });
+          log.warn('Remboursements de tournoi rejoués', { retried: outcome.retried, remaining: outcome.remaining });
         }
         if (outcome.abandoned > 0) {
           // Capitaine supprime : dette close, signalee une fois puis sortie de la
           // file de reprise.
-          log.error('Remboursements de tournoi abandonnes: compte supprime', {
+          log.error('Remboursements de tournoi abandonnes: compte supprimé', {
             abandoned: outcome.abandoned,
             uncollectableTotal: countUncollectableTournamentRefunds(outcome.tournaments),
           });
         }
         if (outcome.remaining > 0) {
           // Ne subsiste que des echecs recuperables, qui meritent une alerte.
-          log.error('Remboursements de tournoi toujours en echec', { remaining: outcome.remaining });
+          log.error('Remboursements de tournoi toujours en échec', { remaining: outcome.remaining });
         }
       });
     } catch (error) {
@@ -839,7 +839,7 @@ export const initCronJobs = () => {
           await saveTournaments(null, outcome.tournaments);
         }
         if (outcome.remaining > 0) {
-          log.error('Gains de tournoi toujours en echec', { remaining: outcome.remaining });
+          log.error('Gains de tournoi toujours en échec', { remaining: outcome.remaining });
         }
       });
     } catch (error) {
@@ -870,7 +870,7 @@ export const initCronJobs = () => {
           await saveLeagues(null, outcome.leagues);
         }
         if (outcome.remaining > 0) {
-          log.error('Gains de ligue toujours en echec', { remaining: outcome.remaining });
+          log.error('Gains de ligue toujours en échec', { remaining: outcome.remaining });
         }
       });
     } catch (error) {
@@ -934,7 +934,7 @@ export const initCronJobs = () => {
         (message, detail) => log.warn(message, detail),
       );
       if (result.resolved > 0 || result.refunded > 0) {
-        log.warn('Retraits reconcilies', {
+        log.warn('Retraits réconciliés', {
           resolved: result.resolved, refunded: result.refunded, stillPending: result.stillPending,
         });
       }
@@ -942,7 +942,7 @@ export const initCronJobs = () => {
         log.error('Retraits toujours en attente de resolution', { count: result.stillPending });
       }
     } catch (error) {
-      log.error('Erreur de reconciliation des retraits', error);
+      log.error('Erreur de réconciliation des retraits', error);
     } finally {
       withdrawalReconcileRunning = false;
     }
@@ -977,11 +977,11 @@ export const initCronJobs = () => {
             seasons = outcome.seasons;
             totalRefunded += outcome.refunded;
           } catch (error) {
-            log.error('Annulation de ligue expiree echouee', { seasonId: id, error: error.message });
+            log.error('Annulation de ligue expirée échouée', { seasonId: id, error: error.message });
           }
         }
         await saveLeagues(null, seasons);
-        log.warn('Ligues expirees annulees', { count: staleIds.length, refunds: totalRefunded });
+        log.warn('Ligues expirées annulées', { count: staleIds.length, refunds: totalRefunded });
       });
     } catch (error) {
       log.error('Erreur sweep ligues', error);
@@ -1009,20 +1009,20 @@ export const initCronJobs = () => {
           await saveLeagues(null, outcome.seasons);
         }
         if (outcome.retried > 0) {
-          log.warn('Remboursements de ligue rejoues', { retried: outcome.retried, remaining: outcome.remaining });
+          log.warn('Remboursements de ligue rejoués', { retried: outcome.retried, remaining: outcome.remaining });
         }
         if (outcome.abandoned > 0) {
           // Dettes closes : le compte du joueur a ete supprime, il n'y a plus
           // de portefeuille a crediter. Signale UNE fois, puis la ligne sort de
           // `pendingRefunds` — la boucle de WARN identiques est terminée.
-          log.error('Remboursements de ligue abandons: compte supprime', {
+          log.error('Remboursements de ligue abandons: compte supprimé', {
             abandoned: outcome.abandoned,
             uncollectableTotal: countUncollectableLeagueRefunds(outcome.seasons),
           });
         }
         if (outcome.remaining > 0) {
           // Ne subsiste que des echecs RECUPERABLES : ceux-la meritent une alerte.
-          log.error('Remboursements de ligue toujours en echec', { remaining: outcome.remaining });
+          log.error('Remboursements de ligue toujours en échec', { remaining: outcome.remaining });
         }
       });
     } catch (error) {

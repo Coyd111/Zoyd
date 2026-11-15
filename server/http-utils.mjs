@@ -155,7 +155,7 @@ export const respondJson = (res, statusCode, payload, req = null) => {
       res.setHeader('Set-Cookie', serializeAuthCookie(rotatedToken, 6 * 60 * 60));
       effectiveReq._authRotation = null;
     } catch (err) {
-      log.error('Failed to attach rotated session cookie', err);
+      log.error('Échec de la pose du cookie de session renouvele', err);
     }
   }
 

@@ -69,7 +69,10 @@ describe('OCC — invariant de revision', () => {
     // Migration non appliquee : on ne doit pas casser les mutations. Mais
     // l'absence de garantie doit etre signalee, pas silencieuse.
     expect(corps).toContain('occSupporte');
-    expect(source).toContain('fenetre multi-instance ouverte');
+    // Le message d'avertissement doit rester VISIBLE (c'est lui qui
+    // signale l'absence de garantie). On l'accorde avec la graphie
+    // reelle du fichier : « fenêtre multi-instance ouverte ».
+    expect(source).toContain('fenêtre multi-instance ouverte');
   });
 
   it('la sonde est exportee pour etre pilotable en test', () => {

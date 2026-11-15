@@ -176,7 +176,7 @@ if (req.method === 'POST' && tournamentRegister) {
       await withWalletMutex(session.user.id, async () => {
         await refundLockedEntry(session.user.id, outcome.tournament.id, 'Inscription tournoi non enregistree');
       }).catch((remboursementError) => {
-        log.error('Restitution du pass tournoi apres echec de sauvegarde impossible', {
+        log.error('Restitution du pass tournoi après échec de sauvegarde impossible', {
           tournamentId: outcome.tournament.id,
           userId: session.user.id,
           error: String(remboursementError?.message || remboursementError),
@@ -214,7 +214,7 @@ if (req.method === 'POST' && tournamentJoin) {
       await withWalletMutex(session.user.id, async () => {
         await refundLockedEntry(session.user.id, outcome.tournament.id, 'Inscription tournoi non enregistree');
       }).catch((remboursementError) => {
-        log.error('Restitution du pass tournoi apres echec de sauvegarde impossible', {
+        log.error('Restitution du pass tournoi après échec de sauvegarde impossible', {
           tournamentId: outcome.tournament.id,
           userId: session.user.id,
           error: String(remboursementError?.message || remboursementError),
@@ -304,7 +304,7 @@ if (req.method === 'POST' && tournamentStart) {
         body: `Le tournoi "${tournament.name}" a commence !`,
         url: `/mj/tournois/${tournament.id}`,
         requireInteraction: false
-      }).catch(err => log.error('Notification delivery failed', err));
+      }).catch(err => log.error('Échec de l\'envoi de la notification', err));
     }
 
     respondJson(res, 200, buildTournamentActionPayload(outcome.tournament, session.user.id));

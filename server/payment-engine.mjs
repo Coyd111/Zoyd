@@ -166,7 +166,7 @@ export const verifyFedaPayTransactionAndCredit = async (transactionId, user) => 
       user: updatedUser
     };
   } catch (error) {
-    log.error('FedaPay verification error', { message: error.message });
+    log.error('Erreur de vérification FedaPay', { message: error.message });
     // SERVER_BUSY doit remonter tel quel : c'est la Base indisponible, le
     // claim a été relâché et le joueur peut réessayer. Masqué en
     // FEDAPAY_API_ERROR, le message poussait à croire à un échec définitif
@@ -344,7 +344,7 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
       phone_number: phoneInfo,
     });
 
-    log.info('FedaPay payout sent', { payoutId: payout.id, status: payout.status, amountFCFA });
+    log.info('Transfert FedaPay envoye', { payoutId: payout.id, status: payout.status, amountFCFA });
 
     return {
       success: true,
@@ -354,7 +354,7 @@ export const initiateFedaPayPayout = async ({ amountZC, method, country, phone, 
     };
 } catch (error) {
     const diagnostic = extraireErreurFedaPay(error);
-    log.error('FedaPay payout failed', {
+    log.error('Échec du transfert FedaPay', {
       step,
       status: diagnostic.status,
       // La raison du prestataire : sans elle, le log ne disait que « 403 ».

@@ -39,6 +39,10 @@ const lireMessages = (source) => {
     const motifs = [
       /error:\s*'((?:[^'\\]|\\.)*)'/g,
       /makeError\(\s*'[A-Z0-9_]+'\s*,\s*'((?:[^'\\]|\\.)*)'/g,
+      // Les messages de JOURNAL : ils ne sont pas affiches au joueur,
+      // mais ils sont lus par l exploitant, et ils melangeaient les deux
+      // langues du projet.
+      /log\.(?:trace|debug|info|warn|error|fatal)\(\s*'((?:[^'\\]|\\.)*)'/g,
     ];
     for (const motif of motifs) {
       for (const m of ligne.matchAll(motif)) {
@@ -98,13 +102,29 @@ describe('Messages serveur - redaction', () => {
 
   it('aucun message n est en anglais', () => {
     const coupables = [];
+    // Mots anglais qui n existent pas en francais. Les identifiants
+    // techniques (app_users, Supabase, FedaPay, tick, sweep, webhook...)
+    // sont VOLONTAIRES : ils sont les memes partout, cote serveur comme
+    // cote base.
     const anglais = [
       'Failed to fetch', 'Upstream API error', 'Unauthorized.', 'Forbidden.',
       'Not found', 'Internal Server Error', 'Bad Request', 'Cannot ',
-      'Invalid ', 'Missing ', 'Unable to', 'Something went wrong', 'Access denied',
+      'Unable to', 'Something went wrong', 'Access denied',
+      'failed', 'unable', 'cannot', 'unexpected', 'missing', 'expired',
+      'rejected', 'skipped', 'starting', 'stopping', 'received', 'denied',
+      'timeout', 'retry', 'success', 'without', 'initiated', 'preserved',
+      'ignored', 'released', 'evicted', 'discarded', 'loading', 'delivery',
+      'persist', 'award', 'revoke', 'verify',
+      'unread', 'marked', 'created', 'updated', 'deleted',
     ];
     for (const m of tousLesMessages) {
-      const hit = anglais.find((a) => m.texte.includes(a));
+      // Frontieres de LETTRES (propriete Unicode) : « persisté » ne doit
+      // pas etre lu comme « persist », et « cron_leases » ne doit pas
+      // etre lu comme « leases ».
+      const hit = anglais.find((a) => {
+        const motif = new RegExp(`(?<![\\p{L}])${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'iu');
+        return motif.test(m.texte);
+      });
       if (!hit) continue;
       coupables.push(`${m.fichier}:${m.ligne}  « ${m.texte.slice(0, 70)} »`);
     }
@@ -139,6 +159,22 @@ describe('Messages serveur - redaction', () => {
       'verifiee', 'verifiees', 'eliminee', 'eliminations', 'elimine', 'elimines',
       'soldee', 'soldees', 'levee', 'levees', 'fermee', 'fermees',
       'identifie', 'identifiee', 'deja',
+      // Mots du vocabulaire des journaux.
+      'perime', 'perimes', 'perimee', 'expirees', 'expire', 'libere',
+      'liberee', 'liberes', 'refusee', 'refuses', 'rejouees', 'rejoues',
+      'supprimee', 'annulee', 'annulees', 'annules', 'reconcilies',
+      'reconciliation', 'protege', 'protegee', 'proteges', 'present',
+      'presente', 'presents', 'installe', 'installee', 'developpement',
+      'terminee', 'terminees', 'ignore', 'ignoree', 'dedie', 'dediee',
+      'emis', 'emise', 'integre', 'integree', 'echange', 'echangee',
+      'preleve', 'prelevee', 'propriete', 'federation', 'generation',
+      'recuperation', 'liberation', 'preparation', 'controle', 'controles',
+      'integrite', 'memoire', 'fenetre', 'fenetres', 'donnees', 'donnee',
+      'etat', 'etats', 'cloture', 'cloturee', 'cloturer', 'securite',
+      'qualite', 'quantite', 'difficulte', 'identite', 'activite', 'modele',
+      'libelle', 'evenement', 'evenements', 'numero', 'numeros', 'systeme',
+      'periode', 'unites', 
+      
     ];
     for (const m of tousLesMessages) {
       for (const mot of MOTS) {

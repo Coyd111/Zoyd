@@ -550,7 +550,7 @@ const occSupporte = async () => {
   }
   if (!revisionSupporte) {
     log.warn(
-      'Colonne app_users.revision absente : ecritures non conditionnelles (fenetre multi-instance ouverte)',
+      'Colonne app_users.revision absente : écritures non conditionnelles (fenêtre multi-instance ouverte)',
       { attendu: 'ALTER TABLE app_users ADD COLUMN revision BIGINT NOT NULL DEFAULT 0' }
     );
   }
@@ -577,7 +577,7 @@ const occStateSupporte = async () => {
   }
   if (!stateRevisionSupported) {
     log.warn(
-      'Colonne state_snapshots.revision absente : écritures inconditionnelles (fenetre multi-instance ouverte sur les collections)',
+      'Colonne state_snapshots.revision absente : écritures inconditionnelles (fenêtre multi-instance ouverte sur les collections)',
       { attendu: 'voir supabase/migrate-state-revision.sql' },
     );
   }
@@ -679,7 +679,7 @@ const ecrireUserRowSiRevision = async (userId, revisionObservee, patch) => {
     .eq('revision', revisionObservee)
     .select('id');
   if (error) {
-    log.error('app_users conditional update error', {
+    log.error('Erreur de mise a jour conditionnelle de app_users', {
       userId, message: error.message, code: error.code,
     });
     return OCC_ECHEC;
@@ -726,7 +726,7 @@ const ecrireUserRow = async (userId, patch, recalculer = null, { creation = fals
       // ressusciterait le compte — avec son solde — et le bannissement qui
       // venait d etre pose. Refuser est le seul comportement defendable : le
       // joueur et l admin sont prevenus, et rien n est reinvente.
-      log.error('Ecriture refusee : la ligne a disparu (suppression concurrente)', { userId });
+      log.error('Écriture refusée : la ligne a disparu (suppression concurrente)', { userId });
       return OCC_ECHEC;
     }
     const ok = await sbUpsert('app_users', { ...patch, id: userId, revision: 0 });
@@ -740,7 +740,7 @@ const ecrireUserRow = async (userId, patch, recalculer = null, { creation = fals
     if (resultat === OCC_OK) return OCC_OK;
     if (resultat !== OCC_CONFLIT || !recalculer) return resultat;
 
-    log.warn('Conflit d ecriture detecte, rejeu sur un etat frais', { userId, tentative });
+    log.warn('Conflit d écriture detecte, rejeu sur un état frais', { userId, tentative });
     const frais = await rechargerUserRow(userId);
     if (!frais) return OCC_CONFLIT;
     // On repart de ce que l'AUTRE instance vient d'ecrire, ET de sa revision :
@@ -762,7 +762,7 @@ const rechargerUserRow = async (userId) => {
     .eq('id', userId)
     .limit(1);
   if (error) {
-    log.error('app_users reload error', { userId, message: error.message });
+    log.error('Erreur de rechargement de app_users', { userId, message: error.message });
     return null;
   }
   const row = Array.isArray(data) ? data[0] : null;
@@ -824,7 +824,7 @@ export const listUserReports = async ({ status, targetId, limit = 50, offset = 0
     .range(offset, offset + limit - 1);
 
   if (error) {
-    log.error('user_reports select error', { message: error.message, code: error.code });
+    log.error('Erreur de lecture de user_reports', { message: error.message, code: error.code });
     return { ok: false, reports: [], total: 0 };
   }
 
@@ -879,7 +879,7 @@ export const loadFromSupabase = async () => {
   // verrait un état partiel.
   clearAllMemoryCaches();
 
-  log.info('Loading from Supabase...');
+  log.info('Chargement depuis Supabase...');
   const t0 = Date.now();
 
   // PostgREST plafonne chaque réponse à 1000 lignes (max-rows) SANS erreur :
@@ -1076,7 +1076,7 @@ export const loadFromSupabase = async () => {
     // Un échec de table NE doit pas laisser le serveur démarrer « à moitié » :
     // les kinds non chargés renverraient [] et le premier replaceStateCollection
     // purgerait la table correspondante en base.
-    log.error('Error loading from Supabase', { message: err.message, stack: err.stack });
+    log.error('Erreur de chargement depuis Supabase', { message: err.message, stack: err.stack });
     stateLoadError = err.message;
     stateTrusted = false;
     return false;
@@ -1170,12 +1170,12 @@ const scheduleStateRecovery = () => {
     const ok = await forceReloadFromSupabase();
     if (ok) {
       stateWriteFailures = 0;
-      log.info('Etat recharge apres panne d ecriture');
+      log.info('État recharge après panne d écriture');
     } else {
       // L etat est-charge est parti dans le vide sans etre remplace :
       // `loadFromSupabase` a pose `stateTrusted = false`. Les ecritures
       // restent refusees (fail closed) — c'est le meme arbitrage qu au boot.
-      log.error('Rechargement de l etat apres panne : echec', {
+      log.error('Rechargement de l\'état après panne : échec', {
         consecutiveFailures: stateWriteFailures,
       });
       // On retente : une base revenue ne doit pas laisser le serveur en
@@ -1197,7 +1197,7 @@ const scheduleStateRecovery = () => {
 export const markStateWriteFailure = (error) => {
   stateWriteFailures += 1;
   stateLoadError = `Ecriture impossible : ${error?.message || String(error)}`;
-  log.error('Ecriture d etat impossible', {
+  log.error('Écriture d\'état impossible', {
     message: error?.message || String(error),
     consecutiveFailures: stateWriteFailures,
   });
@@ -1252,7 +1252,7 @@ const clearAllMemoryCaches = () => {
 export const forceReloadFromSupabase = async () => {
   const release = await reloadMutex.acquire();
   reloadInProgress = true;
-  log.warn('Force reload started — all in-flight operations may see stale data');
+  log.warn('Rechargement forcé — les opérations en cours peuvent voir des données périmées');
   try {
     clearAllMemoryCaches();
     const ok = await loadFromSupabase();
@@ -1417,7 +1417,7 @@ export const verifyDataIntegrity = async () => {
     let revisionDivergences = 0;
 
     if (stateError) {
-      log.error('State snapshot count failed', { message: stateError.message });
+      log.error('Échec du comptage des instantanes d\'état', { message: stateError.message });
     } else {
       const dbByKind = {};
       for (const row of stateRows || []) {
@@ -1520,7 +1520,7 @@ export const verifyDataIntegrity = async () => {
         walletIssueCount: walletIssues.length,
       });
     } else {
-      log.info('Data integrity OK', {
+      log.info('Intégrité des données : OK', {
         users: memoryCount,
         state: stateCounts,
       });
@@ -1991,7 +1991,7 @@ export const updateUserAccount = async (userId, updater) => {
       const empreinte = JSON.stringify(sanitizeUserPayload(frais.payload));
       const empreinteMemoire = JSON.stringify(sanitizeUserPayload(memoryUsers.get(userId)));
       if (empreinte !== empreinteMemoire) {
-        log.warn('Base de calcul perimee, adoption du payload le plus recent', { userId });
+        log.warn('Base de calcul périmée, adoption du payload le plus recent', { userId });
         memoryUsers.set(userId, sanitizeUserPayload(frais.payload));
       }
     }
@@ -2750,7 +2750,7 @@ const probeLoginAttemptsTable = async () => {
     } else {
       // Le nombre de lignes distingue « table creee et vide » de « table en
       // service » : sans lui, un booléen ne prouve que la presence, pas l'usage.
-      log.info('Table login_attempts presente : verrouillage de connexion persiste.', { rows: loginAttemptsRows });
+      log.info('Table login_attempts présente : verrouillage de connexion persisté.', { rows: loginAttemptsRows });
     }
   } catch (err) {
     loginAttemptsPersisted = false;
@@ -2783,7 +2783,7 @@ const readLoginAttempt = async (lookupKey) => {
     loginAttempts.set(lookupKey, restored);
     return restored;
   } catch (err) {
-    log.error('login_attempts read error', { message: err?.message });
+    log.error('Erreur de lecture de login_attempts', { message: err?.message });
     return null;
   }
 };
@@ -2906,7 +2906,7 @@ export const updatePasswordHash = async (userId, newHash) => {
           // changer de mot de passe, et la revoquer serait pire que le conflit.
           // Mais on ne pretend surtout pas que c est passe : le client doit
           // l'apprendre, sinon il croit a tort etre protege.
-          log.error('Changement de mot de passe non ecrit (conflit ou echec)', {
+          log.error('Changement de mot de passe non écrit (conflit ou échec)', {
             userId, resultat: ecritMotDePasse,
           });
           throw makeError(
@@ -3105,7 +3105,7 @@ export const changeActivationEmail = async (oldEmail, newEmail, password) => {
           };
         });
         if (ecritActivation !== OCC_OK) {
-          log.error('Changement d email d activation non ecrit (conflit ou echec)', {
+          log.error('Changement d email d activation non écrit (conflit ou échec)', {
             userId, resultat: ecritActivation,
           });
           // Le code vient d etre emis ET l'ancien email detruit en memoire.
@@ -3340,11 +3340,11 @@ export const deleteUserAccount = async (userId) => withUserMutex(userId, async (
     const batch = anonymizedRows.slice(i, i + 100);
     const ok = await sbUpsert('chat_messages', batch);
     if (supabase && !ok) {
-      log.error('chat anonymization failed', { userId, batch: i });
+      log.error('Échec de l\'anonymisation du chat', { userId, batch: i });
     }
   }
 
-  log.info('account deleted', { userId, forfeitedCash });
+  log.info('Compte supprimé', { userId, forfeitedCash });
   return { userId, forfeitedCash };
 });
 
@@ -3393,7 +3393,7 @@ export const activateUserAccount = async (userId) => {
           updated_at: getNow(),
         }));
         if (ecritMaintenance !== OCC_OK) {
-          log.error('Activation non persistee (conflit ou echec)', {
+          log.error('Activation non persistee (conflit ou échec)', {
             userId, resultat: ecritMaintenance,
           });
           // Meme raison que pour le mot de passe : l'utilisateur a clique sur son
@@ -3481,7 +3481,7 @@ const lineageSupporte = async () => {
   }
   if (!sbLineageSupporte) {
     log.warn(
-      'Colonnes de filiation de session absentes : les sessions resteront en memoire seule',
+      'Colonnes de filiation de session absentes : les sessions resteront en mémoire seule',
       { attendu: 'ALTER TABLE auth_sessions ADD COLUMN absolute_expires_at, supersedes' }
     );
   }
@@ -3658,7 +3658,7 @@ export const getAuthSession = (token, opts = {}) => {
         session.rotationEmittedAt = Date.now();
         rotateAuthSession(session, user)
           .then((newToken) => { if (newToken && typeof opts.emitToken === 'function') opts.emitToken(newToken); })
-          .catch(err => { delete session.rotationEmittedAt; log.error('Session rotation failed', err); });
+          .catch(err => { delete session.rotationEmittedAt; log.error('Échec de la rotation de session', err); });
       }
     }
   }
@@ -3691,7 +3691,7 @@ const rotateAuthSession = async (session, user) => {
   if (!memoryAuthSessions.has(session.tokenHash)) {
     memoryAuthSessions.delete(newHash);
     sbFire('deleteAuthSession', () => sbDelete('auth_sessions', { token: newHash }));
-    log.info('Session rotation discarded: session revoked in the meantime');
+    log.info('Rotation de session abandonnee : session revoquee entre-temps');
     return null;
   }
 
@@ -4187,9 +4187,9 @@ const sbDeleteKindEntities = async (kind, entityIds) => {
     let q = supabase.from('state_snapshots').delete().eq('kind', kind);
     if (entityIds) q = q.in('entity_id', entityIds);
     const { error } = await q;
-    if (error) log.error('state_snapshots delete error', { message: error.message });
+    if (error) log.error('Erreur de suppression de state_snapshots', { message: error.message });
   } catch (err) {
-    log.error('state_snapshots delete error', { message: err.message });
+    log.error('Erreur de suppression de state_snapshots', { message: err.message });
   }
 };
 
@@ -4270,7 +4270,7 @@ export const upsertStateEntity = async (kind, entity) => {
     // L entite sort de la MEMOIRE, pas de la base : on compte l ecart
     // pour que le controle d integrite ne le confonde pas avec une perte.
     memoryStateEvictions.set(kind, (memoryStateEvictions.get(kind) || 0) + 1);
-    log.warn('State entity evicted from memory (kept in database)', {
+    log.warn('Entite d\'état evitee de la mémoire (conservee en base)', {
       kind, entityId: oldest, cap: MAX_STATE_PER_KIND,
     });
   }
@@ -4582,7 +4582,7 @@ export const markNotificationAsRead = (userId, notificationId) => {
   n.isRead = true;
   memoryNotifications.set(notificationId, n);
   memoryUnreadByUser.get(userId)?.delete(notificationId);
-  if (supabase) supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId).then(() => {}).catch((err) => log.warn('DB sync failed: mark notification read', { notificationId, error: err.message }));
+  if (supabase) supabase.from('user_notifications').update({ is_read: true }).eq('id', notificationId).then(() => {}).catch((err) => log.warn('Échec de synchronisation : marquage de la notification comme lue', { notificationId, error: err.message }));
   return true;
 };
 
@@ -4596,7 +4596,7 @@ export const markAllNotificationsAsRead = (userId) => {
     }
     unreadIds.clear();
   }
-  if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {}).catch((err) => log.warn('DB sync failed: mark all notifications read', { userId, error: err.message }));
+  if (supabase && count > 0) supabase.from('user_notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false).then(() => {}).catch((err) => log.warn('Échec de synchronisation : marquage de toutes les notifications comme lues', { userId, error: err.message }));
   return count;
 };
 
@@ -4714,7 +4714,7 @@ export const releaseTransaction = async (transactionId) => {
       await new Promise((r) => setTimeout(r, 200 * tentative));
     }
   }
-  log.error('CRITICAL: liberation de la reservation impossible — le credit sera bloque', {
+  log.error('CRITICAL: libération de la reservation impossible — le credit sera bloque', {
     transactionId,
     hint: 'Rejouer le webhook apres resolution, ou crediter le joueur a la main.',
   });
@@ -4744,7 +4744,7 @@ export const loadAdminTotpSecrets = async () => {
         if (error) {
           // Ligne indigeste (cle absente/alteree) : on saute, on ne fabrique
           // JAMAIS de secret. L'admin devra se re-enroler. Log explicite.
-          log.error('Secret 2FA ignore (indechiffrable), re-enrolez ce compte admin.', { userId: row?.user_id });
+          log.error('Secret 2FA ignoré (indechiffrable), re-enrolez ce compte admin.', { userId: row?.user_id });
           continue;
         }
         result.set(row.user_id, { secret: plaintext, enabled: row.enabled, verifiedAt: null });
@@ -4787,7 +4787,7 @@ const probeAdminTotpTable = async () => {
     } else {
       // Le nombre de lignes distingue « table creee et vide » de « table en
       // service » : sans lui, un booleen ne prouve que la presence.
-      log.info('Table admin_2fa_secrets presente : secret 2FA persiste.', { rows: Number.isFinite(count) ? count : null });
+      log.info('Table admin_2fa_secrets présente : secret 2FA persisté.', { rows: Number.isFinite(count) ? count : null });
     }
   } catch (err) {
     adminTotpPersisted = false;
@@ -5131,7 +5131,7 @@ export const exportMatchHistory = async ({ from, to } = {}) => {
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (error) {
-      log.error('match history export error', { message: error.message, code: error.code });
+      log.error('Erreur d\'export de l\'historique des matchs', { message: error.message, code: error.code });
       return { ok: false, matches: [], total: 0 };
     }
     if (!data || data.length === 0) break;
@@ -5139,7 +5139,7 @@ export const exportMatchHistory = async ({ from, to } = {}) => {
     if (data.length < PAGE_SIZE) break;
     // Garde-fou : evite une boucle infinie si l'API ignore `range`.
     if (rowsLues.length > 200_000) {
-      log.error('Pagination de l export interrompue — table suspicieusement grande', { rows: rowsLues.length });
+      log.error('Pagination de l\'export interrompue — table suspicieusement grande', { rows: rowsLues.length });
       break;
     }
   }
@@ -5214,12 +5214,12 @@ export const ensureSeedAdmin = async () => {
   for (const user of memoryUsers.values()) {
     if (normalizeEmailKey(user.email) === adminEmail) {
     if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
-        log.warn('[SECURITY] Le compte admin utilise l identite PAR DEFAUT (connue : depot public).', {
+        log.warn('[SECURITY] Le compte admin utilise l identité PAR DEFAUT (connue : depot public).', {
           hint: 'Renseigne ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID sur ton hebergeur.',
         });
       }
       if (usesDefaultPhone && process.env.NODE_ENV === 'production') {
-        log.warn('[SECURITY] Le compte admin utilise le telephone PAR DEFAUT (numero public : depot public).', {
+        log.warn('[SECURITY] Le compte admin utilise le telephone PAR DEFAUT (numéro public : depot public).', {
           hint: 'Renseigne ZOYD_ADMIN_PHONE sur ton hebergeur. Aucun retrait ne partira vers ce numero tant qu il n est pas change.',
           defaultPhone: DEFAULT_ADMIN_PHONE,
         });
@@ -5237,7 +5237,7 @@ export const ensureSeedAdmin = async () => {
   // stats et bio perdues. On s'arrête donc ici et on le dit.
   const existingById = memoryUsers.get(seedId);
   if (existingById) {
-    log.error('[FATAL] Compte admin introuvable par email mais ID deja pris — aucune ecriture.', {
+    log.error('[FATAL] Compte admin introuvable par email mais ID déjà pris — aucune écriture.', {
       hint: 'Applique le nouvel email depuis Parametres, OU remets ZOYD_ADMIN_EMAIL sur l\'email actuel du compte. Ne surtout pas laisser cet etat se prolonger.',
       idOccupedBy: normalizeEmailKey(existingById.email || ''),
       configuredEmail: seedEmail,
@@ -5247,7 +5247,7 @@ export const ensureSeedAdmin = async () => {
 
   const password = process.env.ZOYD_ADMIN_PASSWORD;
   if (!password) {
-    log.error('[FATAL] ZOYD_ADMIN_PASSWORD absent — reinitialisation du compte admin impossible.');
+    log.error('[FATAL] ZOYD_ADMIN_PASSWORD absent — réinitialisation du compte admin impossible.');
     return;
   }
 
@@ -5262,16 +5262,16 @@ export const ensureSeedAdmin = async () => {
       stats: { ...defaultStats }, progression: { level: 'PRO', xp: 20000, nextLevelXp: 20000 },
       achievements: ['Control Room'], bio: 'Compte de moderation ZOYD.',
     });
-    log.warn('Admin de controle cree depuis ZOYD_ADMIN_PASSWORD — change ce mot de passe.');
+    log.warn('Admin de contrôle cree depuis ZOYD_ADMIN_PASSWORD — change ce mot de passe.');
     if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
-      log.warn('[SECURITY] Ce compte utilise une identite PAR DEFAUT, connue de tous.', {
+      log.warn('[SECURITY] Ce compte utilise une identité PAR DEFAUT, connue de tous.', {
         hint: 'Fixe ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID avant le prochain redemarrage.',
       });
     }
   } catch (error) {
     // Ex. mot de passe admin trop faible. On ne coupe pas le serveur : le jeu
     // reste accessible, seul le compte de modération manque.
-    log.error('[FATAL] Creation du compte admin impossible (verifie ZOYD_ADMIN_PASSWORD).', {
+    log.error('[FATAL] Creation du compte admin impossible (vérifie ZOYD_ADMIN_PASSWORD).', {
       reason: error?.message,
     });
   }

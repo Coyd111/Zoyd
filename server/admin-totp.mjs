@@ -176,7 +176,7 @@ export const requireAdmin = (req, res) => {
     return null;
   }
   if (session.user.role !== 'admin') {
-    log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id });
+    log.warn('Tentative admin non autorisee', { user: session.user.pseudo, userId: session.user.id });
     respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.' }, req);
     return null;
   }
@@ -199,7 +199,7 @@ export const requireAdmin2fa = (req, res) => {
     return null;
   }
   if (session.user.role !== 'admin') {
-    log.warn('Unauthorized admin attempt', { user: session.user.pseudo, userId: session.user.id });
+    log.warn('Tentative admin non autorisee', { user: session.user.pseudo, userId: session.user.id });
     // `code` obligatoire : sans lui, apiClient ne peut pas distinguer un 403
     // d'autorisation d'une session expiree, et deconnectait le joueur.
     respondJson(res, 403, { ok: false, error: 'Accès réservé aux administrateurs.', code: 'ADMIN_REQUIRED' }, req);

@@ -199,7 +199,7 @@ const TEST_ONLY_RELAXATION = process.env.NODE_ENV === 'test'
 
 if (process.env.NODE_ENV === 'test' && process.env.ALLOW_DEBUG_CODES === 'true' && !TEST_ONLY_RELAXATION) {
   log.warn(
-    'Relachement du rate limiting DEMANDE mais REFUSE : ce service est configure avec une base reelle.',
+    'Relachement du rate limiting DEMANDE mais REFUSÉ : ce service est configure avec une base reelle.',
     { disableSupabase: process.env.ZOYD_DISABLE_SUPABASE === 'true' },
   );
 }

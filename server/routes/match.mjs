@@ -148,7 +148,7 @@ if (req.method === 'POST' && pathname === '/api/matches') {
       await withWalletMutex(session.user.id, async () => {
         await refundLockedEntry(session.user.id, outcome.match.id, 'Creation de match non enregistree');
       }).catch((remboursementError) => {
-        log.error('Restitution du pass match apres echec de sauvegarde impossible', {
+        log.error('Restitution du pass match après échec de sauvegarde impossible', {
           matchId: outcome.match.id,
           userId: session.user.id,
           error: String(remboursementError?.message || remboursementError),
@@ -192,7 +192,7 @@ if (req.method === 'POST' && matchJoin) {
       await withWalletMutex(session.user.id, async () => {
         await refundLockedEntry(session.user.id, outcome.match.id, 'Inscription match non enregistree');
       }).catch((remboursementError) => {
-        log.error('Restitution du pass match apres echec de sauvegarde impossible', {
+        log.error('Restitution du pass match après échec de sauvegarde impossible', {
           matchId: outcome.match.id,
           userId: session.user.id,
           error: String(remboursementError?.message || remboursementError),
@@ -295,7 +295,7 @@ if (req.method === 'POST' && matchArbiter) {
       body: `Tu es arbitre du match "${outcome.match?.format || 'MJ'}" (${outcome.match?.id}).`,
       url: `/mj/match/${outcome.match?.id}`,
       requireInteraction: true
-    }).catch(err => log.error('Notification delivery failed', err));
+    }).catch(err => log.error('Échec de l\'envoi de la notification', err));
 
     respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
   });
@@ -516,7 +516,7 @@ if (req.method === 'POST' && matchConfirm) {
         body: `${session.user.pseudo} a confirme le resultat du match ${match.id}. Confirme-le ou ouvre un litige avant la fin du delai.`,
         url: `/mj/match/${match.id}`,
         requireInteraction: true
-      }).catch(err => log.error('Notification delivery failed', err));
+      }).catch(err => log.error('Échec de l\'envoi de la notification', err));
     }
 
     respondJson(res, 200, {
@@ -563,7 +563,7 @@ if (req.method === 'POST' && matchDisputes) {
         body: `${session.user.pseudo} a ouvert un litige sur un match.`,
         url: `/mj/match/${match.id}`,
         requireInteraction: true
-      }).catch(err => log.error('Notification delivery failed', err));
+      }).catch(err => log.error('Échec de l\'envoi de la notification', err));
     }
 
     respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
@@ -633,7 +633,7 @@ if (req.method === 'POST' && matchDisputeEscalate) {
       body: `Match ${match.id} — Litige escaladé au niveau admin par ${session.user.pseudo}.`,
       url: `/admin`,
       requireInteraction: true,
-    }).catch(err => log.error('Notification delivery failed', err));
+    }).catch(err => log.error('Échec de l\'envoi de la notification', err));
 
     respondJson(res, 200, buildMatchActionPayload(outcome.match, session.user.id));
   });

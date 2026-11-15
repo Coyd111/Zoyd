@@ -883,7 +883,7 @@ if (contenders.length === 0) {
           player.settled = true;
         } catch (error) {
           refundErrors.push({ userId: player.userId, step: 'refund', error: error?.message });
-          log.error('BR refund failed', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
+          log.error('Échec du remboursement BR', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
         }
         if (onProgress) await onProgress(nextLobbies);
       }
@@ -943,7 +943,7 @@ if (contenders.length === 0) {
         player.winnings = prize.amount;
       } catch (error) {
         settlementErrors.push({ userId: prize.userId, step: 'prize', error: error?.message });
-        log.error('BR prize payout failed', { lobbyId: lobby.id, userId: prize.userId, error: error?.message });
+        log.error('Échec du versement des primes BR', { lobbyId: lobby.id, userId: prize.userId, error: error?.message });
       }
       if (onProgress) await onProgress(nextLobbies);
     }
@@ -971,7 +971,7 @@ if (arbiter.userId && arbiter.amount > 0 && !lobby.arbiterSettled) {
         lobby.arbiterSettled = true;
       } catch (error) {
         settlementErrors.push({ userId: arbiter.userId, step: 'arbiter', error: error?.message });
-        log.error('BR arbiter payout failed', { lobbyId: lobby.id, userId: arbiter.userId, error: error?.message });
+        log.error('Échec du versement de l\'arbitre BR', { lobbyId: lobby.id, userId: arbiter.userId, error: error?.message });
       }
       if (onProgress) await onProgress(nextLobbies);
     }
@@ -1009,7 +1009,7 @@ if (arbiter.userId && arbiter.amount > 0 && !lobby.arbiterSettled) {
         player.settled = true;
       } catch (error) {
         settlementErrors.push({ userId: player.userId, step: 'forfeit', error: error?.message });
-        log.error('BR forfeit failed', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
+        log.error('Échec du forfait BR', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
       }
       if (onProgress) await onProgress(nextLobbies);
     }
@@ -1097,7 +1097,7 @@ export const retryPendingBrSettlements = async (lobbies, options = {}) => {
 
     const actor = getActor ? getActor(lobby) : null;
     if (!actor) {
-      log.error('Reglement BR non reprenable : arbitre introuvable', {
+      log.error('Règlement BR non reprenable : arbitre introuvable', {
         lobbyId: lobby.id,
       });
       remaining += 1;
@@ -1112,7 +1112,7 @@ export const retryPendingBrSettlements = async (lobbies, options = {}) => {
       nextLobbies = outcome.lobbies;
       retried += 1;
     } catch (error) {
-      log.error('Reprise du reglement BR echouee', {
+      log.error('Reprise du règlement BR échouée', {
         lobbyId: lobby.id,
         error: error?.message,
       });
@@ -1219,7 +1219,7 @@ export const cancelStaleBrLobbyOnServer = async (lobbies, lobbyId) => {
       refunded += 1;
     } catch (error) {
       errors.push({ userId: player.userId, error: error?.message });
-      log.error('BR stale lobby refund failed', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
+      log.error('Échec du remboursement d\'un salon BR périmé', { lobbyId: lobby.id, userId: player.userId, error: error?.message });
     }
   }
 

@@ -84,10 +84,10 @@ export const BR_MAPS = {
   // Krai = 40 joueurs (Resurgence, format Alcatraz) - corrige le 02/11/2026.
   // hint : info utile affichee au createur (formulaire) et a l'arbitre
   // (detail du salon) - uniquement des faits sources, rien d'invente.
-  krai: { id: 'krai', label: 'Krai', maxPlayers: 40, vehicles: true, hint: 'Resurgence format Alcatraz : redeploy limite, cap 40 joueurs' },
+  krai: { id: 'krai', label: 'Krai', maxPlayers: 40, vehicles: true, hint: 'Résurgence format Alcatraz : redéploiement limité, cap 40 joueurs' },
   // Cap 40 plausible (heritage Alcatraz) mais encore NON CONFIRME dans les
   // sources : aucune liste officielle ne fige encore le nombre de joueurs.
-  rebirth_island: { id: 'rebirth_island', label: 'Rebirth Island', maxPlayers: 40, vehicles: false, hint: 'Resurgence S4 2026 : redeploy illimite tant que la squad vit - cap 40 NON CONFIRME' },
+  rebirth_island: { id: 'rebirth_island', label: 'Rebirth Island', maxPlayers: 40, vehicles: false, hint: 'Résurgence S4 2026 : redéploiement illimité tant que la squad vit — cap 40 NON CONFIRMÉ' },
 };
 export const BR_MAP_IDS = Object.keys(BR_MAPS);
 

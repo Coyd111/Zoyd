@@ -499,7 +499,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               type="text"
               value={proofsState.roomCaptureProofs}
               onChange={(event) => proofsState.setRoomCaptureProofs(event.target.value)}
-              placeholder="Capture de salle ou room setup (optionnel)"
+              placeholder="Capture de salle ou configuration de la salle (optionnel)"
               aria-label="Capture de salle"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
@@ -797,7 +797,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             <textarea
               value={disputeState.evidence}
               onChange={(event) => disputeState.setEvidence(event.target.value)}
-              placeholder="Screenshots, room logs ou preuves, séparés par des virgules"
+              placeholder="Screenshots, logs de salle ou preuves, séparés par des virgules"
               aria-label="Preuves du litige"
               className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />

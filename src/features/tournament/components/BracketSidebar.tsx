@@ -56,7 +56,7 @@ const BracketSidebar: React.FC<BracketSidebarProps> = ({
         </div>
         <div className="grid md:grid-cols-2 gap-4 text-sm text-white/70">
           <RuleRow label="Mode" value={tournament.rules.mode} />
-          <RuleRow label="Best of" value={`BO${tournament.rules.bestOf}`} />
+          <RuleRow label="Nombre de manches" value={`BO${tournament.rules.bestOf}`} />
           {showPicksAlternance ? (
             <RuleRow label="Picks par manche" value={MJ_PICKS_ALTERNANCE_BRACKET} />
           ) : null}

@@ -482,7 +482,7 @@ if (!payoutCountry) {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <Button variant="primary" size="lg" fullWidth onClick={() => setShowDepositModal(true)} aria-label="Effectuer un dépôt Mobile Money">
+          <Button variant="primary" size="lg" fullWidth onClick={() => setShowDepositModal(true)} aria-label="Dépôt Mobile Money (ajouter des ZC)">
             <span className="inline-flex items-center gap-2">
               <ArrowDownToLine className="w-5 h-5 shrink-0" />
               DÉPÔT
@@ -627,7 +627,7 @@ if (!payoutCountry) {
               </p>
             )}
 
-            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={isDepositing} aria-label="Confirmer le dépôt">
+            <Button variant="primary" fullWidth onClick={handleDeposit} disabled={isDepositing} aria-label="Ajouter ces ZC (confirmer le dépôt)">
               {isDepositing ? 'Ouverture du paiement…' : 'Ajouter ces ZC'}
             </Button>
           </div>

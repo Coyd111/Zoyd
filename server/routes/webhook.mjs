@@ -215,7 +215,7 @@ export const handleVerifiedWebhookEvent = async (event, ctx = {}) => {
     || String(entity?.description || '').startsWith('ZOYD:');
   if (isDeposit) {
     if (!/^\d{1,20}$/.test(transactionId)) {
-      log.warn('Webhook depot sans transactionId exploitable', { name });
+      log.warn('Webhook dépôt sans transactionId exploitable', { name });
       return { received: true, action: 'ignored_no_tx_id' };
     }
     const approved = name.includes('approved') || status === 'approved';
@@ -226,7 +226,7 @@ export const handleVerifiedWebhookEvent = async (event, ctx = {}) => {
     }
     const depositUser = resolveDepositUserFromTransaction(entity);
     if (!depositUser) {
-      log.error('Webhook depot : beneficiaire introuvable', { transactionId });
+      log.error('Webhook dépôt : bénéficiaire introuvable', { transactionId });
       return { received: true, action: 'ignored_unknown_user' };
     }
     try {
@@ -235,14 +235,14 @@ export const handleVerifiedWebhookEvent = async (event, ctx = {}) => {
       );
       if (io && outcome?.amountZC != null) {
         await deliverNotification(io, depositUser.id, {
-          title: 'Depot credite',
-          body: `${formatZcForNotification(outcome.amountZC)} ajoutes a ton portefeuille via FedaPay.`,
+          title: 'Dépôt crédité',
+          body: `${formatZcForNotification(outcome.amountZC)} ajoutés à ton portefeuille via FedaPay.`,
           url: '/wallet',
           tag: `deposit-${transactionId}`,
           type: 'wallet_update',
           requireInteraction: false,
         }).catch((notifyError) => {
-          log.error('Échec de la notification de depot (webhook)', {
+          log.error('Échec de la notification de dépôt (webhook)', {
             userId: depositUser.id, transactionId, error: notifyError.message,
           });
         });
@@ -254,7 +254,7 @@ export const handleVerifiedWebhookEvent = async (event, ctx = {}) => {
       }
       if (error?.code === 'TRANSACTION_NOT_OWNED' || error?.code === 'TRANSACTION_NOT_APPROVED'
         || error?.code === 'INVALID_AMOUNT' || error?.code === 'PAYMENT_NOT_CONFIGURED') {
-        log.warn('Webhook depot ignoré (état definitif)', {
+        log.warn('Webhook dépôt ignoré (état définitif)', {
           transactionId, code: error.code,
         });
         return { received: true, action: 'ignored_definitif' };

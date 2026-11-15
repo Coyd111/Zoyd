@@ -765,7 +765,7 @@ process.on('unhandledRejection', (err) => {
   log.fatal('Unhandled promise rejection', err);
 });
 process.on('uncaughtException', (err) => {
-  log.fatal('Exception non capturee — arret pour eviter un état corrompu', err);
+  log.fatal('Exception non capturée — arrêt pour éviter un état corrompu', err);
   process.exit(1);
 });
 

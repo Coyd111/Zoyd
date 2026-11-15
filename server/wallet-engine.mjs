@@ -198,7 +198,7 @@ export const getServerWallet = (userId) => getWalletSnapshot(userId);
 export const depositToWallet = async (userId, amount, method = 'Mobile Money', options = {}) => {
   const safeAmount = roundAmount(amount);
   if (safeAmount <= 0) {
-    throw makeError('INVALID_AMOUNT', 'Le montant du depot est invalide.');
+    throw makeError('INVALID_AMOUNT', 'Le montant du dépôt est invalide.');
   }
 
 return (await updateWalletSnapshot(userId, (wallet) => {

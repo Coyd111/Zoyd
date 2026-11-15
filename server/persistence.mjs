@@ -1068,7 +1068,7 @@ export const loadFromSupabase = async () => {
     // `/api/health` que refuser de démarrer.
     sanctionsPersisted = await loadSanctions();
     if (!sanctionsPersisted) {
-      log.warn('user_sanctions non chargee : les bannissements ne survivront pas au redemarrage');
+      log.warn('user_sanctions non chargé : les bannissements ne survivront pas au redémarrage');
     }
 
     log.info('Loaded from Supabase', { durationMs: Date.now() - t0, users: memoryUsers.size, channels: memoryChatMessages.size || memoryChatChannels.size, snapshots: memoryStateSnapshots.size });
@@ -4716,7 +4716,7 @@ export const releaseTransaction = async (transactionId) => {
   }
   log.error('CRITICAL: libération de la reservation impossible — le credit sera bloque', {
     transactionId,
-    hint: 'Rejouer le webhook apres resolution, ou crediter le joueur a la main.',
+    hint: 'Rejouer le webhook après résolution, ou créditer le joueur à la main.',
   });
 };
 
@@ -5214,13 +5214,13 @@ export const ensureSeedAdmin = async () => {
   for (const user of memoryUsers.values()) {
     if (normalizeEmailKey(user.email) === adminEmail) {
     if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
-        log.warn('[SECURITY] Le compte admin utilise l identité PAR DEFAUT (connue : depot public).', {
-          hint: 'Renseigne ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID sur ton hebergeur.',
+        log.warn('[SECURITY] Le compte admin utilise l\'identité PAR DÉFAUT (connue : dépôt public).', {
+          hint: 'Renseigne ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID sur ton hébergeur.',
         });
       }
       if (usesDefaultPhone && process.env.NODE_ENV === 'production') {
-        log.warn('[SECURITY] Le compte admin utilise le telephone PAR DEFAUT (numéro public : depot public).', {
-          hint: 'Renseigne ZOYD_ADMIN_PHONE sur ton hebergeur. Aucun retrait ne partira vers ce numero tant qu il n est pas change.',
+        log.warn('[SECURITY] Le compte admin utilise le téléphone PAR DÉFAUT (numéro public : dépôt public).', {
+          hint: 'Renseigne ZOYD_ADMIN_PHONE sur ton hébergeur. Aucun retrait ne partira vers ce numéro tant qu\'il n\'est pas changé.',
           defaultPhone: DEFAULT_ADMIN_PHONE,
         });
       }
@@ -5238,7 +5238,7 @@ export const ensureSeedAdmin = async () => {
   const existingById = memoryUsers.get(seedId);
   if (existingById) {
     log.error('[FATAL] Compte admin introuvable par email mais ID déjà pris — aucune écriture.', {
-      hint: 'Applique le nouvel email depuis Parametres, OU remets ZOYD_ADMIN_EMAIL sur l\'email actuel du compte. Ne surtout pas laisser cet etat se prolonger.',
+      hint: 'Applique le nouvel email depuis Paramètres, OU remets ZOYD_ADMIN_EMAIL sur l\'email actuel du compte. Ne surtout pas laisser cet état se prolonger.',
       idOccupedBy: normalizeEmailKey(existingById.email || ''),
       configuredEmail: seedEmail,
     });
@@ -5262,10 +5262,10 @@ export const ensureSeedAdmin = async () => {
       stats: { ...defaultStats }, progression: { level: 'PRO', xp: 20000, nextLevelXp: 20000 },
       achievements: ['Control Room'], bio: 'Compte de moderation ZOYD.',
     });
-    log.warn('Admin de contrôle cree depuis ZOYD_ADMIN_PASSWORD — change ce mot de passe.');
+    log.warn('Admin de contrôle créé depuis ZOYD_ADMIN_PASSWORD — change ce mot de passe.');
     if (usesDefaultIdentity && process.env.NODE_ENV === 'production') {
       log.warn('[SECURITY] Ce compte utilise une identité PAR DEFAUT, connue de tous.', {
-        hint: 'Fixe ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID avant le prochain redemarrage.',
+        hint: 'Fixe ZOYD_ADMIN_EMAIL / ZOYD_ADMIN_PSEUDO / ZOYD_ADMIN_ID avant le prochain redémarrage.',
       });
     }
   } catch (error) {

@@ -1056,7 +1056,7 @@ export const setRoomDetailsOnServer = (matches, actor, matchId, roomName, roomPa
   const safeRoomPassword = sanitizeText(`${roomPassword}`.trim().slice(0, 50));
   const scheduledAt = getScheduledTimestamp(match);
   if (!safeRoomName || !safeRoomPassword || !scheduledAt) {
-    throw makeError('ROOM_INCOMPLETE', "Confirme d'abord l'heure du match puis renseigne la room.");
+    throw makeError('ROOM_INCOMPLETE', "Confirme d'abord l'heure du match puis renseigne la salle.");
   }
 
   const minutesUntilMatch = (scheduledAt - Date.now()) / 60000;
@@ -1101,7 +1101,7 @@ export const launchMatchOnServer = (matches, actor, matchId) => {
     match.players.every((player) => player.isCheckedIn && player.isReady);
 
   if (!canLaunch) {
-    throw makeError('MATCH_NOT_READY', 'Tous les joueurs doivent être prets avant le lancement.');
+    throw makeError('MATCH_NOT_READY', 'Tous les joueurs doivent être prêts avant le lancement.');
   }
 
   match.status = 'in_progress';
@@ -1193,13 +1193,13 @@ if (resultPayload.winnerTeam !== 0 && resultPayload.winnerTeam !== 1) {
   if (requiresMandatoryProofs &&
     (!normalizedProofs || normalizedProofs.scoreboard.length === 0 || normalizedProofs.finalResult.length === 0)
   ) {
-    throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un scoreboard et un écran final avant de valider le score.');
+    throw makeError('PROOFS_REQUIRED', 'Ajoute au moins un tableau des scores et un écran final avant de valider le score.');
   }
   // Une seule image ne peut pas servir de scoreboard ET d ecran final :
   // sans distinctness, une capture unique (ou ses doublons, deja
   // dedupliques) validait les deux preuves.
   if (requiresMandatoryProofs && !hasDistinctProofs(normalizedProofs)) {
-    throw makeError('PROOFS_REQUIRED', 'Le scoreboard et l’écran final doivent être deux preuves distinctes.');
+    throw makeError('PROOFS_REQUIRED', 'Le tableau des scores et l’écran final doivent être deux preuves distinctes.');
   }
 
   const fullResult = {

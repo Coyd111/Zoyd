@@ -339,11 +339,33 @@ test.describe('Responsive mobile (sondes geometriques)', () => {
     // Les destinations longues restent accessibles aux lecteurs d'ecran
     // (aria-label intact dans la nav basse; la Sidebar desktop montee dans le
     // DOM porte le meme aria-label, on cible donc nav.md:hidden explicitement).
+    //
+    // PIEGE (WCAG 2.5.3) : l'aria-label contient le libelle COMPLET
+    // (« MULTIJOUEUR ») et le libelle VISIBLE (« MULTI »). Il faut donc
+    // une recherche par CONTENU, pas une egalite stricte.
     for (const label of ['MULTIJOUEUR', 'TOURNOIS', 'MESSAGES', 'WALLET']) {
       await expect(
-        page.locator('nav.md\\:hidden').locator(`a[aria-label="${label}"]`),
+        page.locator('nav.md\\:hidden').locator(`a[aria-label*="${label}"]`),
         `aria-label ${label} intact`,
       ).toBeAttached();
+    }
+
+    // WCAG 2.5.3 « Label in Name » : le nom accessible doit contenir le
+    // texte visible. Le libelle visible de la barre est ABRGE (« MSGS »),
+    // le nom accessible non (« MSGS — MESSAGES ») : une commande vocale
+    // qui dit « MSGS » trouve le bouton.
+    const nomsVisibles = await page.locator('nav.md\\:hidden a[aria-label]').evaluateAll((els) => els.map((el) => ({
+      aria: el.getAttribute('aria-label') || '',
+      visible: (el.textContent || '').trim(),
+    })));
+    for (const { aria, visible } of nomsVisibles) {
+      const normaliser = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const a = normaliser(aria);
+      const v = normaliser(visible);
+      expect(
+        a.includes(v) || v.includes(a),
+        `le nom accessible contient le libelle visible (aria="${aria}", visible="${visible}")`,
+      ).toBe(true);
     }
   });
 });

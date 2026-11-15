@@ -21,7 +21,7 @@ describe('wallet-engine - Deposit', () => {
   });
 
   it('should throw error for zero amount', async () => {
-    await expect(walletEngine.depositToWallet('user1', 0)).rejects.toThrow('Le montant du depot est invalide.');
+    await expect(walletEngine.depositToWallet('user1', 0)).rejects.toThrow('Le montant du dépôt est invalide.');
   });
 
   it('should throw error with correct code', async () => {

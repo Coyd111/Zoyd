@@ -300,8 +300,8 @@ if (req.method === 'POST' && tournamentStart) {
     for (const uid of participantIds) {
       deliverNotification(io, uid, {
         type: 'tournament_started',
-        title: 'Tournoi demarre',
-        body: `Le tournoi "${tournament.name}" a commence !`,
+        title: 'Tournoi démarré',
+        body: `Le tournoi "${tournament.name}" a commencé !`,
         url: `/mj/tournois/${tournament.id}`,
         requireInteraction: false
       }).catch(err => log.error('Échec de l\'envoi de la notification', err));

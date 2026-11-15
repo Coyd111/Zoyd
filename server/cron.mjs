@@ -939,7 +939,7 @@ export const initCronJobs = () => {
         });
       }
       if (result.stillPending > 0) {
-        log.error('Retraits toujours en attente de resolution', { count: result.stillPending });
+        log.error('Retraits toujours en attente de résolution', { count: result.stillPending });
       }
     } catch (error) {
       log.error('Erreur de réconciliation des retraits', error);

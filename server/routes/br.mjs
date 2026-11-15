@@ -169,7 +169,7 @@ if (req.method === 'POST' && pathname === '/api/br/lobbies') {
       await saveBrLobbies(io, [resultat.lobby]);
       return resultat;
     });
-    log.info('Salon BR cree', { lobbyId: created.lobby.id, by: session.user.id });
+    log.info('Salon BR créé', { lobbyId: created.lobby.id, by: session.user.id });
     respondJson(res, 201, {
       ok: true,
       // L'appelant est l'arbitre : il peut donc recevoir la vue complete.
@@ -298,7 +298,7 @@ if (brLobbyAction && req.method === 'POST') {
       for (const prize of result.payouts || []) {
         await deliverNotification(io, prize.userId, {
           title: `BR - ${prize.placement}e place`,
-          body: `${formatZcForNotification(prize.amount)} gagnes sur ${result.lobby.name} (${prize.kills} kills).`,
+          body: `${formatZcForNotification(prize.amount)} gagnés sur ${result.lobby.name} (${prize.kills} éliminations).`,
           url: '/br',
           tag: `br-prize-${result.lobby.id}-${prize.userId}`,
           type: 'wallet_update',

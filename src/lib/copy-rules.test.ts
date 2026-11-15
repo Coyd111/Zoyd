@@ -62,7 +62,7 @@ interface Chaine {
 }
 
 const ATTRIBUTS_TEXTE = 'aria-label|title|placeholder|alt|label|description|helperText|hint|tooltip|confirmLabel|message';
-const CLES_TEXTE = 'label|title|description|placeholder|message|text|name|helperText|tooltip|emptyTitle|emptyText|ariaLabel|confirmLabel|copy|hint|subtitle|badge|caption|cta|actionLabel|helpText';
+const CLES_TEXTE = 'label|title|description|placeholder|message|text|name|helperText|tooltip|emptyTitle|emptyText|ariaLabel|confirmLabel|copy|hint|subtitle|badge|caption|cta|actionLabel|helpText|notes|notesPlaceholder';
 
 /** Les chaines visibles d un composant. */
 const chainesVisibles = (source: string): Chaine[] => {
@@ -259,6 +259,36 @@ const MOTS_SANS_ACCENT_OBLIGATOIRE: Record<string, string> = {
   generation: 'génération',
 };
 
+/**
+ * Les MOTS anglais qui n'ont pas d'equivalent dans l'interface.
+ *
+ * PIEGE : l'interface est en francais, mais elle emploie des ANGLICISMES
+ * du jeu (« leaderboard », « match », « score », « squad »). Les verser
+ * dans la liste rendrait le verrou muet sur un texte legitime.
+ *
+ * La liste est donc courte et VERIFIEE : chaque entree correspond a un
+ * mot anglais qui n'a aucune raison d'etre en francais dans ce produit.
+ */
+const MOTS_ANGLAIS = [
+  'best of', 'loading', 'try again', 'click here', 'learn more', 'read more',
+  'sign up', 'sign in', 'log in', 'log out', 'sort by', 'no results',
+  'welcome to', 'phone number', 'email address', 'nickname', 'play again',
+  'coming soon', 'access denied', 'server error', 'network error',
+  'you have', 'you are', 'you can', 'copied to', 'copy link', 'room',
+];
+
+/**
+ * Les anglicismes ASSUMES : ils sont dans la marque et dans le jargon du
+ * jeu, et le joueur les reconnait. Un texte qui les contient n'est pas
+ * signale, meme s'il contient par ailleurs un mot anglais.
+ */
+const ANGLICISMES_ASSUMES = [
+  'leaderboard', 'balance changes', 'match', 'matches', 'score', 'scores',
+  'level', 'admin', 'streamer', 'squad', 'solo', 'duo', 'top', 'wallet',
+  'chat', 'transactions', 'balance', 'deposit', 'withdraw', 'news', 'roster',
+  'draft', 'br', 'bo1', 'bo3', 'bo5',
+];
+
 describe('Regles de redaction - les accents', () => {
   it('la regle a des fichiers a inspecter (sinon elle ne verifierait rien)', () => {
     expect(fichiers.length).toBeGreaterThan(20);
@@ -282,6 +312,29 @@ describe('Regles de redaction - les accents', () => {
     expect(
       coupables.length,
       'texte visible sans accent :\n  ' + coupables.join('\n  '),
+    ).toBe(0);
+  });
+
+  it('aucun texte visible n est en anglais', () => {
+    const coupables: string[] = [];
+
+    for (const fichier of fichiers) {
+      const source = readFileSync(fichier, 'utf8');
+      for (const c of chainesVisibles(source)) {
+        const bas = c.texte.toLowerCase();
+        // Un anglicisme assume dans le meme texte le rend innocent.
+        if (ANGLICISMES_ASSUMES.some((a) => bas.includes(a))) continue;
+        const hit = MOTS_ANGLAIS.find((mot) =>
+          new RegExp(`(?<![\\p{L}])${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'iu').test(bas),
+        );
+        if (!hit) continue;
+        coupables.push(`${fichier.replace(racine, 'src')}:${c.ligne}  « ${c.texte.slice(0, 60)} »  (${hit})`);
+      }
+    }
+
+    expect(
+      coupables.length,
+      'texte visible en anglais (le reste de l application est en francais) :\n  ' + coupables.join('\n  '),
     ).toBe(0);
   });
 });

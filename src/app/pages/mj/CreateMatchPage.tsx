@@ -550,9 +550,9 @@ const CreateMatchPage: React.FC = () => {
                       </div>
                       <div>
                         <label htmlFor="bestOf" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block">
-                          Best of
+                          Nombre de manches
                         </label>
-                        <input id="bestOf" type="number" {...register('bestOf')} placeholder="3" aria-label="Best of" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue" />
+                        <input id="bestOf" type="number" {...register('bestOf')} placeholder="3" aria-label="Nombre de manches" className="w-full bg-black border border-white/10 p-4 text-xs font-display font-black italic uppercase focus:border-zoyd-blue" />
                         {/* P4 2026-11-02 : presets de la scene wager (DuelX :
                             BO1/BO3/BO5). Un preset REMPLIT le champ, la
                             saisie libre reste possible (reglement libre). */}
@@ -562,7 +562,7 @@ const CreateMatchPage: React.FC = () => {
                               key={preset}
                               type="button"
                               onClick={() => setValue('bestOf', preset)}
-                              aria-label={`BO${preset} — best of ${preset}`}
+                              aria-label={`BO${preset} — au meilleur de ${preset}`}
                               className={`px-3 py-2 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
                                 bestOfValue === preset
                                   ? 'border-white bg-white/10 text-white'

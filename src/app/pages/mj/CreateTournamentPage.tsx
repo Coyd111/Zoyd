@@ -113,7 +113,7 @@ const CreateTournamentPage: React.FC = () => {
       pointstreaks: 'restricted',
       meleeAllowed: false,
       picksAlternate: false,
-      notes: 'Pas de matchs entre 00h00 et 07h00. Vérification room 10 min avant le round.',
+      notes: 'Pas de matchs entre 00h00 et 07h00. Vérification de la salle 10 min avant le début.',
       startsAt: getDefaultStartAt(),
       deviceRestriction: 'open',
       controllerRestriction: 'open',
@@ -482,7 +482,7 @@ const CreateTournamentPage: React.FC = () => {
                           key={preset}
                           type="button"
                           onClick={() => setValue('bestOf', preset)}
-                          aria-label={`BO${preset} — best of ${preset}`}
+                          aria-label={`BO${preset} — au meilleur de ${preset}`}
                           className={`min-h-[44px] inline-flex items-center px-3 border text-[11px] font-display font-black italic uppercase tracking-widest transition-colors ${
                             selectedBestOf === preset
                               ? 'border-white bg-white/10 text-white'
@@ -605,7 +605,7 @@ const CreateTournamentPage: React.FC = () => {
                             : 'border-white/10 text-white/70 hover:border-white/30'
                         }`}
                       >
-                        {amount} slots
+                        {amount} places
                       </button>
                     ))}
                   </div>

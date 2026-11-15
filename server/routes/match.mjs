@@ -291,7 +291,7 @@ if (req.method === 'POST' && matchArbiter) {
 
     deliverNotification(io, session.user.id, {
       type: 'arbiter_assigned',
-      title: 'Arbitre assigne',
+      title: 'Arbitre assigné',
       body: `Tu es arbitre du match "${outcome.match?.format || 'MJ'}" (${outcome.match?.id}).`,
       url: `/mj/match/${outcome.match?.id}`,
       requireInteraction: true
@@ -512,8 +512,8 @@ if (req.method === 'POST' && matchConfirm) {
       if (userId === session.user.id) continue;
       deliverNotification(io, userId, {
         type: 'match_result',
-        title: 'Resultat a confirmer',
-        body: `${session.user.pseudo} a confirme le resultat du match ${match.id}. Confirme-le ou ouvre un litige avant la fin du delai.`,
+        title: 'Résultat à confirmer',
+        body: `${session.user.pseudo} a confirmé le résultat du match ${match.id}. Confirme-le ou ouvre un litige avant la fin du délai.`,
         url: `/mj/match/${match.id}`,
         requireInteraction: true
       }).catch(err => log.error('Échec de l\'envoi de la notification', err));

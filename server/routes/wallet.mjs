@@ -541,8 +541,8 @@ if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
     // `requireInteraction: false` : un dépôt réussi ne doit pas exiger une
     // action du joueur, tout en restant dans le centre de notifications.
     await deliverNotification(io, session.user.id, {
-      title: 'Depot credite',
-      body: `${formatZcForNotification(outcome.amountZC)} ajoutes a ton portefeuille via FedaPay.`,
+      title: 'Dépôt crédité',
+      body: `${formatZcForNotification(outcome.amountZC)} ajoutés à ton portefeuille via FedaPay.`,
       url: '/wallet',
       tag: `deposit-${transactionId}`,
       type: 'wallet_update',
@@ -550,7 +550,7 @@ if (req.method === 'POST' && pathname === '/api/wallet/verify-fedapay') {
     }).catch((notifyError) => {
       // Une notification ratée ne doit jamais faire échouer le crédit :
       // l'argent est déjà dans le portefeuille à ce stade.
-      log.error('Échec de la notification de depot', { userId: session.user.id, error: notifyError.message });
+      log.error('Échec de la notification de dépôt', { userId: session.user.id, error: notifyError.message });
     });
 
     respondJson(res, 200, { 

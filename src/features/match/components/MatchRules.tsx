@@ -42,7 +42,7 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
       </div>
       <div className="grid md:grid-cols-2 gap-4 text-sm text-white/70">
         <RuleRow label="Format" value={match.format} />
-        <RuleRow label="Best of" value={`BO${match.rules.bestOf}`} />
+        <RuleRow label="Nombre de manches" value={`BO${match.rules.bestOf}`} />
         {/* P3 02/11/2026 (DuelX) : convention affichee SEULEMENT si choisie
             a la creation ET en BO3+ - pas d'invention pour les vieux matchs. */}
         {match.rules.picksAlternate && (match.rules.bestOf || 1) >= 3 ? (

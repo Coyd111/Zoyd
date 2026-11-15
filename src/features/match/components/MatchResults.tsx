@@ -81,7 +81,7 @@ export const MatchResults: React.FC<MatchResultsProps> = ({ match, forfeitLabel 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <EvidencePanel title="Tableau des scores" items={resultProofSummary.scoreboard} />
           <EvidencePanel title="Ecran final" items={resultProofSummary.finalResult} />
-          <EvidencePanel title="Salle / room" items={resultProofSummary.roomCapture} />
+          <EvidencePanel title="Salle" items={resultProofSummary.roomCapture} />
           <EvidencePanel title="Autres preuves" items={resultProofSummary.extraEvidence} />
         </div>
       ) : null}

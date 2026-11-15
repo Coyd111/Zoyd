@@ -98,7 +98,45 @@ export const mesurerDesign = () => {
     ciblesPetites.push(`${el.tagName.toLowerCase()} ${Math.round(r.width)}x${Math.round(r.height)} « ${(el.textContent || '').trim().slice(0, 20)} »`);
   }
 
-  return { imagesSansAlt, sansNom, ciblesPetites };
+  // WCAG 2.5.3 « Label in Name » : le nom accessible doit CONTENIR le
+  // libelle visible, sinon une commande vocale (« clique MSGS ») ne
+  // trouve pas le bouton.
+  //
+  // PIEGE : la comparaison est faite par MOTS, pas par chaine. Un
+  // element dont le texte visible est une VALEUR animee (« 450,3 ZC »
+  // pendant que le compteur monte) porte un aria-label qui la contient
+  // (« Portefeuille — solde 450 ZC ») : les chaines different, les mots
+  // se rejoignent. Comparer les chaines signalerait ce cas a tort.
+  //
+  // PIEGE 2 : le texte visible se lit avec `innerText`, pas
+  // `textContent`. Un bouton dont le libelle est fait de plusieurs
+  // elements (« 1VS1 » + « Solo ») donne « 1VS1Solo » avec
+  // `textContent` — un mot fantome, absent du nom accessible, donc un
+  // faux positif. `innerText` respecte la mise en page : « 1VS1 Solo ».
+  const normaliser = (s: string) => s
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const mots = (s: string) => normaliser(s).split(' ').filter((m) => m.length >= 2);
+  const nomsMasques: string[] = [];
+  for (const el of Array.from(document.querySelectorAll('button, a, [role="button"]'))) {
+    if (!visible(el)) continue;
+    const aria = el.getAttribute('aria-label');
+    if (!aria) continue;
+    const texte = (el.innerText || '').trim();
+    if (!texte) continue;
+    const motsVisibles = mots(texte);
+    if (!motsVisibles.length) continue;
+    const motsAccessibles = new Set(mots(aria));
+    const manquants = motsVisibles.filter((m) => !motsAccessibles.has(m));
+    if (!manquants.length) continue;
+    const r = el.getBoundingClientRect();
+    nomsMasques.push(
+      `${el.tagName.toLowerCase()} « ${texte.replace(/\s+/g, ' ').slice(0, 30)} » `
+      + `aria-label « ${aria.slice(0, 40)} » @${Math.round(r.left)},${Math.round(r.top)}`,
+    );
+  }
+
+  return { imagesSansAlt, sansNom, ciblesPetites, nomsMasques };
 };
 
 export interface OptionsAudit {
@@ -207,6 +245,7 @@ export const auditerEcran = async (
     design.imagesSansAlt.length ? `images sans alt :\n      ${design.imagesSansAlt.join('\n      ')}` : '',
     design.sansNom.length ? `elements sans nom accessible :\n      ${design.sansNom.join('\n      ')}` : '',
     design.ciblesPetites.length ? `cibles tactiles < 24 px :\n      ${design.ciblesPetites.join('\n      ')}` : '',
+    design.nomsMasques.length ? `nom accessible sans le libelle visible (WCAG 2.5.3) :\n      ${design.nomsMasques.join('\n      ')}` : '',
     collecte.erreursConsole.length ? `erreurs console :\n      ${collecte.erreursConsole.join('\n      ')}` : '',
     collecte.reponsesApiEnErreur.length ? `reponses API en erreur :\n      ${collecte.reponsesApiEnErreur.join('\n      ')}` : '',
   ].filter(Boolean).join('\n\n');

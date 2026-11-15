@@ -281,8 +281,8 @@ if (req.method === 'POST' && leagueStartDay) {
     for (const uid of participantIds) {
       deliverNotification(io, uid, {
         type: 'league_day_started',
-        title: 'Journee BR Lancee',
-        body: `La journee ${leagueStartDay[2]} de la ligue "${season.name}" est en cours !`,
+        title: 'Journée BR Lancée',
+        body: `La journée ${leagueStartDay[2]} de la ligue "${season.name}" est en cours !`,
         url: `/br-league/${season.id}`,
         requireInteraction: false
       }).catch(err => log.error('Échec de l\'envoi de la notification', err));

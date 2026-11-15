@@ -28,6 +28,11 @@ const navItems = [
   // 'MULTIJ...' sous ellipsis CSS : 3 des 5 destinations etaient tronquees.
   // L'aria-label garde le libelle complet pour l'accessibilite, et le
   // test e2e responsive.spec.ts (U-2) refuse tout ellipsis CSS actif.
+  //
+  // PIEGE (WCAG 2.5.3 « Label in Name ») : le nom accessible doit
+  // CONTENIR le libelle visible. « MESSAGES » ne contient pas « MSGS » :
+  // une commande vocale (« clique MSGS ») ne trouvait pas le bouton. On
+  // concatene donc les deux.
   { icon: LayoutGrid, label: 'MULTIJOUEUR', shortLabel: 'MULTI', path: '/mj' },
   { icon: Trophy, label: 'TOURNOIS', shortLabel: 'TOURNOI', path: '/mj/tournois' },
   { icon: MessageCircle, label: 'MESSAGES', shortLabel: 'MSGS', path: '/chat' },
@@ -149,7 +154,7 @@ const BottomNav: React.FC = React.memo(() => {
               <Link
                 key={item.path}
                 to={item.path}
-                aria-label={item.label}
+                aria-label={`${item.shortLabel} — ${item.label}`}
                 className={cn(
                   'relative flex flex-col items-center justify-center w-full h-full touch-target transition-all',
                   isActive ? 'text-white' : 'text-white/60'

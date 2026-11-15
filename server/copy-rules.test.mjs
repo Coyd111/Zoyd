@@ -43,6 +43,23 @@ const lireMessages = (source) => {
       // mais ils sont lus par l exploitant, et ils melangeaient les deux
       // langues du projet.
       /log\.(?:trace|debug|info|warn|error|fatal)\(\s*'((?:[^'\\]|\\.)*)'/g,
+      // Les NOTIFICATIONS : `title` et `body` sont affiches tels quels
+      // dans le centre de notifications du joueur. Ils sont donc des
+      // TEXTE VISIBLE, au meme titre qu un `error:` — et ils etaient
+      // hors de portee du verrou (« Depot credite », « Arbitre
+      // assigne », « Resultat a confirmer »).
+      //
+      // PIEGE : `body:` designe aussi le corps d'une requete HTTP
+      // (`body: JSON.stringify(...)`) : le motif n'attrape que les
+      // LITERAUX, donc pas ces appels.
+      /\btitle:\s*'((?:[^'\\]|\\.)*)'/g,
+      /\btitle:\s*`((?:[^`\\]|\\.)*)`/g,
+      /\bbody:\s*'((?:[^'\\]|\\.)*)'/g,
+      /\bbody:\s*`((?:[^`\\]|\\.)*)`/g,
+      // Les `hint:` : l aide affichee au createur de salon (BR) ou la
+      // consigne de l exploitant dans les journaux du serveur.
+      /\bhint:\s*'((?:[^'\\]|\\.)*)'/g,
+      /\bhint:\s*`((?:[^`\\]|\\.)*)`/g,
     ];
     for (const motif of motifs) {
       for (const m of ligne.matchAll(motif)) {
@@ -90,7 +107,12 @@ describe('Messages serveur - redaction', () => {
     // Les articles sont donc exclus explicitement.
     const re = /(?<!(?:Un|Une|un|une) )(?<![a-zà-ÿA-ZÀ-Ý])(n|d|l|qu|c|j)(?= (est|etait|etaient|ai|as|es|importe|un|une|historique|export|equipe|operation|etat|inscription|identite|abord|il|elle|on|auc|avant|administrateur|administr administration|arbitre|admin|ecran))/g;
     for (const m of tousLesMessages) {
-      if (!re.test(m.texte)) continue;
+      // PIEGE : la comparaison se fait sur le texte SANS accents. Sinon
+      // « l identite » (apostrophe elidee ET accent present) passe
+      // sous la liste de mots, qui ne contient que des formes sans
+      // accent : l apostrophe elidee y echappait.
+      const plat = m.texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (!re.test(plat)) continue;
       re.lastIndex = 0;
       coupables.push(`${m.fichier}:${m.ligne}  « ${m.texte.slice(0, 70)} »`);
     }
@@ -116,13 +138,27 @@ describe('Messages serveur - redaction', () => {
       'ignored', 'released', 'evicted', 'discarded', 'loading', 'delivery',
       'persist', 'award', 'revoke', 'verify',
       'unread', 'marked', 'created', 'updated', 'deleted',
+      // Mots anglais des NOTIFICATIONS : « (${kills} kills) » etait
+      // affiche tel quel au joueur, dans un projet francais.
+      'kills', 'kill',
+      // « la room » : le mot anglais s etait glisse dans un message
+      // joueur (« renseigne la room »). Toute l interface parle de
+      // « salle ».
+      'room',
+      // « Ajoute au moins un scoreboard » : le mot anglais etait dans un
+      // message joueur. Le tableau des scores est le mot francais.
+      'scoreboard',
     ];
     for (const m of tousLesMessages) {
       // Frontieres de LETTRES (propriete Unicode) : « persisté » ne doit
       // pas etre lu comme « persist », et « cron_leases » ne doit pas
       // etre lu comme « leases ».
+      //
+      // PIEGE : un point devant exclut l IDENTIFICATEUR (`prize.kills`),
+      // pas le mot affiche au joueur. « .kills » est un nom de
+      // propriete ; « (2 kills) » est de l anglais affiche.
       const hit = anglais.find((a) => {
-        const motif = new RegExp(`(?<![\\p{L}])${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'iu');
+        const motif = new RegExp(`(?<![.\\p{L}])${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'iu');
         return motif.test(m.texte);
       });
       if (!hit) continue;
@@ -173,16 +209,75 @@ describe('Messages serveur - redaction', () => {
       'etat', 'etats', 'cloture', 'cloturee', 'cloturer', 'securite',
       'qualite', 'quantite', 'difficulte', 'identite', 'activite', 'modele',
       'libelle', 'evenement', 'evenements', 'numero', 'numeros', 'systeme',
-      'periode', 'unites', 
-      
+      'periode', 'unites',
+      // Mots des NOTIFICATIONS (texte affiche dans le centre de
+      // notifications du joueur).
+      'depot', 'depots', 'credite', 'creditee', 'ajoutes', 'delai',
+      // Mots des `hint:` (aide affichee au createur de salon BR, consigne
+      // de l exploitant dans les journaux).
+      'redeploy', 'hebergeur', 'redemarrage', 'resolution', 'crediter',
+      'chargee', 'prets', 'arret', 'cree',
+      // Reprise du dictionnaire du verrou FRONT (`src/lib/copy-rules.test.ts`)
+      // : un seul referentiel pour les deux moites du produit. Les mots
+      // qui n etaient verifies que cote front sont des textes que le
+      // serveur envoie au joueur.
+      'elimination', 'dernieres', 'categorie', 'categories', 'debut', 'ete',
+      'supprime', 'complete', 'completee', 'detail', 'details', 'tres',
+      'penalite', 'decision', 'precision', 'benefice', 'recu', 'experience',
+      'reference', 'visibilite', 'legalite', 'declaration', 'integration',
+      'moderation',
     ];
+    // Mots dont l accent depend du CONTEXTE : ils ne peuvent pas figurer
+    // dans la liste ci-dessus (elle signalerait des homographes
+    // legitimes). On les traite par EXPRESSION : la forme accentuee
+    // doit etre presente, et la forme sans accent ne doit pas l etre.
+    //
+    // PIEGE : la comparaison se fait sur la version SANS accents du
+    // message, avec une frontiere de lettre a droite. Sans cette
+    // frontiere, « a confirmer » serait vu comme « a confirme » (prefixe)
+    // et chaque message serait signale a tort.
+    const EXPRESSIONS = [
+      'à confirmer',            // « Resultat a confirmer » -> « Résultat à confirmer »
+      'a confirmé',             // « a confirme le resultat » -> « a confirmé le résultat »
+      'ajoutés à ton portefeuille',
+      'assigné',                // « Arbitre assigne » -> « Arbitre assigné »
+      'démarré',                // « Tournoi demarre » -> « Tournoi démarré »
+      'a commencé',             // « a commence » -> « a commencé »
+      'gagnés sur',             // « X gagnes sur ... » -> « X gagnés sur ... »
+      'BR Lancée',              // « Journee BR Lancee » -> « Journée BR Lancée »
+      'redéploiement limité',   // « redeploy limite » -> « redéploiement limité »
+      'redéploiement illimité', // « redeploy illimite » -> « redéploiement illimité »
+      'NON CONFIRMÉ',           // « NON CONFIRME » -> « NON CONFIRMÉ »
+      'Résurgence',             // « Resurgence » -> « Résurgence »
+    ];
+    const sansAccents = (texte) => texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const echapper = (texte) => texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     for (const m of tousLesMessages) {
+      let coupable = null;
       for (const mot of MOTS) {
         const re = new RegExp(`(?<![\\p{L}])${mot}(?![\\p{L}])`, 'iu');
         if (!re.test(m.texte)) continue;
-        coupables.push(`${m.fichier}:${m.ligne}  « ${m.texte.slice(0, 66)} »  (${mot})`);
+        coupable = `${m.fichier}:${m.ligne}  « ${m.texte.slice(0, 66)} »  (${mot})`;
         break;
       }
+      if (!coupable) {
+        const plat = sansAccents(m.texte);
+        for (const expression of EXPRESSIONS) {
+          const sans = sansAccents(expression);
+          // Frontiere de LETTRE des deux cotes. A gauche, elle empeche
+          // « Tu as deja confirme » de passer pour « a confirme » (le
+          // « a » final de « deja ») ; a droite, elle empeche
+          // « a confirmer » de passer pour « a confirme ».
+          const presentSans = new RegExp(`(?<![\\p{L}])${echapper(sans)}(?![\\p{L}])`, 'iu').test(plat);
+          if (!presentSans) continue;
+          const presentAvec = new RegExp(`(?<![\\p{L}])${echapper(expression)}(?![\\p{L}])`, 'iu').test(m.texte);
+          if (presentAvec) continue;
+          coupable = `${m.fichier}:${m.ligne}  « ${m.texte.slice(0, 66)} »  (${expression})`;
+          break;
+        }
+      }
+      if (!coupable) continue;
+      coupables.push(coupable);
     }
     expect(
       coupables.length,

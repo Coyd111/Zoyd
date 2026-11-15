@@ -64,8 +64,14 @@ describe('br-engine - catalogue', () => {
   });
 
   it('porte les faits sources sur Krai et Rebirth Island (hints)', () => {
-    expect(brEngine.BR_MAPS.krai.hint).toMatch(/Resurgence/);
-    expect(brEngine.BR_MAPS.rebirth_island.hint).toMatch(/NON CONFIRME/);
+    // PIEGE : le verrou de redaction exige l accent (« Résurgence »,
+    // « redéploiement », « limité », « illimité », « NON CONFIRMÉ »). Ce
+    // test verifie les FAITS sources, pas leur graphie : il cherche donc
+    // les variantes accentuees.
+    expect(brEngine.BR_MAPS.krai.hint).toMatch(/Résurgence/);
+    expect(brEngine.BR_MAPS.krai.hint).toMatch(/redéploiement limité/);
+    expect(brEngine.BR_MAPS.krai.hint).toMatch(/cap 40 joueurs/);
+    expect(brEngine.BR_MAPS.rebirth_island.hint).toMatch(/NON CONFIRMÉ/);
     expect(brEngine.BR_MAPS.isolated.hint).toBeUndefined();
   });
 

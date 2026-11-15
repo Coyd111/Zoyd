@@ -52,6 +52,19 @@ Les trois fichiers les plus lourds :
 `persistence.mjs` est **le point à traiter en priorité structurelle** :
 à lui seul, il dépasse tous les autres modules réunis d'un facteur 2.
 
+Le **parcours en production** (passe 12) a ajoute un deuxieme jeu de
+mesures : ce que le deploiement fait reellement, et non ce que le code
+pretend.
+
+| Ce que le parcours mesure | Resultat (2026-11-15) |
+|---|---|
+| Comptes de test crees en production | 12 ( Benin 10 chiffres, format historique 8 chiffres, Cote d Ivoire, Togo ) |
+| Depots FedaPay **sandbox** payes de bout en bout | 13 ( de 100 a 500 ZC ), credit verifie cote serveur |
+| Matchs joues jusqu au reglement | 5 ( 1VS1 a 5VS5 ), avec de vraies mises |
+| Tournois crees et inscrits | 2 ( le tournoi gratuit est refuse ) |
+| Salons BR crees | 1 ( le lancement exige la date : regle des 24 h ) |
+| Verifications automatisees | 61 ( le detail par phase est dans le rapport du parcours ) |
+
 ---
 
 ## 3. Topologie d'exécution
@@ -1049,7 +1062,126 @@ compris - le serveur ne demarrait plus.
 
 ---
 
-## 8. Synthese des onze passes
+## 7 trezieme. Passe 12 - le PARCOURS en PRODUCTION
+
+Onze passes de LECTURE ne disent rien de ce que le deploiement fait
+reellement. Celle-ci est la premiere qui **exerce** le produit la ou il
+vit : `https://zoyd.vercel.app` (front) + `https://zoyd.onrender.com`
+(API). C est aussi la premiere qui laisse des traces (des comptes, des
+matchs, des tournois) - donc la premiere qui se termine par un
+**nettoyage**.
+
+### La methode
+
+Un script, `scripts/prod-walkthrough.mjs`, rejoue le parcours joueur par
+phases, contre la production reelle :
+
+| phase | ce qu elle exerce |
+|---|---|
+| `comptes` | inscription de 12 comptes (numeros du Benin, de la CI et du Togo) |
+| `sessions` | connexion, profil, serment d integrite, mise a jour |
+| `portefeuille` | lecture du portefeuille, politique de retrait, historique |
+| `depot` | verification du depot FedaPay sandbox, idempotence, anti-vol |
+| `matchs` | cycle de vie complet, du 1VS1 au 5VS5, avec de vraies mises |
+| `tournois` | creation, inscriptions, refus du tournoi gratuit |
+| `br` | salon BR, join, check-in, regles de programmation |
+| `ligue` | lister les saisons |
+| `social` | amis, notifications, chat |
+| `temps-reel` | sante du temps reel, session invalide, 404, corps malforme |
+| `nettoyage` | annulation des matchs et SUPPRESSION des comptes |
+
+Garde-fou : sans `--live`, le script ne fait rien. Les sessions sont
+conservees d une phase a l autre (le quota d authentification est de 50
+par IP et par 15 minutes - c est une ressource rare).
+
+### Ce que le parcours a PROUVE (ce que la lecture ne pouvait pas montrer)
+
+**Le depot FedaPay sandbox fonctionne en production, de bout en bout.**
+Le front sert une cle publique `pk_sandbox__...`, le widget ouvre
+`sandbox-checkout.fedapay.com`, le paiement est approuve, le front
+appelle `/api/wallet/verify-fedapay`, le serveur verifie avec sa cle
+secrete et credite. Onze depots ont ete payes dans le sandbox (150 a
+500 ZC, sur douze comptes), et chaque credit a ete relu cote serveur
+(solde + transaction `deposit` + notification dans le centre).
+
+**Le cookie cross-site fonctionne.** Le front (Vercel) et l API (Render)
+sont sur DEUX sites : le cookie de session est `HttpOnly; Secure;
+SameSite=none`. Aucun test local n exerce ce chemin - en local, tout est
+sur `localhost`, donc `Lax`. C est le chemin le plus risque du produit,
+et il n etait couvert par aucun test.
+
+**Le cycle de vie d un match va jusqu au bout**, pour les cinq formats :
+creation -> inscription (le pass est bloque) -> check-in -> pret ->
+programmation de l heure -> publication de la salle -> lancement ->
+resultat (avec preuves) -> confirmation des deux equipes -> reglement.
+La cagnotte est bien versee (`prize_win` dans le portefeuille).
+
+### Les contraintes que le parcours a revelees
+
+Elles ne sont pas des defauts : ce sont des **regles du serveur** qu il
+fallait connaitre, et que la lecture seule ne revelait pas.
+
+| contrainte | consequence |
+|---|---|
+| `entryFee` doit etre **strictement positif** pour qu on puisse rejoindre un match | un match a 0 est CREABLE mais pas rejoignable |
+| La salle se publie **seulement dans les 10 minutes** qui precedent l heure | l ordre est : heure, puis salle |
+| Un resultat exige **un tableau des scores ET un ecran final, distincts** | pas de resultat sans preuves |
+| Un salon BR se programme **24 h a l avance au minimum** | son cycle ne peut pas etre joue en direct |
+| Quotas : `auth` 50/15 min, `social` 30/min, `match` 10/min | le parcours doit etre pace, sinon la moitie des appels part en 429 |
+
+Le piege du parcours : un quota sature ne se distingue pas d un refus
+fonctionnel dans la sortie brute. Les deux renvoient une erreur, seule la
+mesure la fait (`RATE_LIMITED` contre un code metier).
+
+### Les defauts que le parcours a trouves
+
+**Une classe de texte affiche hors de tout verrou.** Les notifications
+(`title`/`body`) et les `hint` sont affiches au joueur, mais les
+verrous de redaction ne lisaient que les messages de REPONSE et de
+JOURNAL. Le parcours a lu un ecran reel : « Depot credite », « Arbitre
+assigne », « Resultat a confirmer », « Tournoi demarre », « Journee BR
+Lancee », plus deux `hint` de salon BR et cinq messages de journal.
+Le verrou est desormais elargi a ces quatre champs.
+
+**De l anglais dans des messages joueur** : « renseigne la **room** »,
+« Ajoute au moins un **scoreboard** » - la, tout parle de « salle ».
+Et cote front : « **Best of** », « **room** setup », « **slots** », «
+**BO3 - best of 3** ».
+
+**Un libelle accessible qui masque le libelle visible** (WCAG 2.5.3
+« Label in Name ») : la barre basse affiche « MSGS » mais son nom
+accessible etait « MESSAGES ». Une commande vocale (« clique MSGS »)
+ne trouvait pas le bouton. La regle est desormais mesuree dans le DOM
+comme le contraste.
+
+### Les verrous
+
+| verrou | ce qu il interdit |
+|---|---|
+| `server/copy-rules.test.mjs` | accent manquant, apostrophe elidee ou mot anglais dans une REPONSE, un JOURNAL, une NOTIFICATION (`title`/`body`) ou un `hint` |
+| `src/lib/copy-rules.test.ts` | accent manquant ou mot anglais dans un texte visible du front |
+| `e2e/ui/responsive.spec.ts` | nom accessible qui ne contient pas le libelle visible (WCAG 2.5.3) |
+
+Le dictionnaire des mots accentues est desormais **partage** entre le
+front et le serveur : une coquille ne peut plus se cacher d un cote.
+
+### Ce que le parcours ne prouve pas (et le dit)
+
+- **Le retrait.** Hors perimetre, comme demande. Aucun retrait n a ete
+  tente en production.
+- **Le cycle BR complet.** Un salon BR ne peut pas demarrer avant sa
+  date (24 h). La creation, le join et le check-in sont verifies ; la
+  partie, elle, demande un decalage temporel.
+- **L etude d utilisabilite.** Ce qui suit est un parcours FONCTIONNEL
+  scripté (des interactions reelles, des assertions). Ce n est pas une
+  etude humaine (5 personnes, 5 taches, observation de la
+  comprehension). Les deux ne trouvent pas les memes choses.
+- **Les quotas a l echelle.** Le parcours frappe les quotas pendant
+  quelques minutes ; il ne mesure pas le comportement a long terme.
+
+---
+
+## 8. Synthese des douze passes
 
 | # | Defaut | Gravite |
 |---|---|---|
@@ -1072,8 +1204,12 @@ compris - le serveur ne demarrait plus.
 | 17 | 7 messages serveur etaient en anglais | MINEUR |
 | 18 | Les CGU ne tenaient pas compte des seuils reels du serveur | MAJEUR |
 | 19 | Le journal melangeait 105 messages anglais et 147 francais | MINEUR |
+| 20 | Les NOTIFICATIONS (texte affiche au joueur) n etaient couvertes par AUCUN verrou | MAJEUR |
+| 21 | Un message joueur en anglais : « renseigne la **room** », « un **scoreboard** » | MINEUR |
+| 22 | Le front affichait « **Best of** », « **room** setup », « **slots** » | MINEUR |
+| 23 | Le nom accessible ne contenait pas le libelle visible (WCAG 2.5.3) | MINEUR |
 
-**Treize defauts majeurs, sept mineurs.** Chacun est couvert par un test
+**Seize defauts majeurs, dix mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -1090,10 +1226,11 @@ cas isoles.
 | `deploy-contract.test.mjs` | une variable d environnement declaree et non lue, ou lue et non declaree |
 | `selector-reference-stability.test.ts` | un accesseur de store appele hors d un hook, ou un accesseur INSTABLE appele dans un selecteur (boucle de rendu) |
 | `contrast-floor.test.ts` | un texte sous 50 % d opacite (WCAG 1.4.3), une icone sous 40 % (1.4.11), un jeton de couleur sous le plancher |
-| `copy-rules.test.ts` | un accent perdu, un libelle d action au nom, un taux monetaire ecrit en dur |
-| `server/copy-rules.test.mjs` | une apostrophe elidee, un accent perdu, un message en anglais (reponses ET journaux) |
+| `copy-rules.test.ts` | un accent perdu, un mot anglais, un libelle d action au nom, un taux monetaire ecrit en dur |
+| `server/copy-rules.test.mjs` | une apostrophe elidee, un accent perdu, un mot anglais (reponses, JOURNAUX, NOTIFICATIONS et `hint`) |
 | `legal-mirror.test.ts` | des CGU qui ne disent plus les seuils reellement appliques |
-| `e2e/ui/ui-audit-*.spec.ts` (gate CI) | un ecran qui devient inaccessible : nom accessible, contraste, cible tactile, erreur JS, reponse HTTP en erreur |
+| `e2e/ui/ui-audit-*.spec.ts` (gate CI) | un ecran qui devient inaccessible : nom accessible, contraste, cible tactile, NOM ACCESSIBLE SANS LE LIBELLE VISIBLE (WCAG 2.5.3), erreur JS, reponse HTTP en erreur |
+| `scripts/prod-walkthrough.mjs` + `e2e/live-ui/live-parcours.spec.ts` | un deploiement qui ne fait plus ce que le code pretend (parcours reel, en production) |
 
 ### Le keep-alive : l hibernation est traitee (deux mecanismes)
 
@@ -1204,8 +1341,16 @@ Honnetete sur la portee :
   tests.
 - Il ne decrit **pas** le front page par page (192 fichiers) - mais il
   decrit ce que l audit UI a mesure dessus, ecran par ecran.
-- Il ne dit **pas** que le code est correct. Les onze passes ont trouve
-  12 defauts majeurs et 2 mineurs ; d autres restent possibles. La carte
+- Il ne pretend **pas** avoir fait une etude d utilisabilite. Le
+  parcours de la passe 12 est un parcours FONCTIONNEL scripté (des
+  interactions reelles, des assertions). Une etude humaine (5 personnes,
+  5 taches, observation de la comprehension et de la charge mentale)
+  trouverait d autres choses - elle demande des humains.
+- Il ne pretend **pas** avoir teste le retrait en production (hors
+  perimetre demande) ni le cycle complet d un salon BR (un salon ne peut
+  pas demarrer avant sa date).
+- Il ne dit **pas** que le code est correct. Les douze passes ont trouve
+  16 defauts majeurs et 10 mineurs ; d autres restent possibles. La carte
   decrit la **forme**, pas la **correction**.
 
 Ce qui est vérifié à la date du document : l'inventaire (mesuré), la

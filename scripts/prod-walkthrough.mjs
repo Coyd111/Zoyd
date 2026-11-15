@@ -943,7 +943,11 @@ const phaseNettoyage = async () => {
   verifier('Les comptes de test sont supprimes', supprimes === (etat.comptes || []).length,
     `${supprimes}/${(etat.comptes || []).length} supprimes, ${trouvees} encore visibles`);
 
-  sauverEtat({ comptes: [], matchs: [], tournois: [], br: [] });
+  // On ne fait QUE reinitialiser les phases concernees : les depots
+  // FedaPay (identifiants de transaction) restent utiles. Les COOKIES,
+  // eux, sont effaces : ils ne servent plus a rien (les comptes sont
+  // supprimes) et un jeton de session ne doit pas rester sur le disque.
+  sauverEtat({ comptes: [], matchs: [], tournois: [], br: [], cookies: {} });
   return etat;
 };
 

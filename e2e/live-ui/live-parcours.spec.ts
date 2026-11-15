@@ -39,24 +39,28 @@ test.beforeAll(async () => {
 
 const API = 'https://zoyd.onrender.com';
 const MOT_DE_PASSE = 'Zt7!qVx2@Lp9#Rw4';
-/** Numero de test au format international du Benin (10 chiffres). */
-const TELEPHONE = '+2290166000099';
 
 let pseudo = '';
 let email = '';
+let telephone = '';
 
 const inscription = async (request: import('@playwright/test').APIRequestContext) => {
-  // Un pseudo unique par execution : le pseudo est UNIQUE en base.
+  // Un pseudo ET un telephone uniques par execution : le telephone est
+  // UNIQUE en base, et le parcours peut etre rejoue.
+  //
+  // Format international du Benin (`+229 0ZXXXXXXXX`, 10 chiffres, le `0`
+  // initial obligatoire depuis l exterieur).
   const marque = Date.now().toString(36).slice(-5).toUpperCase();
   pseudo = `PARC${marque}`;
   email = `parcours-${pseudo.toLowerCase()}@example.com`;
+  telephone = `+22901${String(Date.now()).slice(-8)}`;
 
   const reponse = await request.post(`${API}/api/auth/register`, {
     headers: { Origin: 'https://zoyd.vercel.app' },
     data: {
       pseudo,
       email,
-      phone: TELEPHONE,
+      phone: telephone,
       gameId: `6799${marque}`,
       password: MOT_DE_PASSE,
       acceptAdult: true,

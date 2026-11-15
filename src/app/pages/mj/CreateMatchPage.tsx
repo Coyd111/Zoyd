@@ -615,7 +615,7 @@ const CreateMatchPage: React.FC = () => {
                     <button type="button" onClick={() => setCurrentStep(1)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                       <ChevronLeft className="w-4 h-4" /> Retour
                     </button>
-                    <button type="submit" aria-label="Passer à la mise" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
+                    <button type="submit" aria-label="La Mise (Wager) — passer à l'étape suivante" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
                       La Mise (Wager) <ChevronRight className="w-6 h-6" />
                     </button>
                   </div>
@@ -704,7 +704,7 @@ const CreateMatchPage: React.FC = () => {
                                 type="button"
                                 role="radio"
                                 aria-checked={selectedCreatorRole === role.value}
-                                aria-label={`Rôle ${role.label}`}
+                                aria-label={`${role.label} — ${role.desc}`}
                                 onClick={() => setValue('creatorRole', role.value)}
                                 className={`p-4 border text-left font-display font-black italic uppercase transition-all ${selectedCreatorRole === role.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
                               >

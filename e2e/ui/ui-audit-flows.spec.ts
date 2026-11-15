@@ -87,9 +87,13 @@ test.describe('Audit UI - parcours a etats', () => {
     await page.getByRole('radio', { name: /^Mode / }).first().click();
     await page.getByRole('radio', { name: /^Carte / }).first().click();
     // PIEGE : chaque etape a SON libelle de passage (« Continuer »,
-    // « Passer a la mise », « Passer au recapitulatif ») : un libelle
+    // « La Mise (Wager) », « Passer au recapitulatif ») : un libelle
     // unique ne traverserait pas l assistant.
-    await page.getByRole('button', { name: /Passer à la mise/ }).click();
+    //
+    // PIEGE (WCAG 2.5.3) : le nom accessible du bouton contient son
+    // texte visible (« La Mise (Wager) »). On cible donc sur le texte
+    // visible, pas sur l action « passer a l etape suivante ».
+    await page.getByRole('button', { name: /La Mise \(Wager\)/ }).click();
     await expect(page.getByRole('heading', { name: /La Mise/i })).toBeVisible();
     await waitForRender(page);
 

@@ -18,12 +18,12 @@
  * (#picks-alternance) n'est rendue qu'en BO3+ (garde P3 reutilisee) ;
  * le champ bestOf reste libre, aucun couplage cache.
  *
- * PIEGE : les chips ont un aria-label ("BO1 — best of 1") et un texte
+ * PIEGE : les chips ont un aria-label ("BO1 — au meilleur de 1") et un texte
  * visible "BO1" engendré par template - ne jamais cibler par le texte
  * visible, toujours par l aria-label.
  *
  * PIEGE (audit UI) : l aria-label DOIT contenir le texte visible
- * (WCAG 2.5.3). Il commence donc par "BON" (« BO1 — best of 1 ») et non
+ * (WCAG 2.5.3). Il commence donc par "BON" (« BO1 — au meilleur de 1 ») et non
  * par "Preset best of N" : l ancien nom accessible ne contenait pas le
  * texte visible, ce que signale `label-content-name-mismatch` d axe-core.
  * Les selecteurs ci-dessous suivent le nom accessible complet.
@@ -58,9 +58,9 @@ test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
     await openApp(page, pseudo, password);
     await page.goto('/mj/tournois/creer');
 
-    const bo1 = page.getByRole('button', { name: 'BO1 — best of 1' });
-    const bo3 = page.getByRole('button', { name: 'BO3 — best of 3' });
-    const bo5 = page.getByRole('button', { name: 'BO5 — best of 5' });
+    const bo1 = page.getByRole('button', { name: 'BO1 — au meilleur de 1' });
+    const bo3 = page.getByRole('button', { name: 'BO3 — au meilleur de 3' });
+    const bo5 = page.getByRole('button', { name: 'BO5 — au meilleur de 5' });
     await expect(bo1).toBeVisible();
     await expect(bo3).toBeVisible();
     await expect(bo5).toBeVisible();
@@ -88,7 +88,7 @@ test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
     // moins deux manches a choisir, garde P3 reutilisee).
     await expect(picks).toHaveCount(0);
 
-    const bo3 = page.getByRole('button', { name: 'BO3 — best of 3' });
+    const bo3 = page.getByRole('button', { name: 'BO3 — au meilleur de 3' });
     await bo3.click();
     await expect(picks).toBeVisible();
 
@@ -99,7 +99,7 @@ test.describe('presets BO1/BO3/BO5 - formulaire tournoi', () => {
     ).toBeVisible();
 
     // toujours presente en BO5 : la garde est "BO3+", pas "BO3".
-    const bo5 = page.getByRole('button', { name: 'BO5 — best of 5' });
+    const bo5 = page.getByRole('button', { name: 'BO5 — au meilleur de 5' });
     await bo5.click();
     await expect(picks).toBeVisible();
   });

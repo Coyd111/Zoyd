@@ -1024,6 +1024,29 @@ Meme orthographe, sens oppose : c est le contexte qui tranche, pas une
 regle de dictionnaire. Les cas nominatifs sont donc traites par des
 corrections ciblees, avec leur phrase entiere.
 
+### Et les journaux ? (meme peigne)
+
+Les messages de JOURNAL ne sont pas affiches au joueur, mais ils sont lus
+par l exploitant - et ils etaient dans un etat pire : **105 messages en
+anglais et 147 en francais, dans les memes fichiers**, parfois pour le
+MEME evenement (« Notification delivery failed » huit fois, « Restitution
+du pass match... » en francais).
+
+Le journal est donc passe au meme peigne : les messages anglais sont
+traduits (le projet est francais : commentaires, messages joueur,
+documentation, commits), les messages francais sont accentues, et les
+verrous couvrent desormais les DEUX (le verrou `server/copy-rules.test.mjs`
+lit les messages de journal en plus des messages de reponse).
+
+Une consequence a assumer : **le texte des journaux change**. Un grep sur
+un ancien libelle (« Notification delivery failed ») ne trouve plus rien.
+C est le prix de la coherence, et le changement est date par le commit.
+
+Un piege evite en route : la correction porte sur le CORPS du message
+(decode -> correction -> re-encode), jamais sur le fichier entier.
+Re-encoder le fichier echappait TOUTES les apostrophes du code, imports
+compris - le serveur ne demarrait plus.
+
 ---
 
 ## 8. Synthese des onze passes
@@ -1048,8 +1071,9 @@ corrections ciblees, avec leur phrase entiere.
 | 16 | ~60 messages serveur avaient l apostrophe ELIDEE (« n es ») | MAJEUR |
 | 17 | 7 messages serveur etaient en anglais | MINEUR |
 | 18 | Les CGU ne tenaient pas compte des seuils reels du serveur | MAJEUR |
+| 19 | Le journal melangeait 105 messages anglais et 147 francais | MINEUR |
 
-**Treize defauts majeurs, six mineurs.** Chacun est couvert par un test
+**Treize defauts majeurs, sept mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -1067,7 +1091,7 @@ cas isoles.
 | `selector-reference-stability.test.ts` | un accesseur de store appele hors d un hook, ou un accesseur INSTABLE appele dans un selecteur (boucle de rendu) |
 | `contrast-floor.test.ts` | un texte sous 50 % d opacite (WCAG 1.4.3), une icone sous 40 % (1.4.11), un jeton de couleur sous le plancher |
 | `copy-rules.test.ts` | un accent perdu, un libelle d action au nom, un taux monetaire ecrit en dur |
-| `server/copy-rules.test.mjs` | une apostrophe elidee, un accent perdu, un message en anglais (cote serveur) |
+| `server/copy-rules.test.mjs` | une apostrophe elidee, un accent perdu, un message en anglais (reponses ET journaux) |
 | `legal-mirror.test.ts` | des CGU qui ne disent plus les seuils reellement appliques |
 | `e2e/ui/ui-audit-*.spec.ts` (gate CI) | un ecran qui devient inaccessible : nom accessible, contraste, cible tactile, erreur JS, reponse HTTP en erreur |
 

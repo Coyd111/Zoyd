@@ -1363,11 +1363,34 @@ que MONTER.
 | tranche | fichiers convertis | adoption |
 |---|---|---|
 | depart | 0 / 54 | 14 % |
-| 1 | 6 fichiers (BottomNav, ToastContainer, NotificationDropdown, IntegrityCovenantModal, FriendsWidget, MatchActions) — 47 boutons | **33 %** |
+| 1 | BottomNav, ToastContainer, NotificationDropdown, IntegrityCovenantModal, FriendsWidget, MatchActions — 47 boutons | 33 % |
+| 2 | les assistants de creation, le detail de match, la ligue, le chat, le hub, le portefeuille, le admin, le BR, le tournoi | 64 % |
+| 3 | les 31 fichiers restants | **100 %** |
 
-Le changement visuel de la tranche 1 : les CTA pleine largeur passent
-au centrage du design system (le contenu etait aligne a gauche). C est
-volontaire — c est le design system qui decide, plus chaque bouton.
+Le changement visuel assume : les CTA pleine largeur passent au
+centrage du design system (le contenu etait aligne a gauche). C est le
+design system qui decide, plus chaque bouton.
+
+Une REGRESSION a ete attrapee par la sonde responsive : le bouton
+« PLUS » de la barre basse a herite du remplissage horizontal du design
+system, il est devenu plus large que ses quatre voisins, et a 320 px le
+texte des autres libelles s est tronque. Le remplissage a ete neutralise
+(`px-0`) : les cinq entrees de la barre sont a equalite. C est
+exactement le genre de defaut que la conversion par tranches doit
+faire sortir.
+
+### Les outils
+
+La conversion est REPRODUCTIBLE, elle n est pas faite a la main :
+
+| outil | role |
+|---|---|
+| `scripts/convert-buttons.mjs` | applique une DECLARATION (variant, size, fullWidth) a chaque bouton d un fichier, dans l ordre |
+| `scripts/button-specs/*.json` | la declaration, une par fichier, versionnee et lisible |
+| `scripts/update-button-ratchet.mjs` | regenere le cretoir du verrou d adoption (il est une MESURE, pas une intention) |
+
+Le choix « ce bouton est-il une action en ligne ou un bouton icone ? »
+est donc ecrit, versionne, et relu — pas re-decide a chaque conversion.
 
 ### Ce qui reste
 

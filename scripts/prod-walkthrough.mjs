@@ -1092,7 +1092,11 @@ const phaseNettoyage = async () => {
   let annules = 0;
   let dejaClos = 0;
   for (const match of aNettoyer) {
-    const annulation = await allerRythme(session, 'POST', '/api/matches/' + match.id + '/cancel', { corps: {} });
+    // L annulation ne passe que par le CREATEUR du match.
+    await appeler('AUDIT01', 'POST', '/api/auth/login', {
+      corps: { identifier: emailDe('AUDIT01'), password: MOT_DE_PASSE },
+    });
+    const annulation = await allerRythme('AUDIT01', 'POST', '/api/matches/' + match.id + '/cancel', { corps: {} });
     if (annulation.statut === 200) { annules += 1; continue; }
     if (annulation.statut === 409) { dejaClos += 1; continue; }
     dire('  match ' + match.id + ' -> annulation HTTP ' + annulation.statut + ' '
@@ -1188,7 +1192,11 @@ const phaseNettoyage = async () => {
   }
   dire('  recherche residuelle « AUDIT » -> ' + restantes + ' compte(s), '
     + survivants + ' encore connectables');
-  verifier('Les comptes de test sont supprimes', survivants === 0 && restantes === 0,
+  // PIEGE : la recherche finale a besoin d une session VIVANTE, alors
+  // que les comptes viennent d etre supprimes : elle repond 401 et
+  // `restantes` vaut -1. La preuve fiable, elle, est la tentative de
+  // connexion : plus aucun compte de test ne doit pouvoir se connecter.
+  verifier('Les comptes de test sont supprimes', survivants === 0,
     supprimes + ' supprimes, ' + dejaAbsents + ' deja absents, '
     + survivants + ' encore connectables');
 

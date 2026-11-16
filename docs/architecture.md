@@ -1201,6 +1201,103 @@ connexion (le seul test qui ne trompe pas).
 
 ---
 
+---
+
+## 7 quatorzieme. Passe 13 - la COMPREHENSION : le joueur comprend-il l ecran ?
+
+« Le site fait-il ce qu on lui demande ? » et « un joueur comprend-il
+l ecran ? » sont deux questions DIFFERENTES. La premiere s audit par
+le code et les tests ; la seconde ne s audit qu en regardant l ecran,
+avec les yeux d un joueur qui n a jamais vu ZOYD.
+
+Cette passe a donc ete faite **en production**, sur le parcours d un
+compte neuf, ecran par ecran. Elle a trouve trois ecarts entre ce que
+l ecran ANNONCE et ce qu il FAIT.
+
+### Defaut 24 - le classement annoncait le contraire de ce qu il fait (MAJEUR)
+
+La page des classements portait « Rien n est affiche tant que l
+activite n existe pas encore » — et affichait, juste en dessous, « Ton
+rang : #11 », « Top 92 % » a un joueur qui n avait JAMAIS joue. Le
+joueur sans activite est volontairement inclus dans la liste (il doit
+voir sa ligne) ; le RANG, lui, ne veut rien dire.
+
+Corrige : sans activite, l ecran dit « Pas encore classé » et donne la
+marche a suivre ; la phrase d introduction ne promet plus le
+contraire.
+
+### Defaut 25 - les colonnes du classement etaient du jargon nu (MINEUR)
+
+« RANG », « JOUEUR », « PAYS », « RANG ELO », « WR% », « GAINS »,
+« FIAB. » : un joueur qui lit « 71.4 % » sous « WR% » ne sait pas
+s il lit un taux de victoire ou un pourcentage de victoires. Chaque
+colonne porte maintenant une infobulle qui dit ce qu elle mesure.
+
+### Defaut 26 - le tableau de bord proposait une action impossible (MAJEUR)
+
+Le bloc « Pret a jouer ? » proposait « Creer un match » a un joueur a
+0 ZC. Or un match se paie : le serveur refuse le pass. Le joueur
+suivait le CTA principal et retombait sur un refus.
+
+Corrige : a 0 ZC, la premiere action proposee est le depot, et
+l ecran explique pourquoi (« Un match se paie : le droit d entree est
+bloque sur ton portefeuille »).
+
+### Ce que l audit a montre de sain
+
+| ecran | verdict |
+|---|---|
+| Inscription | 3 etapes annoncees, chaque champ etiquette, une aide explicite sur le telephone (« il determine les operateurs disponibles selon ton pays ») |
+| Serment d integrite | banniere qui propose deux sorties (signer / voir l arene d abord), modale qui explique ce que le serment protege AVANT de signer |
+| Hub MJ | etat vide guidant (« L arene est calme ») + CTA « Creer un wager » |
+| Chat | etat vide guidant (« Aucun ami connecte ») |
+| Landing | les chiffres (joueurs, matchs, ZC distribues) sont des DONNEES REELISS, pas du dur |
+| Classement | les onglets (ELO / gains / taux de victoire / activite / equipes / pays / controleur) donnent 7 lectures du meme panel |
+
+### Le verrou
+
+`src/lib/comprehension-signals.test.ts` verrouille les trois
+corrections. C est un verrou STRUCTUREL (le code dit ce qu il fait) :
+la qualite de la redaction, elle, se mesure dans le parcours vivant,
+pas dans un test.
+
+### Ce que cet audit ne dit pas
+
+Il ne mesure pas la CHARGE MENTALE, ni la lisibilite typographique,
+ni la hierarchie visuelle. Ce sont des jugements humains : ils
+demandent des humains. Ce que l audit fait, c est supprimer les
+ecarts OBJECTIFS entre ce que l ecran dit et ce qu il fait — le
+premier et le plus grave des obstacles a la comprehension.
+
+---
+
+## 7 quinzieme. Passe 14 - le diagnostic push (dire la verite)
+
+La route `/api/realtime/push/test` repondait `{ ok: true }` SANS dire
+ce qui avait ete livre. Or le push est optionnel par conception (« son
+absence n est pas une panne ») : un diagnostic qui repond « ok » quand
+rien n a ete envoye ne sert a rien — c est precisement la situation
+qu on cherche a diagnostiquer.
+
+`deliverNotification` renvoie desormais le resultat de l envoi, et la
+route publie les compteurs : un push non livre se lit « ok, 0 livre
+sur 3 » au lieu d un « ok » qui fait croire a une reussite.
+
+Ce qui a ete verifie en production, dans un vrai navigateur :
+
+| etape | resultat |
+|---|---|
+| Cle VAPID publique servie | 200, vraie cle |
+| Souscription PushManager | creee, endpoint FCM reel |
+| Enregistrement cote serveur | 200 |
+| Push de test | 200 |
+| **Livraison** | **non observable** depuis un navigateur headless (meme une notification LOCALE n y est pas listee) |
+
+C est precisement pourquoi le serveur doit pouvoir dire ce qu il a
+livre : c est le seul moyen de distinguer « push livre » de « push
+perdu » sans avoir un appareil reel sous la main.
+
+---
 ## 8. Synthese des douze passes
 
 | # | Defaut | Gravite |
@@ -1228,8 +1325,11 @@ connexion (le seul test qui ne trompe pas).
 | 21 | Un message joueur en anglais : « renseigne la **room** », « un **scoreboard** » | MINEUR |
 | 22 | Le front affichait « **Best of** », « **room** setup », « **slots** » | MINEUR |
 | 23 | Le nom accessible ne contenait pas le libelle visible (WCAG 2.5.3) | MINEUR |
+| 24 | Le classement annoncait « rien n est affiche » et affichait un rang a un joueur sans match | MAJEUR |
+| 25 | Les colonnes du classement etaient du jargon nu (« WR% », « FIAB. ») | MINEUR |
+| 26 | Le tableau de bord proposait « creer un match » a un joueur a 0 ZC (action impossible) | MAJEUR |
 
-**Seize defauts majeurs, dix mineurs.** Chacun est couvert par un test
+**Dix-huit defauts majeurs, douze mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -1251,6 +1351,8 @@ cas isoles.
 | `legal-mirror.test.ts` | des CGU qui ne disent plus les seuils reellement appliques |
 | `e2e/ui/ui-audit-*.spec.ts` (gate CI) | un ecran qui devient inaccessible : nom accessible, contraste, cible tactile, NOM ACCESSIBLE SANS LE LIBELLE VISIBLE (WCAG 2.5.3), erreur JS, reponse HTTP en erreur |
 | `scripts/prod-walkthrough.mjs` + `e2e/live-ui/live-parcours.spec.ts` | un deploiement qui ne fait plus ce que le code pretend (parcours reel, en production) |
+| `src/lib/comprehension-signals.test.ts` | un ecran qui dit le contraire de ce qu il fait (rang sans activite, jargon non explique, action impossible) |
+| `server/push-diagnostic.test.mjs` | un diagnostic push qui repond « ok » sans dire ce qui a ete livre |
 
 ### Le keep-alive : l hibernation est traitee (deux mecanismes)
 

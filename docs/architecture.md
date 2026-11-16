@@ -1298,6 +1298,87 @@ livre : c est le seul moyen de distinguer « push livre » de « push
 perdu » sans avoir un appareil reel sous la main.
 
 ---
+---
+
+## 7 seizieme. Passe 15 - les FONDATIONS : un seul bouton pour tout le site
+
+### Le constat
+
+Le design system existe : 17 composants dans `src/app/components/ui/`,
+dont un `<Button>` complet (4 variantes, 4 tailles, `asChild`, `fullWidth`,
+animation). Il etait utilise dans **14 % des cas** : 219 balises
+`<button>` brutes contre 35 `<Button>`.
+
+Ce n est pas une question d esthetique. Une balise brute n herite
+d aucune des garanties du systeme :
+
+| garantie du systeme | ce que perd une balise brute |
+|---|---|
+| cible tactile de 44 px | un bouton de 24 px, hors de portee au doigt |
+| contraste verifie (plancher 50 %) | du `text-white/40`, illisible |
+| etat desactive lisible | un desactive qui ne se voit pas |
+| etat de survol / appui | un survol different d un ecran a l autre |
+
+Ces 219 boutons etaient donc 219 occasions d avoir un ecran non
+conforme — et ils sont precisement la ou l audit UI a deja trouve des
+violations.
+
+### Ce que la passe change
+
+**Le design system gagne deux choses qui lui manquaient.**
+
+1. `type="button"` par defaut. Un `<button>` sans type **soumet le
+   formulaire** qui l contient : convertir un bouton d action place
+   dans un `<form>` en `<Button>` declencherait la soumission du
+   formulaire au clic. Le defaut doit etre sur, et `type="submit"`
+   reste explicite.
+
+2. Une taille `link` : la cible EN LIGNE (WCAG 2.5.8). « Signaler un
+   suspect », « Debloquer » sont des actions DANS une phrase : la cible
+   utile est la phrase, pas le mot, et 44 px de hauteur y sont
+   ridicules. C est la seule taille du systeme qui s autorise a
+   descendre sous 44 px, et elle doit etre demandee explicitement.
+
+**Le port de l API locale devient configurable** (`ZOYD_REALTIME_PORT`).
+Windows reserve des plages de ports (Hyper-V / WSL : 3920-4119 sur ce
+poste), et un port reserve donne `EACCES` au demarrage du serveur de
+tests — un echec qui ne ressemble a rien de ce que le projet. La meme
+variable est lue par le serveur, le proxy Vite, la config Playwright et
+le harnais E2E.
+
+### Les deux verrous
+
+| verrou | ce qu il interdit |
+|---|---|
+| `src/lib/design-system-invariants.test.ts` | une cible tactile qui descend sous 44 px (hors cible en ligne), un `type` par defaut different de « button », une variante ou une taille qui disparait, une brique du systeme qui disparait |
+| `src/lib/design-system-adoption.test.ts` | un fichier qui reintroduit des boutons bruts, un cretoir perime, une adoption qui recule |
+
+Le second est un **CRETOIR** : il liste, fichier par fichier, combien
+de boutons bruts restent admis. Une tranche de conversion les retire de
+la liste ; en reintroduire un casse le test. L adoption ne peut donc
+que MONTER.
+
+### Etat de la conversion
+
+| tranche | fichiers convertis | adoption |
+|---|---|---|
+| depart | 0 / 54 | 14 % |
+| 1 | 6 fichiers (BottomNav, ToastContainer, NotificationDropdown, IntegrityCovenantModal, FriendsWidget, MatchActions) — 47 boutons | **33 %** |
+
+Le changement visuel de la tranche 1 : les CTA pleine largeur passent
+au centrage du design system (le contenu etait aligne a gauche). C est
+volontaire — c est le design system qui decide, plus chaque bouton.
+
+### Ce qui reste
+
+47 fichiers, 170 balises brutes. Les plus gros : CreateMatchPage (17),
+MatchDetailPage (10), LeaguePage (9), AdminReportsTab (7),
+CreateTournamentPage (7), BracketActions (7), TournamentBracketPage (7).
+La conversion se fait par tranches, l audit UI (contraste, nom
+accessible, cible tactile, WCAG 2.5.3) servant de garde a chaque
+tranche.
+
+---
 ## 8. Synthese des douze passes
 
 | # | Defaut | Gravite |

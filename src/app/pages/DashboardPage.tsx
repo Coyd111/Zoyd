@@ -89,6 +89,10 @@ const DashboardPage: React.FC = () => {
   // Meme pattern que `Sidebar.tsx`.
   const availableCash = useWalletStore((s) => s.getAvailableCash());
   const availableToSpend = useWalletStore((s) => s.getAvailableToSpend());
+  // PIEGE : un joueur sans ZC ne peut PAS entrer dans un match paye.
+  // Lui proposer « Créer un match » l envoie vers une impasse : le
+  // serveur refuse le pass. La premiere action doit etre le depot.
+  const sansZC = availableToSpend <= 0;
   const matches = useMatchStore((s) => s.matches);
   const tournaments = useTournamentStore((s) => s.tournaments);
   // Ces deux selecteurs APPELENT une fonction qui CONSTRUIT un tableau
@@ -701,18 +705,29 @@ const DashboardPage: React.FC = () => {
           className="mt-10 md:mt-14 p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 text-center"
         >
           <h2 className="text-lg md:text-2xl font-display font-black uppercase italic tracking-tight text-white mb-3">
-            Prêt à jouer ?
+            {sansZC ? 'Recharge pour jouer' : 'Prêt à jouer ?'}
           </h2>
           <p className="text-white/70 text-sm mb-6 max-w-lg mx-auto">
-            Crée un match instantané ou rejoins un tournoi en cours.
+            {sansZC
+              ? 'Un match se paie : le droit d’entrée est bloqué sur ton portefeuille. Recharge via Mobile Money, puis rejoins une arène.'
+              : 'Crée un match instantané ou rejoins un tournoi en cours.'}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Link
-              to="/mj/creer"
-              className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Créer un match
-            </Link>
+            {sansZC ? (
+              <Link
+                to="/wallet"
+                className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors"
+              >
+                <Wallet className="w-4 h-4" /> Recharger via Mobile Money
+              </Link>
+            ) : (
+              <Link
+                to="/mj/creer"
+                className="inline-flex items-center gap-2 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Créer un match
+              </Link>
+            )}
             <Link
               to="/chat"
               className="inline-flex items-center gap-2 border border-white/10 text-white/60 px-6 py-3 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:text-white hover:border-white/20 transition-colors"

@@ -266,6 +266,34 @@ const ClassementsPage: React.FC = () => {
     }
   }, [activeTab, earningsRanking, players, tournaments]);
 
+/**
+ * Le sens des colonnes du classement.
+ *
+ * PIEGE : les en-tetes sont des ABREVIATIONS (« WR% », « FIAB. », « V »,
+ * « SETUP ») : sans explication, le joueur ne sait pas ce qu il lit, et
+ * « 71.4 % » sous « WR% » ne lui dit rien. Chaque colonne porte donc une
+ * infobulle (attribut `title`) qui dit ce que la colonne mesure.
+ */
+const EXPLICATION_COLONNES: Record<string, string> = {
+  RANG: 'Ta position dans ce classement',
+  JOUEUR: 'Le joueur',
+  EQUIPE: 'L\u00e9quipe',
+  PAYS: 'Le pays du joueur',
+  ZONE: 'La zone g\u00e9ographique',
+  GAINS: 'Ce que le joueur a gagn\u00e9 sur ZOYD',
+  ELO: 'Le classement interne du joueur (1200 au d\u00e9part)',
+  V: 'Nombre de victoires',
+  'WR%': 'Taux de victoire',
+  'FIAB.': 'Fiabilit\u00e9 du joueur (trust score)',
+  MATCHS: 'Nombre de matchs jou\u00e9s',
+  ACTIVIT\u00c9: 'Nombre de sessions vues',
+  EFFECTIF: 'Nombre de joueurs dans l\u00e9quipe',
+  VOLUME: 'Nombre de joueurs dans la zone',
+  SETUP: '\u00c9quipement et rang du joueur',
+  'TOP ELO': 'Classement par ELO',
+  'TOP GAINS': 'Classement par gains',
+};
+
   const entries = rowsByActiveTab;
   const activeColumns = tabColumns[activeTab];
   const myRank = useMemo(() => {
@@ -275,6 +303,18 @@ const ClassementsPage: React.FC = () => {
     myRank && entries.length > 0
       ? Math.max(1, Math.round((myRank / entries.length) * 100))
       : undefined;
+  // PIEGE : un joueur sans aucune activite figure bien dans la liste (il
+  // doit voir sa propre ligne), mais son RANG ne veut rien dire : il
+  // n est pas classe. L ecran le disait « #11 / Top 92 % » a un
+  // newcomptant qui n a jamais joue — et la phrase d introduction
+  // promettait le contraire (« Rien n est affiche tant que l activite
+  // n existe pas encore »). Le mot et l ecran doivent dire la meme
+  // chose.
+  const monActivite = useMemo(() => {
+    const moi = players.find((joueur) => joueur.isMe);
+    if (!moi) return false;
+    return moi.activityCount > 0 || moi.totalEarnings > 0 || moi.totalMatches > 0;
+  }, [players]);
 
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24">
@@ -308,10 +348,18 @@ const ClassementsPage: React.FC = () => {
             </span>
           </h1>
           <p className="mt-5 max-w-3xl text-sm text-white/70">
-            Ces classements bougent avec les matchs et tournois déjà joués sur ZOYD. Rien n&apos;est affiché tant
-            que l&apos;activité n&apos;existe pas encore.
+            Ces classements bougent avec les matchs et tournois déjà joués sur ZOYD. Un joueur
+            qui n'a encore jamais joué n'y figure pas.
           </p>
-          {user && myRank ? (
+          {user && !monActivite ? (
+            <div className="mt-6 flex flex-wrap items-center gap-3 text-sm font-mono text-white/70 uppercase tracking-widest">
+              <span className="text-zoyd-yellow">Pas encore classé</span>
+              <span className="text-white/60">
+                Joue un premier match pour entrer dans le classement.
+              </span>
+            </div>
+          ) : null}
+          {user && monActivite && myRank ? (
             <div className="mt-6 flex flex-wrap items-center gap-6 text-sm font-mono text-white/70 uppercase tracking-widest">
               <span>
                 Ton rang: <span className="text-zoyd-yellow font-display font-black text-lg italic">#{myRank}</span>
@@ -380,14 +428,24 @@ const ClassementsPage: React.FC = () => {
         ) : (
           <div className="space-y-2">
             <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-mono font-black uppercase tracking-widest text-white/70 italic">
-              <div className="col-span-1">RANG</div>
-              <div className="col-span-3">{activeColumns.primary}</div>
-              <div className="col-span-1 text-center">PAYS</div>
-              <div className="col-span-2">{activeColumns.detail}</div>
-              <div className="col-span-1 text-right">{activeColumns.value}</div>
-              <div className="col-span-1 text-right">{activeColumns.rate}</div>
-              <div className="col-span-2 text-right">GAINS</div>
-              <div className="col-span-1 text-right">{activeColumns.trust}</div>
+              <div className="col-span-1" title={EXPLICATION_COLONNES.RANG}>RANG</div>
+              <div className="col-span-3" title={EXPLICATION_COLONNES[activeColumns.primary]}>
+                {activeColumns.primary}
+              </div>
+              <div className="col-span-1 text-center" title={EXPLICATION_COLONNES.PAYS}>PAYS</div>
+              <div className="col-span-2" title={EXPLICATION_COLONNES[activeColumns.detail]}>
+                {activeColumns.detail}
+              </div>
+              <div className="col-span-1 text-right" title={EXPLICATION_COLONNES[activeColumns.value]}>
+                {activeColumns.value}
+              </div>
+              <div className="col-span-1 text-right" title={EXPLICATION_COLONNES[activeColumns.rate]}>
+                {activeColumns.rate}
+              </div>
+              <div className="col-span-2 text-right" title={EXPLICATION_COLONNES.GAINS}>GAINS</div>
+              <div className="col-span-1 text-right" title={EXPLICATION_COLONNES[activeColumns.trust]}>
+                {activeColumns.trust}
+              </div>
             </div>
 
             {entries.map((entry, index) => {

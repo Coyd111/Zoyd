@@ -731,6 +731,144 @@ const phaseTournois = async () => {
   return etat;
 };
 
+// ─── PHASE 5 bis : un tournoi COMPLET ──────────────────────────────────────
+//
+// Le tournoi est le seul mode ou le BRACKET se joue entierement tout seul :
+// le moteur construit les tours, chaque duel se valide (un vainqueur, un
+// score), et la finale verse la cagnotte. C est donc le meilleur moyen
+// de prouver qu un tournoi va jusqu au bout EN PRODUCTION.
+//
+// Les regles mesurees :
+//  - le createur est reserve arbitre (slot 1) ; il faut 2 arbitres au
+//    dela de 8 inscrits (`getArbitersNeeded`) ;
+//  - le droit d entree est bloque sur le portefeuille du capitaine ;
+//  - un duel se met en direct (`/live`) avant d etre valide ;
+//  - le resultat porte l ENTREE gagnante (pas le joueur) et un score ;
+//  - aucune confirmation n est exigee : le tournoi distribue en cascade.
+const phaseTournoiComplet = async () => {
+  dire('\n=== PHASE 5 bis : tournoi complet (8 inscrits, bracket, finale) ===');
+  const etat = chargerEtat();
+  await connecterTous(etat.comptes || []);
+
+  // 1. La creation. Le createur (AUDIT01) est l arbitre du tournoi.
+  const creation = await appelerRythme('AUDIT01', 'POST', '/api/tournaments', {
+    corps: {
+      name: 'Tournoi complet de recette',
+      format: '1VS1',
+      entryFee: 10,
+      maxEntries: 8,
+      startsAt: new Date().toISOString(),
+    },
+  });
+  const tournoi = creation.donnees?.tournament || creation.donnees;
+  const id = tournoi?.id;
+  dire('  creation -> ' + resumer(creation, 110));
+  if (!id) {
+    verifier('Le tournoi complet est cree', false, resumer(creation, 100));
+    return etat;
+  }
+  etat.tournois.push({ id, statut: 'cree' });
+  verifier('Le tournoi complet est cree', true, id);
+
+  // 2. Les inscriptions : chaque joueur est le capitaine de sa squad.
+  const entrants = ['AUDIT02', 'AUDIT03', 'AUDIT04', 'AUDIT05',
+    'AUDIT06', 'AUDIT07', 'AUDIT08', 'AUDIT09'];
+  let inscrits = 0;
+  for (const pseudo of entrants) {
+    const r = await appelerRythme(pseudo, 'POST', '/api/tournaments/' + id + '/register',
+      { corps: { pseudo } });
+    if (r.statut === 200) inscrits += 1;
+    else dire('  inscription ' + pseudo + ' -> ' + resumer(r, 90));
+  }
+  dire('  inscrits : ' + inscrits + '/' + entrants.length);
+  verifier('Les 8 joueurs s inscrivent au tournoi', inscrits === entrants.length,
+    inscrits + '/' + entrants.length);
+
+  // 3. Le lancement : le moteur bati le bracket.
+  const lancement = await appelerRythme('AUDIT01', 'POST', '/api/tournaments/' + id + '/start', { corps: {} });
+  dire('  lancement -> ' + resumer(lancement, 110));
+  verifier('Le tournoi se lance et le bracket est bati', lancement.statut === 200,
+    resumer(lancement, 100));
+
+  // 4. Les duels, un par un, jusqu a la finale.
+  //    On relit le tournoi a chaque tour : le winner alimente le tour
+  //    suivant, et ses participants ne sont connus qu apres le resultat.
+  let duels = 0;
+  for (let boucle = 0; boucle < 12; boucle += 1) {
+    const detail = await allerRythme('AUDIT01', 'GET', '/api/tournaments/' + id);
+    const t = detail.donnees?.tournament || {};
+    const matchs = Array.isArray(t.matches) ? t.matches : [];
+    const jouable = matchs.find((m) => ['ready', 'live'].includes(m.status)
+      && m.entryAId && m.entryBId);
+    if (!jouable) {
+      dire('  plus aucun duel a jouer (statut ' + (t.status || '?') + ')');
+      break;
+    }
+    if (jouable.status !== 'live') {
+      await allerRythme('AUDIT01', 'POST', '/api/tournaments/' + id + '/matches/' + jouable.id + '/live',
+        { corps: {} });
+    }
+    const resultat = await allerRythme('AUDIT01', 'POST',
+      '/api/tournaments/' + id + '/matches/' + jouable.id + '/result',
+      { corps: { winnerEntryId: jouable.entryAId, scoreA: 13, scoreB: 7, notes: 'Duel du parcours de recette.' } });
+    if (resultat.statut === 200) duels += 1;
+    else dire('  duel ' + jouable.id + ' -> ' + resumer(resultat, 110));
+    dire('  duel ' + duels + ' valide (' + (jouable.bracketType || 'main') + ' tour ' + (jouable.round || '?') + ')');
+  }
+  dire('  duels valides : ' + duels);
+
+  // 5. La finale : le tournoi est complet et la cagnotte est versee.
+  const final = await allerRythme('AUDIT01', 'GET', '/api/tournaments/' + id);
+  const tFinal = final.donnees?.tournament || {};
+  dire('  statut final : ' + (tFinal.status || '?') + ' | tours : ' + (tFinal.mainRounds || '?')
+    + ' | matchs : ' + ((tFinal.matches || []).length));
+  verifier('Le tournoi va jusqu au bout (statut completed)', tFinal.status === 'completed',
+    'statut=' + tFinal.status);
+
+  // 6. L argent : le vainqueur doit avoir recu la cagnotte.
+  //
+  // PIEGE : le montant du gain n est PAS porte par l entree du
+  // tournoi (la payload publique ne l a pas). Il est verse sur le
+  // PORTEFEUILLE : c est la que la preuve se trouve.
+  const podium = (tFinal.entries || [])
+    .filter((e) => Number(e.finalPlacement) > 0)
+    .sort((a, b) => Number(a.finalPlacement) - Number(b.finalPlacement));
+  dire('  podium : ' + podium.map((e) => e.captainPseudo + ' (' + e.finalPlacement + 'e, '
+    + e.wins + ' victoire(s))').join(', '));
+
+  let gainTrouve = 0;
+  for (const entry of podium.slice(0, 3)) {
+    const pseudo = entry.captainPseudo;
+    if (!pseudo) continue;
+    const wallet = await allerRythme(pseudo, 'GET', '/api/wallet/me');
+    const transactions = wallet.donnees?.wallet?.transactions || [];
+    const gain = transactions.find((tx) => tx.type === 'prize_win' && Number(tx.amount) > 0);
+    if (gain) {
+      gainTrouve += 1;
+      dire('  ' + pseudo + ' (place ' + entry.finalPlacement + ') : gain de ' + gain.amount + ' ZC');
+    }
+  }
+  verifier('La cagnotte est repartie sur les portefeuilles du podium', gainTrouve > 0,
+    gainTrouve + ' vainqueur(s) de podium verse(s) sur ' + podium.length + ' podium(s)');
+
+  // L arbitre du tournoi touche une commission (5 % pour 8 inscrits).
+  const walletArbiter = await allerRythme('AUDIT01', 'GET', '/api/wallet/me');
+  const txArbiter = walletArbiter.donnees?.wallet?.transactions || [];
+  const commission = txArbiter.find((tx) => String(tx.type).includes('arbiter'));
+  dire('  commission d arbitre : ' + (commission ? commission.amount + ' ZC (' + commission.type + ')' : 'aucune'));
+  verifier('L arbitre du tournoi est commissionne', Boolean(commission),
+    commission ? commission.type + ' ' + commission.amount + ' ZC' : 'aucune transaction d arbitre');
+
+  const solde = await allerRythme('AUDIT02', 'GET', '/api/wallet/me');
+  const portefeuille = solde.donnees?.wallet || {};
+  const types = [...new Set((portefeuille.transactions || []).map((t2) => t2.type))];
+  dire('  portefeuille AUDIT02 : cash=' + portefeuille.cashBalance + ' types=' + types.join(', '));
+  verifier('Le portefeuille reflete le tournoi', types.length > 1, types.join(', '));
+
+  sauverEtat(etat);
+  return etat;
+};
+
 // ─── PHASE 6 : Battle Royale ────────────────────────────────────────────────
 const phaseBR = async () => {
   dire('\n=== PHASE 6 : Battle Royale (salon, check-in, eliminations) ===');
@@ -1070,6 +1208,7 @@ const PHASES = {
   depot: phaseDepot,
   matchs: phaseMatchs,
   tournois: phaseTournois,
+  'tournoi-complet': phaseTournoiComplet,
   br: phaseBR,
   ligue: phaseLigue,
   social: phaseSocial,

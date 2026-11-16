@@ -20,6 +20,7 @@ import { Bell, Check, Trash2, X, Swords, Trophy, UserPlus, AlertTriangle, Wallet
 import { useNotificationStore, type Notification, type NotificationType, selectUnreadCount } from '../../stores/notificationStore';
 import { useServiceWorker } from '../../hooks/useServiceWorker';
 import { MOTION_DURATION, MOTION_EASE } from '../../../lib/motion';
+import { Button } from '../ui/Button';
 
 const SAFE_PROTOCOLS = ['https:', 'http:'];
 
@@ -87,7 +88,9 @@ export const NotificationDropdown: React.FC = () => {
           un `aria-label="Notifications"` fixe le viole. On annonce donc
           le compte dans le nom — ce qui est, au passage, plus utile :
           un lecteur d ecran sait combien de notifications attendent. */}
-      <button
+      <Button variant="ghost"
+                size="sm"
+                animate={false}
         onClick={() => setOpen(!open)}
         className="relative text-white/70 hover:text-white transition-colors p-1 touch-target"
         aria-label={unread > 0 ? `Notifications — ${unreadBadge} non lues` : 'Notifications'}
@@ -100,7 +103,7 @@ export const NotificationDropdown: React.FC = () => {
             {unreadBadge}
           </span>
         )}
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -116,17 +119,21 @@ export const NotificationDropdown: React.FC = () => {
               <span className="text-[10px] font-mono font-black uppercase tracking-widest text-white/70 italic">Notifications</span>
               <div className="flex items-center gap-2">
                 {unread > 0 && (
-                  <button
+                  <Button variant="ghost"
+                size="link"
+                animate={false}
                     onClick={() => markAllAsRead()}
                     className="text-[10px] font-mono uppercase tracking-wider text-zoyd-blue hover:text-white transition-colors flex items-center gap-1"
                     aria-label="Tout marquer comme lu"
                   >
                     <Check className="w-3 h-3" /> Tout lire
-                  </button>
+                  </Button>
                 )}
-                <button onClick={() => setOpen(false)} className="text-white/70 hover:text-white transition-colors" aria-label="Fermer">
+                <Button variant="ghost"
+                size="sm"
+                animate={false} onClick={() => setOpen(false)} className="text-white/70 hover:text-white transition-colors" aria-label="Fermer">
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -134,12 +141,15 @@ export const NotificationDropdown: React.FC = () => {
             <div className="max-h-[420px] overflow-y-auto">
               {notificationPermission !== 'granted' ? (
                 <div className="px-4 py-3 border-b border-white/5 bg-zoyd-blue/5">
-                  <button
+                  <Button variant="ghost"
+                size="link"
+                animate={false}
+                fullWidth
                     onClick={() => void requestNotificationPermission()}
                     className="w-full text-left text-[10px] font-mono uppercase tracking-widest text-zoyd-blue hover:text-white transition-colors"
                   >
                     Activer les alertes navigateur
-                  </button>
+                  </Button>
                 </div>
               ) : null}
               {visible.length === 0 ? (
@@ -178,14 +188,16 @@ export const NotificationDropdown: React.FC = () => {
                         <p className="text-xs font-display font-bold text-white uppercase tracking-tight truncate">{n.title}</p>
                         <p className="text-[10px] font-ui text-white/70 leading-relaxed line-clamp-2">{n.message}</p>
                       </div>
-                      <button
+                      <Button variant="ghost"
+                size="sm"
+                animate={false}
                         onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
                         className="text-white/50 hover:text-red-400 transition-colors mt-0.5 touch-target flex items-center justify-center"
                         aria-label="Supprimer la notification"
                         title="Supprimer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
                     </div>
                     {!n.read && <div className="w-1.5 h-1.5 bg-zoyd-blue rounded-full mt-2 ml-6" />}
                   </div>

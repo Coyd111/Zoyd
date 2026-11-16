@@ -39,6 +39,13 @@ const buttonVariants = cva(
         md: 'px-6 py-3 text-base',
         lg: 'px-8 py-4 text-lg',
         xl: 'px-10 py-5 text-xl',
+        // Cible EN LIGNE (WCAG 2.5.8) : une action DANS une phrase
+        // (« Signaler un suspect », « Debloquer »). La cible utile est
+        // la phrase, pas le mot : pas de remplissage, pas de hauteur
+        // minimale. C est la seule taille du systeme qui s autorise a
+        // descendre sous 44 px — et elle doit etre demandee
+        // explicitement, jamais-heritee.
+        link: 'px-0 py-0 min-h-0',
       },
       fullWidth: {
         true: 'w-full',
@@ -72,6 +79,12 @@ const Button = ({
   children,
   ref,
   asChild = false,
+  // INVARIANT : le type par defaut est « button », jamais « submit ».
+  // Un `<button>` sans type dans un formulaire SOUMET le formulaire :
+  // convertir un bouton d action place dans un `<form>` en `<Button>`
+  // declencherait la soumission du formulaire au clic. Le defaut doit
+  // etre sur, et un `type="submit"` reste explicite.
+  type = 'button',
   ...props
 }: ButtonProps) => {
   // `asChild` est IMPLEMENTE (et non laisse dans `...props`) : declare mais
@@ -85,6 +98,10 @@ const Button = ({
     <Comp
       className={cn(buttonVariants({ variant, size, fullWidth, className }))}
       ref={ref}
+      // PIEGE : `asChild` fusionne les props sur l enfant fourni
+      // (souvent un `<a>`). Un `type` sur un lien n est pas du HTML
+      // valide : on ne le pose que sur un vrai `<button>`.
+      type={asChild ? undefined : type}
       {...props}
     >
       {children}

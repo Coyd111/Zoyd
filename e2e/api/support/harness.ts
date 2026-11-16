@@ -26,7 +26,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { request as apiRequest, type APIRequestContext } from '@playwright/test';
 
-export const API_BASE_URL = 'http://localhost:4001';
+// PIEGE : le port de l API locale suit la MEME variable que le serveur
+// (`ZOYD_REALTIME_PORT`), le proxy Vite et la config Playwright. Windows
+// reserve des plages de ports (Hyper-V / WSL) : un port en dur donne
+// `EACCES` au demarrage du serveur de tests, sans que rien ne rattache
+// l echec au projet.
+export const API_BASE_URL = `http://localhost:${process.env.ZOYD_REALTIME_PORT || process.env.PORT || 4001}`;
 export const ADMIN_EMAIL = 'admin@zoyd.com';
 export const ADMIN_PASSWORD = process.env.ZOYD_ADMIN_PASSWORD || 'ZoydE2E!Admin2026';
 export const PLAYER_PASSWORD = 'ZoydE2E!Player2026';

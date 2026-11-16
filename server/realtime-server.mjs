@@ -235,7 +235,12 @@ import {
 } from './br-engine.mjs';
 
 const log = createLogger('realtime');
-const PORT = Number(process.env.PORT || process.env.ZOYD_REALTIME_PORT || 4001);
+// PIEGE : `ZOYD_REALTIME_PORT` est prioritise sur `PORT`. `.env.server`
+// fixe `PORT=4001`, et Windows reserve des plages de ports (Hyper-V /
+// WSL) : sur un poste ou 4001 est reserve, le serveur ne demarre pas
+// (`EACCES`) et rien n indiqu que la cause est une reservation de
+// l OS. La variable explicite doit donc gagner sur celle du `.env`.
+const PORT = Number(process.env.ZOYD_REALTIME_PORT || process.env.PORT || 4001);
 const API_KEY_ROTATION_DAYS = Number(process.env.ZOYD_API_KEY_ROTATION_DAYS || 90);
 let matchAutomationIntervalId = null;
 let matchAutomationRunning = false;

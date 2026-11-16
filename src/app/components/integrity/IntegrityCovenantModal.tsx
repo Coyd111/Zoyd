@@ -18,6 +18,7 @@
 import { useCallback, useState } from 'react';
 import { COVENANT_VERSION, submitCovenant } from '../../lib/authApi';
 import { useAuthStore } from '../../stores/authStore';
+import { Button } from '../ui/Button';
 
 type ScreenId = 's1' | 's2' | 's3';
 
@@ -121,13 +122,15 @@ export const IntegrityCovenantModal = ({ onClose }: { onClose?: () => void }) =>
 
           {screen === 's2' && (
             <div className="mt-6">
-              <button
+              <Button variant="ghost"
+                size="link"
+                animate={false}
                 type="button"
                 onClick={() => setShowReport((v) => !v)}
                 className="text-[11px] font-mono uppercase tracking-widest text-zoyd-yellow underline"
               >
                 {showReport ? 'Masquer le signalement' : 'Signaler un suspect (anonyme, optionnel)'}
-              </button>
+              </Button>
               {showReport && (
                 <div className="mt-4 space-y-4">
                   <input
@@ -155,31 +158,40 @@ export const IntegrityCovenantModal = ({ onClose }: { onClose?: () => void }) =>
 
         <footer className="w-full max-w-xl mx-auto px-4 pb-10 space-y-3">
           {onClose && (
-            <button
+            <Button variant="secondary"
+                size="md"
+                fullWidth
+                animate={false}
               type="button"
               onClick={onClose}
               className="w-full touch-target border border-white/15 text-white/70 font-display font-black uppercase italic text-sm px-6 py-3"
             >
               Découvrir l’arène d’abord
-            </button>
+            </Button>
           )}
           {screen === 's1' && (
-            <button
+            <Button variant="primary"
+                size="md"
+                fullWidth
+                animate={false}
               type="button"
               onClick={() => setScreen('s2')}
               className="w-full touch-target bg-zoyd-yellow text-zoyd-black font-display font-black uppercase italic text-lg px-6 py-3"
             >
               Commencer le serment
-            </button>
+            </Button>
           )}
           {screen === 's2' && (
-            <button
+            <Button variant="primary"
+                size="md"
+                fullWidth
+                animate={false}
               type="button"
               onClick={() => setScreen('s3')}
               className="w-full touch-target bg-zoyd-yellow text-zoyd-black font-display font-black uppercase italic text-lg px-6 py-3"
             >
               J’ai lu — continuer
-            </button>
+            </Button>
           )}
           {screen === 's3' && (
             <>
@@ -188,14 +200,17 @@ export const IntegrityCovenantModal = ({ onClose }: { onClose?: () => void }) =>
                   {submitError}
                 </p>
               )}
-              <button
+              <Button variant="primary"
+                size="md"
+                fullWidth
+                animate={false}
                 type="button"
                 onClick={sealCovenant}
                 disabled={submitting}
                 className="w-full touch-target bg-zoyd-yellow text-zoyd-black font-display font-black uppercase italic text-lg px-6 py-3 disabled:opacity-40"
               >
                 {submitting ? 'Sceau en cours…' : "Entrer dans l’arène"}
-              </button>
+              </Button>
             </>
           )}
         </footer>

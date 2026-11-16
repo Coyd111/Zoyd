@@ -13,7 +13,12 @@ export default defineConfig({
   webServer: [
     {
       command: 'node server/realtime-server.mjs',
-      port: 4001,
+      // PIEGE : le port est PARAMETRABLE. Windows reserve des plages de
+      // ports (Hyper-V / WSL) et un port reserve donne `EACCES` au
+      // demarrage du serveur — un echec qui n a rien a voir avec les
+      // tests. La meme variable est lue par `vite.config.ts` (proxy) et
+      // par `server/realtime-server.mjs`.
+      port: Number(process.env.ZOYD_REALTIME_PORT || process.env.PORT || 4001),
       reuseExistingServer: true,
       // Vite met ~21 s a démarrer sur un disque lent (exFAT : lecture de
       // thousands de fichiers sans cache OS), et `npx` ajoute son propre
@@ -32,6 +37,15 @@ export default defineConfig({
       // et TOUTE création de match/tournoi répond 503).
       env: {
         ...process.env,
+        // PIEGE : le `.env` LOCAL fixe `VITE_REALTIME_URL` sur
+        // `http://localhost:4001`. Les variables VITE sont lues au build,
+        // et `process.env` l emporte sur le `.env` : en passant cette
+        // variable, le front suit le meme port que l API. Sans cela, le
+        // front appelle un port reserve (Windows) et la page ne
+        // repond jamais.
+        ...(process.env.ZOYD_REALTIME_PORT
+          ? { VITE_REALTIME_URL: `http://localhost:${process.env.ZOYD_REALTIME_PORT}` }
+          : {}),
         ALLOW_DEBUG_CODES: 'true',
         NODE_ENV: 'test',
         ZOYD_DISABLE_SUPABASE: 'true',
@@ -65,6 +79,16 @@ export default defineConfig({
       port: 5173,
       reuseExistingServer: true,
       timeout: 120_000,
+      // Meme raison que pour le serveur de l API : le `.env` local fige
+      // `VITE_REALTIME_URL` sur le port 4001, et `process.env` l emporte
+      // sur le `.env`. Le front doit suivre le port de l API, sinon il
+      // appelle un port reserve et la page ne repond jamais.
+      env: {
+        ...process.env,
+        ...(process.env.ZOYD_REALTIME_PORT
+          ? { VITE_REALTIME_URL: `http://localhost:${process.env.ZOYD_REALTIME_PORT}` }
+          : {}),
+      },
     },
   ],
   projects: [

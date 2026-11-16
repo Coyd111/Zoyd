@@ -19,6 +19,7 @@ import { CheckCircle, AlertTriangle, XCircle, Info, X, ExternalLink } from 'luci
 import { useToastStore } from '../../stores/toastStore';
 import type { ToastType } from '../../stores/toastStore';
 import { MOTION_SPRING } from '../../../lib/motion';
+import { Button } from '../ui/Button';
 
 const toastConfig: Record<ToastType, { icon: React.ReactNode; border: string; bg: string; text: string }> = {
   success: {
@@ -81,7 +82,9 @@ const ToastContainer: React.FC = () => {
                     <p className="text-[11px] font-ui text-white/75 mt-1 leading-relaxed">{toast.message}</p>
                   )}
                   {toast.action && (
-                    <button
+                    <Button variant="ghost"
+                size="link"
+                animate={false}
                       onClick={() => {
                         toast.action?.onClick?.();
                         removeToast(toast.id);
@@ -90,17 +93,19 @@ const ToastContainer: React.FC = () => {
                     >
                       <ExternalLink className="w-3 h-3" />
                       {toast.action.label}
-                    </button>
+                    </Button>
                   )}
                 </div>
-                <button
+                <Button variant="ghost"
+                  size="sm"
+                  animate={false}
                   onClick={() => removeToast(toast.id)}
                   className="text-white/60 hover:text-white transition-colors shrink-0 -mt-0.5 touch-target"
                   aria-label="Fermer la notification"
                   title="Fermer"
                 >
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
 
               {/* Progress bar */}

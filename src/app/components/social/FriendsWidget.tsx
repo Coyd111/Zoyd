@@ -119,7 +119,10 @@ const FriendsWidget: React.FC = () => {
 
   return (
     <div className="bg-zoyd-black border border-white/5 overflow-hidden">
-      <button
+      <Button variant="ghost"
+              size="md"
+              fullWidth
+              animate={false}
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         className="w-full flex items-center justify-between px-5 py-4 bg-zoyd-surface/20 hover:bg-zoyd-surface/40 transition-colors"
@@ -147,7 +150,7 @@ const FriendsWidget: React.FC = () => {
           )}
           {isOpen ? <ChevronUp className="w-4 h-4 text-white/70" /> : <ChevronDown className="w-4 h-4 text-white/70" />}
         </div>
-      </button>
+      </Button>
 
       <AnimatePresence>
         {isOpen && (
@@ -159,7 +162,9 @@ const FriendsWidget: React.FC = () => {
           >
             <div className="flex border-b border-white/5">
               {(['friends', 'requests', 'blocked'] as const).map((value) => (
-                <button
+                <Button variant="ghost"
+                size="sm"
+                animate={false}
                   key={value}
                   onClick={() => setTab(value)}
                   aria-label={value === 'friends' ? 'Amis' : value === 'requests' ? 'Demandes d\'amis' : 'Joueurs bloqués'}
@@ -171,7 +176,7 @@ const FriendsWidget: React.FC = () => {
                   {value === 'friends' && 'Amis'}
                   {value === 'requests' && `Demandes ${pendingRequests.length > 0 ? `(${pendingRequests.length})` : ''}`}
                   {value === 'blocked' && 'Bloqués'}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -236,39 +241,47 @@ const FriendsWidget: React.FC = () => {
                           <span className="text-[10px] font-mono text-red-300 uppercase tracking-wider whitespace-nowrap">
                             Supprimer ?
                           </span>
-                          <button
+                          <Button variant="danger"
+                size="sm"
+                animate={false}
                             onClick={() => { removeFriend(friend.id); setConfirmRemoveId(null); }}
                             aria-label={`Confirmer la suppression de ${friend.pseudo} des amis`}
                             className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[10px] font-mono font-black uppercase tracking-wider text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-full transition-colors"
                           >
                             Oui
-                          </button>
-                          <button
+                          </Button>
+                          <Button variant="ghost"
+                size="sm"
+                animate={false}
                             onClick={() => setConfirmRemoveId(null)}
                             aria-label={`Garder ${friend.pseudo} en ami`}
                             className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[10px] font-mono font-black uppercase tracking-wider text-white/60 hover:text-white transition-colors rounded-full"
                           >
                             Non
-                          </button>
+                          </Button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-                          <button
+                          <Button variant="ghost"
+                size="sm"
+                animate={false}
                             onClick={() => navigate(`/chat?dm=${encodeURIComponent(friend.id)}`)}
                             className="p-2 -m-1.5 text-white/70 hover:text-zoyd-blue transition-colors"
                             title="Message"
                             aria-label={`Envoyer un message à ${friend.pseudo}`}
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button variant="ghost"
+                size="sm"
+                animate={false}
                             onClick={() => setConfirmRemoveId(friend.id)}
                             className="p-2 -m-1.5 text-white/70 hover:text-red-400 transition-colors"
                             title="Supprimer"
                             aria-label={`Supprimer ${friend.pseudo} des amis`}
                           >
                             <UserX className="w-3.5 h-3.5" />
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -297,22 +310,26 @@ const FriendsWidget: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button
+                        <Button variant="ghost"
+                size="sm"
+                animate={false}
                           onClick={() => acceptRequest(request.id)}
                           className="p-1.5 text-green-400 hover:text-green-300 transition-colors"
                           title="Accepter"
                           aria-label={`Accepter la demande de ${request.senderPseudo}`}
                         >
                           <UserCheck className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button variant="ghost"
+                size="sm"
+                animate={false}
                           onClick={() => declineRequest(request.id)}
                           className="p-1.5 text-white/70 hover:text-red-400 transition-colors"
                           title="Refuser"
                           aria-label={`Refuser la demande de ${request.senderPseudo}`}
                         >
                           <UserX className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -337,13 +354,15 @@ const FriendsWidget: React.FC = () => {
                           Blocage actif
                         </div>
                       </div>
-                      <button
+                      <Button variant="ghost"
+                size="link"
+                animate={false}
                         onClick={() => unblockUser(blockedId)}
                         className="text-[10px] font-mono text-white/60 hover:text-white uppercase"
                         aria-label={`Débloquer ${blockedId}`}
                       >
                         Débloquer
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>

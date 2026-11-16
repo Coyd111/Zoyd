@@ -39,6 +39,12 @@ const ZOYD_BUILD_ID =
   process.env.ZOYD_BUILD_ID ||
   Date.now().toString(36);
 
+// Port de l API locale (serveur de tests). Configurable : Windows reserve
+// des plages de ports, et un port reserve donne `EACCES` au demarrage.
+// La meme variable est lue par `server/realtime-server.mjs` et par
+// `playwright.config.ts`.
+const API_PORT = process.env.ZOYD_REALTIME_PORT || process.env.PORT || '4001';
+
 function zoydVersionJson() {
   return {
     name: 'zoyd-version-json',
@@ -66,13 +72,19 @@ export default defineConfig({
     },
   },
   server: {
+    // PIEGE : le port de l API locale doit etre PARAMETRABLE. Windows
+    // reserve des plages de ports (Hyper-V / WSL : 3920-4119 sur ce
+    // poste), et un port reserve donne `EACCES` au demarrage du serveur
+    // de tests — sans que rien ne semble avoir a voir avec le projet.
+    // La meme variable est lue par `server/realtime-server.mjs`
+    // (`ZOYD_REALTIME_PORT`) et par `playwright.config.ts`.
     proxy: {
       '/socket.io': {
-        target: 'http://localhost:4001',
+        target: `http://localhost:${API_PORT}`,
         ws: true,
       },
       '/api': {
-        target: 'http://localhost:4001',
+        target: `http://localhost:${API_PORT}`,
       },
     },
   },

@@ -16,6 +16,7 @@
  */
 import React, { useState } from 'react';
 import { Sheet, SheetContent } from '../ui/Sheet';
+import { Button } from '../ui/Button';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { LayoutGrid, Zap, Trophy, MessageCircle, User, BarChart3, Wallet, Settings, Newspaper, Shield, ShieldCheck, TrendingUp, Plus } from 'lucide-react';
 import { cn } from '../../../lib/utils';
@@ -83,62 +84,78 @@ const BottomNav: React.FC = React.memo(() => {
             <span className="font-display font-black text-[10px] text-white/70 tracking-widest uppercase italic">Plus</span>
           </div>
           <div className="p-2 pb-4">
-              <button
+              <Button
+                variant="primary"
+                size="md"
+                fullWidth
+                animate={false}
                 onClick={() => handleNavigate('/mj/creer')}
                 aria-label="Créer un match"
-                className="flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all bg-zoyd-yellow text-black hover:bg-white mb-2"
+                className="flex items-center gap-4 w-full px-4 py-4 justify-start font-display font-black text-sm tracking-widest italic uppercase transition-all bg-zoyd-yellow text-black hover:bg-white mb-2"
               >
                 <Plus className="w-5 h-5" />
                 Créer un match
-              </button>
+              </Button>
               {moreNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path || location.pathname.startsWith(item.path);
                 return (
-                  <button
+                  <Button
                     key={item.path}
+                    variant="ghost"
+                    size="md"
+                    fullWidth
+                    animate={false}
                     onClick={() => handleNavigate(item.path)}
                     aria-label={item.label}
                     className={cn(
-                      'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
+                      'flex items-center gap-4 w-full px-4 py-4 justify-start font-display font-black text-sm tracking-widest italic uppercase transition-all',
                       isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     )}
                   >
                     <Icon className="w-5 h-5" />
                     {item.label}
-                  </button>
+                  </Button>
                 );
               })}
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (
-                  <button
+                  <Button
                     key={item.path}
+                    variant="ghost"
+                    size="md"
+                    fullWidth
+                    animate={false}
                     onClick={() => handleNavigate(item.path)}
                     aria-label={item.label}
                     className={cn(
-                      'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
+                      'flex items-center gap-4 w-full px-4 py-4 justify-start font-display font-black text-sm tracking-widest italic uppercase transition-all',
                       isActive ? 'text-zoyd-yellow bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                     )}
                   >
                     <Icon className="w-5 h-5" />
                     {item.label}
-                  </button>
+                  </Button>
                 );
               })}
               {isAdmin && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="md"
+                  fullWidth
+                  animate={false}
                   onClick={() => handleNavigate('/admin')}
                   aria-label="ADMIN"
                   className={cn(
-                    'flex items-center gap-4 w-full px-4 py-4 touch-target font-display font-black text-sm tracking-widest italic uppercase transition-all',
+                    'flex items-center gap-4 w-full px-4 py-4 justify-start font-display font-black text-sm tracking-widest italic uppercase transition-all',
                     location.pathname === '/admin' ? 'text-red-400 bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
                   )}
                 >
                   <Shield className="w-5 h-5" />
                   ADMIN
-                </button>
+                </Button>
               )}
           </div>
         </SheetContent>
@@ -172,7 +189,10 @@ const BottomNav: React.FC = React.memo(() => {
             );
           })}
 
-          <button
+          <Button
+            variant="ghost"
+            size="md"
+            animate={false}
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Plus d'options"
             aria-expanded={menuOpen}
@@ -193,7 +213,7 @@ const BottomNav: React.FC = React.memo(() => {
               <span className="block w-4 h-[2px] bg-current rounded-full" />
             </div>
             <span className="text-[10px] font-display font-black uppercase tracking-widest italic">PLUS</span>
-          </button>
+          </Button>
         </div>
       </nav>
     </>

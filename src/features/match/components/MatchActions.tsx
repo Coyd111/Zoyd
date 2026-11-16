@@ -43,6 +43,7 @@ import { toast } from '../../../app/lib/toast';
 import type { Match, MatchPlayer, DisputeCategory, Dispute } from '../../../app/stores/matchStore';
 import type { User } from '../../../app/stores/authStore';
 import { getArbiterFee } from '../../../lib/matchPayout';
+import { Button } from '../../../app/components/ui/Button';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
@@ -248,7 +249,11 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
 
       {user && (
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <button
+          <Button
+                variant="ghost"
+                size="sm"
+                fullWidth
+                animate={false}
             type="button"
             onClick={async () => {
               const url = `${window.location.origin}/mj/match/${match.id}`;
@@ -262,8 +267,12 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             className="w-full border border-white/15 text-white/70 py-3 font-display font-black uppercase tracking-widest text-xs italic hover:border-white/40 hover:text-white transition-colors inline-flex items-center justify-center gap-2"
           >
             <Copy className="w-4 h-4" /> COPIER LE LIEN
-          </button>
-          <button
+          </Button>
+          <Button
+                variant="ghost"
+                size="sm"
+                fullWidth
+                animate={false}
             type="button"
             onClick={async () => {
               const url = `${window.location.origin}/mj/match/${match.id}`;
@@ -280,7 +289,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             className="w-full border border-white/15 text-white/70 py-3 font-display font-black uppercase tracking-widest text-xs italic hover:border-white/40 hover:text-white transition-colors inline-flex items-center justify-center gap-2"
           >
             <Share className="w-4 h-4" /> PARTAGER
-          </button>
+          </Button>
         </div>
       )}
 
@@ -316,24 +325,37 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </div>
           ) : null}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button onClick={() => handlers.join(0)} className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors">
+            <Button
+                variant="secondary"
+                size="md"
+                animate={false} onClick={() => handlers.join(0)} className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors">
               REJOINDRE ALPHA
-            </button>
-            <button onClick={() => handlers.join(1)} className="border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-white transition-colors">
+            </Button>
+            <Button
+                variant="primary"
+                size="md"
+                animate={false} onClick={() => handlers.join(1)} className="border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-white transition-colors">
               REJOINDRE BRAVO
-            </button>
-            <button onClick={() => handlers.join()} className="border border-zoyd-blue/30 text-zoyd-blue py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors">
+            </Button>
+            <Button
+                variant="secondary"
+                size="md"
+                animate={false} onClick={() => handlers.join()} className="border border-zoyd-blue/30 text-zoyd-blue py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors">
               PLACEMENT AUTO
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {user && canJoinArbiterSlot && (
         <>
-          <button onClick={handlers.joinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
+          <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                animate={false} onClick={handlers.joinAsArbiter} className="mt-4 w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-white transition-colors">
             POSTULER COMME ARBITRE (COMMISSION: {formatZC(getArbiterFee(match))})
-          </button>
+          </Button>
           {user.role === 'admin' && (
             <p className="mt-2 text-[10px] font-mono uppercase tracking-widest text-white/50">
               Mode admin : la 2FA du compte est exigée avant de postuler (Paramètres &gt; Sécurité).
@@ -352,20 +374,26 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             <li>3 — L'arbitre lance le match et partage la salle CODM</li>
           </ol>
           <div className="grid md:grid-cols-2 gap-3">
-            <button
+            <Button
+                variant="primary"
+                size="md"
+                animate={false}
               onClick={handlers.checkIn}
               disabled={!canCheckIn || currentPlayer.isCheckedIn}
               className="bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30"
             >
               {currentPlayer.isCheckedIn ? '✓ 1. Présence confirmée' : '1. Confirmer ma présence'}
-            </button>
-            <button
+            </Button>
+            <Button
+                variant="primary"
+                size="md"
+                animate={false}
               onClick={handlers.toggleReady}
               disabled={!canToggleReady}
               className="border border-zoyd-yellow/30 text-zoyd-yellow py-4 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30"
             >
               {currentPlayer.isReady ? '✓ 2. Prêt (retirer)' : '2. Je suis prêt'}
-            </button>
+            </Button>
           </div>
           <p className="text-xs text-white/70">
             Ton pass reste verrouillé jusqu&apos;au lancement : tu peux te retirer (remboursement intégral) avant le coup d&apos;envoi. Une fois le match lancé, la place engage les mises.
@@ -376,26 +404,34 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             </p>
           ) : null}
           {canLeaveMatch && (
-            <button
+            <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                animate={false}
               onClick={handlers.leave}
               disabled={isLeaving}
               className="w-full border border-white/10 py-3 font-display font-black uppercase tracking-widest text-xs italic text-white/60 hover:text-white hover:border-white transition-colors disabled:opacity-40"
             >
               {isLeaving ? 'En cours...' : 'ME RETIRER DU MATCH (REMBOURSÉ)'}
-            </button>
+            </Button>
           )}
         </div>
       )}
 
       {canCancelSelfMatch && (
         <div className="border-t border-white/5 pt-5">
-          <button
+          <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                animate={false}
             onClick={handlers.cancelSelf}
             disabled={isCancellingSelf}
             className="w-full border border-red-500/30 bg-red-500/10 py-3 font-display font-black uppercase tracking-widest text-xs italic text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
           >
             {isCancellingSelf ? 'En cours...' : 'ANNULER CE MATCH (REMBOURSEMENT INTÉGRAL)'}
-          </button>
+          </Button>
           <p className="mt-2 text-xs text-white/50">
             Personne n&apos;a encore rejoint ton match : tu peux retirer ton offre et reprendre ta mise tant que le match n&apos;est pas lancé.
           </p>
@@ -419,9 +455,12 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               aria-label="Horaire du match"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
-            <button onClick={handlers.schedule} disabled={isScheduling} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-40">
+            <Button
+                variant="danger"
+                size="md"
+                animate={false} onClick={handlers.schedule} disabled={isScheduling} className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-40">
               {isScheduling ? 'En cours...' : "Valider l'horaire"}
-            </button>
+            </Button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-3">
@@ -444,12 +483,18 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
           </div>
 
           <div className="grid md:grid-cols-2 gap-3">
-            <button onClick={handlers.roomSave} disabled={!roomPublishWindow.canPublish || isSavingRoom} className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors disabled:opacity-30">
+            <Button
+                variant="primary"
+                size="md"
+                animate={false} onClick={handlers.roomSave} disabled={!roomPublishWindow.canPublish || isSavingRoom} className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors disabled:opacity-30">
               {isSavingRoom ? 'En cours...' : 'Partager la salle'}
-            </button>
-            <button onClick={handlers.launch} disabled={!canLaunch} className="bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30 hover:bg-white transition-colors">
+            </Button>
+            <Button
+                variant="secondary"
+                size="md"
+                animate={false} onClick={handlers.launch} disabled={!canLaunch} className="bg-zoyd-yellow text-black py-3 font-display font-black uppercase tracking-widest text-xs italic disabled:opacity-30 hover:bg-white transition-colors">
               DÉMARRER LE MATCH
-            </button>
+            </Button>
           </div>
 
           <div className="border-t border-white/5 pt-5 space-y-3">
@@ -511,7 +556,11 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               aria-label="Autres preuves"
               className="bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
-            <button
+            <Button
+                variant="primary"
+                size="md"
+                fullWidth
+                animate={false}
               onClick={handlers.resultSubmit}
               disabled={isSubmittingResult}
               className={`w-full py-4 font-display font-black uppercase tracking-widest text-xs italic ${
@@ -521,7 +570,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               }`}
             >
               {isSubmittingResult ? 'Soumission en cours...' : 'Valider le score final'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -552,7 +601,11 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
         </div>
 
         {canConfirmResult ? (
-          <button
+          <Button
+                variant="primary"
+                size="md"
+                fullWidth
+                animate={false}
             onClick={handlers.confirmResult}
             disabled={isConfirmingResult}
             className={`w-full py-4 font-display font-black uppercase tracking-widest text-xs italic ${
@@ -562,7 +615,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
             }`}
           >
             {isConfirmingResult ? 'Confirmation en cours...' : 'Confirmer que l\'adversaire a gagné'}
-          </button>
+          </Button>
         ) : (
           <p className="text-xs text-white/60">
             {confirmation.waitingPlayers.some((player) => player.isMe)
@@ -650,14 +703,17 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                     cible fait 16 px : trop petit pour le doigt
                     (WCAG 2.5.8). Ce bouton n apparait qu avec un litige
                     ouvert - l audit de base ne le voyait pas. */}
-                <button
+                <Button
+                variant="primary"
+                size="md"
+                animate={false}
                   onClick={() => disputeState.setShowAddEvidenceForm((v) => !v)}
                   className="flex items-center gap-2 min-h-6 text-[10px] font-mono uppercase tracking-widest text-white/70 hover:text-zoyd-blue transition-colors"
                 >
                   <PlusCircle className="w-3.5 h-3.5" aria-hidden="true" />
                   Ajouter une preuve au dossier
                   {disputeState.showAddEvidenceForm ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </button>
+                </Button>
 
                 {disputeState.showAddEvidenceForm && (
                   <div className="mt-3 flex gap-3">
@@ -669,12 +725,15 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                       aria-label="Ajouter des preuves"
                       className="flex-1 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                     />
-                    <button
+                    <Button
+                variant="ghost"
+                size="link"
+                animate={false}
                       onClick={handlers.addEvidence}
                       className="px-5 py-3 border border-zoyd-blue/30 text-zoyd-blue text-[10px] font-display font-black uppercase tracking-widest hover:bg-zoyd-blue hover:text-black transition-colors"
                     >
                       Envoyer
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -688,7 +747,11 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                 </div>
 
                 <div>
-                  <button
+                  <Button
+                variant="secondary"
+                size="sm"
+                fullWidth
+                animate={false}
                     onClick={() => disputeState.setShowArbiterScore((v) => !v)}
                     className="w-full flex items-center justify-between gap-3 border border-white/10 px-4 py-3 text-[10px] font-display font-black uppercase tracking-widest hover:border-white/30 transition-colors"
                   >
@@ -697,7 +760,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                       Trancher le litige — Valider le score
                     </span>
                     {disputeState.showArbiterScore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  </button>
+                  </Button>
 
                   {disputeState.showArbiterScore && (
                     <div className="mt-3 space-y-3 border border-white/5 p-4 bg-black/30">
@@ -726,7 +789,11 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                         aria-label="Notes d'arbitrage"
                         className="w-full min-h-20 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                       />
-                      <button
+                      <Button
+                variant="ghost"
+                size="link"
+                fullWidth
+                animate={false}
                         onClick={handlers.resultSubmit}
                         disabled={isSubmittingResult}
                         className={`w-full py-3 font-display font-black uppercase tracking-widest text-xs italic transition-colors ${
@@ -736,7 +803,7 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                         }`}
                       >
                         {isSubmittingResult ? 'Soumission en cours...' : 'Valider le score & clore le litige'}
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -746,14 +813,17 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
                     <p className="text-xs text-white/70 mb-3">
                       Impossible de trancher ? L'équipe d'administration ZOYD peut prendre le relais.
                     </p>
-                    <button
+                    <Button
+                variant="primary"
+                size="md"
+                animate={false}
                       onClick={handlers.escalate}
                       disabled={isEscalating}
                       className="flex items-center gap-2 border border-red-500/30 text-red-400 px-4 py-3 text-[10px] font-display font-black uppercase tracking-widest hover:bg-red-500/10 transition-colors disabled:opacity-40"
                     >
                       <Flame className="w-3.5 h-3.5" />
                       {isEscalating ? 'Escalade en cours…' : 'Escalader à l\'Administration'}
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -801,9 +871,13 @@ export const MatchActions: React.FC<MatchActionsProps> = React.memo(({
               aria-label="Preuves du litige"
               className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
             />
-            <button onClick={handlers.dispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">
+            <Button
+                variant="danger"
+                size="md"
+                fullWidth
+                animate={false} onClick={handlers.dispute} className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-red-400 hover:text-red-300 transition-colors">
               Ouvrir un litige
-            </button>
+            </Button>
           </div>
         </div>
       ) : match.status !== 'cancelled' && match.status !== 'finished' && match.status !== 'forfeited' && match.status !== 'archived' && match.result?.payoutDistributed !== true ? (

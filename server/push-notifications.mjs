@@ -96,7 +96,12 @@ const deliverNotification = async (io, targetUserId, payload) => {
   );
 
   io.to(`user:${targetUserId}`).emit('notification:deliver', notification);
-  await sendPushToUser(targetUserId, payload);
+  // PIEGE : le push et la notification en base sont deux livraisons
+  // distinctes, et le push est OPTIONNEL. Mais un diagnostic qui repond
+  // « ok » sans dire ce qui a ete livre ne vaut rien : on renvoie les
+  // compteurs (tentatives, livraisons).
+  const push = await sendPushToUser(targetUserId, payload);
+  return { notification, push };
 };
 
 /**

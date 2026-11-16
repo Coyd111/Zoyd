@@ -204,8 +204,13 @@ if (req.method === 'POST' && pathname === '/api/realtime/push/test') {
       requireInteraction: false,
     };
 
-    await deliverNotification(io, session.userId, payload);
-    respondJson(res, 200, { ok: true });
+    // La reponse dit ce qui a ete REELLEMENT livre : un push qui
+    // echoue ne doit pas laisser croire a une reussite.
+    const resultat = await deliverNotification(io, session.userId, payload);
+    respondJson(res, 200, {
+      ok: true,
+      push: resultat?.push || { delivered: 0, attempted: 0 },
+    });
   } catch (error) {
     respondJson(res, 500, { ok: false, error: "Impossible d'envoyer la notification test.", code: 'PUSH_ERROR' });
   }

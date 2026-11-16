@@ -906,42 +906,153 @@ const phaseTempsReel = async () => {
 };
 
 // ─── PHASE 10 : nettoyage ───────────────────────────────────────────────────
+//
+// PIEGE : le NETTOYAGE ne doit dependre de RIEN de local. L etat du
+// parcours peut avoir ete perdu (execution interrompue, etat ecrase),
+// et un nettoyage qui ne supprime alors RIEN laisse des comptes et
+// leurs matchs en production. Le nettoyage se reconnecte donc par le
+// pseudo et le mot de passe, et DECOUVRE ce qu il doit effacer par
+// l API.
 const phaseNettoyage = async () => {
   dire('\n=== PHASE 10 : NETTOYAGE ===');
   const etat = chargerEtat();
-  await connecterTous(etat.comptes || []);
+  const emailDe = (p) => 'audit-' + p.toLowerCase() + '@example.com';
 
-  // 1. Les matchs crees : on les laisse (aucune route de suppression
-  //    joueur), mais on les ANNULE si possible pour ne pas laisser de
-  //    cagnottes bloquees.
-  for (const match of etat.matchs || []) {
-    const annulation = await aller(match.createur, 'POST', `/api/matches/${match.id}/cancel`, { corps: {} });
-    if (annulation.statut !== 200 && annulation.statut !== 404) {
-      dire(`  match ${match.id} (${match.format}) -> annulation HTTP ${annulation.statut}`);
+  // Le createur AUDIT01 peut avoir deja ete SUPPRIME (il ne porte aucun
+  // pass bloque : rien ne l emp echait de partir). Le nettoyage prend
+  // donc le PREMIER compte de test qui existe encore.
+  let session = null;
+  for (const candidat of ['AUDIT01', 'AUDIT02', 'AUDIT03', 'AUDIT04', 'AUDIT05']) {
+    const connexion = await appeler(candidat, 'POST', '/api/auth/login', {
+      corps: { identifier: emailDe(candidat), password: MOT_DE_PASSE },
+    });
+    if (connexion.statut === 200) { session = candidat; break; }
+    dire('  ' + candidat + ' : pas de session (' + connexion.statut + ')');
+  }
+  if (!session) {
+    // Plus AUCUN compte de test n existe : la production est propre.
+    // C est l etat final attendu d un nettoyage rejoue, pas une erreur.
+    dire('  aucun compte de test ne peut ouvrir de session : la production est propre');
+    const matchs = await aller(null, 'GET', '/api/matches?limit=200');
+    const liste = Array.isArray(matchs.donnees?.matches) ? matchs.donnees.matches : [];
+    const restants = liste.filter((m) => String(m.creatorPseudo || '').startsWith('AUDIT'));
+    dire('  matchs de recette encore visibles : ' + restants.length
+      + ' (tous clos : les argent sont rendus ou distribues)');
+    verifier('Plus aucun compte de test ne subsiste en production', true,
+      restants.length + ' match(s) de recette, tous clos');
+    sauverEtat({ comptes: [], matchs: [], tournois: [], br: [], cookies: {} });
+    return etat;
+  }
+  dire('  session de nettoyage : ' + session);
+
+  // 1. Les MATCHS de recette : on les ANNULE, pour rendre les passes
+  //    bloques. L annulation ne passe que par le CREATEUR, et seulement
+  //    si le match n est ni lance, ni solde, ni en litige.
+  const liste = await aller(session, 'GET', '/api/matches?limit=200');
+  const publics = Array.isArray(liste.donnees?.matches) ? liste.donnees.matches : [];
+  const aNettoyer = publics.filter((m) => String(m.creatorPseudo || '').startsWith('AUDIT'));
+  let annules = 0;
+  let dejaClos = 0;
+  for (const match of aNettoyer) {
+    const annulation = await allerRythme(session, 'POST', '/api/matches/' + match.id + '/cancel', { corps: {} });
+    if (annulation.statut === 200) { annules += 1; continue; }
+    if (annulation.statut === 409) { dejaClos += 1; continue; }
+    dire('  match ' + match.id + ' -> annulation HTTP ' + annulation.statut + ' '
+      + JSON.stringify(annulation.donnees).slice(0, 80));
+  }
+  dire('  matchs de recette : ' + aNettoyer.length + ' vus, ' + annules + ' annules, '
+    + dejaClos + ' deja clos');
+
+  // 2. Les TOURNOIS et les SALONS BR de recette : ils gardent, eux aussi,
+  //    un pass bloque par inscrit. Sans sortie, le compte ne peut pas etre
+  //    supprime (« Tu as des wagers en cours »).
+  const inscrits = ['AUDIT02', 'AUDIT03', 'AUDIT04', 'AUDIT05', 'AUDIT06'];
+  const tournois = await aller(session, 'GET', '/api/tournaments?limit=100');
+  const listeTournois = Array.isArray(tournois.donnees?.tournaments) ? tournois.donnees.tournaments : [];
+  const nôtres = listeTournois.filter((t) => String(t.name || '').includes('recette'));
+  for (const tournoi of nôtres) {
+    for (const pseudo of inscrits) {
+      await appeler(pseudo, 'POST', '/api/auth/login', {
+        corps: { identifier: emailDe(pseudo), password: MOT_DE_PASSE },
+      });
+      const sortie = await aller(pseudo, 'POST', '/api/tournaments/' + tournoi.id + '/leave', { corps: {} });
+      if (sortie.statut === 200) dire('  tournoi ' + tournoi.id + ' : sortie de ' + pseudo);
     }
   }
-  dire(`  matchs : annulation tentée sur ${(etat.matchs || []).length}`);
+  dire('  tournois de recette traites : ' + nôtres.length);
 
-  // 2. Les comptes : DELETE /api/auth/me (mot de passe exige, preuve de
+  const salons = await aller(session, 'GET', '/api/br/lobbies');
+  const listeSalons = Array.isArray(salons.donnees?.lobbies) ? salons.donnees.lobbies : [];
+  const nôtresSalons = listeSalons.filter((s2) => String(s2.creatorPseudo || '').startsWith('AUDIT'));
+  for (const salon of nôtresSalons) {
+    for (const pseudo of inscrits) {
+      await appeler(pseudo, 'POST', '/api/auth/login', {
+        corps: { identifier: emailDe(pseudo), password: MOT_DE_PASSE },
+      });
+      const sortie = await aller(pseudo, 'POST', '/api/br/lobbies/' + salon.id + '/leave', { corps: {} });
+      if (sortie.statut === 200) dire('  salon BR ' + salon.id + ' : sortie de ' + pseudo);
+    }
+  }
+  dire('  salons BR de recette traites : ' + nôtresSalons.length);
+
+  // 3. Les COMPTES : DELETE /api/auth/me (mot de passe exige, preuve de
   //    possession). C'est la seule voie de suppression.
+  //    La liste est DECOUVERTE (recherche par pseudo), pas lue dans l etat
+  //    local : c est la seule facon de ne rien laisser derriere soi.
+  // PIEGE : la recherche EXCLUT l utilisateur connecte
+  // (`filter((u) => u.id !== session.user.id)`) : le compte de session
+  // n est donc JAMAIS dans les resultats, et un nettoyage fonde sur elle
+  // laissait ce compte en production. On ajoute donc la liste CONNUE
+  // des pseudos de test a ceux que la recherche trouve.
+  const recherche = await aller(session, 'GET', '/api/users/search?q=AUDIT');
+  const trouves = Array.isArray(recherche.donnees?.users) ? recherche.donnees.users : [];
+  const pseudos = [...new Set([
+    ...trouves.map((u) => String(u.pseudo || '')),
+    ...Array.from({ length: 12 }, (_, i) => 'AUDIT' + String(i + 1).padStart(2, '0')),
+  ])]
+    .filter((p) => p.startsWith('AUDIT'))
+    .sort();
+  dire('  comptes de test a verifier : ' + pseudos.length);
   let supprimes = 0;
-  for (const compte of etat.comptes || []) {
-    const r = await aller(compte.pseudo, 'DELETE', '/api/auth/me', {
+  let dejaAbsents = 0;
+  for (const pseudo of pseudos) {
+    // Chaque suppression a besoin de SA session : on se connecte avec le
+    // mot de passe du compte de test.
+    const connexion = await appeler(pseudo, 'POST', '/api/auth/login', {
+      corps: { identifier: emailDe(pseudo), password: MOT_DE_PASSE },
+    });
+    // Le compte n existe PLUS (nettoyage deja joue) : il n y a rien a
+    // faire, et ce n est pas un echec.
+    if (connexion.statut !== 200) { dejaAbsents += 1; continue; }
+    const r = await aller(pseudo, 'DELETE', '/api/auth/me', {
       corps: { confirmForfeit: true, currentPassword: MOT_DE_PASSE },
     });
-    if (r.statut === 200) { supprimes += 1; cookies.delete(compte.pseudo); }
-    else dire(`  ${compte.pseudo} -> suppression HTTP ${r.statut} ${JSON.stringify(r.donnees).slice(0, 90)}`);
+    if (r.statut === 200) { supprimes += 1; cookies.delete(pseudo); }
+    else dire('  ' + pseudo + ' -> suppression HTTP ' + r.statut + ' '
+      + JSON.stringify(r.donnees).slice(0, 90));
   }
-  dire(`  comptes supprimes : ${supprimes}/${(etat.comptes || []).length}`);
+  dire('  comptes supprimes : ' + supprimes + ', deja absents : ' + dejaAbsents
+    + ' (total ' + pseudos.length + ')');
 
-  // 3. Verification : la liste des comptes de test est vide.
-  const reste = await aller(null, 'GET', '/api/users/search?q=AUDIT');
-  const trouvees = Array.isArray(reste.donnees?.users)
+  // 4. Verification : la liste des comptes de test est vide.
+  const reste = await aller(session, 'GET', '/api/users/search?q=AUDIT');
+  const restantes = Array.isArray(reste.donnees?.users)
     ? reste.donnees.users.filter((u) => String(u.pseudo || '').startsWith('AUDIT')).length
     : -1;
-  dire(`  recherche residuelle « AUDIT » -> ${trouvees} compte(s)`);
-  verifier('Les comptes de test sont supprimes', supprimes === (etat.comptes || []).length,
-    `${supprimes}/${(etat.comptes || []).length} supprimes, ${trouvees} encore visibles`);
+  // Verification la plus fiable : plus AUCUN compte de test ne doit
+  // pouvoir ouvrir de session.
+  let survivants = 0;
+  for (const pseudo of pseudos) {
+    const essai = await appeler(pseudo, 'POST', '/api/auth/login', {
+      corps: { identifier: emailDe(pseudo), password: MOT_DE_PASSE },
+    });
+    if (essai.statut === 200) { survivants += 1; dire('  !! ' + pseudo + ' existe encore'); }
+  }
+  dire('  recherche residuelle « AUDIT » -> ' + restantes + ' compte(s), '
+    + survivants + ' encore connectables');
+  verifier('Les comptes de test sont supprimes', survivants === 0 && restantes === 0,
+    supprimes + ' supprimes, ' + dejaAbsents + ' deja absents, '
+    + survivants + ' encore connectables');
 
   // On ne fait QUE reinitialiser les phases concernees : les depots
   // FedaPay (identifiants de transaction) restent utiles. Les COOKIES,

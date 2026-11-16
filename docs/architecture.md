@@ -1165,7 +1165,7 @@ comme le contraste.
 Le dictionnaire des mots accentues est desormais **partage** entre le
 front et le serveur : une coquille ne peut plus se cacher d un cote.
 
-### Ce que le parcours ne prouve pas (et le dit)
+### Les limites que le parcours ne prouve pas (et le dit)
 
 - **Le retrait.** Hors perimetre, comme demande. Aucun retrait n a ete
   tente en production.
@@ -1178,6 +1178,26 @@ front et le serveur : une coquille ne peut plus se cacher d un cote.
   comprehension). Les deux ne trouvent pas les memes choses.
 - **Les quotas a l echelle.** Le parcours frappe les quotas pendant
   quelques minutes ; il ne mesure pas le comportement a long terme.
+
+### Le nettoyage : ce qu il a appris
+
+Le nettoyage est la phase la plus utile du script, parce que c est la
+seule qui doit etre FIABLE : un nettoyage qui echoue laisse des
+comptes, des matchs et de l argent bloque en production.
+
+Trois pieges ont ete rencontres, tous dans le meme sens — une source
+de verite qui parait complete et ne l est pas :
+
+| piege | consequence |
+|---|---|
+| La recherche d utilisateurs **exclut l utilisateur connecte** (`filter((u) => u.id !== session.user.id)`) | le compte de session n etait JAMAIS dans les resultats : il n etait donc jamais supprime. Le nettoyage passe maintenant par la liste CONNUE des pseudos de test. |
+| Un pass bloque dans un **tournoi** ou un **salon BR** empeche la suppression du compte (« Tu as des wagers en cours ») | le nettoyage fait sortir chaque inscrit du tournoi et du salon, avant de supprimer les comptes |
+| L annulation d un match ne passe que par son **createur**, et seulement s il n est ni lance, ni solde, ni en litige | les matchs deja regles sont laisses (l argent est distribue) ; les autres sont annules, ce qui rend les passes |
+
+La phase est **autonome** : elle ne depend ni de l etat local, ni d une
+session preexistante. Elle se reconnecte, decouvre ce qu elle doit
+effacer par l API, et se termine sur une verification par tentative de
+connexion (le seul test qui ne trompe pas).
 
 ---
 

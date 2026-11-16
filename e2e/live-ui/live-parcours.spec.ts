@@ -120,9 +120,15 @@ test.describe('LIVE — Parcours joueur de bout en bout', () => {
 
     for (const etape of etapes) {
       await page.goto(etape.chemin, { waitUntil: 'domcontentloaded', timeout: 90_000 });
-      await page.waitForTimeout(1500);
-      const corps = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-      expect(corps, `l ecran ${etape.nom} (${etape.chemin}) affiche son contenu`).toMatch(etape.attendu);
+      // PIEGE : le service Render se reveille et l API met parfois
+      // plusieurs secondes a repondre. Lire le texte UNE FOIS, tot,
+      // donnerait un ecran vide et un echec qui ne veut rien dire.
+      // On ASSERT sur le contenu, avec un delai : l attente est alors
+      // explicitement « le contenu apparait ».
+      await expect(
+        page.locator('body'),
+        `l ecran ${etape.nom} (${etape.chemin}) affiche son contenu`,
+      ).toContainText(etape.attendu, { timeout: 60_000 });
     }
 
     // ─── 4. Le retrait reste bloque (le retrait n est pas teste ici) ─────────
@@ -130,7 +136,7 @@ test.describe('LIVE — Parcours joueur de bout en bout', () => {
     // sans confirmation : c est un garde-fou d'ARGENT, pas un test de
     // retrait (le retrait lui-meme est hors perimetre, comme demande).
     await page.goto('/wallet', { waitUntil: 'domcontentloaded', timeout: 90_000 });
-    await page.waitForTimeout(1200);
+    await expect(page.locator('body')).toContainText(/LE COFFRE-FORT|WALLET/i, { timeout: 60_000 });
     const retrait = page.locator('button[aria-label*="Retirer"], button:has-text("RETIRER")').first();
     if (await retrait.count()) {
       await retrait.click({ timeout: 20_000 }).catch(() => {});

@@ -1,0 +1,6 @@
+// scripts/button-specs/modal.json - conversion des boutons de
+// `src/app/components/ui/Modal.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "ghost", "size": "sm" }
+]

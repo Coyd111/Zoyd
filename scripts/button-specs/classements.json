@@ -1,0 +1,5 @@
+// scripts/button-specs/classements.json - conversion des boutons de
+// `src/app/pages/ClassementsPage.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" }
+]

@@ -19,6 +19,7 @@ import { Link } from 'react-router';
 import { Eye, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatusPill, SignalBadge, userStatusLabelFR } from './AdminTabShared';
 import type { FlaggedUser, UserFilter } from './AdminTabShared';
+import { Button } from '../ui/Button';
 
 type AdminUsersTabProps = {
   filteredUsers: FlaggedUser[];
@@ -57,7 +58,10 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
           { id: 'watch', label: 'Surveillés' },
           { id: 'all', label: 'Tous' },
         ].map((filter) => (
-          <button
+          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
             key={filter.id}
             onClick={() => onFilterChange(filter.id as UserFilter)}
             className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
@@ -67,7 +71,7 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
             }`}
           >
             {filter.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -142,22 +146,28 @@ const AdminUsersTab: React.FC<AdminUsersTabProps> = ({
               {filteredUsers.length} joueur(s) — page {safePage} / {totalPages}
             </span>
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={safePage <= 1}
                 className="touch-target px-3 py-2 border border-white/10 text-[10px] font-display font-black uppercase tracking-widest disabled:opacity-30 hover:border-white/30 transition-colors"
                 aria-label="Page precedente"
               >
                 <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage >= totalPages}
                 className="touch-target px-3 py-2 border border-white/10 text-[10px] font-display font-black uppercase tracking-widest disabled:opacity-30 hover:border-white/30 transition-colors"
                 aria-label="Page suivante"
               >
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           </div>
         )}

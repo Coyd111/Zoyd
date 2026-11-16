@@ -268,14 +268,17 @@ cancelled = true;
                   error={errors.password?.message}
                   placeholder="........"
                 />
-                <button
+                <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                   className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/70 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                </Button>
               </div>
             </div>
 

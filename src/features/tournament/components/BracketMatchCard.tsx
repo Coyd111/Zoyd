@@ -17,6 +17,7 @@
  */
 import React from 'react';
 import type { TournamentMatch } from '../../../app/stores/tournamentStore';
+import { Button } from '../../../app/components/ui/Button';
 
 const matchStatusLabels: Record<TournamentMatch['status'], string> = {
   pending: 'En attente',
@@ -63,7 +64,10 @@ const BracketMatchCard = React.memo(({
           : 'text-white/70';
 
   return (
-    <button
+    <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
       type="button"
       onClick={onSelect}
       className={`text-left relative border bg-zoyd-surface/30 p-4 transition-all ${
@@ -89,7 +93,7 @@ const BracketMatchCard = React.memo(({
         </span>
         <span>Poste arbitre #{match.arbiterSlot}</span>
       </div>
-    </button>
+    </Button>
   );
 });
 

@@ -1,0 +1,15 @@
+// scripts/button-specs/match-detail.json - conversion des boutons de
+// `src/features/match/pages/MatchDetailPage.tsx` (10 boutons, dans l ordre
+// du fichier).
+[
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "danger", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "danger", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "danger", "size": "md" }
+]

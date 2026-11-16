@@ -20,6 +20,7 @@
 import { useEffect, useState } from 'react';
 import { useRouteError, isRouteErrorResponse, Link } from 'react-router';
 import { isStaleChunkError, chunkRetryKey, reloadWithFreshBuild } from '../../lib/buildVersion';
+import { Button } from './ui/Button';
 
 export function RouteErrorBoundary() {
   const error = useRouteError();
@@ -70,13 +71,16 @@ export function RouteErrorBoundary() {
         <h2 className="text-xl font-display font-black uppercase mb-4">{title}</h2>
         <p className="text-white/70 text-sm mb-6" role="status" aria-live="polite">{message}</p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
+          <Button
+                variant="primary"
+                size="md"
+                animate={false}
             type="button"
             onClick={() => reloadWithFreshBuild()}
             className="inline-block px-6 py-3 bg-white text-black font-display font-black text-xs uppercase tracking-widest hover:bg-zoyd-yellow transition-colors touch-target"
           >
             {stale ? 'Mettre à jour' : 'Réessayer'}
-          </button>
+          </Button>
           <Link
             to="/"
             className="inline-block px-6 py-3 border border-white/20 font-display font-black text-xs uppercase tracking-widest hover:border-white transition-colors touch-target"

@@ -15,6 +15,7 @@
  */
 import React from 'react';
 import { CloudOff } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface BootstrapFailedPanelProps {
   onRetry: () => void;
@@ -34,13 +35,16 @@ const BootstrapFailedPanel: React.FC<BootstrapFailedPanelProps> = ({
       </div>
       <h2 className="text-xl font-display font-black uppercase italic tracking-wider text-white mb-3">{title}</h2>
       <p className="text-sm text-white/60 mb-6 leading-relaxed">{message}</p>
-      <button
+      <Button
+                variant="secondary"
+                size="md"
+                animate={false}
         type="button"
         onClick={onRetry}
         className="border border-white/20 px-6 py-3 text-[10px] font-display font-black uppercase tracking-[0.2em] text-white hover:bg-white hover:text-black transition-colors touch-target"
       >
         Réessayer
-      </button>
+      </Button>
     </div>
   </div>
 );

@@ -1,0 +1,6 @@
+// scripts/button-specs/admin-overview.json - conversion des boutons de
+// `src/app/components/admin/AdminOverviewTab.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "md" },
+  { "variant": "ghost", "size": "link" }
+]

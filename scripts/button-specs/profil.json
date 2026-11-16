@@ -1,0 +1,5 @@
+// scripts/button-specs/profil.json - conversion des boutons de
+// `src/app/pages/ProfilPage.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" }
+]

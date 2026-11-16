@@ -1,0 +1,9 @@
+// scripts/button-specs/chat.json - conversion des boutons de
+// `src/app/pages/ChatPage.tsx` (5 boutons, dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "ghost", "size": "md" },
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "ghost", "size": "sm" }
+]

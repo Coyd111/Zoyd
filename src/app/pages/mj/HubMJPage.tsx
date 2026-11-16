@@ -31,6 +31,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import BootstrapFailedPanel from '../../components/BootstrapFailedPanel';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SEOHead } from '../../components/SEOHead';
+import { Button } from '../../components/ui/Button';
 
 const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'] as const;
 const STATUS_FILTERS = [
@@ -160,7 +161,10 @@ const HubMJPage: React.FC = () => {
                   La liste des matchs n&apos;a pas pu être chargée. Le service est peut-être indisponible.
                 </p>
               </div>
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 type="button"
                 onClick={() => {
                   setIsReloading(true);
@@ -172,7 +176,7 @@ const HubMJPage: React.FC = () => {
                 className="touch-target shrink-0 border border-white/20 px-4 py-2 text-[10px] font-display font-black tracking-widest uppercase italic text-white hover:bg-white/10 disabled:opacity-50"
               >
                 {isReloading ? 'Reessai…' : 'Reessayer'}
-              </button>
+              </Button>
             </div>
           )}
           <div className="flex flex-col lg:flex-row gap-8 mb-12 items-start lg:items-center">
@@ -182,7 +186,10 @@ const HubMJPage: React.FC = () => {
                 rend tous visibles en 2 lignes — aucun scroll caché. */}
             <div className="flex flex-wrap gap-2 w-full lg:flex-1" role="group" aria-label="Filtres de format et de statut">
               {MATCH_FORMATS.map((format) => (
-                <button
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   key={format}
                   onClick={() => setFilters({ format: format === 'TOUS' ? 'all' : format })}
                   className={`px-4 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
@@ -192,11 +199,14 @@ const HubMJPage: React.FC = () => {
                   }`}
                 >
                   {format}
-                </button>
+                </Button>
               ))}
               <div className="w-px h-10 bg-white/5 mx-2" />
               {STATUS_FILTERS.map((status) => (
-                <button
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   key={status.label}
                   onClick={() => setFilters({ status: status.value })}
 className={`px-3 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
@@ -207,10 +217,13 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 >
                   <Radio className="w-3 h-3" />
                   {status.label}
-                </button>
+                </Button>
               ))}
               <div className="w-px h-10 bg-white/5 mx-2" />
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 onClick={() => setNeedsArbiter(!needsArbiter)}
                 aria-label={needsArbiter ? "Masquer les matchs sans arbitre" : "Afficher uniquement les matchs sans arbitre"}
                 className={`px-3 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
@@ -221,8 +234,11 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               >
                 <ShieldCheck className="w-3 h-3" />
                 SANS ARBITRE
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 onClick={() => setFilters({ minTrustScore: filters.minTrustScore ? undefined : 50 })}
                 className={`px-3 py-3.5 touch-target text-[10px] font-display font-black tracking-widest uppercase italic transition-all border flex items-center gap-2 ${
                   filters.minTrustScore
@@ -231,7 +247,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
                 }`}
               >
                 FIABILITÉ 50+
-              </button>
+              </Button>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-[420px]">

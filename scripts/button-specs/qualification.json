@@ -1,0 +1,7 @@
+// scripts/button-specs/qualification.json - conversion des boutons de
+// `src/features/league/components/QualificationPanel.tsx` (3 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "secondary", "size": "sm" }
+]

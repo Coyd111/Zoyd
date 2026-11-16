@@ -299,9 +299,12 @@ const LeagueSeasonPage = () => {
           <div className="border border-red-500/30 bg-red-500/10 px-6 py-5 text-sm text-red-400">
             {loadError || 'Saison introuvable.'}
             {loadError ? (
-              <button onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
+              <Button
+                variant="ghost"
+                size="link"
+                animate={false} onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
                 Réessayer
-              </button>
+              </Button>
             ) : null}
           </div>
         </div>
@@ -355,35 +358,47 @@ const LeagueSeasonPage = () => {
               {season.status === 'registering' && (
                 isRegistered ? (
                   <>
-                  <button
+                  <Button
+                variant="danger"
+                size="sm"
+                animate={false}
                     onClick={() => setConfirmLeave(true)}
                     disabled={actionLoading}
                     className="touch-target border border-red-500/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
                   >
                     Se désinscrire
-                  </button>
+                  </Button>
                   {confirmLeave && (
                     <div className="border border-red-500/30 bg-red-500/10 p-3 space-y-2 w-full">
                       <p className="text-xs text-red-300">Confirmer le retrait de la saison ? Ton inscription ({formatZC(season.entryFee)}) sera remboursée.</p>
                       <div className="flex gap-2">
-                        <button onClick={() => setConfirmLeave(false)} disabled={actionLoading} className="touch-target flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors disabled:opacity-50">
+                        <Button
+                variant="secondary"
+                size="sm"
+                animate={false} onClick={() => setConfirmLeave(false)} disabled={actionLoading} className="touch-target flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors disabled:opacity-50">
                           Annuler
-                        </button>
-                        <button onClick={() => { setConfirmLeave(false); void handleLeave(); }} disabled={actionLoading} className="touch-target flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50">
+                        </Button>
+                        <Button
+                variant="danger"
+                size="sm"
+                animate={false} onClick={() => { setConfirmLeave(false); void handleLeave(); }} disabled={actionLoading} className="touch-target flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50">
                           Confirmer
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
                   </>
                 ) : (
-                  <button
+                  <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                     onClick={handleJoin}
                     disabled={actionLoading}
                     className="touch-target border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
                   >
                     S&apos;inscrire — {formatZC(season.entryFee)}
-                  </button>
+                  </Button>
                 )
               )}
             </div>

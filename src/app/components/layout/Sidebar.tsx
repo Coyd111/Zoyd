@@ -21,6 +21,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useChatStore } from '../../stores/chatStore';
 import { cn } from '../../../lib/utils';
 import { useLogout } from '../../hooks/useLogout';
+import { Button } from '../ui/Button';
 
 const navItems = [
   { icon: LayoutGrid, label: 'MULTIJOUEUR', path: '/mj' },
@@ -146,14 +147,17 @@ const Sidebar: React.FC = React.memo(() => {
         >
           <Settings className="w-5 h-5" aria-hidden="true" />
         </Link>
-        <button
+        <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
           onClick={handleLogout}
           title="Se déconnecter"
           aria-label="Se déconnecter"
           className="flex items-center justify-center w-12 h-12 touch-target text-red-400 hover:bg-red-400/10 transition-all"
         >
           <LogOut className="w-5 h-5" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
 
       <Link

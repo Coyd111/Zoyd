@@ -1,0 +1,5 @@
+// scripts/button-specs/main.json - conversion des boutons de
+// `src/main.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "md" }
+]

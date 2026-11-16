@@ -36,6 +36,7 @@ import { formatZC } from '../../../lib/utils';
 import { applyServerAccountState } from '../../../app/lib/serverSync';
 import type { WalletSnapshot } from '../../../app/lib/walletApi';
 import { SEOHead } from '../../../app/components/SEOHead';
+import { Button } from '../../../app/components/ui/Button';
 
 const EMPTY_WALLET: WalletSnapshot = {
   cashBalance: 0,
@@ -133,23 +134,29 @@ const SeasonCard: React.FC<{
           </div>
           {currentUserId && (
             isRegistered ? (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLeave(season.id); }}
                 disabled={isActionLoading}
                 className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-red-500/30 text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50 touch-target"
                 aria-label="Se désinscrire de la saison"
               >
                 Se désinscrire
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
+                variant="primary"
+                size="sm"
+                animate={false}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onJoin(season.id); }}
                 disabled={isActionLoading || slotsLeft <= 0}
                 className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
                 aria-label="S'inscrire à la saison"
               >
                 S'inscrire
-              </button>
+              </Button>
             )
           )}
         </div>
@@ -350,7 +357,10 @@ const LeaguePage: React.FC = () => {
               </Link>
             )}
             {user?.role === 'admin' && (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 onClick={() => setConfirmAction('create-season')}
                 disabled={actionLoading}
                 className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50 touch-target"
@@ -358,10 +368,13 @@ const LeaguePage: React.FC = () => {
               >
                 <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                 Créer une saison
-              </button>
+              </Button>
             )}
             {user?.role === 'admin' && (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 onClick={() => setConfirmAction('start-qualification')}
                 disabled={actionLoading}
                 className="flex items-center gap-2 border border-white/10 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white hover:border-white/30 transition-colors disabled:opacity-50 touch-target"
@@ -369,7 +382,7 @@ const LeaguePage: React.FC = () => {
               >
                 <Zap className="w-3.5 h-3.5" aria-hidden="true" />
                 Démarrer les qualifications
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -406,9 +419,12 @@ const LeaguePage: React.FC = () => {
         {loadError && (
           <div className="border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 mt-6">
             {loadError}
-            <button onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
+            <Button
+                variant="ghost"
+                size="link"
+                animate={false} onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
               Réessayer
-            </button>
+            </Button>
           </div>
         )}
 
@@ -460,14 +476,20 @@ const LeaguePage: React.FC = () => {
           <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
             <p className="text-sm text-yellow-300">Démarrer les qualifications ? Cette action est irréversible.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
+              <Button
+                variant="ghost"
+                size="sm"
+                animate={false} onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</Button>
               {/* P13 C16 (audit-3) : Confirmer est desactive sans saison
                   active — l'ancien onClick passait un id vide a l'API. */}
-              <button
+              <Button
+                variant="primary"
+                size="sm"
+                animate={false}
                 onClick={() => { setConfirmAction(null); void handleStartQualification(activeSeason?.id || ''); }}
                 disabled={!activeSeason?.id}
                 className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              >Confirmer</button>
+              >Confirmer</Button>
             </div>
           </div>
         </div>
@@ -478,8 +500,14 @@ const LeaguePage: React.FC = () => {
           <div className="border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-md w-full space-y-3">
             <p className="text-sm text-yellow-300">Créer une nouvelle saison ? Cette action est irréversible.</p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</button>
-              <button onClick={() => { setConfirmAction(null); void handleCreateSeason(); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</button>
+              <Button
+                variant="ghost"
+                size="sm"
+                animate={false} onClick={() => setConfirmAction(null)} className="flex-1 px-3 py-2 text-xs border border-white/10 text-white/60 hover:text-white">Annuler</Button>
+              <Button
+                variant="primary"
+                size="sm"
+                animate={false} onClick={() => { setConfirmAction(null); void handleCreateSeason(); }} className="flex-1 px-3 py-2 text-xs border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10">Confirmer</Button>
             </div>
           </div>
         </div>

@@ -48,6 +48,7 @@ import { formatZC, getRelativeTime } from '../../lib/utils';
 import { SEOHead } from '../components/SEOHead';
 import { Skeleton } from '../components/ui/Skeleton';
 import { ACTIVE_STATUSES } from '../lib/matchStatus';
+import { Button } from '../components/ui/Button';
 
 const quickActions = [
   { label: 'MJ Hub', desc: 'Matchs & wagers', icon: Swords, path: '/mj', color: 'text-zoyd-blue' },
@@ -486,20 +487,26 @@ const DashboardPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
-                        <button
+                        <Button
+                variant="primary"
+                size="sm"
+                animate={false}
                           onClick={() => useFriendsStore.getState().acceptRequest(req.id)}
                           aria-label={`Accepter ${req.senderPseudo}`}
                           className="w-11 h-11 touch-target flex items-center justify-center border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 transition-colors"
                         >
                           <CheckCircle2 className="w-5 h-5 text-green-400" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                variant="danger"
+                size="sm"
+                animate={false}
                           onClick={() => useFriendsStore.getState().declineRequest(req.id)}
                           aria-label={`Refuser ${req.senderPseudo}`}
                           className="w-11 h-11 touch-target flex items-center justify-center border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors"
                         >
                           <XCircle className="w-5 h-5 text-red-400" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}

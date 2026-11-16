@@ -1,0 +1,9 @@
+// scripts/button-specs/admin-urgency.json - conversion des boutons de
+// `src/app/components/admin/AdminUrgencyTab.tsx` (5 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "danger", "size": "sm" }
+]

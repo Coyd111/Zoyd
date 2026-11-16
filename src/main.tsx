@@ -19,6 +19,7 @@ import { Component, type ReactNode } from "react";
 import App from "./app/App.tsx";
 import "./styles/index.css";
 import { startVersionWatcher } from "./lib/versionWatcher";
+import { Button } from './app/components/ui/Button';
 
 class RootErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -38,12 +39,15 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
             <p style={{ color: '#fff8', marginBottom: '1.5rem' }}>
               Quelque chose s'est mal passe. Recharge la page ou reviens plus tard.
             </p>
-            <button
+            <Button
+                variant="primary"
+                size="md"
+                animate={false}
               onClick={() => window.location.reload()}
               style={{ background: '#FFD700', color: '#000', border: 'none', padding: '0.75rem 2rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Recharger
-            </button>
+            </Button>
           </div>
         </div>
       );

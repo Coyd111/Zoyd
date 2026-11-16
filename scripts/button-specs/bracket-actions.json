@@ -1,0 +1,11 @@
+// scripts/button-specs/bracket-actions.json - conversion des boutons de
+// `src/features/tournament/components/BracketActions.tsx` (7 boutons).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" }
+]

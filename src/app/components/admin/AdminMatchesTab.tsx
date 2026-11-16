@@ -19,6 +19,7 @@ import { formatZC, getRelativeTime } from '../../../lib/utils';
 import { StatusPill, MetaChip, statusToneMap, statusLabelFR } from './AdminTabShared';
 import type { Match } from '../../stores/matchStore';
 import type { MatchFilter } from './AdminTabShared';
+import { Button } from '../ui/Button';
 
 type AdminMatchesTabProps = {
   filteredMatches: Match[];
@@ -48,7 +49,10 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
           { id: 'closed', label: 'Clotures' },
           { id: 'all', label: 'Tous' },
         ].map((filter) => (
-          <button
+          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
             key={filter.id}
             onClick={() => onFilterChange(filter.id as MatchFilter)}
             className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
@@ -59,7 +63,7 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
           >
             <Filter className="w-3 h-3 inline mr-2" />
             {filter.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -97,12 +101,15 @@ const AdminMatchesTab: React.FC<AdminMatchesTabProps> = ({
 
             <div className="grid grid-cols-2 sm:flex gap-3 xl:justify-end">
               {match.status === 'disputed' ? (
-                <button
+                <Button
+                variant="danger"
+                size="sm"
+                animate={false}
                   onClick={() => onNavigateToTab('disputes')}
                   className="bg-red-500/10 border border-red-500/20 text-red-300 px-4 py-2 text-[10px] font-display font-black tracking-widest uppercase italic hover:bg-red-500/15 transition-colors"
                 >
                   Traiter
-                </button>
+                </Button>
               ) : null}
               {/* P3-1 (audit UI) : le bouton « Garder en vue » est supprime — il
                   appelait onNavigateToTab('matches') DEPUIS l'onglet matches :

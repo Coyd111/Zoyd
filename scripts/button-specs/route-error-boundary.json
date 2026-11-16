@@ -1,0 +1,5 @@
+// scripts/button-specs/route-error-boundary.json - conversion des boutons de
+// `src/app/components/RouteErrorBoundary.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "md" }
+]

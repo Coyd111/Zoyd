@@ -18,6 +18,7 @@ import { CheckCircle2, Ban, Eye, Filter, Flame, ExternalLink } from 'lucide-reac
 import { formatZC, getRelativeTime } from '../../../lib/utils';
 import { StatusPill, DisputeStat, PlayerPill, disputeCategoryLabels } from './AdminTabShared';
 import type { DisputeMatch, DisputeFilter } from './AdminTabShared';
+import { Button } from '../ui/Button';
 
 type AdminUrgencyTabProps = {
   filteredDisputes: DisputeMatch[];
@@ -69,7 +70,10 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
             { id: 'level1', label: 'Niveau 1', count: totalCount - escalatedCount },
             { id: 'all', label: 'Tous', count: totalCount },
           ].map((f) => (
-            <button
+            <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
               key={f.id}
               onClick={() => onFilterChange(f.id as DisputeFilter)}
               className={`px-3 sm:px-4 py-2 text-[10px] font-display font-black uppercase tracking-[0.15em] border transition-colors touch-target ${
@@ -80,7 +84,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
             >
               <Filter className="w-3 h-3 inline mr-2" />
               {f.label} ({f.count})
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -210,7 +214,10 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <button
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   disabled={loadingAction}
                   onClick={() => {
                     if (pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha') {
@@ -230,8 +237,11 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   {pendingResolve?.matchId === match.id && pendingResolve.type === 'alpha'? 
                     `Confirmer Alpha${typeof winnerShare === 'number' ? ` — ${formatZC(winnerShare)}` : ''}` 
                     : 'Valider Alpha'}
-                </button>
-                <button
+                </Button>
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   disabled={loadingAction}
                   onClick={() => {
                     if (pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo') {
@@ -248,8 +258,11 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   }`}
                 >
                   {pendingResolve?.matchId === match.id && pendingResolve.type === 'bravo'? `Confirmer Bravo${typeof winnerShare === 'number' ? ` — ${formatZC(winnerShare)}` : ''}` : 'Valider Bravo'}
-                </button>
-                <button
+                </Button>
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   disabled={loadingAction}
                   onClick={() => {
                     if (pendingResolve?.matchId === match.id && pendingResolve.type === 'none') {
@@ -266,7 +279,7 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   }`}
                 >
                   {pendingResolve?.matchId === match.id && pendingResolve.type === 'none' ? 'Confirmer remboursement' : 'Rembourser et clore'}
-                </button>
+                </Button>
                 <Link
                   to={`/mj/match/${match.id}`}
                   className="border border-white/10 text-white/70 px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic hover:text-white hover:border-white transition-colors flex items-center gap-2 touch-target"
@@ -274,13 +287,16 @@ const AdminUrgencyTab: React.FC<AdminUrgencyTabProps> = ({
                   <Eye className="w-3 h-3" />
                   Voir le match
                 </Link>
-                <button
+                <Button
+                variant="danger"
+                size="sm"
+                animate={false}
                   onClick={() => onRequestCancel(match.id)}
                   className="border px-4 sm:px-6 py-2.5 text-[10px] font-display font-black tracking-widest uppercase italic transition-colors touch-target border-white/10 text-white/60 hover:text-red-300 hover:border-red-500/30"
                 >
                   <Ban className="w-3 h-3 inline mr-2" />
                   Annuler
-                </button>
+                </Button>
               </div>
             </div>
           );

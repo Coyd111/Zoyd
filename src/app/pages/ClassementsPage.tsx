@@ -42,6 +42,7 @@ import {
 } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
 import { SEOHead } from '../components/SEOHead';
+import { Button } from '../components/ui/Button';
 
 type RankingTab = 'elo' | 'earnings' | 'winrate' | 'activity' | 'teams' | 'country' | 'controller';
 
@@ -386,7 +387,10 @@ const EXPLICATION_COLONNES: Record<string, string> = {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button
+                <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                   key={tab.id}
                   role="tab"
                   aria-selected={isActive}
@@ -399,7 +403,7 @@ const EXPLICATION_COLONNES: Record<string, string> = {
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
-                </button>
+                </Button>
               );
             })}
           </div>

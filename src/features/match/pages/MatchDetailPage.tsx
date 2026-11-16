@@ -75,6 +75,7 @@ import { getArbiterFee, getWinnerPayout } from '../../../lib/matchPayout';
 // La table UNIQUE MATCH_STATUS_COPY (matchStatus.ts) couvre tout le domaine :
 // ajouter un statut sans libelle joueur fait echouer TypeScript.
 import { CLOSED_STATUSES, MATCH_STATUS_COPY } from '../../../app/lib/matchStatus';
+import { Button } from '../../../app/components/ui/Button';
 
 /**
  * Resume de presence VIDE, partage.
@@ -934,21 +935,27 @@ const MatchDetailPage: React.FC = () => {
                 </div>
               </dl>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
+                <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                   onClick={() => setShowResultConfirm(false)}
                   disabled={isSubmittingResult}
                   className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
                 >
                   Annuler
-                </button>
-                <button
+                </Button>
+                <Button
+                variant="primary"
+                size="md"
+                animate={false}
                   onClick={() => void handleResultSubmit()}
                   disabled={isSubmittingResult}
                   aria-label="Soumettre le score à la confirmation des deux équipes"
                   className="bg-zoyd-yellow text-black px-4 py-4 text-xs font-display font-black uppercase tracking-widest italic hover:bg-white transition-colors disabled:opacity-50 touch-target"
                 >
                   {isSubmittingResult ? 'Envoi...' : 'Soumettre le résultat'}
-                </button>
+                </Button>
               </div>
             </div>
           </Modal>
@@ -977,19 +984,25 @@ const MatchDetailPage: React.FC = () => {
               </div>
             ) : null}
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                animate={false}
                 disabled={isConfirmingResult}
                 onClick={() => { setConfirmAction(null); void handleConfirmResult(); }}
                 className="flex-1 bg-zoyd-yellow text-black px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase hover:bg-white transition-colors disabled:opacity-40"
               >
                 {isConfirmingResult ? 'En cours...' : 'Confirmer'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1012,19 +1025,25 @@ const MatchDetailPage: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                animate={false}
                 disabled={isDisputing}
                 onClick={() => { setConfirmAction(null); void handleDispute(); }}
                 className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
               >
                 {isDisputing ? 'En cours...' : 'Confirmer'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1047,18 +1066,24 @@ const MatchDetailPage: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                animate={false}
                 onClick={() => { setConfirmAction(null); void handleEscalate(); }}
                 className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
               >
                 Confirmer
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1081,19 +1106,25 @@ const MatchDetailPage: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
                 Garder le match
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                animate={false}
                 disabled={isCancellingSelf}
                 onClick={() => { setConfirmAction(null); void handleCancelSelfMatch(); }}
                 className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
               >
                 {isCancellingSelf ? 'En cours...' : 'Annuler le match'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

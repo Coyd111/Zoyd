@@ -1,0 +1,5 @@
+// scripts/button-specs/bootstrap-failed.json - conversion des boutons de
+// `src/app/components/BootstrapFailedPanel.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "md" }
+]

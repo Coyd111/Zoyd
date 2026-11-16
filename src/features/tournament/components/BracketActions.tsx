@@ -24,6 +24,7 @@ import React from 'react';
 import { Link } from 'react-router';
 import { formatZC } from '../../../lib/utils';
 import type { TournamentEntry, TournamentSquadAccess } from '../../../app/stores/tournamentStore';
+import { Button } from '../../../app/components/ui/Button';
 
 interface JoinableSquad {
   id: string;
@@ -149,7 +150,10 @@ const BracketActions: React.FC<BracketActionsProps> = ({
               className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-yellow"
             />
             <div className="grid grid-cols-2 gap-2" role="group" aria-label="Acces de la squad">
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 type="button"
                 onClick={() => onSquadAccessChange('open')}
                 aria-pressed={squadAccess === 'open'}
@@ -160,8 +164,11 @@ const BracketActions: React.FC<BracketActionsProps> = ({
                 }`}
               >
                 Ouverte
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                 type="button"
                 onClick={() => onSquadAccessChange('private')}
                 aria-pressed={squadAccess === 'private'}
@@ -172,7 +179,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
                 }`}
               >
                 Sur invitation
-              </button>
+              </Button>
             </div>
             {squadAccess === 'private' ? (
               <div className="grid gap-3">
@@ -201,12 +208,15 @@ const BracketActions: React.FC<BracketActionsProps> = ({
         ) : null}
 
         {canRegister ? (
-          <button
+          <Button
+                variant="primary"
+                size="md"
+                animate={false}
             onClick={onRegister}
             className="w-full bg-white text-black py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-yellow transition-colors"
           >
             {teamSize > 1 ? 'Créer ma squad' : 'Confirmer mon inscription'}
-          </button>
+          </Button>
         ) : null}
 
         {myEntry ? (
@@ -244,42 +254,54 @@ const BracketActions: React.FC<BracketActionsProps> = ({
                     {squad.access === 'private' ? ' · invitation' : ''}
                   </div>
                 </div>
-                <button
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   onClick={() => onJoinSquad(squad.id)}
                   className="border border-white/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-white hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors shrink-0"
                 >
                   Rejoindre
-                </button>
+                </Button>
               </div>
             ))}
           </div>
         ) : null}
 
         {myEntry && tournamentStatus === 'recruiting' ? (
-          <button
+          <Button
+                variant="secondary"
+                size="md"
+                animate={false}
             onClick={onLeave}
             className="w-full border border-white/10 py-4 font-display font-black uppercase tracking-widest text-xs italic hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors"
           >
             Retirer mon inscription
-          </button>
+          </Button>
         ) : null}
 
         {canJoinArbiter ? (
-          <button
+          <Button
+                variant="secondary"
+                size="md"
+                animate={false}
             onClick={onJoinArbiter}
             className="w-full border border-zoyd-blue/30 text-zoyd-blue py-4 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors"
           >
             Prendre une place d&apos;arbitre
-          </button>
+          </Button>
         ) : null}
 
         {canStartTournament ? (
-          <button
+          <Button
+                variant="primary"
+                size="md"
+                animate={false}
             onClick={onStartTournament}
             className="w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic"
           >
             Lancer le tableau
-          </button>
+          </Button>
         ) : null}
 
         {teamSize > 1 ? (

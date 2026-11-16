@@ -1,0 +1,8 @@
+// scripts/button-specs/br-lobby-create.json - conversion des boutons de
+// `src/features/br/components/BrLobbyCreatePanel.tsx` (4 boutons).
+[
+  { "variant": "primary", "size": "sm" },
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" }
+]

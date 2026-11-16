@@ -1,0 +1,28 @@
+/**
+ * scripts/button-specs/create-match.json - specification de conversion
+ * des boutons de `src/app/pages/mj/CreateMatchPage.tsx`.
+ *
+ * L ordre suit l ordre des `<button>` du fichier. Une entree par bouton.
+ *   variant : primary | secondary | ghost | danger
+ *   size    : sm | md | lg | xl | link
+ *   fullWidth : le bouton d origine etait `w-full`
+ */
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" }
+]

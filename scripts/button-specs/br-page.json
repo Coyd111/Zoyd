@@ -1,0 +1,5 @@
+// scripts/button-specs/br-page.json - conversion des boutons de
+// `src/features/br/pages/BrPage.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "sm" }
+]

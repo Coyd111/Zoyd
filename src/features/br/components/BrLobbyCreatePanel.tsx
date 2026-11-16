@@ -31,6 +31,7 @@ import {
 } from '../../../app/lib/brApi';
 import { formatZC, formatFCFA } from '../../../lib/utils';
 import { toast } from '../../../app/lib/toast';
+import { Button } from '../../../app/components/ui/Button';
 
 /**
  * Creation d'un salon BR (admin).
@@ -178,14 +179,17 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
 
   if (!open) {
     return (
-      <button
+      <Button
+                variant="primary"
+                size="sm"
+                animate={false}
         type="button"
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 bg-zoyd-yellow text-black px-4 py-2.5 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors touch-target"
       >
         <Calendar className="w-4 h-4" aria-hidden="true" />
         Creer un salon BR
-      </button>
+      </Button>
     );
   }
 
@@ -196,9 +200,12 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
           <Calendar className="w-4 h-4" aria-hidden="true" />
           Nouveau salon Battle Royale
         </h2>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" className="text-white/50 hover:text-white touch-target">
+        <Button
+                variant="ghost"
+                size="sm"
+                animate={false} type="button" onClick={() => setOpen(false)} aria-label="Fermer" className="text-white/50 hover:text-white touch-target">
           <X className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -420,20 +427,26 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         </p>
 
         <div className="flex gap-3">
-          <button
+          <Button
+                variant="primary"
+                size="md"
+                animate={false}
             type="submit"
             disabled={!canSubmit}
             className="flex-1 bg-zoyd-yellow text-black px-5 py-3 font-display font-black text-xs uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed touch-target"
           >
             {saving ? 'Creation...' : 'Creer le salon'}
-          </button>
-          <button
+          </Button>
+          <Button
+                variant="secondary"
+                size="md"
+                animate={false}
             type="button"
             onClick={() => setOpen(false)}
             className="border border-white/15 px-5 py-3 font-display font-black text-xs uppercase italic tracking-[0.2em] text-white/70 hover:border-white/30 transition-colors touch-target"
           >
             Annuler
-          </button>
+          </Button>
         </div>
       </form>
     </div>

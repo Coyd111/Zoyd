@@ -1,0 +1,6 @@
+// scripts/button-specs/app-layout.json - conversion des boutons de
+// `src/app/layouts/AppLayout.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" }
+]

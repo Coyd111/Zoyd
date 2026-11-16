@@ -569,7 +569,10 @@ if (!payoutCountry) {
               <label htmlFor="deposit-amount" className="block text-sm font-medium text-white mb-3">Montant à ajouter</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                 {presetAmounts.map((preset) => (
-                    <button
+                    <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                       key={preset}
                       onClick={() => setDepositAmount(preset.toString())}
                       aria-label={`Ajouter ${preset} ZC`}
@@ -581,7 +584,7 @@ if (!payoutCountry) {
                       }`}
                   >
                     {preset} ZC
-                  </button>
+                  </Button>
                 ))}
               </div>
               <Input
@@ -600,7 +603,10 @@ if (!payoutCountry) {
               <label htmlFor="operator-select" className="block text-sm font-medium text-white mb-3">Opérateur Mobile Money</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {depositOperators.map((operator) => (
-                    <button
+                    <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                       key={operator.id}
                       onClick={() => setSelectedOperator(operator.id)}
                       aria-label={`Payer avec ${operator.name}`}
@@ -613,7 +619,7 @@ if (!payoutCountry) {
                   >
                     <OperatorBadge operator={operator} />
                     <p className="text-xs font-display font-semibold text-white text-center">{operator.name}</p>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -667,13 +673,16 @@ if (!payoutCountry) {
                   {' · '}minimum <span className="text-white font-mono">{formatZC(withdrawalMinAmount)}</span>
                 </span>
                 {cashBalance >= withdrawalMinAmount && (
-                  <button
+                  <Button
+                variant="ghost"
+                size="link"
+                animate={false}
                     type="button"
                     onClick={() => setWithdrawAmount(String(cashBalance))}
                     className="font-mono uppercase tracking-wider text-zoyd-yellow hover:text-white underline underline-offset-2 min-h-[44px] px-2"
                   >
                     Tout retirer
-                  </button>
+                  </Button>
                 )}
               </div>
               {withdrawAmountNum >= withdrawalMinAmount && (
@@ -719,7 +728,10 @@ if (!payoutCountry) {
               ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {operators.map((operator) => (
-                  <button
+                  <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                     key={operator.id}
                     onClick={() => setWithdrawOperator(operator.id)}
                     aria-label={`Retirer via ${operator.name}`}
@@ -731,7 +743,7 @@ if (!payoutCountry) {
                   >
                     <OperatorBadge operator={operator} />
                     <p className="text-xs font-display font-semibold text-white text-center">{operator.name}</p>
-                  </button>
+                  </Button>
                 ))}
               </div>
               )}
@@ -781,13 +793,16 @@ if (!payoutCountry) {
             {/* Masquer l'avertissement ne doit pas le rendre inaccessible :
                 le joueur peut le reafficher s'il forget la commission ZOYD. */}
             {feesNoticeDismissed && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                 type="button"
                 onClick={showFeesNoticeAgain}
                 className="w-full text-center text-[10px] font-mono uppercase tracking-wider text-white/50 hover:text-amber-400 transition-colors underline underline-offset-2 touch-target"
               >
                 Rappeler les frais de retrait (ZOYD + FedaPay)
-              </button>
+              </Button>
             )}
           </div>
         </Modal>
@@ -838,7 +853,10 @@ const BalanceCard = React.memo(({ label, numeric, hint, accent = false }: { labe
 ));
 
 const WalletFilter = React.memo(({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) => (
-    <button
+    <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
     onClick={onClick}
     aria-label={`Filtrer par ${label}`}
     className={`px-3 py-1.5 touch-target text-[10px] font-mono font-black uppercase tracking-widest border transition-all ${
@@ -846,7 +864,7 @@ const WalletFilter = React.memo(({ active, onClick, label }: { active: boolean; 
     }`}
   >
     {label}
-  </button>
+  </Button>
 ));
 
 const FundingMetric = React.memo(({ label, value }: { label: string; value: string }) => (

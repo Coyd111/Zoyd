@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { MOTION_DURATION, MOTION_EASE } from '../../../lib/motion';
+import { Button } from './Button';
 
 interface ModalProps {
   isOpen: boolean;
@@ -130,27 +131,33 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
               {title && (
                 <div className="flex items-center justify-between p-6 border-b border-white/10">
                   <h2 id="modal-title" className="text-2xl font-display font-bold text-white">{title}</h2>
-                  <button
+                  <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                     onClick={onClose}
                     title="Fermer"
                     aria-label="Fermer"
                     className="touch-target p-2 hover:bg-white/5 transition-colors"
                   >
                     <X className="w-5 h-5 text-white" />
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {/* Close button without title */}
               {!title && (
-                <button
+                <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                   onClick={onClose}
                   title="Fermer"
                   aria-label="Fermer"
                   className="absolute top-4 right-4 touch-target p-2 hover:bg-white/5 transition-colors z-10"
                 >
                   <X className="w-5 h-5 text-white" />
-                </button>
+                </Button>
               )}
 
               {/* Content */}

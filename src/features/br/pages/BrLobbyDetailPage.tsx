@@ -42,6 +42,7 @@ import { formatZC, formatFCFA } from '../../../lib/utils';
 import { SEOHead } from '../../../app/components/SEOHead';
 import BrArbiterPanel from '../components/BrArbiterPanel';
 import { toast } from '../../../app/lib/toast';
+import { Button } from '../../../app/components/ui/Button';
 
 const countDown = (target: string | null): string => {
   if (!target) return '—';
@@ -365,14 +366,17 @@ const BrLobbyDetailPage: React.FC = () => {
           {me ? (
             <>
               {!me.checkedIn && lobby.status === 'scheduled' && (
-                <button
+                <Button
+                variant="primary"
+                size="md"
+                animate={false}
                   type="button"
                   onClick={handleCheckIn}
                   disabled={acting}
                   className="flex-1 bg-zoyd-yellow text-black px-5 py-3.5 font-display font-black text-xs uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-50 touch-target"
                 >
                   {acting ? 'En cours...' : "Confirmer ma presence"}
-                </button>
+                </Button>
               )}
               {me.checkedIn && (
                 <div className="flex-1 flex items-center justify-center gap-2 border border-green-400/30 bg-green-400/10 text-green-400 px-5 py-3.5 font-display font-black text-xs uppercase italic tracking-[0.2em]">
@@ -381,7 +385,10 @@ const BrLobbyDetailPage: React.FC = () => {
                 </div>
               )}
               {lobby.status === 'scheduled' && (
-                <button
+                <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                   type="button"
                   onClick={() => {
                     if (window.confirm('Te desinscrire et recuperer ton pass ? Possible uniquement avant le lancement.')) {
@@ -393,7 +400,7 @@ const BrLobbyDetailPage: React.FC = () => {
                 >
                   <LogOut className="w-4 h-4" aria-hidden="true" />
                   Me desinscrire
-                </button>
+                </Button>
               )}
               {lobby.status !== 'scheduled' && (
                 <p className="flex-1 text-center text-[10px] font-mono text-white/50 border border-white/10 px-5 py-3.5">
@@ -404,7 +411,10 @@ const BrLobbyDetailPage: React.FC = () => {
               )}
             </>
           ) : isOpen ? (
-            <button
+            <Button
+                variant="primary"
+                size="md"
+                animate={false}
               type="button"
               onClick={() => void handleJoin()}
               disabled={acting || cashBalance < lobby.entryFee}
@@ -413,7 +423,7 @@ const BrLobbyDetailPage: React.FC = () => {
               {cashBalance < lobby.entryFee
                 ? `Solde insuffisant (${formatZC(lobby.entryFee)} requis)`
                 : acting ? 'Inscription...' : "S'inscrire sur ce salon"}
-            </button>
+            </Button>
           ) : (
             <p className="flex-1 text-center text-[10px] font-mono text-white/50 border border-white/10 px-5 py-3.5">
               {lobby.status !== 'scheduled' ? 'Session terminee.' : 'Salon complet.'}

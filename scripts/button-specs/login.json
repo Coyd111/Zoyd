@@ -1,0 +1,5 @@
+// scripts/button-specs/login.json - conversion des boutons de
+// `src/app/pages/auth/LoginPage.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" }
+]

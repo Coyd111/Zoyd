@@ -1,0 +1,6 @@
+// scripts/button-specs/two-factor.json - conversion des boutons de
+// `src/app/components/admin/TwoFactorPrompt.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" }
+]

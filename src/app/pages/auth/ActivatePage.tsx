@@ -149,9 +149,12 @@ const ActivatePage: React.FC = () => {
             <p className="text-white/60 text-center text-xs mb-8">
               Cette page ne sert qu'aux comptes créés avant l'activation immédiate.
               {' '}
-              <button type="button" onClick={() => navigate('/auth/login')} className="text-zoyd-yellow hover:text-white underline min-h-[44px] inline-flex items-center px-2">
+              <Button
+                variant="ghost"
+                size="link"
+                animate={false} type="button" onClick={() => navigate('/auth/login')} className="text-zoyd-yellow hover:text-white underline min-h-[44px] inline-flex items-center px-2">
                 Aller à la connexion
-              </button>
+              </Button>
             </p>
           )}
 
@@ -216,7 +219,10 @@ const ActivatePage: React.FC = () => {
           ) : null}
 
           <div className="mt-6 space-y-3 border-t border-white/10 pt-6">
-            <button
+            <Button
+                variant="secondary"
+                size="md"
+                animate={false}
               type="button"
               onClick={() => void handleResend()}
               disabled={isResending || resendCooldown > 0 || !email}
@@ -227,7 +233,7 @@ const ActivatePage: React.FC = () => {
                 : resendCooldown > 0
                   ? `Renvoyer le code dans ${resendCooldown}s`
                   : "Je n'ai pas reçu le code — renvoyer"}
-            </button>
+            </Button>
             {showEmailChange ? (
               <form onSubmit={handleChangeEmail} className="space-y-3">
                 <label htmlFor="new-email" className="text-[10px] font-mono text-white/70 uppercase block">
@@ -260,30 +266,39 @@ const ActivatePage: React.FC = () => {
                   required
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <button
+                  <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                     type="button"
                     onClick={() => setShowEmailChange(false)}
                     className="border border-white/10 px-4 py-3 text-xs font-display font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors touch-target"
                   >
                     Annuler
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                variant="primary"
+                size="md"
+                animate={false}
                     type="submit"
                     disabled={isChangingEmail || !newEmail.trim() || !changePassword}
                     className="bg-white text-black px-4 py-3 text-xs font-display font-black uppercase tracking-widest italic hover:bg-zoyd-yellow transition-colors disabled:opacity-50 touch-target"
                   >
                     {isChangingEmail ? 'En cours...' : 'Valider'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             ) : (
-              <button
+              <Button
+                variant="ghost"
+                size="md"
+                animate={false}
                 type="button"
                 onClick={() => setShowEmailChange(true)}
                 className="w-full text-sm text-white/70 hover:text-white transition-colors touch-target py-2"
               >
                 Utiliser une autre adresse email
-              </button>
+              </Button>
             )}
           </div>
 

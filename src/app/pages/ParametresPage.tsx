@@ -296,7 +296,10 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button
+                <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                   key={tab.id}
                   role="tab"
                   id={`tab-${tab.id}`}
@@ -311,7 +314,7 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
-                </button>
+                </Button>
               );
             })}
           </nav>
@@ -707,13 +710,16 @@ const DangerZone: React.FC = () => {
             {isDeleting ? 'SUPPRESSION...' : armed ? 'CONFIRMER LA SUPPRESSION' : 'SUPPRIMER MON COMPTE'}
           </Button>
           {armed && !isDeleting ? (
-            <button
+            <Button
+                variant="ghost"
+                size="link"
+                animate={false}
               type="button"
               onClick={() => { setArmed(false); setUnderstood(false); }}
               className="ml-3 text-[11px] font-mono uppercase tracking-widest text-white/50 hover:text-white"
             >
               Annuler
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>

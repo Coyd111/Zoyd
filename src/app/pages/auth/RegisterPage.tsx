@@ -508,14 +508,17 @@ cancelled = true;
                     error={errors.password?.message}
                     placeholder="........"
                   />
-                  <button
+                  <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     className="absolute right-2 top-8 touch-target flex items-center justify-center text-white/70 hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                  </Button>
                   {password && (
                     <div className="mt-2">
                       <div className="flex items-center justify-between">
@@ -582,7 +585,10 @@ cancelled = true;
                     {DEVICE_OPTIONS.map((device) => {
                       const Icon = deviceIcons[device.id];
                       return (
-                        <button
+                        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                           key={device.id}
                           type="button"
                           onClick={() => setSelectedDevice(device.id)}
@@ -595,7 +601,7 @@ cancelled = true;
                         >
                           <Icon className="w-6 h-6" />
                           <span className="text-[10px] font-mono font-black uppercase">{device.label}</span>
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -609,7 +615,10 @@ cancelled = true;
                     {CONTROLLER_OPTIONS.map((option) => {
                       const Icon = controllerIcons[option.id];
                       return (
-                        <button
+                        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                           key={option.id}
                           type="button"
                           onClick={() => setValue('controllerType', option.id)}
@@ -627,7 +636,7 @@ cancelled = true;
                               <div className="text-xs font-display font-black italic uppercase">{option.label}</div>
                             </div>
                           </div>
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -699,7 +708,10 @@ cancelled = true;
                 </p>
 
                 <div className="flex gap-4">
-                  <button
+                  <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                     type="button"
                     onClick={() => {
                       if (formData.email) setValue('email', formData.email);
@@ -713,7 +725,7 @@ cancelled = true;
                     className="flex-1 min-h-[44px] border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" /> RETOUR
-                  </button>
+                  </Button>
                   <Button type="submit" variant="primary" fullWidth size="lg" className="flex-[2]">
                     VERIFIER LA CONFIG <ChevronRight className="w-5 h-5 ml-2" />
                   </Button>
@@ -797,7 +809,10 @@ cancelled = true;
                 </div>
 
                 <div className="relative z-10 flex gap-4">
-                  <button
+                  <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                     type="button"
                     onClick={() => {
                       if (formData.gameId) setValue('gameId', formData.gameId);
@@ -814,7 +829,7 @@ cancelled = true;
                     className="flex-1 min-h-[44px] border border-white/10 py-5 font-display font-black text-[10px] tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 transition-all"
                   >
                     RÉGLAGES
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="relative z-10 space-y-3 text-left border border-white/10 bg-black/40 p-4">

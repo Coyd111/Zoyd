@@ -50,6 +50,7 @@ import { useMatchStore, type MatchFormat } from '../../stores/matchStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { SEOHead } from '../../components/SEOHead';
 import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const ARBITER_FEE_RATE = 0.02;
@@ -374,7 +375,10 @@ const CreateMatchPage: React.FC = () => {
                     const selected = selectedFormat === format;
                     const formatTeamSize = Number(format.split('VS')[0] || 1);
                     return (
-                      <button
+                      <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                         key={format}
                         type="button"
                         role="radio"
@@ -391,18 +395,21 @@ const CreateMatchPage: React.FC = () => {
                             <Check className="w-4 h-4" />
                           </div>
                         )}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
-                <button
+                <Button
+                variant="primary"
+                size="md"
+                animate={false}
                   onClick={onStep1Submit}
                   className="bg-white text-black w-full py-5 min-h-[44px] font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow disabled:opacity-20 transition-all flex items-center justify-center gap-4"
                   disabled={!selectedFormat}
                   aria-label="Continuer à l'étape suivante"
                 >
                   Continuer <ChevronRight className="w-6 h-6" />
-                </button>
+                </Button>
               </div>
             </motion.div>
           )}
@@ -420,7 +427,10 @@ const CreateMatchPage: React.FC = () => {
                       </label>
                       <div id="gamemode-group" role="radiogroup" aria-labelledby="gamemode-group" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {MJ_MODE_OPTIONS.map((mode) => (
-                          <button
+                          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                             type="button"
                             key={mode.id}
                             role="radio"
@@ -431,7 +441,7 @@ const CreateMatchPage: React.FC = () => {
                           >
                             <div className="font-display font-black text-lg italic text-white">{mode.name}</div>
                             <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">{mode.desc}</div>
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     </div>
@@ -442,7 +452,10 @@ const CreateMatchPage: React.FC = () => {
                       </label>
                       <div id="map-pool" role="group" aria-label="Sélection de la carte" className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
                         {availableMaps.map((map) => (
-                          <button
+                          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                             type="button"
                             key={map}
                             role="radio"
@@ -462,7 +475,7 @@ const CreateMatchPage: React.FC = () => {
                             <span className={`relative z-10 flex h-full items-end p-3 text-xs font-display font-black italic uppercase tracking-wider ${selectedMap === map ? 'text-zoyd-blue' : 'text-white'}`}>
                               {map}
                             </span>
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     </div>
@@ -477,14 +490,17 @@ const CreateMatchPage: React.FC = () => {
                             Score {rulePreset.scoreTarget} · {formatTimeLimit(rulePreset.timeLimitSeconds, rulePreset.timeLimitScope)}
                           </div>
                         </div>
-                        <button
+                        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                           type="button"
                           onClick={applyRulePreset}
                           aria-label={`Appliquer le preset ${selectedGameMode}`}
                           className="shrink-0 border border-zoyd-yellow/40 px-4 py-2 text-[10px] font-display font-black uppercase tracking-widest text-zoyd-yellow hover:bg-zoyd-yellow hover:text-black transition-all"
                         >
                           Appliquer
-                        </button>
+                        </Button>
                       </div>
                     )}
                     {selectedGameMode && !rulePreset && (
@@ -558,7 +574,10 @@ const CreateMatchPage: React.FC = () => {
                             saisie libre reste possible (reglement libre). */}
                         <div className="flex flex-wrap gap-2 mt-3">
                           {MJ_BEST_OF_PRESETS.map((preset) => (
-                            <button
+                            <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                               key={preset}
                               type="button"
                               onClick={() => setValue('bestOf', preset)}
@@ -570,7 +589,7 @@ const CreateMatchPage: React.FC = () => {
                               }`}
                             >
                               BO{preset}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                         <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-2">
@@ -612,12 +631,18 @@ const CreateMatchPage: React.FC = () => {
                   </div>
 
                   <div className="flex gap-4 mt-12">
-                    <button type="button" onClick={() => setCurrentStep(1)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
+                    <Button
+                variant="secondary"
+                size="md"
+                animate={false} type="button" onClick={() => setCurrentStep(1)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                       <ChevronLeft className="w-4 h-4" /> Retour
-                    </button>
-                    <button type="submit" aria-label="La Mise (Wager) — passer à l'étape suivante" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
+                    </Button>
+                    <Button
+                variant="primary"
+                size="md"
+                animate={false} type="submit" aria-label="La Mise (Wager) — passer à l'étape suivante" className="flex-[2] bg-white text-black py-5 font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
                       La Mise (Wager) <ChevronRight className="w-6 h-6" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </form>
@@ -637,7 +662,10 @@ const CreateMatchPage: React.FC = () => {
                       </label>
                       <div id="entry-amount-group" role="radiogroup" aria-label="Montant de la mise" className="grid grid-cols-3 md:grid-cols-6 gap-2">
                         {ENTRY_OPTIONS.map((amount) => (
-                          <button
+                          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                             key={amount}
                             type="button"
                             role="radio"
@@ -647,7 +675,7 @@ const CreateMatchPage: React.FC = () => {
                             className={`p-3 border font-display font-black italic text-sm transition-all ${selectedPass === amount ? 'border-zoyd-blue bg-zoyd-blue/10 text-zoyd-blue' : 'border-white/5 hover:border-zoyd-blue text-zoyd-blue'}`}
                           >
                             {amount}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                       <input id="passAmount" {...register('passAmount')} type="number" inputMode="numeric" step="0.5" placeholder="Montant personnalisé" aria-label="Montant de la mise personnalisé" className="mt-4 w-full bg-black border border-white/5 p-4 text-[10px] font-mono font-black tracking-widest uppercase focus:border-zoyd-yellow transition-all" />
@@ -699,7 +727,10 @@ const CreateMatchPage: React.FC = () => {
                               { label: 'Joueur', value: 'player' as const, desc: 'Tu bloques ton pass et tu joues.' },
                               { label: 'Arbitre', value: 'arbiter' as const, desc: 'Tu arbitres, tu ne paies pas.' },
                             ]).map((role) => (
-                              <button
+                              <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                                 key={role.value}
                                 type="button"
                                 role="radio"
@@ -710,7 +741,7 @@ const CreateMatchPage: React.FC = () => {
                               >
                                 {role.label}
                                 <span className="block mt-1 text-[9px] font-mono font-bold uppercase tracking-widest opacity-70">{role.desc}</span>
-                              </button>
+                              </Button>
                             ))}
                           </div>
                         </div>
@@ -722,7 +753,10 @@ const CreateMatchPage: React.FC = () => {
                             </label>
                             <div id="team-group" role="radiogroup" aria-label="Sélection de l'équipe" className="grid grid-cols-2 gap-2">
                               {TEAM_OPTIONS.map((team) => (
-                                <button
+                                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                                   key={team.value}
                                   type="button"
                                   role="radio"
@@ -732,7 +766,7 @@ const CreateMatchPage: React.FC = () => {
                                   className={`p-4 border font-display font-black italic uppercase transition-all ${selectedCreatorTeam === team.value ? 'bg-white text-black border-white' : 'border-white/10 text-white/70 hover:border-white/30'}`}
                                 >
                                   {team.label}
-                                </button>
+                                </Button>
                               ))}
                             </div>
                           </div>
@@ -752,12 +786,18 @@ const CreateMatchPage: React.FC = () => {
                   </div>
 
                   <div className="flex gap-4">
-                    <button type="button" onClick={() => setCurrentStep(2)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 min-h-[44px] font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
+                    <Button
+                variant="secondary"
+                size="md"
+                animate={false} type="button" onClick={() => setCurrentStep(2)} aria-label="Retour à l'étape précédente" className="flex-1 border border-white/10 py-5 min-h-[44px] font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                       <ChevronLeft className="w-4 h-4" /> Retour
-                    </button>
-                    <button type="submit" aria-label="Passer au récapitulatif" className="flex-[2] bg-white text-black py-5 min-h-[44px] font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
+                    </Button>
+                    <Button
+                variant="primary"
+                size="md"
+                animate={false} type="submit" aria-label="Passer au récapitulatif" className="flex-[2] bg-white text-black py-5 min-h-[44px] font-display font-black italic tracking-widest uppercase hover:bg-zoyd-yellow transition-all flex items-center justify-center gap-4 touch-target">
                       Récapitulatif <ChevronRight className="w-6 h-6" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </form>
@@ -811,17 +851,23 @@ const CreateMatchPage: React.FC = () => {
                 ) : null}
 
                 <div className="flex gap-4">
-                  <button onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
+                  <Button
+                variant="secondary"
+                size="md"
+                animate={false} onClick={() => setCurrentStep(3)} aria-label="Modifier la configuration" className="flex-1 border border-white/10 py-5 font-display font-black text-xs tracking-widest uppercase opacity-40 hover:opacity-100 flex items-center justify-center gap-2 touch-target">
                     <ChevronLeft className="w-4 h-4" /> Modifier
-                  </button>
+                  </Button>
                   {/* PIEGE (audit UI) : le nom accessible doit CONTENIR le
                       texte visible (WCAG 2.5.3). « & publier » et « et
                       publier » ne sont PAS le meme texte aux yeux
                       d axe-core : une seule source (`publishLabel`) evite
                       la divergence. */}
-                  <button onClick={openPublishConfirm} disabled={isSubmitting} aria-label={publishLabel} className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
+                  <Button
+                variant="primary"
+                size="md"
+                animate={false} onClick={openPublishConfirm} disabled={isSubmitting} aria-label={publishLabel} className={`flex-[2] py-5 font-display font-black italic tracking-[0.1em] md:tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-4 touch-target ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}>
                     <span className="text-xs sm:text-sm">{publishLabel}</span> <ShieldCheck className="w-6 h-6" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -862,21 +908,27 @@ const CreateMatchPage: React.FC = () => {
               </div>
             </dl>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 onClick={() => setShowPublishConfirm(false)}
                 disabled={isSubmitting}
                 className="border border-white/10 px-4 py-4 text-xs font-display font-black uppercase tracking-widest text-white/70 hover:text-white transition-colors touch-target"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                animate={false}
                 onClick={() => void onFinalSubmit()}
                 disabled={isSubmitting}
                 aria-label="Confirmer et publier la partie"
                 className="bg-zoyd-yellow text-black px-4 py-4 text-xs font-display font-black uppercase tracking-widest italic hover:bg-white transition-colors disabled:opacity-50 touch-target"
               >
                 {isSubmitting ? 'Publication...' : 'Confirmer et publier'}
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

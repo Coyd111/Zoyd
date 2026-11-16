@@ -24,6 +24,7 @@ import { useRealtimeHeartbeat } from '../hooks/useRealtimeHeartbeat';
 import { useAuthStore } from '../stores/authStore';
 import { IntegrityCovenantModal } from '../components/integrity/IntegrityCovenantModal';
 import { pageTransition, pageTransitionProps } from '../../lib/motion';
+import { Button } from '../components/ui/Button';
 
 interface AppLayoutProps {
   requireAdmin?: boolean;
@@ -76,8 +77,14 @@ const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
         <div className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-zoyd-yellow/30 bg-zoyd-black/95 px-4 py-2 text-[11px] font-mono uppercase tracking-widest text-white/80">
           <span>Serment d'intégrité à signer avant de miser</span>
           <span className="flex shrink-0 gap-2">
-            <button type="button" onClick={() => setCovenantOpen(true)} className="bg-zoyd-yellow px-3 py-1.5 font-display font-black text-black">Signer</button>
-            <button type="button" onClick={() => setCovenantDismissed(true)} className="border border-white/20 px-3 py-1.5">Découvrir d'abord</button>
+            <Button
+                variant="primary"
+                size="sm"
+                animate={false} type="button" onClick={() => setCovenantOpen(true)} className="bg-zoyd-yellow px-3 py-1.5 font-display font-black text-black">Signer</Button>
+            <Button
+                variant="secondary"
+                size="sm"
+                animate={false} type="button" onClick={() => setCovenantDismissed(true)} className="border border-white/20 px-3 py-1.5">Découvrir d'abord</Button>
           </span>
         </div>
       ) : null}

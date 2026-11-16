@@ -1,0 +1,9 @@
+// scripts/button-specs/activate.json - conversion des boutons de
+// `src/app/pages/auth/ActivatePage.tsx` (5 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "link" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "ghost", "size": "md" }
+]

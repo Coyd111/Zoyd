@@ -1,0 +1,5 @@
+// scripts/button-specs/sidebar.json - conversion des boutons de
+// `src/app/components/layout/Sidebar.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" }
+]

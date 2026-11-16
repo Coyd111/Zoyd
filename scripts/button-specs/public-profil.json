@@ -1,0 +1,6 @@
+// scripts/button-specs/public-profil.json - conversion des boutons de
+// `src/app/pages/PublicProfilPage.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "danger", "size": "sm" }
+]

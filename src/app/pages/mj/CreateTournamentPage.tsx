@@ -41,6 +41,7 @@ import type { MatchFormat } from '../../stores/matchStore';
 import { createServerTournament } from '../../lib/tournamentApi';
 import { applyServerAccountState } from '../../lib/serverSync';
 import { SEOHead } from '../../components/SEOHead';
+import { Button } from '../../components/ui/Button';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const MAX_ENTRY_OPTIONS = [4, 8, 16, 32];
@@ -312,7 +313,10 @@ const CreateTournamentPage: React.FC = () => {
                       const selected = selectedFormat === format;
                       const formatTeamSize = Number(format.split('VS')[0] || 1);
                       return (
-                        <button
+                        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                           key={format}
                           type="button"
                           role="radio"
@@ -329,7 +333,7 @@ const CreateTournamentPage: React.FC = () => {
                           <div className="text-[10px] font-mono uppercase tracking-widest mt-2">
                             {formatTeamSize === 1 ? 'Solo' : `${formatTeamSize} joueurs / squad`}
                           </div>
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -367,7 +371,10 @@ const CreateTournamentPage: React.FC = () => {
                   </label>
                   <div id="mode-group" role="radiogroup" aria-labelledby="mode-group" className="grid md:grid-cols-2 gap-3">
                     {MJ_MODE_OPTIONS.map((mode) => (
-                      <button
+                      <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                         key={mode.id}
                         type="button"
                         role="radio"
@@ -384,7 +391,7 @@ const CreateTournamentPage: React.FC = () => {
                         <div className="text-[10px] font-mono text-white/70 uppercase tracking-widest">
                           {mode.desc}
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -397,7 +404,10 @@ const CreateTournamentPage: React.FC = () => {
                     {MJ_MAP_POOL.map((map) => {
                       const selected = selectedMapPool.includes(map);
                       return (
-                        <button
+                        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                           key={map}
                           type="button"
                           role="checkbox"
@@ -411,7 +421,7 @@ const CreateTournamentPage: React.FC = () => {
                           }`}
                         >
                           {map}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -478,7 +488,10 @@ const CreateTournamentPage: React.FC = () => {
                         libre reste possible (reglement libre). */}
                     <div className="flex flex-wrap gap-2 mt-3">
                       {MJ_BEST_OF_PRESETS.map((preset) => (
-                        <button
+                        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                           key={preset}
                           type="button"
                           onClick={() => setValue('bestOf', preset)}
@@ -490,7 +503,7 @@ const CreateTournamentPage: React.FC = () => {
                           }`}
                         >
                           BO{preset}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                     <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mt-2">
@@ -567,7 +580,10 @@ const CreateTournamentPage: React.FC = () => {
                   </label>
                   <div id="entry-fee" role="radiogroup" aria-labelledby="entry-fee" className="grid grid-cols-3 md:grid-cols-6 gap-2">
                     {ENTRY_OPTIONS.map((amount) => (
-                      <button
+                      <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                         key={amount}
                         type="button"
                         role="radio"
@@ -581,7 +597,7 @@ const CreateTournamentPage: React.FC = () => {
                         }`}
                       >
                         {amount}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -592,7 +608,10 @@ const CreateTournamentPage: React.FC = () => {
                   </label>
                   <div id="max-entries" role="radiogroup" aria-labelledby="max-entries" className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {MAX_ENTRY_OPTIONS.map((amount) => (
-                      <button
+                      <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                         key={amount}
                         type="button"
                         role="radio"
@@ -606,7 +625,7 @@ const CreateTournamentPage: React.FC = () => {
                         }`}
                       >
                         {amount} places
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -721,13 +740,16 @@ const CreateTournamentPage: React.FC = () => {
                   Tu prendras la première place d&apos;arbitre pour lancer les premiers duels au bon moment.
                 </div>
               ) : null}
-              <button
+              <Button
+                variant="primary"
+                size="md"
+                animate={false}
                 type="submit"
                 disabled={isSubmitting}
                 className={`touch-target w-full py-5 font-display font-black italic tracking-widest uppercase transition-all ${isSubmitting ? 'bg-white/50 text-black/50 cursor-not-allowed' : 'bg-white text-black hover:bg-zoyd-yellow'}`}
               >
                 {isSubmitting ? 'Publication...' : 'Publier le tournoi'}
-              </button>
+              </Button>
             </div>
           </aside>
         </form>

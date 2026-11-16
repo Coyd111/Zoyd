@@ -20,6 +20,7 @@ import { ArrowRight } from 'lucide-react';
 import { getRelativeTime } from '../../../lib/utils';
 import { PriorityBadge, StatusLane, moderationToneMap } from './AdminTabShared';
 import type { PriorityItem, AdminEvent } from './AdminTabShared';
+import { Button } from '../ui/Button';
 
 type AdminOverviewTabProps = {
   priorityQueue: PriorityItem[];
@@ -69,7 +70,10 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
           ) : (
             <div className="space-y-3">
               {priorityQueue.map((item) => (
-                <button
+                <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                   key={item.id}
                   onClick={item.action}
                   className="w-full text-left p-4 transition-colors"
@@ -94,7 +98,7 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                       </span>
                     </div>
                   </div>
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -138,12 +142,15 @@ const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                 </div>
                 <h2 className="text-lg font-display font-black uppercase italic">Journal modération</h2>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="link"
+                animate={false}
                 onClick={() => onNavigateToTab('users')}
                 className="text-[10px] font-mono uppercase tracking-widest text-zoyd-yellow"
               >
                 Ouvrir la liste de surveillance
-              </button>
+              </Button>
             </div>
 
             {recentEvents.length === 0 ? (

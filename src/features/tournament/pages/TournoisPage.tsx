@@ -30,6 +30,7 @@ import { fetchServerTournaments } from '../../../app/lib/tournamentApi';
 import { formatZC } from '../../../lib/utils';
 import { useDebounce } from '../../../app/hooks/useDebounce';
 import { SEOHead } from '../../../app/components/SEOHead';
+import { Button } from '../../../app/components/ui/Button';
 
 const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'];
 
@@ -166,9 +167,12 @@ const TournoisPage: React.FC = () => {
         {loadError ? (
           <div className="mb-8 border border-red-400/20 bg-red-400/5 px-5 py-4 text-sm text-red-200">
             {loadError}
-            <button onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
+            <Button
+                variant="secondary"
+                size="sm"
+                animate={false} onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
               Réessayer
-            </button>
+            </Button>
           </div>
         ) : null}
         <Tabs defaultValue="upcoming" className="w-full">
@@ -215,7 +219,10 @@ const TournoisPage: React.FC = () => {
 
             <div className="flex flex-wrap gap-2 md:gap-3">
               {FORMAT_FILTERS.map((format) => (
-                <button
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   key={format}
                   onClick={() => setFilters({ format: format === 'TOUS' ? 'all' : format })}
                   className={`px-4 sm:px-5 py-3 sm:py-3.5 min-h-[44px] text-[12px] sm:text-[10px] font-display font-black tracking-widest uppercase italic transition-all border ${
@@ -225,7 +232,7 @@ const TournoisPage: React.FC = () => {
                   }`}
                 >
                   {format}
-                </button>
+                </Button>
               ))}
               <div className="inline-flex items-center gap-2 border border-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[10px] font-mono uppercase tracking-widest text-white/60">
                 <Users className="w-3.5 h-3.5" />

@@ -18,6 +18,7 @@
 import { Trophy, Play, Clock } from 'lucide-react';
 import type { LeagueSeason } from '../../../app/stores/leagueStore';
 import { DAY_KEYS, DAY_LABELS, DAY_STATUS_ICONS } from './leagueSeasonConstants';
+import { Button } from '../../../app/components/ui/Button';
 
 export const QualificationPanel = ({
   season,
@@ -35,14 +36,17 @@ export const QualificationPanel = ({
   return (
     <div className="space-y-4">
       {isAdmin && season.status === 'registering' && (
-        <button
+        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
           onClick={() => onAdminAction('start-qualification')}
           disabled={isActionLoading || season.registeredPlayers.length < 10}
           className="flex items-center gap-2 border border-zoyd-yellow/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
         >
           <Play className="w-3.5 h-3.5" />
           Lancer la qualification ({season.registeredPlayers.length} joueurs)
-        </button>
+        </Button>
       )}
 
       {DAY_KEYS.map((day) => {
@@ -93,13 +97,16 @@ export const QualificationPanel = ({
                   {status === 'finished' ? 'Terminé' : status === 'live' ? 'En cours' : status === 'scheduled' ? 'Planifié' : 'En attente'}
                 </span>
                 {isAdmin && status === 'scheduled' && (
-                  <button
+                  <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                     onClick={() => onAdminAction('start-day', { dayKey: day })}
                     disabled={isActionLoading}
                     className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-1 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
                   >
                     Demarrer
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -130,14 +137,17 @@ export const QualificationPanel = ({
       })}
 
       {isAdmin && season.status === 'qualifying' && DAY_KEYS.every((d) => season.qualificationGroups[d]?.status === 'finished') && (
-        <button
+        <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
           onClick={() => onAdminAction('advance-to-final')}
           disabled={isActionLoading}
           className="flex items-center gap-2 border border-orange-400/30 px-4 py-2.5 text-[10px] font-mono font-bold tracking-wider uppercase text-orange-400 hover:bg-orange-400/10 transition-colors disabled:opacity-50 touch-target"
         >
           <Trophy className="w-3.5 h-3.5" />
           Avancer vers la finale (Top 40)
-        </button>
+        </Button>
       )}
     </div>
   );

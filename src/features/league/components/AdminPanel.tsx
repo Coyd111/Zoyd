@@ -21,6 +21,7 @@ import { DAY_KEYS, DAY_LABELS } from './leagueSeasonConstants';
 import { fetchServerLeaguePayments } from '../../../app/lib/leagueApi';
 import { formatZC } from '../../../lib/utils';
 import { toast } from '../../../app/lib/toast';
+import { Button } from '../../../app/components/ui/Button';
 
 interface PaymentInfo {
   userId: string;
@@ -121,7 +122,10 @@ export const AdminPanel = ({
           { key: 'reassign', label: 'REASSIGNER', icon: RefreshCw },
           { key: 'payments', label: 'PAIEMENTS', icon: DollarSign },
         ] as const).map(({ key, label, icon: Icon }) => (
-          <button
+          <Button
+                variant="ghost"
+                size="link"
+                animate={false}
             key={key}
             onClick={() => setSettingsTab(key)}
             className={`flex items-center gap-2 text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-2 border transition-colors ${
@@ -132,7 +136,7 @@ export const AdminPanel = ({
           >
             <Icon className="w-3.5 h-3.5" />
             {label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -175,13 +179,16 @@ export const AdminPanel = ({
             <span className="text-[10px] text-white/70">
               {season.registeredPlayers.length} inscrits — Pot apres sauvegarde : {formatZC(season.registeredPlayers.length * entryFee)}
             </span>
-            <button
+            <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
               onClick={handleSaveSettings}
               disabled={isActionLoading || season.status !== 'registering'}
               className="text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
             >
               Sauvegarder
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -245,14 +252,17 @@ export const AdminPanel = ({
                   </select>
                 </div>
               </div>
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 onClick={handleReassign}
                 disabled={isActionLoading || !reassignUserId || reassignFromDay === reassignToDay}
                 className="w-full text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50 touch-target"
               >
                 <RefreshCw className="w-3.5 h-3.5 inline mr-2" />
                 Reassigner
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -262,14 +272,17 @@ export const AdminPanel = ({
         <div className="border border-white/10 bg-zoyd-surface/20 p-5 space-y-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-white">Gestion des paiements</h3>
-            <button
+            <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
               onClick={loadPayments}
               disabled={loadingPayments}
               className="text-[10px] font-mono font-bold tracking-wider uppercase px-3 py-1.5 border border-white/10 text-white/70 hover:text-white/60 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-3 h-3 inline mr-1 ${loadingPayments ? 'animate-spin' : ''}`} />
               Actualiser
-            </button>
+            </Button>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -319,14 +332,17 @@ export const AdminPanel = ({
                       <td className="px-3 py-2 text-sm text-white/60 text-right">{formatZC(payment.amount)}</td>
                       <td className="px-3 py-2 text-right">
                         {payment.paid && payment.locked && (
-                          <button
+                          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                             onClick={() => handleRefund(payment.userId)}
                             disabled={isActionLoading}
                             className="text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-1 border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
                           >
                             <UserMinus className="w-3 h-3 inline mr-1" />
                             Rembourser
-                          </button>
+                          </Button>
                         )}
                       </td>
                     </tr>

@@ -1,0 +1,13 @@
+/**
+ * scripts/button-specs/create-tournament.json - specification de
+ * conversion des boutons de `src/app/pages/mj/CreateTournamentPage.tsx`.
+ */
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "primary", "size": "md" }
+]

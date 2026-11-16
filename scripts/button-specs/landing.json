@@ -1,0 +1,5 @@
+// scripts/button-specs/landing.json - conversion des boutons de
+// `src/app/pages/LandingPage.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" }
+]

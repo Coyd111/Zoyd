@@ -1,0 +1,7 @@
+// scripts/button-specs/admin-users.json - conversion des boutons de
+// `src/app/components/admin/AdminUsersTab.tsx` (3 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "ghost", "size": "sm" }
+]

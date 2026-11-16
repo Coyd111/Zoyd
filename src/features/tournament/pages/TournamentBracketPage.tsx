@@ -47,6 +47,7 @@ import BracketGrid from '../components/BracketGrid';
 import BracketSidebar from '../components/BracketSidebar';
 import BracketActions from '../components/BracketActions';
 import { SEOHead } from '../../../app/components/SEOHead';
+import { Button } from '../../../app/components/ui/Button';
 
 const TournamentBracketPage: React.FC = () => {
   const { id } = useParams();
@@ -203,9 +204,12 @@ const TournamentBracketPage: React.FC = () => {
           <h2 className="text-xl font-display font-black uppercase mb-4">Tournoi introuvable</h2>
           {loadError ? <p className="text-sm text-red-200 mb-4">{loadError}</p> : null}
           {loadError ? (
-            <button onClick={() => void loadTournament()} className="underline hover:text-white text-sm text-red-200">
+            <Button
+                variant="ghost"
+                size="link"
+                animate={false} onClick={() => void loadTournament()} className="underline hover:text-white text-sm text-red-200">
               Réessayer
-            </button>
+            </Button>
           ) : null}
           <Link
             to="/mj/tournois"
@@ -462,9 +466,12 @@ const TournamentBracketPage: React.FC = () => {
         {loadError ? (
           <div className="border border-red-400/20 bg-red-400/5 px-5 py-4 text-sm text-red-200">
             {loadError}
-            <button onClick={() => void loadTournament()} className="ml-4 underline hover:text-white">
+            <Button
+                variant="ghost"
+                size="link"
+                animate={false} onClick={() => void loadTournament()} className="ml-4 underline hover:text-white">
               Réessayer
-            </button>
+            </Button>
           </div>
         ) : null}
 
@@ -565,18 +572,24 @@ const TournamentBracketPage: React.FC = () => {
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-3">
-                      <button
+                      <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                         onClick={handleSaveRoom}
                         className="border border-zoyd-blue/30 text-zoyd-blue py-3 font-display font-black uppercase tracking-widest text-xs italic hover:bg-zoyd-blue hover:text-black transition-colors"
                       >
                         Partager la salle
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                variant="primary"
+                size="md"
+                animate={false}
                         onClick={handleSetLive}
                         className="bg-white text-black py-3 font-display font-black uppercase tracking-widest text-xs italic"
                       >
                         Passer en cours
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-3">
@@ -605,12 +618,15 @@ const TournamentBracketPage: React.FC = () => {
                       aria-label="Notes de l'arbitre"
                       className="w-full min-h-24 bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-blue"
                     />
-                    <button
+                    <Button
+                variant="primary"
+                size="md"
+                animate={false}
                       onClick={handleSubmitResult}
                       className="w-full bg-zoyd-yellow text-black py-4 font-display font-black uppercase tracking-widest text-xs italic"
                     >
                       Valider le score
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div className="border border-white/10 bg-black/40 p-4 text-sm text-white/60">
@@ -640,18 +656,24 @@ const TournamentBracketPage: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 onClick={() => setConfirmAction(null)}
                 className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                animate={false}
                 onClick={() => { setConfirmAction(null); void handleLeave(); }}
                 className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors"
               >
                 Confirmer
-              </button>
+              </Button>
             </div>
           </div>
         </div>

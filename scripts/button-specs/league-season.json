@@ -1,0 +1,9 @@
+// scripts/button-specs/league-season.json - conversion des boutons de
+// `src/features/league/pages/LeagueSeasonPage.tsx` (5 boutons).
+[
+  { "variant": "ghost", "size": "link" },
+  { "variant": "danger", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "danger", "size": "sm" },
+  { "variant": "secondary", "size": "sm" }
+]

@@ -15,6 +15,7 @@
  */
 import React from 'react';
 import { logError } from '../lib/logger';
+import { Button } from './ui/Button';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -50,12 +51,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               <p className="text-white/70 text-sm mb-6">
                 {import.meta.env.DEV ? (this.state.error?.message || 'Erreur inconnue.') : 'Une erreur inattendue s\'est produite.'}
               </p>
-              <button
+              <Button
+                variant="primary"
+                size="md"
+                animate={false}
                 onClick={() => window.location.reload()}
                 className="px-6 py-3 bg-white text-black font-display font-black text-xs uppercase tracking-widest hover:bg-zoyd-yellow transition-colors"
               >
                 Recharger
-              </button>
+              </Button>
             </div>
           </div>
         )

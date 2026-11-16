@@ -37,6 +37,7 @@ import { getApiUrl } from '../lib/apiClient';
 import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
 import { SocialLinks } from '../components/SocialLinks';
+import { Button } from '../components/ui/Button';
 
 interface PublicStats {
   players: number;
@@ -595,13 +596,16 @@ function LandingNav() {
           </Link>
         </div>
 
-        <button
+        <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
           onClick={() => setMobileOpen(!mobileOpen)}
           className="lg:hidden touch-target flex items-center justify-center text-white/60 hover:text-white transition-colors"
           aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         >
           {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        </Button>
       </div>
 
       {mobileOpen && (

@@ -1,0 +1,5 @@
+// scripts/button-specs/bracket-match-card.json - conversion des boutons de
+// `src/features/tournament/components/BracketMatchCard.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" }
+]

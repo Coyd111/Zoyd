@@ -25,6 +25,7 @@ import { NotificationDropdown } from '../notifications/NotificationDropdown';
 import NotificationSettingsModal from '../notifications/NotificationSettingsModal';
 import ZoydLogo from '../branding/ZoydLogo';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
+import { Button } from '../ui/Button';
 
 const Navbar: React.FC = React.memo(() => {
   const { user } = useAuthStore();
@@ -98,13 +99,16 @@ const Navbar: React.FC = React.memo(() => {
               PARAMETRES de la BottomNav aussi). La modale n'apportait
               qu'un second chemin vers la meme chose, au prix d'un tap
               supplementaire dans l'entete mobile. */}
-          <button
+          <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
             onClick={() => setSettingsOpen(true)}
             className="hidden sm:flex touch-target items-center justify-center text-white/60 hover:text-white transition-colors"
             aria-label="Paramètres de notifications"
           >
             <Settings className="w-5 h-5" />
-          </button>
+          </Button>
 
           {/* Avatar : initiales en chip bordee (l'initiale nue flottait
               sans bordure). */}

@@ -1,0 +1,11 @@
+// scripts/button-specs/admin-reports.json - conversion des boutons de
+// `src/app/components/admin/AdminReportsTab.tsx` (7 boutons).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "danger", "size": "sm" },
+  { "variant": "danger", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "primary", "size": "sm" }
+]

@@ -1,0 +1,10 @@
+// scripts/button-specs/leaks.json - conversion des boutons de
+// `src/app/pages/LeaksPage.tsx` (6 boutons, dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "primary", "size": "sm" },
+  { "variant": "ghost", "size": "link" },
+  { "variant": "secondary", "size": "md" }
+]

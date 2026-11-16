@@ -1,0 +1,5 @@
+// scripts/button-specs/final-results.json - conversion des boutons de
+// `src/features/league/components/FinalResultsForm.tsx` (1 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "sm" }
+]

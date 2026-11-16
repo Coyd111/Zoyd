@@ -1,0 +1,6 @@
+// scripts/button-specs/admin-matches.json - conversion des boutons de
+// `src/app/components/admin/AdminMatchesTab.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "danger", "size": "sm" }
+]

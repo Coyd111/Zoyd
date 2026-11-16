@@ -50,6 +50,7 @@ import type { MatchFilter, UserFilter, DisputeFilter } from '../components/admin
 import { Modal } from '../components/ui/Modal';
 import { SEOHead } from '../components/SEOHead';
 import { CLOSED_STATUSES, PRIORITY_STATUSES } from '../lib/matchStatus';
+import { Button } from '../components/ui/Button';
 
 const EMPTY_WALLET: WalletSnapshot = {
   cashBalance: 0,
@@ -467,9 +468,12 @@ const AdminDashboardPage: React.FC = () => {
             hint={commissionsUnavailable ? 'Lecture impossible (2FA expirée ou réseau) — vérifie la 2FA pour recharger' : 'Part de cagnotte versée aux arbitres (sortie, pas revenu)'}
           />
           {commissionsUnavailable && (
-            <button type="button" onClick={() => void reloadCommissions(true)} className="self-center border border-zoyd-yellow/40 px-4 py-2 text-[10px] font-display font-black uppercase tracking-widest text-zoyd-yellow hover:bg-zoyd-yellow hover:text-black transition-colors touch-target">
+            <Button
+                variant="secondary"
+                size="sm"
+                animate={false} type="button" onClick={() => void reloadCommissions(true)} className="self-center border border-zoyd-yellow/40 px-4 py-2 text-[10px] font-display font-black uppercase tracking-widest text-zoyd-yellow hover:bg-zoyd-yellow hover:text-black transition-colors touch-target">
               Vérifier la 2FA et recharger
-            </button>
+            </Button>
           )}
         </div>
 
@@ -480,7 +484,10 @@ const AdminDashboardPage: React.FC = () => {
           SANS connexion SQL ni intervention du developpeur.
         */}
         <div className="flex flex-wrap items-center gap-2 mb-8 border border-white/10 p-3">
-          <button
+          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
             type="button"
             onClick={() => handleExportHistory('csv')}
             disabled={exporting}
@@ -488,15 +495,18 @@ const AdminDashboardPage: React.FC = () => {
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
             {exporting ? 'EXPORT...' : "EXPORTER L'HISTORIQUE (CSV)"}
-          </button>
-          <button
+          </Button>
+          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
             type="button"
             onClick={() => handleExportHistory('json')}
             disabled={exporting}
             className="border border-white/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest hover:bg-white/10 disabled:opacity-40"
           >
             JSON
-          </button>
+          </Button>
           <span className="text-[10px] text-white/50">
             Sauvegarde à faire tous les 3 mois. 2FA requise.
           </span>
@@ -510,10 +520,13 @@ const AdminDashboardPage: React.FC = () => {
             { id: 'users', label: 'utilisateurs', count: filteredUsers.length },
             { id: 'reports', label: 'signalements', count: pendingReports.length },
           ].map((tab: { id: string; label: string; count: number; urgent?: number }) => (
-            <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} aria-label={`${tab.label} (${tab.count}${tab.urgent ? `, ${tab.urgent} urgents` : ''})`} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${activeTab === tab.id ? 'bg-white text-black' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+            <Button
+                variant="secondary"
+                size="sm"
+                animate={false} key={tab.id} role="tab" aria-selected={activeTab === tab.id} aria-label={`${tab.label} (${tab.count}${tab.urgent ? `, ${tab.urgent} urgents` : ''})`} onClick={() => setActiveTab(tab.id as typeof activeTab)} className={`relative px-4 sm:px-6 py-2.5 text-[10px] font-display font-black uppercase tracking-[0.15em] transition-all touch-target ${activeTab === tab.id ? 'bg-white text-black' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
               {tab.label} <span className="opacity-60">({tab.count})</span>
               {'urgent' in tab && tab.urgent !== undefined && tab.urgent > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] font-mono font-black text-white flex items-center justify-center">{tab.urgent}</span>}
-            </button>
+            </Button>
           ))}
         </div>
         {/*
@@ -570,19 +583,25 @@ const AdminDashboardPage: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          <button
+          <Button
+                variant="secondary"
+                size="md"
+                animate={false}
             onClick={() => setConfirmAction(null)}
             className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
           >
             Annuler
-          </button>
-          <button
+          </Button>
+          <Button
+                variant="danger"
+                size="md"
+                animate={false}
             onClick={() => { const matchId = confirmAction; setConfirmAction(null); if (matchId) void handleCancelMatch(matchId); }}
             disabled={loadingAction}
             className="flex-1 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
           >
             {loadingAction ? 'En cours...' : 'Confirmer'}
-          </button>
+          </Button>
         </div>
       </Modal>
     </div>

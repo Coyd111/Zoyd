@@ -1,0 +1,9 @@
+// scripts/button-specs/register.json - conversion des boutons de
+// `src/app/pages/auth/RegisterPage.tsx` (5 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "secondary", "size": "md" }
+]

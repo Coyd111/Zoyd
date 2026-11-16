@@ -34,6 +34,7 @@ import { formatZC, ZC_TO_FCFA } from '../../../lib/utils';
 import { BrLobbyCreatePanel } from '../components/BrLobbyCreatePanel';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { toast } from '../../../app/lib/toast';
+import { Button } from '../../../app/components/ui/Button';
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'INSCRIPTIONS', className: 'text-green-400 border-green-400/30 bg-green-400/10' },
@@ -143,7 +144,10 @@ const BrLobbyCard: React.FC<{
             {checkedIn ? 'Present' : 'Inscrit'}
           </span>
         ) : (
-          <button
+          <Button
+                variant="primary"
+                size="sm"
+                animate={false}
             type="button"
             onClick={() => onJoin(lobby)}
             disabled={!open || isLoading}
@@ -162,7 +166,7 @@ const BrLobbyCard: React.FC<{
             }
           >
             {isLoading ? '...' : full ? 'Complet' : open ? "S'inscrire" : 'Ferme'}
-          </button>
+          </Button>
         )}
       </div>
     </div>

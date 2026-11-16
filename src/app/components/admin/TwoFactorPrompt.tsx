@@ -24,6 +24,7 @@
 import React, { useEffect, useState } from 'react';
 import { Shield } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 
 interface TwoFactorPromptProps {
   open: boolean;
@@ -89,20 +90,26 @@ const TwoFactorPrompt: React.FC<TwoFactorPromptProps> = ({
         />
         {error && <p className="text-[10px] font-mono text-red-400 mt-2">{error}</p>}
         <div className="flex gap-3 mt-4">
-          <button
+          <Button
+                variant="secondary"
+                size="md"
+                animate={false}
             type="button"
             onClick={onCancel}
             className="flex-1 border border-white/10 px-4 py-3 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors"
           >
             Annuler
-          </button>
-          <button
+          </Button>
+          <Button
+                variant="primary"
+                size="md"
+                animate={false}
             type="submit"
             disabled={submitting}
             className="flex-1 bg-zoyd-yellow text-black px-4 py-3 text-[10px] font-display font-black uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-40"
           >
             {submitting ? 'Verification...' : verifyLabel}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

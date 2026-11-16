@@ -20,6 +20,7 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Ban, Clock, ShieldAlert, Check, Gavel } from 'lucide-react';
 import type { ActiveSanction } from '../../lib/socialApi';
+import { Button } from '../ui/Button';
 
 /**
  * File d'attente de moderation.
@@ -199,22 +200,28 @@ const AdminReportsTab: React.FC<Props> = ({
 
                 {!enConfirmation ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
+                    <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                       type="button"
                       disabled={busy}
                       onClick={() => onResolve(report.id, 'dismissed', note[report.id] || '')}
                       className="flex items-center gap-1.5 border border-white/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest hover:bg-white/10 disabled:opacity-40"
                     >
                       <Check className="w-3.5 h-3.5" aria-hidden="true" /> Classer
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                       type="button"
                       disabled={busy}
                       onClick={() => onResolve(report.id, 'warning', note[report.id] || '')}
                       className="flex items-center gap-1.5 border border-yellow-500/40 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-40"
                     >
                       <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" /> Avertir
-                    </button>
+                    </Button>
 
                     <label className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase text-white/60">
                       <Clock className="w-3.5 h-3.5" aria-hidden="true" />
@@ -230,22 +237,28 @@ const AdminReportsTab: React.FC<Props> = ({
                         ))}
                       </select>
                     </label>
-                    <button
+                    <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                       type="button"
                       disabled={busy}
                       onClick={() => onResolve(report.id, 'temporary_ban', note[report.id] || '', duree)}
                       className="flex items-center gap-1.5 border border-orange-500/40 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-orange-400 hover:bg-orange-500/10 disabled:opacity-40"
                     >
                       <Ban className="w-3.5 h-3.5" aria-hidden="true" /> Banni {duree} j
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                variant="danger"
+                size="sm"
+                animate={false}
                       type="button"
                       disabled={busy}
                       onClick={() => setConfirmPermanent(report.id)}
                       className="flex items-center gap-1.5 border border-red-500/50 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 disabled:opacity-40"
                     >
                       <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" /> Banni définitivement
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div
@@ -259,7 +272,10 @@ const AdminReportsTab: React.FC<Props> = ({
                       Sa session sera fermée immédiatement et il ne pourra plus se connecter. Seul un administrateur peut lever cette sanction.
                     </p>
                     <div className="flex gap-2">
-                      <button
+                      <Button
+                variant="danger"
+                size="sm"
+                animate={false}
                         type="button"
                         disabled={busy}
                         onClick={() => {
@@ -269,14 +285,17 @@ const AdminReportsTab: React.FC<Props> = ({
                         className="border border-red-500 bg-red-500/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-white hover:bg-red-500/30 disabled:opacity-40"
                       >
                         {busy ? 'Application…' : 'Oui, bannir définitivement'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                         type="button"
                         onClick={() => setConfirmPermanent(null)}
                         className="border border-white/20 px-3 py-2 text-[10px] font-display font-black uppercase tracking-widest text-white/70 hover:bg-white/10"
                       >
                         Annuler
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -314,14 +333,17 @@ const AdminReportsTab: React.FC<Props> = ({
                   <span className="text-xs text-white/50 italic">{sanction.reason}</span>
                 )}
                 <span className="text-xs text-white/70">{formatWhen(sanction.issuedAt)}</span>
-                <button
+                <Button
+                variant="primary"
+                size="sm"
+                animate={false}
                   type="button"
                   disabled={revokingId === sanction.id}
                   onClick={() => onRevoke(sanction.id)}
                   className="ml-auto border border-green-500/40 px-3 py-1.5 text-[10px] font-display font-black uppercase tracking-widest text-green-400 hover:bg-green-500/10 disabled:opacity-40"
                 >
                   {revokingId === sanction.id ? 'Levée…' : 'Lever'}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

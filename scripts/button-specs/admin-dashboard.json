@@ -1,0 +1,10 @@
+// scripts/button-specs/admin-dashboard.json - conversion des boutons de
+// `src/app/pages/AdminDashboardPage.tsx` (6 boutons).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "danger", "size": "md" }
+]

@@ -1,0 +1,6 @@
+// scripts/button-specs/dashboard.json - conversion des boutons de
+// `src/app/pages/DashboardPage.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "sm" },
+  { "variant": "danger", "size": "sm" }
+]

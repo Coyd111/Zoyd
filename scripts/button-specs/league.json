@@ -1,0 +1,14 @@
+// scripts/button-specs/league.json - conversion des boutons de
+// `src/features/league/pages/LeaguePage.tsx` (9 boutons, dans l ordre du
+// fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "primary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "ghost", "size": "link" },
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "primary", "size": "sm" },
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "primary", "size": "sm" }
+]

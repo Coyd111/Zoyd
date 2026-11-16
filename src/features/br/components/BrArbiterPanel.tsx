@@ -34,6 +34,7 @@ import {
 } from '../../../app/lib/brApi';
 import { formatZC } from '../../../lib/utils';
 import { toast } from '../../../app/lib/toast';
+import { Button } from '../../../app/components/ui/Button';
 
 /**
  * Panneau ARBITRE : la seule interface qui pilote le cycle de vie d'un salon.
@@ -278,7 +279,10 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                 scheduledAt={view.lobby.scheduledAt}
                 minPresent={MIN_PRESENT_TO_START}
               />
-              <button
+              <Button
+                variant="primary"
+                size="md"
+                animate={false}
                 type="button"
                 onClick={() => void handleStart()}
                 disabled={acting || summary.present < MIN_PRESENT_TO_START}
@@ -286,7 +290,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
               >
                 <PlayCircle className="w-4 h-4" aria-hidden="true" />
                 {acting ? 'En cours...' : 'Lancer la partie'}
-              </button>
+              </Button>
               {summary.present < MIN_PRESENT_TO_START && (
                 <p className="text-[10px] font-mono text-red-400 mt-2 text-center">
                   Il faut au moins {MIN_PRESENT_TO_START} joueurs presents pour lancer la partie.
@@ -359,7 +363,10 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                 </div>
               </div>
 
-              <button
+              <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                 type="button"
                 onClick={() => void handleEliminate()}
                 disabled={acting || alivePlayers.length <= 1 || !eliminatedUserId}
@@ -367,7 +374,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
               >
                 <Skull className="w-4 h-4" aria-hidden="true" />
                 Enregistrer l&apos;elimination
-              </button>
+              </Button>
 
               {alivePlayers.length <= 1 && (
                 <p className="text-[10px] font-mono text-zoyd-yellow mt-2 text-center">
@@ -406,7 +413,10 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
 
               <div className="mt-5 pt-4 border-t border-white/10">
                 {!twofaOpen ? (
-                  <button
+                  <Button
+                variant="primary"
+                size="md"
+                animate={false}
                     type="button"
                     onClick={() => void handleFinish()}
                     disabled={acting}
@@ -414,7 +424,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                   >
                     <Trophy className="w-4 h-4" aria-hidden="true" />
                     {acting ? 'En cours...' : 'Cloturer et verser la cagnotte'}
-                  </button>
+                  </Button>
                 ) : (
                   <form onSubmit={handleTwofaSubmit}>
                     <p className="text-xs text-white/80 leading-relaxed mb-3 flex items-start gap-2">
@@ -438,20 +448,26 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                       <p className="text-[10px] font-mono text-red-400 mt-2">{twofaError}</p>
                     )}
                     <div className="flex gap-2 mt-3">
-                      <button
+                      <Button
+                variant="secondary"
+                size="md"
+                animate={false}
                         type="button"
                         onClick={() => { setTwofaOpen(false); setTwofaError(null); }}
                         className="flex-1 border border-white/15 px-4 py-3 font-display font-black text-[10px] uppercase italic tracking-[0.2em] text-white/70 hover:border-white/40 transition-colors touch-target"
                       >
                         Annuler
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                variant="primary"
+                size="md"
+                animate={false}
                         type="submit"
                         disabled={acting}
                         className="flex-1 bg-green-400 text-black px-4 py-3 font-display font-black text-[10px] uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-40 touch-target"
                       >
                         {acting ? 'Verification...' : 'Verifier et verser'}
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 )}

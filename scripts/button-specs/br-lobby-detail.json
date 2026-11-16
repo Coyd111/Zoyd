@@ -1,0 +1,7 @@
+// scripts/button-specs/br-lobby-detail.json - conversion des boutons de
+// `src/features/br/pages/BrLobbyDetailPage.tsx` (3 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" }
+]

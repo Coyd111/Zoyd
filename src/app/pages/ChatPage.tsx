@@ -284,13 +284,16 @@ const ChatPage: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Back button on mobile when channel is active */}
             {activeChannelId && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                 onClick={() => setActiveChannel(null)}
                 className="touch-target sm:hidden text-white/70 hover:text-white transition-colors mr-1"
                 aria-label="Retour aux canaux"
               >
                 <ArrowLeft className="w-5 h-5" />
-              </button>
+              </Button>
             )}
             <MessageSquare className="w-4 h-4 text-zoyd-yellow" />
             <h1 className="text-base font-display font-black uppercase tracking-tighter italic">
@@ -325,7 +328,10 @@ const ChatPage: React.FC = () => {
                 pour demarrer une discussion » ne contient pas « Nouvelle
                 discussion ». Le texte visible nomme le bouton, et
                 `aria-expanded` porte l etat du selecteur. */}
-            <button
+            <Button
+                variant="primary"
+                size="md"
+                animate={false}
               onClick={() => {
                 if (!user) {
                   navigate('/auth/login');
@@ -337,7 +343,7 @@ const ChatPage: React.FC = () => {
               className="w-full bg-white text-black py-3 min-h-[44px] font-display font-black text-[10px] tracking-[0.2em] uppercase italic hover:bg-zoyd-yellow transition-colors"
             >
               Nouvelle discussion
-            </button>
+            </Button>
             {showFriendPicker && (
               <div className="mt-2 max-h-52 overflow-y-auto border border-white/10 bg-zoyd-black/80">
                 {friends.length === 0 ? (
@@ -346,7 +352,10 @@ const ChatPage: React.FC = () => {
                   </p>
                 ) : (
                   friends.map((friend) => (
-                    <button
+                    <Button
+                variant="ghost"
+                size="md"
+                animate={false}
                       key={friend.id}
                       onClick={() => {
                         setShowFriendPicker(false);
@@ -357,7 +366,7 @@ const ChatPage: React.FC = () => {
                     >
                       <span className="truncate">{friend.pseudo}</span>
                       <span className={cn('w-2 h-2 rounded-full shrink-0', friend.status === 'online' ? 'bg-green-500' : 'bg-white/10')} />
-                    </button>
+                    </Button>
                   ))
                 )}
               </div>
@@ -366,7 +375,10 @@ const ChatPage: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {channels.map((channel) => (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                 key={channel.id}
                 onClick={() => setActiveChannel(channel.id)}
                 aria-label={`Ouvrir le canal ${channel.name}`}
@@ -388,7 +400,7 @@ const ChatPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -446,13 +458,16 @@ const ChatPage: React.FC = () => {
                   scrollable) : il reste atteignable sans remonter. */}
               {messagesMasques > 0 && (
                 <div className="flex justify-center border-b border-white/5 bg-zoyd-black/60 px-4 py-2">
-                  <button
+                  <Button
+                variant="ghost"
+                size="sm"
+                animate={false}
                     type="button"
                     onClick={chargerMessagesAnciens}
                     className="touch-target px-3 py-1 text-[10px] font-display font-black tracking-widest uppercase italic text-white/70 hover:text-white hover:bg-white/5 border border-white/10"
                   >
                     Voir les {messagesMasques} message{messagesMasques > 1 ? 's' : ''} plus ancien{messagesMasques > 1 ? 's' : ''}
-                  </button>
+                  </Button>
                 </div>
               )}
 

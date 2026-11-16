@@ -1,0 +1,10 @@
+// scripts/button-specs/wallet.json - conversion des boutons de
+// `src/app/pages/WalletPage.tsx` (6 boutons, dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "ghost", "size": "link" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "ghost", "size": "sm" },
+  { "variant": "secondary", "size": "sm" }
+]

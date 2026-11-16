@@ -34,6 +34,7 @@ import {
 } from '../../lib/codmWeaponData';
 import { toCountryIso } from '../../lib/competition';
 import { useAuthStore } from '../stores/authStore';
+import { Button } from '../components/ui/Button';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -341,7 +342,10 @@ const LeaksPage: React.FC = () => {
               const Icon = tab.icon;
               const isActive = activeLiveTab === tab.id;
               return (
-                <button
+                <Button
+                variant="primary"
+                size="sm"
+                animate={false}
                   key={tab.id}
                   onClick={() => setActiveLiveTab(tab.id)}
                   className={`flex flex-none items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
@@ -357,7 +361,7 @@ const LeaksPage: React.FC = () => {
                       {tab.badge}
                     </span>
                   )}
-                </button>
+                </Button>
               );
             })}
             </div>
@@ -386,13 +390,16 @@ const LeaksPage: React.FC = () => {
               {!bundlesLoading && bundlesError && (
                 <div className="text-center py-8 text-white/60 text-sm space-y-3">
                   <p>Chargement du catalogue impossible : le serveur ne repond pas.</p>
-                  <button
+                  <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                     type="button"
                     onClick={() => setBundleRetry((n) => n + 1)}
                     className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-xs font-display font-black uppercase tracking-widest text-white hover:border-zoyd-yellow hover:text-zoyd-yellow transition-colors touch-target"
                   >
                     Réessayer
-                  </button>
+                  </Button>
                 </div>
               )}
               {!bundlesLoading && !bundlesError && bundles.length === 0 && (
@@ -471,10 +478,13 @@ const LeaksPage: React.FC = () => {
                 <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-zoyd-black to-transparent z-10" />
                 <div className="flex flex-nowrap gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-2">
                   {WEAPON_CATEGORIES.map((cat) => (
-                    <button key={cat} onClick={() => { setSelectedWeaponCategory(cat); setWeaponSearch(''); }}
+                    <Button
+                variant="secondary"
+                size="sm"
+                animate={false} key={cat} onClick={() => { setSelectedWeaponCategory(cat); setWeaponSearch(''); }}
                       className={`px-3 py-1.5 font-display font-black text-[10px] tracking-wider italic uppercase whitespace-nowrap transition-all border ${
                         selectedWeaponCategory === cat ? 'bg-white text-black border-white' : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
-                      }`}>{cat}</button>
+                      }`}>{cat}</Button>
                   ))}
                 </div>
               </div>
@@ -505,10 +515,13 @@ const LeaksPage: React.FC = () => {
               const Icon = cat.icon;
               const isActive = activeCategory === cat.id;
               return (
-                <button key={cat.id} role="tab" aria-selected={isActive} onClick={() => setActiveCategory(cat.id)}
+                <Button
+                variant="primary"
+                size="sm"
+                animate={false} key={cat.id} role="tab" aria-selected={isActive} onClick={() => setActiveCategory(cat.id)}
                   className={`flex flex-none items-center gap-2 px-5 py-2.5 font-display font-black text-[10px] tracking-[0.15em] italic uppercase transition-all border whitespace-nowrap touch-target ${
                     isActive ? 'bg-white text-black border-white' : 'text-white/60 border-white/5 hover:border-white/20 hover:text-white/60'
-                  }`}><Icon className="w-4 h-4" />{cat.label}</button>
+                  }`}><Icon className="w-4 h-4" />{cat.label}</Button>
               );
             })}
           </div>
@@ -551,10 +564,13 @@ const LeaksPage: React.FC = () => {
                 <h2 className="text-2xl md:text-3xl font-display font-black uppercase tracking-tighter italic leading-tight mb-4 group-hover:text-zoyd-yellow transition-colors">{featured.title}</h2>
                 <p className="text-sm text-white/70 mb-4 line-clamp-3">{featured.excerpt}</p>
                 {featured.source && <p className="text-[10px] font-mono text-white/60 mb-4">Source: {featured.source}</p>}
-                <button onClick={() => toggleArticle(featured.id)} aria-expanded={expandedArticles.has(featured.id)}
+                <Button
+                variant="ghost"
+                size="link"
+                animate={false} onClick={() => toggleArticle(featured.id)} aria-expanded={expandedArticles.has(featured.id)}
                   className="flex items-center gap-2 text-zoyd-yellow font-display font-black text-xs tracking-widest uppercase italic hover:gap-4 transition-all min-h-11 py-2">
                   {expandedArticles.has(featured.id) ? 'REVOIR' : 'LIRE LA SUITE'}<ChevronRight className="w-4 h-4" />
-                </button>
+                </Button>
                 {expandedArticles.has(featured.id) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 space-y-3 border-t border-white/5 pt-4">
                     {featured.content.map((p, i) => <p key={i} className="text-sm text-white/75 leading-relaxed">{p}</p>)}
@@ -605,13 +621,16 @@ const LeaksPage: React.FC = () => {
                 <h3 className="text-sm font-display font-black uppercase tracking-tight italic leading-snug mb-2 group-hover:text-zoyd-yellow transition-colors line-clamp-2">{article.title}</h3>
                 <p className="text-xs text-white/60 line-clamp-2 mb-3">{article.excerpt}</p>
                 {article.source && <p className="text-[10px] font-mono text-white/60 mb-3">Source: {article.source}</p>}
-                <button onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
+                <Button
+                variant="secondary"
+                size="md"
+                animate={false} onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
                   className="flex items-center justify-between w-full min-h-11 py-2">
                   <span className="text-[10px] font-mono text-white/60">{article.readTime}</span>
                   <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/60 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
                     {expandedArticles.has(article.id) ? 'Masquer' : 'Lire'}<ChevronRight className="w-3 h-3" />
                   </span>
-                </button>
+                </Button>
                 {expandedArticles.has(article.id) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 space-y-2 border-t border-white/5 pt-3">
                     {article.content.map((p, i) => <p key={i} className="text-xs text-white/70 leading-relaxed">{p}</p>)}

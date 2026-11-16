@@ -97,13 +97,16 @@ const ProfilPage = () => {
           <Link to="/parametres" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/70 hover:text-white touch-target">
             Modifier le profil <ChevronRight className="w-3 h-3" aria-hidden="true" />
           </Link>
-          <button
+          <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
             onClick={() => logout()}
             className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-red-400 hover:text-red-400 touch-target"
           >
             <LogOut className="w-3 h-3" aria-hidden="true" />
             Se déconnecter
-          </button>
+          </Button>
         </div>
       }
     />

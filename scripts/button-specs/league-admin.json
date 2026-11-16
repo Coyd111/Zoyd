@@ -1,0 +1,9 @@
+// scripts/button-specs/league-admin.json - conversion des boutons de
+// `src/features/league/components/AdminPanel.tsx` (5 boutons).
+[
+  { "variant": "ghost", "size": "link" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" }
+]

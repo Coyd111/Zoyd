@@ -186,13 +186,16 @@ const ForgotPasswordPage: React.FC = () => {
               >
                 {isResetting ? 'Réinitialisation...' : 'Réinitialiser'}
               </Button>
-              <button
+              <Button
+                variant="ghost"
+                size="md"
+                animate={false}
                 type="button"
                 onClick={() => { setCodeSent(false); setCode(''); setDevCode(''); }}
                 className="w-full text-sm text-white/70 hover:text-white transition-colors touch-target py-2"
               >
                 Utiliser un autre identifiant
-              </button>
+              </Button>
             </form>
           )}
 

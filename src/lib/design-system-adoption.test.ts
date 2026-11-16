@@ -23,53 +23,7 @@ import { join, resolve } from 'node:path';
 
 /** Les fichiers qui ont encore des balises `<button>` brutes, et combien. */
 const RESTANTS: Record<string, number> = {
-  'src/app/components/BootstrapFailedPanel.tsx': 1,
-  'src/app/components/ErrorBoundary.tsx': 1,
-  'src/app/components/RouteErrorBoundary.tsx': 1,
-  'src/app/components/admin/AdminMatchesTab.tsx': 2,
-  'src/app/components/admin/AdminOverviewTab.tsx': 2,
-  'src/app/components/admin/AdminReportsTab.tsx': 7,
-  'src/app/components/admin/AdminUrgencyTab.tsx': 5,
-  'src/app/components/admin/AdminUsersTab.tsx': 3,
-  'src/app/components/admin/TwoFactorPrompt.tsx': 2,
-  'src/app/components/layout/Navbar.tsx': 1,
-  'src/app/components/layout/Sidebar.tsx': 1,
-  'src/app/components/ui/Modal.tsx': 2,
-  'src/app/layouts/AppLayout.tsx': 2,
-  'src/app/pages/AdminDashboardPage.tsx': 6,
-  'src/app/pages/ChatPage.tsx': 5,
-  'src/app/pages/ClassementsPage.tsx': 1,
-  'src/app/pages/DashboardPage.tsx': 2,
-  'src/app/pages/LandingPage.tsx': 1,
-  'src/app/pages/LeaksPage.tsx': 6,
-  'src/app/pages/ParametresPage.tsx': 2,
-  'src/app/pages/ProfilPage.tsx': 1,
-  'src/app/pages/PublicClassementsPage.tsx': 2,
-  'src/app/pages/PublicProfilPage.tsx': 2,
-  'src/app/pages/WalletPage.tsx': 6,
-  'src/app/pages/auth/ActivatePage.tsx': 5,
-  'src/app/pages/auth/ForgotPasswordPage.tsx': 1,
-  'src/app/pages/auth/LoginPage.tsx': 1,
-  'src/app/pages/auth/RegisterPage.tsx': 5,
-  'src/app/pages/mj/CreateMatchPage.tsx': 17,
-  'src/app/pages/mj/CreateTournamentPage.tsx': 7,
-  'src/app/pages/mj/HubMJPage.tsx': 5,
-  'src/features/br/components/BrArbiterPanel.tsx': 5,
-  'src/features/br/components/BrLobbyCreatePanel.tsx': 4,
-  'src/features/br/pages/BrLobbyDetailPage.tsx': 3,
-  'src/features/br/pages/BrPage.tsx': 1,
-  'src/features/league/components/AdminPanel.tsx': 5,
-  'src/features/league/components/FinalResultsForm.tsx': 1,
-  'src/features/league/components/QualificationPanel.tsx': 3,
-  'src/features/league/pages/LeaguePage.tsx': 9,
-  'src/features/league/pages/LeagueSeasonPage.tsx': 5,
-  'src/features/match/components/MatchChat.tsx': 1,
-  'src/features/match/pages/MatchDetailPage.tsx': 10,
-  'src/features/tournament/components/BracketActions.tsx': 7,
-  'src/features/tournament/components/BracketMatchCard.tsx': 1,
-  'src/features/tournament/pages/TournamentBracketPage.tsx': 7,
-  'src/features/tournament/pages/TournoisPage.tsx': 2,
-  'src/main.tsx': 1,};
+};
 
 const parcourir = (dossier: string, sortie: string[] = []): string[] => {
   for (const nom of readdirSync(dossier)) {
@@ -151,8 +105,9 @@ describe('Adoption du design system', () => {
     }
     const adoption = designSystem / (bruts + designSystem);
     // Le plancher suit l avancement : il ne pourra que monter.
-    // Etat initial (2026-11-16) : 219 balises brutes pour 35 <Button>,
-    // soit 13,8 %. La premiere tranche le fait passer au-dessus.
-    expect(adoption, `adoption ${(adoption * 100).toFixed(0)} %`).toBeGreaterThanOrEqual(0.13);
+    // Etat final (2026-11-16) : plus une seule balise `<button>` brute
+    // dans le front — le cretoir est vide, donc TOUTE balise brute
+    // reintroduite est signalee.
+    expect(adoption, `adoption ${(adoption * 100).toFixed(0)} %`).toBeGreaterThanOrEqual(1);
   });
 });

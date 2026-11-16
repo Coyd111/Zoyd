@@ -22,6 +22,7 @@ import type { ChatMessage } from '../../../app/stores/chatStore';
 import { useAuthStore } from '../../../app/stores/authStore';
 import type { RoomPresenceMember, TypingMember } from '../../../app/stores/socketStore';
 import { sanitizeText, getRelativeTime } from '../../../lib/utils';
+import { Button } from '../../../app/components/ui/Button';
 
 interface MatchChatProps {
   messages: ChatMessage[];
@@ -231,7 +232,10 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
               placeholder="Transmettre un message..."
               className="flex-1 min-w-0 bg-black border border-white/10 px-5 py-3.5 text-xs font-display font-bold tracking-widest text-white focus:border-zoyd-blue transition-colors disabled:opacity-50"
             />
-          <button
+          <Button
+                variant="primary"
+                size="sm"
+                animate={false}
             type="submit"
             disabled={!inputValue.trim() || !isConnected}
             className="w-14 bg-white text-black hover:bg-zoyd-yellow transition-colors disabled:opacity-50 flex items-center justify-center border-none"
@@ -239,7 +243,7 @@ export const MatchChat: React.FC<MatchChatProps> = React.memo(({
             title="Envoyer le message"
           >
             <Send className="w-5 h-5" />
-          </button>
+          </Button>
         </form>
       </div>
     </div>

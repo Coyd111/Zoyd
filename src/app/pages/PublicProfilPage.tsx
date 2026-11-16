@@ -262,12 +262,18 @@ const PublicProfilPage = () => {
               <div className="border border-red-500/30 bg-red-500/10 p-3 space-y-2">
                 <p className="text-xs text-red-300">Confirmer le blocage de {publicProfile.pseudo} ?</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setConfirmAction(null)} className="flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors">
+                  <Button
+                variant="secondary"
+                size="sm"
+                animate={false} onClick={() => setConfirmAction(null)} className="flex-1 border border-white/10 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-white/60 hover:text-white transition-colors">
                     Annuler
-                  </button>
-                  <button onClick={() => { setConfirmAction(null); void handleBlock(); }} className="flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors">
+                  </Button>
+                  <Button
+                variant="danger"
+                size="sm"
+                animate={false} onClick={() => { setConfirmAction(null); void handleBlock(); }} className="flex-1 border border-red-500/30 px-3 py-2 text-[10px] font-mono font-bold tracking-wider uppercase text-red-400 hover:bg-red-400/10 transition-colors">
                     Confirmer
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

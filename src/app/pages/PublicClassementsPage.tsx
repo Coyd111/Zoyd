@@ -36,6 +36,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { SEOHead } from '../components/SEOHead';
 import { getTrustColor } from '../stores/trustScoreStore';
 import { formatZC } from '../../lib/utils';
+import { Button } from '../components/ui/Button';
 
 interface PublicPlayer {
   // id est deja expose par /api/leaderboard (sanitizeUserPayload) — deja
@@ -220,7 +221,10 @@ const PublicClassementsPage: React.FC = () => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button
+                <Button
+                variant="secondary"
+                size="sm"
+                animate={false}
                   key={tab.id}
                   role="tab"
                   aria-selected={isActive}
@@ -233,7 +237,7 @@ const PublicClassementsPage: React.FC = () => {
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -262,12 +266,15 @@ const PublicClassementsPage: React.FC = () => {
               Le serveur n&apos;a pas répondu. Aucun rang inventé n&apos;est affiché : réessaie
               dans un instant.
             </p>
-            <button
+            <Button
+                variant="primary"
+                size="sm"
+                animate={false}
               onClick={() => setAttempt((value) => value + 1)}
               className="border border-zoyd-yellow px-6 py-3 font-display font-black text-[10px] tracking-[0.2em] uppercase italic text-zoyd-yellow hover:bg-zoyd-yellow hover:text-black transition-colors touch-target"
             >
               Réessayer
-            </button>
+            </Button>
           </div>
         ) : entries.length === 0 ? (
           <div className="border border-white/5 bg-zoyd-surface/10 p-6 md:p-10 text-center">

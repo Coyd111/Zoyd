@@ -15,6 +15,7 @@
  * formulaire ferait perdre un classement deja rempli.
  */
 import { useState } from 'react';
+import { Button } from '../../../app/components/ui/Button';
 
 export const FinalResultsForm = ({
   finalists,
@@ -113,13 +114,16 @@ export const FinalResultsForm = ({
         <span className="text-[10px] text-white/70">
           {ranked.length} / {entries.length} joueurs classe(s)
         </span>
-        <button
+        <Button
+                variant="primary"
+                size="sm"
+                animate={false}
           onClick={handleSubmit}
           disabled={!canSubmit}
           className="touch-target text-[10px] font-mono font-bold tracking-wider uppercase px-4 py-2 border border-zoyd-yellow/30 text-zoyd-yellow hover:bg-zoyd-yellow/10 transition-colors disabled:opacity-50"
         >
           {isLoading ? 'Envoi...' : 'Valider les résultats'}
-        </button>
+        </Button>
       </div>
       {blockingReason && (
         <p role="status" className="text-[10px] font-mono text-zoyd-yellow">

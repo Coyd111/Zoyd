@@ -1,0 +1,6 @@
+// scripts/button-specs/tournois.json - conversion des boutons de
+// `src/features/tournament/pages/TournoisPage.tsx` (2 bouton(s), dans l ordre du fichier).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" }
+]

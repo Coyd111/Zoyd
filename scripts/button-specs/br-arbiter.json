@@ -1,0 +1,9 @@
+// scripts/button-specs/br-arbiter.json - conversion des boutons de
+// `src/features/br/components/BrArbiterPanel.tsx` (5 boutons).
+[
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" }
+]

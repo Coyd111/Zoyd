@@ -191,13 +191,18 @@ const BottomNav: React.FC = React.memo(() => {
 
           <Button
             variant="ghost"
-            size="md"
+            size="sm"
             animate={false}
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Plus d'options"
             aria-expanded={menuOpen}
             className={cn(
-              'relative flex flex-col items-center justify-center w-full h-full touch-target transition-all',
+              // PIEGE : ce bouton partage la barre avec quatre liens. Le
+              // design system ajoute un remplissage horizontal (px-4) que
+              // les liens n ont pas : a 320 px, la ligne « PLUS » etait
+              // plus large que ses voisines et le texte des autres
+              // libelles se tronquait. `px-0` remet les cinq a equalite.
+              'relative flex flex-col items-center justify-center w-full h-full px-0 touch-target transition-all',
               menuOpen ? 'text-white' : 'text-white/60'
             )}
           >

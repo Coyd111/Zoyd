@@ -1,0 +1,9 @@
+// scripts/button-specs/hub-mj.json - conversion des boutons de
+// `src/app/pages/mj/HubMJPage.tsx` (5 boutons : les filtres).
+[
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" },
+  { "variant": "secondary", "size": "sm" }
+]

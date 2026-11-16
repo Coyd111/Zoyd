@@ -1,0 +1,11 @@
+// scripts/button-specs/tournament-bracket.json - conversion des boutons
+// de `src/features/tournament/pages/TournamentBracketPage.tsx` (7 boutons).
+[
+  { "variant": "ghost", "size": "link" },
+  { "variant": "ghost", "size": "link" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "primary", "size": "md" },
+  { "variant": "secondary", "size": "md" },
+  { "variant": "danger", "size": "md" }
+]

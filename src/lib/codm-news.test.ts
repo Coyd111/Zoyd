@@ -211,6 +211,23 @@ describe('Veille CODM', () => {
     expect(dateEnDur.test(pageInfos), 'une date est ecrite en dur dans la page').toBe(false);
   });
 
+  it('la page Infos n invite pas un joueur connecte a s inscrire', () => {
+    // `/infos` vit sous AppLayout : la page n est atteignable qu avec une
+    // session. Un CTA « Rejoindre » y propose donc une action impossible.
+    expect(pageInfos, 'la page propose l inscription a un joueur connecte').not.toContain(
+      'to="/auth/register"',
+    );
+    expect(pageInfos, 'la page ne propose aucune suite').toContain('to="/mj"');
+  });
+
+  it('la base armes declare son vintage et ne se pretend pas complete', () => {
+    expect(pageInfos, 'le vintage de la base armes n est pas declare').toContain('VINTAGE_ARMES');
+    expect(pageInfos, 'la base armes ne dit pas qu elle est statique').toContain('Référentiel statique');
+    // « complete » etait faux : la base s arrete a la S5, la saison en cours
+    // est la S10. Une base figee doit dire ce qu elle ne contient pas.
+    expect(pageInfos, 'la base armes se pretend complete').not.toContain('Base de données complète');
+  });
+
   it('la saison declare des points cles, tous couverts par la veille', () => {
     expect(SAISON_CODM.pointsCles.length, 'aucun point cle').toBeGreaterThanOrEqual(2);
     const texte = normaliser(ARTICLES_CODM.map(texteDe).join(' '));

@@ -82,7 +82,7 @@ const BrLobbyCard: React.FC<{
             <h3 className="font-display font-black text-white tracking-tight uppercase text-sm truncate">
               {lobby.name}
             </h3>
-            <div className="text-[10px] font-mono text-white/50 mt-1">
+            <div className="text-[10px] font-mono text-white/60 mt-1">
               {lobby.creatorPseudo ? `Organise par ${lobby.creatorPseudo}` : 'Organise par ZOYD'}
             </div>
           </div>
@@ -116,7 +116,7 @@ const BrLobbyCard: React.FC<{
         <span className="text-zoyd-yellow font-bold">{formatZC(lobby.pot)}</span>
       </div>
 
-      <div className="text-[10px] font-mono text-white/50 mb-4">
+      <div className="text-[10px] font-mono text-white/60 mb-4">
         Classement : {ranking?.label || lobby.rankingMode} · Pass {formatZC(lobby.entryFee)}
       </div>
 

@@ -1508,11 +1508,16 @@ cherche la saison en cours lit une saison disparue.
 - La page lit le module. Le titre SEO, la description et les dates
   derivent de la saison et de `publieLe` ; plus aucun « Saison 10 » ni
   aucune date litterale dans le composant.
+- La base d armes statique ne se presente plus comme « complete » : elle
+  affiche son vintage (`VINTAGE_ARMES`, S5 2026) et dit que les armes
+  ajoutees depuis, dont le Signal 50, n y figurent pas.
+- L encart final ne propose plus « Rejoindre » a un joueur deja connecte
+  (la page exige une session) : il mene a l arene, ou un match l attend.
 
 ### Le verrou
 
-`src/lib/codm-news.test.ts` couvre seize garanties : la saison courante
-et sa date, zero saison passee presentee comme l actualite, une
+`src/lib/codm-news.test.ts` couvre dix-huit garanties : la saison
+courante et sa date, zero saison passee presentee comme l actualite, une
 fraicheur de moins de trente jours mesuree contre `VERIFIE_LE` (pas
 contre l horloge, qui rendrait le test instable), des sources https et
 datees, les faits de la S10, les 18 POI de Verdansk, zero vocabulaire
@@ -1520,17 +1525,25 @@ incertain, des visuels catalogues et diffusables, l unicite des articles
 et de la une, du contenu de fond, des categories non vides, et une page
 sans date ni numero de saison en dur.
 
-Quatre garanties de plus ancrent la saison dans les ecrans de jeu :
-l encart `EncartSaisonCodm` derive tout de `SAISON_CODM` (aucun numero,
-aucun nom de carte en dur), les points cles annonces sont tous racontes
-par un article, le hub, les tournois et la selection de mode affichent
-l encart, et l ecran PUBLIC `/mode` ne propose pas le lien `/infos` qui
-exige une session.
+Six garanties de plus ancrent la saison et la comprehension : l encart
+`EncartSaisonCodm` derive tout de `SAISON_CODM` (aucun numero, aucun nom
+de carte en dur), les points cles annonces sont tous racontes par un
+article, le hub, les tournois et la selection de mode affichent l encart,
+l ecran PUBLIC `/mode` ne propose pas le lien `/infos` qui exige une
+session, la base armes declare son vintage au lieu de se dire complete,
+et la page n invite pas un joueur connecte a s inscrire.
 
 Un test Playwright (`e2e/ui/codm-saison.spec.ts`) verifie le rendu
 reel : encart visible sur `/mj` et `/mj/tournois`, lien vers la veille,
 et aucun lien sur `/mode`. Vu rouge en retirant l encart du hub, puis
 vert apres restauration.
+
+Le passage final a aussi explique un audit `/br` flaky : ce n etait pas
+du bruit. Deux textes de carte a `text-white/50` sur un fond
+`bg-zoyd-surface/30` mesuraient 4,4:1, sous le seuil AA de 4,5:1. Le
+defaut ne se voyait que si un salon existait au moment de la mesure,
+d ou le flaky. Les deux textes passent a `text-white/60` et l audit est
+vert sur un salon reel.
 
 Deux mutations ont ete vues rouges avant restauration : « Saison 9 »
 dans un article, puis « Twilight Heist » dans la page.
@@ -1582,8 +1595,10 @@ dans un article, puis « Twilight Heist » dans la page.
 | 25 | Les colonnes du classement etaient du jargon nu (« WR% », « FIAB. ») | MINEUR |
 | 26 | Le tableau de bord proposait « creer un match » a un joueur a 0 ZC (action impossible) | MAJEUR |
 | 27 | La page Infos presentait la Saison 8 comme l actualite (trois mois de retard) | MAJEUR |
+| 28 | La page Infos proposait « Rejoindre » a un joueur deja connecte | MINEUR |
+| 29 | Deux textes de carte BR mesuraient 4,4:1 (sous le seuil AA) | MINEUR |
 
-**Dix-huit defauts majeurs, neuf mineurs.** Chacun est couvert par un test
+**Dix-huit defauts majeurs, onze mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -1726,7 +1741,7 @@ Honnetete sur la portee :
   perimetre demande) ni le cycle complet d un salon BR (un salon ne peut
   pas demarrer avant sa date).
 - Il ne dit **pas** que le code est correct. Les passes 1 a 17 ont trouve
-  27 defauts (18 majeurs, 9 mineurs) ; d autres restent possibles. La carte
+  29 defauts (18 majeurs, 11 mineurs) ; d autres restent possibles. La carte
   decrit la **forme**, pas la **correction**.
 
 Ce qui est vérifié à la date du document : l'inventaire (mesuré), la

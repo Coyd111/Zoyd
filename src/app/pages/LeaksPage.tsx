@@ -34,7 +34,7 @@ import {
 import { SEOHead } from '../components/SEOHead';
 import { fetchCODMStore, type CodashopBundle } from '../../lib/codmApi';
 import {
-  WEAPON_DATA, WEAPON_CATEGORIES, TOTAL_WEAPONS,
+  WEAPON_DATA, WEAPON_CATEGORIES, TOTAL_WEAPONS, VINTAGE_ARMES,
   type WeaponCategory,
 } from '../../lib/codmWeaponData';
 import { toCountryIso } from '../../lib/competition';
@@ -359,8 +359,10 @@ const LeaksPage: React.FC = () => {
             <div className="p-4 md:p-6">
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
                 <div className="flex-1">
-                  <h3 className="font-display font-black text-sm uppercase tracking-tighter italic text-white">{TOTAL_WEAPONS} armes — S5 2026</h3>
-                  <p className="text-[10px] font-mono text-white/60 mt-1">Base de données complète avec catégories</p>
+                  <h3 className="font-display font-black text-sm uppercase tracking-tighter italic text-white">{TOTAL_WEAPONS} armes — {VINTAGE_ARMES}</h3>
+                  <p className="text-[10px] font-mono text-white/60 mt-1">
+                    Référentiel statique arrêté à la {VINTAGE_ARMES} : les armes ajoutées depuis, dont le Signal 50, n&apos;y figurent pas. La veille ci-dessus couvre la saison en cours.
+                  </p>
                 </div>
                 <div className="relative w-full md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
@@ -552,10 +554,10 @@ const LeaksPage: React.FC = () => {
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <div className="w-12 h-12 border border-zoyd-yellow/40 flex items-center justify-center text-zoyd-yellow shrink-0"><Shield className="w-6 h-6" /></div>
             <div className="flex-1">
-              <h3 className="font-display font-black text-lg uppercase tracking-tighter italic text-white mb-1">Ne rate plus rien</h3>
-              <p className="text-sm text-white/70">Rejoins ZOYD pour suivre les infos CODM vérifiées, le chat en direct et les tournois.</p>
+              <h3 className="font-display font-black text-lg uppercase tracking-tighter italic text-white mb-1">La veille est à jour</h3>
+              <p className="text-sm text-white/70">Les faits sont datés et sourcés. La suite se joue sur le terrain : tournois ouverts et matchs en attente t&apos;attendent dans l&apos;arène.</p>
             </div>
-            <Link to="/auth/register" className="shrink-0 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors touch-target">REJOINDRE</Link>
+            <Link to="/mj" className="shrink-0 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors touch-target">TROUVER UN MATCH</Link>
           </div>
         </div>
 

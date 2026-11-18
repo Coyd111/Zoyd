@@ -20,6 +20,15 @@
  * Sources: COD Mobile Fandom Wiki, ZillionGamer, MobileMatters.gg, Reddit, IGN, Activision
  */
 
+/**
+ * Derniere saison couverte par la base statique.
+ *
+ * INVARIANT : cette constante est la SEULE source du vintage affiche. La
+ * base ne se met pas a jour toute seule : la presenter comme « complete »
+ * ou comme la saison en cours serait faux des qu une arme sort.
+ */
+export const VINTAGE_ARMES = 'S5 2026';
+
 export const WEAPON_DATA = {
 
   weapons: {

@@ -31,6 +31,7 @@ import { formatZC } from '../../../lib/utils';
 import { useDebounce } from '../../../app/hooks/useDebounce';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { Button } from '../../../app/components/ui/Button';
+import { EncartSaisonCodm } from '../../../app/components/ui/EncartSaisonCodm';
 
 const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'];
 
@@ -153,6 +154,7 @@ const TournoisPage: React.FC = () => {
                 Créer un tournoi
               </Link>
             </div>
+            <EncartSaisonCodm className="mt-5 max-w-2xl" />
           </div>
 
           <div className="flex flex-wrap lg:flex-nowrap gap-6 md:gap-10 border-t lg:border-t-0 lg:border-l border-white/10 pt-6 lg:pt-0 lg:pl-10 py-2 md:py-4 w-full lg:w-auto mt-4 lg:mt-0">

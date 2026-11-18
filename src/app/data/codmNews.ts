@@ -54,6 +54,8 @@ export const SAISON_CODM = {
   nom: '7th Anniversary',
   sortieLe: '2026-11-11',
   heure: '16 h PT',
+  /** Les nouveautes que la veille raconte, dans l ordre d importance. */
+  pointsCles: ['Verdansk', 'Goulag', 'Signal 50'],
 } as const;
 
 /** Date de la derniere verification editoriale. */

@@ -1511,7 +1511,7 @@ cherche la saison en cours lit une saison disparue.
 
 ### Le verrou
 
-`src/lib/codm-news.test.ts` couvre douze garanties : la saison courante
+`src/lib/codm-news.test.ts` couvre seize garanties : la saison courante
 et sa date, zero saison passee presentee comme l actualite, une
 fraicheur de moins de trente jours mesuree contre `VERIFIE_LE` (pas
 contre l horloge, qui rendrait le test instable), des sources https et
@@ -1519,6 +1519,18 @@ datees, les faits de la S10, les 18 POI de Verdansk, zero vocabulaire
 incertain, des visuels catalogues et diffusables, l unicite des articles
 et de la une, du contenu de fond, des categories non vides, et une page
 sans date ni numero de saison en dur.
+
+Quatre garanties de plus ancrent la saison dans les ecrans de jeu :
+l encart `EncartSaisonCodm` derive tout de `SAISON_CODM` (aucun numero,
+aucun nom de carte en dur), les points cles annonces sont tous racontes
+par un article, le hub, les tournois et la selection de mode affichent
+l encart, et l ecran PUBLIC `/mode` ne propose pas le lien `/infos` qui
+exige une session.
+
+Un test Playwright (`e2e/ui/codm-saison.spec.ts`) verifie le rendu
+reel : encart visible sur `/mj` et `/mj/tournois`, lien vers la veille,
+et aucun lien sur `/mode`. Vu rouge en retirant l encart du hub, puis
+vert apres restauration.
 
 Deux mutations ont ete vues rouges avant restauration : « Saison 9 »
 dans un article, puis « Twilight Heist » dans la page.

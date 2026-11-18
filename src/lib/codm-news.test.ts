@@ -210,4 +210,51 @@ describe('Veille CODM', () => {
     const dateEnDur = /\b\d{1,2}\s+(janvier|fevrier|février|mars|avril|mai|juin|juillet|aout|août|septembre|octobre|novembre|decembre|décembre)\s+\d{4}\b/i;
     expect(dateEnDur.test(pageInfos), 'une date est ecrite en dur dans la page').toBe(false);
   });
+
+  it('la saison declare des points cles, tous couverts par la veille', () => {
+    expect(SAISON_CODM.pointsCles.length, 'aucun point cle').toBeGreaterThanOrEqual(2);
+    const texte = normaliser(ARTICLES_CODM.map(texteDe).join(' '));
+    for (const point of SAISON_CODM.pointsCles) {
+      expect(texte, `le point cle « ${point} » n est raconte par aucun article`).toContain(
+        normaliser(point),
+      );
+    }
+  });
+
+  it('l encart de saison derive tout de SAISON_CODM, sans litteral', () => {
+    const encart = readFileSync(
+      resolve('src/app/components/ui/EncartSaisonCodm.tsx'),
+      'utf8',
+    );
+    expect(encart).toContain('SAISON_CODM.numero');
+    expect(encart).toContain('SAISON_CODM.nom');
+    expect(encart).toContain('SAISON_CODM.pointsCles');
+    expect(encart).toContain('to="/infos"');
+    // Un numero, un nom ou une carte ecrits en dur ici resteraient affiches
+    // apres la saison suivante, sur TOUS les ecrans qui l utilisent.
+    expect(encart, 'un fait de saison est ecrit en dur').not.toMatch(
+      /Saison\s+10|7th Anniversary|Verdansk|Goulag/,
+    );
+  });
+
+  it('les ecrans de jeu ancrent la saison en cours', () => {
+    const ecrans = [
+      'app/pages/ModeSelectionPage.tsx',
+      'app/pages/mj/HubMJPage.tsx',
+      'features/tournament/pages/TournoisPage.tsx',
+    ];
+    for (const ecran of ecrans) {
+      const source = readFileSync(resolve('src', ecran), 'utf8');
+      expect(source, `${ecran} : encart non importe`).toContain('EncartSaisonCodm');
+      expect(source, `${ecran} : encart non rendu`).toContain('<EncartSaisonCodm');
+    }
+  });
+
+  it('l ecran public /mode ne renvoie pas vers /infos sans session', () => {
+    const pageMode = readFileSync(resolve('src/app/pages/ModeSelectionPage.tsx'), 'utf8');
+    expect(pageMode).toContain('<EncartSaisonCodm');
+    expect(pageMode, 'le lien /infos est offert a un visiteur non connecte').toContain(
+      'avecLien={false}',
+    );
+  });
 });

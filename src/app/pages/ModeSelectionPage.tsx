@@ -26,6 +26,7 @@ import { Badge } from '../components/ui/Badge';
 import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
 import Illustration from '../components/ui/Illustration';
+import { EncartSaisonCodm } from '../components/ui/EncartSaisonCodm';
 import { urlIllustration } from '../lib/illustrations';
 
 // C-3 (audit UI) : regle S-7 unifiee avec LandingPage — la video decoratif de
@@ -96,6 +97,8 @@ const ModeSelectionPage: React.FC = () => {
             veux suivre maintenant, puis ZOYD garde tout relié autour de ton compte.
           </p>
         </motion.div>
+
+        <EncartSaisonCodm className="mb-8 md:mb-10 max-w-4xl" avecLien={false} />
 
         <div className="grid lg:grid-cols-2 xl:grid-cols-[1.05fr_0.95fr] gap-6 md:gap-8">
           <motion.button

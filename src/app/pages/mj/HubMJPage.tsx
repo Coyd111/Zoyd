@@ -33,6 +33,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { SEOHead } from '../../components/SEOHead';
 import { Button } from '../../components/ui/Button';
 import Illustration from '../../components/ui/Illustration';
+import { EncartSaisonCodm } from '../../components/ui/EncartSaisonCodm';
 
 const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'] as const;
 const STATUS_FILTERS = [
@@ -140,6 +141,7 @@ const HubMJPage: React.FC = () => {
             <p className="text-white/70 text-base md:text-xl font-light max-w-xl">
               Crée un wager, défie des adversaires de ton niveau, ou postule pour arbitrer les matchs en attente.
             </p>
+            <EncartSaisonCodm className="mt-6 max-w-xl" />
           </div>
 
           <div className="hidden md:flex gap-10 border-l border-white/10 pl-10 py-4">

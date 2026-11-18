@@ -1477,7 +1477,69 @@ un defaut du systeme.
 
 ---
 
-## 8. Synthese des defauts trouves (passes 1 a 16)
+## 7 dix-huitieme. Passe 17 - l ACTUALITE : la veille CODM etait figee
+
+### Le constat
+
+La page `/infos` annoncait la Saison 8 « Twilight Heist », presentait le
+7e anniversaire comme un evenement de Saison 9 et le Mythic Signal 50
+comme « attendu ». La Saison 10 etait sortie le 11 novembre 2026 a 16 h
+PT, soit une semaine avant la verification. Les huit articles, leurs
+dates et leurs images vivaient en dur dans le composant : aucune date
+derivee, aucune source cliquable, et un visuel distant hotlinke hors du
+catalogue.
+
+Le defaut n etait pas visuel. La page presentait le PASSE comme le
+PRESENT, ce qui est plus trompeur qu une page vide : un joueur qui
+cherche la saison en cours lit une saison disparue.
+
+### Ce que la passe change
+
+- Un module unique, `src/app/data/codmNews.ts` : la saison courante est
+  declaree une seule fois (numero, nom, date de sortie, heure), avec
+  `VERIFIE_LE`, un formateur de date et neuf articles dates et sources.
+- Des faits verifies, pas des rumeurs : Verdansk et ses 18 points d
+  interet, le Goulag, les Field Assets et Perks, le Signal 50 au palier
+  gratuit, DMZ: Recon, Operation: Verdansk Convergence, Ford Racing, les
+  World Champs 2026 et l equilibrage (Static-HV nerfe ; CBR4, MSMC,
+  Pharo, PPSh-41 et Striker 45 buffes).
+- Des visuels par NOM du catalogue, jamais par URL distante : sept
+  visuels diffusables, deux reutilisations.
+- La page lit le module. Le titre SEO, la description et les dates
+  derivent de la saison et de `publieLe` ; plus aucun « Saison 10 » ni
+  aucune date litterale dans le composant.
+
+### Le verrou
+
+`src/lib/codm-news.test.ts` couvre douze garanties : la saison courante
+et sa date, zero saison passee presentee comme l actualite, une
+fraicheur de moins de trente jours mesuree contre `VERIFIE_LE` (pas
+contre l horloge, qui rendrait le test instable), des sources https et
+datees, les faits de la S10, les 18 POI de Verdansk, zero vocabulaire
+incertain, des visuels catalogues et diffusables, l unicite des articles
+et de la une, du contenu de fond, des categories non vides, et une page
+sans date ni numero de saison en dur.
+
+Deux mutations ont ete vues rouges avant restauration : « Saison 9 »
+dans un article, puis « Twilight Heist » dans la page.
+
+### Ce que ce verrou ne prouve pas
+
+- La fraicheur depend d une mise a jour humaine : le test refuse un
+  article de plus de trente jours par rapport a `VERIFIE_LE`, il ne
+  devine pas qu une saison est sortie. Avancer la constante sans
+  verifier les faits reste possible, et reste une faute humaine.
+- La licence des artworks reste une decision humaine (voir passe 16).
+- Le test verifie la coherence et la provenance, pas la verite d un fait
+  isole : un fait faux mais coherent passerait. Les faits de la S10 ont
+  donc ete recoupes a l article officiel du 04/11/2026 et aux notes de
+  patch du 12/11/2026.
+- « Pharoah s Decree » est l orthographe employee par Activision ; elle
+  a ete confirmee par deux sources et n a pas ete « corrigee ».
+
+---
+
+## 8. Synthese des defauts trouves (passes 1 a 17)
 
 | # | Defaut | Gravite |
 |---|---|---|
@@ -1507,8 +1569,9 @@ un defaut du systeme.
 | 24 | Le classement annoncait « rien n est affiche » et affichait un rang a un joueur sans match | MAJEUR |
 | 25 | Les colonnes du classement etaient du jargon nu (« WR% », « FIAB. ») | MINEUR |
 | 26 | Le tableau de bord proposait « creer un match » a un joueur a 0 ZC (action impossible) | MAJEUR |
+| 27 | La page Infos presentait la Saison 8 comme l actualite (trois mois de retard) | MAJEUR |
 
-**Dix-huit defauts majeurs, douze mineurs.** Chacun est couvert par un test
+**Dix-huit defauts majeurs, neuf mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -1650,8 +1713,8 @@ Honnetete sur la portee :
 - Il ne pretend **pas** avoir teste le retrait en production (hors
   perimetre demande) ni le cycle complet d un salon BR (un salon ne peut
   pas demarrer avant sa date).
-- Il ne dit **pas** que le code est correct. Les passes 1 a 16 ont trouve
-  26 defauts (17 majeurs, 9 mineurs) ; d autres restent possibles. La carte
+- Il ne dit **pas** que le code est correct. Les passes 1 a 17 ont trouve
+  27 defauts (18 majeurs, 9 mineurs) ; d autres restent possibles. La carte
   decrit la **forme**, pas la **correction**.
 
 Ce qui est vérifié à la date du document : l'inventaire (mesuré), la

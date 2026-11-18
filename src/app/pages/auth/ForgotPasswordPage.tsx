@@ -20,6 +20,7 @@ import { Input } from '../../components/ui/Input';
 import { ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
 import { requestPasswordReset, resetPasswordWithCode } from '../../lib/authApi';
 import { SEOHead } from '../../components/SEOHead';
+import Illustration from '../../components/ui/Illustration';
 
 const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate();
@@ -81,7 +82,10 @@ const ForgotPasswordPage: React.FC = () => {
         path="/auth/forgot"
         noindex
       />
-      <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+      <Illustration
+        nom="arme-bleue"
+        className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
+      />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">

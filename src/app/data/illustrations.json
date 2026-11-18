@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "description": "Le catalogue des visuels illustratifs de ZOYD (hors identite de marque : logo et icones de l application). Chaque visuel declare sa provenance : aucun visuel de contenu n est utilise sans source connue.",
+  "sources": {
+    "press-codm": {
+      "libelle": "Artwork promotionnel officiel Call of Duty (serie Mobile)",
+      "url": "https://www.callofduty.com/",
+      "usage": "Visuel de vitrine : le site presente le jeu auquel ZOYD est dedie. Usage promotionnel et editorial.",
+      "signature": "© Activision Publishing, Inc. Call of Duty et Call of Duty Mobile sont des marques déposees d'Activision.",
+      "remarque": "Artwork officiel d Activision, extrait de l art promotionnel du jeu. La page press kit historique n est plus accessible (404 verifie le 18/11/2026) : la provenance exacte de chaque fichier n est pas documentee par l editeur.",
+      "diffusable": true
+    },
+    "press-cod": {
+      "libelle": "Artwork promotionnel officiel Call of Duty (franchise)",
+      "url": "https://www.callofduty.com/",
+      "usage": "Visuel de vitrine.",
+      "signature": "© Activision Publishing, Inc. Call of Duty est une marque déposée d'Activision.",
+      "remarque": "Artwork de la franchise Call of Duty (pas Mobile) : il ne montre pas l interface de CODM. Meme reserve de provenance que la source « press-codm ».",
+      "diffusable": true
+    },
+    "communaute": {
+      "libelle": "Capture de la communauté (non officielle)",
+      "url": "",
+      "usage": "AUCUN usage : la capture a ete RETIREE du depot (elle n est plus servie).",
+      "signature": "Capture d'un createur de la communauté : filigrane d'auteur visible, droits de diffusion non obtenus.",
+      "remarque": "Capture de jeu filigrasee par un createur de la communaute, trouvee le 18/11/2026 comme fond de l assistant de creation de match. Droits de diffusion non obtenus : retiree de public/ et du catalogue. La source reste declaree pour que le verrou puisse refuser toute reintroduction.",
+      "diffusable": false
+    },
+    "operateurs-paiement": {
+      "libelle": "Logos des operateurs de paiement Mobile Money",
+      "url": "",
+      "usage": "Identifier l operateur de recharge et de retrait.",
+      "signature": "Marques de MTN, Orange, Wave et Celtiis : usage nominatif pour designer le service de paiement.",
+      "remarque": "Ces logos ne sont pas des visuels ZOYD : ils identifient un tiers. Ils sont declares ici pour que tout visuel illustratif du site soit trace.",
+      "diffusable": true
+    }
+  },
+  "illustrations": {
+    "duel-operateurs": {
+      "fichier": "assets/codm/press/ui/duel-operateurs.jpg",
+      "sujet": "Deux operateurs face a face (key art CODM)",
+      "categorie": "ui",
+      "source": "press-codm",
+      "usage": "Fond de la page de connexion et image de partage (og:image).",
+      "dimensions": "1920x1080"
+    },
+    "affiche-promo-cod": {
+      "fichier": "assets/codm/press/ui/affiche-promo-cod.jpg",
+      "sujet": "Affiche promotionnelle de la franchise Call of Duty",
+      "categorie": "ui",
+      "source": "press-cod",
+      "usage": "Fond de profil et image de partage.",
+      "dimensions": "1920x1080"
+    },
+    "portrait-ghost": {
+      "fichier": "assets/codm/press/ui/portrait-ghost.jpg",
+      "sujet": "Portrait de l operateur Ghost",
+      "categorie": "ui",
+      "source": "press-codm",
+      "usage": "Avatar de defaut et fond de la page de connexion.",
+      "dimensions": "564x564"
+    },
+    "arme-bleue": {
+      "fichier": "assets/codm/press/ui/arme-bleue.jpg",
+      "sujet": "Fusil d assaut en camo bleu (cosmetique CODM)",
+      "categorie": "ui",
+      "source": "press-codm",
+      "usage": "Fond des pages d authentification (activation, mot de passe oublie).",
+      "dimensions": "1199x674"
+    },
+    "operatrice-studio": {
+      "fichier": "assets/codm/press/ui/operatrice-studio.jpg",
+      "sujet": "Operatrice en rendu studio",
+      "categorie": "ui",
+      "source": "press-codm",
+      "usage": "Image de partage (og:image) de l inscription.",
+      "dimensions": "1024x1022"
+    },
+    "escouade-action": {
+      "fichier": "assets/codm/press/ui/escouade-action.jpg",
+      "sujet": "Escouade d operateurs en action (key art CODM)",
+      "categorie": "ui",
+      "source": "press-codm",
+      "usage": "Image de partage (og:image) de l inscription, et fond de l hero.",
+      "dimensions": "1920x1080"
+    },
+    "operateur-lame": {
+      "fichier": "assets/codm/press/ui/operateur-lame.jpg",
+      "sujet": "Operateur arme d une lame incandescente",
+      "categorie": "ui",
+      "source": "press-codm",
+      "usage": "Fond d ambiance (etats vides, profil).",
+      "dimensions": "1920x1080"
+    },
+    "hero-inscription": {
+      "fichier": "assets/codm/press/videos/hero-bg.mp4",
+      "sujet": "Video de fond de l assistant d inscription",
+      "categorie": "videos",
+      "source": "press-codm",
+      "usage": "Decor video du parcours d inscription (au-dela de 768 px uniquement).",
+      "dimensions": "video"
+    },
+    "logo-mtn": {
+      "fichier": "operators/mtn.svg",
+      "sujet": "Logo MTN",
+      "categorie": "operateurs",
+      "source": "operateurs-paiement",
+      "usage": "Selection de l operateur de recharge et de retrait.",
+      "dimensions": "svg"
+    },
+    "logo-orange": {
+      "fichier": "operators/orange.svg",
+      "sujet": "Logo Orange",
+      "categorie": "operateurs",
+      "source": "operateurs-paiement",
+      "usage": "Selection de l operateur de recharge et de retrait.",
+      "dimensions": "svg"
+    },
+    "logo-wave": {
+      "fichier": "operators/wave.png",
+      "sujet": "Logo Wave",
+      "categorie": "operateurs",
+      "source": "operateurs-paiement",
+      "usage": "Selection de l operateur de recharge et de retrait.",
+      "dimensions": "png"
+    },
+    "logo-celtiis": {
+      "fichier": "operators/celtiis.svg",
+      "sujet": "Logo Celtiis",
+      "categorie": "operateurs",
+      "source": "operateurs-paiement",
+      "usage": "Selection de l operateur de recharge et de retrait.",
+      "dimensions": "svg"
+    }
+  },
+  "chemins": "Les chemins de fichier sont relatifs a `public/`."
+}

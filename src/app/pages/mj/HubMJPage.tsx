@@ -32,6 +32,7 @@ import BootstrapFailedPanel from '../../components/BootstrapFailedPanel';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SEOHead } from '../../components/SEOHead';
 import { Button } from '../../components/ui/Button';
+import Illustration from '../../components/ui/Illustration';
 
 const MATCH_FORMATS = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'] as const;
 const STATUS_FILTERS = [
@@ -114,8 +115,14 @@ const HubMJPage: React.FC = () => {
 
       <header className="relative border-b border-white/5 bg-zoyd-black pt-14 md:pt-16 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/images/codm-7.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <Illustration
+            nom="operatrice-studio"
+            className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
+          />
+          <Illustration
+            nom="escouade-action"
+            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-transparent to-zoyd-black/50" />
         </div>

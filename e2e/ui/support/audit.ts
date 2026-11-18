@@ -54,9 +54,16 @@ export const mesurerDesign = () => {
   };
 
   const imagesSansAlt: string[] = [];
+  const imagesCassees: string[] = [];
   for (const img of Array.from(document.querySelectorAll('img'))) {
     if (!visible(img)) continue;
-    if (img.getAttribute('alt') === null) imagesSansAlt.push(img.getAttribute('src') || '(src inconnu)');
+    const src = img.getAttribute('src') || '';
+    if (img.getAttribute('alt') === null) imagesSansAlt.push(src || '(src inconnu)');
+    // Une image visible SANS source, ou dont le chargement a ECHOUE
+    // (complete sans dimension naturelle), est un visuel casse : le
+    // catalogue doit rendre un REPLI, jamais une icone brisee.
+    if (!src.trim()) { imagesCassees.push('(src vide)'); continue; }
+    if (img.complete && img.naturalWidth === 0) imagesCassees.push(src);
   }
 
   const sansNom: string[] = [];
@@ -136,7 +143,7 @@ export const mesurerDesign = () => {
     );
   }
 
-  return { imagesSansAlt, sansNom, ciblesPetites, nomsMasques };
+  return { imagesSansAlt, imagesCassees, sansNom, ciblesPetites, nomsMasques };
 };
 
 export interface OptionsAudit {
@@ -243,6 +250,7 @@ export const auditerEcran = async (
         v.nodes.slice(0, 3).map((n) => `      ${n.target.join(' ')}`).join('\n'),
     ),
     design.imagesSansAlt.length ? `images sans alt :\n      ${design.imagesSansAlt.join('\n      ')}` : '',
+    design.imagesCassees.length ? `images cassees :\n      ${design.imagesCassees.join('\n      ')}` : '',
     design.sansNom.length ? `elements sans nom accessible :\n      ${design.sansNom.join('\n      ')}` : '',
     design.ciblesPetites.length ? `cibles tactiles < 24 px :\n      ${design.ciblesPetites.join('\n      ')}` : '',
     design.nomsMasques.length ? `nom accessible sans le libelle visible (WCAG 2.5.3) :\n      ${design.nomsMasques.join('\n      ')}` : '',
@@ -272,6 +280,7 @@ export const auditerEcran = async (
         }),
       })),
       imagesSansAlt: design.imagesSansAlt,
+      imagesCassees: design.imagesCassees,
       sansNom: design.sansNom,
       ciblesPetites: design.ciblesPetites,
       erreursConsole: collecte.erreursConsole,

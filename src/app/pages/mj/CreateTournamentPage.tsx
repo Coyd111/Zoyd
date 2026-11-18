@@ -42,6 +42,7 @@ import { createServerTournament } from '../../lib/tournamentApi';
 import { applyServerAccountState } from '../../lib/serverSync';
 import { SEOHead } from '../../components/SEOHead';
 import { Button } from '../../components/ui/Button';
+import Illustration from '../../components/ui/Illustration';
 
 const ENTRY_OPTIONS = [50, 100, 200, 500, 1000];
 const MAX_ENTRY_OPTIONS = [4, 8, 16, 32];
@@ -251,7 +252,10 @@ const CreateTournamentPage: React.FC = () => {
 
         <header className="relative mb-10 p-5 sm:p-6 md:p-8 border border-white/5 bg-zoyd-surface/20 overflow-hidden">
           <div className="absolute inset-0 z-0">
-            <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
+            <Illustration
+              nom="arme-bleue"
+              className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
+            />
             <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
             <div className="absolute inset-0 tactical-grid opacity-10" />
           </div>

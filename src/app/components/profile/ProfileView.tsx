@@ -45,6 +45,8 @@ import { isMatchPayoutSettled } from '../../stores/matchStore';
 import { useAuthStore } from '../../stores/authStore';
 import { formatZC } from '../../../lib/utils';
 import { getWinnerPayoutPerPlayer } from '../../../lib/matchPayout';
+import Illustration from '../ui/Illustration';
+import { urlIllustration } from '../../lib/illustrations';
 
 const levelConfig: Record<string, { label: string; color: string; bg: string }> = {
   BEGINNER: { label: 'BEGINNER', color: 'text-white/70', bg: 'bg-white/5' },
@@ -164,8 +166,14 @@ export default function ProfileView({
 
       <header className="relative border-b border-white/5 bg-zoyd-black overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/images/codm-2.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/images/codm-3.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <Illustration
+            nom="affiche-promo-cod"
+            className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
+          />
+          <Illustration
+            nom="portrait-ghost"
+            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black via-zoyd-black/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-transparent to-transparent" />
         </div>
@@ -337,7 +345,7 @@ export default function ProfileView({
             {summary.recentMatches.length === 0 ? (
               <EmptyPanel
                 icon={<Swords className="w-8 h-8 text-white/40" />}
-                image={emptyMatchesImage || '/assets/images/codm-8.jpg'}
+                image={emptyMatchesImage || urlIllustration('operateur-lame')}
                 title="Aucun match récent"
                 body="Les matchs terminés apparaîtront ici, avec leur résultat et ce qu'ils ont rapporté."
               />
@@ -404,7 +412,7 @@ export default function ProfileView({
             {summary.tournamentPlacements.length === 0 ? (
               <EmptyPanel
                 icon={<Trophy className="w-8 h-8 text-white/40" />}
-                image={emptyTournamentsImage || '/assets/images/codm-1.jpg'}
+                image={emptyTournamentsImage || urlIllustration('duel-operateurs')}
                 title="Aucun tournoi récent"
                 body="Les participations et podiums apparaîtront ici dès que les tournois seront terminés."
               />

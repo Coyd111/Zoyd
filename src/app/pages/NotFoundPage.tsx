@@ -15,6 +15,7 @@ import React from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { SEOHead } from '../components/SEOHead';
+import Illustration from '../components/ui/Illustration';
 
 const NotFoundPage: React.FC = () => {
   return (
@@ -26,8 +27,14 @@ const NotFoundPage: React.FC = () => {
         noindex
       />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
-      <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
-      <img src="/assets/images/codm-7.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+      <Illustration
+        nom="operatrice-studio"
+        className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
+      />
+      <Illustration
+        nom="escouade-action"
+        className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -30,6 +30,7 @@ import { buildCompetitiveSummary, createPublicProfile, getObservedPlayerSnapshot
 import { sendServerFriendRequest } from '../lib/socialApi';
 import { toast } from '../lib/toast';
 import { SEOHead } from '../components/SEOHead';
+import { urlIllustration } from '../lib/illustrations';
 
 const PublicProfilPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -233,8 +234,8 @@ const PublicProfilPage = () => {
       rankBR={publicProfile.rankBR}
       summary={summary}
       prefersReducedMotion={prefersReducedMotion ?? false}
-      emptyMatchesImage="/assets/images/codm-2.jpg"
-      emptyTournamentsImage="/assets/images/codm-3.jpg"
+      emptyMatchesImage={urlIllustration('affiche-promo-cod') || ''}
+      emptyTournamentsImage={urlIllustration('portrait-ghost') || ''}
       trustDescription="Cette fiche rassemble ce que ZOYD a déjà pu voir de ce joueur dans ses matchs, ses tournois et ses relations."
       codmTitle="Infos visibles"
       backLink={

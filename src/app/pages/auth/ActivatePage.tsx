@@ -29,6 +29,7 @@ import { Input } from '../../components/ui/Input';
 import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react';
 import { activateAccount, resendActivationCode, changeActivationEmail } from '../../lib/authApi';
 import { SEOHead } from '../../components/SEOHead';
+import Illustration from '../../components/ui/Illustration';
 const RESEND_COOLDOWN_SECONDS = 60;
 
 const ActivatePage: React.FC = () => {
@@ -117,7 +118,10 @@ const ActivatePage: React.FC = () => {
         path="/auth/activate"
         noindex
       />
-      <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
+      <Illustration
+        nom="arme-bleue"
+        className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
+      />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       
       <div className="w-full max-w-md relative z-10">

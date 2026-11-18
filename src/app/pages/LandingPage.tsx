@@ -38,6 +38,7 @@ import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
 import { SocialLinks } from '../components/SocialLinks';
 import { Button } from '../components/ui/Button';
+import { urlIllustration } from '../lib/illustrations';
 
 interface PublicStats {
   players: number;
@@ -165,7 +166,7 @@ export default function LandingPage() {
                 preload="none"
                 className="h-full w-full object-cover opacity-24"
               >
-                <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+                <source src={urlIllustration('hero-inscription') || ''} type="video/mp4" />
               </video>
             )}
           </div>

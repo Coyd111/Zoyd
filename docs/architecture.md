@@ -1392,17 +1392,92 @@ La conversion est REPRODUCTIBLE, elle n est pas faite a la main :
 Le choix « ce bouton est-il une action en ligne ou un bouton icone ? »
 est donc ecrit, versionne, et relu — pas re-decide a chaque conversion.
 
-### Ce qui reste
+### Etat final
 
-47 fichiers, 170 balises brutes. Les plus gros : CreateMatchPage (17),
-MatchDetailPage (10), LeaguePage (9), AdminReportsTab (7),
-CreateTournamentPage (7), BracketActions (7), TournamentBracketPage (7).
-La conversion se fait par tranches, l audit UI (contraste, nom
-accessible, cible tactile, WCAG 2.5.3) servant de garde a chaque
-tranche.
+La conversion est terminee : **219 balises brutes converties, 54 fichiers,
+adoption 100 %**, cretoir VIDE. Aucun fichier n a plus le droit de
+reintroduire une balise brute : le plancher du verrou est desormais
+100 %, et il ne peut pas redescendre.
+
+Les 219 boutons ont ete convertis par un OUTIL (la declaration de chaque
+fichier est versionnee dans `scripts/button-specs/`), pas a la main. La
+suite complete est passee verte apres conversion ; la seule regression
+visuelle (le bouton « PLUS » de la barre basse) a ete attrapee par la
+sonde responsive et corrigee.
 
 ---
-## 8. Synthese des douze passes
+## 7 dix-septieme. Passe 16 - les IMAGES : un catalogue, une source par visuel
+
+### Le constat
+
+Les visuels du site etaient des chemins ecrits en dur, repartis dans une
+dizaine d ecrans : `/assets/images/codm-3.jpg`. Trois problemes :
+
+1. on ne savait plus QUOI montrait chaque visuel, ni d ou il venait ;
+2. le meme visuel etait copie sous plusieurs noms : les quatre fichiers a
+   nom hache de `assets/codm/image/` etaient des **doublons exacts,
+   jamais references** (362 ko de poids mort) ;
+3. un visuel du press kit officiel etait melange a une **capture de la
+   communaute filigrasee** : le risque juridique se voyait a peine.
+
+### Ce que la passe change
+
+**Un catalogue declare.** `src/app/data/illustrations.json` declare, pour
+chaque visuel : le fichier, le sujet, la categorie (`ui`, `videos`,
+`operateurs`), la SOURCE et l usage prevu. Chaque source porte son usage
+et sa signature. Les visuels sont ranges par thematique
+(`assets/codm/press/ui/`, `assets/codm/press/videos/`) et portent un nom
+qui dit ce qu ils montrent : `duel-operateurs`, `portrait-ghost`,
+`arme-bleue`, `escouade-action`, `operateur-lame`.
+
+**Un seul composant.** `<Illustration nom="..." />` est le seul moyen
+d afficher un visuel :
+
+- il rend le REPLI graphique si le fichier manque - jamais une image
+  cassee ;
+- il est decoratif par defaut (`alt=""`) ; un visuel qui porte du sens
+  passe un `alt` explicite ;
+- l opacite ne passe par un style inline QUE si on la demande : sinon
+  elle ecraserait la classe d opacite du `className`.
+
+**Une source non diffusable, trouvee en route.** Le fond de l assistant
+de creation de match etait une capture de jeu filigrasee par un createur
+de la communaute. Ce n est pas du press kit, et le filigrane d un tiers
+est visible. Elle est remplacee par un visuel du press kit.
+
+### Le verrou
+
+`src/lib/illustrations.test.ts` verifie que :
+
+| garantie | ce qu elle interdit |
+|---|---|
+| le fichier existe | un visuel declare mais absent du disque |
+| la source est connue | une source qui ne declare ni usage ni signature |
+| aucun chemin en dur | un ecran qui affiche un visuel hors du catalogue |
+| aucune source « communaute » | l utilisation d un visuel non diffusable |
+
+Le catalogue trace **12 visuels** : 7 artworks Call of Duty (press kit), 1 video
+et 4 logos d operateurs de paiement (marques de tiers, usage nominatif).
+La capture de la communaute a ete RETIREE du depot : elle etait encore
+servie par son URL, meme si aucun ecran ne l affichait.
+Le logo et les icones de l application ne sont pas des illustrations :
+ils relevent de l identite de marque.
+
+### Ce que ce systeme ne decide pas
+
+La LICENCE. Le catalogue dit d ou vient chaque visuel et a quoi il sert ;
+il ne dit pas que l usage est autorise. Les artworks du jeu restent la
+propriete d Activision, et l usage promotionnel d un site tiers doit
+etre arbitre : c est une decision humaine, pas une propriete du code.
+
+La page « press kit » historiquement citee renvoyait 404 au 18/11/2026 :
+le catalogue declare donc l art promotionnel officiel sans pretendre que
+l editeur documente chaque fichier. C est une limite de la source, pas
+un defaut du systeme.
+
+---
+
+## 8. Synthese des defauts trouves (passes 1 a 16)
 
 | # | Defaut | Gravite |
 |---|---|---|
@@ -1558,7 +1633,7 @@ cite a son test, chaque test a ete vu echouer avant le correctif.
 
 ---
 
-## 8. Ce que ce document ne dit pas (et pourquoi)
+## 9. Ce que ce document ne dit pas (et pourquoi)
 
 Honnetete sur la portee :
 
@@ -1575,8 +1650,8 @@ Honnetete sur la portee :
 - Il ne pretend **pas** avoir teste le retrait en production (hors
   perimetre demande) ni le cycle complet d un salon BR (un salon ne peut
   pas demarrer avant sa date).
-- Il ne dit **pas** que le code est correct. Les douze passes ont trouve
-  16 defauts majeurs et 10 mineurs ; d autres restent possibles. La carte
+- Il ne dit **pas** que le code est correct. Les passes 1 a 16 ont trouve
+  26 defauts (17 majeurs, 9 mineurs) ; d autres restent possibles. La carte
   decrit la **forme**, pas la **correction**.
 
 Ce qui est vérifié à la date du document : l'inventaire (mesuré), la

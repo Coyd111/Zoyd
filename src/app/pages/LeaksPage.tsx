@@ -35,6 +35,8 @@ import {
 import { toCountryIso } from '../../lib/competition';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/ui/Button';
+import Illustration from '../components/ui/Illustration';
+import { urlIllustration } from '../lib/illustrations';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,7 +104,7 @@ const articles: LeakArticle[] = [
     readTime: '5 min',
     hot: true,
     source: 'LootBar + SportsDunia',
-    image: '/assets/images/codm-1.jpg',
+    image: urlIllustration('duel-operateurs') || '',
   },
   {
     id: '3',
@@ -118,7 +120,7 @@ const articles: LeakArticle[] = [
     tag: 'LEAK',
     readTime: '4 min',
     source: 'LootBar + Test Server',
-    image: '/assets/images/codm-2.jpg',
+    image: urlIllustration('affiche-promo-cod') || '',
   },
   {
     id: '4',
@@ -136,7 +138,7 @@ const articles: LeakArticle[] = [
     readTime: '6 min',
     hot: true,
     source: 'SportsDunia + Test Server',
-    image: '/assets/images/codm-3.jpg',
+    image: urlIllustration('portrait-ghost') || '',
   },
   {
     id: '5',
@@ -153,7 +155,7 @@ const articles: LeakArticle[] = [
     tag: 'LEAK',
     readTime: '4 min',
     source: 'SportsDunia + Datamine',
-    image: '/assets/images/codm-4.jpg',
+    image: urlIllustration('operateur-lame') || '',
   },
   {
     id: '6',
@@ -170,7 +172,7 @@ const articles: LeakArticle[] = [
     tag: 'LEAK',
     readTime: '3 min',
     source: 'ZORO CODM + Community',
-    image: '/assets/images/codm-5.jpg',
+    image: urlIllustration('arme-bleue') || '',
   },
   {
     id: '7',
@@ -187,7 +189,7 @@ const articles: LeakArticle[] = [
     tag: 'CONFIRME',
     readTime: '3 min',
     source: 'LootBar + Patch Notes',
-    image: '/assets/images/codm-6.jpg',
+    image: urlIllustration('operatrice-studio') || '',
   },
   {
     id: '8',
@@ -204,7 +206,7 @@ const articles: LeakArticle[] = [
     tag: 'TEST SERVER',
     readTime: '3 min',
     source: 'SportsDunia',
-    image: '/assets/images/codm-7.jpg',
+    image: urlIllustration('escouade-action') || '',
   },
 ];
 
@@ -297,8 +299,14 @@ const LeaksPage: React.FC = () => {
       {/* Header */}
       <header className="relative border-b border-white/5 bg-zoyd-black pt-16">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <Illustration
+            nom="arme-bleue"
+            className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
+          />
+          <Illustration
+            nom="operatrice-studio"
+            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         </div>
         <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 pb-12">

@@ -51,6 +51,7 @@ import { Modal } from '../components/ui/Modal';
 import { SEOHead } from '../components/SEOHead';
 import { CLOSED_STATUSES, PRIORITY_STATUSES } from '../lib/matchStatus';
 import { Button } from '../components/ui/Button';
+import Illustration from '../components/ui/Illustration';
 
 const EMPTY_WALLET: WalletSnapshot = {
   cashBalance: 0,
@@ -426,8 +427,14 @@ const AdminDashboardPage: React.FC = () => {
       <SEOHead title="Administration — ZOYD" description="Tableau de bord d'administration ZOYD." path="/admin" noindex />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
       <header className="relative overflow-hidden border-b border-white/5">
-        <img src="/assets/images/codm-8.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none" />
-        <img src="/assets/images/codm-1.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+        <Illustration
+          nom="operateur-lame"
+          className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
+        />
+        <Illustration
+          nom="duel-operateurs"
+          className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
+        />
         <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-4 md:px-8 py-10">
           <div className="flex flex-col 2xl:flex-row 2xl:items-end 2xl:justify-between gap-8">
             <div className="min-w-0">

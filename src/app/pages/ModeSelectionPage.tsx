@@ -25,6 +25,8 @@ import { ArrowLeft, ArrowRight, Gamepad2, Swords, Wallet, Zap } from 'lucide-rea
 import { Badge } from '../components/ui/Badge';
 import ZoydLogo from '../components/branding/ZoydLogo';
 import { SEOHead } from '../components/SEOHead';
+import Illustration from '../components/ui/Illustration';
+import { urlIllustration } from '../lib/illustrations';
 
 // C-3 (audit UI) : regle S-7 unifiee avec LandingPage — la video decoratif de
 // fond (hero-bg.mp4) ne se charge plus EN DESSOUS de 768px : decor a opacite
@@ -104,10 +106,13 @@ const ModeSelectionPage: React.FC = () => {
             className="group text-left h-full"
           >
             <div className="relative h-full min-h-[350px] sm:min-h-[420px] md:min-h-[520px] overflow-hidden border border-zoyd-blue/20 bg-black hover:border-zoyd-yellow transition-all duration-300 group/card">
-              <img src="/assets/images/codm-1.jpg" alt="Multijoueur" className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity grayscale group-hover/card:scale-105 group-hover/card:grayscale-0 transition-all duration-700" />
+              <Illustration
+                nom="duel-operateurs"
+                className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity grayscale group-hover/card:scale-105 group-hover/card:grayscale-0 transition-all duration-700"
+              />
               {SHOW_CARD_VIDEO && (
                 <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:opacity-40 transition-opacity duration-700 pointer-events-none">
-                  <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+                  <source src={urlIllustration('hero-inscription') || ''} type="video/mp4" />
                 </video>
               )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.24),rgba(10,10,10,0.75)_52%,rgba(10,10,10,0.96))]" />
@@ -155,10 +160,13 @@ const ModeSelectionPage: React.FC = () => {
             className="group text-left h-full mt-4 lg:mt-0"
           >
             <div className="relative h-full min-h-[350px] sm:min-h-[420px] md:min-h-[520px] overflow-hidden border border-zoyd-yellow/20 bg-black/80 hover:border-zoyd-yellow/40 transition-all duration-300 group/br">
-              <img src="/assets/images/codm-2.jpg" alt="Battle Royale" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale group-hover/br:scale-105 group-hover/br:grayscale-0 transition-all duration-700" />
+              <Illustration
+                nom="affiche-promo-cod"
+                className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale group-hover/br:scale-105 group-hover/br:grayscale-0 transition-all duration-700"
+              />
               {SHOW_CARD_VIDEO && (
                 <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/br:opacity-24 transition-opacity duration-700 pointer-events-none">
-                  <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+                  <source src={urlIllustration('hero-inscription') || ''} type="video/mp4" />
                 </video>
               )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.28),rgba(10,10,10,0.78)_52%,rgba(10,10,10,0.97))]" />

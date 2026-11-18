@@ -30,6 +30,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { SEOHead } from '../../components/SEOHead';
+import Illustration from '../../components/ui/Illustration';
 
 const loginSchema = z.object({
   emailOrPseudo: z.string().min(1, 'Email ou pseudo requis'),
@@ -142,10 +143,8 @@ cancelled = true;
           transition={{ duration: 2, ease: 'easeOut' }}
           className="absolute inset-0"
         >
-          <img
-            src="/assets/images/codm-1.jpg"
-            alt=""
-            loading="lazy"
+          <Illustration
+            nom="duel-operateurs"
             className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
           />
         </motion.div>
@@ -156,10 +155,8 @@ cancelled = true;
           transition={{ duration: 3, delay: 1 }}
           className="absolute inset-0"
         >
-          <img
-            src="/assets/images/codm-2.jpg"
-            alt=""
-            loading="lazy"
+          <Illustration
+            nom="affiche-promo-cod"
             className="w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
           />
         </motion.div>
@@ -227,7 +224,10 @@ cancelled = true;
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center px-5 py-10 sm:p-8 relative safe-bottom">
-        <img src="/assets/images/codm-3.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
+        <Illustration
+          nom="portrait-ghost"
+          className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none"
+        />
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}

@@ -47,6 +47,7 @@ import { useFriendsStore } from '../stores/friendsStore';
 import { Button } from '../components/ui/Button';
 import { cn, getRelativeTime, sanitizeText } from '../../lib/utils';
 import { SEOHead } from '../components/SEOHead';
+import Illustration from '../components/ui/Illustration';
 
 const channelIcons: Record<string, React.ReactNode> = {
   global: <Globe className="w-4 h-4" />,
@@ -316,7 +317,10 @@ const ChatPage: React.FC = () => {
           'border-r border-white/5 bg-zoyd-black/80 flex flex-col shrink-0 relative overflow-hidden',
           activeChannelId ? 'hidden sm:flex sm:w-64' : 'w-full sm:w-64'
         )}>
-          <img src="/assets/images/codm-7.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
+          <Illustration
+            nom="escouade-action"
+            className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none"
+          />
           <div className="p-4 border-b border-white/5">
             {/* P13 C3 (audit-3) : l'ancien bouton creait un canal prive
                 mono-participant (participants: [user.id]) — un salon sans

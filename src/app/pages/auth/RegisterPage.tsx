@@ -51,6 +51,8 @@ import { getApiUrl } from '../../lib/apiClient';
 import { isAnySupportedPhone } from '../../../lib/payoutOperators';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { SEOHead } from '../../components/SEOHead';
+import Illustration from '../../components/ui/Illustration';
+import { urlIllustration } from '../../lib/illustrations';
 
 // RHF n'admet qu'un seul type de champs pour tout le formulaire : les deux
 // étapes partagent donc la même forme et chaque étape renforce uniquement les
@@ -363,10 +365,8 @@ cancelled = true;
 
       <div className="hidden lg:flex lg:w-1/2 relative bg-zoyd-black overflow-hidden">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.3 }} className="absolute inset-0">
-          <img
-            src="/assets/images/codm-6.jpg"
-            alt=""
-            loading="lazy"
+          <Illustration
+            nom="operatrice-studio"
             className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
           />
         </motion.div>
@@ -377,10 +377,8 @@ cancelled = true;
           transition={{ duration: 3, delay: 0.5 }}
           className="absolute inset-0"
         >
-          <img
-            src="/assets/images/codm-7.jpg"
-            alt=""
-            loading="lazy"
+          <Illustration
+            nom="escouade-action"
             className="w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
           />
         </motion.div>
@@ -431,7 +429,10 @@ cancelled = true;
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center px-5 py-10 sm:p-8 relative safe-bottom">
-        <img src="/assets/images/codm-8.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none" />
+        <Illustration
+          nom="operateur-lame"
+          className="absolute inset-0 w-full h-full object-cover opacity-5 mix-blend-luminosity grayscale pointer-events-none"
+        />
         <div className="w-full max-w-[560px]">
           <header className="mb-10">
             <div className="flex items-center justify-between mb-8">
@@ -758,7 +759,7 @@ cancelled = true;
                       playsInline
                       className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-luminosity grayscale pointer-events-none"
                     >
-                      <source src="/assets/codm/videos/hero-bg.mp4" type="video/mp4" />
+                      <source src={urlIllustration('hero-inscription') || ''} type="video/mp4" />
                     </video>
                   )}
                 </div>

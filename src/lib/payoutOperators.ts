@@ -20,10 +20,15 @@
 // Modes FedaPay vérifiés dans la doc : mtn_open/moov/sbin (BJ), mtn_ci/moov_ci/
 // orange_ci/wave_ci (CI), orange_sn/wave_sn (SN), moov_tg/togocel (TG).
 
+// PIEGE : les logos viennent du MANIFESTE des visuels, pas d un chemin
+// ecrit en dur : un logo declare mais absent doit pouvoir disparaitre
+// sans casser la page (le badge texte est le repli prevu).
+import { urlIllustration } from '../app/lib/illustrations';
+
 export interface PayoutOperator {
   id: string;
   name: string;
-  /** Chemin du vrai logo (public/operators). Absent = badge texte stylé. */
+  /** URL du vrai logo (catalogue des visuels). Absent = badge texte stylé. */
   logo?: string;
   /** Couleur de fond du badge (fallback + fond logo) */
   bg: string;
@@ -58,9 +63,9 @@ export const PAYOUT_COUNTRIES: Record<string, PayoutCountry> = {
     legacyLengths: [8],
     placeholder: '+229 01 61 00 00 01',
     operators: [
-      { id: 'MTN MoMo', name: 'MTN MoMo', logo: '/operators/mtn.svg', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
+      { id: 'MTN MoMo', name: 'MTN MoMo', logo: urlIllustration('logo-mtn') || '', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
       { id: 'Moov Money', name: 'Moov Money', bg: '#009EE2', fg: '#FFFFFF', mark: 'moov' },
-      { id: 'Celtiis', name: 'Celtiis', logo: '/operators/celtiis.svg', bg: '#FFFFFF', fg: '#0077B6', mark: 'celtiis' },
+      { id: 'Celtiis', name: 'Celtiis', logo: urlIllustration('logo-celtiis') || '', bg: '#FFFFFF', fg: '#0077B6', mark: 'celtiis' },
     ],
   },
   ci: {
@@ -70,10 +75,10 @@ export const PAYOUT_COUNTRIES: Record<string, PayoutCountry> = {
     localLength: 10,
     placeholder: '+225 07 00 00 00 00',
     operators: [
-      { id: 'MTN MoMo', name: 'MTN MoMo', logo: '/operators/mtn.svg', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
+      { id: 'MTN MoMo', name: 'MTN MoMo', logo: urlIllustration('logo-mtn') || '', bg: '#FFCC00', fg: '#000000', mark: 'MTN' },
       { id: 'Moov Money', name: 'Moov Money', bg: '#009EE2', fg: '#FFFFFF', mark: 'moov' },
-      { id: 'Orange Money', name: 'Orange Money', logo: '/operators/orange.svg', bg: '#000000', fg: '#FFFFFF', mark: 'Orange' },
-      { id: 'Wave', name: 'Wave', logo: '/operators/wave.png', bg: '#FFFFFF', fg: '#0A0A0A', mark: 'wave' },
+      { id: 'Orange Money', name: 'Orange Money', logo: urlIllustration('logo-orange') || '', bg: '#000000', fg: '#FFFFFF', mark: 'Orange' },
+      { id: 'Wave', name: 'Wave', logo: urlIllustration('logo-wave') || '', bg: '#FFFFFF', fg: '#0A0A0A', mark: 'wave' },
     ],
   },
   sn: {
@@ -83,8 +88,8 @@ export const PAYOUT_COUNTRIES: Record<string, PayoutCountry> = {
     localLength: 9,
     placeholder: '+221 77 000 00 00',
     operators: [
-      { id: 'Orange Money', name: 'Orange Money', logo: '/operators/orange.svg', bg: '#000000', fg: '#FFFFFF', mark: 'Orange' },
-      { id: 'Wave', name: 'Wave', logo: '/operators/wave.png', bg: '#FFFFFF', fg: '#0A0A0A', mark: 'wave' },
+      { id: 'Orange Money', name: 'Orange Money', logo: urlIllustration('logo-orange') || '', bg: '#000000', fg: '#FFFFFF', mark: 'Orange' },
+      { id: 'Wave', name: 'Wave', logo: urlIllustration('logo-wave') || '', bg: '#FFFFFF', fg: '#0A0A0A', mark: 'wave' },
     ],
   },
   tg: {

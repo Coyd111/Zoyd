@@ -37,6 +37,7 @@ import { SEOHead } from '../components/SEOHead';
 import { getTrustColor } from '../stores/trustScoreStore';
 import { formatZC } from '../../lib/utils';
 import { Button } from '../components/ui/Button';
+import Illustration from '../components/ui/Illustration';
 
 interface PublicPlayer {
   // id est deja expose par /api/leaderboard (sanitizeUserPayload) — deja
@@ -164,8 +165,14 @@ const PublicClassementsPage: React.FC = () => {
 
       <header className="relative border-b border-white/5 bg-zoyd-black pt-16">
         <div className="absolute inset-0 z-0">
-          <img src="/assets/images/codm-5.jpg" alt="" loading="lazy" className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none" />
-          <img src="/assets/images/codm-6.jpg" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none" />
+          <Illustration
+            nom="arme-bleue"
+            className="w-full h-full object-cover opacity-20 mix-blend-luminosity grayscale pointer-events-none"
+          />
+          <Illustration
+            nom="operatrice-studio"
+            className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay grayscale pointer-events-none"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black via-zoyd-black/60 to-transparent" />
         </div>
         <div className="relative z-10 max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 pb-12">

@@ -4,6 +4,11 @@
  * Melange des statistiques publiques, des bundles CODM (via codmApi) et des
  * donnees d'armes (codmWeaponData). Est un ecran public sous AppLayout.
  *
+ * INVARIANT : les articles viennent de `src/app/data/codmNews.ts` et leurs
+ * dates sont DERIVEES de `publieLe`. Aucune saison et aucune date n est
+ * ecrite en dur ici : le verrou `src/lib/codm-news.test.ts` refuse une
+ * saison passee presentee comme l actualite.
+ *
  * INVARIANT : les appels CODM passent par le proxy backend (codmApi.ts) :
  * le navigateur ne doit jamais appeler Codashop directement (CORS, cle
  * d'API, quotas).
@@ -24,7 +29,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   Newspaper, Zap, Swords, Bug, Trophy, ChevronRight,
   TrendingUp, Shield, ShoppingBag, Search,
-  Crosshair, Star, AlertTriangle, Gamepad2, Clock,
+  Crosshair, Star, Gamepad2, Clock,
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { fetchCODMStore, type CodashopBundle } from '../../lib/codmApi';
@@ -37,17 +42,21 @@ import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/ui/Button';
 import Illustration from '../components/ui/Illustration';
 import { urlIllustration } from '../lib/illustrations';
+import {
+  ARTICLES_CODM,
+  SAISON_CODM,
+  VERIFIE_LE,
+  formaterDateCodm,
+  type ArticleCodm,
+  type CategorieArticleCodm,
+} from '../data/codmNews';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type LeakCategory = 'all' | 'saison' | 'armes' | 'competition' | 'patches';
+type LeakCategory = 'all' | CategorieArticleCodm;
 type LiveTab = 'bundles' | 'armes';
-
-// ---------------------------------------------------------------------------
-// Real articles — Septembre 2026
-// ---------------------------------------------------------------------------
 
 const categories: { id: LeakCategory; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'all', label: 'TOUT', icon: Newspaper },
@@ -57,158 +66,32 @@ const categories: { id: LeakCategory; label: string; icon: React.ComponentType<{
   { id: 'patches', label: 'PATCHES', icon: Bug },
 ];
 
-interface LeakArticle {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string[];
-  category: LeakCategory;
-  date: string;
-  tag?: string;
-  readTime: string;
-  hot?: boolean;
-  source?: string;
-  image?: string;
-}
+/** L URL du visuel d un article, ou `undefined` pour le repli graphique. */
+const imageDe = (article: ArticleCodm): string | undefined =>
+  article.illustration ? urlIllustration(article.illustration) : undefined;
 
-const articles: LeakArticle[] = [
-  {
-    id: '1',
-    title: 'CODM x Honkai Impact 3rd — La première collab Tencent x HoYoverse',
-    excerpt: 'Officiellement annoncée le 7 Août lors du livestream S7, la collaboration historique avec Honkai Impact 3rd arrive en Septembre avec les skins Kiana, Raiden Mei et Bronya.',
-    content: [
-      'C\'est la première fois que Tencent (CODM) et miHoYo/HoYoverse collaborent sur un jeu mobile. Annoncee lors du livestream de l\'anniversaire S7 le 7 Août 2026, cette collaboration historique est confirmeee pour le lancement de la Saison 8.',
-      'Les trois Herrscher arriveront en tant que skins Opérateur specialises : Kiana Kaslana (Herrscher of Flamescion) sur Siren, Raiden Mei (Herrscher of Thunder) sur Rin Yoshida, et Bronya Zaychik (Herrscher of Reason) sur Kestrel.',
-      'Le teaser officiel montre l\'ascenseur de l\'Hyperion Bridge de Honkai Impact 3rd s\'ouvrant sur le logo conjoint. La date de sortie prevue est le 3 Septembre 2026.',
-    ],
-    category: 'saison',
-    date: '27 Août 2026',
-    tag: 'CONFIRME',
-    readTime: '4 min',
-    hot: true,
-    source: 'CODM Official Livestream + GameMarket.gg',
-    image: 'https://www.callofduty.com/content/dam/atvi/callofduty/cod-touchui/blog/body/codm/CODM-S8-ANNOUNCE-TOUT-1.jpg',
-  },
-  {
-    id: '2',
-    title: 'Saison 8 "Twilight Heist" — Date de sortie et nouveau Battle Pass',
-    excerpt: 'La Saison 8 de CODM baptisee "Twilight Heist" debute le 3 Septembre. Nouvelle arme RAM-7, nouveau Battle Pass, et skins mythiques.',
-    content: [
-      'La Saison 8 de Call of Duty Mobile, intitulée "Twilight Heist", est schedulee pour le 3 Septembre 2026. C\'est une saison majeure qui marque le début de la deuxième moitie de l\'annee 2026.',
-      'Le Battle Pass de la S8 comprend la RAM-7 comme nouvelle arme gratuite (assault rifle polyvalent close/mid-range), plus des skins pour Klepto (Legendary Twilight Traitor), et des blueprints premium incluant le KRM-262 Nitrous Neutralizer, TEC-9 Lawful Authority, Swordfish Perp Walker, et Arctic .50 Burn Unit.',
-      'Le Challenge Pass offre le M1 Garand Bayonet (signature attachment), le Predator Missile Guided Attack (scorestreak reskin), et le ReskinMaddox Legal Problem.',
-    ],
-    category: 'saison',
-    date: '26 Août 2026',
-    tag: 'CONFIRME',
-    readTime: '5 min',
-    hot: true,
-    source: 'LootBar + SportsDunia',
-    image: urlIllustration('duel-operateurs') || '',
-  },
-  {
-    id: '3',
-    title: 'Mythique RAM-7 "Nebula\'s Brush" — Le premier mythique de la S8',
-    excerpt: 'La Whorl of Midnight Mythic Draw proposé la RAM-7 Mythique avec un design cosmique, accompagnee du skin Legendary Klepto Twilight Traitor.',
-    content: [
-      'La Whorl of Midnight Mythic Draw est la principale attraction du store en S8. Elle contient la RAM-7 Nebula\'s Brush, un weapon blueprint mythique avec un design cosmique/nebuleux.',
-      'Le draw comprend egalement le skin Legendary Klepto "Twilight Traitor", une Smoke Grenade "Whorl of Midnight" tactical blueprint, et un melee "Streaked Shoveler" weapon blueprint.',
-      'La RAM-7 est décrite comme un assault rifle puissant close-to-mid-range avec un stopping power impressionnant et un recoil manageable. C\'est la première fois que cette arme (initialement popularisee dans MW2) arrive dans CODM.',
-    ],
-    category: 'armes',
-    date: '25 Août 2026',
-    tag: 'LEAK',
-    readTime: '4 min',
-    source: 'LootBar + Test Server',
-    image: urlIllustration('affiche-promo-cod') || '',
-  },
-  {
-    id: '4',
-    title: 'Balance Changes S8 — Buffs du S36, Lachmann, Fennec et nerf du FSS Hurricane',
-    excerpt: 'Le patch S8 rebalancera les armes avec des buffs majeurs sur le S36, Cronen Squall, et Fennec, tandis que le FSS Hurricane et le Hades seront nerfes.',
-    content: [
-      'Les changements de balance de la S8 sont déjà visibles sur le test server. Voici les principaux buffs :',
-      'BUFFS : Lachmann 5.56 (bullet impact 1→1.2, STF -20%), Chopper (+15% ADS movement avec Heavy Handle), S36 (ADS 420→380ms, STF 180→150ms), Cronen Squall (improved ranges, tighter BSA), Fennec (improved range profile), Krig 6 (nouveau phase 31 dégâts a 10m), FFAR 1 (range initial 6.6→10m), LAPA (31/28/20/16 → 33/29/22/16), Arctic .50 (moins de recoil vertical).',
-      'NERFS : FSS Hurricane (sprint speed 6.41→6.26m/s, -6% ADS movement avec FTac Coldforge), Hades (range 16-32m → 12-28m en BR).',
-      'BR CLASSES : Jet Boost (wall-running supprimé), Defender (damage resistance a l\'activation supprimée), Shockwave (degats reduits), Rewind (ne reset plus la vie a l\'activation). Quick Strike (distance 15/20/35→5/10/10m, dégâts 50/80/150→100/150/250).',
-    ],
-    category: 'patches',
-    date: '26 Août 2026',
-    tag: 'TEST SERVER',
-    readTime: '6 min',
-    hot: true,
-    source: 'SportsDunia + Test Server',
-    image: urlIllustration('portrait-ghost') || '',
-  },
-  {
-    id: '5',
-    title: 'Skins Legendaries S8 — AK117 "Phase of the Moon", GRAV, Dingo',
-    excerpt: 'Les fichiers du test server révèlent trois nouveaux legendaries pour la S8 : AK117 Phase of the Moon, GRAV Blood Sacrifice, et Dingo Rock Burst.',
-    content: [
-      'De nouveaux weapon blueprints legendary ont été découverts dans les fichiers du test server pour la Saison 8 et 9 :',
-      'SAISON 8 LEGENDARIES : AK117 "Phase of the Moon" (design lunar), GRAV "Blood Sacrifice" (theme sombre), Dingo "Rock Burst" (style explosif). Ces armes seront disponibles via des Lucky Draws ou Armory Series.',
-      'SAISON 8 EPICS : LW3 Tundra DurCXB, Machine Pistol DurCXB, M13 Hazardous, SPR 208 A Nature, MW11 Spirit Breaker. Ces skins seront dans le Battle Pass ou des events.',
-      'SAISON 9 (Apercu) : Les legendaries S8 s\'etendront probablement en S9 avec de nouveaux draws. Un Mythic Signal 50 est egalement attendu pour la S10.',
-    ],
-    category: 'armes',
-    date: '24 Août 2026',
-    tag: 'LEAK',
-    readTime: '4 min',
-    source: 'SportsDunia + Datamine',
-    image: urlIllustration('operateur-lame') || '',
-  },
-  {
-    id: '6',
-    title: '7ème Anniversaire — Skin Urban Tracker GRATUIT + Vote Mythique',
-    excerpt: 'Pour le 7ème anniversaire de CODM, un skin Urban Tracker gratuit sera distribué via un event login. Un event de vote pour une arme mythique est aussi prevu.',
-    content: [
-      'Le 7ème anniversaire de Call of Duty Mobile est prévu pour la Saison 9 (Octobre 2026). Les premiers leaks révèlent des récompenses importantes :',
-      'SKIN GRATUIT : Un skin Urban Tracker gratuit sera distribué via un simple event login airdrop. C\'est l\'un des skins les plus demandés par la communauté.',
-      'VOTE MYTHIQUE : Un event de vote permettra aux joueurs de choisir quelle arme mythique sera ajoutée dans le futur. C\'est la première fois qu\'un tel event est organisé.',
-      'BATTLE PASS VAULT : Trois Battle Pass passes seront ajoutées au Vault en S8/S9, incluant le Shadow Operatives (S8 2024), le Nightmare (S9 2021), et le To the Skies (S6 2022).',
-    ],
-    category: 'saison',
-    date: '23 Août 2026',
-    tag: 'LEAK',
-    readTime: '3 min',
-    source: 'ZORO CODM + Community',
-    image: urlIllustration('arme-bleue') || '',
-  },
-  {
-    id: '7',
-    title: 'Ranked Festival — Nouvel event cumulatif pour les joueurs Ranked',
-    excerpt: 'CODM ajouté un "Ranked Festival" : plus tu joues de matchs Ranked (MP et BR), plus tu gagnés de récompenses exclusives, dont l\'ASM10 Turbulent Mayhem.',
-    content: [
-      'Un nouveau systeme d\'evenement nomme "Ranked Festival" sera introduit en S8 pour recompenser les joueurs actifs en Ranked Play.',
-      'COMMENT CA MARCHE : Chaque match Ranked joue (MP ou BR) te donne des points d\'event. Plus tu joues, plus tu débloquées de recompenses. C\'est en PLUS des récompenses Ranked habituelles.',
-      'RECOMPENSES : L\'ASM10 "Turbulent Mayhem" est la récompense principale. D\'autres items incluent des Calling Cards, Sprays, et Vault Coins.',
-      'CE QUE CA CHANGE : C\'est la première fois que CODM récompense spécifiquement l\'activité en Ranked au-delà du classement. Ca devrait augmenter la player base Ranked.',
-    ],
-    category: 'competition',
-    date: '22 Août 2026',
-    tag: 'CONFIRME',
-    readTime: '3 min',
-    source: 'LootBar + Patch Notes',
-    image: urlIllustration('operatrice-studio') || '',
-  },
-  {
-    id: '8',
-    title: 'Buffs Équipement S8 — Drill Charge 2x plus rapide, Sticky Grenade buff',
-    excerpt: 'Le patch S8 buff egalement les équipements : Drill Charge détonation 1.4→0.7s, Sticky Grenade radius et dégâts augmentes, plus de Flash Drone et Inflatable Decoy.',
-    content: [
-      'Les changements d\'équipement de la S8 sont significatifs et pourraient changer la meta des tactical/lethal :',
-      'BUFFS MAJEURS : Drill Charge (detonation 1.4→0.7s, dégâts min 60→80), Sticky Grenade (radius 5→5.5m, dégâts min 55→80), Flash Drone (quantité 1→2), Inflatable Decoy (quantité 1→2), EMP (detonation 1.5→1.2s), Douser Grenade (radius 3→4m, quantité 2→3).',
-      'SHOCK STICK : Ajout d\'une fonction quick-throw pour une vitesse de lancer plus rapide. C\'est un buff indirect significatif.',
-      'IMPACT META : Le Drill Charge deviendra probablement le lethal meta pour les modes objectif (Hardpoint, Domination) grâce à sa vitesse de détonation réduite de moitie.',
-    ],
-    category: 'patches',
-    date: '21 Août 2026',
-    tag: 'TEST SERVER',
-    readTime: '3 min',
-    source: 'SportsDunia',
-    image: urlIllustration('escouade-action') || '',
-  },
-];
+/**
+ * Le lien vers la source d un article.
+ *
+ * INVARIANT : la source est visible ET cliquable. Un fait sans source
+ * verifiable n est pas publiable.
+ * PIEGE (WCAG 2.5.3) : le nom accessible doit contenir le libelle
+ * visible ; on ajoute « nouvel onglet » sans le remplacer.
+ */
+const LienSource: React.FC<{ article: ArticleCodm; className?: string }> = ({ article, className }) => (
+  <p className={className}>
+    Source :{' '}
+    <a
+      href={article.source.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Source : ${article.source.libelle} (nouvel onglet)`}
+      className="underline decoration-white/20 underline-offset-2 hover:text-zoyd-yellow transition-colors"
+    >
+      {article.source.libelle}
+    </a>
+  </p>
+);
 
 const categoryColors: Record<LeakCategory, string> = {
   all: 'text-white/60 border-white/10',
@@ -276,11 +159,14 @@ const LeaksPage: React.FC = () => {
   }, [bundleRetry]);
 
   const filteredArticles = activeCategory === 'all'
-    ? articles
-    : articles.filter((a) => a.category === activeCategory);
+    ? ARTICLES_CODM
+    : ARTICLES_CODM.filter((a) => a.categorie === activeCategory);
 
-  const featured = articles.find((a) => a.hot && a.category === 'saison') || articles[0];
+  // Le module garantit une seule une (verrou de contenu). Le repli sur le
+  // premier article evite une page vide si la donnee est incomplete.
+  const featured = ARTICLES_CODM.find((a) => a.une) ?? ARTICLES_CODM[0];
   const latestArticles = filteredArticles.filter((a) => a.id !== featured.id || activeCategory !== 'all');
+  const imageUne = imageDe(featured);
 
   const currentWeapons = WEAPON_DATA.weapons[selectedWeaponCategory];
   const searchedWeapons = weaponSearch
@@ -290,8 +176,8 @@ const LeaksPage: React.FC = () => {
   return (
     <div className="min-h-dvh bg-zoyd-black text-white font-ui scanline pb-24">
       <SEOHead
-        title="Leaks &amp; Infos CODM — ZOYD"
-        description="Les dernières leaks, nouveautes et infos de Call of Duty Mobile 2026. Saison Twilight Heist, RAM-7 Mythic, balance changes."
+        title={`Infos CODM — Saison ${SAISON_CODM.numero} : Verdansk, Goulag, Signal 50 | ZOYD`}
+        description={`La Saison ${SAISON_CODM.numero} de Call of Duty: Mobile est sortie le ${formaterDateCodm(SAISON_CODM.sortieLe)} : Verdansk, Goulag, Field Assets, Perks et Signal 50. Faits vérifiés et sources datées.`}
         path="/infos"
       />
       <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
@@ -315,22 +201,23 @@ const LeaksPage: React.FC = () => {
               <Newspaper className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-mono font-black tracking-[0.4em] text-zoyd-yellow uppercase italic">
-              Avant tout le monde
+              Veille vérifiée
             </span>
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-8xl font-display font-black uppercase tracking-tighter italic leading-[0.9]">
-            Leaks
+            Infos
             <br />
             <span className="text-white/70 underline decoration-zoyd-yellow/50 underline-offset-8">
-              &amp; Infos
+              CODM
             </span>
           </h1>
           <p className="mt-5 max-w-3xl text-sm text-white/70">
-            Septembre 2026 — Saison 8 "Twilight Heist", collab Honkai Impact 3rd, RAM-7 Mythic, balance changes majeures. Sois le premier informe.
+            Saison {SAISON_CODM.numero} — {SAISON_CODM.nom}. Verdansk, Goulag, Field
+            Assets et Signal 50 : les faits vérifiés, sources datées.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 text-[10px] font-mono text-white/60">
-            <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> Mis a jour: 27 Août 2026</span>
-            <span className="flex items-center gap-1.5"><AlertTriangle className="w-3 h-3 text-zoyd-yellow" /> S8 lance le 3 Septembre</span>
+            <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> Vérifié le {formaterDateCodm(VERIFIE_LE)}</span>
+            <span className="flex items-center gap-1.5"><Zap className="w-3 h-3 text-zoyd-yellow" /> Lancement : {formaterDateCodm(SAISON_CODM.sortieLe)}, {SAISON_CODM.heure}</span>
           </div>
         </div>
       </header>
@@ -546,9 +433,9 @@ const LeaksPage: React.FC = () => {
           >
             <div className="md:flex">
               <div className="md:w-1/2 aspect-video md:aspect-auto relative bg-zoyd-surface/50 overflow-hidden">
-                {featured.image && !imgErrors.has('featured') ? (
+                {imageUne && !imgErrors.has('featured') ? (
                   <>
-                    <img src={featured.image} alt={featured.title} onError={() => markImgError('featured')} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                    <img src={imageUne} alt={featured.titre} onError={() => markImgError('featured')} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                     <div className="absolute inset-0 bg-gradient-to-r from-zoyd-black/60 via-transparent to-transparent" />
                   </>
                 ) : (
@@ -561,17 +448,17 @@ const LeaksPage: React.FC = () => {
                     </div>
                   </>
                 )}
-                {featured.tag && <div className="absolute top-3 left-3 z-20"><span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border bg-black/80 ${categoryColors[featured.category]}`}>{featured.tag}</span></div>}
+                {featured.etiquette && <div className="absolute top-3 left-3 z-20"><span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border bg-black/80 ${categoryColors[featured.categorie]}`}>{featured.etiquette}</span></div>}
               </div>
               <div className="md:w-1/2 p-6 md:p-8 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[featured.category]}`}>{featured.category}</span>
-                  <span className="text-[10px] font-mono text-white/60">{featured.date}</span>
-                  <span className="text-[10px] font-mono text-white/60">{featured.readTime}</span>
+                  <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[featured.categorie]}`}>{featured.categorie}</span>
+                  <span className="text-[10px] font-mono text-white/60">{formaterDateCodm(featured.publieLe)}</span>
+                  <span className="text-[10px] font-mono text-white/60">{featured.lectureMin} min</span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-display font-black uppercase tracking-tighter italic leading-tight mb-4 group-hover:text-zoyd-yellow transition-colors">{featured.title}</h2>
-                <p className="text-sm text-white/70 mb-4 line-clamp-3">{featured.excerpt}</p>
-                {featured.source && <p className="text-[10px] font-mono text-white/60 mb-4">Source: {featured.source}</p>}
+                <h2 className="text-2xl md:text-3xl font-display font-black uppercase tracking-tighter italic leading-tight mb-4 group-hover:text-zoyd-yellow transition-colors">{featured.titre}</h2>
+                <p className="text-sm text-white/70 mb-4 line-clamp-3">{featured.resume}</p>
+                <LienSource article={featured} className="text-[10px] font-mono text-white/60 mb-4" />
                 <Button
                 variant="ghost"
                 size="link"
@@ -581,7 +468,7 @@ const LeaksPage: React.FC = () => {
                 </Button>
                 {expandedArticles.has(featured.id) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 space-y-3 border-t border-white/5 pt-4">
-                    {featured.content.map((p, i) => <p key={i} className="text-sm text-white/75 leading-relaxed">{p}</p>)}
+                    {featured.contenu.map((p, i) => <p key={i} className="text-sm text-white/75 leading-relaxed">{p}</p>)}
                   </motion.div>
                 )}
               </div>
@@ -591,62 +478,65 @@ const LeaksPage: React.FC = () => {
 
         {/* Articles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {latestArticles.map((article, index) => (
-            <motion.article key={article.id}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
-              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              transition={prefersReducedMotion ? { duration: 0 } : { delay: Math.min(index * 0.08, 0.5) }}
-              className="border border-white/5 bg-zoyd-surface/20 overflow-hidden group hover:border-white/20 hover:bg-zoyd-surface/40 transition-all"
-            >
-              <div className="aspect-video relative bg-zoyd-surface/50 overflow-hidden border-b border-white/5">
-                {article.image && !imgErrors.has('article-' + article.id) ? (
-                  <>
-                    <img src={article.image} alt={article.title} onError={() => markImgError('article-' + article.id)} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black/70 via-transparent to-transparent" />
-                  </>
-                ) : (
-                  <>
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-white/[0.02]" />
-                    <div className="relative z-10 flex items-center justify-center w-16 h-16 border border-white/10 group-hover:border-zoyd-yellow/30 transition-colors">
-                      {article.category === 'saison' && <Zap className="w-7 h-7 text-white/60 group-hover:text-zoyd-yellow/60 transition-colors" />}
-                      {article.category === 'armes' && <Swords className="w-7 h-7 text-white/60 group-hover:text-red-400/80 transition-colors" />}
-                      {article.category === 'competition' && <Trophy className="w-7 h-7 text-white/60 group-hover:text-zoyd-blue/60 transition-colors" />}
-                      {article.category === 'patches' && <Bug className="w-7 h-7 text-white/60 group-hover:text-orange-400/80 transition-colors" />}
+          {latestArticles.map((article, index) => {
+            const image = imageDe(article);
+            return (
+              <motion.article key={article.id}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+                animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                transition={prefersReducedMotion ? { duration: 0 } : { delay: Math.min(index * 0.08, 0.5) }}
+                className="border border-white/5 bg-zoyd-surface/20 overflow-hidden group hover:border-white/20 hover:bg-zoyd-surface/40 transition-all"
+              >
+                <div className="aspect-video relative bg-zoyd-surface/50 overflow-hidden border-b border-white/5">
+                  {image && !imgErrors.has('article-' + article.id) ? (
+                    <>
+                      <img src={image} alt={article.titre} onError={() => markImgError('article-' + article.id)} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-zoyd-black/70 via-transparent to-transparent" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-white/[0.02]" />
+                      <div className="relative z-10 flex items-center justify-center w-16 h-16 border border-white/10 group-hover:border-zoyd-yellow/30 transition-colors">
+                        {article.categorie === 'saison' && <Zap className="w-7 h-7 text-white/60 group-hover:text-zoyd-yellow/60 transition-colors" />}
+                        {article.categorie === 'armes' && <Swords className="w-7 h-7 text-white/60 group-hover:text-red-400/80 transition-colors" />}
+                        {article.categorie === 'competition' && <Trophy className="w-7 h-7 text-white/60 group-hover:text-zoyd-blue/60 transition-colors" />}
+                        {article.categorie === 'patches' && <Bug className="w-7 h-7 text-white/60 group-hover:text-orange-400/80 transition-colors" />}
+                      </div>
+                    </>
+                  )}
+                  {article.etiquette && (
+                    <div className="absolute top-3 right-3 z-20">
+                      <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[article.categorie]} bg-black/80`}>{article.etiquette}</span>
                     </div>
-                  </>
-                )}
-                {article.tag && (
-                  <div className="absolute top-3 right-3 z-20">
-                    <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-1 border ${categoryColors[article.category]} bg-black/80`}>{article.tag}</span>
-                  </div>
-                )}
-              </div>
-              <div className="p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-0.5 border ${categoryColors[article.category]}`}>{article.category}</span>
-                  <span className="text-[10px] font-mono text-white/60">{article.date}</span>
+                  )}
                 </div>
-                <h3 className="text-sm font-display font-black uppercase tracking-tight italic leading-snug mb-2 group-hover:text-zoyd-yellow transition-colors line-clamp-2">{article.title}</h3>
-                <p className="text-xs text-white/60 line-clamp-2 mb-3">{article.excerpt}</p>
-                {article.source && <p className="text-[10px] font-mono text-white/60 mb-3">Source: {article.source}</p>}
-                <Button
-                variant="secondary"
-                size="md"
-                animate={false} onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
-                  className="flex items-center justify-between w-full min-h-11 py-2">
-                  <span className="text-[10px] font-mono text-white/60">{article.readTime}</span>
-                  <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/60 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
-                    {expandedArticles.has(article.id) ? 'Masquer' : 'Lire'}<ChevronRight className="w-3 h-3" />
-                  </span>
-                </Button>
-                {expandedArticles.has(article.id) && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 space-y-2 border-t border-white/5 pt-3">
-                    {article.content.map((p, i) => <p key={i} className="text-xs text-white/70 leading-relaxed">{p}</p>)}
-                  </motion.div>
-                )}
-              </div>
-            </motion.article>
-          ))}
+                <div className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className={`text-[10px] font-mono font-black tracking-widest uppercase px-2 py-0.5 border ${categoryColors[article.categorie]}`}>{article.categorie}</span>
+                    <span className="text-[10px] font-mono text-white/60">{formaterDateCodm(article.publieLe)}</span>
+                  </div>
+                  <h3 className="text-sm font-display font-black uppercase tracking-tight italic leading-snug mb-2 group-hover:text-zoyd-yellow transition-colors line-clamp-2">{article.titre}</h3>
+                  <p className="text-xs text-white/60 line-clamp-2 mb-3">{article.resume}</p>
+                  <LienSource article={article} className="text-[10px] font-mono text-white/60 mb-3" />
+                  <Button
+                  variant="secondary"
+                  size="md"
+                  animate={false} onClick={() => toggleArticle(article.id)} aria-expanded={expandedArticles.has(article.id)}
+                    className="flex items-center justify-between w-full min-h-11 py-2">
+                    <span className="text-[10px] font-mono text-white/60">{article.lectureMin} min</span>
+                    <span className="flex items-center gap-1 text-[10px] font-display font-black text-white/60 group-hover:text-zoyd-yellow transition-colors tracking-widest uppercase italic">
+                      {expandedArticles.has(article.id) ? 'Masquer' : 'Lire'}<ChevronRight className="w-3 h-3" />
+                    </span>
+                  </Button>
+                  {expandedArticles.has(article.id) && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 space-y-2 border-t border-white/5 pt-3">
+                      {article.contenu.map((p, i) => <p key={i} className="text-xs text-white/70 leading-relaxed">{p}</p>)}
+                    </motion.div>
+                  )}
+                </div>
+              </motion.article>
+            );
+          })}
         </div>
 
         {filteredArticles.length === 0 && (
@@ -663,7 +553,7 @@ const LeaksPage: React.FC = () => {
             <div className="w-12 h-12 border border-zoyd-yellow/40 flex items-center justify-center text-zoyd-yellow shrink-0"><Shield className="w-6 h-6" /></div>
             <div className="flex-1">
               <h3 className="font-display font-black text-lg uppercase tracking-tighter italic text-white mb-1">Ne rate plus rien</h3>
-              <p className="text-sm text-white/70">Rejoins ZOYD pour recevoir les leaks et infos CODM en premier. Chat en direct, alerts meta et event notifications.</p>
+              <p className="text-sm text-white/70">Rejoins ZOYD pour suivre les infos CODM vérifiées, le chat en direct et les tournois.</p>
             </div>
             <Link to="/auth/register" className="shrink-0 bg-zoyd-yellow text-black px-6 py-3 font-display font-black text-xs tracking-[0.2em] italic uppercase hover:bg-white transition-colors touch-target">REJOINDRE</Link>
           </div>
@@ -672,10 +562,10 @@ const LeaksPage: React.FC = () => {
         {/* Stats Bar */}
         <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'ARTICLES', value: articles.length, icon: Newspaper },
+            { label: 'ARTICLES', value: ARTICLES_CODM.length, icon: Newspaper },
             { label: 'ARMES', value: TOTAL_WEAPONS, icon: Swords },
             { label: 'STORE', value: bundles.length || '--', icon: ShoppingBag },
-            { label: 'LEAKS', value: articles.filter(a => a.tag === 'LEAK').length, icon: TrendingUp },
+            { label: 'SOURCES', value: new Set(ARTICLES_CODM.map((a) => a.source.url)).size, icon: TrendingUp },
           ].map((stat) => {
             const Icon = stat.icon;
             return (

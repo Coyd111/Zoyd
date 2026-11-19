@@ -341,6 +341,7 @@ const BrPage: React.FC = () => {
                     className="text-[10px] font-mono border border-white/10 bg-black/30 px-2.5 py-1.5 text-white/70"
                   >
                     {map.label} · {map.maxPlayers} j.
+                    {map.capConfirme === false ? ' (non confirme)' : ''}
                     {map.vehicles ? ' · vehicules' : ' · sans vehicule'}
                   </span>
                 );
@@ -360,8 +361,10 @@ const BrPage: React.FC = () => {
               })}
             </div>
             <p className="text-[10px] font-mono text-white/70 mt-4">
-              Plafond effectif = minimum(mode, map). Rebirth Island limite donc
-              les salons a {config.maps.rebirth_island?.maxPlayers ?? 40} joueurs.
+              Plafond effectif = minimum(mode, map). Krai et Rebirth Island limitent
+              donc les salons a {config.maps.rebirth_island?.maxPlayers ?? 40} joueurs ;
+              le cap Verdansk ({config.maps.verdansk?.maxPlayers ?? 100}) n'est pas
+              confirme par les sources.
             </p>
           </section>
         )}

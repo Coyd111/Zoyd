@@ -63,11 +63,17 @@ const log = createLogger('br-engine');
 
 /**
  * Maps BR COD Mobile en vigueur (verifie le 04/10/2026 ; cap Krai corrige
- * le 02/11/2026 apres recherche CODM - 40 joueurs et non 100).
+ * le 02/11/2026 apres recherche CODM - 40 joueurs et non 100 ; Verdansk
+ * ajoute le 19/11/2026 avec la Saison 10).
  *
  * Alcatraz a RETIRE : remplace par Rebirth Island le 22/04/2026 (Season 4).
  * Ne pas le remettre dans la liste, il n'existe plus en jeu.
  *
+ * - Verdansk (S10, 11/11/2026) : carte massive, plus de 15 POI, vehicules
+ *   et Buy Stations (communique officiel du 04/11/2026 + guide de map).
+ *   Cap 100 NON PUBLIE par les sources : affiche NON CONFIRME, jamais
+ *   presente comme un fait. Sous-plafonner reste jouable ; sur-plafonner
+ *   produirait des salons infaisables in-game (lecon Krai).
  * - Rebirth Island : compacte, rapide, SANS vehicule (heritage Alcatraz).
  * - Isolated / Blackout : grandes cartes, 100 joueurs, avec vehicules.
  * - Krai : carte moyenne AVEC vehicules mais 40 joueurs seulement (mode
@@ -81,13 +87,16 @@ const log = createLogger('br-engine');
 export const BR_MAPS = {
   isolated: { id: 'isolated', label: 'Isolated', maxPlayers: 100, vehicles: true },
   blackout: { id: 'blackout', label: 'Blackout', maxPlayers: 100, vehicles: true },
+  // Verdansk : la carte de la saison en cours. Le cap est une BORNE de
+  // securite, pas un fait publie : le libelle le dit explicitement.
+  verdansk: { id: 'verdansk', label: 'Verdansk', maxPlayers: 100, vehicles: true, capConfirme: false, hint: "Saison 10 (11/11/2026) : plus de 15 points d'intérêt, Buy Stations et véhicules — cap 100 NON CONFIRMÉ" },
   // Krai = 40 joueurs (Resurgence, format Alcatraz) - corrige le 02/11/2026.
   // hint : info utile affichee au createur (formulaire) et a l'arbitre
   // (detail du salon) - uniquement des faits sources, rien d'invente.
   krai: { id: 'krai', label: 'Krai', maxPlayers: 40, vehicles: true, hint: 'Résurgence format Alcatraz : redéploiement limité, cap 40 joueurs' },
   // Cap 40 plausible (heritage Alcatraz) mais encore NON CONFIRME dans les
   // sources : aucune liste officielle ne fige encore le nombre de joueurs.
-  rebirth_island: { id: 'rebirth_island', label: 'Rebirth Island', maxPlayers: 40, vehicles: false, hint: 'Résurgence S4 2026 : redéploiement illimité tant que la squad vit — cap 40 NON CONFIRMÉ' },
+  rebirth_island: { id: 'rebirth_island', label: 'Rebirth Island', maxPlayers: 40, vehicles: false, capConfirme: false, hint: 'Résurgence S4 2026 : redéploiement illimité tant que la squad vit — cap 40 NON CONFIRMÉ' },
 };
 export const BR_MAP_IDS = Object.keys(BR_MAPS);
 

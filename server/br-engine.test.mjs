@@ -47,11 +47,31 @@ const createLobby = (overrides = {}) => {
 };
 
 describe('br-engine - catalogue', () => {
-  it('expose les 4 maps BR COD Mobile en vigueur, sans Alcatraz', () => {
+  it('expose les 5 maps BR COD Mobile en vigueur, sans Alcatraz', () => {
     // Alcatraz a ete REMPLACE par Rebirth Island le 22/04/2026 : le remettre
     // dans la liste proposerait une map qui n'existe plus en jeu.
-    expect(brEngine.BR_MAP_IDS).toEqual(['isolated', 'blackout', 'krai', 'rebirth_island']);
+    expect(brEngine.BR_MAP_IDS).toEqual(['isolated', 'blackout', 'verdansk', 'krai', 'rebirth_island']);
     expect(brEngine.BR_MAP_IDS).not.toContain('alcatraz');
+  });
+
+  it('propose Verdansk, la carte ouverte par la Saison 10', () => {
+    // Saison 10 (11/11/2026) : Verdansk arrive en BR avec plus de 15 points
+    // d interet, des Buy Stations et des vehicules (communique officiel du
+    // 04/11/2026). Sans cette entree, aucun salon ne peut se jouer sur la
+    // carte qui porte la saison en cours.
+    // Le plafond de 100 joueurs n est PAS publie par les sources : il est
+    // donc annonce NON CONFIRME, comme Rebirth Island, plutot qu invente.
+    expect(brEngine.BR_MAP_IDS).toContain('verdansk');
+    expect(brEngine.BR_MAPS.verdansk.label).toBe('Verdansk');
+    expect(brEngine.BR_MAPS.verdansk.maxPlayers).toBe(100);
+    expect(brEngine.BR_MAPS.verdansk.vehicles).toBe(true);
+    expect(brEngine.BR_MAPS.verdansk.capConfirme).toBe(false);
+    expect(brEngine.BR_MAPS.verdansk.hint).toMatch(/Saison 10/);
+    expect(brEngine.BR_MAPS.verdansk.hint).toMatch(/NON CONFIRMÉ/);
+    // La carte doit etre JOUABLE, pas seulement listee.
+    const lobby = createLobby({ map: 'verdansk', mode: 'solo' });
+    expect(lobby.map).toBe('verdansk');
+    expect(lobby.maxPlayers).toBe(100);
   });
 
   it('expose les 4 variants BR arbitres (Classic, Blitz, Sniper, Resurgence)', () => {
@@ -63,11 +83,12 @@ describe('br-engine - catalogue', () => {
     expect(brEngine.BR_VARIANTS.resurgence.detail).toMatch(/squad/);
   });
 
-  it('porte les faits sources sur Krai et Rebirth Island (hints)', () => {
+  it('porte les faits sources sur Verdansk, Krai et Rebirth Island (hints)', () => {
     // PIEGE : le verrou de redaction exige l accent (« Résurgence »,
     // « redéploiement », « limité », « illimité », « NON CONFIRMÉ »). Ce
     // test verifie les FAITS sources, pas leur graphie : il cherche donc
     // les variantes accentuees.
+    expect(brEngine.BR_MAPS.verdansk.hint).toMatch(/NON CONFIRMÉ/);
     expect(brEngine.BR_MAPS.krai.hint).toMatch(/Résurgence/);
     expect(brEngine.BR_MAPS.krai.hint).toMatch(/redéploiement limité/);
     expect(brEngine.BR_MAPS.krai.hint).toMatch(/cap 40 joueurs/);
@@ -78,6 +99,9 @@ describe('br-engine - catalogue', () => {
   it('plafonne Rebirth Island a 40 joueurs (format compact)', () => {
     expect(brEngine.BR_MAPS.rebirth_island.maxPlayers).toBe(40);
     expect(brEngine.BR_MAPS.rebirth_island.vehicles).toBe(false);
+    // Ce cap n'est pas publie : l'API doit permettre a l'UI de le dire.
+    expect(brEngine.BR_MAPS.rebirth_island.capConfirme).toBe(false);
+    expect(brEngine.BR_MAPS.isolated.capConfirme).toBeUndefined();
   });
 
   it('plafonne Krai a 40 joueurs (Resurgence, format Alcatraz)', () => {

@@ -28,7 +28,13 @@ export interface BrMap {
   label: string;
   maxPlayers: number;
   vehicles: boolean;
-  /** Fait source affiche au createur / a l'arbitre : Krai, Rebirth Island. */
+  /**
+   * `false` = plafond NON PUBLIE par les sources : c'est une borne de
+   * securite. L'UI doit l'afficher comme tel, jamais comme un fait.
+   * Absent = plafond confirme.
+   */
+  capConfirme?: boolean;
+  /** Fait source affiche au createur / a l'arbitre : Verdansk, Krai, Rebirth Island. */
   hint?: string;
 }
 

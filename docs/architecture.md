@@ -1564,7 +1564,58 @@ dans un article, puis « Twilight Heist » dans la page.
 
 ---
 
-## 8. Synthese des defauts trouves (passes 1 a 17)
+## 7 dix-neuvieme. Passe 18 - la S10 manquait dans les salons BR
+
+### Le constat
+
+La veille annoncait Verdansk, mais le referentiel BR proposait encore
+quatre cartes : Isolated, Blackout, Krai et Rebirth Island. Aucun salon
+ZOYD ne pouvait donc se jouer sur la carte qui porte la Saison 10 : le
+joueur lisait « Verdansk » sur `/infos` puis ne la trouvait pas au moment
+de creer un salon. Deux ecrans se contredisaient.
+
+Le nombre de joueurs de Verdansk n est publie par aucune source verifiee.
+Le cap de 100 est donc une BORNE DE SECURITE, pas un fait : le code le
+declare (`capConfirme: false`) et l UI l affiche. Sous-plafonner reste
+jouable ; sur-plafonner produirait des salons infaisables in-game, le
+defaut deja corrige sur Krai.
+
+### Ce que la passe change
+
+- `server/br-engine.mjs` : Verdansk entre dans `BR_MAPS` (vehicules vrais,
+  plus de 15 points d interet, Buy Stations et cap 100 NON CONFIRME).
+  L API `/api/br/config` la sert automatiquement, sans liste parallele.
+- `capConfirme` explicite : `false` sur Verdansk et Rebirth Island, dont
+  le plafond n est pas publie. Absent = plafond confirme (Isolated,
+  Blackout, Krai).
+- L UI ne presente plus un cap non publie comme un fait : la puce de
+  `/br`, l option du formulaire et la ligne « plafond effectif » portent
+  la mention « non confirme ».
+- La phrase de plafond du catalogue dit que Krai ET Rebirth Island sont
+  limites a 40, et que le cap Verdansk n est pas confirme.
+
+### Le verrou
+
+Le test moteur « propose Verdansk » a ete vu rouge avant l ajout
+(`expected [Array(4)] to include 'verdansk'`), puis vert : entree
+presente, label exact, vehicules, cap 100 declare non confirme, et salon
+solo reellement cree sur Verdansk. `e2e/api/br.spec.ts` verrouille les
+cinq maps servies ; `e2e/ui/br.spec.ts` verifie l option, le hint, la
+mention « non confirme » de la puce et la phrase de plafond. Les deux
+mentions ont ete vues rouges en les retirant, puis vertes apres
+restauration.
+
+### Ce que ce verrou ne prouve pas
+
+- Le cap reel de Verdansk reste inconnu : 100 est une borne basse
+  plausible, pas une mesure. Le jour ou une source officielle le publie,
+  il faudra retirer `capConfirme: false`.
+- Aucune partie reelle n a ete jouee sur Verdansk : le test cree un salon,
+  il ne verifie pas le comportement en jeu (hors perimetre ZOYD).
+
+---
+
+## 8. Synthese des defauts trouves (passes 1 a 18)
 
 | # | Defaut | Gravite |
 |---|---|---|
@@ -1597,8 +1648,9 @@ dans un article, puis « Twilight Heist » dans la page.
 | 27 | La page Infos presentait la Saison 8 comme l actualite (trois mois de retard) | MAJEUR |
 | 28 | La page Infos proposait « Rejoindre » a un joueur deja connecte | MINEUR |
 | 29 | Deux textes de carte BR mesuraient 4,4:1 (sous le seuil AA) | MINEUR |
+| 30 | Aucun salon BR ne pouvait se jouer sur Verdansk, la carte de la saison en cours | MAJEUR |
 
-**Dix-huit defauts majeurs, onze mineurs.** Chacun est couvert par un test
+**Dix-neuf defauts majeurs, onze mineurs.** Chacun est couvert par un test
 verifie ECHOUANT avant le correctif.
 
 ### Les verrous structurels ajoutes
@@ -1740,8 +1792,8 @@ Honnetete sur la portee :
 - Il ne pretend **pas** avoir teste le retrait en production (hors
   perimetre demande) ni le cycle complet d un salon BR (un salon ne peut
   pas demarrer avant sa date).
-- Il ne dit **pas** que le code est correct. Les passes 1 a 17 ont trouve
-  29 defauts (18 majeurs, 11 mineurs) ; d autres restent possibles. La carte
+- Il ne dit **pas** que le code est correct. Les passes 1 a 18 ont trouve
+  30 defauts (19 majeurs, 11 mineurs) ; d autres restent possibles. La carte
   decrit la **forme**, pas la **correction**.
 
 Ce qui est vérifié à la date du document : l'inventaire (mesuré), la

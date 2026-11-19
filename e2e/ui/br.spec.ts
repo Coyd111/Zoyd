@@ -129,12 +129,16 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
     await expect(submit).toBeDisabled();
     await page.locator('#br-payout-arbiter').fill('0.05');
 
-    // Maps proposees : Alcatraz absent.
+    // Maps proposees : Verdansk (S10) present, Alcatraz absent.
     const mapOptions = await page.locator('#br-map option').allInnerTexts();
     expect(mapOptions.join(' ')).toContain('Isolated');
+    expect(mapOptions.join(' ')).toContain('Verdansk');
     expect(mapOptions.join(' ')).not.toContain('Alcatraz');
 
-    // Plafond effectif = min(mode, map), affiche et mis a jour.
+    // Le cap Verdansk n'est pas publie : l'ecran doit le dire, pas le taire.
+    await page.locator('#br-map').selectOption('verdansk');
+    await expect(page.getByText(/cap 100 NON CONFIRMÉ/)).toBeVisible();
+    await expect(page.getByText(/Cap non confirme par les sources/)).toBeVisible();
     await page.locator('#br-map').selectOption('rebirth_island');
     await expect(page.getByText(/Plafond effectif de ce salon : 40/)).toBeVisible();
     await page.locator('#br-map').selectOption('isolated');
@@ -178,9 +182,13 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
     await page.goto('/br');
 
     await expect(page.getByRole('heading', { name: /Maps et modes/i })).toBeVisible({ timeout: 15_000 });
-    for (const label of ['Isolated', 'Blackout', 'Krai', 'Rebirth Island']) {
+    for (const label of ['Isolated', 'Blackout', 'Verdansk', 'Krai', 'Rebirth Island']) {
       await expect(page.getByText(new RegExp(label, 'i')).first()).toBeVisible();
     }
+    // Un cap non publie ne doit jamais etre affiche comme un fait.
+    await expect(page.getByText(/Verdansk · 100 j\. \(non confirme\)/)).toBeVisible();
+    await expect(page.getByText(/Krai et Rebirth Island limitent/i)).toBeVisible();
+    await expect(page.getByText(/cap Verdansk \(100\) n'est pas confirme/i)).toBeVisible();
     // Alcatraz a ete retire du jeu : il ne doit pas etre propose.
     await expect(page.getByText('Alcatraz')).toHaveCount(0);
   });

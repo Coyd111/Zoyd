@@ -240,6 +240,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
               {config?.mapIds.map((id) => (
                 <option key={id} value={id} className="bg-zoyd-black">
                   {config.maps[id].label} — {config.maps[id].maxPlayers} j.
+                  {config.maps[id].capConfirme === false ? ' (cap non confirme)' : ''}
                   {config.maps[id].vehicles ? ' — vehicules' : ' — sans vehicule'}
                 </option>
               ))}
@@ -269,6 +270,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
 
         <p className="text-[10px] font-mono text-zoyd-yellow">
           Plafond effectif de ce salon : {maxPlayers} joueurs (minimum du mode et de la map).
+          {config?.maps[map]?.capConfirme === false ? ' Cap non confirme par les sources.' : ''}
         </p>
 
         {/* Variante in-game : contrat regle par l'arbitre DANS la salle CODM

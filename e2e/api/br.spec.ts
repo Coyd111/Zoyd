@@ -38,10 +38,10 @@ test.describe('Battle Royale API', () => {
     await disposeActors();
   });
 
-  test('GET /api/br/config expose le referentiel (4 maps, sans Alcatraz)', async () => {
+  test('GET /api/br/config expose le referentiel (5 maps, sans Alcatraz)', async () => {
     const res = await callAnonymous('GET', '/api/br/config');
     expect(res.status).toBe(200);
-    expect(res.body.mapIds).toEqual(['isolated', 'blackout', 'krai', 'rebirth_island']);
+    expect(res.body.mapIds).toEqual(['isolated', 'blackout', 'verdansk', 'krai', 'rebirth_island']);
     expect(res.body.mapIds).not.toContain('alcatraz');
     expect(res.body.modeIds).toEqual(['solo', 'duo', 'squad']);
     expect(res.body.rankingModeIds).toEqual(['survie', 'survie_kills', 'kills']);

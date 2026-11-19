@@ -108,6 +108,13 @@ test.describe('Audit UI - parcours a etats', () => {
     // ── Etape 4 : le recapitulatif ───────────────────────────────────────
     await mesurer(4);
 
+    // ZD-05 (audit production 2026-11-19) : le joueur de test n'a pas de
+    // solde. Le CTA principal doit annoncer le DEPOT qu'il declenche, et le
+    // badge ne doit plus promettre « Prêt à publier ».
+    await expect(page.getByText('Financement requis')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Ajouter 50\.0 ZC pour publier/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Verrouiller la mise et publier/ })).toHaveCount(0);
+
     expect(
       rapports.join('\n\n'),
       `Audit UI de l assistant de creation de match :\n\n${rapports.join('\n\n') || 'aucun defaut detecte'}`,

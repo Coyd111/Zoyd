@@ -32,6 +32,7 @@ import {
 } from '../../../app/lib/brApi';
 import { formatZC, ZC_TO_FCFA } from '../../../lib/utils';
 import { BrLobbyCreatePanel } from '../components/BrLobbyCreatePanel';
+import { countDown } from '../lib/lobbyTiming';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { toast } from '../../../app/lib/toast';
 import { Button } from '../../../app/components/ui/Button';
@@ -42,18 +43,6 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   settling: { label: 'RÈGLEMENT', className: 'text-orange-400 border-orange-400/30 bg-orange-400/10' },
   finished: { label: 'TERMINÉ', className: 'text-white/60 border-white/10 bg-white/5' },
   cancelled: { label: 'ANNULÉ', className: 'text-red-400 border-red-400/30 bg-red-400/10' },
-};
-
-const countDown = (target: string | null): string => {
-  if (!target) return '—';
-  const ms = Date.parse(target) - Date.now();
-  if (!Number.isFinite(ms)) return '—';
-  if (ms <= 0) return 'Imminent';
-  const hours = Math.floor(ms / 3_600_000);
-  const minutes = Math.floor((ms % 3_600_000) / 60_000);
-  if (hours >= 1) return `Dans ${hours} h`;
-  if (minutes >= 1) return `Dans ${minutes} min`;
-  return 'Imminent';
 };
 
 const BrLobbyCard: React.FC<{
@@ -106,7 +95,7 @@ const BrLobbyCard: React.FC<{
           </div>
           <div className="flex items-center gap-1.5">
             <Clock className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
-            <span className="truncate">{countDown(lobby.scheduledAt)}</span>
+            <span className="truncate">{countDown(lobby.scheduledAt, lobby.status)}</span>
           </div>
         </div>
       </Link>

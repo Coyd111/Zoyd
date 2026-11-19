@@ -17,6 +17,11 @@
  * store lu ici doit tolerer un etat vide.
  * PIEGE : les redirections doivent passer par `navigate`, pas par un
  * <a href> : un rechargement complet casserait la session en memoire.
+ * INVARIANT (ZD-01, audit production 2026-11-19) : /mode est PUBLIC et ne
+ * lit pas l'API BR (auth requise). Il n'affiche donc AUCUN chiffre d'offre
+ * (nombre de salons, capacite, prix) : ces valeurs etaient codees en dur et
+ * contredisaient /br (salon annule annonce « 1 salon ouvert »). La copie
+ * reste qualitative tant qu'aucune source serveur publique n'existe.
  */
 import React from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -191,13 +196,13 @@ const ModeSelectionPage: React.FC = () => {
                     Battle Royale
                   </h2>
                   <p className="text-white/75 text-base sm:text-lg leading-relaxed max-w-2xl mb-6 md:mb-8">
-                    1 salon ouvert ici, 100 joueurs max, pass 20 ZC = 200 FCFA — tu peux aussi créer le tien (tu seras l’arbitre). Ton
+                    Des salons ouverts à tous, un pass à l’inscription — tu peux aussi créer le tien (tu seras l’arbitre). Ton
                     pass est remboursable si tu te désinscris avant le lancement.
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
-                    <InfoChip label="Salon" value="100 joueurs" />
-                    <InfoChip label="Pass" value="20 ZC = 200 FCFA" />
+                    <InfoChip label="Salons" value="Ouverts à tous" />
+                    <InfoChip label="Pass" value="À l’inscription" />
                     <InfoChip label="Création" value="Ouverte à tous" className="col-span-2 sm:col-span-1" />
                   </div>
 

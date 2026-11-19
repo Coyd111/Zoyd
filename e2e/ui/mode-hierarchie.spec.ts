@@ -63,6 +63,19 @@ test.describe('/mode - hierarchie produit (arbitrage 2026-11-02)', () => {
     await expect(page.getByText('Ouverture différée')).toBeVisible();
     await expect(page.getByText('Voir la ligue')).toBeVisible();
   });
+
+  test('le bandeau BR n annonce ni prix ni capacite codes en dur (ZD-01)', async ({ page }) => {
+    await page.goto('/mode');
+
+    // /mode est PUBLIC : il ne peut pas lire /api/br/lobbies (auth requise).
+    // Tant qu'aucune donnee n'est sourcee, aucun chiffre d'offre ne doit etre
+    // affiche. En production le bandeau promettait « 1 salon ouvert, 100
+    // joueurs max, pass 20 ZC » alors que le seul salon etait ANNULE, a 10 ZC,
+    // avec 0 / 100 joueurs (audit production 2026-11-19).
+    await expect(page.getByText(/100 joueurs/)).toHaveCount(0);
+    await expect(page.getByText(/20 ZC/)).toHaveCount(0);
+    await expect(page.getByText('À l’inscription', { exact: true })).toBeVisible();
+  });
 });
 
 test.describe('/ - landing : vitrine D6 (arbitrage 2026-11-02)', () => {

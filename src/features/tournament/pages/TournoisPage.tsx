@@ -32,6 +32,7 @@ import { useDebounce } from '../../../app/hooks/useDebounce';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { Button } from '../../../app/components/ui/Button';
 import { EncartSaisonCodm } from '../../../app/components/ui/EncartSaisonCodm';
+import { computeTournamentMetrics } from '../lib/tournamentMetrics';
 
 const FORMAT_FILTERS: Array<'TOUS' | MatchFormat> = ['TOUS', '1VS1', '2VS2', '3VS3', '4VS4', '5VS5'];
 
@@ -91,18 +92,7 @@ const TournoisPage: React.FC = () => {
   const live = useMemo(() => tournaments.filter((tournament) => tournament.status === 'live'), [tournaments]);
   const archive = useMemo(() => tournaments.filter((tournament) => tournament.status === 'completed' || tournament.status === 'cancelled'), [tournaments]);
 
-  const metrics = useMemo(() => {
-    const playerPool = tournaments.reduce((sum, tournament) => sum + tournament.payout.playerPool, 0);
-    const openSlots = tournaments.reduce(
-      (sum, tournament) => sum + Math.max(0, tournament.maxEntries - tournament.entries.length),
-      0
-    );
-    return {
-      visible: tournaments.length,
-      playerPool,
-      openSlots,
-    };
-  }, [tournaments]);
+  const metrics = useMemo(() => computeTournamentMetrics(tournaments), [tournaments]);
 
   if (isLoading) {
     return (

@@ -12,12 +12,13 @@
  * exposes dans les projections diffusees.
  * PIEGE : un joueur sans activite ne doit pas etre classe. Filtrer sur
  * activityCount / totalMatches / totalEarnings, comme le fait deja le code.
- * EXCEPTION DOCUMENTEE (P13 C16, audit-3) : le joueur courant (isMe) est
- * force inclus meme sans activite — il doit toujours voir sa propre ligne
- * (rang, valeur a zero) plutot qu'une absence qui ressemblerait a un bug.
- * Cette exception est VOULUE, en tension avec la regle ci-dessus : ne pas
- * la retirer par ze only-filtre ni l'elargir aux autres joueurs sans
- * activite.
+ * EXCEPTION DOCUMENTEE (P13 C16, audit-3, corrigee ZD-03 le 2026-11-19) : le
+ * joueur courant (isMe) est force inclus meme sans activite — il doit
+ * toujours voir sa propre ligne. Mais cette ligne porte le marqueur « NC »
+ * (non classe), jamais un rang numerote : l'en-tete dit deja « Pas encore
+ * classé » et les deux affirmations ne doivent pas se contredire.
+ * Ne pas retirer l'exception d'affichage, ne pas elargir aux autres joueurs
+ * sans activite, et ne pas rendre de rang a un joueur inactif.
  * PIEGE : les graphes et cartesUsesocket pour la presence : hors ligne,
  * la page doit afficher un etat, pas une liste figee presentee comme
  * vivante.
@@ -41,6 +42,7 @@ import {
   buildTeamRankings,
 } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
+import { rankWithUnrankedLast } from '../lib/rankingOrder';
 import { SEOHead } from '../components/SEOHead';
 import { Button } from '../components/ui/Button';
 import Illustration from '../components/ui/Illustration';
@@ -49,7 +51,8 @@ type RankingTab = 'elo' | 'earnings' | 'winrate' | 'activity' | 'teams' | 'count
 
 interface RankingRow {
   key: string;
-  rank: number;
+  /** `null` : joueur courant sans activite, visible mais non classe. */
+  rank: number | null;
   label: string;
   href?: string;
   countryCode: string;
@@ -84,7 +87,17 @@ const tabColumns: Record<
   controller: { primary: 'SETUP', detail: 'VOLUME', value: 'V', rate: 'WR%', trust: 'FIAB.' },
 };
 
-const rankIcon = (rank: number) => {
+const rankIcon = (rank: number | null) => {
+  if (rank === null) {
+    return (
+      <span
+        className="text-[10px] font-mono font-black text-white/60 w-5 text-center"
+        title="Pas encore classé : aucune activité enregistrée"
+      >
+        NC
+      </span>
+    );
+  }
   if (rank === 1) return <Crown className="w-5 h-5 text-zoyd-yellow" />;
   if (rank === 2) return <Medal className="w-5 h-5 text-white/60" />;
   if (rank === 3) return <Medal className="w-5 h-5 text-orange-400" />;
@@ -123,11 +136,10 @@ const ClassementsPage: React.FC = () => {
   );
 
   const earningsRanking = useMemo(() => {
-    const indexedPlayers = players.filter(
-      (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0 || player.isMe
-    );
-    return sortWithRank(
-      indexedPlayers,
+    return rankWithUnrankedLast(
+      players,
+      (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0,
+      (player) => player.isMe === true,
       (left, right) =>
         right.totalEarnings - left.totalEarnings ||
         right.wins - left.wins ||
@@ -148,17 +160,21 @@ const ClassementsPage: React.FC = () => {
   }, [players]);
 
   const rowsByActiveTab = useMemo<RankingRow[]>(() => {
-    // EXCEPTION VOULUE (voir docstring) : `|| player.isMe` inclut toujours
-    // le joueur courant, meme sans activite, pour qu'il voie sa propre
-    // ligne dans chaque classement.
+    // Le joueur courant reste visible meme sans activite, mais le helper le
+    // place apres le classement avec `rank: null` (ZD-03) : « NC », jamais
+    // un faux numero contredit par l'en-tete.
     const indexedPlayers = players.filter(
       (player) => player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0 || player.isMe
     );
+    const hasActivity = (player: (typeof players)[number]) =>
+      player.activityCount > 0 || player.totalEarnings > 0 || player.totalMatches > 0;
 
     switch (activeTab) {
       case 'elo':
-        return sortWithRank(
+        return rankWithUnrankedLast(
           indexedPlayers,
+          hasActivity,
+          (player) => player.isMe === true,
           (left, right) =>
             right.elo - left.elo ||
             right.winRate - left.winRate ||
@@ -179,8 +195,10 @@ const ClassementsPage: React.FC = () => {
       case 'earnings':
         return earningsRanking;
       case 'winrate':
-        return sortWithRank(
+        return rankWithUnrankedLast(
           indexedPlayers.filter((player) => player.totalMatches > 0),
+          (player) => player.totalMatches > 0,
+          (player) => player.isMe === true,
           (left, right) =>
             right.winRate - left.winRate || right.totalMatches - left.totalMatches || right.totalEarnings - left.totalEarnings
         ).map(({ item, rank }) => ({
@@ -197,8 +215,10 @@ const ClassementsPage: React.FC = () => {
           isMe: item.isMe,
         } satisfies RankingRow));
       case 'activity':
-        return sortWithRank(
+        return rankWithUnrankedLast(
           indexedPlayers.filter((player) => player.activityCount > 0),
+          (player) => player.activityCount > 0,
+          (player) => player.isMe === true,
           (left, right) =>
             right.activityCount - left.activityCount || right.totalMatches - left.totalMatches || right.totalEarnings - left.totalEarnings
         ).map(({ item, rank }) => ({
@@ -301,17 +321,20 @@ const EXPLICATION_COLONNES: Record<string, string> = {
   const myRank = useMemo(() => {
     return entries.find((entry) => entry.isMe)?.rank ?? null;
   }, [entries]);
+  // Le rang se calcule sur les seules lignes CLASSEES : compter la ligne
+  // « NC » du joueur courant dans le denominateur fausserait le Top %.
+  const rankedCount = useMemo(() => entries.filter((entry) => entry.rank !== null).length, [entries]);
   const topPercent =
-    myRank && entries.length > 0
-      ? Math.max(1, Math.round((myRank / entries.length) * 100))
+    myRank && rankedCount > 0
+      ? Math.max(1, Math.round((myRank / rankedCount) * 100))
       : undefined;
-  // PIEGE : un joueur sans aucune activite figure bien dans la liste (il
-  // doit voir sa propre ligne), mais son RANG ne veut rien dire : il
-  // n est pas classe. L ecran le disait « #11 / Top 92 % » a un
-  // newcomptant qui n a jamais joue — et la phrase d introduction
-  // promettait le contraire (« Rien n est affiche tant que l activite
-  // n existe pas encore »). Le mot et l ecran doivent dire la meme
-  // chose.
+  // PIEGE (ZD-03, audit production 2026-11-19) : un joueur sans aucune
+  // activite figure bien dans la liste (il doit voir sa propre ligne), mais
+  // son RANG ne veut rien dire : il n'est pas classe. L'ecran affichait
+  // « #11 / Top 92 % » a un compte qui n'avait jamais joue, en contradiction
+  // avec « Pas encore classé » juste au-dessus. Sa ligne porte desormais
+  // « NC » et `rank: null` (voir rankingOrder.ts) : le mot et l'ecran disent
+  // la meme chose.
   const monActivite = useMemo(() => {
     const moi = players.find((joueur) => joueur.isMe);
     if (!moi) return false;

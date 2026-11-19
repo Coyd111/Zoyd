@@ -41,20 +41,9 @@ import {
 import { formatZC, formatFCFA } from '../../../lib/utils';
 import { SEOHead } from '../../../app/components/SEOHead';
 import BrArbiterPanel from '../components/BrArbiterPanel';
+import { countDown } from '../lib/lobbyTiming';
 import { toast } from '../../../app/lib/toast';
 import { Button } from '../../../app/components/ui/Button';
-
-const countDown = (target: string | null): string => {
-  if (!target) return '—';
-  const ms = Date.parse(target) - Date.now();
-  if (!Number.isFinite(ms)) return '—';
-  if (ms <= 0) return 'Imminent';
-  const hours = Math.floor(ms / 3_600_000);
-  const minutes = Math.floor((ms % 3_600_000) / 60_000);
-  if (hours >= 1) return `Dans ${hours} h`;
-  if (minutes >= 1) return `Dans ${minutes} min`;
-  return 'Imminent';
-};
 
 const BrLobbyDetailPage: React.FC = () => {
   const { lobbyId } = useParams<{ lobbyId: string }>();
@@ -228,7 +217,7 @@ const BrLobbyDetailPage: React.FC = () => {
             </span>
             <span className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-2.5 py-1.5 text-zoyd-yellow flex items-center gap-1.5">
               <Clock className="w-3 h-3" aria-hidden="true" />
-              {countDown(lobby.scheduledAt)}
+              {countDown(lobby.scheduledAt, lobby.status)}
             </span>
           </div>
           {map?.hint && (

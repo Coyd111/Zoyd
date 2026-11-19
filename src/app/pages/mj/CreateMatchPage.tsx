@@ -36,6 +36,7 @@ import {
   getMapImage,
 } from '../../../lib/competition';
 import { buildFundingPath, getRequiredTopUp } from '../../../lib/walletFunding';
+import { getPublishCtaState } from '../../lib/publishCta';
 // PIEGE : le taux ZC -> FCFA ne s ecrit JAMAIS en clair ni ne se
 // recalcule a la main. Ici, la cagnotte etait convertie par
 // `livePot * 10` et le taux affiche en dur (« x 10 FCFA ») : deux
@@ -119,8 +120,8 @@ const CreateMatchPage: React.FC = () => {
   const availableSpend = getAvailableToSpend();
   // Libelle du bouton de publication : une SEULE source pour l `aria-label`
   // et pour le texte visible (WCAG 2.5.3 - voir le commentaire sur le
-  // bouton, plus bas).
-  const publishLabel = isArbiterCreator ? 'Publier le match' : 'Verrouiller la mise et publier';
+  // bouton, plus bas). ZD-05 : le libelle depend du solde (voir plus bas,
+  // apres `requiredTopUp`).
 
   /**
    * Preset esports du mode choisi (S&D/HARDPOINT/CONTROL) : sinon `undefined`
@@ -189,6 +190,11 @@ const CreateMatchPage: React.FC = () => {
     () => (isArbiterCreator ? 0 : getRequiredTopUp(selectedPass, availableSpend)),
     [isArbiterCreator, availableSpend, selectedPass],
   );
+  // ZD-05 : le libelle et le badge du recap viennent d'une fonction testee
+  // (publishCta.ts). Un solde insuffisant transforme le CTA en action de
+  // depot, au lieu de promettre une publication impossible.
+  const publishCta = getPublishCtaState({ isArbiterCreator, requiredTopUp });
+  const publishLabel = publishCta.label;
 
   const onStep1Submit = () => {
     if (!selectedFormat) {
@@ -812,8 +818,12 @@ const CreateMatchPage: React.FC = () => {
             <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
                 <div className="text-center mb-12">
-                  <div className="inline-flex items-center gap-3 px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-500 font-display font-black text-[10px] tracking-widest uppercase mb-6 italic">
-                    <ShieldCheck className="w-4 h-4" /> Prêt à publier
+                  <div className={`inline-flex items-center gap-3 px-3 py-1 border font-display font-black text-[10px] tracking-widest uppercase mb-6 italic ${
+                    requiredTopUp > 0
+                      ? 'bg-zoyd-yellow/10 border-zoyd-yellow/30 text-zoyd-yellow'
+                      : 'bg-green-500/10 border-green-500/20 text-green-500'
+                  }`}>
+                    <ShieldCheck className="w-4 h-4" /> {publishCta.badge}
                   </div>
                   <h2 className="text-xl sm:text-4xl md:text-5xl font-display font-black text-white italic uppercase tracking-tighter">
                     Récapitulatif du Wager

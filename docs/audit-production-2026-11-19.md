@@ -451,6 +451,22 @@ controle visuel du ou des ecrans corriges en production.
 
 ---
 
+## 10. Etat des correctifs
+
+| Lot | Defauts | Commit | Etat |
+|---|---|---|---|
+| 1 - verite des donnees | ZD-01 a ZD-05 | `bf712ad` | corrige, deploye, verifie en production |
+| 2 - navigation et accessibilite | ZD-06 a ZD-14 | - | a faire |
+| 3 - copie et finition | ZD-15 a ZD-19 | - | a faire |
+
+Verification production du Lot 1 (`buildId bf712ad0f2ad`) : `/mode` ne
+promet plus ni prix ni capacite ; `/classements` affiche `NC` pour le compte
+sans activite ; les chunks `CreateMatchPage` et `BrPage` servis contiennent
+les nouveaux libelles. Tests ajoutes : `lobbyTiming`, `tournamentMetrics`,
+`rankingOrder`, `publishCta`, e2e `mode-hierarchie` et assistant de match.
+
+---
+
 *Rapport etabli le 2026-11-19 sur le commit de production `896a2c8`.
 Aucune donnee de production n'a ete modifiee en dehors du compte de test
 `AUDITPROD19`, cree puis utilise pour les parcours.*

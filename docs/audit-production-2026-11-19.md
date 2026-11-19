@@ -1,0 +1,456 @@
+# Audit de production — 2026-11-19
+
+> Audit fonctionnel et UI/UX de `https://zoyd.vercel.app` en production.
+> Lecture seule, hors compte de test. Aucun salon, tournoi, match ni
+> paiement n'a ete cree pour l'audit.
+
+---
+
+## 1. Cadre
+
+| Element | Valeur |
+|---|---|
+| Front | `https://zoyd.vercel.app` |
+| API | `https://zoyd.onrender.com` |
+| Commit de production | `896a2c8` (`deployedCommitShort`, `stateTrusted=true`) |
+| Profil navigateur | OpenCLI `zoyd`, profil Chrome `4e8u677f` |
+| Session | `0A8E38065E2AAA3935632485DC53A7DB` |
+| Viewport | 1264 x 575 (desktop) |
+| Compte de test | `AUDITPROD19` (`6742000019`), niveau 150, MJ/BR Legendary, Benin |
+| Etat du compte | serment d'integrite signe, streamer off, solde 0 ZC |
+
+Methode : parcours reel ecran par ecran, snapshots d'accessibilite, sondes
+DOM (textes rendus, roles ARIA, tailles de cibles, ordre des titres,
+statuts HTTP), lecture du code source pour confirmer chaque defaut.
+Aucune conclusion ne repose sur une seule capture : chaque constat a ete
+rejoue ou recoupe dans le DOM et, quand c'etait possible, dans le code.
+
+### Echelles de gravite
+
+| Niveau | Sens |
+|---|---|
+| **P1** | Le ecran affirme quelque chose de faux, ou contredit l'etat reel. Trompe le joueur sur l'argent, les places ou son classement. |
+| **P2** | Blocage ou friction reelle : navigation perdue, clavier inoperant, nom accessible absent, erreur HTTP incorrecte. |
+| **P3** | Finition : copie, langue, typographie, etats vides, coherence visuelle. |
+
+---
+
+## 2. Synthese
+
+- **Aucun bloquant** : inscription, connexion, activation, deconnexion,
+  deep links proteges, depot, chat, profil, parametres, BR, tournois,
+  classements et pages legales s'ouvrent et repondent.
+- **Aucune erreur console** sur l'ensemble des ecrans visites.
+- **Aucun echec reseau inattendu** (hors 404 attendus sur IDs invalides).
+- **19 defauts** retenus : **5 P1**, **9 P2**, **5 P3**.
+- Les P1 sont tous du meme genre : **l'ecran dit une chose, la donnee en
+  dit une autre**. C'est le risque le plus couteux pour une plateforme
+  dont la promesse est l'argent et le classement.
+
+---
+
+## 3. Defauts P1 — donnees fausses ou contradictoires
+
+### ZD-01 — `/mode` : bandeau Battle Royale code en dur
+
+- **Constat** : le bandeau BR annonce « 1 salon ouvert ici, 100 joueurs max,
+  pass 20 ZC = 200 FCFA » et les puces « SALON 100 JOUEURS / PASS 20 ZC ».
+  En production, le seul salon existant est **annule**, a **10 ZC** de pass,
+  avec **0 / 100** joueurs. La page `/br` affiche « SALONS OUVERTS 0 ».
+- **Preuve** : `/mode`, texte rendu ; comparaison avec `/br`.
+- **Source** : `src/app/pages/ModeSelectionPage.tsx:194-200`.
+- **Risque** : le joueur choisit un mode sur une offre qui n'existe pas et
+  sur un prix faux.
+- **Correctif** : calculer le bandeau depuis `useBrStore` (nombre de salons
+  `scheduled`, `maxPlayers`, `passPrice` du prochain salon) et afficher un
+  etat vide honnete quand il n'y en a aucun. Chaine de repli : « Aucun
+  salon ouvert — cree le tien ».
+- **Test rouge** : rendu de `/mode` avec un store BR vide et un salon a
+  10 ZC ; verifier l'absence de « 1 salon ouvert », de « 100 joueurs » et
+  de « 20 ZC » codes en dur, et la presence du prix reel.
+
+### ZD-02 — `/br` et `/br/:id` : un salon annule affiche « Imminent »
+
+- **Constat** : le salon `BR-MWI1V2TC-N0` porte le badge **ANNULÉ** et
+  affiche, dans la meme carte, un compte a rebours **« Imminent »**. Le
+  detail reprend le meme libelle.
+- **Preuve** : `/br`, carte « SALON BR ISOLATED » ; `/br/BR-MWI1V2TC-N0`.
+- **Source** : `src/features/br/pages/BrPage.tsx:47-57` (`countDown` ignore
+  `status`), appel ligne 109.
+- **Risque** : laisse croire qu'une partie annulee va demarrer.
+- **Correctif** : passer `lobby.status` a `countDown` ; retourner « — » (ou
+  « Annule ») pour `cancelled`, `finished` et `settling`. Le detail doit
+  utiliser le meme helper, pas un second calcul.
+- **Test rouge** : `countDown(datePassee, 'cancelled')` doit renvoyer autre
+  chose que « Imminent » ; test de rendu de la carte annulee.
+
+### ZD-03 — `/classements` : « Pas encore classe » et ligne au rang 11
+
+- **Constat** : le bandeau affirme « **Pas encore classé** — Joue un premier
+  match pour entrer dans le classement », alors que la ligne
+  `AUDITPROD19` figure dans le tableau **au rang 11**. L'introduction
+  promet pourtant : « Un joueur qui n'a encore jamais joue n'y figure pas ».
+- **Preuve** : `/classements`, onglet TOP ELO, texte rendu :
+  `... PAS ENCORE CLASSÉ ... 11 AU AUDITPROD19 TOI BJ LEGENDARY 1200 ...`.
+- **Source** : `src/app/pages/ClassementsPage.tsx:308-319` (calcul de
+  `monActivite`), `358-369` (bandeau), `462-465` (ligne avec `rankIcon`).
+- **Risque** : contradiction directe sur la position competitive du joueur.
+- **Correctif** : une seule regle. Un joueur sans activite ne recoit aucun
+  rang : soit il est exclu de `entries`, soit il est affiche dans une ligne
+  « toi » distincte, hors classement, avec « Non classe » au lieu d'un
+  numero. Le bandeau et le tableau doivent deriver du meme booleen.
+- **Test rouge** : monter la page avec un utilisateur a `activityCount=0`,
+  `totalMatches=0`, `totalEarnings=0` et un classement non vide ; verifier
+  qu'aucun numero de rang n'est rendu pour `isMe`, et que le bandeau
+  « Pas encore classe » est present. Deuxieme cas : activite > 0, rang
+  affiche et bandeau absent.
+
+### ZD-04 — `/mj/tournois` : « A gagner » et « Places ouvertes » incluent les archives
+
+- **Constat** : l'en-tete affiche « 3 visibles / 76 ZC / 16 places » alors
+  qu'**aucun tournoi n'est ouvert**. Les trois tournois sont termines ou
+  annules. La cagnotte et les places sont additionnees sur **tous** les
+  tournois, y compris ceux qui ne peuvent plus etre rejoints.
+- **Preuve** : `/mj/tournois`, texte rendu et etat des cartes.
+- **Source** : `src/features/tournament/pages/TournoisPage.tsx:94-105`
+  (`tournaments.reduce` sans filtre), libelles `161-163`.
+- **Risque** : promet de l'argent et des places qui n'existent plus.
+- **Correctif** : calculer `playerPool` et `openSlots` sur
+  `status === 'recruiting'` (et, si voulu, `live`), ou renommer les
+  metriques en « Cagnotte historique » / « Places passees » et les sortir
+  du bandeau d'action. La premiere option est preferee : un bandeau
+  d'action ne doit sommer que de l'actionnable.
+- **Test rouge** : jeu de donnees avec 1 tournoi `recruiting` a 20 ZC et
+  4 places, plus 2 archives a 28 ZC et 12 places ; verifier « 20 ZC » et
+  « 4 places », pas « 48 ZC » et « 16 places ».
+
+### ZD-05 — `/mj/creer` : CTA de publication actif avec un solde insuffisant
+
+- **Constat** : au recap, « SOLDE DISPO 0.0 ZC », « Il te manque 50.0 ZC
+  pour publier cette partie », mais le bouton principal
+  « **VERROUILLER LA MISE ET PUBLIER** » reste actif. Le clic renvoie vers
+  `/wallet` avec un toast. Le titre du recap est « PRÊT À PUBLIER ».
+- **Preuve** : `/mj/creer`, parcours 1VS1 > S&D/CRASH > mise 50 ZC >
+  RECAPITULATIF.
+- **Source** : `src/app/pages/mj/CreateMatchPage.tsx` (etape recap).
+- **Risque** : le libelle promet une publication ; l'action reelle est un
+  depot. Le joueur croit avoir publie ou ne comprend pas la redirection.
+- **Correctif** : soit desactiver le CTA et le remplacer par
+  « AJOUTER 50 ZC » qui mene au wallet, soit garder le CTA mais le
+  renommer « AJOUTER 50 ZC POUR PUBLIER » et retirer « PRÊT À PUBLIER »
+  tant que le solde est insuffisant. Une seule action, un seul mot.
+- **Test rouge** : rendu du recap avec `balance < stake` ; le bouton
+  principal doit porter le libelle de depot (ou etre desactive), et le
+  titre ne doit pas dire « pret a publier ».
+
+---
+
+## 4. Defauts P2 — navigation, accessibilite, semantique
+
+### ZD-06 — Deep links proteges : la destination est perdue
+
+- **Constat** : ouvrir `/wallet`, `/mj/tournois/creer` ou `/profil` sans
+  session redirige vers `/auth/login`. Apres connexion, l'application
+  renvoie vers `/`, pas vers la page demandee.
+- **Preuve** : deep links ouverts en navigation privee puis connexion avec
+  `AUDITPROD19`.
+- **Source** : `src/app/layouts/AppLayout.tsx:56` (redirection sans etat),
+  `src/app/pages/auth/LoginPage.tsx:113` (`navigate('/')`).
+- **Correctif** : rediriger avec `state.from = location.pathname +
+  location.search` et, apres login, `navigate(from ?? '/')`. Ne conserver
+  que les chemins internes (commencant par `/` et non `//`).
+- **Test rouge** : Playwright — visiter `/wallet` deconnecte, se connecter,
+  attendre `/wallet`. Variante : `/mj/tournois/creer`.
+
+### ZD-07 — `/mj/creer` : « TON ÉQUIPE » affiche en 1VS1
+
+- **Constat** : en format 1VS1, l'etape MISE propose « TON ÉQUIPE —
+  SQUAD ALPHA / SQUAD BRAVO », et le recap affiche « TON EQUIPE SQUAD
+  ALPHA ». Un 1VS1 n'a pas d'equipe.
+- **Preuve** : `/mj/creer`, format 1VS1, etapes 3 et 4.
+- **Source** : `src/app/pages/mj/CreateMatchPage.tsx:845`.
+- **Correctif** : masquer le selecteur d'equipe quand `format === '1v1'`
+  et ne pas envoyer `team` dans le payload. Afficher l'equipe uniquement
+  pour 2VS2 et au-dela.
+- **Test rouge** : rendu 1VS1 sans le texte « TON EQUIPE » ; rendu 2VS2
+  avec le selecteur.
+
+### ZD-08 — `/mj/creer` : groupes ARIA sans nom accessible
+
+- **Constat** : `#format-group` et `#gamemode-group` portent un
+  `aria-labelledby` qui pointe sur **eux-memes** : le nom accessible est
+  vide. `#map-pool` est un `role="group"` contenant des `role="radio"`,
+  alors qu'un ensemble de radios doit etre un `role="radiogroup"`.
+- **Preuve** : `/mj/creer`, etapes 1 et 2, attributs releves dans le DOM.
+- **Source** : `src/app/pages/mj/CreateMatchPage.tsx:377` et `:432`.
+- **Correctif** : donner un `id` au titre visible de chaque groupe et le
+  referencer dans `aria-labelledby` ; passer `#map-pool` en
+  `role="radiogroup"` (les cartes restent des radios). Verifier aussi les
+  fleches haut/bas dans chaque radiogroup.
+- **Test rouge** : Playwright/axe — chaque radiogroup a un nom accessible
+  non vide ; navigation clavier dans `#map-pool`.
+
+### ZD-09 — `/parametres` : onglets inutilisables au clavier, survol illisible
+
+- **Constat** : les quatre onglets sont des `role="tab"` tous a
+  `tabindex="0"` (aucun roving tabindex), les fleches gauche/droite ne
+  changent pas d'onglet. Au survol de l'onglet actif, le fond reste sombre
+  et le texte passe en noir : contraste quasiment nul.
+- **Preuve** : `/parametres`, onglets CONFIANCE / JEU / NOTIFICATIONS /
+  COMPTE ; inspection des attributs et survol.
+- **Source** : `src/app/pages/ParametresPage.tsx`.
+- **Correctif** : appliquer le motif ARIA tabs (un seul `tabindex=0`,
+  fleches, Home/End, `aria-controls`/`aria-labelledby`) et une regle de
+  survol qui ne s'applique pas a l'onglet actif (ou qui garde un contraste
+  >= 4.5:1).
+- **Test rouge** : Playwright — focus sur l'onglet actif, fleche droite,
+  l'onglet suivant est selectionne et focus ; capture du style survole de
+  l'onglet actif et calcul de contraste.
+
+### ZD-10 — `/chat` et `/auth/login` : wrapper `tabindex=0` non nomme
+
+- **Constat** : les boutons « ENVOYER » (chat) et « SE CONNECTER »
+  (login) sont enveloppes dans un `div[tabindex="0"]` sans nom accessible.
+  Le clavier s'arrete sur une cible muette avant le bouton.
+- **Preuve** : `/chat` (champ vide), `/auth/login` ; arbre d'accessibilite.
+- **Source** : `src/app/components/ui/Button.tsx:111-121` (wrapper Motion).
+- **Correctif** : ne pas rendre le wrapper focusable quand il ne porte pas
+  d'interaction propre (`tabindex="-1"`), ou y deplacer le role et le nom
+  du bouton. Le focus doit atterrir sur le bouton, une seule fois.
+- **Test rouge** : Playwright — parcours Tab sur `/auth/login` ; aucun
+  element focalise sans nom accessible, et « SE CONNECTER » recoit le
+  focus une seule fois.
+
+### ZD-11 — `/auth/login` : H2 avant H1
+
+- **Constat** : l'ordre des titres commence par un H2, puis un H1 plus bas.
+- **Preuve** : `/auth/login`, arbre des titres.
+- **Source** : `src/app/pages/auth/LoginPage.tsx`.
+- **Correctif** : promouvoir le titre principal en H1 et rétrograder le
+  premier H2, ou supprimer le H2 decoratif.
+- **Test rouge** : test de rendu — le premier titre de la page est un H1,
+  un seul H1.
+
+### ZD-12 — Pages d'erreur de detail : H2 sans H1, « Reessayer » trop petite
+
+- **Constat** : `/mj/tournois/AUDIT-INVALID` et
+  `/br-league/AUDIT-INVALID` affichent un H2 sans H1. Le bouton
+  « Reessayer » mesure **66 x 20 px**, sous la cible tactile de 24 px.
+  Le titre de l'onglet reste generique.
+- **Preuve** : URLs ci-dessus, mesures DOM.
+- **Source** : pages d'erreur des features tournoi et ligue.
+- **Correctif** : H1 sur le message d'erreur, bouton avec padding vertical
+  pour atteindre au moins 44 x 44 px (ou 24 px minimum), titre d'onglet
+  « Introuvable — ZOYD » via `SEOHead`.
+- **Test rouge** : rendu des deux pages — un H1, bouton dont la boite
+  fait >= 24 px de haut, titre d'onglet non generique.
+
+### ZD-13 — 404 applicative renvoyee en HTTP 200
+
+- **Constat** : `/route-inexistante` rend bien la page 404, mais le statut
+  HTTP est **200**. Les moteurs et les moniteurs voient une page valide.
+- **Preuve** : requete HTTP directe sur une route inconnue ; rendu 404.
+- **Source** : `vercel.json` — rewrite catch-all `/(.*)` vers
+  `/index.html`.
+- **Correctif** : a court terme, ajouter `<meta name="robots"
+  content="noindex">` sur `NotFoundPage` et un `SEOHead` dedie. A moyen
+  terme, une fonction edge qui renvoie un vrai 404 pour les chemins
+  inconnus (liste blanche des routes de l'app).
+- **Test rouge** : test e2e ou script de deploiement — `GET
+  /route-inexistante` doit renvoyer 404 (ou, a defaut, contenir
+  `noindex`).
+
+### ZD-14 — `/classements` : deux colonnes « RANG », top 3 sans rang lisible
+
+- **Constat** : l'en-tete affiche « RANG ... RANG ... » : la premiere
+  colonne est la position numerique, la seconde est en realite le grade
+  (`BRONZE`, `LEGENDARY`). Les trois premiers n'ont pas de numero : ce
+  sont des icones (couronne/medailles) sans nom accessible.
+- **Preuve** : `/classements`, TOP ELO ; en-tetes et lignes.
+- **Source** : `src/app/pages/ClassementsPage.tsx:74-92`.
+- **Correctif** : renommer la colonne de grade en « GRADE » (ou « RANG
+  MJ ») ; donner un `aria-label` aux icones de podium (« Rang 1 »,
+  « Rang 2 », « Rang 3 »).
+- **Test rouge** : rendu — un seul en-tete « RANG », presence de
+  « GRADE » ; les trois premieres lignes exposent un nom accessible
+  contenant leur rang.
+
+---
+
+## 5. Defauts P3 — copie et finition
+
+### ZD-15 — Accents manquants recurrents
+
+- **Constat** : libelles sans accents dans BR, tournois et parametres :
+  `DEBUT`, `REPARTITION`, `GARDEES`, `REPERES`, `reimbourse`, `preleve`,
+  `organise`, `vehicules`, `desinscription`.
+- **Preuve** : `/br`, `/br/:id`, `/mj/tournois`, `/parametres`.
+- **Correctif** : corriger les chaines a la source (pas de remplacement
+  global aveugle), puis ajouter un test de copie qui interdit les mots
+  fautifs dans les ecrans concernes.
+- **Test rouge** : test de rendu par ecran — absence de `reimbourse`,
+  `preleve`, `DEBUT`, etc.
+
+### ZD-16 — Anglais residuel dans les libelles visibles
+
+- **Constat** : « Variant in-game » dans la creation BR et « Details » sur
+  chaque carte de salon.
+- **Preuve** : `/br` (creation et cartes), source
+  `BrLobbyCreatePanel.tsx:282` et `BrPage.tsx:135`.
+- **Correctif** : traduire les libelles visibles (« Variante en jeu »,
+  « Detail ») ; garder les identifiants techniques en anglais uniquement
+  dans le code.
+- **Test rouge** : rendu de la creation et de la liste BR — absence de
+  « Variant » et de « Details » dans le texte visible.
+
+### ZD-17 — Repartition BR affichee en fractions sous « Total 100 % »
+
+- **Constat** : les parts sont affichees `0,4` et `0,22` alors que le
+  total est annonce « 100 % ». L'unite n'est pas la meme.
+- **Preuve** : `/br`, formulaire de creation, section repartition.
+- **Correctif** : multiplier par 100 a l'affichage (40 % / 22 %), ou
+  afficher « 0,40 » et « 0,22 » avec un total « 1,00 ». Ne pas melanger
+  fractions et pourcentages.
+- **Test rouge** : rendu du formulaire — les parts et le total partagent
+  la meme unite.
+
+### ZD-18 — `/earnings` : graphique vide sans etat vide
+
+- **Constat** : sans gains, le graphique est un cadre vide, sans texte
+  expliquant qu'il n'y a pas encore de donnees ni comment en obtenir.
+- **Preuve** : `/earnings` avec `AUDITPROD19`.
+- **Correctif** : etat vide dedie (« Aucun gain pour l'instant — termine
+  un match ou un tournoi pour voir ta courbe »), avec un CTA vers
+  `/mode`.
+- **Test rouge** : rendu avec `earnings=[]` — presence du message et du
+  CTA, absence de conteneur de graphique vide.
+
+### ZD-19 — Pages legales : adresse de contact sur Gmail
+
+- **Constat** : l'adresse d'assistance publique est
+  `coyd2976@gmail.com` (footer de toutes les pages legales et page
+  Mentions). Pour une plateforme qui manipule de l'argent, une adresse
+  Gmail personnelle baisse la credibilite et la delivrabilite.
+- **Preuve** : `/mentions`, `/conditions`, `/confidentialite` ;
+  `LegalLayout.tsx:32`.
+- **Note** : la numerotation des sections est visuellement correcte
+  (`1.` suivi d'une marge CSS) ; seul le DOM concatene le texte. Ce point
+  n'est pas un defaut.
+- **Correctif** : utiliser une adresse du domaine (`contact@zoyd.gg` ou
+  equivalent), avec redirection vers la boite de support.
+- **Test rouge** : rendu de la page Mentions — l'adresse affichee
+  appartient au domaine de l'application.
+
+---
+
+## 6. Verifie sans defaut
+
+- Inscription en 3 etapes, validation des champs, activation, connexion,
+  deconnexion.
+- Validation « CHOISIS UN MODE ET UNE CARTE. » avant publication.
+- Redirection solde insuffisant vers `/wallet` avec toast explicite.
+- Modal de depot : `role="dialog"`, `aria-modal`, focus piege, Escape
+  ferme, presets coherents.
+- Deep links proteges : redirection effective vers `/auth/login` (le
+  retour post-login est le defaut ZD-06, pas la protection).
+- Chat : creation de discussion, etat vide, formulaire.
+- Profil public, profil prive, parametres (4 onglets), wallet, earnings.
+- `/br`, `/br-league`, `/mj/tournois`, `/mj/tournois/creer`, `/infos`,
+  `/mode`, `/auth/*`, 404, 6 pages legales : rendu, titres, liens.
+- Aucune erreur console, aucun echec reseau inattendu sur le perimetre.
+
+---
+
+## 7. Limites de l'audit
+
+- **Admin** : `/admin` et la saison de ligue complete exigent un email
+  admin, un mot de passe et un secret TOTP. Non audites.
+- **IDs reels** : aucun match, tournoi ou ligue exploitable fourni ; les
+  etats de detail ont ete testes avec des IDs invalides (404), pas avec
+  des donnees reelles.
+- **Mobile/tablette** : non couverts (viewport desktop unique 1264 x 575).
+  Les tailles de cibles et les debordements horizontaux restent a verifier
+  a 360 et 768 px.
+- **Performance** : pas de mesure Lighthouse/Web Vitals en conditions
+  reelles.
+- **Paiement** : aucun depot reel effectue ; le parcours FedaPay n'a pas
+  ete joue jusqu'au bout.
+- **Artifact de test** : les transitions d'etape de `/mj/creer` sont
+  pilotees par animation et ne progressent pas dans un onglet Chrome non
+  visible (`visibilityState=hidden`). Ce n'est pas un defaut utilisateur
+  constate ; cela impose seulement de garder la fenetre au premier plan
+  pendant les tests.
+
+---
+
+## 8. Plan de correction propose
+
+Chaque correctif suit la regle : **test rouge d'abord**, puis vert, puis
+gates et push. Commits ASCII, francais, `INVARIANT :` / `PIEGE :` la ou le
+code fige une regle.
+
+### Lot 1 — Verite des donnees (P1)
+
+| Ordre | Defaut | Test rouge |
+|---|---|---|
+| 1 | ZD-02 countdown BR | unite sur `countDown` + rendu carte annulee |
+| 2 | ZD-04 metriques tournois | rendu avec archives + tournoi ouvert |
+| 3 | ZD-03 classement | rendu sans activite + rang masque |
+| 4 | ZD-01 bandeau `/mode` | rendu avec store BR vide / salon 10 ZC |
+| 5 | ZD-05 CTA recap | rendu solde insuffisant |
+
+### Lot 2 — Navigation et accessibilite (P2)
+
+| Ordre | Defaut | Test rouge |
+|---|---|---|
+| 1 | ZD-06 deep link | Playwright retour vers `/wallet` |
+| 2 | ZD-09 onglets parametres | clavier + contraste |
+| 3 | ZD-08 groupes ARIA | axe + clavier radiogroup |
+| 4 | ZD-10 wrapper focusable | parcours Tab login/chat |
+| 5 | ZD-11 H2 avant H1 | ordre des titres |
+| 6 | ZD-12 pages erreur | H1 + cible 24 px |
+| 7 | ZD-14 classement | en-tetes + noms accessibles |
+| 8 | ZD-13 soft 404 | statut HTTP ou noindex |
+| 9 | ZD-07 equipe 1VS1 | rendu 1VS1 / 2VS2 |
+
+### Lot 3 — Copie et finition (P3)
+
+ZD-15, ZD-16, ZD-17, ZD-18, ZD-19.
+
+### Gates avant chaque commit
+
+```text
+npx tsc -p tsconfig.app.json --noEmit
+npx tsc -p tsconfig.node.json --noEmit
+npx eslint src server e2e scripts
+npx vitest run
+npx playwright test
+npx vite build
+```
+
+Puis push sur `main`, verification du commit deploye sur
+`https://zoyd.vercel.app/version.json` (ou l'endpoint equivalent), et
+controle visuel du ou des ecrans corriges en production.
+
+---
+
+## 9. Journal des preuves
+
+| Date | Ecran | Preuve |
+|---|---|---|
+| 2026-11-19 | `/mode` | « 1 salon ouvert ici, 100 joueurs max, pass 20 ZC » |
+| 2026-11-19 | `/br` | badge `ANNULÉ` + « Imminent » sur `BR-MWI1V2TC-N0` |
+| 2026-11-19 | `/classements` | « Pas encore classe » + ligne `AUDITPROD19` rang 11 |
+| 2026-11-19 | `/mj/tournois` | « 3 visibles / 76 ZC / 16 places », aucun tournoi ouvert |
+| 2026-11-19 | `/mj/creer` | solde 0 ZC, CTA « VERROUILLER LA MISE ET PUBLIER » actif |
+| 2026-11-19 | `/mj/creer` | « TON EQUIPE SQUAD ALPHA » en 1VS1 |
+| 2026-11-19 | `/br/BR-MWI1V2TC-N0` | « Imminent », « reimbourse », « preleve » |
+| 2026-11-19 | `/mj/tournois/AUDIT-INVALID` | H2 sans H1, « Reessayer » 66 x 20 px |
+| 2026-11-19 | `/route-inexistante` | page 404 rendue, HTTP 200 |
+| 2026-11-19 | `/parametres` | onglets `tabindex=0`, fleches inoperantes, survol illisible |
+
+---
+
+*Rapport etabli le 2026-11-19 sur le commit de production `896a2c8`.
+Aucune donnee de production n'a ete modifiee en dehors du compte de test
+`AUDITPROD19`, cree puis utilise pour les parcours.*

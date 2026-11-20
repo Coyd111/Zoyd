@@ -154,6 +154,11 @@ const CreateMatchPage: React.FC = () => {
     return selectedFormat ? parseInt(selectedFormat.split('VS')[0], 10) * 2 : 2;
   }, [selectedFormat]);
 
+  // ZD-07 (audit production 2026-11-19) : une equipe n'existe qu'a partir de
+  // 2VS2. En 1VS1, le choix « Squad Alpha / Squad Bravo » n'a aucun sens et
+  // le recapitulatif annoncait une equipe inexistante.
+  const isTeamFormat = playerSlots > 2;
+
   // P0-4 : le pot réel = pass × joueurs réellement inscrits (ici le créateur
   // seul si rôle joueur, 0 si rôle arbitre). `livePot` (max théorique) sert
   // à afficher le gain potentiel, mais on doit dire "bloqué à 100 ZC (1/2)"
@@ -203,6 +208,33 @@ const CreateMatchPage: React.FC = () => {
     }
 
     setCurrentStep(2);
+  };
+
+  /**
+   * ZD-08 (audit production 2026-11-19) : navigation clavier des radiogroups.
+   *
+   * Les options sont des <button role="radio">, pas des <input type="radio"> :
+   * le navigateur ne leur fournit AUCUN comportement de fleche. Sans ce
+   * gestionnaire, dix radios restaient dix arrets de tabulation muets.
+   * PIEGE : on selectionne en appelant click() — c'est le onClick React de
+   * l'option qui met a jour l'etat, pas le focus.
+   */
+  const onRadioGroupKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const touches = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+    if (!touches.includes(event.key)) return;
+    const options = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]:not([disabled])'),
+    );
+    const index = options.indexOf(document.activeElement as HTMLButtonElement);
+    if (index === -1) return;
+    event.preventDefault();
+    let next = index;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % options.length;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index - 1 + options.length) % options.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = options.length - 1;
+    options[next]?.focus();
+    options[next]?.click();
   };
 
   /**
@@ -379,8 +411,8 @@ const CreateMatchPage: React.FC = () => {
           {currentStep === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <div className="hud-panel p-6 sm:p-8 md:p-10 bg-zoyd-surface/40">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white mb-10 italic uppercase">Choisis le format</h2>
-                <div id="format-group" role="radiogroup" aria-labelledby="format-group" className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-12">
+                <h2 id="format-heading" className="text-xl sm:text-2xl md:text-3xl font-display font-black text-white mb-10 italic uppercase">Choisis le format</h2>
+                <div id="format-group" role="radiogroup" aria-labelledby="format-heading" onKeyDown={onRadioGroupKeyDown} className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-12">
                   {MJ_FORMATS.map((format) => {
                     const selected = selectedFormat === format;
                     const formatTeamSize = Number(format.split('VS')[0] || 1);
@@ -432,10 +464,10 @@ const CreateMatchPage: React.FC = () => {
 
                   <div className="space-y-12">
                     <div>
-                      <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
+                      <label id="gamemode-heading" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                         01 / Mode de jeu
                       </label>
-                      <div id="gamemode-group" role="radiogroup" aria-labelledby="gamemode-group" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div id="gamemode-group" role="radiogroup" aria-labelledby="gamemode-heading" onKeyDown={onRadioGroupKeyDown} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {MJ_MODE_OPTIONS.map((mode) => (
                           <Button
                 variant="secondary"
@@ -457,10 +489,10 @@ const CreateMatchPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
+                      <label id="map-heading" className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-4 block underline">
                         02 / Carte choisie
                       </label>
-                      <div id="map-pool" role="group" aria-label="Sélection de la carte" className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div id="map-pool" role="radiogroup" aria-labelledby="map-heading" onKeyDown={onRadioGroupKeyDown} className="max-h-[400px] overflow-y-auto pr-1 scrollbar-hide grid grid-cols-2 md:grid-cols-4 gap-3">
                         {availableMaps.map((map) => (
                           <Button
                 variant="secondary"
@@ -756,7 +788,7 @@ const CreateMatchPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {!isArbiterCreator && (
+                        {!isArbiterCreator && isTeamFormat && (
                           <div>
                             <label className="text-[10px] font-mono font-black text-zoyd-blue tracking-widest uppercase mb-3 block">
                               Ton équipe
@@ -852,7 +884,7 @@ const CreateMatchPage: React.FC = () => {
                       formatTimeLimit(Number(getValues('timeLimitMinutes') || 0) * 60, rulePreset?.timeLimitScope) || 'Libre'
                     }
                   />
-                  {isArbiterCreator ? null : <SummaryBox label="Ton équipe" value={selectedCreatorTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} />}
+                  {!isArbiterCreator && isTeamFormat ? <SummaryBox label="Ton équipe" value={selectedCreatorTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} /> : null}
                   <SummaryBox label="Ton rôle" value={isArbiterCreator ? 'Arbitre (sans pass)' : 'Joueur (pass bloqué)'} />
                   <SummaryBox label="Visibilité" value={getValues('isPrivate') ? 'Privé' : 'Public'} />
                 </div>

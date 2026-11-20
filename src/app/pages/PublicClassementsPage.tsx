@@ -79,9 +79,11 @@ const tabs: { id: PublicTab; label: string; icon: React.ComponentType<{ classNam
 ];
 
 const rankIcon = (rank: number) => {
-  if (rank === 1) return <Crown className="w-5 h-5 text-zoyd-yellow" />;
-  if (rank === 2) return <Medal className="w-5 h-5 text-white/60" />;
-  if (rank === 3) return <Medal className="w-5 h-5 text-orange-400" />;
+  // ZD-14 : les trois premiers rangs sont des ICONES. Sans nom accessible,
+  // un lecteur d'ecran annoncait une image muette a la place du rang.
+  if (rank === 1) return <Crown role="img" aria-label="Rang 1" className="w-5 h-5 text-zoyd-yellow" />;
+  if (rank === 2) return <Medal role="img" aria-label="Rang 2" className="w-5 h-5 text-white/60" />;
+  if (rank === 3) return <Medal role="img" aria-label="Rang 3" className="w-5 h-5 text-orange-400" />;
   return <span className="text-sm font-display font-black text-white/70 w-5 text-center">{rank}</span>;
 };
 

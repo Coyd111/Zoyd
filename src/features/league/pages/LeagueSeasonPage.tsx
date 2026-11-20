@@ -287,6 +287,12 @@ const LeagueSeasonPage = () => {
   if (loadError || !season) {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white scanline font-ui pb-20 pt-safe-top">
+        <SEOHead
+          title="Introuvable — ZOYD"
+          description="Cette saison n'existe pas ou n'est plus disponible."
+          path="/br-league"
+          noindex
+        />
         <div className="fixed inset-0 tactical-grid opacity-10 pointer-events-none" />
         <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-12 md:py-24 relative z-10">
           {/* PIEGE (audit UI) : `min-h-6` (24 px). Ce lien est en
@@ -296,12 +302,14 @@ const LeagueSeasonPage = () => {
             <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             Retour aux ligues
           </Link>
+          {/* ZD-12 : une page d'erreur est une page — elle porte un H1. */}
+          <h1 className="text-2xl sm:text-3xl font-display font-black uppercase italic mb-4">Saison introuvable</h1>
           <div className="border border-red-500/30 bg-red-500/10 px-6 py-5 text-sm text-red-400">
-            {loadError || 'Saison introuvable.'}
+            {loadError || 'Cette saison n’existe pas ou n’est plus disponible.'}
             {loadError ? (
               <Button
                 variant="ghost"
-                size="link"
+                size="sm"
                 animate={false} onClick={() => setReloadKey((k) => k + 1)} className="ml-4 underline hover:text-white">
                 Réessayer
               </Button>

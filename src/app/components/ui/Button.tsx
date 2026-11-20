@@ -114,6 +114,11 @@ const Button = ({
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         transition={MOTION_SPRING}
+        // ZD-10 (audit production 2026-11-19) : Motion rend le wrapper
+        // focusable (`tabindex="0"`) des qu'il porte `whileTap` — le clavier
+        // s'arretait sur un DIV muet avant le bouton. Le wrapper n'a aucune
+        // interaction propre : il sort de l'ordre de tabulation.
+        tabIndex={-1}
         className={cn(fullWidth ? 'w-full' : 'inline-block', 'will-change-transform')}
       >
         {buttonContent}

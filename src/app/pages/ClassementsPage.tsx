@@ -78,7 +78,7 @@ const tabColumns: Record<
   RankingTab,
   { primary: string; detail: string; value: string; rate: string; trust: string }
 > = {
-  elo: { primary: 'JOUEUR', detail: 'RANG', value: 'ELO', rate: 'WR%', trust: 'FIAB.' },
+  elo: { primary: 'JOUEUR', detail: 'GRADE', value: 'ELO', rate: 'WR%', trust: 'FIAB.' },
   earnings: { primary: 'JOUEUR', detail: 'SETUP', value: 'V', rate: 'WR%', trust: 'FIAB.' },
   winrate: { primary: 'JOUEUR', detail: 'SETUP', value: 'V', rate: 'WR%', trust: 'FIAB.' },
   activity: { primary: 'JOUEUR', detail: 'ACTIVITÉ', value: 'MATCHS', rate: 'WR%', trust: 'FIAB.' },
@@ -98,9 +98,11 @@ const rankIcon = (rank: number | null) => {
       </span>
     );
   }
-  if (rank === 1) return <Crown className="w-5 h-5 text-zoyd-yellow" />;
-  if (rank === 2) return <Medal className="w-5 h-5 text-white/60" />;
-  if (rank === 3) return <Medal className="w-5 h-5 text-orange-400" />;
+  // ZD-14 : les trois premiers rangs sont des ICONES. Sans nom accessible,
+  // un lecteur d'ecran annoncait une image muette a la place du rang.
+  if (rank === 1) return <Crown role="img" aria-label="Rang 1" className="w-5 h-5 text-zoyd-yellow" />;
+  if (rank === 2) return <Medal role="img" aria-label="Rang 2" className="w-5 h-5 text-white/60" />;
+  if (rank === 3) return <Medal role="img" aria-label="Rang 3" className="w-5 h-5 text-orange-400" />;
   return <span className="text-sm font-display font-black text-white/70 w-5 text-center">{rank}</span>;
 };
 
@@ -298,6 +300,7 @@ const ClassementsPage: React.FC = () => {
  */
 const EXPLICATION_COLONNES: Record<string, string> = {
   RANG: 'Ta position dans ce classement',
+  GRADE: 'Le grade CODM du joueur',
   JOUEUR: 'Le joueur',
   EQUIPE: 'L\u00e9quipe',
   PAYS: 'Le pays du joueur',

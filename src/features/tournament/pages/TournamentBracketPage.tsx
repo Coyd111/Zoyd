@@ -190,7 +190,7 @@ const TournamentBracketPage: React.FC = () => {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
         <div className="text-center">
-          <h2 className="text-xl font-display font-black uppercase mb-4">Chargement du tournoi</h2>
+          <h1 className="text-xl font-display font-black uppercase mb-4">Chargement du tournoi</h1>
           <p className="text-white/70">Le bracket et les inscriptions se synchronisent avec le serveur.</p>
         </div>
       </div>
@@ -200,14 +200,20 @@ const TournamentBracketPage: React.FC = () => {
   if (!tournament) {
     return (
       <div className="min-h-dvh bg-zoyd-black text-white flex items-center justify-center safe-top safe-bottom">
+        <SEOHead
+          title="Introuvable — ZOYD"
+          description="Ce tournoi n'existe pas ou n'est plus disponible."
+          path="/mj/tournois"
+          noindex
+        />
         <div className="text-center">
-          <h2 className="text-xl font-display font-black uppercase mb-4">Tournoi introuvable</h2>
+          <h1 className="text-xl font-display font-black uppercase mb-4">Tournoi introuvable</h1>
           {loadError ? <p className="text-sm text-red-200 mb-4">{loadError}</p> : null}
           {loadError ? (
             <Button
                 variant="ghost"
-                size="link"
-                animate={false} onClick={() => void loadTournament()} className="underline hover:text-white text-sm text-red-200">
+                size="sm"
+                animate={false} onClick={() => void loadTournament()} className="underline hover:text-white text-sm text-red-200 mb-4">
               Réessayer
             </Button>
           ) : null}

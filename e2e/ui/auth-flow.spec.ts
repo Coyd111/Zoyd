@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { registerPlayer, PLAYER_PASSWORD } from '../api/support/harness';
 
 const unique = () => Math.random().toString(36).slice(2, 8);
 const TEST_PSEUDO = `UI_${unique()}`;
@@ -12,6 +13,17 @@ test.describe('Login Page', () => {
     await expect(page.locator('text=Connexion').first()).toBeVisible();
     await expect(page.locator('input[name="emailOrPseudo"]').first()).toBeVisible();
     await expect(page.locator('input[name="password"]').first()).toBeVisible();
+  });
+
+  test('le premier titre de la page est son H1 unique (ZD-11)', async ({ page }) => {
+    await page.goto('/auth/login');
+    const titres = await page
+      .locator('h1, h2, h3, h4, h5, h6')
+      .evaluateAll((elements) => elements.map((element) => element.tagName));
+    // Avant ZD-11, le panneau decoratif ouvrait la page par un H2, alors que
+    // le titre reel (« Identification ») etait un H1 situe plus bas.
+    expect(titres[0]).toBe('H1');
+    expect(titres.filter((tag) => tag === 'H1')).toHaveLength(1);
   });
 
   test('shows validation errors for empty fields', async ({ page }) => {
@@ -143,6 +155,27 @@ test.describe('Protected Routes', () => {
     // (catchall '*' routes.tsx:241-243) ni une redirection.
     await expect(page).toHaveURL(/\/mode/);
     await expect(page.getByRole('heading', { level: 1, name: 'terrain de jeu' })).toBeVisible();
+  });
+
+  test('un deep link protege survit a la connexion (ZD-06)', async ({ page }) => {
+    const joueur = await registerPlayer('DEEPLINK');
+    await page.goto('/wallet');
+    await expect(page).toHaveURL(/\/auth\/login/);
+
+    await page.locator('input[name="emailOrPseudo"]').fill(joueur.pseudo);
+    await page.locator('input[name="password"]').fill(PLAYER_PASSWORD);
+    // PIEGE : sous la suite complete, l'API de test encaisse des dizaines de
+    // connexions concurrentes. Un budget de 20 s faisait echouer ce test puis
+    // le faisait passer au retry (flaky) sans aucun defaut produit.
+    const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), {
+      timeout: 60_000,
+    });
+    await page.locator('button[type="submit"]').first().click();
+    expect((await loginResponse).status()).toBe(200);
+
+    // Avant ZD-06, la connexion renvoyait vers « / » et la destination
+    // demandee etait perdue.
+    await expect(page).toHaveURL(/\/wallet$/, { timeout: 30_000 });
   });
 });
 

@@ -18,7 +18,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { toast } from '../../lib/toast';
 import { Eye, EyeOff, ShieldCheck, ChevronRight, Lock } from 'lucide-react';
@@ -31,6 +31,7 @@ import { useNotificationStore } from '../../stores/notificationStore';
 import ZoydLogo from '../../components/branding/ZoydLogo';
 import { SEOHead } from '../../components/SEOHead';
 import Illustration from '../../components/ui/Illustration';
+import { getPostLoginPath } from '../../lib/postLoginRedirect';
 
 const loginSchema = z.object({
   emailOrPseudo: z.string().min(1, 'Email ou pseudo requis'),
@@ -70,6 +71,7 @@ cancelled = true;
 };
 }, []);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuthStore();
 
   const {
@@ -110,7 +112,10 @@ cancelled = true;
         }
       } catch { /* ignore */ }
 
-      navigate('/');
+      // ZD-06 : retour a la page demandee avant la redirection vers le login.
+      // getPostLoginPath filtre les destinations externes (redirection ouverte).
+      const from = (location.state as { from?: unknown } | null)?.from;
+      navigate(getPostLoginPath(from), { replace: true });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Connexion impossible.';
       toast.error(errorMessage);
@@ -183,10 +188,12 @@ cancelled = true;
               Accès sécurisé ZOYD
             </div>
 
-            <h2 className="text-6xl font-display font-black text-white italic uppercase leading-[0.9] tracking-tighter">
+            {/* ZD-11 : ce texte est decoratif. En H2, il ouvrait la page
+                AVANT le H1 « Identification » (ordre des titres inverse). */}
+            <p className="text-6xl font-display font-black text-white italic uppercase leading-[0.9] tracking-tighter">
               Le champ de <br />
               <span className="text-zoyd-yellow underline decoration-zoyd-yellow/30 underline-offset-8">bataille</span> attend.
-            </h2>
+            </p>
 
             <p className="text-white/70 text-lg font-light leading-relaxed">
               Retrouve ton profil joueur, ton portefeuille et tes modes de jeu dans le même espace.

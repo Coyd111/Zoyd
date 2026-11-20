@@ -53,7 +53,16 @@ const AppLayout = ({ requireAdmin = false, children }: AppLayoutProps) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
+    // ZD-06 (audit production 2026-11-19) : la destination demandee survit a
+    // la connexion. Sans cet etat, /wallet -> /auth/login -> / : le joueur
+    // perd le chemin qu'il avait ouvert.
+    return (
+      <Navigate
+        to="/auth/login"
+        replace
+        state={{ from: location.pathname + location.search + location.hash }}
+      />
+    );
   }
 
   if (requireAdmin && !isAdmin) {

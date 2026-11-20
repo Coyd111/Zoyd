@@ -82,6 +82,9 @@ const ParametresPage: React.FC = () => {
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<ActiveTab>('account');
+  // ZD-09 : refs des onglets pour le roving tabindex (une seule cible dans
+  // l'ordre de tabulation) et le deplacement du focus aux fleches.
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [notificationToggles, setNotificationToggles] = useState<NotificationSettings>({
     matchStart: true,
@@ -171,6 +174,26 @@ const ParametresPage: React.FC = () => {
 
   const updateForm = <K extends keyof SettingsForm>(field: K, value: SettingsForm[K]) => {
     setForm((prev) => (prev ? { ...prev, [field]: value } : prev));
+  };
+
+  // ZD-09 : motif ARIA tabs. Les fleches (haut/bas et gauche/droite), Home et
+  // End deplacent le focus ET la selection (activation automatique). Sans ce
+  // gestionnaire, les quatre onglets restaient des boutons muets au clavier.
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let next: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      next = (index + 1) % tabs.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      next = (index - 1 + tabs.length) % tabs.length;
+    } else if (event.key === 'Home') {
+      next = 0;
+    } else if (event.key === 'End') {
+      next = tabs.length - 1;
+    }
+    if (next === null) return;
+    event.preventDefault();
+    setActiveTab(tabs[next].id);
+    tabRefs.current[next]?.focus();
   };
 
   const handleSave = async () => {
@@ -298,8 +321,8 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
 
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-12 grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
         <div className="lg:col-span-1 space-y-2">
-          <nav className="space-y-2" role="tablist" aria-label="Paramètres">
-            {tabs.map((tab) => {
+          <nav className="space-y-2" role="tablist" aria-label="Paramètres" aria-orientation="vertical">
+            {tabs.map((tab, index) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
@@ -312,10 +335,13 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
                   id={`tab-${tab.id}`}
                   aria-selected={isActive}
                   aria-controls={`panel-${tab.id}`}
+                  ref={(node) => { tabRefs.current[index] = node; }}
+                  tabIndex={isActive ? 0 : -1}
+                  onKeyDown={(event) => onTabKeyDown(event, index)}
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-4 px-4 py-3.5 touch-target font-display font-black text-xs tracking-widest italic uppercase transition-all ${
                     isActive
-                      ? 'bg-white text-black shadow-[4px_0_0_0_#FFE600]'
+                      ? 'bg-white text-black hover:bg-white hover:text-black shadow-[4px_0_0_0_#FFE600]'
                       : 'text-white/70 hover:text-white hover:bg-white/5'
                   }`}
                 >

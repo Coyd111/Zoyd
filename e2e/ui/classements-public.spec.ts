@@ -114,6 +114,12 @@ test.describe('/classements - version anonyme', () => {
     await expect(firstPseudo).toContainText('GHOST_229');
     await expect(page.getByRole('tab', { name: 'TOP ELO' })).toHaveAttribute('aria-selected', 'true');
 
+    // ZD-14 : les trois premiers rangs sont des icones. Elles doivent porter
+    // un nom accessible (« Rang 1/2/3 »), pas etre muettes.
+    await expect(page.getByRole('img', { name: 'Rang 1' }).first()).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Rang 2' }).first()).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Rang 3' }).first()).toBeVisible();
+
     // GAINS — TOP 50 ELO : le tri passe par totalEarnings — SNIPER_DK (9800)
     // passe 1er (re-trie du plateau top-50 ELO, cf. note P2-5).
     await page.getByRole('tab', { name: 'GAINS — TOP 50 ELO' }).click();

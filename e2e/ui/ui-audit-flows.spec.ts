@@ -76,6 +76,11 @@ test.describe('Audit UI - parcours a etats', () => {
     // ── Etape 1 : le format ────────────────────────────────────────────────
     await mesurer(1);
 
+    // ZD-08 (audit production 2026-11-19) : chaque radiogroup doit porter le
+    // nom de son titre visible. `aria-labelledby` pointait sur lui-meme, donc
+    // le nom accessible etait vide.
+    await expect(page.getByRole('radiogroup', { name: 'Choisis le format' })).toBeVisible();
+
     await page.getByRole('radio', { name: /^Format 1VS1/ }).click();
     await page.getByRole('button', { name: "Continuer à l'étape suivante" }).click();
     await expect(page.getByRole('heading', { name: /Comment vous allez jouer/i })).toBeVisible();
@@ -83,6 +88,18 @@ test.describe('Audit UI - parcours a etats', () => {
 
     // ── Etape 2 : le mode, la carte, les presets ──────────────────────────
     await mesurer(2);
+
+    await expect(page.getByRole('radiogroup', { name: /Mode de jeu/ })).toBeVisible();
+    const cartes = page.getByRole('radiogroup', { name: /Carte choisie/ });
+    await expect(cartes).toBeVisible();
+
+    // Fleches : le focus ET la selection suivent (motif radio ARIA).
+    const premiereCarte = cartes.getByRole('radio').first();
+    await premiereCarte.focus();
+    await page.keyboard.press('ArrowRight');
+    const carteSuivante = cartes.getByRole('radio').nth(1);
+    await expect(carteSuivante).toBeFocused();
+    await expect(carteSuivante).toHaveAttribute('aria-checked', 'true');
 
     await page.getByRole('radio', { name: /^Mode / }).first().click();
     await page.getByRole('radio', { name: /^Carte / }).first().click();
@@ -100,6 +117,10 @@ test.describe('Audit UI - parcours a etats', () => {
     // ── Etape 3 : la mise et la repartition du prize pool ──────────────────
     await mesurer(3);
 
+    // ZD-07 (audit production 2026-11-19) : en 1VS1, il n'y a pas d'equipe.
+    // « Ton équipe » et le choix Squad Alpha / Squad Bravo n'ont aucun sens.
+    await expect(page.getByText('Ton équipe', { exact: true })).toHaveCount(0);
+
     await page.getByRole('radio', { name: /^Mise de / }).first().click();
     await page.getByRole('button', { name: /Passer au récapitulatif/ }).click();
     await expect(page.getByRole('heading', { name: /Récapitulatif du Wager/i })).toBeVisible();
@@ -107,6 +128,9 @@ test.describe('Audit UI - parcours a etats', () => {
 
     // ── Etape 4 : le recapitulatif ───────────────────────────────────────
     await mesurer(4);
+
+    // ZD-07 : le recapitulatif ne doit pas non plus annoncer une equipe.
+    await expect(page.getByText('Ton équipe', { exact: true })).toHaveCount(0);
 
     // ZD-05 (audit production 2026-11-19) : le joueur de test n'a pas de
     // solde. Le CTA principal doit annoncer le DEPOT qu'il declenche, et le

@@ -456,7 +456,7 @@ controle visuel du ou des ecrans corriges en production.
 | Lot | Defauts | Commit | Etat |
 |---|---|---|---|
 | 1 - verite des donnees | ZD-01 a ZD-05 | `bf712ad` | corrige, deploye, verifie en production |
-| 2 - navigation et accessibilite | ZD-06 a ZD-14 | - | a faire |
+| 2 - navigation et accessibilite | ZD-06 a ZD-14 | `d46249b` | corrige, deploye, verifie en production |
 | 3 - copie et finition | ZD-15 a ZD-19 | - | a faire |
 
 Verification production du Lot 1 (`buildId bf712ad0f2ad`) : `/mode` ne
@@ -464,6 +464,20 @@ promet plus ni prix ni capacite ; `/classements` affiche `NC` pour le compte
 sans activite ; les chunks `CreateMatchPage` et `BrPage` servis contiennent
 les nouveaux libelles. Tests ajoutes : `lobbyTiming`, `tournamentMetrics`,
 `rankingOrder`, `publishCta`, e2e `mode-hierarchie` et assistant de match.
+
+Verification production du Lot 2 (`buildId d46249b87af3`) :
+`/route-inexistante` renvoie HTTP 404 alors que `/mj/creer` et
+`/br-league/inconnue` restent servis en 200 ; `/auth/login` n'a qu'un H1 et
+aucun `div[tabindex="0"]` ; `/parametres` expose quatre onglets avec un seul
+`tabindex=0`, et la fleche bas deplace le focus et la selection ; le deep
+link `/wallet` revient sur `/wallet` apres connexion ; `/mj/creer` en 1VS1
+ne montre aucun « Ton equipe » aux etapes 3 et 4 et ses trois radiogroups
+sont nommes ; `/classements` n'affiche qu'un `RANG`, une colonne `GRADE` et
+trois rangs de podium nommes ; les details tournoi et ligue inconnus
+affichent un H1, le titre « Introuvable — ZOYD » et un bouton de 44 px.
+Tests ajoutes : `postLoginRedirect`, `vercel-rewrites`, e2e
+`parametres-tabs`, `focus-order`, `detail-errors`, `classements-auth` et
+extensions de `auth-flow` / `ui-audit-flows`.
 
 ---
 

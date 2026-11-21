@@ -32,6 +32,7 @@ import {
 import { formatZC, formatFCFA } from '../../../lib/utils';
 import { toast } from '../../../app/lib/toast';
 import { Button } from '../../../app/components/ui/Button';
+import { percentToRate, rateToPercent } from '../lib/payoutDisplay';
 
 /**
  * Creation d'un salon BR (admin).
@@ -116,14 +117,14 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
     // affiche « doit sommer a 100 % », alors que la vraie cause est le
     // plafond. Le message affiché doit etre la cause, pas un symptome.
     if (payout.arbiterRate > arbiterMax + 1e-9) {
-      return `Commission arbitre plafonnee a ${arbiterMax * 100} %.`;
+      return `Commission arbitre plafonnée à ${arbiterMax * 100} %.`;
     }
     if (Math.abs(totalSum - 1) > 1e-6) {
-      return `La repartition doit sommer a 100 % (actuellement ${Math.round(totalSum * 1000) / 10} %).`;
+      return `La répartition doit sommer à 100 % (actuellement ${Math.round(totalSum * 1000) / 10} %).`;
     }
     for (let i = 1; i < PLACE_FIELDS.length; i++) {
       if (payout[PLACE_FIELDS[i].key] > payout[PLACE_FIELDS[i - 1].key]) {
-        return 'Les parts doivent etre decroissantes du 1er au 5e.';
+        return 'Les parts doivent être décroissantes du 1er au 5e.';
       }
     }
     return null;
@@ -132,13 +133,13 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
   const delayMs = Date.parse(scheduledAt) - Date.now();
   const scheduleError = useMemo(() => {
     if (!Number.isFinite(delayMs)) return 'Date invalide.';
-    if (delayMs < 24 * 3600_000) return 'Le salon doit etre programme au moins 24 h a l\'avance.';
-    if (delayMs > 48 * 3600_000) return 'Le salon doit etre programme dans les 48 h.';
+    if (delayMs < 24 * 3600_000) return 'Le salon doit être programmé au moins 24 h à l\'avance.';
+    if (delayMs > 48 * 3600_000) return 'Le salon doit être programmé dans les 48 h.';
     return null;
   }, [delayMs]);
 
   const feeError = entryFee < ENTRY_FEE_MIN || entryFee > ENTRY_FEE_MAX
-    ? `Le pass doit etre entre ${ENTRY_FEE_MIN} et ${ENTRY_FEE_MAX} ZC.`
+    ? `Le pass doit être entre ${ENTRY_FEE_MIN} et ${ENTRY_FEE_MAX} ZC.`
     : null;
 
   // L'arbitre n'est pas joueur : il ne paie aucun pass, donc sa solvabilite
@@ -167,11 +168,11 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         notes: notes.trim(),
       });
       await useWalletStore.getState().refreshFromServer(user.id);
-      toast.success(`Salon ${lobby.name} cree. Tu en es l'arbitre : lance la partie et saisis les resultats a la fin.`);
+      toast.success(`Salon ${lobby.name} créé. Tu en es l'arbitre : lance la partie et saisis les résultats à la fin.`);
       setOpen(false);
       onCreated?.(lobby.id);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Creation impossible.');
+      toast.error(error instanceof Error ? error.message : 'Création impossible.');
     } finally {
       setSaving(false);
     }
@@ -188,7 +189,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         className="flex items-center gap-2 bg-zoyd-yellow text-black px-4 py-2.5 font-display font-black text-[10px] uppercase tracking-[0.2em] italic hover:bg-white transition-colors touch-target"
       >
         <Calendar className="w-4 h-4" aria-hidden="true" />
-        Creer un salon BR
+        Créer un salon BR
       </Button>
     );
   }
@@ -220,7 +221,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
             placeholder="Salon BR officiel"
           />
           {name.trim().length < 3 && name.length > 0 && (
-            <p className="text-[10px] text-red-400 mt-1">3 caracteres minimum.</p>
+            <p className="text-[10px] text-red-400 mt-1">3 caractères minimum.</p>
           )}
         </div>
 
@@ -240,8 +241,8 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
               {config?.mapIds.map((id) => (
                 <option key={id} value={id} className="bg-zoyd-black">
                   {config.maps[id].label} — {config.maps[id].maxPlayers} j.
-                  {config.maps[id].capConfirme === false ? ' (cap non confirme)' : ''}
-                  {config.maps[id].vehicles ? ' — vehicules' : ' — sans vehicule'}
+                  {config.maps[id].capConfirme === false ? ' (cap non confirmé)' : ''}
+                  {config.maps[id].vehicles ? ' — véhicules' : ' — sans véhicule'}
                 </option>
               ))}
             </select>
@@ -261,7 +262,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
             >
               {config?.modeIds.map((id) => (
                 <option key={id} value={id} className="bg-zoyd-black">
-                  {config.modes[id].label} — {config.modes[id].teamSize} joueur(s)/equipe
+                  {config.modes[id].label} — {config.modes[id].teamSize} joueur(s)/équipe
                 </option>
               ))}
             </select>
@@ -270,7 +271,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
 
         <p className="text-[10px] font-mono text-zoyd-yellow">
           Plafond effectif de ce salon : {maxPlayers} joueurs (minimum du mode et de la map).
-          {config?.maps[map]?.capConfirme === false ? ' Cap non confirme par les sources.' : ''}
+          {config?.maps[map]?.capConfirme === false ? ' Cap non confirmé par les sources.' : ''}
         </p>
 
         {/* Variante in-game : contrat regle par l'arbitre DANS la salle CODM
@@ -279,7 +280,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
             modes). */}
         <div>
           <label htmlFor="br-variant" className="block text-[10px] font-mono text-white/70 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Swords className="w-3 h-3" aria-hidden="true" /> Variant in-game
+            <Swords className="w-3 h-3" aria-hidden="true" /> Variante en jeu
           </label>
           <select
             id="br-variant"
@@ -294,7 +295,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
             ))}
           </select>
           <p className="text-[10px] font-mono text-white/50 mt-1">
-            {config?.variants[variant]?.detail || 'Regle par l arbitre dans la salle CODM au lancement.'}
+            {config?.variants[variant]?.detail || "Réglé par l'arbitre dans la salle CODM au lancement."}
           </p>
         </div>
 
@@ -322,7 +323,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
           </div>
           <div>
             <label htmlFor="br-date" className="block text-[10px] font-mono text-white/70 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Calendar className="w-3 h-3" aria-hidden="true" /> Debut (24 h a 48 h)
+              <Calendar className="w-3 h-3" aria-hidden="true" /> Début (24 h à 48 h)
             </label>
             <input
               id="br-date"
@@ -355,7 +356,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-mono text-white/70 uppercase tracking-wider flex items-center gap-1.5">
-              <User className="w-3 h-3" aria-hidden="true" /> Repartition de la cagnotte
+              <User className="w-3 h-3" aria-hidden="true" /> Répartition de la cagnotte
             </span>
             <span className={`text-[10px] font-mono ${Math.abs(totalSum - 1) < 1e-6 ? 'text-green-400' : 'text-red-400'}`}>
               Total {Math.round(totalSum * 1000) / 10} %
@@ -370,11 +371,11 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
                 <input
                   id={`br-payout-${field.key}`}
                   type="number"
-                  step="0.01"
+                  step="0.1"
                   min="0"
-                  max="1"
-                  value={payout[field.key]}
-                  onChange={(e) => setPayout((p) => ({ ...p, [field.key]: Number(e.target.value) }))}
+                  max="100"
+                  value={rateToPercent(payout[field.key])}
+                  onChange={(e) => setPayout((p) => ({ ...p, [field.key]: percentToRate(Number(e.target.value)) }))}
                   className="w-full bg-black/40 border border-white/10 px-2 py-2 text-xs text-white focus:border-zoyd-yellow/50 touch-target"
                 />
               </div>
@@ -386,11 +387,11 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
               <input
                 id="br-payout-arbiter"
                 type="number"
-                step="0.01"
+                step="0.1"
                 min="0"
-                max={arbiterMax}
-                value={payout.arbiterRate}
-                onChange={(e) => setPayout((p) => ({ ...p, arbiterRate: Number(e.target.value) }))}
+                max={rateToPercent(arbiterMax)}
+                value={rateToPercent(payout.arbiterRate)}
+                onChange={(e) => setPayout((p) => ({ ...p, arbiterRate: percentToRate(Number(e.target.value)) }))}
                 className="w-full bg-black/40 border border-white/10 px-2 py-2 text-xs text-white focus:border-zoyd-yellow/50 touch-target"
               />
             </div>
@@ -400,13 +401,13 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
             <p className="text-[10px] font-mono text-white/50 mt-2">
               Cagnotte de {formatZC(maxPlayers * entryFee)} si le salon est plein :{' '}
               {formatZC((maxPlayers * entryFee) * (payout.first || 0))} au 1er,{' '}
-              {formatZC((maxPlayers * entryFee) * (payout.arbiterRate || 0))} a l'arbitre.
+              {formatZC((maxPlayers * entryFee) * (payout.arbiterRate || 0))} à l'arbitre.
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="br-notes" className="block text-[10px] font-mono text-white/70 uppercase tracking-wider mb-2">Note affichee aux joueurs</label>
+          <label htmlFor="br-notes" className="block text-[10px] font-mono text-white/70 uppercase tracking-wider mb-2">Note affichée aux joueurs</label>
           <textarea
             id="br-notes"
             value={notes}
@@ -421,10 +422,10 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
         <p className="text-[10px] text-white/60 border-l-2 border-zoyd-yellow/40 pl-2 leading-relaxed flex gap-2">
           <Info className="w-3 h-3 shrink-0 mt-0.5" aria-hidden="true" />
           <span>
-            Tu es l'arbitre du salon : tu seras le seul a saisir les eliminations et
-            a declencher le reglement. Le pass de chaque inscrit est bloque et
-            n'est <strong className="text-white">pas rembourse</strong> s'il ne se
-            presente pas au lancement.
+            Tu es l'arbitre du salon : tu seras le seul à saisir les éliminations et
+            à déclencher le règlement. Le pass de chaque inscrit est bloqué et
+            n'est <strong className="text-white">pas remboursé</strong> s'il ne se
+            présente pas au lancement.
           </span>
         </p>
 
@@ -437,7 +438,7 @@ export const BrLobbyCreatePanel: React.FC<{ onCreated?: (lobbyId: string) => voi
             disabled={!canSubmit}
             className="flex-1 bg-zoyd-yellow text-black px-5 py-3 font-display font-black text-xs uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed touch-target"
           >
-            {saving ? 'Creation...' : 'Creer le salon'}
+            {saving ? 'Création...' : 'Créer le salon'}
           </Button>
           <Button
                 variant="secondary"

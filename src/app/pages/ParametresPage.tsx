@@ -583,7 +583,7 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
 
                 <div className="hud-panel p-5 bg-zoyd-surface/20">
                   <div className="flex items-center justify-between gap-4 mb-2">
-                    <div className="font-display font-black text-white uppercase italic">Infos gardees privées</div>
+                    <div className="font-display font-black text-white uppercase italic">Infos gardées privées</div>
                     <Badge variant="yellow">Privé</Badge>
                   </div>
                   <p className="text-sm text-white/70">

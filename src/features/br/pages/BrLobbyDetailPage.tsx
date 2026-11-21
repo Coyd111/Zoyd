@@ -129,7 +129,7 @@ const BrLobbyDetailPage: React.FC = () => {
       await useWalletStore.getState().refreshFromServer(user?.id);
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Desinscription impossible.');
+      toast.error(error instanceof Error ? error.message : 'Désinscription impossible.');
     } finally {
       setActing(false);
     }
@@ -201,7 +201,7 @@ const BrLobbyDetailPage: React.FC = () => {
             </span>
             <span className="border border-white/10 bg-white/5 px-2.5 py-1.5 text-white/70 flex items-center gap-1.5">
               <Swords className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
-              {mode?.label || lobby.mode} · {mode?.teamSize ?? 1} joueur(s)/equipe
+              {mode?.label || lobby.mode} · {mode?.teamSize ?? 1} joueur(s)/équipe
             </span>
             {/* Variante in-game : affichee seulement si choisie a la creation,
                 sinon ce serait une regle inventee pour un vieux salon. */}
@@ -249,7 +249,7 @@ const BrLobbyDetailPage: React.FC = () => {
             que l'affichage a partir de ses pourcentages. */}
         <section className="border border-white/10 bg-zoyd-surface/20 p-5 mb-6">
           <h2 className="text-[10px] font-display font-black text-white/70 uppercase tracking-[0.3em] mb-4">
-            Repartition de la cagnotte
+            Répartition de la cagnotte
           </h2>
           <div className="flex items-baseline justify-between mb-4 pb-3 border-b border-white/10">
             <span className="text-xs text-white/60">Cagnotte actuelle</span>
@@ -285,7 +285,7 @@ const BrLobbyDetailPage: React.FC = () => {
           </div>
           <p className="text-[10px] font-mono text-white/50 mt-4 pt-3 border-t border-white/10">
             Classement retenu : {rankingMode?.label || lobby.rankingMode}. Le
-            serveur refuse toute repartition qui ne somme pas a 100 %.
+            serveur refuse toute répartition qui ne somme pas à 100 %.
           </p>
         </section>
 
@@ -294,15 +294,15 @@ const BrLobbyDetailPage: React.FC = () => {
           <AlertTriangle className="w-5 h-5 text-zoyd-yellow shrink-0 mt-0.5" aria-hidden="true" />
           <div className="text-xs text-white/80 leading-relaxed">
             <strong className="text-white">Ton pass de {formatZC(lobby.entryFee)}</strong> est
-            preleve a l'inscription et bloque jusqu'a la fin. Si tu es inscrit
+            prélevé à l'inscription et bloqué jusqu'à la fin. Si tu es inscrit
             mais absent au lancement, il n'est{' '}
-            <strong className="text-white whitespace-nowrap">pas rembourse</strong> : il reste dans la
-            cagnotte pour les joueurs presents.
+            <strong className="text-white whitespace-nowrap">pas remboursé</strong> : il reste dans la
+            cagnotte pour les joueurs présents.
             {me && (
               <span className="block mt-2 text-zoyd-yellow">
                 {me.checkedIn
-                  ? 'Tu as confirme ta presence : ton pass est en securite.'
-                  : "Tu n'as pas encore confirme ta presence. Sans check-in, tu seras compte comme absent."}
+                  ? 'Tu as confirmé ta présence : ton pass est en sécurité.'
+                  : "Tu n'as pas encore confirmé ta présence. Sans check-in, tu seras compté comme absent."}
               </span>
             )}
           </div>
@@ -314,7 +314,7 @@ const BrLobbyDetailPage: React.FC = () => {
               Joueurs ({lobby.players.length} / {lobby.maxPlayers})
             </h2>
             <span className="text-[10px] font-mono text-white/50">
-              {presentCount} present(s) · {slotsLeft} place(s) libre(s)
+              {presentCount} présent(s) · {slotsLeft} place(s) libre(s)
             </span>
           </div>
 
@@ -341,7 +341,7 @@ const BrLobbyDetailPage: React.FC = () => {
                     )}
                   </span>
                   <span className="text-[10px] font-mono text-white/50 shrink-0">
-                    {player.checkedIn ? 'present' : 'absent'}
+                    {player.checkedIn ? 'présent' : 'absent'}
                   </span>
                 </li>
               ))}
@@ -364,13 +364,13 @@ const BrLobbyDetailPage: React.FC = () => {
                   disabled={acting}
                   className="flex-1 bg-zoyd-yellow text-black px-5 py-3.5 font-display font-black text-xs uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-50 touch-target"
                 >
-                  {acting ? 'En cours...' : "Confirmer ma presence"}
+                  {acting ? 'En cours...' : "Confirmer ma présence"}
                 </Button>
               )}
               {me.checkedIn && (
                 <div className="flex-1 flex items-center justify-center gap-2 border border-green-400/30 bg-green-400/10 text-green-400 px-5 py-3.5 font-display font-black text-xs uppercase italic tracking-[0.2em]">
                   <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                  Presence confirmee
+                  Présence confirmée
                 </div>
               )}
               {lobby.status === 'scheduled' && (
@@ -380,7 +380,7 @@ const BrLobbyDetailPage: React.FC = () => {
                 animate={false}
                   type="button"
                   onClick={() => {
-                    if (window.confirm('Te desinscrire et recuperer ton pass ? Possible uniquement avant le lancement.')) {
+                    if (window.confirm('Te désinscrire et récupérer ton pass ? Possible uniquement avant le lancement.')) {
                       void handleLeave();
                     }
                   }}
@@ -388,14 +388,14 @@ const BrLobbyDetailPage: React.FC = () => {
                   className="flex items-center justify-center gap-2 border border-white/15 px-5 py-3.5 font-display font-black text-xs uppercase italic tracking-[0.2em] text-white/70 hover:border-red-400/40 hover:text-red-400 transition-colors disabled:opacity-50 touch-target"
                 >
                   <LogOut className="w-4 h-4" aria-hidden="true" />
-                  Me desinscrire
+                  Me désinscrire
                 </Button>
               )}
               {lobby.status !== 'scheduled' && (
                 <p className="flex-1 text-center text-[10px] font-mono text-white/50 border border-white/10 px-5 py-3.5">
                   {lobby.status === 'live'
                     ? 'Partie en cours : plus aucun remboursement possible.'
-                    : 'Session terminee.'}
+                    : 'Session terminée.'}
                 </p>
               )}
             </>
@@ -415,7 +415,7 @@ const BrLobbyDetailPage: React.FC = () => {
             </Button>
           ) : (
             <p className="flex-1 text-center text-[10px] font-mono text-white/50 border border-white/10 px-5 py-3.5">
-              {lobby.status !== 'scheduled' ? 'Session terminee.' : 'Salon complet.'}
+              {lobby.status !== 'scheduled' ? 'Session terminée.' : 'Salon complet.'}
             </p>
           )}
         </div>
@@ -430,15 +430,15 @@ const BrLobbyDetailPage: React.FC = () => {
           <section className="mt-6 border border-white/10 bg-zoyd-surface/20 p-5">
             <h2 className="text-[10px] font-display font-black text-white/70 uppercase tracking-[0.3em] mb-3 flex items-center gap-2">
               <Trophy className="w-4 h-4" aria-hidden="true" />
-              Partie lancee
+              Partie lancée
             </h2>
             {/* Pas de suivi en direct : personne ne joue dans la plateforme, et
                 seul l'arbitre a vu la partie. Le classement et la repartition
                 apparaissent apres sa saisie, a la cloture. */}
             <p className="text-xs text-white/70 leading-relaxed">
-              Le salon est lance. Rien ne s'affiche en direct : les eliminations
-              sont saisies par l'arbitre a la fin de la partie, puis le serveur
-              calcule le classement et repartit la cagnotte.
+              Le salon est lancé. Rien ne s'affiche en direct : les éliminations
+              sont saisies par l'arbitre à la fin de la partie, puis le serveur
+              calcule le classement et répartit la cagnotte.
             </p>
           </section>
         )}

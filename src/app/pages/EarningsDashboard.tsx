@@ -17,6 +17,7 @@
  * definition qu'une somme de lignes).
  */
 import React, { useMemo, Suspense } from 'react';
+import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import {
   TrendingUp,
@@ -58,7 +59,7 @@ class ChartErrorBoundary extends React.Component<{ children: React.ReactNode }, 
 }
 import { useWalletStore } from '../stores/walletStore';
 import { buildCompetitiveSummary } from '../../lib/profileMetrics';
-import { buildWalletInsights } from '../../lib/communityInsights';
+import { buildWalletInsights, hasWalletTrendActivity } from '../../lib/communityInsights';
 import { formatZC } from '../../lib/utils';
 import { CHART_YELLOW, CHART_BLUE } from '../../lib/chartColors';
 import { getTransactionTypeLabel } from '../../lib/transactionLabels';
@@ -107,6 +108,10 @@ const EarningsDashboard: React.FC = () => {
   }, [matches, tournaments, user]);
 
   const walletInsights = useMemo(() => buildWalletInsights(transactions, 30), [transactions]);
+  const hasTrendActivity = useMemo(
+    () => hasWalletTrendActivity(walletInsights.trend),
+    [walletInsights.trend],
+  );
 
   const matchResultsData = useMemo(() => {
     const totalPlayed = summary?.stats.totalMatches || 0;
@@ -242,6 +247,7 @@ const EarningsDashboard: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {hasTrendActivity ? (
                 <div className="h-[350px] w-full mt-4" role="img" aria-label="Graphique d'évolution des gains sur 30 jours">
                   <ChartErrorBoundary>
                     <Suspense fallback={<ChartFallback />}>
@@ -249,6 +255,25 @@ const EarningsDashboard: React.FC = () => {
                     </Suspense>
                   </ChartErrorBoundary>
                 </div>
+              ) : (
+                <div className="py-12 text-center">
+                  <div className="w-12 h-12 border border-white/10 flex items-center justify-center mx-auto mb-4">
+                    <TrendingUp className="w-6 h-6 text-white/40" aria-hidden="true" />
+                  </div>
+                  <p className="text-white font-display font-black italic uppercase tracking-tight">
+                    Aucun gain pour l'instant
+                  </p>
+                  <p className="mt-2 text-xs text-white/70">
+                    Termine un match ou un tournoi pour voir ta courbe évoluer.
+                  </p>
+                  <Link
+                    to="/mode"
+                    className="mt-5 inline-flex min-h-[44px] items-center justify-center bg-zoyd-yellow px-5 text-black font-display font-black text-[10px] uppercase italic tracking-[0.2em] hover:bg-white transition-colors"
+                  >
+                    Trouver un match
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
 

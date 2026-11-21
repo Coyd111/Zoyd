@@ -203,6 +203,14 @@ const MOTS_SANS_ACCENT_OBLIGATOIRE: Record<string, string> = {
   categorie: 'catégorie',
   categories: 'catégories',
   debut: 'début',
+  repartition: 'répartition',
+  desinscription: 'désinscription',
+  desinscrire: 'désinscrire',
+  vehicules: 'véhicules',
+  vehicule: 'véhicule',
+  reperes: 'repères',
+  caracteres: 'caractères',
+  preleve: 'prélevé',
   equipes: 'équipes',
   ete: 'été',
   supprime: 'supprimé',
@@ -371,6 +379,51 @@ describe('Regles de redaction - les cas ambigus', () => {
   it('la part des arbitres s ellide', () => {
     const tournoi = source('src/app/pages/mj/CreateTournamentPage.tsx');
     expect(tournoi).toContain("label=\"Part d'arbitres\"");
+  });
+
+  /**
+   * ZD-15 : les mots de l audit qui ne peuvent pas entrer dans la regle
+   * generale, parce qu ils sont ambigus (« organise » / « organisé »,
+   * « rembourse » / « remboursé ») ou parce qu ils vivent dans une chaine
+   * construite sur plusieurs lignes. Chaque assertion correspond a un
+   * libelle reellement rendu.
+   */
+  it('les libelles BR portent leurs accents', () => {
+    const page = source('src/features/br/pages/BrPage.tsx');
+    expect(page).toContain('Organisé par');
+    expect(page).not.toContain('Organise par');
+    expect(page).toContain('prélevé');
+    expect(page).toContain('jamais remboursé');
+    expect(page).toContain('désinscription');
+    expect(page).toContain('véhicules');
+    expect(page).toContain('sans véhicule');
+    expect(page).toContain('Détail');
+    expect(page).not.toContain('Details');
+
+    const detail = source('src/features/br/pages/BrLobbyDetailPage.tsx');
+    expect(detail).toContain('Répartition de la cagnotte');
+    expect(detail).toContain('prélevé');
+    expect(detail).toContain('pas remboursé');
+    expect(detail).toContain('Désinscription impossible.');
+    expect(detail).toContain('Me désinscrire');
+    expect(detail).toContain('Te désinscrire');
+
+    const panneau = source('src/features/br/components/BrLobbyCreatePanel.tsx');
+    expect(panneau).toContain('Variante en jeu');
+    expect(panneau).not.toContain('Variant in-game');
+    expect(panneau).toContain('Début (24 h à 48 h)');
+    expect(panneau).toContain('Répartition de la cagnotte');
+    expect(panneau).toContain('véhicules');
+    expect(panneau).toContain('sans véhicule');
+    expect(panneau).toContain('caractères minimum');
+  });
+
+  it('les libelles parametres et profil portent leurs accents', () => {
+    const parametres = source('src/app/pages/ParametresPage.tsx');
+    expect(parametres).toContain('Infos gardées privées');
+
+    const profil = source('src/app/components/profile/ProfileView.tsx');
+    expect(profil).toContain('Tes repères CODM');
   });
 });
 

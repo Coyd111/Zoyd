@@ -90,7 +90,7 @@ test.describe('Battle Royale UI', () => {
     await openApp(page, player.pseudo, password);
     await page.goto('/br');
     await expect(page.getByRole('heading', { name: /BR — UN SALON/i })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: /Creer un salon BR/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Créer un salon BR/i })).toBeVisible();
   });
 
   test('l\'admin voit le formulaire, valide la repartition et cree le salon', async ({ page }) => {
@@ -99,13 +99,24 @@ test.describe('Battle Royale UI', () => {
     await loginAdminWithCookie(page);
     await page.goto('/br');
 
-    await page.getByRole('button', { name: /Creer un salon BR/i }).click();
+    await page.getByRole('button', { name: /Créer un salon BR/i }).click();
     await expect(page.getByRole('heading', { name: /Nouveau salon Battle Royale/i })).toBeVisible();
 
+    // ZD-16 : plus aucun libelle anglais visible dans la creation.
+    await expect(page.getByText('Variante en jeu')).toBeVisible();
+    await expect(page.getByText('Variant in-game')).toHaveCount(0);
+
     // La repartition par defaut est deja validee : le bouton est actif.
-    const submit = page.getByRole('button', { name: /Creer le salon/i });
+    const submit = page.getByRole('button', { name: /Créer le salon/i });
 const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
     await expect(totalLabel).toBeVisible({ timeout: 20_000 });
+    // ZD-17 : les parts et le total partagent la meme unite (pourcentage).
+    await expect(page.locator('#br-payout-first')).toHaveValue('40');
+    await expect(page.locator('#br-payout-second')).toHaveValue('22');
+    await expect(page.locator('#br-payout-third')).toHaveValue('13');
+    await expect(page.locator('#br-payout-fourth')).toHaveValue('12');
+    await expect(page.locator('#br-payout-fifth')).toHaveValue('8');
+    await expect(page.locator('#br-payout-arbiter')).toHaveValue('5');
     // La repartition proposee a l'ouverture est deja valide (100 %).
     await expect(totalLabel).toHaveText('Total 100 %');
     // Le bouton actif prouve aussi que l'admin peut payer son propre pass
@@ -113,21 +124,21 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
     await expect(submit).toBeEnabled();
 
     // Casse volontairement la somme -> blocage immediat, sans aller-retour API.
-    await page.locator('#br-payout-second').fill('0.5');
-    await expect(page.getByText(/doit sommer a 100/i)).toBeVisible();
+    await page.locator('#br-payout-second').fill('50');
+    await expect(page.getByText(/doit sommer à 100/i)).toBeVisible();
     await expect(submit).toBeDisabled();
 
-    // Remise a la valeur d'origine (0.22) : le bouton redevient actif.
-    await page.locator('#br-payout-second').fill('0.22');
+    // Remise a la valeur d'origine (22 %) : le bouton redevient actif.
+    await page.locator('#br-payout-second').fill('22');
     await expect(totalLabel).toHaveText('Total 100 %');
     await expect(submit).toBeEnabled();
 
     // Commission arbitre au-dela du plafond (5 %). Ce message doit etre
     // prioritaire sur l'erreur de somme : c'est la vraie cause.
-    await page.locator('#br-payout-arbiter').fill('0.2');
-    await expect(page.getByText(/Commission arbitre plafonnee/i)).toBeVisible();
+    await page.locator('#br-payout-arbiter').fill('20');
+    await expect(page.getByText(/Commission arbitre plafonnée/i)).toBeVisible();
     await expect(submit).toBeDisabled();
-    await page.locator('#br-payout-arbiter').fill('0.05');
+    await page.locator('#br-payout-arbiter').fill('5');
 
     // Maps proposees : Verdansk (S10) present, Alcatraz absent.
     const mapOptions = await page.locator('#br-map option').allInnerTexts();
@@ -138,7 +149,7 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
     // Le cap Verdansk n'est pas publie : l'ecran doit le dire, pas le taire.
     await page.locator('#br-map').selectOption('verdansk');
     await expect(page.getByText(/cap 100 NON CONFIRMÉ/)).toBeVisible();
-    await expect(page.getByText(/Cap non confirme par les sources/)).toBeVisible();
+    await expect(page.getByText(/Cap non confirmé par les sources/)).toBeVisible();
     await page.locator('#br-map').selectOption('rebirth_island');
     await expect(page.getByText(/Plafond effectif de ce salon : 40/)).toBeVisible();
     await page.locator('#br-map').selectOption('isolated');
@@ -167,8 +178,12 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
 
     await expect(page.getByRole('heading', { name: /BR — UN SALON/i })).toBeVisible();
 
+    // ZD-16 : l action de carte est en francais.
+    await expect(page.getByRole('link', { name: /^Détail/i }).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('link', { name: /^Details/i })).toHaveCount(0);
+
     // La regle commerciale doit etre visible AVANT toute inscription.
-    const notice = page.getByRole('heading', { name: /jamais rembourse/i });
+    const notice = page.getByRole('heading', { name: /jamais remboursé/i });
     await expect(notice).toBeVisible();
 
     await expect(page.getByText('Salon UI test').first()).toBeVisible({ timeout: 15_000 });
@@ -186,9 +201,9 @@ const totalLabel = page.locator('span', { hasText: /^Total/ }).first();
       await expect(page.getByText(new RegExp(label, 'i')).first()).toBeVisible();
     }
     // Un cap non publie ne doit jamais etre affiche comme un fait.
-    await expect(page.getByText(/Verdansk · 100 j\. \(non confirme\)/)).toBeVisible();
+    await expect(page.getByText(/Verdansk · 100 j\. \(non confirmé\)/)).toBeVisible();
     await expect(page.getByText(/Krai et Rebirth Island limitent/i)).toBeVisible();
-    await expect(page.getByText(/cap Verdansk \(100\) n'est pas confirme/i)).toBeVisible();
+    await expect(page.getByText(/cap Verdansk \(100\) n'est pas confirmé/i)).toBeVisible();
     // Alcatraz a ete retire du jeu : il ne doit pas etre propose.
     await expect(page.getByText('Alcatraz')).toHaveCount(0);
   });
@@ -215,7 +230,7 @@ test('le detail affiche la repartition de cagnotte', async ({ page }) => {
     await openApp(page, player.pseudo, password);
     await gotoDetail(page, created.body.lobby.id);
 
-    await expect(page.getByRole('heading', { name: /Repartition de la cagnotte/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Répartition de la cagnotte/i })).toBeVisible({ timeout: 15_000 });
     for (const place of ['1e place', '2e place', '3e place', '4e place', '5e place']) {
       await expect(page.getByText(place)).toBeVisible();
     }
@@ -231,9 +246,9 @@ test('le detail affiche la repartition de cagnotte', async ({ page }) => {
     await gotoDetail(page, created.body.lobby.id);
 
     // L'information doit etre lue AVANT de payer, donc presente pour tous.
-    await expect(page.getByText(/pas\s+rembourse/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/pas\s+remboursé/i).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /S'inscrire sur ce salon/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Me desinscrire/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Me désinscrire/i })).toHaveCount(0);
   });
 
 test('inscription puis check-in : le pass est bloque', async ({ page }) => {
@@ -255,7 +270,7 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
 
     // Le check-in devient disponible. On verifie le solde cote API plutot que
     // dans le header : le header lit le store, qui peut avoir un rendu retarde.
-    await expect(page.getByRole('button', { name: /Confirmer ma presence/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /Confirmer ma présence/i })).toBeVisible({ timeout: 15_000 });
     const wallet = await call(player, 'GET', '/api/wallet/me');
     expect(wallet.status).toBe(200);
     // 500 - 50 : le pass est bloque, le disponible baisse bien.
@@ -276,15 +291,15 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     await page.getByRole('button', { name: /S'inscrire sur ce salon/i }).click();
     expect((await joinResponse).status()).toBe(200);
 
-    await expect(page.getByRole('button', { name: /Me desinscrire/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /Me désinscrire/i })).toBeVisible({ timeout: 15_000 });
 
     page.once('dialog', (dialog) => void dialog.accept());
     const leaveResponse = page.waitForResponse((r) => r.url().includes('/leave'), { timeout: 20_000 });
-    await page.getByRole('button', { name: /Me desinscrire/i }).click();
+    await page.getByRole('button', { name: /Me désinscrire/i }).click();
     expect((await leaveResponse).status()).toBe(200);
 
     // Rembourse : le joueur disparait du roster.
-    await expect(page.getByRole('button', { name: /Me desinscrire/i })).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /Me désinscrire/i })).toHaveCount(0, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: /S'inscrire sur ce salon/i })).toBeVisible();
     // Et son solde est revenu a 500 : le seul cas de remboursement.
     const wallet = await call(player, 'GET', '/api/wallet/me');

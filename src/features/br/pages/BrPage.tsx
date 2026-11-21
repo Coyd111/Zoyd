@@ -72,7 +72,7 @@ const BrLobbyCard: React.FC<{
               {lobby.name}
             </h3>
             <div className="text-[10px] font-mono text-white/60 mt-1">
-              {lobby.creatorPseudo ? `Organise par ${lobby.creatorPseudo}` : 'Organise par ZOYD'}
+              {lobby.creatorPseudo ? `Organisé par ${lobby.creatorPseudo}` : 'Organisé par ZOYD'}
             </div>
           </div>
           <span className={`shrink-0 text-[10px] font-mono font-black uppercase tracking-widest border px-1.5 py-0.5 ${badge.className}`}>
@@ -87,7 +87,7 @@ const BrLobbyCard: React.FC<{
           </div>
           <div className="flex items-center gap-1.5">
             <Swords className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
-            <span>{mode?.label || lobby.mode}{map ? ` · ${map.vehicles ? 'vehicules' : 'sans vehicule'}` : ''}</span>
+            <span>{mode?.label || lobby.mode}{map ? ` · ${map.vehicles ? 'véhicules' : 'sans véhicule'}` : ''}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Users className="w-3 h-3 text-zoyd-yellow" aria-hidden="true" />
@@ -111,7 +111,7 @@ const BrLobbyCard: React.FC<{
 
       {/* Note permanente : c'est la regle qui survit / punit les absents. */}
       <p className="text-[10px] text-white/60 border-l-2 border-zoyd-yellow/40 pl-2 mb-4 leading-relaxed">
-        Ton pass est preleve a l'inscription. <strong className="text-white">Pas de remboursement</strong>{' '}
+        Ton pass est prélevé à l'inscription. <strong className="text-white">Pas de remboursement</strong>{' '}
         si tu ne te presentes pas le jour du lancement : ta part finance la
         cagnotte des joueurs presents.
       </p>
@@ -121,7 +121,7 @@ const BrLobbyCard: React.FC<{
           to={`/br/${lobby.id}`}
           className="flex-1 text-center text-[10px] font-mono font-black uppercase tracking-widest border border-white/15 px-3 py-2.5 text-white/80 hover:border-white/30 hover:text-white transition-colors touch-target"
         >
-          Details
+          Détail
           <ChevronRight className="w-3 h-3 inline ml-1" aria-hidden="true" />
         </Link>
         {joined ? (
@@ -130,7 +130,7 @@ const BrLobbyCard: React.FC<{
               ? 'border-green-400/30 bg-green-400/10 text-green-400'
               : 'border-zoyd-yellow/30 bg-zoyd-yellow/10 text-zoyd-yellow'
           }`}>
-            {checkedIn ? 'Present' : 'Inscrit'}
+            {checkedIn ? 'Présent' : 'Inscrit'}
           </span>
         ) : (
           <Button
@@ -154,7 +154,7 @@ const BrLobbyCard: React.FC<{
                   : `Ferme - ${lobby.name}`
             }
           >
-            {isLoading ? '...' : full ? 'Complet' : open ? "S'inscrire" : 'Ferme'}
+            {isLoading ? '...' : full ? 'Complet' : open ? "S'inscrire" : 'Fermé'}
           </Button>
         )}
       </div>
@@ -213,7 +213,7 @@ const BrPage: React.FC = () => {
     <div className="min-h-dvh bg-zoyd-black text-white font-ui p-4 md:p-8 safe-top safe-bottom">
       <SEOHead
         title="Battle Royale — ZOYD"
-        description="Salons BR ouverts a tous : solo, duo ou squad, jusqu'a 100 joueurs, avec classement par survie et kills."
+        description="Salons BR ouverts à tous : solo, duo ou squad, jusqu'à 100 joueurs, avec classement par survie et kills."
         path="/br"
       />
 
@@ -229,7 +229,7 @@ const BrPage: React.FC = () => {
           <p className="text-white/70 text-sm max-w-2xl leading-relaxed">
             Un seul match, une seule map, jusqu'au dernier survivant. Les joueurs
             n'attendent pas qu'une plateforme lance la partie : chaque salon est
-            programme, et il demarre a l'heure avec les presents.
+            programmé, et il démarre à l'heure avec les présents.
           </p>
         </header>
 
@@ -239,14 +239,14 @@ const BrPage: React.FC = () => {
           <AlertTriangle className="w-5 h-5 text-zoyd-yellow shrink-0 mt-0.5" aria-hidden="true" />
           <div className="text-xs text-white/80 leading-relaxed">
             <h2 className="font-display font-black text-sm uppercase tracking-tight italic text-zoyd-yellow mb-1">
-              Le pass n'est jamais rembourse une fois la partie lancee
+              Le pass n'est jamais remboursé une fois la partie lancée
             </h2>
             <p>
-              Tu payes ton pass a l'inscription, et il est bloque sur ton solde
-              jusqu'a la fin. Si tu ne te presentes pas au lancement, ton pass
+              Tu payes ton pass à l'inscription, et il est bloqué sur ton solde
+              jusqu'à la fin. Si tu ne te présentes pas au lancement, ton pass
               reste dans la cagnotte : il finance la prime des joueurs qui, eux,
-              sont venus. Seule une desinscription <em>avant</em> l'heure de depart
-              rembourse integralement.
+              sont venus. Seule une désinscription <em>avant</em> l'heure de départ
+              rembourse intégralement.
             </p>
           </div>
         </section>
@@ -285,8 +285,8 @@ const BrPage: React.FC = () => {
             {lobbies.length === 0 ? (
               <div className="text-center py-16 border border-white/10 bg-zoyd-surface/20">
                 <Calendar className="w-10 h-10 text-white/40 mx-auto mb-4" aria-hidden="true" />
-                <p className="text-white/70 text-sm">Aucun salon programme pour le moment.</p>
-                <p className="text-white/50 text-xs mt-2">Les salons sont ouverts 24 a 48 h a l'avance.</p>
+                <p className="text-white/70 text-sm">Aucun salon programmé pour le moment.</p>
+                <p className="text-white/50 text-xs mt-2">Les salons sont ouverts 24 à 48 h à l'avance.</p>
               </div>
             ) : (
               <motion.div
@@ -330,8 +330,8 @@ const BrPage: React.FC = () => {
                     className="text-[10px] font-mono border border-white/10 bg-black/30 px-2.5 py-1.5 text-white/70"
                   >
                     {map.label} · {map.maxPlayers} j.
-                    {map.capConfirme === false ? ' (non confirme)' : ''}
-                    {map.vehicles ? ' · vehicules' : ' · sans vehicule'}
+                    {map.capConfirme === false ? ' (non confirmé)' : ''}
+                    {map.vehicles ? ' · véhicules' : ' · sans véhicule'}
                   </span>
                 );
               })}
@@ -344,16 +344,16 @@ const BrPage: React.FC = () => {
                     key={id}
                     className="text-[10px] font-mono border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-2.5 py-1.5 text-zoyd-yellow"
                   >
-                    {mode.label} · {mode.teamSize} joueur(s)/equipe · max {mode.maxPlayers}
+                    {mode.label} · {mode.teamSize} joueur(s)/équipe · max {mode.maxPlayers}
                   </span>
                 );
               })}
             </div>
             <p className="text-[10px] font-mono text-white/70 mt-4">
               Plafond effectif = minimum(mode, map). Krai et Rebirth Island limitent
-              donc les salons a {config.maps.rebirth_island?.maxPlayers ?? 40} joueurs ;
+              donc les salons à {config.maps.rebirth_island?.maxPlayers ?? 40} joueurs ;
               le cap Verdansk ({config.maps.verdansk?.maxPlayers ?? 100}) n'est pas
-              confirme par les sources.
+              confirmé par les sources.
             </p>
           </section>
         )}

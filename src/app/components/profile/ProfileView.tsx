@@ -320,7 +320,7 @@ export default function ProfileView({
           <div className="hud-panel p-6 bg-zoyd-surface/20">
             <div className="flex items-center gap-3 mb-5">
               <Zap className="w-5 h-5 text-zoyd-blue" />
-              <h2 className="text-lg font-display font-black uppercase italic">{codmTitle || 'Tes reperes CODM'}</h2>
+              <h2 className="text-lg font-display font-black uppercase italic">{codmTitle || 'Tes repères CODM'}</h2>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               {levelCODM ? <InfoRow label="Niveau CODM" value={`${levelCODM}`} /> : null}

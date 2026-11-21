@@ -324,6 +324,14 @@ export interface WalletInsights {
   recentTransactions: Transaction[];
 }
 
+/**
+ * ZD-18 : un trend de 30 points a zero est une courbe plate, pas une donnee.
+ * L ecran des gains ne monte le graphique que si au moins un jour porte un
+ * mouvement ; sinon il affiche un etat vide avec une action.
+ */
+export const hasWalletTrendActivity = (trend: WalletTrendPoint[]): boolean =>
+  trend.some((point) => point.delta !== 0);
+
 export const buildCommunityPlayers = ({
   currentUser,
   friends,

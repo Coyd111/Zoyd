@@ -338,6 +338,11 @@ rejoue ou recoupe dans le DOM et, quand c'etait possible, dans le code.
   n'est pas un defaut.
 - **Correctif** : utiliser une adresse du domaine (`contact@zoyd.gg` ou
   equivalent), avec redirection vers la boite de support.
+- **Decision du 2026-11-21** : les coordonnees actuelles sont conservees.
+  Aucune boite du domaine n'existe (`zoyd.gg` et `zoyd.app` ne resolvent
+  pas, `zoyd.com` n'a pas de MX) ; afficher une adresse inventee serait pire
+  que le Gmail actuel. Le point reste ouvert jusqu'a la mise en place d'une
+  boite support reelle.
 - **Test rouge** : rendu de la page Mentions — l'adresse affichee
   appartient au domaine de l'application.
 
@@ -448,6 +453,9 @@ controle visuel du ou des ecrans corriges en production.
 | 2026-11-19 | `/mj/tournois/AUDIT-INVALID` | H2 sans H1, « Reessayer » 66 x 20 px |
 | 2026-11-19 | `/route-inexistante` | page 404 rendue, HTTP 200 |
 | 2026-11-19 | `/parametres` | onglets `tabindex=0`, fleches inoperantes, survol illisible |
+| 2026-11-21 | `/br` | « Organisé par », « Détail », parts `40/22/13/12/8/5`, « Total 100 % » |
+| 2026-11-21 | `/earnings` | « Aucun gain pour l'instant » + CTA « Trouver un match » vers `/mode` |
+| 2026-11-21 | `/parametres` | « Infos gardées privées » (GAMING), « ta présence » (NOTIFICATIONS) |
 
 ---
 
@@ -457,7 +465,7 @@ controle visuel du ou des ecrans corriges en production.
 |---|---|---|---|
 | 1 - verite des donnees | ZD-01 a ZD-05 | `bf712ad` | corrige, deploye, verifie en production |
 | 2 - navigation et accessibilite | ZD-06 a ZD-14 | `d46249b` | corrige, deploye, verifie en production |
-| 3 - copie et finition | ZD-15 a ZD-19 | - | a faire |
+| 3 - copie et finition | ZD-15 a ZD-18 | `2d7ea8a`, `7656acb` | corrige, deploye, verifie en production ; ZD-19 differe (coordonnees actuelles conservees) |
 
 Verification production du Lot 1 (`buildId bf712ad0f2ad`) : `/mode` ne
 promet plus ni prix ni capacite ; `/classements` affiche `NC` pour le compte
@@ -478,6 +486,20 @@ affichent un H1, le titre « Introuvable — ZOYD » et un bouton de 44 px.
 Tests ajoutes : `postLoginRedirect`, `vercel-rewrites`, e2e
 `parametres-tabs`, `focus-order`, `detail-errors`, `classements-auth` et
 extensions de `auth-flow` / `ui-audit-flows`.
+
+Verification production du Lot 3 (`buildId 7656acb77255`) :
+`/br` affiche « Organisé par », « Détail », « Ton pass est prélevé » et
+« des joueurs présents », sans « Details » ni « Variant in-game » ; le
+formulaire de creation montre « Variante en jeu », des parts
+`40 / 22 / 13 / 12 / 8 / 5` et « Total 100 % » ; `/parametres` affiche
+« Infos gardées privées » (onglet GAMING) et « ta présence » (onglet
+NOTIFICATIONS) ; `/profil` affiche « Tes repères CODM » ; `/earnings`
+affiche l'etat vide « Aucun gain pour l'instant », le CTA « Trouver un
+match » vers `/mode` et aucun conteneur de graphique ; `/mentions`
+conserve l'adresse actuelle sur decision du 2026-11-21.
+Tests ajoutes : `payoutDisplay`, `walletInsights`, extension de
+`copy-rules` (`present`, `presence`, `confirmee`, `BrArbiterPanel`) et
+e2e `earnings-empty` + assertions BR sur les libelles accentues.
 
 ---
 

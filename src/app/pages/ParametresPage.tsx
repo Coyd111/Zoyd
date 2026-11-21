@@ -599,7 +599,7 @@ if (form.phone && !isAnySupportedPhone(form.phone)) {
                 <div className="space-y-3">
                   <NotificationRow
                     label="Début de match"
-                    desc="Rappel quand il est temps de confirmer ta presence et rejoindre la salle."
+                    desc="Rappel quand il est temps de confirmer ta présence et rejoindre la salle."
                     value={notificationToggles.matchStart}
                     onChange={(value) => setNotificationToggles((prev) => ({ ...prev, matchStart: value }))}
                   />

@@ -65,10 +65,10 @@ const MIN_PRESENT_TO_START = 5;
 
 const STATUS_LABEL: Record<BrLobbyStatus, string> = {
   scheduled: 'Avant la partie',
-  live: 'Saisie des resultats',
-  settling: 'Reglement en cours',
-  finished: 'Session terminee',
-  cancelled: 'Session annulee',
+  live: 'Saisie des résultats',
+  settling: 'Règlement en cours',
+  finished: 'Session terminée',
+  cancelled: 'Session annulée',
 };
 
 const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChanged }) => {
@@ -138,15 +138,15 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
   const handleStart = async () => {
     const absentCount = absent.length;
     const warning = absentCount > 0
-      ? `${absentCount} joueur(s) n'ont pas confirme leur presence : leur pass sera consommé et ils seront classés derniers.`
-      : 'Les presents seront figes dans le roster de depart.';
-    if (!window.confirm(`Lancer la partie ?\n\n${warning}\n\nCette action est irreversible : plus aucun remboursement.`)) {
+      ? `${absentCount} joueur(s) n'ont pas confirmé leur présence : leur pass sera consommé et ils seront classés derniers.`
+      : 'Les présents seront figés dans le roster de départ.';
+    if (!window.confirm(`Lancer la partie ?\n\n${warning}\n\nCette action est irréversible : plus aucun remboursement.`)) {
       return;
     }
     setActing(true);
     try {
       await startBrLobby(lobbyId);
-      toast.success('Partie lancee. Saisis les eliminations au fil de la partie.');
+      toast.success('Partie lancée. Saisis les éliminations au fil de la partie.');
       await refreshAll();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Lancement impossible.');
@@ -157,13 +157,13 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
 
   const handleEliminate = async () => {
     if (!eliminatedUserId) {
-      toast.error('Choisis d\'abord le joueur elimine.');
+      toast.error('Choisis d\'abord le joueur éliminé.');
       return;
     }
     const target = players.find((p) => p.userId === eliminatedUserId);
     const killer = killerUserId ? players.find((p) => p.userId === killerUserId) : null;
-    const detail = killer ? ` par ${killer.pseudo}` : ' (sans kill attribue)';
-    if (!window.confirm(`Eliminer ${target?.pseudo}${detail} ?`)) return;
+    const detail = killer ? ` par ${killer.pseudo}` : ' (sans kill attribué)';
+    if (!window.confirm(`Éliminer ${target?.pseudo}${detail} ?`)) return;
 
     setActing(true);
     try {
@@ -172,7 +172,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
         killerUserId: killerUserId || null,
         assists: Number(assists) || 0,
       });
-      toast.success(`${target?.pseudo} elimine.`);
+      toast.success(`${target?.pseudo} éliminé.`);
       setEliminatedUserId('');
       setKillerUserId('');
       setAssists('0');
@@ -193,10 +193,10 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
     const aliveNow = alivePlayers.length;
     const remaining = Math.max(0, aliveNow - 1);
     const confirmed = window.confirm(
-      `Cloturer et verser la cagnotte ?\n\n`
-      + `${aliveNow} joueur(s) encore en vie : ${remaining} elimination(s) restante(s) `
-      + `seront classees d'office a la derniere place.\n\n`
-      + `Les gains sont verses immediatement et definitivement. Cette action est irreversible.`,
+      `Clôturer et verser la cagnotte ?\n\n`
+      + `${aliveNow} joueur(s) encore en vie : ${remaining} élimination(s) restante(s) `
+      + `seront classées d'office à la dernière place.\n\n`
+      + `Les gains sont versés immédiatement et définitivement. Cette action est irréversible.`,
     );
     if (!confirmed) return;
 
@@ -206,7 +206,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
       await runFinish();
       setTwofaOpen(false);
       setTotpCode('');
-      toast.success('Session reglee : la cagnotte est versee.');
+      toast.success('Session réglée : la cagnotte est versée.');
     } catch (error) {
       if (error instanceof ApiError && error.code === '2FA_REQUIRED') {
         setTwofaOpen(true);
@@ -232,7 +232,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
       await runFinish();
       setTwofaOpen(false);
       setTotpCode('');
-      toast.success('Session reglee : la cagnotte est versee.');
+      toast.success('Session réglée : la cagnotte est versée.');
     } catch (error) {
       setTwofaError(error instanceof Error ? error.message : 'Vérification impossible.');
     } finally {
@@ -262,14 +262,14 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
         <>
           <dl className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-5">
             <Stat label="Inscrits" value={summary.total} />
-            <Stat label="Presents" value={summary.present} />
+            <Stat label="Présents" value={summary.present} />
             <Stat label="En vie" value={summary.alive} accent={status === 'live'} />
-            <Stat label="Elimines" value={summary.eliminated} />
+            <Stat label="Éliminés" value={summary.eliminated} />
             <Stat label="Absents" value={summary.absent} accent={summary.absent > 0} />
           </dl>
 
           <p className="text-[10px] font-mono text-white/50 mb-5">
-            Cagnotte reellement bloquee : {formatZC(summary.pot)}
+            Cagnotte réellement bloquée : {formatZC(summary.pot)}
           </p>
 
           {status === 'scheduled' && (
@@ -293,7 +293,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
               </Button>
               {summary.present < MIN_PRESENT_TO_START && (
                 <p className="text-[10px] font-mono text-red-400 mt-2 text-center">
-                  Il faut au moins {MIN_PRESENT_TO_START} joueurs presents pour lancer la partie.
+                  Il faut au moins {MIN_PRESENT_TO_START} joueurs présents pour lancer la partie.
                 </p>
               )}
             </div>
@@ -307,7 +307,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                     htmlFor="br-elim"
                     className="block text-[10px] font-mono text-white/50 uppercase mb-1"
                   >
-                    Joueur elimine
+                    Joueur éliminé
                   </label>
                   <select
                     id="br-elim"
@@ -336,7 +336,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                     onChange={(e) => setKillerUserId(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 px-3 py-2.5 text-xs text-white focus:border-zoyd-yellow/50 touch-target"
                   >
-                    <option value="">— Aucun kill attribue —</option>
+                    <option value="">— Aucun kill attribué —</option>
                     {killerCandidates.map((p) => (
                       <option key={p.userId} value={p.userId}>
                         {p.pseudo} ({p.kills} kill{p.kills > 1 ? 's' : ''})
@@ -349,7 +349,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                     htmlFor="br-assists"
                     className="block text-[10px] font-mono text-white/50 uppercase mb-1"
                   >
-                    Assists du tueur (0 a 10)
+                    Assists du tueur (0 à 10)
                   </label>
                   <input
                     id="br-assists"
@@ -373,12 +373,12 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                 className="w-full flex items-center justify-center gap-2 border border-zoyd-yellow/40 text-zoyd-yellow px-5 py-3.5 font-display font-black text-xs uppercase italic tracking-[0.2em] hover:bg-zoyd-yellow hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed touch-target"
               >
                 <Skull className="w-4 h-4" aria-hidden="true" />
-                Enregistrer l&apos;elimination
+                Enregistrer l&apos;élimination
               </Button>
 
               {alivePlayers.length <= 1 && (
                 <p className="text-[10px] font-mono text-zoyd-yellow mt-2 text-center">
-                  Il ne reste qu&apos;un joueur : la partie est terminee, tu peux cloturer.
+                  Il ne reste qu&apos;un joueur : la partie est terminée, tu peux clôturer.
                 </p>
               )}
 
@@ -423,7 +423,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                     className="w-full flex items-center justify-center gap-2 bg-green-400 text-black px-5 py-3.5 font-display font-black text-xs uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-40 touch-target"
                   >
                     <Trophy className="w-4 h-4" aria-hidden="true" />
-                    {acting ? 'En cours...' : 'Cloturer et verser la cagnotte'}
+                    {acting ? 'En cours...' : 'Clôturer et verser la cagnotte'}
                   </Button>
                 ) : (
                   <form onSubmit={handleTwofaSubmit}>
@@ -432,7 +432,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                       Cette action deverse de l&apos;argent : confirme par ton code TOTP
                       admin.
                     </p>
-                    <label htmlFor="br-totp" className="sr-only">Code TOTP a 6 chiffres</label>
+                    <label htmlFor="br-totp" className="sr-only">Code TOTP à 6 chiffres</label>
                     <input
                       id="br-totp"
                       aria-label="Code TOTP à 6 chiffres"
@@ -466,7 +466,7 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
                         disabled={acting}
                         className="flex-1 bg-green-400 text-black px-4 py-3 font-display font-black text-[10px] uppercase italic tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-40 touch-target"
                       >
-                        {acting ? 'Verification...' : 'Verifier et verser'}
+                        {acting ? 'Vérification...' : 'Vérifier et verser'}
                       </Button>
                     </div>
                   </form>
@@ -482,8 +482,8 @@ const BrArbiterPanel: React.FC<BrArbiterPanelProps> = ({ lobbyId, status, onChan
           {status === 'settling' && (
             <p className="text-xs text-white/70 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-zoyd-yellow" aria-hidden="true" />
-              Reglement en cours. Ne relance pas la cloture : les gains seraient
-              verses deux fois.
+              Règlement en cours. Ne relance pas la clôture : les gains seraient
+              versés deux fois.
             </p>
           )}
         </>
@@ -521,13 +521,13 @@ const StartRequirements: React.FC<{
     <ul className="space-y-1.5 mb-4">
       <Requirement
         ok={presentCount >= minPresent}
-        label={`${presentCount} present(s) — il en faut ${minPresent}`}
+        label={`${presentCount} présent(s) - il en faut ${minPresent}`}
       />
       <Requirement
         ok={!tooEarly}
         label={tooEarly
-          ? `Trop tot : lancement possible dans ${hours} h (10 min avant l'heure prevue)`
-          : 'Fenetre de lancement ouverte'}
+          ? `Trop tôt : lancement possible dans ${hours} h (10 min avant l'heure prévue)`
+          : 'Fenêtre de lancement ouverte'}
       />
     </ul>
   );

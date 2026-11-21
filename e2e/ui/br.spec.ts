@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+﻿import { test, expect, type Page } from '@playwright/test';
 import {
   registerPlayer, disposeActors, openAdminSession, creditWallet,
   call, ADMIN_EMAIL, ADMIN_PASSWORD, type Actor,
@@ -340,7 +340,7 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
     expect((await startResponse).status()).toBe(200);
 
     // Le panneau bascule en saisie.
-    await expect(page.getByLabel(/Joueur elimine/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByLabel(/Joueur éliminé/i)).toBeVisible({ timeout: 20_000 });
     // Le label produit porte l accent : Tue par (matcher avec e accentue).
     // Un /Tue par/ sans accent ne matche jamais le label reel getByLabel :
     // le matching Playwright n est pas insensible aux accents.
@@ -359,10 +359,10 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
 
     page.once('dialog', (dialog) => void dialog.accept());
     const killResponse = page.waitForResponse((r) => r.url().endsWith('/eliminate'), { timeout: 20_000 });
-    await page.getByRole('button', { name: /Enregistrer l'elimination/i }).click();
+    await page.getByRole('button', { name: /Enregistrer l'élimination/i }).click();
     expect((await killResponse).status()).toBe(200);
 
-    await expect(page.getByText(new RegExp(`${victim}\\s+elimine`))).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(new RegExp(`${victim}\\s+éliminé`))).toBeVisible({ timeout: 20_000 });
     // Le compteur « En vie » a baisse d'un cran.
     const alive = await page.locator('dt', { hasText: /^En vie$/ }).locator('..').locator('dd').innerText();
     expect(alive.trim()).toBe('4');
@@ -376,10 +376,10 @@ test('inscription puis check-in : le pass est bloque', async ({ page }) => {
 
     await loginAdminWithCookie(page);
     await gotoDetail(page, lobbyId);
-    await expect(page.getByLabel(/Joueur elimine/i)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByLabel(/Joueur éliminé/i)).toBeVisible({ timeout: 20_000 });
 
     // Le bouton est inactif tant qu'aucun joueur n'est choisi.
-    const submit = page.getByRole('button', { name: /Enregistrer l'elimination/i });
+    const submit = page.getByRole('button', { name: /Enregistrer l'élimination/i });
     await expect(submit).toBeDisabled();
     await page.locator('#br-elim').selectOption({ index: 1 });
     await expect(submit).toBeEnabled();

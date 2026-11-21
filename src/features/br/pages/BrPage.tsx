@@ -112,8 +112,8 @@ const BrLobbyCard: React.FC<{
       {/* Note permanente : c'est la regle qui survit / punit les absents. */}
       <p className="text-[10px] text-white/60 border-l-2 border-zoyd-yellow/40 pl-2 mb-4 leading-relaxed">
         Ton pass est prélevé à l'inscription. <strong className="text-white">Pas de remboursement</strong>{' '}
-        si tu ne te presentes pas le jour du lancement : ta part finance la
-        cagnotte des joueurs presents.
+        si tu ne te présentes pas le jour du lancement : ta part finance la
+        cagnotte des joueurs présents.
       </p>
 
       <div className="flex items-center gap-2 mt-auto">

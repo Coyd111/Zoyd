@@ -16,7 +16,11 @@ export const openApp = async (page: Page, identifiant: string, password: string)
   await page.goto('/auth/login');
   await page.getByPlaceholder(/ShadowX/).fill(identifiant);
   await page.getByPlaceholder(/^\.*$/).fill(password);
-  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 20_000 });
+  // PIEGE : sous la suite complete, l API de test traite des dizaines de
+  // connexions sur la meme IP. Un login peut depasser 20 s sans aucun
+  // defaut produit (observe deux fois sur la suite complete). Meme budget
+  // que le test de deep link de auth-flow.
+  const loginResponse = page.waitForResponse((r) => r.url().includes('/api/auth/login'), { timeout: 60_000 });
   await page.getByPlaceholder(/^\.*$/).press('Enter');
   expect((await loginResponse).status()).toBe(200);
   await page.request.post('/api/auth/covenant', { data: {} });

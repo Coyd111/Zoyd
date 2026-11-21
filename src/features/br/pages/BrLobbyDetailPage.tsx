@@ -112,7 +112,7 @@ const BrLobbyDetailPage: React.FC = () => {
     setActing(true);
     try {
       setLobby(await checkInBrLobby(lobby.id));
-      toast.success('Presence confirmee. Bonne chance !');
+      toast.success('Présence confirmée. Bonne chance !');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Confirmation impossible.');
     } finally {

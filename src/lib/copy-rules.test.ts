@@ -211,6 +211,12 @@ const MOTS_SANS_ACCENT_OBLIGATOIRE: Record<string, string> = {
   reperes: 'repères',
   caracteres: 'caractères',
   preleve: 'prélevé',
+  present: 'présent',
+  presente: 'présente',
+  presentes: 'présentes',
+  presents: 'présents',
+  presence: 'présence',
+  confirmee: 'confirmée',
   equipes: 'équipes',
   ete: 'été',
   supprime: 'supprimé',
@@ -397,6 +403,8 @@ describe('Regles de redaction - les cas ambigus', () => {
     expect(page).toContain('désinscription');
     expect(page).toContain('véhicules');
     expect(page).toContain('sans véhicule');
+    expect(page).toContain('tu ne te présentes pas');
+    expect(page).toContain('des joueurs présents');
     expect(page).toContain('Détail');
     expect(page).not.toContain('Details');
 
@@ -416,11 +424,21 @@ describe('Regles de redaction - les cas ambigus', () => {
     expect(panneau).toContain('véhicules');
     expect(panneau).toContain('sans véhicule');
     expect(panneau).toContain('caractères minimum');
+
+    // ZD-15 : le panneau arbitre est rendu sur le detail d'un salon, il
+    // appartient au meme ecran que la liste et le detail.
+    const arbitre = source('src/features/br/components/BrArbiterPanel.tsx');
+    expect(arbitre).toContain('Présents');
+    expect(arbitre).toContain('Éliminés');
+    expect(arbitre).toContain('Cagnotte réellement bloquée');
+    expect(arbitre).toContain('Fenêtre de lancement ouverte');
+    expect(arbitre).toContain('Clôturer et verser la cagnotte');
   });
 
   it('les libelles parametres et profil portent leurs accents', () => {
     const parametres = source('src/app/pages/ParametresPage.tsx');
     expect(parametres).toContain('Infos gardées privées');
+    expect(parametres).toContain('ta présence');
 
     const profil = source('src/app/components/profile/ProfileView.tsx');
     expect(profil).toContain('Tes repères CODM');

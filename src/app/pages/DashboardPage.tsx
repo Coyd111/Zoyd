@@ -270,7 +270,7 @@ const DashboardPage: React.FC = () => {
                 <p className="text-white/70 text-sm">Aucun match terminé pour l&apos;instant.</p>
                 <Link
                   to="/mj"
-                  className="inline-flex items-center gap-2 mt-4 text-[10px] font-display font-black uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
+                  className="inline-flex items-center gap-2 mt-4 text-[10px] font-display font-black uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors touch-target"
                 >
                   Jouer maintenant <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -335,7 +335,7 @@ const DashboardPage: React.FC = () => {
               </div>
               <Link
                 to="/mj/tournois"
-                className="text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
+                className="inline-flex items-center touch-target text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
               >
                 Voir tout
               </Link>
@@ -524,7 +524,7 @@ const DashboardPage: React.FC = () => {
               </div>
               <Link
                 to="/chat"
-                className="text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
+                className="inline-flex items-center touch-target text-[10px] font-mono uppercase tracking-[0.2em] text-zoyd-yellow hover:text-white transition-colors"
               >
                 Voir tout
               </Link>

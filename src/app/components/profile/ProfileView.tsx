@@ -336,7 +336,7 @@ export default function ProfileView({
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-display font-black uppercase tracking-tighter italic">Matchs récents</h2>
               {matchesLink ? (
-                <Link to={matchesLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline min-h-6 py-0.5">
+                <Link to={matchesLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline touch-target">
                   {matchesLink.label} <ChevronRight className="w-3 h-3" />
                 </Link>
               ) : null}
@@ -403,7 +403,7 @@ export default function ProfileView({
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-display font-black uppercase tracking-tighter italic">Tournois récents</h2>
               {tournamentsLink ? (
-                <Link to={tournamentsLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline min-h-6 py-0.5">
+                <Link to={tournamentsLink.to} className="text-[10px] font-mono text-zoyd-blue uppercase tracking-widest flex items-center gap-1 hover:underline touch-target">
                   {tournamentsLink.label} <ChevronRight className="w-3 h-3" />
                 </Link>
               ) : null}

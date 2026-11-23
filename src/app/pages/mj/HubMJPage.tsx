@@ -382,7 +382,7 @@ className={`px-3 py-3.5 touch-target text-[10px] font-display font-black trackin
               </Link>
               <Link
                 to="/br-league"
-                className="text-[10px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1 text-center sm:text-right min-h-6"
+                className="touch-target inline-flex items-center justify-center sm:justify-end text-[10px] font-mono uppercase tracking-[0.22em] text-white/50 hover:text-white transition-colors whitespace-nowrap py-1 text-center sm:text-right"
               >
                 BR League — événement hebdo
               </Link>

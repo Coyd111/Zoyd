@@ -368,4 +368,34 @@ test.describe('Responsive mobile (sondes geometriques)', () => {
       ).toBe(true);
     }
   });
+
+  test('F. les liens de navigation autonomes atteignent 44 px de haut a 360', async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize(VIEWPORT_SWEEP);
+    await openApp(page, pseudoJoueur, MOT_DE_PASSE_JOUEUR);
+
+    const sousLaCible: string[] = [];
+    const mesurer = async (chemin: string, nom: string | RegExp, rang = 0) => {
+      await page.goto(chemin);
+      await stable(page);
+      const lien = page.getByRole('link', { name: nom }).nth(rang);
+      await expect(lien, `lien « ${nom} » present sur ${chemin}`).toBeVisible();
+      const boite = await lien.boundingBox();
+      if (!boite || boite.height < 44) {
+        sousLaCible.push(`${chemin} « ${nom} » = ${boite ? Math.round(boite.height) : 0} px`);
+      }
+    };
+
+    // WCAG 2.5.8 : une cible autonome (pas un lien dans une phrase) doit
+    // offrir au moins 24 px, et ZOYD retient 44 px pour le doigt. Ces liens
+    // secondaires rendaient 15 a 24 px de haut a 360 px.
+    await mesurer('/', 'Jouer maintenant');
+    await mesurer('/', 'Voir tout', 0);
+    await mesurer('/', 'Voir tout', 1);
+    await mesurer('/mj', /BR League/i);
+    await mesurer('/profil', 'Hub MJ');
+    await mesurer('/profil', 'Voir les tournois');
+
+    expect(sousLaCible, `cibles tactiles sous 44 px :\n  ${sousLaCible.join('\n  ')}`).toEqual([]);
+  });
 });

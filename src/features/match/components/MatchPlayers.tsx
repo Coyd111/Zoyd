@@ -69,7 +69,7 @@ const TeamCard = ({
             </div>
           </div>
           <div className={`text-[10px] font-mono uppercase tracking-widest ${player.isReady ? 'text-green-400' : 'text-white/60'}`}>
-            {player.isReady ? 'Pret' : 'En attente'}
+            {player.isReady ? 'Prêt' : 'En attente'}
           </div>
         </div>
       ))}

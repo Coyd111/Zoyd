@@ -46,6 +46,7 @@ import BracketHeader from '../components/BracketHeader';
 import BracketGrid from '../components/BracketGrid';
 import BracketSidebar from '../components/BracketSidebar';
 import BracketActions from '../components/BracketActions';
+import { shouldShowJoinPanel } from '../lib/joinPanel';
 import { SEOHead } from '../../../app/components/SEOHead';
 import { Button } from '../../../app/components/ui/Button';
 
@@ -483,33 +484,35 @@ const TournamentBracketPage: React.FC = () => {
 
         <div className="grid xl:grid-cols-[0.95fr_1.05fr] gap-8">
           <div className="space-y-8">
-            <BracketActions
-              user={user}
-              availableSpend={availableSpend}
-              registrationCost={registrationCost}
-              requiredTopUp={requiredTopUp}
-              fundingPath={fundingPath}
-              teamSize={tournament.teamSize}
-              canRegister={canRegister}
-              canJoinArbiter={canJoinArbiter}
-              canStartTournament={canStartTournament}
-              tournamentStatus={tournament.status}
-              myEntry={myEntry}
-              myArbiterSlot={myArbiterSlot}
-              tournamentName={tournament.name}
-              squadName={squadName}
-              squadAccess={squadAccess}
-              invitedInputs={invitedInputs}
-              joinableSquads={joinableSquads}
-              onSquadNameChange={setSquadName}
-              onSquadAccessChange={setSquadAccess}
-              onInvitedInputChange={updateInvitedInput}
-              onJoinSquad={handleJoinSquad}
-              onRegister={handleRegister}
-              onLeave={() => setConfirmAction('leave')}
-              onJoinArbiter={handleJoinArbiter}
-              onStartTournament={handleStartTournament}
-            />
+            {shouldShowJoinPanel(tournament.status, Boolean(myEntry), Boolean(myArbiterSlot)) ? (
+              <BracketActions
+                user={user}
+                availableSpend={availableSpend}
+                registrationCost={registrationCost}
+                requiredTopUp={requiredTopUp}
+                fundingPath={fundingPath}
+                teamSize={tournament.teamSize}
+                canRegister={canRegister}
+                canJoinArbiter={canJoinArbiter}
+                canStartTournament={canStartTournament}
+                tournamentStatus={tournament.status}
+                myEntry={myEntry}
+                myArbiterSlot={myArbiterSlot}
+                tournamentName={tournament.name}
+                squadName={squadName}
+                squadAccess={squadAccess}
+                invitedInputs={invitedInputs}
+                joinableSquads={joinableSquads}
+                onSquadNameChange={setSquadName}
+                onSquadAccessChange={setSquadAccess}
+                onInvitedInputChange={updateInvitedInput}
+                onJoinSquad={handleJoinSquad}
+                onRegister={handleRegister}
+                onLeave={() => setConfirmAction('leave')}
+                onJoinArbiter={handleJoinArbiter}
+                onStartTournament={handleStartTournament}
+              />
+            ) : null}
 
             <BracketSidebar
               tournament={tournament}

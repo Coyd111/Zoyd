@@ -16,6 +16,7 @@
 import React from 'react';
 import type { Match } from '../../../app/stores/matchStore';
 import { MJ_PICKS_ALTERNANCE, formatTimeLimit } from '../../../lib/competition';
+import { formatBestOf, formatScoreTarget } from '../matchDisplay';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
@@ -42,13 +43,13 @@ export const MatchRules: React.FC<MatchRulesProps> = ({ match, canSeeRoom }) => 
       </div>
       <div className="grid md:grid-cols-2 gap-4 text-sm text-white/70">
         <RuleRow label="Format" value={match.format} />
-        <RuleRow label="Nombre de manches" value={`BO${match.rules.bestOf}`} />
+        <RuleRow label="Nombre de manches" value={formatBestOf(match.rules.bestOf)} />
         {/* P3 02/11/2026 (DuelX) : convention affichee SEULEMENT si choisie
             a la creation ET en BO3+ - pas d'invention pour les vieux matchs. */}
         {match.rules.picksAlternate && (match.rules.bestOf || 1) >= 3 ? (
           <RuleRow label="Picks" value={MJ_PICKS_ALTERNANCE} />
         ) : null}
-        <RuleRow label="Score cible" value={`${match.rules.scoreTarget}`} />
+        <RuleRow label="Score cible" value={formatScoreTarget(match.rules.scoreTarget)} />
         <RuleRow label="Armes" value={match.rules.weaponRestrictions || 'Toutes'} />
         <RuleRow label="Séries de points" value={match.rules.pointstreaks === 'allowed' ? 'Permises' : 'Interdites'} />
         {/* Meme vocabulaire que les series de points : absent (vieux match) = Interdites. */}

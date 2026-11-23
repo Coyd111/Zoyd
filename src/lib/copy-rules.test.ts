@@ -435,6 +435,25 @@ describe('Regles de redaction - les cas ambigus', () => {
     expect(arbitre).toContain('Clôturer et verser la cagnotte');
   });
 
+  it('les details de match et de tournoi portent leurs accents', () => {
+    const resultats = source('src/features/match/components/MatchResults.tsx');
+    expect(resultats).toContain('Score confirmé');
+    expect(resultats).toContain('Gains distribués');
+    expect(resultats).not.toContain('Score confirme');
+
+    const detail = source('src/features/match/pages/MatchDetailPage.tsx');
+    expect(detail).toContain('gains sont réglés');
+    expect(detail).toContain('réexaminer le résultat');
+
+    const joueurs = source('src/features/match/components/MatchPlayers.tsx');
+    expect(joueurs).toContain("'Prêt'");
+
+    const actions = source('src/features/tournament/components/BracketActions.tsx');
+    expect(actions).toContain('Coût');
+    expect(actions).not.toContain('Cout inscription');
+    expect(actions).toContain('Inscription confirmée');
+  });
+
   it('les libelles parametres et profil portent leurs accents', () => {
     const parametres = source('src/app/pages/ParametresPage.tsx');
     expect(parametres).toContain('Infos gardées privées');

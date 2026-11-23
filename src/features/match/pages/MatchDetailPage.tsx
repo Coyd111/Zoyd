@@ -305,7 +305,7 @@ const MatchDetailPage: React.FC = () => {
   // On ne pretend pas qu'un litige est possible : on dit ce qui est possible.
   const closedRecourseMessage = matchIsClosed
     ? (match?.result
-      ? 'Le score de ce match est valide et les gains sont regles. Pour contester un arbitrage, contacte le support avec tes preuves : un admin peut reexaminer le resultat.'
+      ? 'Le score de ce match est validé et les gains sont réglés. Pour contester un arbitrage, contacte le support avec tes preuves : un admin peut réexaminer le résultat.'
       : 'Ce match est cloture et ses mises ont ete remboursees. Pour tout reclamant, contacte le support.')
     : undefined;
   const countdown = match?.scheduledAt ? getCountdownDisplay(match.scheduledAt) : null;

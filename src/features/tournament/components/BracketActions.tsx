@@ -23,8 +23,9 @@
 import React from 'react';
 import { Link } from 'react-router';
 import { formatZC } from '../../../lib/utils';
-import type { TournamentEntry, TournamentSquadAccess } from '../../../app/stores/tournamentStore';
+import type { TournamentEntry, TournamentSquadAccess, TournamentStatus } from '../../../app/stores/tournamentStore';
 import { Button } from '../../../app/components/ui/Button';
+import { joinPanelTitle } from '../lib/joinPanel';
 
 interface JoinableSquad {
   id: string;
@@ -45,7 +46,7 @@ interface BracketActionsProps {
   canRegister: boolean;
   canJoinArbiter: boolean;
   canStartTournament: boolean;
-  tournamentStatus: string;
+  tournamentStatus: TournamentStatus;
   myEntry?: TournamentEntry;
   myArbiterSlot?: { slot: number };
   tournamentName: string;
@@ -90,7 +91,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
 }) => (
   <div className="hud-panel p-6 bg-zoyd-surface/20">
     <div className="flex items-center justify-between gap-4 mb-5">
-      <h2 className="text-lg font-display font-black uppercase italic">Rejoindre le tournoi</h2>
+      <h2 className="text-lg font-display font-black uppercase italic">{joinPanelTitle(tournamentStatus)}</h2>
       <div className="text-[10px] font-mono uppercase tracking-widest text-white/60">
         0% de commission joueur
       </div>
@@ -110,16 +111,18 @@ const BracketActions: React.FC<BracketActionsProps> = ({
       </div>
     ) : (
       <div className="space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div className="border border-white/10 bg-black/40 p-4 text-sm text-white/60">
-            Ton solde dispo:{' '}
-            <span className="text-zoyd-yellow font-display font-black">{formatZC(availableSpend)}</span>
+        {tournamentStatus === 'recruiting' ? (
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="border border-white/10 bg-black/40 p-4 text-sm text-white/60">
+              Ton solde dispo:{' '}
+              <span className="text-zoyd-yellow font-display font-black">{formatZC(availableSpend)}</span>
+            </div>
+            <div className="border border-white/10 bg-black/40 p-4 text-sm text-white/60">
+              {teamSize > 1 ? 'Ton pass:' : 'Coût d\'inscription:'}{' '}
+              <span className="text-white font-display font-black">{formatZC(registrationCost)}</span>
+            </div>
           </div>
-          <div className="border border-white/10 bg-black/40 p-4 text-sm text-white/60">
-            {teamSize > 1 ? 'Ton pass:' : 'Cout inscription:'}{' '}
-            <span className="text-white font-display font-black">{formatZC(registrationCost)}</span>
-          </div>
-        </div>
+        ) : null}
 
         {canRegister && requiredTopUp > 0 ? (
           <div className="border border-zoyd-yellow/20 bg-zoyd-yellow/5 p-4 text-sm text-white/70">
@@ -192,17 +195,17 @@ const BracketActions: React.FC<BracketActionsProps> = ({
                     type="text"
                     value={value}
                     onChange={(event) => onInvitedInputChange(index, event.target.value)}
-                    placeholder={`Pseudo invite ${index + 1}`}
+                    placeholder={`Pseudo invité ${index + 1}`}
                     className="w-full bg-black border border-white/10 px-4 py-3 text-sm text-white focus:border-zoyd-yellow"
                   />
                 ))}
               </div>
             ) : null}
             <p className="text-xs text-white/70">
-              TOI SEUL paies ce pass : {formatZC(registrationCost)} verrouilles sur ton compte. Chaque joueur
-              qui rejoint paie SON propre pass depuis SON portefeuille : tu ne geres jamais l&apos;argent
-              des autres. Les gains sont divises et verses directement a chaque membre.
-              {squadAccess === 'private' ? ' En squad privee, seuls les pseudos invites peuvent rejoindre.' : ''}
+              TOI SEUL paies ce pass : {formatZC(registrationCost)} verrouillés sur ton compte. Chaque joueur
+              qui rejoint paie SON propre pass depuis SON portefeuille : tu ne gères jamais l&apos;argent
+              des autres. Les gains sont divisés et versés directement à chaque membre.
+              {squadAccess === 'private' ? ' En squad privée, seuls les pseudos invités peuvent rejoindre.' : ''}
             </p>
           </div>
         ) : null}
@@ -221,7 +224,7 @@ const BracketActions: React.FC<BracketActionsProps> = ({
 
         {myEntry ? (
           <div className="border border-green-400/20 bg-green-400/5 p-4 text-sm text-white/70">
-            Inscription confirmee pour <strong className="text-white">{myEntry.squadName}</strong>.
+            Inscription confirmée pour <strong className="text-white">{myEntry.squadName}</strong>.
             {' '}
             Roster: {myEntry.members.map((member) => member.pseudo).join(' / ')}.
             {myEntry.members.length < myEntry.teamSize ? (

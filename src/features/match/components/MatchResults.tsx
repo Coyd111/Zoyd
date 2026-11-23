@@ -15,6 +15,7 @@
  */
 import React from 'react';
 import { isMatchPayoutSettled, type Match } from '../../../app/stores/matchStore';
+import { formatTeamScore } from '../matchDisplay';
 
 const RuleRow = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-white/5 px-4 py-3 bg-black/30">
@@ -56,7 +57,7 @@ export const MatchResults: React.FC<MatchResultsProps> = ({ match, forfeitLabel 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <h2 className="text-lg font-display font-black uppercase italic">Score confirme</h2>
+        <h2 className="text-lg font-display font-black uppercase italic">Score confirmé</h2>
         <div
           className={`text-[10px] font-mono uppercase tracking-widest border px-3 py-1 ${
             payoutSettled
@@ -64,13 +65,13 @@ export const MatchResults: React.FC<MatchResultsProps> = ({ match, forfeitLabel 
               : 'text-zoyd-yellow border-zoyd-yellow/30 bg-zoyd-yellow/5'
           }`}
         >
-          {payoutSettled ? 'Gains distribues' : 'Versement en attente'}
+          {payoutSettled ? 'Gains distribués' : 'Versement en attente'}
         </div>
       </div>
       <div className="grid md:grid-cols-3 gap-4">
         <RuleRow label="Vainqueur" value={match.result.winnerTeam === 0 ? 'Squad Alpha' : 'Squad Bravo'} />
-        <RuleRow label="Score Alpha" value={`${match.result.scores.team0}`} />
-        <RuleRow label="Score Bravo" value={`${match.result.scores.team1}`} />
+        <RuleRow label="Score Alpha" value={formatTeamScore(match.result.scores.team0)} />
+        <RuleRow label="Score Bravo" value={formatTeamScore(match.result.scores.team1)} />
       </div>
       {forfeitLabel ? (
         <div className="mt-4 border border-zoyd-yellow/20 bg-zoyd-yellow/5 px-4 py-3 text-sm text-white/70">

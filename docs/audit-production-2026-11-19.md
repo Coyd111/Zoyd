@@ -370,16 +370,24 @@ rejoue ou recoupe dans le DOM et, quand c'etait possible, dans le code.
 
 - **Admin** : `/admin` et la saison de ligue complete exigent un email
   admin, un mot de passe et un secret TOTP. Non audites.
-- **IDs reels** : aucun match, tournoi ou ligue exploitable fourni ; les
-  etats de detail ont ete testes avec des IDs invalides (404), pas avec
-  des donnees reelles.
-- **Mobile/tablette** : non couverts (viewport desktop unique 1264 x 575).
-  Les tailles de cibles et les debordements horizontaux restent a verifier
-  a 360 et 768 px.
-- **Performance** : pas de mesure Lighthouse/Web Vitals en conditions
-  reelles.
-- **Paiement** : aucun depot reel effectue ; le parcours FedaPay n'a pas
-  ete joue jusqu'au bout.
+- **IDs reels** : le match `M-MWHYO9FS` (termine, 10 joueurs) et le tournoi
+  `T-MJ-MWJ5RZ3E` (termine, 8 entrees, 8 matchs) ont ete examines le
+  2026-11-23. Aucune saison de ligue n'existe en production
+  (`GET /api/leagues` renvoie `total: 0`) : seul l'etat vide de
+  `/br-league` est verifiable.
+- **Mobile/tablette** : audite le 2026-11-23 a 360 x 800 et 768 x 1024 sur
+  13 ecrans joueur. Aucun debordement horizontal ni clip interne. Trois
+  familles de cibles tactiles sous 44 px ont ete corrigees (ZD-22).
+- **Performance** : mesure du 2026-11-23 sur cache froid et CPU x4. La
+  connexion transfere 589 Ko et rend son LCP a 6,7 s ; le bundle total
+  pese 2,0 Mo brut, dont 365 Ko de graphiques charges seulement sur
+  `/earnings`. Pas de donnees terrain Lighthouse/Web Vitals.
+- **Paiement** : le widget FedaPay de production ouvre bien
+  `sandbox-checkout.fedapay.com` avec une cle `pk_sandbox` (mode sandbox
+  assume avant lancement). Le parcours de bout en bout est documente dans
+  `docs/architecture.md` (11 depots sandbox credites) ; aucun depot reel
+  n'a ete effectue et les cles live restent a configurer avant ouverture
+  publique.
 - **Artifact de test** : les transitions d'etape de `/mj/creer` sont
   pilotees par animation et ne progressent pas dans un onglet Chrome non
   visible (`visibilityState=hidden`). Ce n'est pas un defaut utilisateur
@@ -466,6 +474,7 @@ controle visuel du ou des ecrans corriges en production.
 | 1 - verite des donnees | ZD-01 a ZD-05 | `bf712ad` | corrige, deploye, verifie en production |
 | 2 - navigation et accessibilite | ZD-06 a ZD-14 | `d46249b` | corrige, deploye, verifie en production |
 | 3 - copie et finition | ZD-15 a ZD-18 | `2d7ea8a`, `7656acb` | corrige, deploye, verifie en production ; ZD-19 differe (coordonnees actuelles conservees) |
+| 4 - donnees reelles et mobile | ZD-20 a ZD-22 | `318f7c2`, `ab0ad16` | corrige, deploye et verifie en production |
 
 Verification production du Lot 1 (`buildId bf712ad0f2ad`) : `/mode` ne
 promet plus ni prix ni capacite ; `/classements` affiche `NC` pour le compte
@@ -500,6 +509,77 @@ conserve l'adresse actuelle sur decision du 2026-11-21.
 Tests ajoutes : `payoutDisplay`, `walletInsights`, extension de
 `copy-rules` (`present`, `presence`, `confirmee`, `BrArbiterPanel`) et
 e2e `earnings-empty` + assertions BR sur les libelles accentues.
+
+---
+
+## 11. Audit complementaire du 2026-11-23
+
+### ZD-20 - champs absents d'un match ancien rendus « undefined »
+
+- **Constat** : `/mj/match/M-MWHYO9FS`, match termine reel, affiche
+  « BOundefined », « Score cible : undefined », « Score Alpha : undefined »
+  et « Score Bravo : undefined ». Ce match ancien ne porte pas
+  `rules.bestOf`, `rules.scoreTarget` ni `result.scores.*`.
+- **Correctif** : `src/features/match/matchDisplay.ts` formate une valeur
+  absente en tiret cadratin sans inventer de valeur ; `MatchRules` et
+  `MatchResults` passent par ce formateur. Les libelles du resultat sont
+  accentues (« Score confirmé », « Gains distribués ») et la phrase de
+  match clos parle de gains « réglés » et d'un resultat « réexaminé ».
+- **Test** : `matchDisplay.test.ts`, ecrit rouge avant le module (5 cas).
+
+### ZD-21 - panneau « Rejoindre le tournoi » sur un tournoi termine
+
+- **Constat** : `/mj/tournois/T-MJ-MWJ5RZ3E`, tournoi termine avec 8/8
+  inscriptions, affiche encore « Rejoindre le tournoi », le solde du
+  lecteur et « Cout inscription » : une action que le serveur refusera.
+- **Correctif** : `shouldShowJoinPanel` ne rend le panneau que si le
+  tournoi recrute, ou si le lecteur a deja une inscription ou un poste
+  arbitre. Le titre suit le statut (« Tournoi terminé », « Tournoi
+  annulé ») et le solde/l'inscription ne s'affichent qu'en recrutement.
+  « Cout inscription » devient « Coût d'inscription ».
+- **Test** : `joinPanel.test.ts`.
+
+### ZD-22 - cibles tactiles sous 44 px a 360 px
+
+- **Constat** : a 360 px, « Jouer maintenant » et « Voir tout » rendent
+  15 px de haut, le lien BR League et « Hub MJ » / « Voir les tournois »
+  24 px. Les liens « Retour aux matchs » et « Retour aux tournois »
+  restaient a 24 et 40 px.
+- **Correctif** : classe `touch-target` (44 x 44 px) sur ces liens, sans
+  changer leur libelle ni leur destination.
+- **Test** : e2e `responsive.spec.ts` test F. Rouge avant correctif avec
+  six mesures a 15/24 px, vert apres.
+
+### Mesure de performance
+
+Mesure du 2026-11-23 sur `/auth/login`, cache froid et CPU x4 :
+TTFB 1,4 s, DOM 4,8 s, LCP 6,7 s, CLS 0,001, 589 Ko transferes. Le
+bundle de production pese 2,0 Mo brut (60 fichiers) ; les plus gros
+morceaux sont `vendor-charts` (365 Ko, charge seulement par `/earnings`),
+`vendor-react` (358 Ko), `index` (310 Ko) et `vendor-motion` (129 Ko).
+Les sept visuels presse pesent 1,3 Mo a eux seuls ; ils sont deja
+`loading="lazy"` hors priorite. Aucun correctif de performance n'a ete
+applique dans ce lot : le gain demanderait des variantes responsives
+d'images et un audit des polices, a arbitrer avec le design.
+
+### Paiement
+
+Le widget s'ouvre en production sur `sandbox-checkout.fedapay.com` avec
+une cle publique `pk_sandbox`, conformement au mode sandbox assume avant
+lancement (`docs/architecture.md`). Les operateurs MTN MoMo, Moov Money
+et Celtiis sont proposes. Aucun depot n'a ete conclu pendant cet audit :
+le parcours de bout en bout est celui, deja documente, des 11 depots
+sandbox. Avant ouverture publique, il faudra remplacer les cles par des
+cles live, rejouer un depot reel de faible montant et verifier le credit
+serveur.
+
+### Gates du Lot 4
+
+`tsc` application et serveur, eslint `src server e2e scripts`, 178
+fichiers / 1672 tests Vitest, Playwright 308 passes (1 flaky de connexion
+sous charge, repasse seul), `vite build`. Verification production apres
+deploiement : aucune chaine `undefined` sur le match reel, panneau
+d'inscription absent du tournoi clos, cibles tactiles mesurees a 44 px.
 
 ---
 

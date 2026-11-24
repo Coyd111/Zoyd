@@ -42,7 +42,13 @@
       "categorie": "ui",
       "source": "press-codm",
       "usage": "Fond de la page de connexion et image de partage (og:image).",
-      "dimensions": "1920x1080"
+      "dimensions": "1920x1080",
+      "variantes": {
+        "480": "assets/codm/press/ui/duel-operateurs-480.webp",
+        "720": "assets/codm/press/ui/duel-operateurs-720.webp",
+        "960": "assets/codm/press/ui/duel-operateurs-960.webp",
+        "1440": "assets/codm/press/ui/duel-operateurs-1440.webp"
+      }
     },
     "affiche-promo-cod": {
       "fichier": "assets/codm/press/ui/affiche-promo-cod.jpg",
@@ -50,7 +56,13 @@
       "categorie": "ui",
       "source": "press-cod",
       "usage": "Fond de profil et image de partage.",
-      "dimensions": "1920x1080"
+      "dimensions": "1920x1080",
+      "variantes": {
+        "480": "assets/codm/press/ui/affiche-promo-cod-480.webp",
+        "720": "assets/codm/press/ui/affiche-promo-cod-720.webp",
+        "960": "assets/codm/press/ui/affiche-promo-cod-960.webp",
+        "1440": "assets/codm/press/ui/affiche-promo-cod-1440.webp"
+      }
     },
     "portrait-ghost": {
       "fichier": "assets/codm/press/ui/portrait-ghost.jpg",
@@ -58,7 +70,13 @@
       "categorie": "ui",
       "source": "press-codm",
       "usage": "Avatar de defaut et fond de la page de connexion.",
-      "dimensions": "564x564"
+      "dimensions": "564x564",
+      "variantes": {
+        "240": "assets/codm/press/ui/portrait-ghost-240.webp",
+        "360": "assets/codm/press/ui/portrait-ghost-360.webp",
+        "480": "assets/codm/press/ui/portrait-ghost-480.webp",
+        "564": "assets/codm/press/ui/portrait-ghost-564.webp"
+      }
     },
     "arme-bleue": {
       "fichier": "assets/codm/press/ui/arme-bleue.jpg",
@@ -66,7 +84,13 @@
       "categorie": "ui",
       "source": "press-codm",
       "usage": "Fond des pages d authentification (activation, mot de passe oublie).",
-      "dimensions": "1199x674"
+      "dimensions": "1199x674",
+      "variantes": {
+        "480": "assets/codm/press/ui/arme-bleue-480.webp",
+        "720": "assets/codm/press/ui/arme-bleue-720.webp",
+        "960": "assets/codm/press/ui/arme-bleue-960.webp",
+        "1199": "assets/codm/press/ui/arme-bleue-1199.webp"
+      }
     },
     "operatrice-studio": {
       "fichier": "assets/codm/press/ui/operatrice-studio.jpg",
@@ -74,7 +98,13 @@
       "categorie": "ui",
       "source": "press-codm",
       "usage": "Image de partage (og:image) de l inscription.",
-      "dimensions": "1024x1022"
+      "dimensions": "1024x1022",
+      "variantes": {
+        "480": "assets/codm/press/ui/operatrice-studio-480.webp",
+        "720": "assets/codm/press/ui/operatrice-studio-720.webp",
+        "960": "assets/codm/press/ui/operatrice-studio-960.webp",
+        "1024": "assets/codm/press/ui/operatrice-studio-1024.webp"
+      }
     },
     "escouade-action": {
       "fichier": "assets/codm/press/ui/escouade-action.jpg",
@@ -82,7 +112,13 @@
       "categorie": "ui",
       "source": "press-codm",
       "usage": "Image de partage (og:image) de l inscription, et fond de l hero.",
-      "dimensions": "1920x1080"
+      "dimensions": "1920x1080",
+      "variantes": {
+        "480": "assets/codm/press/ui/escouade-action-480.webp",
+        "720": "assets/codm/press/ui/escouade-action-720.webp",
+        "960": "assets/codm/press/ui/escouade-action-960.webp",
+        "1440": "assets/codm/press/ui/escouade-action-1440.webp"
+      }
     },
     "operateur-lame": {
       "fichier": "assets/codm/press/ui/operateur-lame.jpg",
@@ -90,7 +126,13 @@
       "categorie": "ui",
       "source": "press-codm",
       "usage": "Fond d ambiance (etats vides, profil).",
-      "dimensions": "1920x1080"
+      "dimensions": "1920x1080",
+      "variantes": {
+        "480": "assets/codm/press/ui/operateur-lame-480.webp",
+        "720": "assets/codm/press/ui/operateur-lame-720.webp",
+        "960": "assets/codm/press/ui/operateur-lame-960.webp",
+        "1440": "assets/codm/press/ui/operateur-lame-1440.webp"
+      }
     },
     "hero-inscription": {
       "fichier": "assets/codm/press/videos/hero-bg.mp4",

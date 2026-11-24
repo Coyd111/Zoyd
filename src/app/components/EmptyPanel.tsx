@@ -1,4 +1,5 @@
 import React from 'react';
+import { srcsetPourUrl } from '../lib/illustrations';
 
 interface EmptyPanelProps {
   icon: React.ReactNode;
@@ -11,7 +12,14 @@ const EmptyPanel: React.FC<EmptyPanelProps> = ({ icon, image, title, body }) => 
   <div className="hud-panel p-8 text-center bg-zoyd-surface/20 overflow-hidden relative">
     {image && (
       <div className="absolute inset-0 opacity-[0.06]">
-        <img src={image} alt="" loading="lazy" className="w-full h-full object-cover" />
+        <img
+          src={image}
+          srcSet={srcsetPourUrl(image)}
+          sizes="(min-width: 768px) 640px, 100vw"
+          alt=""
+          loading="lazy"
+          className="w-full h-full object-cover"
+        />
       </div>
     )}
     <div className="relative mx-auto mb-4 flex w-12 h-12 items-center justify-center">{icon}</div>

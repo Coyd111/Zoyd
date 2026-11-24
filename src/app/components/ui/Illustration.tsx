@@ -13,7 +13,7 @@
  */
 import React from 'react';
 import { cn } from '../../../lib/utils';
-import { urlIllustration } from '../../lib/illustrations';
+import { srcsetIllustration, urlIllustration } from '../../lib/illustrations';
 
 export interface IllustrationProps {
   /** Le nom du visuel dans le catalogue (`src/app/data/illustrations.json`). */
@@ -26,6 +26,9 @@ export interface IllustrationProps {
   position?: string;
   /** Chargement immediat (au-dessus de la ligne de flottaison). */
   priorite?: boolean;
+  /** La taille reelle du cadre, pour que le navigateur choisisse la variante.
+   *  Defaut : 100vw. Un visuel rendu dans une vignette doit passer sa taille. */
+  sizes?: string;
   /** L opacite du visuel (les fonds de ZOYD sont tres discrets).
    *  PIEGE : laisse a undefined si le visuel n en a pas besoin — un
    *  `style` inline-ecrase la classe d opacite du `className`. */
@@ -38,9 +41,11 @@ const Illustration = ({
   className,
   position = 'center',
   priorite = false,
+  sizes = '100vw',
   opacite,
 }: IllustrationProps) => {
   const url = urlIllustration(nom);
+  const srcSet = srcsetIllustration(nom);
 
   // Repli graphique : la grille du site. Le visuel manque, l ecran ne
   // se casse pas.
@@ -56,6 +61,8 @@ const Illustration = ({
   return (
     <img
       src={url}
+      srcSet={srcSet}
+      sizes={srcSet ? sizes : undefined}
       alt={alt}
       loading={priorite ? 'eager' : 'lazy'}
       decoding="async"

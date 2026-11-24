@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { srcsetIllustration, srcsetPourUrl } from '../app/lib/illustrations';
 
 /**
  * Le systeme d'images : un catalogue declare, une source pour chaque
@@ -30,6 +31,7 @@ const MANIFESTE = JSON.parse(
   sources: Record<string, { libelle: string; url: string; usage: string; signature: string; diffusable?: boolean; remarque?: string }>;
   illustrations: Record<string, {
     fichier: string; sujet: string; categorie: string; source: string; usage: string; dimensions?: string;
+    variantes?: Record<string, string>;
   }>;
 };
 
@@ -123,6 +125,56 @@ describe('Systeme d images', () => {
       coupables.length,
       'visuels non diffusables utilises :\n  ' + coupables.join('\n  '),
     ).toBe(0);
+  });
+
+  it('chaque visuel photographique declare des variantes WebP bornees', () => {
+    // Pourquoi : un key art 1920x1080 pese 250 a 350 Ko en JPEG. A 360 px,
+    // la meme image en WebP 480 px suffit et pese moins de 30 Ko. Chaque
+    // visuel d interface doit donc declarer ses tailles, et la plus grande
+    // variante ne peut pas depasser la largeur d origine.
+    const problemes: string[] = [];
+    for (const [nom, entree] of Object.entries(MANIFESTE.illustrations)) {
+      if (entree.categorie !== 'ui') continue;
+      const variantes = entree.variantes;
+      if (!variantes) { problemes.push(`${nom} : aucune variante responsive`); continue; }
+      const largeurs = Object.keys(variantes).map(Number).sort((a, b) => a - b);
+      if (largeurs.length < 3) problemes.push(`${nom} : ${largeurs.length} variante(s), 3 minimum`);
+      const largeurOrigine = Number((entree.dimensions || '').split('x')[0]);
+      for (const largeur of largeurs) {
+        if (!Number.isInteger(largeur) || largeur <= 0) {
+          problemes.push(`${nom} : largeur invalide « ${largeur} »`);
+          continue;
+        }
+        if (Number.isFinite(largeurOrigine) && largeur > largeurOrigine) {
+          problemes.push(`${nom} : variante ${largeur} px au-dela de l origine ${largeurOrigine} px`);
+        }
+        const fichier = variantes[String(largeur)];
+        if (!fichier.endsWith('.webp')) problemes.push(`${nom} : ${fichier} n est pas un WebP`);
+        if (!existsSync(join(RACINE, fichier))) problemes.push(`${nom} : ${fichier} absent du disque`);
+      }
+    }
+    expect(problemes.length, `variantes responsives invalides :\n  ${problemes.join('\n  ')}`).toBe(0);
+  });
+
+  it('srcsetIllustration ordonne les candidats et ignore les visuels sans variantes', () => {
+    // Le composant affiche l image d origine en repli et les variantes WebP
+    // en srcset : le navigateur choisit selon la taille reelle du cadre.
+    const srcset = srcsetIllustration('duel-operateurs');
+    expect(srcset).toBeTruthy();
+    expect(srcset).toContain('/assets/codm/press/ui/duel-operateurs-480.webp 480w');
+    expect(srcset).toContain('/assets/codm/press/ui/duel-operateurs-1440.webp 1440w');
+    expect(srcset!.indexOf('480w')).toBeLessThan(srcset!.indexOf('960w'));
+
+    expect(srcsetIllustration('logo-mtn')).toBeUndefined();
+    expect(srcsetIllustration('nom-inexistant')).toBeUndefined();
+  });
+
+  it('srcsetPourUrl retrouve les candidats depuis une URL du catalogue', () => {
+    // ProfileView recoit une URL d image, pas un nom : le panneau vide doit
+    // quand meme servir le WebP adapte.
+    expect(srcsetPourUrl('/assets/codm/press/ui/duel-operateurs.jpg')).toContain('duel-operateurs-480.webp 480w');
+    expect(srcsetPourUrl('/logo.png')).toBeUndefined();
+    expect(srcsetPourUrl(undefined)).toBeUndefined();
   });
 
   it('tout nom cite par un ecran existe au catalogue', () => {

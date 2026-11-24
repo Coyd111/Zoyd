@@ -18,6 +18,12 @@
  *
  * PIEGE : `logo-icon.png` (la tuile en 1024) pese 63 ko - en header,
  * servir `logo-192.png` (meme visuel, 5,9 ko) : le navigateur downscale.
+ *
+ * Performance : le wordmark PNG pese 52 ko pour un rendu de 142 px de
+ * large. `logo-480.webp` (11 ko) et `logo.webp` (19 ko) sont servis par
+ * `<picture>`, avec le PNG en repli pour les navigateurs sans WebP.
+ * PIEGE : `sizes="160px"` decrit le rendu CSS (h-10, ratio 940/264) :
+ * sans lui, le navigateur choisirait la variante 940 pour un ecran DPR 3.
  */
 import React from 'react';
 import { cn } from '../../../lib/utils';
@@ -47,14 +53,24 @@ export const ZoydLogo: React.FC<ZoydLogoProps> = ({
           className="h-9 w-9 object-contain"
         />
       ) : (
-        <img
-          src="/logo.png"
-          alt="ZOYD"
-          className={cn(
-            'object-contain',
-            compact ? 'h-8 w-auto' : 'h-10 w-auto'
-          )}
-        />
+        <picture>
+          <source
+            srcSet="/logo-480.webp 480w, /logo.webp 940w"
+            sizes="160px"
+            type="image/webp"
+          />
+          <img
+            src="/logo.png"
+            alt="ZOYD"
+            width={940}
+            height={264}
+            loading="eager"
+            className={cn(
+              'object-contain',
+              compact ? 'h-8 w-auto' : 'h-10 w-auto'
+            )}
+          />
+        </picture>
       )}
     </div>
   );

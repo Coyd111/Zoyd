@@ -44,6 +44,8 @@ export type Illustration = {
   source: string;
   usage: string;
   dimensions?: string;
+  /** Les variantes responsives : largeur en pixels -> fichier WebP. */
+  variantes?: Record<string, string>;
 };
 
 export type EntreeIllustration = Illustration & {
@@ -89,6 +91,37 @@ export const urlIllustration = (nom: string): string | undefined => illustration
 /** Les visuels d une categorie. */
 export const illustrationsDe = (categorie: CategorieIllustration): EntreeIllustration[] =>
   toutesLesIllustrations().filter((entree) => entree.categorie === categorie);
+
+/**
+ * Le `srcset` d un visuel : une candidature WebP par largeur declaree.
+ *
+ * PIEGE : le navigateur choisit selon les descripteurs `w` et `sizes`,
+ * pas selon l ordre du JSON. Le tri croissant rend toutefois le markup
+ * deterministe et les mesures de selection reproductibles.
+ */
+export const srcsetIllustration = (nom: string): string | undefined => {
+  const variantes = illustrations[nom]?.variantes;
+  if (!variantes) return undefined;
+  const candidats = Object.entries(variantes)
+    .map(([largeur, fichier]) => ({ largeur: Number(largeur), fichier }))
+    .filter((entree) => Number.isFinite(entree.largeur) && entree.largeur > 0)
+    .sort((a, b) => a.largeur - b.largeur);
+  if (candidats.length === 0) return undefined;
+  return candidats.map((entree) => `/${entree.fichier} ${entree.largeur}w`).join(', ');
+};
+
+/**
+ * Le `srcset` d une URL du catalogue.
+ *
+ * Pourquoi : certains composants recoivent une URL deja resolue (panneau
+ * vide du profil) et pas un nom. On retrouve alors le visuel par son
+ * fichier d origine pour servir, la aussi, la variante adaptee.
+ */
+export const srcsetPourUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+  const nom = Object.keys(illustrations).find((cle) => `/${illustrations[cle].fichier}` === url);
+  return nom ? srcsetIllustration(nom) : undefined;
+};
 
 /** Les sources declarees (press kit, communaute, marques de tiers). */
 export const sourcesDesIllustrations = (): Record<string, SourceIllustration> => sources;

@@ -475,6 +475,7 @@ controle visuel du ou des ecrans corriges en production.
 | 2 - navigation et accessibilite | ZD-06 a ZD-14 | `d46249b` | corrige, deploye, verifie en production |
 | 3 - copie et finition | ZD-15 a ZD-18 | `2d7ea8a`, `7656acb` | corrige, deploye, verifie en production ; ZD-19 differe (coordonnees actuelles conservees) |
 | 4 - donnees reelles et mobile | ZD-20 a ZD-22 | `318f7c2`, `ab0ad16` | corrige, deploye et verifie en production |
+| 5 - images et polices | ZD-23, ZD-24 | `4079ef5`, `8f836b7` | corrige, deploye et verifie en production |
 
 Verification production du Lot 1 (`buildId bf712ad0f2ad`) : `/mode` ne
 promet plus ni prix ni capacite ; `/classements` affiche `NC` pour le compte
@@ -580,6 +581,90 @@ fichiers / 1672 tests Vitest, Playwright 308 passes (1 flaky de connexion
 sous charge, repasse seul), `vite build`. Verification production apres
 deploiement : aucune chaine `undefined` sur le match reel, panneau
 d'inscription absent du tournoi clos, cibles tactiles mesurees a 44 px.
+
+---
+
+## 12. Arbitrage performance du 2026-11-24
+
+### ZD-23 - images plein format sur des cadres petits
+
+- **Constat** : sur `/auth/login` a 390 x 844 et DPR 3, la production
+  transfere 588,4 Ko, dont 52,4 Ko pour le wordmark rendu a 142 px de
+  large et 49,5 Ko pour un portrait de fond a 5 % d'opacite. Les sept
+  key arts JPEG ne declaraient aucune variante responsive.
+- **Correctif** : 28 variantes WebP, de 240 a 1440 px selon la largeur
+  du fichier d'origine, sont declarees dans `illustrations.json`.
+  `srcsetIllustration` les ordonne pour `Illustration` ; `srcsetPourUrl`
+  couvre aussi les images deja resolues d'`EmptyPanel`. Les JPEG restent
+  disponibles pour les images de partage et le repli. Le wordmark passe
+  par `<picture>` avec `logo-480.webp` (11,1 Ko) et `logo.webp`
+  (18,9 Ko), sans supprimer le PNG.
+- **Tests** : trois verrous dans `illustrations.test.ts` (fichiers,
+  largeurs et helpers) et trois e2e dans `images-responsives.spec.ts`.
+  Rouge initial : sept visuels sans variantes et helpers absents ; vert
+  apres generation et branchement.
+
+### ZD-24 - fontes variables avec axes et tables inutilises
+
+- **Constat** : les quatre fontes latines de la connexion pesent
+  161,2 Ko transfers (160,1 Ko sur disque). Inter embarque l'axe
+  100-900 alors que sa face est declaree 300-600 ; JetBrains Mono
+  embarque 100-800 alors que l'interface n'utilise que 400 a 800.
+- **Correctif** : sous-ensembles WOFF2 conserves dans `public/fonts/`.
+  Inter est instance a 300-600, JetBrains Mono normal et italique a
+  400-800 ; Outfit garde son axe, son sous-ensemble suffisant au budget.
+  Seules les fonctions `kern`, `liga`, `clig` et `calt` sont conservees.
+  Les caracteres de l'interface, les ligatures OE/oe et le latin-ext
+  restent couverts ; le Y trema majuscule reste en latin-ext comme dans
+  les fichiers Google Fonts d'origine.
+- **Mesure sur disque** : Outfit 31,5 -> 28,2 Ko, Inter 47,1 -> 30,3 Ko,
+  JetBrains Mono 39,5 -> 28,4 Ko, JetBrains Mono italique 42,0 ->
+  30,1 Ko. Total 160,1 -> 117,0 Ko (-26,9 %).
+- **Tests** : `fonts.test.ts`, rouge avec quatre fichiers au-dessus de
+  31 Ko et 160,1 Ko cumules, vert apres optimisation. Les huit fichiers
+  WOFF2 ont ete relus avec `fontTools` pour verifier les axes et les
+  caracteres accentues.
+
+### Mesure comparative du Lot 5
+
+Meme page `/auth/login`, viewport 390 x 844, DPR 3 et cache froid. La
+baseline est la production du 2026-11-24 ; l'apres est le build Vite
+local, seul le poids transfere etant compare entre ces environnements.
+
+| Mesure | Avant | Apres | Gain |
+|---|---:|---:|---:|
+| Total des ressources | 588,4 Ko | 476,0 Ko | 112,4 Ko (-19,1 %) |
+| Quatre fontes | 161,2 Ko | 118,2 Ko | 43,0 Ko |
+| Wordmark + portrait | 101,9 Ko | 41,7 Ko | 60,2 Ko |
+
+Le LCP local n'est pas compare au LCP de production : reseau, serveur et
+charge CPU different.
+
+### Verification production du Lot 5
+
+Build `8f836b757151`, 13/13 controles passes sur `/auth/login` :
+
+- mobile 390 x 844 DPR 3 : `portrait-ghost-564.webp` et
+  `logo-480.webp` sont selectionnes, `logo.png` et tous les JPEG presse
+  sont absents des requetes ;
+- desktop 1280 x 900 : `duel-operateurs-1440.webp` est selectionne et
+  aucun JPEG presse n'est telecharge ;
+- les quatre fontes latines pesent 118,2 Ko sur les deux viewports ;
+- le total mobile est 485,6 Ko, soit 102,8 Ko de moins que la baseline
+  production de 588,4 Ko (-17,5 %).
+
+Ces controles verifient les ressources reellement choisies par le
+navigateur. Ils ne constituent pas une nouvelle mesure LCP : la variabilite
+reseau deja constatee empeche d'attribuer un gain de delai au seul lot.
+
+### Gates du Lot 5
+
+`tsc` application et serveur, eslint `src server e2e scripts`, 179
+fichiers / 1679 tests Vitest, Playwright 312 passes (0 echec, 0 flaky),
+`vite build`. Les trois nouveaux tests images sont inclus dans la suite
+complete. La premiere execution Playwright a ete interrompue par le
+budget de 40 minutes pendant la derniere spec ; la relance isolee avec un
+budget de 60 minutes a abouti en 47,5 minutes.
 
 ---
 
